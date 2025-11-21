@@ -321,6 +321,8 @@ def migrate_knowledge_vector_database():
             )
 
             datasets = db.paginate(select=stmt, page=page, per_page=50, max_per_page=50, error_out=False)
+            if not datasets.items:
+                break
         except SQLAlchemyError:
             raise
 
@@ -1469,7 +1471,10 @@ def setup_datasource_oauth_client(provider, client_params):
 
 
 @click.command("transform-datasource-credentials", help="Transform datasource credentials.")
-def transform_datasource_credentials():
+@click.option(
+    "--environment", prompt=True, help="the environment to transform datasource credentials", default="online"
+)
+def transform_datasource_credentials(environment: str):
     """
     Transform datasource credentials
     """
@@ -1480,9 +1485,14 @@ def transform_datasource_credentials():
         notion_plugin_id = "langgenius/notion_datasource"
         firecrawl_plugin_id = "langgenius/firecrawl_datasource"
         jina_plugin_id = "langgenius/jina_datasource"
-        notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)  # pyright: ignore[reportPrivateUsage]
-        firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)  # pyright: ignore[reportPrivateUsage]
-        jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)  # pyright: ignore[reportPrivateUsage]
+        if environment == "online":
+            notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)  # pyright: ignore[reportPrivateUsage]
+            firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)  # pyright: ignore[reportPrivateUsage]
+            jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)  # pyright: ignore[reportPrivateUsage]
+        else:
+            notion_plugin_unique_identifier = None
+            firecrawl_plugin_unique_identifier = None
+            jina_plugin_unique_identifier = None
         oauth_credential_type = CredentialType.OAUTH2
         api_key_credential_type = CredentialType.API_KEY
 
@@ -1648,7 +1658,7 @@ def transform_datasource_credentials():
                             "integration_secret": api_key,
                         }
                         datasource_provider = DatasourceProvider(
-                            provider="jina",
+                            provider="jinareader",
                             tenant_id=tenant_id,
                             plugin_id=jina_plugin_id,
                             auth_type=api_key_credential_type.value,

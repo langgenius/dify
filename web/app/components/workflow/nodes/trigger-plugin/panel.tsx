@@ -22,7 +22,8 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
     outputSchema,
     hasObjectOutput,
     currentProvider,
-    currentTrigger,
+    currentEvent,
+    subscriptionSelected,
   } = useConfig(id, data)
   const disableVariableInsertion = data.type === BlockEnum.TriggerPlugin
 
@@ -36,7 +37,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   return (
     <div className='mt-2'>
       {/* Dynamic Parameters Form - Only show when authenticated */}
-      {triggerParameterSchema.length > 0 && (
+      {triggerParameterSchema.length > 0 && subscriptionSelected && (
         <>
           <div className='px-4 pb-4'>
             <TriggerForm
@@ -46,7 +47,7 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
               value={triggerParameterValue}
               onChange={setTriggerParameterValue}
               currentProvider={currentProvider}
-              currentTrigger={currentTrigger}
+              currentEvent={currentEvent}
               disableVariableInsertion={disableVariableInsertion}
             />
           </div>

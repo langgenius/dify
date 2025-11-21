@@ -23,10 +23,12 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import type {
   CommonEdgeType,
   CommonNodeType,
+  Node,
 } from '@/app/components/workflow/types'
 import {
   BlockEnum,
   InputVarType,
+  isTriggerNode,
 } from '@/app/components/workflow/types'
 import { useToastContext } from '@/app/components/base/toast'
 import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
@@ -36,9 +38,10 @@ import { fetchAppDetail } from '@/service/apps'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
-import { useIsChatMode } from '../../hooks'
+import { useIsChatMode } from '@/app/components/workflow/hooks'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { Node } from '@/app/components/workflow/types'
+import { useProviderContext } from '@/context/provider-context'
+import { Plan } from '@/app/components/billing/type'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
@@ -49,12 +52,14 @@ const FeaturesTrigger = () => {
   const appID = appDetail?.id
   const setAppDetail = useAppStore(s => s.setAppDetail)
   const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
+  const { plan, isFetchedPlan } = useProviderContext()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
   const lastPublishedHasUserInput = useStore(s => s.lastPublishedHasUserInput)
 
   const nodes = useNodes<CommonNodeType>()
+  const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
@@ -89,6 +94,19 @@ const FeaturesTrigger = () => {
       return false
     return edges.some(edge => startNodeIds.includes(edge.source))
   }, [edges, startNodeIds])
+  // Track trigger presence so the publisher can adjust UI (e.g. hide missing start section).
+  const hasTriggerNode = useMemo(() => (
+    nodes.some(node => isTriggerNode(node.data.type as BlockEnum))
+  ), [nodes])
+  const startNodeLimitExceeded = useMemo(() => {
+    const entryCount = nodes.reduce((count, node) => {
+      const nodeType = node.data.type as BlockEnum
+      if (nodeType === BlockEnum.Start || isTriggerNode(nodeType))
+        return count + 1
+      return count
+    }, 0)
+    return isFetchedPlan && plan.type === Plan.sandbox && entryCount > 2
+  }, [nodes, plan.type, isFetchedPlan])
 
   const resetWorkflowVersionHistory = useResetWorkflowVersionHistory()
   const invalidateAppTriggers = useInvalidateAppTriggers()
@@ -180,7 +198,7 @@ const FeaturesTrigger = () => {
         {...{
           publishedAt,
           draftUpdatedAt,
-          disabled: nodesReadOnly,
+          disabled: nodesReadOnly || !hasWorkflowNodes,
           toolPublished,
           inputs: variables,
           onRefreshData: handleToolConfigureUpdate,
@@ -189,6 +207,9 @@ const FeaturesTrigger = () => {
           workflowToolAvailable: lastPublishedHasUserInput,
           crossAxisOffset: 4,
           missingStartNode: !startNode,
+          hasTriggerNode,
+          startNodeLimitExceeded,
+          publishDisabled: !hasWorkflowNodes || startNodeLimitExceeded,
         }}
       />
     </>

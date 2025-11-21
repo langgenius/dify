@@ -183,8 +183,8 @@ class TestWebhookServiceUnit:
         assert response_data[0]["id"] == 1
         assert response_data[1]["id"] == 2
 
-    @patch("services.webhook_service.ToolFileManager")
-    @patch("services.webhook_service.file_factory")
+    @patch("services.trigger.webhook_service.ToolFileManager")
+    @patch("services.trigger.webhook_service.file_factory")
     def test_process_file_uploads_success(self, mock_file_factory, mock_tool_file_manager):
         """Test successful file upload processing."""
         # Mock ToolFileManager
@@ -223,8 +223,8 @@ class TestWebhookServiceUnit:
         assert mock_tool_file_manager.call_count == 2
         assert mock_file_factory.build_from_mapping.call_count == 2
 
-    @patch("services.webhook_service.ToolFileManager")
-    @patch("services.webhook_service.file_factory")
+    @patch("services.trigger.webhook_service.ToolFileManager")
+    @patch("services.trigger.webhook_service.file_factory")
     def test_process_file_uploads_with_errors(self, mock_file_factory, mock_tool_file_manager):
         """Test file upload processing with errors."""
         # Mock ToolFileManager
@@ -472,15 +472,11 @@ class TestWebhookServiceUnit:
             mock_get_trigger.return_value = (mock_trigger, mock_workflow, mock_config)
             mock_extract.return_value = mock_data
 
-            # Test normal mode (skip_status_check=False)
             result = _prepare_webhook_execution("test_webhook", is_debug=False)
-            mock_get_trigger.assert_called_with("test_webhook", skip_status_check=False)
             assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)
 
             # Reset mock
             mock_get_trigger.reset_mock()
 
-            # Test debug mode (skip_status_check=True)
             result = _prepare_webhook_execution("test_webhook", is_debug=True)
-            mock_get_trigger.assert_called_with("test_webhook", skip_status_check=True)
             assert result == (mock_trigger, mock_workflow, mock_config, mock_data, None)

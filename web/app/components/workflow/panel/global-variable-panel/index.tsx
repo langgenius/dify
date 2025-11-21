@@ -51,8 +51,8 @@ const Panel = () => {
     },
     // is workflow
     ...((isWorkflowPage && !isChatMode) ? [{
-      name: 'trigger_timestamp',
-      value_type: 'string' as const,
+      name: 'timestamp',
+      value_type: 'number' as const,
       description: t('workflow.globalVar.fieldsDescription.triggerTimestamp'),
     }] : []),
   ]

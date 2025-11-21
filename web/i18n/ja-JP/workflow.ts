@@ -119,6 +119,11 @@ const translation = {
     tagBound: 'このタグを使用しているアプリの数',
     moreActions: 'さらにアクション',
   },
+  publishLimit: {
+    startNodeTitlePrefix: 'アップグレードして、',
+    startNodeTitleSuffix: '各ワークフローのトリガーを制限なしで使用できます。',
+    startNodeDesc: 'このプランでは、各ワークフローのトリガー数は最大 2 個まで設定できます。公開するにはアップグレードが必要です。',
+  },
   env: {
     envPanelTitle: '環境変数',
     envDescription: '環境変数は、個人情報や認証情報を格納するために使用することができます。これらは読み取り専用であり、DSL ファイルからエクスポートする際には分離されます。',
@@ -140,6 +145,19 @@ const translation = {
       checkbox: 'シークレット値を含む',
       ignore: 'DSL をエクスポート',
       export: 'シークレット値付きでエクスポート',
+    },
+  },
+  globalVar: {
+    title: 'システム変数',
+    description: 'システム変数は、タイプが適合していれば配線なしで任意のノードから参照できるグローバル変数です。エンドユーザーIDやワークフローIDなどが含まれます。',
+    fieldsDescription: {
+      conversationId: '会話ID',
+      dialogCount: '会話数',
+      userId: 'ユーザーID',
+      triggerTimestamp: 'アプリケーションの起動タイムスタンプ',
+      appId: 'アプリケーションID',
+      workflowId: 'ワークフローID',
+      workflowRunId: 'ワークフロー実行ID',
     },
   },
   sidebar: {
@@ -263,6 +281,7 @@ const translation = {
     'searchDataSource': 'データソースを検索',
     'sources': 'ソース',
     'start': '始める',
+    'startDisabledTip': 'トリガーノードとユーザー入力ノードは互いに排他です。',
   },
   blocks: {
     'start': 'ユーザー入力',
@@ -1173,9 +1192,11 @@ const translation = {
         title: 'トリガーからのイベントを待機中…',
         tip: 'HTTP {{nodeName}} エンドポイントにテストリクエストを送信するか、ライブイベントデバッグ用のコールバック URL として利用してイベントトリガーをシミュレートできます。すべての出力は Variable Inspector で直接確認できます。',
         tipPlugin: '{{- pluginName}} でイベントを作成し、これらのイベントの出力を Variable Inspector で取得できます。',
+        tipSchedule: 'スケジュールトリガーからのイベントを待機しています。\n次回の予定実行: {{nextTriggerTime}}',
         tipFallback: 'トリガーイベントを待機しています。出力はここに表示されます。',
         defaultNodeName: 'このトリガー',
         defaultPluginName: 'このプラグイントリガー',
+        defaultScheduleTime: '未設定',
         selectedTriggers: '選択したトリガー',
         stopButton: '停止',
       },

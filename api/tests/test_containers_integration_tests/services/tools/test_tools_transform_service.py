@@ -6,7 +6,6 @@ from faker import Faker
 from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
-from libs.uuid_utils import uuidv7
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
 from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
@@ -18,15 +17,14 @@ class TestToolTransformService:
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
-        with (
-            patch("services.tools.tools_transform_service.dify_config") as mock_dify_config,
-        ):
-            # Setup default mock returns
-            mock_dify_config.CONSOLE_API_URL = "https://console.example.com"
+        with patch("services.tools.tools_transform_service.dify_config") as mock_dify_config:
+            with patch("services.plugin.plugin_service.dify_config", new=mock_dify_config):
+                # Setup default mock returns
+                mock_dify_config.CONSOLE_API_URL = "https://console.example.com"
 
-            yield {
-                "dify_config": mock_dify_config,
-            }
+                yield {
+                    "dify_config": mock_dify_config,
+                }
 
     def _create_test_tool_provider(
         self, db_session_with_containers, mock_external_service_dependencies, provider_type="api"
@@ -68,7 +66,6 @@ class TestToolTransformService:
             )
         elif provider_type == "workflow":
             provider = WorkflowToolProvider(
-                id=str(uuidv7()),
                 name=fake.company(),
                 description=fake.text(max_nb_chars=100),
                 icon='{"background": "#FF6B6B", "content": "🔧"}',
@@ -522,7 +519,7 @@ class TestToolTransformService:
         with patch("services.tools.tools_transform_service.create_provider_encrypter") as mock_encrypter:
             mock_encrypter_instance = Mock()
             mock_encrypter_instance.decrypt.return_value = {"api_key": "decrypted_key"}
-            mock_encrypter_instance.mask_tool_credentials.return_value = {"api_key": ""}
+            mock_encrypter_instance.mask_plugin_credentials.return_value = {"api_key": ""}
             mock_encrypter.return_value = (mock_encrypter_instance, None)
 
             # Act: Execute the method under test
@@ -761,7 +758,6 @@ class TestToolTransformService:
 
         # Create workflow tool provider
         provider = WorkflowToolProvider(
-            id=str(uuidv7()),
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             icon='{"background": "#FF6B6B", "content": "🔧"}',

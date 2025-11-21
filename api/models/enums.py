@@ -64,6 +64,7 @@ class AppTriggerStatus(StrEnum):
     ENABLED = "enabled"
     DISABLED = "disabled"
     UNAUTHORIZED = "unauthorized"
+    RATE_LIMITED = "rate_limited"
 
 
 class AppTriggerType(StrEnum):
@@ -72,3 +73,6 @@ class AppTriggerType(StrEnum):
     TRIGGER_WEBHOOK = NodeType.TRIGGER_WEBHOOK.value
     TRIGGER_SCHEDULE = NodeType.TRIGGER_SCHEDULE.value
     TRIGGER_PLUGIN = NodeType.TRIGGER_PLUGIN.value
+
+    # for backward compatibility
+    UNKNOWN = "unknown"

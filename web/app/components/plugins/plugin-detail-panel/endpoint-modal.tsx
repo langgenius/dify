@@ -55,7 +55,7 @@ const EndpointModal: FC<Props> = ({
 
     // Fix: Process boolean fields to ensure they are sent as proper boolean values
     const processedCredential = { ...tempCredential }
-    formSchemas.forEach((field) => {
+    formSchemas.forEach((field: any) => {
       if (field.type === 'boolean' && processedCredential[field.name] !== undefined) {
         const value = processedCredential[field.name]
         if (typeof value === 'string')

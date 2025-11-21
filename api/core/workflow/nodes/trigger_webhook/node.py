@@ -1,6 +1,7 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
+from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType
 from core.workflow.node_events import NodeRunResult
@@ -19,7 +20,7 @@ class TriggerWebhookNode(Node):
     def init_node_data(self, data: Mapping[str, Any]) -> None:
         self._node_data = WebhookData.model_validate(data)
 
-    def _get_error_strategy(self) -> Optional[ErrorStrategy]:
+    def _get_error_strategy(self) -> ErrorStrategy | None:
         return self._node_data.error_strategy
 
     def _get_retry_config(self) -> RetryConfig:
@@ -28,7 +29,7 @@ class TriggerWebhookNode(Node):
     def _get_title(self) -> str:
         return self._node_data.title
 
-    def _get_description(self) -> Optional[str]:
+    def _get_description(self) -> str | None:
         return self._node_data.desc
 
     def _get_default_value_dict(self) -> dict[str, Any]:
@@ -71,7 +72,12 @@ class TriggerWebhookNode(Node):
 
         # Extract webhook-specific outputs based on node configuration
         outputs = self._extract_configured_outputs(webhook_inputs)
+        system_inputs = self.graph_runtime_state.variable_pool.system_variables.to_dict()
 
+        # TODO: System variables should be directly accessible, no need for special handling
+        # Set system variables as node outputs.
+        for var in system_inputs:
+            outputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=webhook_inputs,

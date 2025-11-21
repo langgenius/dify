@@ -18,7 +18,7 @@ import {
 } from 'reactflow'
 import type { PluginDefaultValue } from '../block-selector/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
-import { BlockEnum, TRIGGER_NODE_TYPES } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 import { useWorkflowStore } from '../store'
 import {
   CUSTOM_EDGE,
@@ -148,12 +148,12 @@ export const useNodesInteractions = () => {
         const currentNode = draft.find(n => n.id === node.id)!
 
         // Check if current dragging node is an entry node
-        const isCurrentEntryNode = TRIGGER_NODE_TYPES.includes(node.data.type as any) || node.data.type === BlockEnum.Start
+        const isCurrentEntryNode = isTriggerNode(node.data.type as any) || node.data.type === BlockEnum.Start
 
         // X-axis alignment with offset consideration
         if (showVerticalHelpLineNodesLength > 0) {
           const targetNode = showVerticalHelpLineNodes[0]
-          const isTargetEntryNode = TRIGGER_NODE_TYPES.includes(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
 
           // Calculate the wrapper position needed to align the inner nodes
           // Target inner position = target.position + target.offset
@@ -177,7 +177,7 @@ export const useNodesInteractions = () => {
         // Y-axis alignment with offset consideration
         if (showHorizontalHelpLineNodesLength > 0) {
           const targetNode = showHorizontalHelpLineNodes[0]
-          const isTargetEntryNode = TRIGGER_NODE_TYPES.includes(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
 
           const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
           const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
@@ -396,6 +396,7 @@ export const useNodesInteractions = () => {
       if (node.type === CUSTOM_ITERATION_START_NODE) return
       if (node.type === CUSTOM_LOOP_START_NODE) return
       if (node.data.type === BlockEnum.DataSourceEmpty) return
+      if (node.data._pluginInstallLocked) return
       handleNodeSelect(node.id)
     },
     [handleNodeSelect],
@@ -1484,6 +1485,7 @@ export const useNodesInteractions = () => {
         // If no nodeId is provided, fall back to the current behavior
         const bundledNodes = nodes.filter((node) => {
           if (!node.data._isBundled) return false
+          if (node.type === CUSTOM_NOTE_NODE) return true
           const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
           if (metaData.isSingleton) return false
           return !node.data.isInIteration && !node.data.isInLoop
@@ -1496,6 +1498,7 @@ export const useNodesInteractions = () => {
 
         const selectedNode = nodes.find((node) => {
           if (!node.data.selected) return false
+          if (node.type === CUSTOM_NOTE_NODE) return true
           const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
           return !metaData.isSingleton
         })
@@ -1534,7 +1537,7 @@ export const useNodesInteractions = () => {
           = generateNewNode({
             type: nodeToPaste.type,
             data: {
-              ...nodesMetaDataMap![nodeType].defaultValue,
+              ...(nodeToPaste.type !== CUSTOM_NOTE_NODE && nodesMetaDataMap![nodeType].defaultValue),
               ...nodeToPaste.data,
               selected: false,
               _isBundled: false,

@@ -137,6 +137,19 @@ const translation = {
       export: 'Eksportuj DSL z tajnymi wartościami',
     },
   },
+  globalVar: {
+    title: 'Zmienne systemowe',
+    description: 'Zmienne systemowe to zmienne globalne, do których może odwołać się każdy węzeł bez okablowania, jeśli typ jest zgodny, na przykład identyfikator użytkownika końcowego i identyfikator przepływu pracy.',
+    fieldsDescription: {
+      conversationId: 'ID konwersacji',
+      dialogCount: 'Liczba konwersacji',
+      userId: 'ID użytkownika',
+      triggerTimestamp: 'Znacznik czasu uruchomienia aplikacji',
+      appId: 'ID aplikacji',
+      workflowId: 'ID przepływu pracy',
+      workflowRunId: 'ID uruchomienia przepływu pracy',
+    },
+  },
   chatVariable: {
     panelTitle: 'Zmienne Konwersacji',
     panelDescription: 'Zmienne Konwersacji służą do przechowywania interaktywnych informacji, które LLM musi pamiętać, w tym historii konwersacji, przesłanych plików, preferencji użytkownika. Są one do odczytu i zapisu.',

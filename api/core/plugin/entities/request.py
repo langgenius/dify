@@ -1,7 +1,7 @@
 import binascii
 import json
 from collections.abc import Mapping
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 from flask import Response
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -246,7 +246,7 @@ class RequestFetchAppInfo(BaseModel):
 
 class TriggerInvokeEventResponse(BaseModel):
     variables: Mapping[str, Any] = Field(default_factory=dict)
-    cancelled: Optional[bool] = False
+    cancelled: bool = Field(default=False)
 
     model_config = ConfigDict(protected_namespaces=(), arbitrary_types_allowed=True)
 

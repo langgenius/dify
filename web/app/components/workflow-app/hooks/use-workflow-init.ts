@@ -18,18 +18,19 @@ import {
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
 import { useWorkflowConfig } from '@/service/use-workflow'
 import type { FileUploadConfigResponse } from '@/models/common'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { AppModeEnum } from '@/types/app'
 
-const hasConnectedUserInput = (nodes: any[] = [], edges: any[] = []) => {
+const hasConnectedUserInput = (nodes: Node[] = [], edges: Edge[] = []): boolean => {
   const startNodeIds = nodes
     .filter(node => node?.data?.type === BlockEnum.Start)
-    .map((node: any) => node.id)
+    .map(node => node.id)
 
   if (!startNodeIds.length)
     return false
 
-  return edges?.some((edge: any) => startNodeIds.includes(edge.source))
+  return edges.some(edge => startNodeIds.includes(edge.source))
 }
 export const useWorkflowInit = () => {
   const workflowStore = useWorkflowStore()

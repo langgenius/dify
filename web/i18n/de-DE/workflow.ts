@@ -137,6 +137,19 @@ const translation = {
       export: 'DSL mit geheimen Werten exportieren',
     },
   },
+  globalVar: {
+    title: 'Systemvariablen',
+    description: 'Systemvariablen sind globale Variablen, die von jedem Knoten ohne Verkabelung referenziert werden können, sofern der Typ passt, etwa Endnutzer-ID und Workflow-ID.',
+    fieldsDescription: {
+      conversationId: 'Konversations-ID',
+      dialogCount: 'Konversationsanzahl',
+      userId: 'Benutzer-ID',
+      triggerTimestamp: 'Zeitstempel des Anwendungsstarts',
+      appId: 'Anwendungs-ID',
+      workflowId: 'Workflow-ID',
+      workflowRunId: 'Workflow-Ausführungs-ID',
+    },
+  },
   chatVariable: {
     panelTitle: 'Gesprächsvariablen',
     panelDescription: 'Gesprächsvariablen werden verwendet, um interaktive Informationen zu speichern, die das LLM benötigt, einschließlich Gesprächsverlauf, hochgeladene Dateien und Benutzereinstellungen. Sie sind les- und schreibbar.',

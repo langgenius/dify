@@ -6,7 +6,7 @@ from typing import Any
 
 from flask import Request, Response
 from pydantic import BaseModel
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -22,7 +22,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.model import App
 from models.provider_ids import TriggerProviderID
-from models.trigger import AppTrigger, AppTriggerStatus, TriggerSubscription, WorkflowPluginTrigger
+from models.trigger import TriggerSubscription, WorkflowPluginTrigger
 from models.workflow import Workflow
 from services.trigger.trigger_provider_service import TriggerProviderService
 from services.trigger.trigger_request_service import TriggerHttpRequestCachingService
@@ -149,68 +149,6 @@ class TriggerService:
         return dispatch_response.response
 
     @classmethod
-    def get_subscriber_triggers(
-        cls, tenant_id: str, subscription_id: str, event_name: str
-    ) -> list[WorkflowPluginTrigger]:
-        """
-        Get WorkflowPluginTriggers for a subscription and trigger.
-
-        Args:
-            tenant_id: Tenant ID
-            subscription_id: Subscription ID
-            event_name: Event name
-        """
-        with Session(db.engine, expire_on_commit=False) as session:
-            subscribers = session.scalars(
-                select(WorkflowPluginTrigger)
-                .join(
-                    AppTrigger,
-                    and_(
-                        AppTrigger.tenant_id == WorkflowPluginTrigger.tenant_id,
-                        AppTrigger.app_id == WorkflowPluginTrigger.app_id,
-                        AppTrigger.node_id == WorkflowPluginTrigger.node_id,
-                    ),
-                )
-                .where(
-                    WorkflowPluginTrigger.tenant_id == tenant_id,
-                    WorkflowPluginTrigger.subscription_id == subscription_id,
-                    WorkflowPluginTrigger.event_name == event_name,
-                    AppTrigger.status == AppTriggerStatus.ENABLED,
-                )
-            ).all()
-            return list(subscribers)
-
-    @classmethod
-    def delete_plugin_trigger_by_subscription(
-        cls,
-        session: Session,
-        tenant_id: str,
-        subscription_id: str,
-    ) -> None:
-        """Delete a plugin trigger by tenant_id and subscription_id within an existing session
-
-        Args:
-            session: Database session
-            tenant_id: The tenant ID
-            subscription_id: The subscription ID
-
-        Raises:
-            NotFound: If plugin trigger not found
-        """
-        # Find plugin trigger using indexed columns
-        plugin_trigger = session.scalar(
-            select(WorkflowPluginTrigger).where(
-                WorkflowPluginTrigger.tenant_id == tenant_id,
-                WorkflowPluginTrigger.subscription_id == subscription_id,
-            )
-        )
-
-        if not plugin_trigger:
-            return
-
-        session.delete(plugin_trigger)
-
-    @classmethod
     def sync_plugin_trigger_relationships(cls, app: App, workflow: Workflow):
         """
         Sync plugin trigger relationships in DB.
@@ -272,7 +210,7 @@ class TriggerService:
         for node_info in nodes_in_graph:
             node_id = node_info["node_id"]
             # firstly check if the node exists in cache
-            if not redis_client.get(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}"):
+            if not redis_client.get(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}"):
                 not_found_in_cache.append(node_info)
                 continue
 
@@ -317,7 +255,7 @@ class TriggerService:
                         subscription_id=node_info["subscription_id"],
                     )
                     redis_client.set(
-                        f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_info['node_id']}",
+                        f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_info['node_id']}",
                         cache.model_dump_json(),
                         ex=60 * 60,
                     )
@@ -347,7 +285,7 @@ class TriggerService:
                                 subscription_id=node_info["subscription_id"],
                             )
                             redis_client.set(
-                                f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}",
+                                f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}",
                                 cache.model_dump_json(),
                                 ex=60 * 60,
                             )
@@ -357,12 +295,9 @@ class TriggerService:
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
-                        redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{node_id}")
+                        redis_client.delete(f"{cls.__PLUGIN_TRIGGER_NODE_CACHE_KEY__}:{app.id}:{node_id}")
                 session.commit()
             except Exception:
-                import logging
-
-                logger = logging.getLogger(__name__)
                 logger.exception("Failed to sync plugin trigger relationships for app %s", app.id)
                 raise
             finally:

@@ -22,6 +22,7 @@ class SystemVariableKey(StrEnum):
     APP_ID = "app_id"
     WORKFLOW_ID = "workflow_id"
     WORKFLOW_EXECUTION_ID = "workflow_run_id"
+    TIMESTAMP = "timestamp"
     # RAG Pipeline
     DOCUMENT_ID = "document_id"
     ORIGINAL_DOCUMENT_ID = "original_document_id"
@@ -64,10 +65,20 @@ class NodeType(StrEnum):
     HUMAN_INPUT = "human-input"
 
     @property
+    def is_trigger_node(self) -> bool:
+        """Check if this node type is a trigger node."""
+        return self in [
+            NodeType.TRIGGER_WEBHOOK,
+            NodeType.TRIGGER_SCHEDULE,
+            NodeType.TRIGGER_PLUGIN,
+        ]
+
+    @property
     def is_start_node(self) -> bool:
         """Check if this node type can serve as a workflow entry point."""
         return self in [
             NodeType.START,
+            NodeType.DATASOURCE,
             NodeType.TRIGGER_WEBHOOK,
             NodeType.TRIGGER_SCHEDULE,
             NodeType.TRIGGER_PLUGIN,
@@ -105,12 +116,110 @@ class WorkflowType(StrEnum):
 
 
 class WorkflowExecutionStatus(StrEnum):
+    # State diagram for the workflw status:
+    # (@) means start, (*) means end
+    #
+    #       ┌------------------>------------------------->------------------->--------------┐
+    #       |                                                                               |
+    #       |                       ┌-----------------------<--------------------┐          |
+    #       ^                       |                                            |          |
+    #       |                       |                                            ^          |
+    #       |                       V                                            |          |
+    # ┌-----------┐        ┌-----------------------┐                       ┌-----------┐    V
+    # | Scheduled |------->|        Running        |---------------------->|   paused  |    |
+    # └-----------┘        └-----------------------┘                       └-----------┘    |
+    #       |                |       |       |    |                              |          |
+    #       |                |       |       |    |                              |          |
+    #       ^                |       |       |    V                              V          |
+    #       |                |       |       |    |                         ┌---------┐     |
+    #      (@)               |       |       |    └------------------------>| Stopped |<----┘
+    #                        |       |       |                              └---------┘
+    #                        |       |       |                                   |
+    #                        |       |       V                                   V
+    #                        |       |  ┌-----------┐                            |
+    #                        |       |  | Succeeded |------------->--------------┤
+    #                        |       |  └-----------┘                            |
+    #                        |       V                                           V
+    #                        |  +--------┐                                       |
+    #                        |  | Failed |---------------------->----------------┤
+    #                        |  └--------┘                                       |
+    #                        V                                                   V
+    #             ┌---------------------┐                                        |
+    #             | Partially Succeeded |---------------------->-----------------┘--------> (*)
+    #             └---------------------┘
+    #
+    # Mermaid diagram:
+    #
+    #     ---
+    #     title: State diagram for Workflow run state
+    #     ---
+    #     stateDiagram-v2
+    #         scheduled: Scheduled
+    #         running: Running
+    #         succeeded: Succeeded
+    #         failed: Failed
+    #         partial_succeeded: Partial Succeeded
+    #         paused: Paused
+    #         stopped: Stopped
+    #
+    #         [*] --> scheduled:
+    #         scheduled --> running: Start Execution
+    #         running --> paused: Human input required
+    #         paused --> running: human input added
+    #         paused --> stopped: User stops execution
+    #         running --> succeeded: Execution finishes without any error
+    #         running --> failed: Execution finishes with errors
+    #         running --> stopped: User stops execution
+    #         running --> partial_succeeded: some execution occurred and handled during execution
+    #
+    #         scheduled --> stopped: User stops execution
+    #
+    #         succeeded --> [*]
+    #         failed --> [*]
+    #         partial_succeeded --> [*]
+    #         stopped --> [*]
+
+    # `SCHEDULED` means that the workflow is scheduled to run, but has not
+    # started running yet. (maybe due to possible worker saturation.)
+    #
+    # This enum value is currently unused.
+    SCHEDULED = "scheduled"
+
+    # `RUNNING` means the workflow is exeuting.
     RUNNING = "running"
+
+    # `SUCCEEDED` means the execution of workflow succeed without any error.
     SUCCEEDED = "succeeded"
+
+    # `FAILED` means the execution of workflow failed without some errors.
     FAILED = "failed"
+
+    # `STOPPED` means the execution of workflow was stopped, either manually
+    # by the user, or automatically by the Dify application (E.G. the moderation
+    # mechanism.)
     STOPPED = "stopped"
+
+    # `PARTIAL_SUCCEEDED` indicates that some errors occurred during the workflow
+    # execution, but they were successfully handled (e.g., by using an error
+    # strategy such as "fail branch" or "default value").
     PARTIAL_SUCCEEDED = "partial-succeeded"
+
+    # `PAUSED` indicates that the workflow execution is temporarily paused
+    # (e.g., awaiting human input) and is expected to resume later.
     PAUSED = "paused"
+
+    def is_ended(self) -> bool:
+        return self in _END_STATE
+
+
+_END_STATE = frozenset(
+    [
+        WorkflowExecutionStatus.SUCCEEDED,
+        WorkflowExecutionStatus.FAILED,
+        WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+        WorkflowExecutionStatus.STOPPED,
+    ]
+)
 
 
 class WorkflowNodeExecutionMetadataKey(StrEnum):

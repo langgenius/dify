@@ -10,7 +10,7 @@ import { fetchPromptTemplate } from '@/service/debug'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type Param = {
-  appMode: AppModeEnum
+  appMode?: AppModeEnum
   modelModeType: ModelModeType
   modelName: string
   promptMode: PromptMode
@@ -104,6 +104,9 @@ const useAdvancedPromptConfig = ({
   const migrateToDefaultPrompt = async (isMigrateToCompetition?: boolean, toModelModeType?: ModelModeType) => {
     const mode = modelModeType
     const toReplacePrePrompt = prePrompt || ''
+    if (!appMode)
+      return
+
     if (!isAdvancedPrompt) {
       const { chat_prompt_config, completion_prompt_config, stop } = await fetchPromptTemplate({
         appMode,
@@ -122,7 +125,6 @@ const useAdvancedPromptConfig = ({
         })
         setChatPromptConfig(newPromptConfig)
       }
-
       else {
         const newPromptConfig = produce(completion_prompt_config, (draft) => {
           draft.prompt.text = draft.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt)

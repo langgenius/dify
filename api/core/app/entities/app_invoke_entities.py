@@ -44,6 +44,9 @@ class InvokeFrom(StrEnum):
     DEBUGGER = "debugger"
     PUBLISHED = "published"
 
+    # VALIDATION indicates that this invocation is from validation.
+    VALIDATION = "validation"
+
     @classmethod
     def value_of(cls, value: str):
         """
@@ -110,6 +113,11 @@ class AppGenerateEntity(BaseModel):
 
     inputs: Mapping[str, Any]
     files: Sequence[File]
+
+    # Unique identifier of the user initiating the execution.
+    # This corresponds to `Account.id` for platform users or `EndUser.id` for end users.
+    #
+    # Note: The `user_id` field does not indicate whether the user is a platform user or an end user.
     user_id: str
 
     # extras
@@ -135,7 +143,7 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     app_config: EasyUIBasedAppConfig = None  # type: ignore
     model_conf: ModelConfigWithCredentialsEntity
 
-    query: str | None = None
+    query: str = ""
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())

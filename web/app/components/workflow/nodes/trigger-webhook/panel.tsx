@@ -18,6 +18,7 @@ import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import copy from 'copy-to-clipboard'
+import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 
 const i18nPrefix = 'workflow.nodes.triggerWebhook'
 
@@ -103,33 +104,40 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
               </div>
             </div>
             {inputs.webhook_debug_url && (
-              <Tooltip
-                popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`) : t(`${i18nPrefix}.debugUrlCopy`)}
-                popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
-                position="top"
-                offset={{ mainAxis: -20 }}
-                needsDelay={true}
-              >
-                <div
-                  className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 transition-colors"
-                  style={{ width: '368px', height: '38px' }}
-                  onClick={() => {
-                    copy(inputs.webhook_debug_url || '')
-                    setDebugUrlCopied(true)
-                    setTimeout(() => setDebugUrlCopied(false), 2000)
-                  }}
+              <div className="space-y-2">
+                <Tooltip
+                  popupContent={debugUrlCopied ? t(`${i18nPrefix}.debugUrlCopied`) : t(`${i18nPrefix}.debugUrlCopy`)}
+                  popupClassName="system-xs-regular text-text-primary bg-components-tooltip-bg border border-components-panel-border shadow-lg backdrop-blur-sm rounded-md px-1.5 py-1"
+                  position="top"
+                  offset={{ mainAxis: -20 }}
+                  needsDelay={true}
                 >
-                  <div className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }}></div>
-                  <div className="flex-1" style={{ width: '352px', height: '32px' }}>
-                    <div className="text-xs leading-4 text-text-tertiary">
-                      {t(`${i18nPrefix}.debugUrlTitle`)}
-                    </div>
-                    <div className="truncate text-xs leading-4 text-text-primary">
-                      {inputs.webhook_debug_url}
+                  <div
+                    className="flex cursor-pointer gap-1.5 rounded-lg px-1 py-1.5 transition-colors"
+                    style={{ width: '368px', height: '38px' }}
+                    onClick={() => {
+                      copy(inputs.webhook_debug_url || '')
+                      setDebugUrlCopied(true)
+                      setTimeout(() => setDebugUrlCopied(false), 2000)
+                    }}
+                  >
+                    <div className="mt-0.5 w-0.5 bg-divider-regular" style={{ height: '28px' }}></div>
+                    <div className="flex-1" style={{ width: '352px', height: '32px' }}>
+                      <div className="text-xs leading-4 text-text-tertiary">
+                        {t(`${i18nPrefix}.debugUrlTitle`)}
+                      </div>
+                      <div className="truncate text-xs leading-4 text-text-primary">
+                        {inputs.webhook_debug_url}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </Tooltip>
+                </Tooltip>
+                {isPrivateOrLocalAddress(inputs.webhook_debug_url) && (
+                  <div className="system-xs-regular mt-1 px-0 py-[2px] text-text-warning">
+                    {t(`${i18nPrefix}.debugUrlPrivateAddressWarning`)}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </Field>

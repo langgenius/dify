@@ -1,12 +1,11 @@
 import logging
 import time
 from collections.abc import Sequence
-from typing import Optional, cast
+from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.engine_layers.suspend_layer import SuspendLayer
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
@@ -19,6 +18,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
+from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 from models.workflow import Workflow
 
@@ -38,15 +38,16 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
-        root_node_id: Optional[str] = None,
+        root_node_id: str | None = None,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ):
         super().__init__(
             queue_manager=queue_manager,
             variable_loader=variable_loader,
             app_id=application_generate_entity.app_config.app_id,
+            graph_engine_layers=graph_engine_layers,
         )
         self.application_generate_entity = application_generate_entity
         self._workflow = workflow
@@ -54,7 +55,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
-        self._layers = layers or []
 
     def run(self):
         """
@@ -67,6 +67,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             files=self.application_generate_entity.files,
             user_id=self._sys_user_id,
             app_id=app_config.app_id,
+            timestamp=int(naive_utc_now().timestamp()),
             workflow_id=app_config.workflow_id,
             workflow_execution_id=self.application_generate_entity.workflow_execution_id,
         )
@@ -142,12 +143,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             trace_manager=self.application_generate_entity.trace_manager,
         )
 
-        suspend_layer = SuspendLayer()
-
         workflow_entry.graph_engine.layer(persistence_layer)
-        workflow_entry.graph_engine.layer(suspend_layer)
-
-        for layer in self._layers:
+        for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 
         generator = workflow_entry.run()

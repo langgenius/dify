@@ -122,6 +122,11 @@ const translation = {
     noHistory: '没有历史版本',
     tagBound: '使用此标签的应用数量',
   },
+  publishLimit: {
+    startNodeTitlePrefix: '升级以',
+    startNodeTitleSuffix: '解锁每个工作流无限制的触发器',
+    startNodeDesc: '您已达到此计划上每个工作流最多 2 个触发器的限制。请升级后再发布此工作流。',
+  },
   env: {
     envPanelTitle: '环境变量',
     envDescription: '环境变量是一种存储敏感信息的方法，如 API 密钥、数据库密码等。它们被存储在工作流程中，而不是代码中，以便在不同环境中共享。',
@@ -143,6 +148,19 @@ const translation = {
       checkbox: '导出 secret 值',
       ignore: '导出 DSL',
       export: '导出包含 Secret 值的 DSL',
+    },
+  },
+  globalVar: {
+    title: '系统变量',
+    description: '系统变量是全局变量，在类型匹配时无需连线即可被任意节点引用，例如终端用户 ID 和工作流 ID。',
+    fieldsDescription: {
+      conversationId: '会话 ID',
+      dialogCount: '会话次数',
+      userId: '用户 ID',
+      triggerTimestamp: '应用开始运行的时间戳',
+      appId: '应用 ID',
+      workflowId: '工作流 ID',
+      workflowRunId: '工作流运行 ID',
     },
   },
   sidebar: {
@@ -273,6 +291,7 @@ const translation = {
     'hideActions': '收起工具',
     'noFeaturedPlugins': '前往插件市场查看更多工具',
     'noFeaturedTriggers': '前往插件市场查看更多触发器',
+    'startDisabledTip': '触发节点与用户输入节点互斥。',
   },
   blocks: {
     'start': '用户输入',
@@ -828,6 +847,8 @@ const translation = {
         removeAbnormalOutput: '移除错误输出',
       },
       answerNodeWarningDesc: '并行模式警告：在迭代中，回答节点、会话变量赋值和工具持久读/写操作可能会导致异常。',
+      flattenOutput: '扁平化输出',
+      flattenOutputDesc: '启用时，如果所有迭代输出都是数组，它们将被扁平化为单个数组。禁用时，输出将保持嵌套数组结构。',
     },
     loop: {
       deleteTitle: '删除循环节点？',
@@ -1201,9 +1222,11 @@ const translation = {
         title: '正在监听触发器事件…',
         tip: '您现在可以向 HTTP {{nodeName}} 端点发送测试请求以模拟事件触发，或将其用作实时事件调试的回调 URL。所有输出都可以在变量检查器中直接查看。',
         tipPlugin: '现在您可以在 {{- pluginName}} 中创建事件，并在变量检查器中查看这些事件的输出。',
+        tipSchedule: '正在监听计划触发器事件。\n下一次计划运行时间：{{nextTriggerTime}}',
         tipFallback: '正在等待触发器事件，输出结果将在此显示。',
         defaultNodeName: '此触发器',
         defaultPluginName: '此插件触发器',
+        defaultScheduleTime: '未设置',
         selectedTriggers: '所选触发器',
         stopButton: '停止',
       },

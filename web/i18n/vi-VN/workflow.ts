@@ -137,6 +137,19 @@ const translation = {
       export: 'Xuất DSL với giá trị bí mật',
     },
   },
+  globalVar: {
+    title: 'Biến hệ thống',
+    description: 'Biến hệ thống là biến toàn cục mà bất kỳ nút nào cũng có thể tham chiếu mà không cần nối dây khi kiểu dữ liệu phù hợp, chẳng hạn như ID người dùng cuối và ID quy trình làm việc.',
+    fieldsDescription: {
+      conversationId: 'ID cuộc trò chuyện',
+      dialogCount: 'Số lần trò chuyện',
+      userId: 'ID người dùng',
+      triggerTimestamp: 'Dấu thời gian ứng dụng bắt đầu chạy',
+      appId: 'ID ứng dụng',
+      workflowId: 'ID quy trình làm việc',
+      workflowRunId: 'ID lần chạy quy trình làm việc',
+    },
+  },
   chatVariable: {
     panelTitle: 'Biến Hội Thoại',
     panelDescription: 'Biến Hội Thoại được sử dụng để lưu trữ thông tin tương tác mà LLM cần ghi nhớ, bao gồm lịch sử hội thoại, tệp đã tải lên, tùy chọn người dùng. Chúng có thể đọc và ghi được.',

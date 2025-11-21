@@ -3,12 +3,7 @@ import type {
   RefObject,
   SetStateAction,
 } from 'react'
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   BlockEnum,
@@ -28,12 +23,14 @@ import type { Plugin } from '../../plugins/types'
 import { PluginCategoryEnum } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import RAGToolSuggestions from './rag-tool-suggestions'
+import RAGToolRecommendations from './rag-tool-recommendations'
 import FeaturedTools from './featured-tools'
 import Link from 'next/link'
 import Divider from '@/app/components/base/divider'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { getMarketplaceUrl } from '@/utils/var'
+import { useGetLanguage } from '@/context/i18n'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
 
 const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 
@@ -83,6 +80,7 @@ const AllTools = ({
   onFeaturedInstallSuccess,
 }: AllToolsProps) => {
   const { t } = useTranslation()
+  const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
@@ -117,12 +115,29 @@ const AllTools = ({
       mergedTools = mcpTools
 
     const normalizedSearch = trimmedSearchText.toLowerCase()
+    const getLocalizedText = (text?: Record<string, string> | null) => {
+      if (!text)
+        return ''
+
+      if (text[language])
+        return text[language]
+
+      if (text['en-US'])
+        return text['en-US']
+
+      const firstValue = Object.values(text).find(Boolean)
+      return firstValue || ''
+    }
 
     if (!hasFilter || !normalizedSearch)
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
 
     return mergedTools.reduce<ToolWithProvider[]>((acc, toolWithProvider) => {
-      const providerMatches = isMatchingKeywords(toolWithProvider.name, normalizedSearch)
+      const providerLabel = getLocalizedText(toolWithProvider.label)
+      const providerMatches = [
+        toolWithProvider.name,
+        providerLabel,
+      ].some(text => isMatchingKeywords(text || '', normalizedSearch))
 
       if (providerMatches) {
         if (toolWithProvider.tools.length > 0)
@@ -131,7 +146,11 @@ const AllTools = ({
       }
 
       const matchedTools = toolWithProvider.tools.filter((tool) => {
-        return tool.name.toLowerCase().includes(normalizedSearch)
+        const toolLabel = getLocalizedText(tool.label)
+        return [
+          tool.name,
+          toolLabel,
+        ].some(text => isMatchingKeywords(text || '', normalizedSearch))
       })
 
       if (matchedTools.length > 0) {
@@ -143,7 +162,7 @@ const AllTools = ({
 
       return acc
     }, [])
-  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, trimmedSearchText, hasFilter])
+  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, trimmedSearchText, hasFilter, language])
 
   const {
     queryPluginsWithDebounced: fetchPlugins,
@@ -176,8 +195,13 @@ const AllTools = ({
     && !isInRAGPipeline
     && activeTab === ToolTypeEnum.All
     && !hasFilter
-    && (featuredLoading || featuredPlugins.length > 0)
   const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
+
+  const handleRAGSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
+    if (!pluginDefaultValue)
+      return
+    onSelect(type, pluginDefaultValue as ToolDefaultValue)
+  }, [onSelect])
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
@@ -211,9 +235,9 @@ const AllTools = ({
         >
           <div className={cn(shouldShowEmptyState && 'hidden')}>
             {isShowRAGRecommendations && onTagsChange && (
-              <RAGToolSuggestions
+              <RAGToolRecommendations
                 viewType={isSupportGroupView ? activeView : ViewType.flat}
-                onSelect={onSelect}
+                onSelect={handleRAGSelect}
                 onTagsChange={onTagsChange}
               />
             )}
@@ -235,38 +259,35 @@ const AllTools = ({
                 </div>
               </>
             )}
-            {(hasToolsListContent || enable_marketplace) && (
+            {hasToolsListContent && (
               <>
                 <div className='px-3 pb-1 pt-2'>
                   <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
                 </div>
-                {hasToolsListContent && (
-                  <Tools
-                    className={toolContentClassName}
-                    tools={tools}
-                    onSelect={onSelect}
-                    canNotSelectMultiple={canNotSelectMultiple}
-                    onSelectMultiple={onSelectMultiple}
-                    toolType={activeTab}
-                    viewType={isSupportGroupView ? activeView : ViewType.flat}
-                    hasSearchText={hasSearchText}
-                    selectedTools={selectedTools}
-                    canChooseMCPTool={canChooseMCPTool}
-                    isShowRAGRecommendations={isShowRAGRecommendations}
-                  />
-                )}
-                {enable_marketplace && (
-                  <PluginList
-                    ref={pluginRef}
-                    wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
-                    list={notInstalledPlugins}
-                    searchText={searchText}
-                    toolContentClassName={toolContentClassName}
-                    tags={tags}
-                    hideFindMoreFooter
-                  />
-                )}
+                <Tools
+                  className={toolContentClassName}
+                  tools={tools}
+                  onSelect={onSelect}
+                  canNotSelectMultiple={canNotSelectMultiple}
+                  onSelectMultiple={onSelectMultiple}
+                  toolType={activeTab}
+                  viewType={isSupportGroupView ? activeView : ViewType.flat}
+                  hasSearchText={hasSearchText}
+                  selectedTools={selectedTools}
+                  canChooseMCPTool={canChooseMCPTool}
+                />
               </>
+            )}
+            {enable_marketplace && (
+              <PluginList
+                ref={pluginRef}
+                wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
+                list={notInstalledPlugins}
+                searchText={searchText}
+                toolContentClassName={toolContentClassName}
+                tags={tags}
+                hideFindMoreFooter
+              />
             )}
           </div>
 

@@ -18,13 +18,14 @@ import {
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
+import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
 import { RiLoader2Line } from '@remixicon/react'
 import { debounce } from 'lodash-es'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LogViewer from '../log-viewer'
-import { usePluginSubscriptionStore } from '../store'
 import { usePluginStore } from '../../store'
+import { useSubscriptionList } from '../use-subscription-list'
 
 type Props = {
   onClose: () => void
@@ -66,43 +67,6 @@ const normalizeFormType = (type: FormTypeEnum | string): FormTypeEnum => {
   }
 }
 
-// Check if URL is a private/local network address
-const isPrivateOrLocalAddress = (url: string): boolean => {
-  try {
-    const urlObj = new URL(url)
-    const hostname = urlObj.hostname.toLowerCase()
-
-    // Check for localhost
-    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1')
-      return true
-
-    // Check for private IP ranges
-    const ipv4Regex = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/
-    const ipv4Match = hostname.match(ipv4Regex)
-    if (ipv4Match) {
-      const [, a, b] = ipv4Match.map(Number)
-      // 10.0.0.0/8
-      if (a === 10)
-        return true
-      // 172.16.0.0/12
-      if (a === 172 && b >= 16 && b <= 31)
-        return true
-      // 192.168.0.0/16
-      if (a === 192 && b === 168)
-        return true
-      // 169.254.0.0/16 (link-local)
-      if (a === 169 && b === 254)
-        return true
-    }
-
-    // Check for .local domains
-    return hostname.endsWith('.local')
-  }
-  catch {
-    return false
-  }
-}
-
 const StatusStep = ({ isActive, text }: { isActive: boolean, text: string }) => {
   return <div className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
     ? 'text-state-accent-solid'
@@ -127,7 +91,7 @@ const MultiSteps = ({ currentStep }: { currentStep: ApiKeyStep }) => {
 export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const { t } = useTranslation()
   const detail = usePluginStore(state => state.detail)
-  const { refresh } = usePluginSubscriptionStore()
+  const { refetch } = useSubscriptionList()
 
   const [currentStep, setCurrentStep] = useState<ApiKeyStep>(createType === SupportedCreationMethods.APIKEY ? ApiKeyStep.Verify : ApiKeyStep.Configuration)
 
@@ -139,7 +103,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
   const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder()
 
-  const manualPropertiesSchema = detail?.declaration.trigger.subscription_schema || [] // manual
+  const manualPropertiesSchema = detail?.declaration?.trigger?.subscription_schema || [] // manual
   const manualPropertiesFormRef = React.useRef<FormRefObject>(null)
 
   const subscriptionFormRef = React.useRef<FormRefObject>(null)
@@ -193,6 +157,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       if (form)
         form.setFieldValue('callback_url', subscriptionBuilder.endpoint)
       if (isPrivateOrLocalAddress(subscriptionBuilder.endpoint)) {
+        console.log('isPrivateOrLocalAddress', isPrivateOrLocalAddress(subscriptionBuilder.endpoint))
         subscriptionFormRef.current?.setFields([{
           name: 'callback_url',
           warnings: [t('pluginTrigger.modal.form.callbackUrl.privateAddressWarning')],
@@ -330,7 +295,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
             message: t('pluginTrigger.subscription.createSuccess'),
           })
           onClose()
-          refresh?.()
+          refetch?.()
         },
         onError: async (error: any) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.subscription.createFailed')
@@ -426,6 +391,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
               const normalizedType = normalizeFormType(schema.type as FormTypeEnum | string)
               return {
                 ...schema,
+                tooltip: schema.description,
                 type: normalizedType,
                 dynamicSelectParams: normalizedType === FormTypeEnum.dynamicSelect ? {
                   plugin_id: detail?.plugin_id || '',
@@ -439,7 +405,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
               }
             })}
             ref={autoCommonParametersFormRef}
-            labelClassName='system-sm-medium mb-2 block text-text-primary'
+            labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
             formClassName='space-y-4'
           />
         )}
@@ -447,9 +413,12 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
           {manualPropertiesSchema.length > 0 && (
             <div className='mb-6'>
               <BaseForm
-                formSchemas={manualPropertiesSchema}
+                formSchemas={manualPropertiesSchema.map(schema => ({
+                  ...schema,
+                  tooltip: schema.description,
+                }))}
                 ref={manualPropertiesFormRef}
-                labelClassName='system-sm-medium mb-2 block text-text-primary'
+                labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
                 formClassName='space-y-4'
                 onChange={handleManualPropertiesChange}
               />

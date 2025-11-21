@@ -8,6 +8,7 @@ import type {
 } from '@/app/components/plugins/marketplace/types'
 import {
   APP_VERSION,
+  IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -51,7 +52,7 @@ export const getMarketplacePluginsByCollectionId = async (collectionId: string, 
   try {
     const url = `${MARKETPLACE_API_PREFIX}/collections/${collectionId}/plugins`
     const headers = new Headers({
-      'X-Dify-Version': APP_VERSION,
+      'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
     })
     const marketplaceCollectionPluginsData = await globalThis.fetch(
       url,
@@ -89,7 +90,7 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
     if (query?.type)
       marketplaceUrl += `&type=${query.type}`
     const headers = new Headers({
-      'X-Dify-Version': APP_VERSION,
+      'X-Dify-Version': !IS_MARKETPLACE ? APP_VERSION : '999.0.0',
     })
     const marketplaceCollectionsData = await globalThis.fetch(marketplaceUrl, { headers, cache: 'no-store' })
     const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
@@ -113,20 +114,11 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
 }
 
 export const getMarketplaceListCondition = (pluginType: string) => {
-  if (pluginType === PluginCategoryEnum.tool)
-    return 'category=tool'
-
-  if (pluginType === PluginCategoryEnum.agent)
-    return 'category=agent-strategy'
-
-  if (pluginType === PluginCategoryEnum.model)
-    return 'category=model'
+  if ([PluginCategoryEnum.tool, PluginCategoryEnum.agent, PluginCategoryEnum.model, PluginCategoryEnum.datasource, PluginCategoryEnum.trigger].includes(pluginType as PluginCategoryEnum))
+    return `category=${pluginType}`
 
   if (pluginType === PluginCategoryEnum.extension)
     return 'category=endpoint'
-
-  if (pluginType === PluginCategoryEnum.datasource)
-    return 'category=datasource'
 
   if (pluginType === 'bundle')
     return 'type=bundle'

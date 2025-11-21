@@ -107,7 +107,7 @@ class TriggerDebugEventBus:
         Returns:
             Event object if available, None otherwise
         """
-        address_id: str = hashlib.sha1(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
+        address_id: str = hashlib.sha256(f"{user_id}|{app_id}|{node_id}".encode()).hexdigest()
         address: str = f"trigger_debug_inbox:{tenant_id}:{address_id}"
 
         try:
@@ -118,7 +118,6 @@ class TriggerDebugEventBus:
                 pool_key,
                 address_id,
             )
-            logger.info("event_data: %s", event_data)
             return event_type.model_validate_json(json_data=event_data) if event_data else None
         except RedisError:
             logger.exception("Failed to poll event from pool: %s", pool_key)

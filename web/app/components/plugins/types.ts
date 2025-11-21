@@ -4,6 +4,7 @@ import type { Locale } from '@/i18n-config'
 import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
 import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { FormTypeEnum } from '../base/form/types'
+import type { TypeWithI18N } from '@/app/components/base/form/types'
 
 export enum PluginCategoryEnum {
   tool = 'tool',
@@ -160,7 +161,7 @@ export type PropertiesSchema = {
 
 export type TriggerEventParameter = {
   name: string
-  label: Record<Locale, string>
+  label: TypeWithI18N
   type: string
   auto_generate: any
   template: any
@@ -173,15 +174,21 @@ export type TriggerEventParameter = {
   precision: any
   options?: Array<{
     value: string
-    label: Record<Locale, string>
+    label: TypeWithI18N
     icon?: string
   }>
-  description?: Record<Locale, string>
+  description?: TypeWithI18N
 }
 
 export type TriggerEvent = {
-  identity: Identity
-  description: Record<Locale, string>
+  name: string
+  identity: {
+    author: string
+    name: string
+    label: TypeWithI18N
+    provider?: string
+  }
+  description: TypeWithI18N
   parameters: TriggerEventParameter[]
   output_schema: Record<string, any>
 }
@@ -388,6 +395,12 @@ export type InstallPackageResponse = {
 }
 
 export type InstallStatusResponse = {
+  status: TaskStatus,
+  taskId: string,
+  uniqueIdentifier: string,
+}
+
+export type InstallStatus = {
   success: boolean,
   isFromMarketPlace?: boolean
 }

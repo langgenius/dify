@@ -83,7 +83,7 @@ const translation = {
     cloud: 'Cloud-Dienst',
     apiRateLimitTooltip: 'Die API-Datenbeschränkung gilt für alle Anfragen, die über die Dify-API gemacht werden, einschließlich Textgenerierung, Chat-Konversationen, Workflow-Ausführungen und Dokumentenverarbeitung.',
     getStarted: 'Loslegen',
-    apiRateLimitUnit: '{{count,number}}/Tag',
+    apiRateLimitUnit: '{{count,number}}',
     documentsTooltip: 'Vorgabe für die Anzahl der Dokumente, die aus der Wissensdatenquelle importiert werden.',
     apiRateLimit: 'API-Datenlimit',
     documents: '{{count,number}} Wissensdokumente',
@@ -96,6 +96,19 @@ const translation = {
     startBuilding: 'Beginnen Sie mit der Entwicklung',
     taxTipSecond: 'Wenn in Ihrer Region keine relevanten Steuervorschriften gelten, wird an der Kasse keine Steuer angezeigt und Ihnen werden während der gesamten Abonnementlaufzeit keine zusätzlichen Gebühren berechnet.',
     taxTip: 'Alle Abonnementspreise (monatlich/jährlich) verstehen sich zuzüglich der geltenden Steuern (z. B. MwSt., Umsatzsteuer).',
+    triggerEvents: {
+      tooltip: 'Die Anzahl der Ereignisse, die Workflows automatisch über Plugin-, Zeitplan- oder Webhook-Auslöser starten.',
+      unlimited: 'Unbegrenzte Auslöser-Ereignisse',
+    },
+    workflowExecution: {
+      faster: 'Schnellere Arbeitsablauf-Ausführung',
+      tooltip: 'Priorität und Geschwindigkeit der Arbeitsablauf-Ausführungswarteschlange.',
+      priority: 'Prioritäts-Workflow-Ausführung',
+      standard: 'Standard-Workflow-Ausführung',
+    },
+    startNodes: {
+      unlimited: 'Unbegrenzte Auslöser/Workflows',
+    },
   },
   plans: {
     sandbox: {
@@ -186,8 +199,17 @@ const translation = {
     documentsUploadQuota: 'Dokumenten-Upload-Quota',
     vectorSpace: 'Wissensdatenbank',
     vectorSpaceTooltip: 'Dokumente mit dem Hochqualitäts-Indexierungsmodus verbrauchen Ressourcen des Knowledge Data Storage. Wenn der Knowledge Data Storage die Grenze erreicht, werden keine neuen Dokumente hochgeladen.',
+    perMonth: 'pro Monat',
+    triggerEvents: 'Auslöser-Ereignisse',
   },
   teamMembers: 'Teammitglieder',
+  triggerLimitModal: {
+    dismiss: 'Schließen',
+    upgrade: 'Aktualisieren',
+    title: 'Upgrade, um mehr Auslöser-Ereignisse freizuschalten',
+    usageTitle: 'AUSLÖSEEREIGNISSE',
+    description: 'Sie haben das Limit der Workflow-Ereignisauslöser für diesen Plan erreicht.',
+  },
 }
 
 export default translation

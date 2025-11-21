@@ -3,7 +3,7 @@ import logging
 import time as _time
 import uuid
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
@@ -99,7 +99,11 @@ class TriggerProviderService:
                 controller=provider_controller,
                 subscription=subscription,
             )
-            subscription.credentials = dict(encrypter.mask_credentials(dict(subscription.credentials)))
+            subscription.credentials = dict(
+                encrypter.mask_credentials(dict(encrypter.decrypt(subscription.credentials)))
+            )
+            subscription.properties = dict(encrypter.mask_credentials(dict(encrypter.decrypt(subscription.properties))))
+            subscription.parameters = dict(encrypter.mask_credentials(dict(encrypter.decrypt(subscription.parameters))))
             count = workflows_in_use_map.get(subscription.id)
             subscription.workflows_in_use = count if count is not None else 0
 
@@ -117,7 +121,7 @@ class TriggerProviderService:
         parameters: Mapping[str, Any],
         properties: Mapping[str, Any],
         credentials: Mapping[str, str],
-        subscription_id: Optional[str] = None,
+        subscription_id: str | None = None,
         credential_expires_at: int = -1,
         expires_at: int = -1,
     ) -> Mapping[str, Any]:
@@ -177,19 +181,21 @@ class TriggerProviderService:
 
                     # Create provider record
                     subscription = TriggerSubscription(
-                        id=subscription_id or str(uuid.uuid4()),
                         tenant_id=tenant_id,
                         user_id=user_id,
                         name=name,
                         endpoint_id=endpoint_id,
                         provider_id=str(provider_id),
-                        parameters=parameters,
-                        properties=properties_encrypter.encrypt(dict(properties)),
-                        credentials=credential_encrypter.encrypt(dict(credentials)) if credential_encrypter else {},
+                        parameters=dict(parameters),
+                        properties=dict(properties_encrypter.encrypt(dict(properties))),
+                        credentials=dict(credential_encrypter.encrypt(dict(credentials)))
+                        if credential_encrypter
+                        else {},
                         credential_type=credential_type.value,
                         credential_expires_at=credential_expires_at,
                         expires_at=expires_at,
                     )
+                    subscription.id = subscription_id or str(uuid.uuid4())
 
                     session.add(subscription)
                     session.commit()
@@ -435,7 +441,7 @@ class TriggerProviderService:
             return {"result": "success", "expires_at": int(refreshed.expires_at)}
 
     @classmethod
-    def get_oauth_client(cls, tenant_id: str, provider_id: TriggerProviderID) -> Optional[Mapping[str, Any]]:
+    def get_oauth_client(cls, tenant_id: str, provider_id: TriggerProviderID) -> Mapping[str, Any] | None:
         """
         Get OAuth client configuration for a provider.
         First tries tenant-level OAuth, then falls back to system OAuth.
@@ -471,7 +477,7 @@ class TriggerProviderService:
 
             is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
             if not is_verified:
-                return oauth_params
+                return None
 
             # Check for system-level OAuth client
             system_client: TriggerOAuthSystemClient | None = (
@@ -489,12 +495,28 @@ class TriggerProviderService:
             return oauth_params
 
     @classmethod
+    def is_oauth_system_client_exists(cls, tenant_id: str, provider_id: TriggerProviderID) -> bool:
+        """
+        Check if system OAuth client exists for a trigger provider.
+        """
+        is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
+        if not is_verified:
+            return False
+        with Session(db.engine, expire_on_commit=False) as session:
+            system_client: TriggerOAuthSystemClient | None = (
+                session.query(TriggerOAuthSystemClient)
+                .filter_by(plugin_id=provider_id.plugin_id, provider=provider_id.provider_name)
+                .first()
+            )
+            return system_client is not None
+
+    @classmethod
     def save_custom_oauth_client_params(
         cls,
         tenant_id: str,
         provider_id: TriggerProviderID,
-        client_params: Optional[Mapping[str, Any]] = None,
-        enabled: Optional[bool] = None,
+        client_params: Mapping[str, Any] | None = None,
+        enabled: bool | None = None,
     ) -> Mapping[str, Any]:
         """
         Save or update custom OAuth client parameters for a trigger provider.

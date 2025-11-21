@@ -7,24 +7,23 @@ with support for different subscription tiers, rate limiting, and execution trac
 
 import json
 from datetime import UTC, datetime
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from celery.result import AsyncResult
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from enums.quota_type import QuotaType
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from models.account import Account
 from models.enums import CreatorUserRole, WorkflowTriggerStatus
 from models.model import App, EndUser
 from models.trigger import WorkflowTriggerLog
 from models.workflow import Workflow
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.errors.app import InvokeDailyRateLimitError, WorkflowNotFoundError
+from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowNotFoundError
 from services.workflow.entities import AsyncTriggerResponse, TriggerData, WorkflowTaskData
 from services.workflow.queue_dispatcher import QueueDispatcherManager, QueuePriority
-from services.workflow.rate_limiter import TenantDailyRateLimiter
 from services.workflow_service import WorkflowService
 from tasks.async_workflow_tasks import (
     execute_workflow_professional,
@@ -82,7 +81,6 @@ class AsyncWorkflowService:
         trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         dispatcher_manager = QueueDispatcherManager()
         workflow_service = WorkflowService()
-        rate_limiter = TenantDailyRateLimiter(redis_client)
 
         # 1. Validate app exists
         app_model = session.scalar(select(App).where(App.id == trigger_data.app_id))
@@ -111,6 +109,9 @@ class AsyncWorkflowService:
             app_id=trigger_data.app_id,
             workflow_id=workflow.id,
             root_node_id=trigger_data.root_node_id,
+            trigger_metadata=(
+                trigger_data.trigger_metadata.model_dump_json() if trigger_data.trigger_metadata else "{}"
+            ),
             trigger_type=trigger_data.trigger_type,
             trigger_data=trigger_data.model_dump_json(),
             inputs=json.dumps(dict(trigger_data.inputs)),
@@ -124,25 +125,19 @@ class AsyncWorkflowService:
         trigger_log = trigger_log_repo.create(trigger_log)
         session.commit()
 
-        # 7. Check and consume daily quota
-        if not dispatcher.consume_quota(trigger_data.tenant_id):
+        # 7. Check and consume quota
+        try:
+            QuotaType.WORKFLOW.consume(trigger_data.tenant_id)
+        except QuotaExceededError as e:
             # Update trigger log status
             trigger_log.status = WorkflowTriggerStatus.RATE_LIMITED
-            trigger_log.error = f"Daily limit reached for {dispatcher.get_queue_name()}"
+            trigger_log.error = f"Quota limit reached: {e}"
             trigger_log_repo.update(trigger_log)
             session.commit()
 
-            tenant_owner_tz = rate_limiter.get_tenant_owner_timezone(trigger_data.tenant_id)
-
-            remaining = rate_limiter.get_remaining_quota(trigger_data.tenant_id, dispatcher.get_daily_limit())
-
-            reset_time = rate_limiter.get_quota_reset_time(trigger_data.tenant_id, tenant_owner_tz)
-
-            raise InvokeDailyRateLimitError(
-                f"Daily workflow execution limit reached. "
-                f"Limit resets at {reset_time.strftime('%Y-%m-%d %H:%M:%S %Z')}. "
-                f"Remaining quota: {remaining}"
-            )
+            raise InvokeRateLimitError(
+                f"Workflow execution quota limit reached for tenant {trigger_data.tenant_id}"
+            ) from e
 
         # 8. Create task data
         queue_name = dispatcher.get_queue_name()
@@ -223,7 +218,7 @@ class AsyncWorkflowService:
         return cls.trigger_workflow_async(session, user, trigger_data)
 
     @classmethod
-    def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: Optional[str] = None) -> Optional[dict[str, Any]]:
+    def get_trigger_log(cls, workflow_trigger_log_id: str, tenant_id: str | None = None) -> dict[str, Any] | None:
         """
         Get trigger log by ID
 
@@ -292,7 +287,7 @@ class AsyncWorkflowService:
             return [log.to_dict() for log in logs]
 
     @staticmethod
-    def _get_workflow(workflow_service: WorkflowService, app_model: App, workflow_id: Optional[str] = None) -> Workflow:
+    def _get_workflow(workflow_service: WorkflowService, app_model: App, workflow_id: str | None = None) -> Workflow:
         """
         Get workflow for the app
 

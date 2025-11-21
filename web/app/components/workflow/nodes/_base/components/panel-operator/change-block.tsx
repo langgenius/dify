@@ -16,6 +16,8 @@ import type {
   Node,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
+import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
+
 import { FlowType } from '@/types/common'
 
 type ChangeBlockProps = {
@@ -37,6 +39,11 @@ const ChangeBlock = ({
   const isChatMode = useIsChatMode()
   const flowType = useHooksStore(s => s.configsMap?.flowType)
   const showStartTab = flowType !== FlowType.ragPipeline && !isChatMode
+  const ignoreNodeIds = useMemo(() => {
+    if (isTriggerNode(nodeData.type as BlockEnum))
+      return [nodeId]
+    return undefined
+  }, [nodeData.type, nodeId])
 
   const availableNodes = useMemo(() => {
     if (availablePrevBlocks.length && availableNextBlocks.length)
@@ -71,6 +78,8 @@ const ChangeBlock = ({
       popupClassName='min-w-[240px]'
       availableBlocksTypes={availableNodes}
       showStartTab={showStartTab}
+      ignoreNodeIds={ignoreNodeIds}
+      forceEnableStartTab={nodeData.type === BlockEnum.Start}
     />
   )
 }

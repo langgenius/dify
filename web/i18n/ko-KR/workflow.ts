@@ -143,6 +143,19 @@ const translation = {
       export: '비밀 값이 포함된 DSL 내보내기',
     },
   },
+  globalVar: {
+    title: '시스템 변수',
+    description: '시스템 변수는 타입이 맞으면 배선 없이도 모든 노드에서 참조할 수 있는 전역 변수로, 엔드유저 ID와 워크플로 ID 등이 포함됩니다.',
+    fieldsDescription: {
+      conversationId: '대화 ID',
+      dialogCount: '대화 수',
+      userId: '사용자 ID',
+      triggerTimestamp: '애플리케이션 시작 타임스탬프',
+      appId: '애플리케이션 ID',
+      workflowId: '워크플로 ID',
+      workflowRunId: '워크플로 실행 ID',
+    },
+  },
   chatVariable: {
     panelTitle: '대화 변수',
     panelDescription:

@@ -83,9 +83,10 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
   const {
     provider_id,
     provider_name,
-    event_name: event_name,
+    event_name,
     config = {},
     event_parameters: rawEventParameters = {},
+    subscription_id,
   } = inputs
 
   const event_parameters = useMemo(
@@ -97,16 +98,6 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     [config],
   )
 
-  // Construct provider for authentication check
-  const authProvider = useMemo(() => {
-    return provider_name || ''
-  }, [provider_id, provider_name])
-
-  const { data: subscriptions = [] } = useTriggerSubscriptions(
-    authProvider,
-    !!authProvider,
-  )
-
   const currentProvider = useMemo<TriggerWithProvider | undefined>(() => {
     return triggerPlugins.find(
       provider =>
@@ -115,6 +106,12 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
         || (provider_id && provider.plugin_id === provider_id),
     )
   }, [triggerPlugins, provider_name, provider_id])
+
+  const { data: subscriptions = [] } = useTriggerSubscriptions(provider_id || '')
+
+  const subscriptionSelected = useMemo(() => {
+    return subscriptions?.find(s => s.id === subscription_id)
+  }, [subscriptions, subscription_id])
 
   const currentEvent = useMemo<Event | undefined>(() => {
     return currentProvider?.events.find(
@@ -189,7 +186,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     (variable: InputVar, varDetail: InputVar) => {
       const newInputs = produce(inputs, (draft) => {
         const nextEventParameters = normalizeEventParameters({
-          ...(draft.event_parameters || {}),
+          ...draft.event_parameters,
           [variable.variable]: {
             type: VarKindType.variable,
             value: varDetail.variable,
@@ -221,7 +218,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     readOnly,
     inputs,
     currentProvider,
-    currentTrigger: currentEvent,
+    currentEvent,
     triggerParameterSchema,
     triggerParameterValue,
     setTriggerParameterValue,
@@ -229,6 +226,7 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
     outputSchema,
     hasObjectOutput,
     subscriptions,
+    subscriptionSelected,
   }
 }
 

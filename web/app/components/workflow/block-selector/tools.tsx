@@ -1,15 +1,10 @@
-import {
-  memo,
-  useMemo,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
+import { memo, useMemo, useRef } from 'react'
 import type { BlockEnum, ToolWithProvider } from '../types'
 import IndexBar, { groupItems } from './index-bar'
 import type { ToolDefaultValue, ToolValue } from './types'
 import type { ToolTypeEnum } from './types'
 import { ViewType } from './view-type-select'
-import Empty from '@/app/components/tools/add-tool-modal/empty'
+import Empty from '@/app/components/tools/provider/empty'
 import { useGetLanguage } from '@/context/i18n'
 import ToolListTreeView from './tool/tool-list-tree-view/list'
 import ToolListFlatView from './tool/tool-list-flat-view/list'
@@ -28,9 +23,8 @@ type ToolsProps = {
   indexBarClassName?: string
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
-  isShowRAGRecommendations?: boolean
 }
-const Blocks = ({
+const Tools = ({
   onSelect,
   canNotSelectMultiple,
   onSelectMultiple,
@@ -43,10 +37,8 @@ const Blocks = ({
   indexBarClassName,
   selectedTools,
   canChooseMCPTool,
-  isShowRAGRecommendations = false,
 }: ToolsProps) => {
   // const tools: any = []
-  const { t } = useTranslation()
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
   const isShowLetterIndex = isFlatView && tools.length > 10
@@ -105,11 +97,6 @@ const Blocks = ({
           <Empty type={toolType!} isAgent={isAgent} />
         </div>
       )}
-      {!!tools.length && isShowRAGRecommendations && (
-        <div className='system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary'>
-          {t('tools.allTools')}
-        </div>
-      )}
       {!!tools.length && (
         isFlatView ? (
           <ToolListFlatView
@@ -141,4 +128,4 @@ const Blocks = ({
   )
 }
 
-export default memo(Blocks)
+export default memo(Tools)

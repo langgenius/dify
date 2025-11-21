@@ -153,7 +153,7 @@ const translation = {
         description: 'This URL will receive webhook events',
         tooltip: 'Provide a publicly accessible endpoint that can receive callback requests from the trigger provider.',
         placeholder: 'Generating...',
-        privateAddressWarning: 'This URL appears to be an internal address, which may cause webhook requests to fail.',
+        privateAddressWarning: 'This URL appears to be an internal address, which may cause webhook requests to fail. You may change TRIGGER_URL to a public address.',
       },
     },
     errors: {

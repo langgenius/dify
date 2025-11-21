@@ -11,6 +11,7 @@ show_help() {
   echo "  -c, --concurrency NUM  Number of worker processes (default: 1)"
   echo "  -P, --pool POOL        Pool implementation (default: gevent)"
   echo "  --loglevel LEVEL       Log level (default: INFO)"
+  echo "  -e, --env-file FILE    Path to an env file to source before starting"
   echo "  -h, --help             Show this help message"
   echo ""
   echo "Examples:"
@@ -26,12 +27,16 @@ show_help() {
   echo "  workflow_sandbox      - Sandbox tier workflows (cloud edition)"
   echo "  schedule_poller       - Schedule polling tasks"
   echo "  schedule_executor     - Schedule execution tasks"
-  echo "  generation            - Content generation tasks"
   echo "  mail                  - Email notifications"
   echo "  ops_trace             - Operations tracing"
   echo "  app_deletion          - Application cleanup"
   echo "  plugin                - Plugin operations"
   echo "  workflow_storage      - Workflow storage tasks"
+  echo "  conversation          - Conversation tasks"
+  echo "  priority_pipeline     - High priority pipeline tasks"
+  echo "  pipeline              - Standard pipeline tasks"
+  echo "  triggered_workflow_dispatcher - Trigger dispatcher tasks"
+  echo "  trigger_refresh_executor - Trigger refresh tasks"
 }
 
 # Parse command line arguments
@@ -39,6 +44,8 @@ QUEUES=""
 CONCURRENCY=1
 POOL="gevent"
 LOGLEVEL="INFO"
+
+ENV_FILE=""
 
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -58,6 +65,10 @@ while [[ $# -gt 0 ]]; do
       LOGLEVEL="$2"
       shift 2
       ;;
+    -e|--env-file)
+      ENV_FILE="$2"
+      shift 2
+      ;;
     -h|--help)
       show_help
       exit 0
@@ -73,6 +84,19 @@ done
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/.."
 
+if [[ -n "${ENV_FILE}" ]]; then
+  if [[ ! -f "${ENV_FILE}" ]]; then
+    echo "Env file ${ENV_FILE} not found"
+    exit 1
+  fi
+
+  echo "Loading environment variables from ${ENV_FILE}"
+  # Export everything sourced from the env file
+  set -a
+  source "${ENV_FILE}"
+  set +a
+fi
+
 # If no queues specified, use edition-based defaults
 if [[ -z "${QUEUES}" ]]; then
   # Get EDITION from environment, default to SELF_HOSTED (community edition)
@@ -81,12 +105,12 @@ if [[ -z "${QUEUES}" ]]; then
   # Configure queues based on edition
   if [[ "${EDITION}" == "CLOUD" ]]; then
     # Cloud edition: separate queues for dataset and trigger tasks
-    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,priority_pipeline,pipeline"
+    QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
   else
     # Community edition (SELF_HOSTED): dataset and workflow have separate queues
-    QUEUES="dataset,generation,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,priority_pipeline,pipeline"
+    QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
   fi
-  
+
   echo "No queues specified, using edition-based defaults: ${QUEUES}"
 else
   echo "Using specified queues: ${QUEUES}"

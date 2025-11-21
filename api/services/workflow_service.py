@@ -7,6 +7,7 @@ from typing import Any, cast
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -14,7 +15,7 @@ from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
-from core.workflow.entities import WorkflowNodeExecution
+from core.workflow.entities import VariablePool, WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
@@ -23,12 +24,9 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.nodes.trigger_plugin.entities import TriggerEventNodeData
-from core.workflow.nodes.trigger_schedule.entities import TriggerScheduleNodeData
-from core.workflow.nodes.trigger_webhook.entities import WebhookData
-from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
+from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -39,8 +37,9 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
+from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
-from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -214,6 +213,9 @@ class WorkflowService:
         # validate features structure
         self.validate_features_structure(app_model=app_model, features=features)
 
+        # validate graph structure
+        self.validate_graph_structure(graph=graph)
+
         # create draft workflow if not found
         if not workflow:
             workflow = Workflow(
@@ -269,6 +271,24 @@ class WorkflowService:
 
         if FeatureService.get_system_features().plugin_manager.enabled:
             self._validate_workflow_credentials(draft_workflow)
+
+        # validate graph structure
+        self.validate_graph_structure(graph=draft_workflow.graph_dict)
+
+        # billing check
+        if dify_config.BILLING_ENABLED:
+            limit_info = BillingService.get_info(app_model.tenant_id)
+            if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+                # Check trigger node count limit for SANDBOX plan
+                trigger_node_count = sum(
+                    1
+                    for _, node_data in draft_workflow.walk_nodes()
+                    if (node_type_str := node_data.get("type"))
+                    and isinstance(node_type_str, str)
+                    and NodeType(node_type_str).is_trigger_node
+                )
+                if trigger_node_count > 2:
+                    raise TriggerNodeLimitExceededError(count=trigger_node_count, limit=2)
 
         # create new workflow
         workflow = Workflow.new(
@@ -634,13 +654,7 @@ class WorkflowService:
                     app=app_model,
                     workflow=draft_workflow,
                 )
-                if node_type == NodeType.TRIGGER_WEBHOOK:
-                    start_data = WebhookData.model_validate(node_data)
-                elif node_type == NodeType.TRIGGER_PLUGIN:
-                    start_data = TriggerEventNodeData.model_validate(node_data)
-                elif node_type == NodeType.TRIGGER_SCHEDULE:
-                    start_data = TriggerScheduleNodeData.model_validate(node_data)
-                else:
+                if node_type is NodeType.START:
                     start_data = StartNodeData.model_validate(node_data)
                     user_inputs = _rebuild_file_for_user_inputs_in_start_node(
                         tenant_id=draft_workflow.tenant_id, start_node_data=start_data, user_inputs=user_inputs
@@ -905,6 +919,31 @@ class WorkflowService:
 
         return new_app
 
+    def validate_graph_structure(self, graph: Mapping[str, Any]):
+        """
+        Validate workflow graph structure.
+
+        This performs a lightweight validation on the graph, checking for structural
+        inconsistencies such as the coexistence of start and trigger nodes.
+        """
+        node_configs = graph.get("nodes", [])
+        node_configs = cast(list[dict[str, Any]], node_configs)
+
+        # is empty graph
+        if not node_configs:
+            return
+
+        node_types: set[NodeType] = set()
+        for node in node_configs:
+            node_type = node.get("data", {}).get("type")
+            if node_type:
+                node_types.add(NodeType(node_type))
+
+        # start node and trigger node cannot coexist
+        if NodeType.START in node_types:
+            if any(nt.is_trigger_node for nt in node_types):
+                raise ValueError("Start node and trigger nodes cannot coexist in the same workflow")
+
     def validate_features_structure(self, app_model: App, features: dict):
         if app_model.mode == AppMode.ADVANCED_CHAT:
             return AdvancedChatAppConfigManager.config_validate(
@@ -1007,10 +1046,11 @@ def _setup_variable_pool(
     conversation_variables: list[Variable],
 ):
     # Only inject system variables for START node type.
-    if node_type == NodeType.START:
+    if node_type == NodeType.START or node_type.is_trigger_node:
         system_variable = SystemVariable(
             user_id=user_id,
             app_id=workflow.app_id,
+            timestamp=int(naive_utc_now().timestamp()),
             workflow_id=workflow.id,
             files=files or [],
             workflow_execution_id=str(uuid.uuid4()),

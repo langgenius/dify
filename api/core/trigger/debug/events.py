@@ -26,16 +26,6 @@ class ScheduleDebugEvent(BaseDebugEvent):
     inputs: Mapping[str, Any]
 
 
-def build_schedule_pool_key(tenant_id: str, app_id: str, node_id: str) -> str:
-    """Generate pool key for schedule events.
-    Args:
-        tenant_id: Tenant ID
-        app_id: App ID
-        node_id: Node ID
-    """
-    return f"{TriggerDebugPoolKey.SCHEDULE}:{tenant_id}:{app_id}:{node_id}"
-
-
 class WebhookDebugEvent(BaseDebugEvent):
     """Debug event for webhook triggers."""
 

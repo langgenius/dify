@@ -118,7 +118,7 @@ const translation = {
           operation: 'ドキュメント',
         },
       },
-      launch: '発射',
+      launch: '公開',
     },
     apiInfo: {
       title: 'バックエンドサービス API',
@@ -137,6 +137,9 @@ const translation = {
     status: {
       running: '稼働中',
       disable: '無効',
+    },
+    disableTooltip: {
+      triggerMode: 'トリガーノードモードでは{{feature}}機能を使用できません。',
     },
   },
   analysis: {

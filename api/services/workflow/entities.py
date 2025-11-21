@@ -4,7 +4,7 @@ Pydantic models for async workflow trigger system.
 
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -19,17 +19,24 @@ class AsyncTriggerStatus(StrEnum):
     TIMEOUT = "timeout"
 
 
+class TriggerMetadata(BaseModel):
+    """Trigger metadata"""
+
+    type: AppTriggerType = Field(default=AppTriggerType.UNKNOWN)
+
+
 class TriggerData(BaseModel):
     """Base trigger data model for async workflow execution"""
 
     app_id: str
     tenant_id: str
-    workflow_id: Optional[str] = None
+    workflow_id: str | None = None
     root_node_id: str
     inputs: Mapping[str, Any]
     files: Sequence[Mapping[str, Any]] = Field(default_factory=list)
     trigger_type: AppTriggerType
     trigger_from: WorkflowRunTriggeredFrom
+    trigger_metadata: TriggerMetadata | None = None
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -46,6 +53,19 @@ class ScheduleTriggerData(TriggerData):
 
     trigger_type: AppTriggerType = AppTriggerType.TRIGGER_SCHEDULE
     trigger_from: WorkflowRunTriggeredFrom = WorkflowRunTriggeredFrom.SCHEDULE
+
+
+class PluginTriggerMetadata(TriggerMetadata):
+    """Plugin trigger metadata"""
+
+    type: AppTriggerType = AppTriggerType.TRIGGER_PLUGIN
+
+    endpoint_id: str
+    plugin_unique_identifier: str
+    provider_id: str
+    event_name: str
+    icon_filename: str
+    icon_dark_filename: str
 
 
 class PluginTriggerData(TriggerData):
@@ -83,10 +103,10 @@ class AsyncTriggerExecutionResult(BaseModel):
 
     execution_id: str
     status: AsyncTriggerStatus
-    result: Optional[Mapping[str, Any]] = None
-    error: Optional[str] = None
-    elapsed_time: Optional[float] = None
-    total_tokens: Optional[int] = None
+    result: Mapping[str, Any] | None = None
+    error: str | None = None
+    elapsed_time: float | None = None
+    total_tokens: int | None = None
 
     model_config = ConfigDict(use_enum_values=True)
 
@@ -113,15 +133,15 @@ class TriggerLogResponse(BaseModel):
     status: str
     queue_name: str
     retry_count: int
-    celery_task_id: Optional[str] = None
-    workflow_run_id: Optional[str] = None
-    error: Optional[str] = None
-    outputs: Optional[str] = None
-    elapsed_time: Optional[float] = None
-    total_tokens: Optional[int] = None
-    created_at: Optional[str] = None
-    triggered_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    celery_task_id: str | None = None
+    workflow_run_id: str | None = None
+    error: str | None = None
+    outputs: str | None = None
+    elapsed_time: float | None = None
+    total_tokens: int | None = None
+    created_at: str | None = None
+    triggered_at: str | None = None
+    finished_at: str | None = None
 
     model_config = ConfigDict(use_enum_values=True)
 

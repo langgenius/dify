@@ -36,7 +36,8 @@ const DatePicker = ({
   renderTrigger,
   triggerWrapClassName,
   popupZIndexClassname = 'z-[11]',
-  notClearable = false,
+  noConfirm,
+  getIsDateDisabled,
 }: DatePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -121,23 +122,26 @@ const DatePicker = ({
     setCurrentDate(currentDate.clone().subtract(1, 'month'))
   }, [currentDate])
 
+  const handleConfirmDate = useCallback((passedInSelectedDate?: Dayjs) => {
+    // passedInSelectedDate may be a click event when noConfirm is false
+    const nextDate = (dayjs.isDayjs(passedInSelectedDate) ? passedInSelectedDate : selectedDate)
+    onChange(nextDate ? nextDate.tz(timezone) : undefined)
+    setIsOpen(false)
+  }, [selectedDate, onChange, timezone])
+
   const handleDateSelect = useCallback((day: Dayjs) => {
     const newDate = cloneTime(day, selectedDate || getDateWithTimezone({ timezone }))
     setCurrentDate(newDate)
     setSelectedDate(newDate)
-  }, [selectedDate, timezone])
+    if (noConfirm)
+      handleConfirmDate(newDate)
+  }, [selectedDate, timezone, noConfirm, handleConfirmDate])
 
   const handleSelectCurrentDate = () => {
     const newDate = getDateWithTimezone({ timezone })
     setCurrentDate(newDate)
     setSelectedDate(newDate)
     onChange(newDate)
-    setIsOpen(false)
-  }
-
-  const handleConfirmDate = () => {
-    // debugger
-    onChange(selectedDate ? selectedDate.tz(timezone) : undefined)
     setIsOpen(false)
   }
 
@@ -208,7 +212,7 @@ const DatePicker = ({
     <PortalToFollowElem
       open={isOpen}
       onOpenChange={setIsOpen}
-      placement='bottom-start'
+      placement='bottom-end'
     >
       <PortalToFollowElemTrigger className={triggerWrapClassName}>
         {renderTrigger ? (renderTrigger({
@@ -232,17 +236,15 @@ const DatePicker = ({
             <RiCalendarLine className={cn(
               'h-4 w-4 shrink-0 text-text-quaternary',
               isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-              (displayValue || (isOpen && selectedDate)) && !notClearable && 'group-hover:hidden',
+              (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
             )} />
-            {!notClearable && (
-              <RiCloseCircleFill
-                className={cn(
-                  'hidden h-4 w-4 shrink-0 text-text-quaternary',
-                  (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
-                )}
-                onClick={handleClear}
-              />
-            )}
+            <RiCloseCircleFill
+              className={cn(
+                'hidden h-4 w-4 shrink-0 text-text-quaternary',
+                (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
+              )}
+              onClick={handleClear}
+            />
           </div>
         )}
       </PortalToFollowElemTrigger>
@@ -273,6 +275,7 @@ const DatePicker = ({
                 days={days}
                 selectedDate={selectedDate}
                 onDateClick={handleDateSelect}
+                getIsDateDisabled={getIsDateDisabled}
               />
             ) : view === ViewType.yearMonth ? (
               <YearAndMonthPickerOptions
@@ -293,7 +296,7 @@ const DatePicker = ({
 
           {/* Footer */}
           {
-            [ViewType.date, ViewType.time].includes(view) ? (
+            [ViewType.date, ViewType.time].includes(view) && !noConfirm && (
               <DatePickerFooter
                 needTimePicker={needTimePicker}
                 displayTime={displayTime}
@@ -302,7 +305,10 @@ const DatePicker = ({
                 handleSelectCurrentDate={handleSelectCurrentDate}
                 handleConfirmDate={handleConfirmDate}
               />
-            ) : (
+            )
+          }
+          {
+            ![ViewType.date, ViewType.time].includes(view) && (
               <YearAndMonthPickerFooter
                 handleYearMonthCancel={handleYearMonthCancel}
                 handleYearMonthConfirm={handleYearMonthConfirm}

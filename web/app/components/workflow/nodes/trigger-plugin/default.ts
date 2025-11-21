@@ -219,6 +219,7 @@ const buildOutputVars = (schema: Record<string, any>, schemaTypeDefinitions?: Sc
 const metaData = genNodeMetaData({
   sort: 1,
   type: BlockEnum.TriggerPlugin,
+  helpLinkUri: 'plugin-trigger',
   isStart: true,
 })
 
@@ -271,7 +272,12 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
             errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
         }
         else {
-          if (value === undefined || value === null || value === '')
+          if (
+            value === undefined
+            || value === null
+            || value === ''
+            || (Array.isArray(value) && value.length === 0)
+          )
             errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
         }
       })

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
 import { RiMoreFill } from '@remixicon/react'
@@ -15,6 +15,7 @@ import cn from '@/utils/classnames'
 import { useDownloadPlugin } from '@/service/use-plugins'
 import { downloadFile } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
+import { useQueryClient } from '@tanstack/react-query'
 
 type Props = {
   open: boolean
@@ -33,6 +34,7 @@ const OperationDropdown: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
+  const queryClient = useQueryClient()
   const openRef = useRef(open)
   const setOpen = useCallback((v: boolean) => {
     onOpenChange(v)
@@ -44,23 +46,32 @@ const OperationDropdown: FC<Props> = ({
   }, [setOpen])
 
   const [needDownload, setNeedDownload] = useState(false)
-  const { data: blob, isLoading } = useDownloadPlugin({
+  const downloadInfo = useMemo(() => ({
     organization: author,
     pluginName: name,
     version,
-  }, needDownload)
+  }), [author, name, version])
+  const { data: blob, isLoading } = useDownloadPlugin(downloadInfo, needDownload)
   const handleDownload = useCallback(() => {
     if (isLoading) return
+    queryClient.removeQueries({
+      queryKey: ['plugins', 'downloadPlugin', downloadInfo],
+      exact: true,
+    })
     setNeedDownload(true)
-  }, [isLoading])
+  }, [downloadInfo, isLoading, queryClient])
 
   useEffect(() => {
-    if (blob) {
-      const fileName = `${author}-${name}_${version}.zip`
-      downloadFile({ data: blob, fileName })
-      setNeedDownload(false)
-    }
-  }, [blob])
+    if (!needDownload || !blob)
+      return
+    const fileName = `${author}-${name}_${version}.zip`
+    downloadFile({ data: blob, fileName })
+    setNeedDownload(false)
+    queryClient.removeQueries({
+      queryKey: ['plugins', 'downloadPlugin', downloadInfo],
+      exact: true,
+    })
+  }, [author, blob, downloadInfo, name, needDownload, queryClient, version])
   return (
     <PortalToFollowElem
       open={open}

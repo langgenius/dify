@@ -3,7 +3,6 @@ import {
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -33,6 +32,7 @@ type AllStartBlocksProps = {
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
   tags?: string[]
+  allowUserInputSelection?: boolean // Allow user input option even when trigger node already exists (e.g. when no Start node yet or changing node type).
 }
 
 const AllStartBlocks = ({
@@ -41,6 +41,7 @@ const AllStartBlocks = ({
   onSelect,
   availableBlocksTypes,
   tags = [],
+  allowUserInputSelection = false,
 }: AllStartBlocksProps) => {
   const { t } = useTranslation()
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
@@ -123,6 +124,7 @@ const AllStartBlocks = ({
               searchText={trimmedSearchText}
               onSelect={onSelect as OnSelectBlock}
               availableBlocksTypes={entryNodeTypes as unknown as BlockEnum[]}
+              hideUserInput={!allowUserInputSelection}
               onContentStateChange={handleStartBlocksContentChange}
             />
 

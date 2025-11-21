@@ -16,6 +16,7 @@ from controllers.console.wraps import account_initialization_required, edit_perm
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.helper.trace_id_helper import get_external_trace_id
@@ -112,7 +113,18 @@ class DraftWorkflowApi(Resource):
             },
         )
     )
-    @api.response(200, "Draft workflow synced successfully", workflow_fields)
+    @api.response(
+        200,
+        "Draft workflow synced successfully",
+        api.model(
+            "SyncDraftWorkflowResponse",
+            {
+                "result": fields.String,
+                "hash": fields.String,
+                "updated_at": fields.String,
+            },
+        ),
+    )
     @api.response(400, "Invalid workflow configuration")
     @api.response(403, "Permission denied")
     @edit_permission_required
@@ -574,6 +586,13 @@ class DraftWorkflowNodeRunApi(Resource):
         return workflow_node_execution
 
 
+parser_publish = (
+    reqparse.RequestParser()
+    .add_argument("marked_name", type=str, required=False, default="", location="json")
+    .add_argument("marked_comment", type=str, required=False, default="", location="json")
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
     @api.doc("get_published_workflow")
@@ -598,6 +617,7 @@ class PublishedWorkflowApi(Resource):
         # return workflow, if not found, return None
         return workflow
 
+    @api.expect(parser_publish)
     @setup_required
     @login_required
     @account_initialization_required
@@ -608,12 +628,8 @@ class PublishedWorkflowApi(Resource):
         Publish workflow
         """
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("marked_name", type=str, required=False, default="", location="json")
-            .add_argument("marked_comment", type=str, required=False, default="", location="json")
-        )
-        args = parser.parse_args()
+
+        args = parser_publish.parse_args()
 
         # Validate name and comment length
         if args.marked_name and len(args.marked_name) > 20:
@@ -668,6 +684,9 @@ class DefaultBlockConfigsApi(Resource):
         return workflow_service.get_default_block_configs()
 
 
+parser_block = reqparse.RequestParser().add_argument("q", type=str, location="args")
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
     @api.doc("get_default_block_config")
@@ -675,6 +694,7 @@ class DefaultBlockConfigApi(Resource):
     @api.doc(params={"app_id": "Application ID", "block_type": "Block type"})
     @api.response(200, "Default block configuration retrieved successfully")
     @api.response(404, "Block type not found")
+    @api.expect(parser_block)
     @setup_required
     @login_required
     @account_initialization_required
@@ -684,8 +704,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        parser = reqparse.RequestParser().add_argument("q", type=str, location="args")
-        args = parser.parse_args()
+        args = parser_block.parse_args()
 
         q = args.get("q")
 
@@ -701,8 +720,18 @@ class DefaultBlockConfigApi(Resource):
         return workflow_service.get_default_block_config(node_type=block_type, filters=filters)
 
 
+parser_convert = (
+    reqparse.RequestParser()
+    .add_argument("name", type=str, required=False, nullable=True, location="json")
+    .add_argument("icon_type", type=str, required=False, nullable=True, location="json")
+    .add_argument("icon", type=str, required=False, nullable=True, location="json")
+    .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/convert-to-workflow")
 class ConvertToWorkflowApi(Resource):
+    @api.expect(parser_convert)
     @api.doc("convert_to_workflow")
     @api.doc(description="Convert application to workflow mode")
     @api.doc(params={"app_id": "Application ID"})
@@ -723,14 +752,7 @@ class ConvertToWorkflowApi(Resource):
         current_user, _ = current_account_with_tenant()
 
         if request.data:
-            parser = (
-                reqparse.RequestParser()
-                .add_argument("name", type=str, required=False, nullable=True, location="json")
-                .add_argument("icon_type", type=str, required=False, nullable=True, location="json")
-                .add_argument("icon", type=str, required=False, nullable=True, location="json")
-                .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
-            )
-            args = parser.parse_args()
+            args = parser_convert.parse_args()
         else:
             args = {}
 
@@ -744,8 +766,18 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
+parser_workflows = (
+    reqparse.RequestParser()
+    .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+    .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=10, location="args")
+    .add_argument("user_id", type=str, required=False, location="args")
+    .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
+    @api.expect(parser_workflows)
     @api.doc("get_all_published_workflows")
     @api.doc(description="Get all published workflows for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -762,16 +794,9 @@ class PublishedAllWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-            .add_argument("user_id", type=str, required=False, location="args")
-            .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
-        )
-        args = parser.parse_args()
-        page = int(args.get("page", 1))
-        limit = int(args.get("limit", 10))
+        args = parser_workflows.parse_args()
+        page = args["page"]
+        limit = args["limit"]
         user_id = args.get("user_id")
         named_only = args.get("named_only", False)
 
@@ -958,8 +983,9 @@ class DraftWorkflowTriggerRunApi(Resource):
         Poll for trigger events and execute full workflow when event arrives
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, location="json", nullable=False)
+        parser = reqparse.RequestParser().add_argument(
+            "node_id", type=str, required=True, location="json", nullable=False
+        )
         args = parser.parse_args()
         node_id = args["node_id"]
         workflow_service = WorkflowService()
@@ -979,11 +1005,13 @@ class DraftWorkflowTriggerRunApi(Resource):
             event = poller.poll()
             if not event:
                 return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
+            workflow_args = dict(event.workflow_args)
+            workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             return helper.compact_generate_response(
                 AppGenerateService.generate(
                     app_model=app_model,
                     user=current_user,
-                    args=event.workflow_args,
+                    args=workflow_args,
                     invoke_from=InvokeFrom.DEBUGGER,
                     streaming=True,
                     root_node_id=node_id,
@@ -992,7 +1020,7 @@ class DraftWorkflowTriggerRunApi(Resource):
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except PluginInvokeError as e:
-            raise ValueError(e.to_user_friendly_error())
+            return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
         except Exception as e:
             logger.exception("Error polling trigger debug event")
             raise e
@@ -1050,26 +1078,21 @@ class DraftWorkflowTriggerNodeApi(Resource):
                 )
                 event = poller.poll()
             except PluginInvokeError as e:
-                return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 500
+                return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
             except Exception as e:
                 logger.exception("Error polling trigger debug event")
                 raise e
         if not event:
             return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
 
-        workflow_args = dict(event.workflow_args or {})
-        raw_files = workflow_args.get("files")
+        raw_files = event.workflow_args.get("files")
         files = _parse_file(draft_workflow, raw_files if isinstance(raw_files, list) else None)
-        if node_type == NodeType.TRIGGER_WEBHOOK:
-            user_inputs = workflow_args.get("inputs") or {}
-        else:
-            user_inputs = workflow_args
         try:
             node_execution = workflow_service.run_draft_workflow_node(
                 app_model=app_model,
                 draft_workflow=draft_workflow,
                 node_id=node_id,
-                user_inputs=user_inputs,
+                user_inputs=event.workflow_args.get("inputs") or {},
                 account=current_user,
                 query="",
                 files=files,
@@ -1077,7 +1100,9 @@ class DraftWorkflowTriggerNodeApi(Resource):
             return jsonable_encoder(node_execution)
         except Exception as e:
             logger.exception("Error running draft workflow trigger node")
-            return jsonable_encoder({"status": "error", "error": str(e)}), 500
+            return jsonable_encoder(
+                {"status": "error", "error": "An unexpected error occurred while running the node."}
+            ), 400
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/trigger/run-all")
@@ -1112,8 +1137,9 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_ids", type=list, required=True, location="json", nullable=False)
+        parser = reqparse.RequestParser().add_argument(
+            "node_ids", type=list, required=True, location="json", nullable=False
+        )
         args = parser.parse_args()
         node_ids = args["node_ids"]
         workflow_service = WorkflowService()
@@ -1129,7 +1155,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
                 node_ids=node_ids,
             )
         except PluginInvokeError as e:
-            raise ValueError(e.to_user_friendly_error())
+            return jsonable_encoder({"status": "error", "error": e.to_user_friendly_error()}), 400
         except Exception as e:
             logger.exception("Error polling trigger debug event")
             raise e
@@ -1137,10 +1163,12 @@ class DraftWorkflowTriggerRunAllApi(Resource):
             return jsonable_encoder({"status": "waiting", "retry_in": LISTENING_RETRY_IN})
 
         try:
+            workflow_args = dict(trigger_debug_event.workflow_args)
+            workflow_args[SKIP_PREPARE_USER_INPUTS_KEY] = True
             response = AppGenerateService.generate(
                 app_model=app_model,
                 user=current_user,
-                args=trigger_debug_event.workflow_args,
+                args=workflow_args,
                 invoke_from=InvokeFrom.DEBUGGER,
                 streaming=True,
                 root_node_id=trigger_debug_event.node_id,
@@ -1149,9 +1177,9 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         except InvokeRateLimitError as ex:
             raise InvokeRateLimitHttpError(ex.description)
         except Exception:
-            logger.exception("Error running draft workflow trigger webhook run")
+            logger.exception("Error running draft workflow trigger run-all")
             return jsonable_encoder(
                 {
                     "status": "error",
                 }
-            ), 500
+            ), 400

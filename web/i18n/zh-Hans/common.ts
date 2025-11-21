@@ -184,7 +184,7 @@ const translation = {
     helpCenter: '查看帮助文档',
     support: '支持',
     compliance: '合规',
-    communityFeedback: '用户反馈',
+    forum: '论坛',
     roadmap: '路线图',
     github: 'GitHub',
     community: '社区',
@@ -736,6 +736,7 @@ const translation = {
     uploadFromComputerLimit: '上传 {{type}} 不能超过 {{size}}',
     pasteFileLinkInvalid: '文件链接无效',
     fileExtensionNotSupport: '文件类型不支持',
+    fileExtensionBlocked: '出于安全考虑，该文件类型已被禁止上传',
   },
   tag: {
     placeholder: '全部标签',
@@ -775,6 +776,12 @@ const translation = {
     subtitle: '请告诉我们这次回应出错的原因。',
     title: '提供反馈',
     placeholder: '请描述发生了什么问题或我们可以如何改进...',
+  },
+  dynamicSelect: {
+    error: '加载选项失败',
+    noData: '没有可用的选项',
+    loading: '加载选项...',
+    selected: '已选择 {{count}} 项',
   },
 }
 

@@ -7,8 +7,10 @@ from faker import Faker
 from flask import Flask
 from werkzeug.datastructures import FileStorage
 
+from models.enums import AppTriggerStatus, AppTriggerType
 from models.model import App
-from models.workflow import Workflow, WorkflowWebhookTrigger
+from models.trigger import AppTrigger, WorkflowWebhookTrigger
+from models.workflow import Workflow
 from services.account_service import AccountService, TenantService
 from services.trigger.webhook_service import WebhookService
 
@@ -20,9 +22,9 @@ class TestWebhookService:
     def mock_external_dependencies(self):
         """Mock external service dependencies."""
         with (
-            patch("services.webhook_service.AsyncWorkflowService") as mock_async_service,
-            patch("services.webhook_service.ToolFileManager") as mock_tool_file_manager,
-            patch("services.webhook_service.file_factory") as mock_file_factory,
+            patch("services.trigger.webhook_service.AsyncWorkflowService") as mock_async_service,
+            patch("services.trigger.webhook_service.ToolFileManager") as mock_tool_file_manager,
+            patch("services.trigger.webhook_service.file_factory") as mock_file_factory,
             patch("services.account_service.FeatureService") as mock_feature_service,
         ):
             # Mock ToolFileManager
@@ -65,6 +67,7 @@ class TestWebhookService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create app
         app = App(
@@ -129,10 +132,23 @@ class TestWebhookService:
             app_id=app.id,
             node_id="webhook_node",
             tenant_id=tenant.id,
-            webhook_id=webhook_id,
+            webhook_id=str(webhook_id),
             created_by=account.id,
         )
         db_session_with_containers.add(webhook_trigger)
+        db_session_with_containers.flush()
+
+        # Create app trigger (required for non-debug mode)
+        app_trigger = AppTrigger(
+            tenant_id=tenant.id,
+            app_id=app.id,
+            node_id="webhook_node",
+            trigger_type=AppTriggerType.TRIGGER_WEBHOOK,
+            provider_name="webhook",
+            title="Test Webhook",
+            status=AppTriggerStatus.ENABLED,
+        )
+        db_session_with_containers.add(app_trigger)
         db_session_with_containers.commit()
 
         return {
@@ -142,6 +158,7 @@ class TestWebhookService:
             "workflow": workflow,
             "webhook_trigger": webhook_trigger,
             "webhook_id": webhook_id,
+            "app_trigger": app_trigger,
         }
 
     def test_get_webhook_trigger_and_workflow_success(self, test_data, flask_app_with_containers):
@@ -244,106 +261,166 @@ class TestWebhookService:
             assert webhook_data["method"] == "POST"
             assert webhook_data["body"]["raw"] == "raw text content"
 
-    def test_validate_webhook_request_success(self):
-        """Test successful webhook request validation."""
-        webhook_data = {
-            "method": "POST",
-            "headers": {"Authorization": "Bearer token", "Content-Type": "application/json"},
-            "query_params": {"version": "1"},
-            "body": {"message": "hello"},
-            "files": {},
-        }
+    def test_extract_and_validate_webhook_request_success(self):
+        """Test successful webhook request validation and type conversion."""
+        app = Flask(__name__)
 
-        node_config = {
-            "data": {
-                "method": "post",
-                "headers": [{"name": "Authorization", "required": True}, {"name": "Content-Type", "required": False}],
-                "params": [{"name": "version", "required": True}],
-                "body": [{"name": "message", "type": "string", "required": True}],
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json", "Authorization": "Bearer token"},
+            query_string="version=1",
+            json={"message": "hello"},
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "headers": [
+                        {"name": "Authorization", "required": True},
+                        {"name": "Content-Type", "required": False},
+                    ],
+                    "params": [{"name": "version", "required": True}],
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
             }
-        }
 
-        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+            result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
-        assert result["valid"] is True
+            assert result["headers"]["Authorization"] == "Bearer token"
+            assert result["query_params"]["version"] == "1"
+            assert result["body"]["message"] == "hello"
 
-    def test_validate_webhook_request_method_mismatch(self):
+    def test_extract_and_validate_webhook_request_method_mismatch(self):
         """Test webhook validation with HTTP method mismatch."""
-        webhook_data = {"method": "GET", "headers": {}, "query_params": {}, "body": {}, "files": {}}
+        app = Flask(__name__)
 
-        node_config = {"data": {"method": "post"}}
+        with app.test_request_context(
+            "/webhook",
+            method="GET",
+            headers={"Content-Type": "application/json"},
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {"data": {"method": "post", "content_type": "application/json"}}
 
-        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+            with pytest.raises(ValueError, match="HTTP method mismatch"):
+                WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
-        assert result["valid"] is False
-        assert "HTTP method mismatch" in result["error"]
-
-    def test_validate_webhook_request_missing_required_header(self):
+    def test_extract_and_validate_webhook_request_missing_required_header(self):
         """Test webhook validation with missing required header."""
-        webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
+        app = Flask(__name__)
 
-        node_config = {"data": {"method": "post", "headers": [{"name": "Authorization", "required": True}]}}
-
-        result = WebhookService.validate_webhook_request(webhook_data, node_config)
-
-        assert result["valid"] is False
-        assert "Required header missing: Authorization" in result["error"]
-
-    def test_validate_webhook_request_case_insensitive_headers(self):
-        """Test webhook validation with case-insensitive header matching."""
-        webhook_data = {
-            "method": "POST",
-            "headers": {"authorization": "Bearer token"},  # lowercase
-            "query_params": {},
-            "body": {},
-            "files": {},
-        }
-
-        node_config = {
-            "data": {
-                "method": "post",
-                "headers": [
-                    {"name": "Authorization", "required": True}  # Pascal case
-                ],
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "headers": [{"name": "Authorization", "required": True}],
+                }
             }
-        }
 
-        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+            with pytest.raises(ValueError, match="Required header missing: Authorization"):
+                WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
-        assert result["valid"] is True
+    def test_extract_and_validate_webhook_request_case_insensitive_headers(self):
+        """Test webhook validation with case-insensitive header matching."""
+        app = Flask(__name__)
 
-    def test_validate_webhook_request_missing_required_param(self):
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json", "authorization": "Bearer token"},
+            json={"message": "hello"},
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "headers": [{"name": "Authorization", "required": True}],
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
+            }
+
+            result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
+
+            assert result["headers"].get("Authorization") == "Bearer token"
+
+    def test_extract_and_validate_webhook_request_missing_required_param(self):
         """Test webhook validation with missing required query parameter."""
-        webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
+        app = Flask(__name__)
 
-        node_config = {"data": {"method": "post", "params": [{"name": "version", "required": True}]}}
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            json={"message": "hello"},
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "params": [{"name": "version", "required": True}],
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
+            }
 
-        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+            with pytest.raises(ValueError, match="Required parameter missing: version"):
+                WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
-        assert result["valid"] is False
-        assert "Required query parameter missing: version" in result["error"]
-
-    def test_validate_webhook_request_missing_required_body_param(self):
+    def test_extract_and_validate_webhook_request_missing_required_body_param(self):
         """Test webhook validation with missing required body parameter."""
-        webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
+        app = Flask(__name__)
 
-        node_config = {"data": {"method": "post", "body": [{"name": "message", "type": "string", "required": True}]}}
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            json={},
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                    "body": [{"name": "message", "type": "string", "required": True}],
+                }
+            }
 
-        result = WebhookService.validate_webhook_request(webhook_data, node_config)
+            with pytest.raises(ValueError, match="Required body parameter missing: message"):
+                WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
-        assert result["valid"] is False
-        assert "Required body parameter missing: message" in result["error"]
+    def test_extract_and_validate_webhook_request_missing_required_file(self):
+        """Test webhook validation when required file is missing from multipart request."""
+        app = Flask(__name__)
 
-    def test_validate_webhook_request_missing_required_file(self):
-        """Test webhook validation with missing required file parameter."""
-        webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            data={"note": "test"},
+            content_type="multipart/form-data",
+        ):
+            webhook_trigger = MagicMock()
+            webhook_trigger.tenant_id = "tenant"
+            webhook_trigger.created_by = "user"
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "multipart/form-data",
+                    "body": [{"name": "upload", "type": "file", "required": True}],
+                }
+            }
 
-        node_config = {"data": {"method": "post", "body": [{"name": "upload", "type": "file", "required": True}]}}
+            result = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
-        result = WebhookService.validate_webhook_request(webhook_data, node_config)
-
-        assert result["valid"] is False
-        assert "Required file parameter missing: upload" in result["error"]
+            assert result["files"] == {}
 
     def test_trigger_workflow_execution_success(self, test_data, mock_external_dependencies, flask_app_with_containers):
         """Test successful workflow execution trigger."""
@@ -357,12 +434,12 @@ class TestWebhookService:
 
         with flask_app_with_containers.app_context():
             # Mock tenant owner lookup to return the test account
-            with patch("services.webhook_service.select") as mock_select:
+            with patch("services.trigger.webhook_service.select") as mock_select:
                 mock_query = MagicMock()
                 mock_select.return_value.join.return_value.where.return_value = mock_query
 
                 # Mock the session to return our test account
-                with patch("services.webhook_service.Session") as mock_session:
+                with patch("services.trigger.webhook_service.Session") as mock_session:
                     mock_session_instance = MagicMock()
                     mock_session.return_value.__enter__.return_value = mock_session_instance
                     mock_session_instance.scalar.return_value = test_data["account"]
@@ -375,23 +452,20 @@ class TestWebhookService:
                     # Verify AsyncWorkflowService was called
                     mock_external_dependencies["async_service"].trigger_workflow_async.assert_called_once()
 
-    def test_trigger_workflow_execution_no_tenant_owner(
+    def test_trigger_workflow_execution_end_user_service_failure(
         self, test_data, mock_external_dependencies, flask_app_with_containers
     ):
-        """Test workflow execution trigger when tenant owner not found."""
+        """Test workflow execution trigger when EndUserService fails."""
         webhook_data = {"method": "POST", "headers": {}, "query_params": {}, "body": {}, "files": {}}
 
         with flask_app_with_containers.app_context():
-            # Mock tenant owner lookup to return None
-            with (
-                patch("services.webhook_service.select") as mock_select,
-                patch("services.webhook_service.Session") as mock_session,
-            ):
-                mock_session_instance = MagicMock()
-                mock_session.return_value.__enter__.return_value = mock_session_instance
-                mock_session_instance.scalar.return_value = None
+            # Mock EndUserService to raise an exception
+            with patch(
+                "services.trigger.webhook_service.EndUserService.get_or_create_end_user_by_type"
+            ) as mock_end_user:
+                mock_end_user.side_effect = ValueError("Failed to create end user")
 
-                with pytest.raises(ValueError, match="Tenant owner not found"):
+                with pytest.raises(ValueError, match="Failed to create end user"):
                     WebhookService.trigger_workflow_execution(
                         test_data["webhook_trigger"], webhook_data, test_data["workflow"]
                     )

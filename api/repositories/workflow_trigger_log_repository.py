@@ -7,11 +7,9 @@ proper indexing and batch operations.
 """
 
 from collections.abc import Sequence
-from datetime import datetime
 from enum import StrEnum
-from typing import Optional, Protocol
+from typing import Protocol
 
-from models.enums import WorkflowTriggerStatus
 from models.trigger import WorkflowTriggerLog
 
 
@@ -65,7 +63,7 @@ class WorkflowTriggerLogRepository(Protocol):
         """
         ...
 
-    def get_by_id(self, trigger_log_id: str, tenant_id: Optional[str] = None) -> Optional[WorkflowTriggerLog]:
+    def get_by_id(self, trigger_log_id: str, tenant_id: str | None = None) -> WorkflowTriggerLog | None:
         """
         Get a trigger log by its ID.
 
@@ -75,33 +73,6 @@ class WorkflowTriggerLogRepository(Protocol):
 
         Returns:
             The WorkflowTriggerLog if found, None otherwise
-        """
-        ...
-
-    def get_by_status(
-        self,
-        tenant_id: str,
-        app_id: str,
-        status: WorkflowTriggerStatus,
-        limit: int = 100,
-        offset: int = 0,
-        order_by: TriggerLogOrderBy = TriggerLogOrderBy.CREATED_AT,
-        order_desc: bool = True,
-    ) -> Sequence[WorkflowTriggerLog]:
-        """
-        Get trigger logs by status with pagination.
-
-        Args:
-            tenant_id: The tenant identifier
-            app_id: The application identifier
-            status: The workflow trigger status to filter by
-            limit: Maximum number of results
-            offset: Number of results to skip
-            order_by: Field to order results by
-            order_desc: Whether to order descending (True) or ascending (False)
-
-        Returns:
-            A sequence of WorkflowTriggerLog instances
         """
         ...
 
@@ -136,72 +107,5 @@ class WorkflowTriggerLogRepository(Protocol):
 
         Returns:
             A sequence of recent WorkflowTriggerLog instances
-        """
-        ...
-
-    def count_by_status(
-        self,
-        tenant_id: str,
-        app_id: str,
-        status: Optional[WorkflowTriggerStatus] = None,
-        since: Optional[datetime] = None,
-    ) -> int:
-        """
-        Count trigger logs by status.
-
-        Args:
-            tenant_id: The tenant identifier
-            app_id: The application identifier
-            status: Optional status filter
-            since: Optional datetime to count from
-
-        Returns:
-            Count of matching trigger logs
-        """
-        ...
-
-    def delete_expired_logs(self, tenant_id: str, before_date: datetime, batch_size: int = 1000) -> int:
-        """
-        Delete expired trigger logs in batches.
-
-        Args:
-            tenant_id: The tenant identifier
-            before_date: Delete logs created before this date
-            batch_size: Number of logs to delete per batch
-
-        Returns:
-            Total number of logs deleted
-        """
-        ...
-
-    def archive_completed_logs(
-        self, tenant_id: str, before_date: datetime, batch_size: int = 1000
-    ) -> Sequence[WorkflowTriggerLog]:
-        """
-        Get completed logs for archival before deletion.
-
-        Args:
-            tenant_id: The tenant identifier
-            before_date: Get logs completed before this date
-            batch_size: Number of logs to retrieve
-
-        Returns:
-            A sequence of WorkflowTriggerLog instances for archival
-        """
-        ...
-
-    def update_status_batch(
-        self, trigger_log_ids: Sequence[str], new_status: WorkflowTriggerStatus, error_message: Optional[str] = None
-    ) -> int:
-        """
-        Update status for multiple trigger logs at once.
-
-        Args:
-            trigger_log_ids: List of trigger log IDs to update
-            new_status: The new status to set
-            error_message: Optional error message to set
-
-        Returns:
-            Number of logs updated
         """
         ...

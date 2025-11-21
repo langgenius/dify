@@ -14,17 +14,19 @@ type TriggerEventCardProps = {
 }
 
 const TriggerEventCard = ({ eventInfo, providerInfo }: TriggerEventCardProps) => {
-  const { identity, description = {} } = eventInfo
+  const { identity, description } = eventInfo
   const language = useLanguage()
   const [showDetail, setShowDetail] = useState(false)
+  const title = identity.label?.[language] ?? identity.label?.en_US ?? ''
+  const descriptionText = description?.[language] ?? description?.en_US ?? ''
   return (
     <>
       <div
         className={cn('bg-components-panel-item-bg cursor-pointer rounded-xl border-[0.5px] border-components-panel-border-subtle px-4 py-3 shadow-xs hover:bg-components-panel-on-panel-item-bg-hover')}
         onClick={() => setShowDetail(true)}
       >
-        <div className='system-md-semibold pb-0.5 text-text-secondary'>{identity.label[language]}</div>
-        <div className='system-xs-regular line-clamp-2 text-text-tertiary' title={description[language]}>{description[language]}</div>
+        <div className='system-md-semibold pb-0.5 text-text-secondary'>{title}</div>
+        <div className='system-xs-regular line-clamp-2 text-text-tertiary' title={descriptionText}>{descriptionText}</div>
       </div>
       {showDetail && (
         <EventDetailDrawer

@@ -67,6 +67,15 @@ export type Collection = {
   is_authorized?: boolean
   provider?: string
   credential_id?: string
+  is_dynamic_registration?: boolean
+  authentication?: {
+    client_id?: string
+    client_secret?: string
+  }
+  configuration?: {
+    timeout?: number
+    sse_read_timeout?: number
+  }
 }
 
 export type ToolParameter = {
@@ -220,4 +229,10 @@ export type MCPServerDetail = {
   status: string
   parameters?: Record<string, string>
   headers?: Record<string, string>
+}
+
+export enum MCPAuthMethod {
+  authentication = 'authentication',
+  headers = 'headers',
+  configurations = 'configurations',
 }

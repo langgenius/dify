@@ -1,5 +1,6 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
 import { memo, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import type {
   BlockEnum,
@@ -17,6 +18,7 @@ import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWorkflowStore } from '../store'
 import { basePath } from '@/utils/var'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type TabsProps = {
   activeTab: TabsEnum
@@ -31,11 +33,13 @@ export type TabsProps = {
   tabs: Array<{
     key: TabsEnum
     name: string
+    disabled?: boolean
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
   noTools?: boolean
   forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
+  allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -52,7 +56,9 @@ const Tabs: FC<TabsProps> = ({
   noBlocks,
   noTools,
   forceShowStartContent = false,
+  allowStartNodeSelection = false,
 }) => {
+  const { t } = useTranslation()
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -125,20 +131,46 @@ const Tabs: FC<TabsProps> = ({
         !noBlocks && (
           <div className='relative flex bg-background-section-burn pl-1 pt-1'>
             {
-              tabs.map(tab => (
-                <div
-                  key={tab.key}
-                  className={cn(
-                    'system-sm-medium relative mr-0.5 flex h-8 cursor-pointer  items-center rounded-t-lg px-3 ',
-                    activeTab === tab.key
-                      ? 'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
-                      : 'text-text-tertiary',
-                  )}
-                  onClick={() => onActiveTabChange(tab.key)}
-                >
-                  {tab.name}
-                </div>
-              ))
+              tabs.map((tab) => {
+                const commonProps = {
+                  'className': cn(
+                    'system-sm-medium relative mr-0.5 flex h-8 items-center rounded-t-lg px-3',
+                    tab.disabled
+                      ? 'cursor-not-allowed text-text-disabled opacity-60'
+                      : activeTab === tab.key
+                        ? 'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
+                        : 'cursor-pointer text-text-tertiary',
+                  ),
+                  'aria-disabled': tab.disabled,
+                  'onClick': () => {
+                    if (tab.disabled || activeTab === tab.key)
+                      return
+                    onActiveTabChange(tab.key)
+                  },
+                } as const
+                if (tab.disabled) {
+                  return (
+                    <Tooltip
+                      key={tab.key}
+                      position='top'
+                      popupClassName='max-w-[200px]'
+                      popupContent={t('workflow.tabs.startDisabledTip')}
+                    >
+                      <div {...commonProps}>
+                        {tab.name}
+                      </div>
+                    </Tooltip>
+                  )
+                }
+                return (
+                  <div
+                    key={tab.key}
+                    {...commonProps}
+                  >
+                    {tab.name}
+                  </div>
+                )
+              })
             }
           </div>
         )
@@ -148,6 +180,7 @@ const Tabs: FC<TabsProps> = ({
         activeTab === TabsEnum.Start && (!noBlocks || forceShowStartContent) && (
           <div className='border-t border-divider-subtle'>
             <AllStartBlocks
+              allowUserInputSelection={allowStartNodeSelection}
               searchText={searchText}
               onSelect={onSelect}
               availableBlocksTypes={availableBlocksTypes}

@@ -42,7 +42,7 @@ import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
 import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
-
+import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
 import {
   AGENT_OUTPUT_STRUCT,
   FILE_STRUCT,
@@ -72,7 +72,7 @@ export const isSystemVar = (valueSelector: ValueSelector) => {
 export const isGlobalVar = (valueSelector: ValueSelector) => {
   if(!isSystemVar(valueSelector)) return false
   const second = valueSelector[1]
-  // eslint-disable-next-line sonarjs/prefer-single-boolean-return
+
   if(['query', 'files'].includes(second))
     return false
   return true
@@ -1063,7 +1063,8 @@ export const getVarType = ({
     if (valueSelector[1] === 'index') return VarType.number
   }
 
-  const isInStartNodeSysVar = isSystemVar(valueSelector) && !isGlobalVar(valueSelector)
+  const isGlobal = isGlobalVar(valueSelector)
+  const isInStartNodeSysVar = isSystemVar(valueSelector) && !isGlobal
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
   const isSharedRagVariable
@@ -1077,6 +1078,7 @@ export const getVarType = ({
 
   const targetVarNodeId = (() => {
     if (isInStartNodeSysVar) return startNode?.id
+    if (isGlobal) return 'global'
     if (isInNodeRagVariable) return valueSelector[1]
     return valueSelector[0]
   })()
@@ -1089,7 +1091,7 @@ export const getVarType = ({
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
 
-  if (isInStartNodeSysVar || isEnv || isChatVar || isSharedRagVariable) {
+  if (isInStartNodeSysVar || isEnv || isChatVar || isSharedRagVariable || isGlobal) {
     return curr.find(
       (v: any) => v.variable === (valueSelector as ValueSelector).join('.'),
     )?.type
@@ -1303,10 +1305,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.IfElse: {
-      res
-        = (data as IfElseNodeType).conditions?.map((c) => {
-          return c.variable_selector || []
-        }) || []
+      res = []
       res.push(
         ...((data as IfElseNodeType).cases || [])
           .flatMap(c => c.conditions || [])
@@ -1478,9 +1477,22 @@ export const getNodeUsedVarPassToServerKey = (
       break
     }
     case BlockEnum.IfElse: {
-      const targetVar = (data as IfElseNodeType).conditions?.find(
-        c => c.variable_selector?.join('.') === valueSelector.join('.'),
-      )
+      const findConditionInCases = (cases: CaseItem[]): Condition | undefined => {
+        for (const caseItem of cases) {
+          for (const condition of caseItem.conditions || []) {
+            if (condition.variable_selector?.join('.') === valueSelector.join('.'))
+              return condition
+
+            if (condition.sub_variable_condition) {
+              const found = findConditionInCases([condition.sub_variable_condition])
+              if (found)
+                return found
+            }
+          }
+        }
+        return undefined
+      }
+      const targetVar = findConditionInCases((data as IfElseNodeType).cases || [])
       if (targetVar) res = `#${valueSelector.join('.')}#`
       break
     }
@@ -1632,13 +1644,6 @@ export const updateNodeVars = (
       }
       case BlockEnum.IfElse: {
         const payload = data as IfElseNodeType
-        if (payload.conditions) {
-          payload.conditions = payload.conditions.map((c) => {
-            if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
-              c.variable_selector = newVarSelector
-            return c
-          })
-        }
         if (payload.cases) {
           payload.cases = payload.cases.map((caseItem) => {
             if (caseItem.conditions) {

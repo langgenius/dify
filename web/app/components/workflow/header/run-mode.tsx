@@ -11,6 +11,7 @@ import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
 import TestRunMenu, { type TestRunMenuRef, type TriggerOption, TriggerType } from './test-run-menu'
+import { useToastContext } from '@/app/components/base/toast'
 
 type RunModeProps = {
   text?: string
@@ -28,7 +29,7 @@ const RunMode = ({
     handleWorkflowRunAllTriggersInWorkflow,
   } = useWorkflowStartRun()
   const { handleStopRun } = useWorkflowRun()
-  const { validateBeforeRun } = useWorkflowRunValidation()
+  const { validateBeforeRun, warningNodes } = useWorkflowRunValidation()
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const isListening = useStore(s => s.isListening)
 
@@ -37,6 +38,7 @@ const RunMode = ({
 
   const dynamicOptions = useDynamicTestRunOptions()
   const testRunMenuRef = useRef<TestRunMenuRef>(null)
+  const { notify } = useToastContext()
 
   useEffect(() => {
     // @ts-expect-error - Dynamic property for backward compatibility with keyboard shortcuts
@@ -55,8 +57,15 @@ const RunMode = ({
 
   const handleTriggerSelect = useCallback((option: TriggerOption) => {
     // Validate checklist before running any workflow
-    if (!validateBeforeRun())
+    let isValid: boolean = true
+    warningNodes.forEach((node) => {
+      if (node.id === option.nodeId)
+        isValid = false
+    })
+    if (!isValid) {
+      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
       return
+    }
 
     if (option.type === TriggerType.UserInput) {
       handleWorkflowStartRunInWorkflow()

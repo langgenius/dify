@@ -50,6 +50,7 @@ export type DataSet = {
   permission: DatasetPermission
   data_source_type: DataSourceType
   indexing_technique: IndexingType
+  author_name?: string
   created_by: string
   updated_by: string
   updated_at: number
@@ -344,6 +345,8 @@ export type WebsiteCrawlInfo = {
   description: string
   source_url: string
   title: string
+  provider?: string
+  job_id?: string
 }
 
 export type OnlineDocumentInfo = {

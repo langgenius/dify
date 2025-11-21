@@ -137,6 +137,19 @@ const translation = {
       export: 'Exportă DSL cu valori secrete',
     },
   },
+  globalVar: {
+    title: 'Variabile de sistem',
+    description: 'Variabilele de sistem sunt variabile globale care pot fi folosite de orice nod fără conexiuni dacă tipul este corect, precum ID-ul utilizatorului final și ID-ul fluxului de lucru.',
+    fieldsDescription: {
+      conversationId: 'ID conversație',
+      dialogCount: 'Număr conversații',
+      userId: 'ID utilizator',
+      triggerTimestamp: 'Marcaj temporal al pornirii aplicației',
+      appId: 'ID aplicație',
+      workflowId: 'ID flux de lucru',
+      workflowRunId: 'ID rulare flux de lucru',
+    },
+  },
   chatVariable: {
     panelTitle: 'Variabile de Conversație',
     panelDescription: 'Variabilele de Conversație sunt utilizate pentru a stoca informații interactive pe care LLM trebuie să le rețină, inclusiv istoricul conversației, fișiere încărcate, preferințele utilizatorului. Acestea sunt citibile și inscriptibile.',

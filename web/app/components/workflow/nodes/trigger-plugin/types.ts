@@ -16,6 +16,7 @@ export type PluginTriggerNodeType = CommonNodeType & {
   event_node_version?: string
   plugin_id?: string
   config?: Record<string, any>
+  plugin_unique_identifier?: string
 }
 
 // Use base types directly

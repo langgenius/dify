@@ -1,21 +1,19 @@
 import logging
-import time
-from datetime import UTC, datetime
-from zoneinfo import ZoneInfo
 
 from celery import shared_task
 from sqlalchemy.orm import sessionmaker
 
-from core.trigger.debug.event_bus import TriggerDebugEventBus
-from core.trigger.debug.events import ScheduleDebugEvent, build_schedule_pool_key
 from core.workflow.nodes.trigger_schedule.exc import (
     ScheduleExecutionError,
     ScheduleNotFoundError,
     TenantOwnerNotFoundError,
 )
+from enums.quota_type import QuotaType, unlimited
 from extensions.ext_database import db
 from models.trigger import WorkflowSchedulePlan
 from services.async_workflow_service import AsyncWorkflowService
+from services.errors.app import QuotaExceededError
+from services.trigger.app_trigger_service import AppTriggerService
 from services.trigger.schedule_service import ScheduleService
 from services.workflow.entities import ScheduleTriggerData
 
@@ -35,6 +33,7 @@ def run_schedule_trigger(schedule_id: str) -> None:
         TenantOwnerNotFoundError: If no owner/admin for tenant
         ScheduleExecutionError: If workflow trigger fails
     """
+
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
 
     with session_factory() as session:
@@ -46,12 +45,15 @@ def run_schedule_trigger(schedule_id: str) -> None:
         if not tenant_owner:
             raise TenantOwnerNotFoundError(f"No owner or admin found for tenant {schedule.tenant_id}")
 
+        quota_charge = unlimited()
         try:
-            current_utc = datetime.now(UTC)
-            schedule_tz = ZoneInfo(schedule.timezone) if schedule.timezone else UTC
-            current_in_tz = current_utc.astimezone(schedule_tz)
-            inputs = {"current_time": current_in_tz.isoformat()}
+            quota_charge = QuotaType.TRIGGER.consume(schedule.tenant_id)
+        except QuotaExceededError:
+            AppTriggerService.mark_tenant_triggers_rate_limited(schedule.tenant_id)
+            logger.info("Tenant %s rate limited, skipping schedule trigger %s", schedule.tenant_id, schedule_id)
+            return
 
+        try:
             # Production dispatch: Trigger the workflow normally
             response = AsyncWorkflowService.trigger_workflow_async(
                 session=session,
@@ -59,45 +61,13 @@ def run_schedule_trigger(schedule_id: str) -> None:
                 trigger_data=ScheduleTriggerData(
                     app_id=schedule.app_id,
                     root_node_id=schedule.node_id,
-                    inputs=inputs,
+                    inputs={},
                     tenant_id=schedule.tenant_id,
                 ),
             )
             logger.info("Schedule %s triggered workflow: %s", schedule_id, response.workflow_trigger_log_id)
-
-            # Debug dispatch: Send event to waiting debug listeners (if any)
-            try:
-                event = ScheduleDebugEvent(
-                    timestamp=int(time.time()),
-                    node_id=schedule.node_id,
-                    inputs=inputs,
-                )
-                pool_key = build_schedule_pool_key(
-                    tenant_id=schedule.tenant_id,
-                    app_id=schedule.app_id,
-                    node_id=schedule.node_id,
-                )
-                dispatched_count = TriggerDebugEventBus.dispatch(
-                    tenant_id=schedule.tenant_id,
-                    event=event,
-                    pool_key=pool_key,
-                )
-                if dispatched_count > 0:
-                    logger.debug(
-                        "Dispatched schedule debug event to %d listener(s) for schedule %s",
-                        dispatched_count,
-                        schedule_id,
-                    )
-            except Exception as debug_error:
-                # Debug dispatch failure should not affect production workflow execution
-                logger.warning(
-                    "Failed to dispatch debug event for schedule %s: %s",
-                    schedule_id,
-                    str(debug_error),
-                    exc_info=True,
-                )
-
         except Exception as e:
+            quota_charge.refund()
             raise ScheduleExecutionError(
                 f"Failed to trigger workflow for schedule {schedule_id}, app {schedule.app_id}"
             ) from e

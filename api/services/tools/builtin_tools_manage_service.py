@@ -353,7 +353,7 @@ class BuiltinToolManageService:
                 decrypt_credential = encrypter.mask_plugin_credentials(encrypter.decrypt(provider.credentials))
                 credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
                     provider=provider,
-                    credentials=decrypt_credential,
+                    credentials=dict(decrypt_credential),
                 )
                 credentials.append(credential_entity)
             return credentials

@@ -1,5 +1,6 @@
 'use client'
 import ActionButton from '@/app/components/base/action-button'
+import Tooltip from '@/app/components/base/tooltip'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import cn from '@/utils/classnames'
 import {
@@ -48,9 +49,19 @@ const SubscriptionCard = ({ data }: Props) => {
         </div>
 
         <div className='mt-1 flex items-center justify-between'>
-          <div className='system-xs-regular flex-1 truncate text-text-tertiary'>
-            {data.endpoint}
-          </div>
+          <Tooltip
+            disabled={!data.endpoint}
+            popupContent={data.endpoint && (
+              <div className='max-w-[320px] break-all'>
+                {data.endpoint}
+              </div>
+            )}
+            position='left'
+          >
+            <div className='system-xs-regular flex-1 truncate text-text-tertiary'>
+              {data.endpoint}
+            </div>
+          </Tooltip>
           <div className="mx-2 text-xs text-text-tertiary opacity-30">·</div>
           <div className='system-xs-regular shrink-0 text-text-tertiary'>
             {data.workflows_in_use > 0 ? t('pluginTrigger.subscription.list.item.usedByNum', { num: data.workflows_in_use }) : t('pluginTrigger.subscription.list.item.noUsed')}

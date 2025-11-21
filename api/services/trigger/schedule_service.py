@@ -1,7 +1,8 @@
 import json
 import logging
+from collections.abc import Mapping
 from datetime import datetime
-from typing import Optional
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,6 +14,7 @@ from libs.schedule_utils import calculate_next_run_at, convert_12h_to_24h
 from models.account import Account, TenantAccountJoin
 from models.trigger import WorkflowSchedulePlan
 from models.workflow import Workflow
+from services.errors.account import AccountNotFoundError
 
 logger = logging.getLogger(__name__)
 
@@ -123,7 +125,7 @@ class ScheduleService:
         session.flush()
 
     @staticmethod
-    def get_tenant_owner(session: Session, tenant_id: str) -> Optional[Account]:
+    def get_tenant_owner(session: Session, tenant_id: str) -> Account:
         """
         Returns an account to execute scheduled workflows on behalf of the tenant.
         Prioritizes owner over admin to ensure proper authorization hierarchy.
@@ -143,7 +145,12 @@ class ScheduleService:
             ).scalar_one_or_none()
 
         if result:
-            return session.get(Account, result.account_id)
+            account = session.get(Account, result.account_id)
+            if not account:
+                raise AccountNotFoundError(f"Account not found: {result.account_id}")
+            return account
+        else:
+            raise AccountNotFoundError(f"Account not found for tenant: {tenant_id}")
 
     @staticmethod
     def update_next_run_at(
@@ -169,7 +176,35 @@ class ScheduleService:
         return next_run_at
 
     @staticmethod
-    def extract_schedule_config(workflow: Workflow) -> Optional[ScheduleConfig]:
+    def to_schedule_config(node_config: Mapping[str, Any]) -> ScheduleConfig:
+        """
+        Converts user-friendly visual schedule settings to cron expression.
+        Maintains consistency with frontend UI expectations while supporting croniter's extended syntax.
+        """
+        node_data = node_config.get("data", {})
+        mode = node_data.get("mode", "visual")
+        timezone = node_data.get("timezone", "UTC")
+        node_id = node_config.get("id", "start")
+
+        cron_expression = None
+        if mode == "cron":
+            cron_expression = node_data.get("cron_expression")
+            if not cron_expression:
+                raise ScheduleConfigError("Cron expression is required for cron mode")
+        elif mode == "visual":
+            frequency = str(node_data.get("frequency"))
+            if not frequency:
+                raise ScheduleConfigError("Frequency is required for visual mode")
+            visual_config = VisualConfig(**node_data.get("visual_config", {}))
+            cron_expression = ScheduleService.visual_to_cron(frequency=frequency, visual_config=visual_config)
+            if not cron_expression:
+                raise ScheduleConfigError("Cron expression is required for visual mode")
+        else:
+            raise ScheduleConfigError(f"Invalid schedule mode: {mode}")
+        return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
+
+    @staticmethod
+    def extract_schedule_config(workflow: Workflow) -> ScheduleConfig | None:
         """
         Extracts schedule configuration from workflow graph.
 
@@ -222,6 +257,8 @@ class ScheduleService:
                 raise ScheduleConfigError(f"Invalid schedule mode: {mode}")
 
             return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
+
+        return None
 
     @staticmethod
     def visual_to_cron(frequency: str, visual_config: VisualConfig) -> str:

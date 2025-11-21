@@ -62,8 +62,15 @@ import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars
 import type { FlowType } from '@/types/common'
 import useMatchSchemaType from '../components/variable/use-match-schema-type'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
+
 // eslint-disable-next-line ts/no-unsafe-function-type
-const checkValidFns: Record<BlockEnum, Function> = {
+const checkValidFns: Partial<Record<BlockEnum, Function>> = {
   [BlockEnum.LLM]: checkLLMValid,
   [BlockEnum.KnowledgeRetrieval]: checkKnowledgeRetrievalValid,
   [BlockEnum.IfElse]: checkIfElseValid,
@@ -78,7 +85,12 @@ const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.Iteration]: checkIterationValid,
   [BlockEnum.DocExtractor]: checkDocumentExtractorValid,
   [BlockEnum.Loop]: checkLoopValid,
-} as any
+}
+
+type RequestError = {
+  message: string
+  status: string
+}
 
 export type Params<T> = {
   id: string
@@ -142,21 +154,23 @@ const useOneStepRun = <T>({
   const availableNodesIncludeParent = getBeforeNodesInSameBranchIncludeParent(id)
   const workflowStore = useWorkflowStore()
   const { schemaTypeDefinitions } = useMatchSchemaType()
+
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
+
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
     const isSystem = valueSelector[0] === 'sys'
     const {
-      buildInTools,
-      customTools,
-      workflowTools,
-      mcpTools,
       dataSourceList,
     } = workflowStore.getState()
     const allPluginInfoList = {
-      buildInTools,
-      customTools,
-      workflowTools,
-      mcpTools,
-      dataSourceList: dataSourceList ?? [],
+      buildInTools: buildInTools || [],
+      customTools: customTools || [],
+      workflowTools: workflowTools || [],
+      mcpTools: mcpTools || [],
+      dataSourceList: dataSourceList || [],
     }
 
     const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables, [], allPluginInfoList, schemaTypeDefinitions)
@@ -268,6 +282,11 @@ const useOneStepRun = <T>({
   }, [isPaused])
   const { eventEmitter } = useEventEmitterContextContext()
 
+  const isScheduleTriggerNode = data.type === BlockEnum.TriggerSchedule
+  const isWebhookTriggerNode = data.type === BlockEnum.TriggerWebhook
+  const isPluginTriggerNode = data.type === BlockEnum.TriggerPlugin
+  const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode || isScheduleTriggerNode
+
   const setRunResult = useCallback(async (data: NodeRunResult | null) => {
     const isPaused = isPausedRef.current
 
@@ -289,11 +308,24 @@ const useOneStepRun = <T>({
     updateNodeInspectRunningState(id, false)
     if (data?.status === NodeRunningStatus.Succeeded) {
       invalidLastRun()
-      if (isStartNode)
+      if (isStartNode || isTriggerNode)
         invalidateSysVarValues()
       invalidateConversationVarValues() // loop, iteration, variable assigner node can update the conversation variables, but to simple the logic(some nodes may also can update in the future), all nodes refresh.
     }
-  }, [isRunAfterSingleRun, runningStatus, flowId, id, store, appendNodeInspectVars, updateNodeInspectRunningState, invalidLastRun, isStartNode, invalidateSysVarValues, invalidateConversationVarValues])
+  }, [
+    isRunAfterSingleRun,
+    runningStatus,
+    flowId,
+    id,
+    store,
+    appendNodeInspectVars,
+    updateNodeInspectRunningState,
+    invalidLastRun,
+    isStartNode,
+    isTriggerNode,
+    invalidateSysVarValues,
+    invalidateConversationVarValues,
+  ])
 
   const { handleNodeDataUpdate }: { handleNodeDataUpdate: (data: any) => void } = useNodeDataUpdate()
   const setNodeRunning = () => {
@@ -338,11 +370,6 @@ const useOneStepRun = <T>({
     }
   }, [])
 
-  const isScheduleTriggerNode = data.type === BlockEnum.TriggerSchedule
-  const isWebhookTriggerNode = data.type === BlockEnum.TriggerWebhook
-  const isPluginTriggerNode = data.type === BlockEnum.TriggerPlugin
-  const isTriggerNode = isWebhookTriggerNode || isPluginTriggerNode || isScheduleTriggerNode
-
   const startTriggerListening = useCallback(() => {
     if (!isTriggerNode)
       return
@@ -383,17 +410,51 @@ const useOneStepRun = <T>({
     setListeningTriggerIsAll,
   ])
 
-  const runScheduleSingleRun = useCallback(async (): Promise<any | null> => {
-    handleNodeDataUpdate({
-      id,
-      data: {
-        ...data,
-        _isSingleRun: false,
-        _singleRunningStatus: NodeRunningStatus.Listening,
-      },
-    })
-    return {}
-  }, [handleNodeDataUpdate])
+  const runScheduleSingleRun = useCallback(async (): Promise<NodeRunResult | null> => {
+    const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
+
+    try {
+      const response: any = await post(urlPath, {
+        body: JSON.stringify({}),
+      })
+
+      if (!response) {
+        const message = 'Schedule trigger run failed'
+        Toast.notify({ type: 'error', message })
+        throw new Error(message)
+      }
+
+      if (response?.status === 'error') {
+        const message = response?.message || 'Schedule trigger run failed'
+        Toast.notify({ type: 'error', message })
+        throw new Error(message)
+      }
+
+      handleNodeDataUpdate({
+        id,
+        data: {
+          ...data,
+          _isSingleRun: false,
+          _singleRunningStatus: NodeRunningStatus.Succeeded,
+        },
+      })
+
+      return response as NodeRunResult
+    }
+    catch (error) {
+      console.error('handleRun: schedule trigger single run error', error)
+      handleNodeDataUpdate({
+        id,
+        data: {
+          ...data,
+          _isSingleRun: false,
+          _singleRunningStatus: NodeRunningStatus.Failed,
+        },
+      })
+      Toast.notify({ type: 'error', message: 'Schedule trigger run failed' })
+      throw error
+    }
+  }, [flowId, id, handleNodeDataUpdate, data])
 
   const runWebhookSingleRun = useCallback(async (): Promise<any | null> => {
     const urlPath = `/apps/${flowId}/workflows/draft/nodes/${id}/trigger/run`
@@ -467,7 +528,6 @@ const useOneStepRun = <T>({
         if (controller.signal.aborted)
           return null
 
-        console.error('handleRun: webhook debug polling error', error)
         Toast.notify({ type: 'error', message: 'Webhook debug request failed' })
         cancelWebhookSingleRun()
         if (error instanceof Error)
@@ -492,78 +552,79 @@ const useOneStepRun = <T>({
       const controller = new AbortController()
       pluginSingleRunAbortRef.current = controller
 
-      try {
-        const response: any = await post(urlPath, {
-          body: JSON.stringify({}),
-          signal: controller.signal,
-        })
-
-        if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
-          return null
-
-        if (!response) {
-          const message = response?.message || 'Plugin debug failed'
-          Toast.notify({ type: 'error', message })
-          cancelPluginSingleRun()
-          throw new Error(message)
+      let requestError: RequestError | undefined
+      const response: any = await post(urlPath, {
+        body: JSON.stringify({}),
+        signal: controller.signal,
+      }).catch(async (error: Response) => {
+        const data = await error.clone().json() as Record<string, any>
+        const { error: respError, status } = data || {}
+        requestError = {
+          message: respError,
+          status,
         }
+        return null
+      }).finally(() => {
+        pluginSingleRunAbortRef.current = null
+      })
 
-        if (response?.status === 'waiting') {
-          const delay = Number(response.retry_in) || 2000
-          pluginSingleRunAbortRef.current = null
-          if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
-            return null
+      if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
+        return null
 
-          await new Promise<void>((resolve) => {
-            const timeoutId = window.setTimeout(resolve, delay)
-            pluginSingleRunTimeoutRef.current = timeoutId
-            pluginSingleRunDelayResolveRef.current = resolve
-            controller.signal.addEventListener('abort', () => {
-              window.clearTimeout(timeoutId)
-              resolve()
-            }, { once: true })
-          })
-
-          pluginSingleRunTimeoutRef.current = undefined
-          pluginSingleRunDelayResolveRef.current = null
-          continue
-        }
-
-        if (response?.status === 'error') {
-          const message = response.message || 'Plugin debug failed'
-          Toast.notify({ type: 'error', message })
-          cancelPluginSingleRun()
-          throw new Error(message)
-        }
-
-        handleNodeDataUpdate({
-          id,
-          data: {
-            ...data,
-            _isSingleRun: false,
-            _singleRunningStatus: NodeRunningStatus.Listening,
-          },
-        })
-
-        cancelPluginSingleRun()
-        return response
-      }
-      catch (error) {
-        if (controller.signal.aborted && (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current))
-          return null
+      if (requestError) {
         if (controller.signal.aborted)
           return null
 
-        console.error('handleRun: plugin debug polling error', error)
-        Toast.notify({ type: 'error', message: 'Plugin debug request failed' })
+        Toast.notify({ type: 'error', message: requestError.message })
         cancelPluginSingleRun()
-        if (error instanceof Error)
-          throw error
-        throw new Error(String(error))
+        throw requestError
       }
-      finally {
-        pluginSingleRunAbortRef.current = null
+
+      if (!response) {
+        const message = 'Plugin debug failed'
+        Toast.notify({ type: 'error', message })
+        cancelPluginSingleRun()
+        throw new Error(message)
       }
+
+      if (response?.status === 'waiting') {
+        const delay = Number(response.retry_in) || 2000
+        if (!pluginSingleRunActiveRef.current || token !== pluginSingleRunTokenRef.current)
+          return null
+
+        await new Promise<void>((resolve) => {
+          const timeoutId = window.setTimeout(resolve, delay)
+          pluginSingleRunTimeoutRef.current = timeoutId
+          pluginSingleRunDelayResolveRef.current = resolve
+          controller.signal.addEventListener('abort', () => {
+            window.clearTimeout(timeoutId)
+            resolve()
+          }, { once: true })
+        })
+
+        pluginSingleRunTimeoutRef.current = undefined
+        pluginSingleRunDelayResolveRef.current = null
+        continue
+      }
+
+      if (response?.status === 'error') {
+        const message = response.message || 'Plugin debug failed'
+        Toast.notify({ type: 'error', message })
+        cancelPluginSingleRun()
+        throw new Error(message)
+      }
+
+      handleNodeDataUpdate({
+        id,
+        data: {
+          ...data,
+          _isSingleRun: false,
+          _singleRunningStatus: NodeRunningStatus.Listening,
+        },
+      })
+
+      cancelPluginSingleRun()
+      return response
     }
 
     return null
@@ -583,7 +644,7 @@ const useOneStepRun = <T>({
       })
       Toast.notify({
         type: 'error',
-        message: res.errorMessage,
+        message: res.errorMessage || '',
       })
     }
     return res
@@ -647,7 +708,9 @@ const useOneStepRun = <T>({
       data: {
         ...data,
         _isSingleRun: false,
-        _singleRunningStatus: isTriggerNode ? NodeRunningStatus.Listening : NodeRunningStatus.Running,
+        _singleRunningStatus: isTriggerNode
+          ? NodeRunningStatus.Listening
+          : NodeRunningStatus.Running,
       },
     })
     let res: any
@@ -655,7 +718,7 @@ const useOneStepRun = <T>({
     try {
       if (!isIteration && !isLoop) {
         if (isScheduleTriggerNode) {
-          await runScheduleSingleRun()
+          res = await runScheduleSingleRun()
         }
         else if (isWebhookTriggerNode) {
           res = await runWebhookSingleRun()
@@ -995,12 +1058,18 @@ const useOneStepRun = <T>({
     const {
       workflowRunningData,
       setWorkflowRunningData,
+      nodesWithInspectVars,
+      deleteNodeInspectVars,
     } = workflowStore.getState()
     if (workflowRunningData) {
       setWorkflowRunningData(produce(workflowRunningData, (draft) => {
         draft.result.status = WorkflowRunningStatus.Stopped
       }))
     }
+
+    const inspectNode = nodesWithInspectVars.find(node => node.nodeId === id)
+    if (inspectNode && !inspectNode.isValueFetched && (!inspectNode.vars || inspectNode.vars.length === 0))
+      deleteNodeInspectVars(id)
   }, [
     isTriggerNode,
     runningStatus,

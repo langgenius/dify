@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
@@ -40,12 +40,12 @@ class EventParameter(BaseModel):
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
     type: EventParameterType = Field(..., description="The type of the parameter")
-    auto_generate: Optional[PluginParameterAutoGenerate] = Field(
+    auto_generate: PluginParameterAutoGenerate | None = Field(
         default=None, description="The auto generate of the parameter"
     )
-    template: Optional[PluginParameterTemplate] = Field(default=None, description="The template of the parameter")
-    scope: Optional[str] = None
-    required: Optional[bool] = False
+    template: PluginParameterTemplate | None = Field(default=None, description="The template of the parameter")
+    scope: str | None = None
+    required: bool | None = False
     multiple: bool | None = Field(
         default=False,
         description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
@@ -53,9 +53,9 @@ class EventParameter(BaseModel):
     default: Union[int, float, str, list[Any], None] = None
     min: Union[float, int, None] = None
     max: Union[float, int, None] = None
-    precision: Optional[int] = None
-    options: Optional[list[PluginParameterOption]] = None
-    description: Optional[I18nObject] = None
+    precision: int | None = None
+    options: list[PluginParameterOption] | None = None
+    description: I18nObject | None = None
 
 
 class TriggerProviderIdentity(BaseModel):
@@ -67,8 +67,8 @@ class TriggerProviderIdentity(BaseModel):
     name: str = Field(..., description="The name of the trigger provider")
     label: I18nObject = Field(..., description="The label of the trigger provider")
     description: I18nObject = Field(..., description="The description of the trigger provider")
-    icon: Optional[str] = Field(default=None, description="The icon of the trigger provider")
-    icon_dark: Optional[str] = Field(default=None, description="The dark icon of the trigger provider")
+    icon: str | None = Field(default=None, description="The icon of the trigger provider")
+    icon_dark: str | None = Field(default=None, description="The dark icon of the trigger provider")
     tags: list[str] = Field(default_factory=list, description="The tags of the trigger provider")
 
 
@@ -80,7 +80,7 @@ class EventIdentity(BaseModel):
     author: str = Field(..., description="The author of the event")
     name: str = Field(..., description="The name of the event")
     label: I18nObject = Field(..., description="The label of the event")
-    provider: Optional[str] = Field(default=None, description="The provider of the event")
+    provider: str | None = Field(default=None, description="The provider of the event")
 
 
 class EventEntity(BaseModel):
@@ -93,7 +93,7 @@ class EventEntity(BaseModel):
         default_factory=list[EventParameter], description="The parameters of the event"
     )
     description: I18nObject = Field(..., description="The description of the event")
-    output_schema: Optional[Mapping[str, Any]] = Field(
+    output_schema: Mapping[str, Any] | None = Field(
         default=None, description="The output schema that this event produces"
     )
 
@@ -124,7 +124,7 @@ class SubscriptionConstructor(BaseModel):
         description="The credentials schema of the subscription constructor",
     )
 
-    oauth_schema: Optional[OAuthSchema] = Field(
+    oauth_schema: OAuthSchema | None = Field(
         default=None,
         description="The OAuth schema of the subscription constructor if OAuth is supported",
     )
@@ -183,7 +183,7 @@ class UnsubscribeResult(BaseModel):
 
     success: bool = Field(..., description="Whether the unsubscription was successful")
 
-    message: Optional[str] = Field(
+    message: str | None = Field(
         None,
         description="Human-readable message about the operation result. "
         "Success message for successful operations, "
@@ -208,7 +208,7 @@ class SubscriptionBuilder(BaseModel):
     endpoint_id: str = Field(..., description="The endpoint id of the subscription builder")
     parameters: Mapping[str, Any] = Field(..., description="The parameters of the subscription builder")
     properties: Mapping[str, Any] = Field(..., description="The properties of the subscription builder")
-    credentials: Mapping[str, str] = Field(..., description="The credentials of the subscription builder")
+    credentials: Mapping[str, Any] = Field(..., description="The credentials of the subscription builder")
     credential_type: str | None = Field(default=None, description="The credential type of the subscription builder")
     credential_expires_at: int | None = Field(
         default=None, description="The credential expires at of the subscription builder"
@@ -227,7 +227,7 @@ class SubscriptionBuilderUpdater(BaseModel):
     name: str | None = Field(default=None, description="The name of the subscription builder")
     parameters: Mapping[str, Any] | None = Field(default=None, description="The parameters of the subscription builder")
     properties: Mapping[str, Any] | None = Field(default=None, description="The properties of the subscription builder")
-    credentials: Mapping[str, str] | None = Field(
+    credentials: Mapping[str, Any] | None = Field(
         default=None, description="The credentials of the subscription builder"
     )
     credential_type: str | None = Field(default=None, description="The credential type of the subscription builder")

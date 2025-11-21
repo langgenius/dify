@@ -185,7 +185,7 @@ const translation = {
     helpCenter: 'View Docs',
     support: 'Support',
     compliance: 'Compliance',
-    communityFeedback: 'Feedback',
+    forum: 'Forum',
     roadmap: 'Roadmap',
     github: 'GitHub',
     community: 'Community',
@@ -742,6 +742,7 @@ const translation = {
     uploadFromComputerLimit: 'Upload {{type}} cannot exceed {{size}}',
     pasteFileLinkInvalid: 'Invalid file link',
     fileExtensionNotSupport: 'File extension not supported',
+    fileExtensionBlocked: 'This file type is blocked for security reasons',
   },
   tag: {
     placeholder: 'All Tags',
@@ -776,6 +777,12 @@ const translation = {
     supportedFormats: 'Supports PNG, JPG, JPEG, WEBP and GIF',
   },
   you: 'You',
+  dynamicSelect: {
+    error: 'Loading options failed',
+    noData: 'No options available',
+    loading: 'Loading options...',
+    selected: '{{count}} selected',
+  },
 }
 
 export default translation

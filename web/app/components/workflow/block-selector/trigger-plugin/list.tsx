@@ -4,6 +4,7 @@ import { useAllTriggerPlugins } from '@/service/use-triggers'
 import TriggerPluginItem from './item'
 import type { BlockEnum } from '../../types'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
+import { useGetLanguage } from '@/context/i18n'
 
 type TriggerPluginListProps = {
   onSelect: (type: BlockEnum, trigger?: TriggerDefaultValue) => void
@@ -18,10 +19,30 @@ const TriggerPluginList = ({
   onContentStateChange,
 }: TriggerPluginListProps) => {
   const { data: triggerPluginsData } = useAllTriggerPlugins()
+  const language = useGetLanguage()
 
   const normalizedSearch = searchText.trim().toLowerCase()
   const triggerPlugins = useMemo(() => {
     const plugins = triggerPluginsData || []
+    const getLocalizedText = (text?: Record<string, string> | null) => {
+      if (!text)
+        return ''
+
+      if (text[language])
+        return text[language]
+
+      if (text['en-US'])
+        return text['en-US']
+
+      const firstValue = Object.values(text).find(Boolean)
+      return (typeof firstValue === 'string') ? firstValue : ''
+    }
+    const getSearchableTexts = (name: string, label?: Record<string, string> | null) => {
+      const localized = getLocalizedText(label)
+      const values = [localized, name].filter(Boolean)
+      return values.length > 0 ? values : ['']
+    }
+    const isMatchingKeywords = (value: string) => value.toLowerCase().includes(normalizedSearch)
 
     if (!normalizedSearch)
       return plugins.filter(triggerWithProvider => triggerWithProvider.events.length > 0)
@@ -30,7 +51,10 @@ const TriggerPluginList = ({
       if (triggerWithProvider.events.length === 0)
         return acc
 
-      const providerMatches = triggerWithProvider.name.toLowerCase().includes(normalizedSearch)
+      const providerMatches = getSearchableTexts(
+        triggerWithProvider.name,
+        triggerWithProvider.label,
+      ).some(text => isMatchingKeywords(text))
 
       if (providerMatches) {
         acc.push(triggerWithProvider)
@@ -38,7 +62,10 @@ const TriggerPluginList = ({
       }
 
       const matchedEvents = triggerWithProvider.events.filter((event) => {
-        return event.name.toLowerCase().includes(normalizedSearch)
+        return getSearchableTexts(
+          event.name,
+          event.label,
+        ).some(text => isMatchingKeywords(text))
       })
 
       if (matchedEvents.length > 0) {
@@ -50,7 +77,7 @@ const TriggerPluginList = ({
 
       return acc
     }, [])
-  }, [triggerPluginsData, normalizedSearch])
+  }, [triggerPluginsData, normalizedSearch, language])
 
   const hasContent = triggerPlugins.length > 0
 

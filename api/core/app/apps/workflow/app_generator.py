@@ -3,7 +3,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Literal, Optional, Union, overload
+from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -39,10 +39,16 @@ from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTrigger
 from models.enums import WorkflowRunTriggeredFrom
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
+SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
+
 logger = logging.getLogger(__name__)
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
+    @staticmethod
+    def _should_prepare_user_inputs(args: Mapping[str, Any]) -> bool:
+        return not bool(args.get(SKIP_PREPARE_USER_INPUTS_KEY))
+
     @overload
     def generate(
         self,
@@ -54,9 +60,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[True],
         call_depth: int,
-        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
-        root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Generator[Mapping[str, Any] | str, None, None]: ...
 
     @overload
@@ -70,9 +76,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: Literal[False],
         call_depth: int,
-        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
-        root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Mapping[str, Any]: ...
 
     @overload
@@ -86,9 +92,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool,
         call_depth: int,
-        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
-        root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]: ...
 
     def generate(
@@ -101,9 +107,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         streaming: bool = True,
         call_depth: int = 0,
-        triggered_from: Optional[WorkflowRunTriggeredFrom] = None,
-        root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        triggered_from: WorkflowRunTriggeredFrom | None = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[Mapping[str, Any] | str, None, None]]:
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
@@ -139,8 +145,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
             **extract_external_trace_id_from_args(args),
         }
         workflow_run_id = str(uuid.uuid4())
-        if triggered_from in (WorkflowRunTriggeredFrom.DEBUGGING, WorkflowRunTriggeredFrom.APP_RUN):
-            # start node get inputs
+        # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args
+        # trigger shouldn't prepare user inputs
+        if self._should_prepare_user_inputs(args):
             inputs = self._prepare_user_inputs(
                 user_inputs=inputs,
                 variables=app_config.variables,
@@ -202,7 +209,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             workflow_node_execution_repository=workflow_node_execution_repository,
             streaming=streaming,
             root_node_id=root_node_id,
-            layers=layers,
+            graph_engine_layers=graph_engine_layers,
         )
 
     def resume(self, *, workflow_run_id: str) -> None:
@@ -223,8 +230,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         streaming: bool = True,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
-        root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> Union[Mapping[str, Any], Generator[str | Mapping[str, Any], None, None]]:
         """
         Generate App response.
@@ -263,7 +270,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 "root_node_id": root_node_id,
                 "workflow_execution_repository": workflow_execution_repository,
                 "workflow_node_execution_repository": workflow_node_execution_repository,
-                "layers": layers,
+                "graph_engine_layers": graph_engine_layers,
             },
         )
 
@@ -457,8 +464,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         variable_loader: VariableLoader,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
-        root_node_id: Optional[str] = None,
-        layers: Optional[Sequence[GraphEngineLayer]] = None,
+        root_node_id: str | None = None,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ) -> None:
         """
         Generate worker in a new thread.
@@ -503,7 +510,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 root_node_id=root_node_id,
-                layers=layers,
+                graph_engine_layers=graph_engine_layers,
             )
 
             try:

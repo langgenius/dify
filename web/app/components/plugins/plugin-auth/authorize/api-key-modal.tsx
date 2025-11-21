@@ -144,7 +144,9 @@ const ApiKeyModal = ({
       clickOutsideNotClose={true}
       wrapperClassName='!z-[101]'
     >
-      <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+      {pluginPayload.detail && (
+        <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
+      )}
       {
         isLoading && (
           <div className='flex h-40 items-center justify-center'>

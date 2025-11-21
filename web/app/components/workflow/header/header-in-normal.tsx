@@ -42,6 +42,7 @@ const HeaderInNormal = ({
   const setShowDebugAndPreviewPanel = useStore(s => s.setShowDebugAndPreviewPanel)
   const setShowVariableInspectPanel = useStore(s => s.setShowVariableInspectPanel)
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
+  const setShowGlobalVariablePanel = useStore(s => s.setShowGlobalVariablePanel)
   const nodes = useNodes<StartNodeType>()
   const selectedNode = nodes.find(node => node.data.selected)
   const { handleBackupDraft } = useWorkflowRun()
@@ -58,8 +59,9 @@ const HeaderInNormal = ({
     setShowDebugAndPreviewPanel(false)
     setShowVariableInspectPanel(false)
     setShowChatVariablePanel(false)
+    setShowGlobalVariablePanel(false)
     closeAllInputFieldPanels()
-  }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel])
+  }, [workflowStore, handleBackupDraft, selectedNode, handleNodeSelect, setShowWorkflowVersionHistoryPanel, setShowEnvPanel, setShowDebugAndPreviewPanel, setShowVariableInspectPanel, setShowChatVariablePanel, setShowGlobalVariablePanel])
 
   return (
     <div className='flex w-full items-center justify-between'>

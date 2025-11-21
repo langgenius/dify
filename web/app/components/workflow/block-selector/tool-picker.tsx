@@ -17,13 +17,22 @@ import type { BlockEnum, OnSelectBlock } from '@/app/components/workflow/types'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal/modal'
+import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import {
   createCustomCollection,
 } from '@/service/tools'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import Toast from '@/app/components/base/toast'
-import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools, useInvalidateAllCustomTools } from '@/service/use-tools'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+  useInvalidateAllBuiltInTools,
+  useInvalidateAllCustomTools,
+  useInvalidateAllMCPTools,
+  useInvalidateAllWorkflowTools,
+} from '@/service/use-tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import cn from '@/utils/classnames'
@@ -70,6 +79,8 @@ const ToolPicker: FC<Props> = ({
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
   const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
+  const invalidateWorkflowTools = useInvalidateAllWorkflowTools()
+  const invalidateMcpTools = useInvalidateAllMCPTools()
 
   const {
     plugins: featuredPlugins = [],
@@ -138,7 +149,7 @@ const ToolPicker: FC<Props> = ({
   if (isShowEditCollectionToolModal) {
     return (
       <EditCustomToolModal
-        positionLeft
+        dialogClassName='bg-background-overlay'
         payload={null}
         onHide={hideEditCustomCollectionModal}
         onAdd={doCreateCustomToolCollection}
@@ -193,6 +204,9 @@ const ToolPicker: FC<Props> = ({
             showFeatured={scope === 'all' && enable_marketplace}
             onFeaturedInstallSuccess={async () => {
               invalidateBuiltInTools()
+              invalidateCustomTools()
+              invalidateWorkflowTools()
+              invalidateMcpTools()
             }}
           />
         </div>

@@ -9,7 +9,7 @@ from typing import Any, Union, cast
 from uuid import uuid4
 
 from flask_login import current_user
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, sessionmaker
 
 import contexts
@@ -94,6 +94,7 @@ class RagPipelineService:
         self._node_execution_service_repo = DifyAPIRepositoryFactory.create_api_workflow_node_execution_repository(
             session_maker
         )
+        self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     @classmethod
     def get_pipeline_templates(cls, type: str = "built-in", language: str = "en-US") -> dict:
@@ -1015,47 +1016,20 @@ class RagPipelineService:
         :param args: request args
         """
         limit = int(args.get("limit", 20))
+        last_id = args.get("last_id")
 
-        base_query = db.session.query(WorkflowRun).where(
-            WorkflowRun.tenant_id == pipeline.tenant_id,
-            WorkflowRun.app_id == pipeline.id,
-            or_(
-                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN.value,
-                WorkflowRun.triggered_from == WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING.value,
-            ),
+        triggered_from_values = [
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN,
+            WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING,
+        ]
+
+        return self._workflow_run_repo.get_paginated_workflow_runs(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            triggered_from=triggered_from_values,
+            limit=limit,
+            last_id=last_id,
         )
-
-        if args.get("last_id"):
-            last_workflow_run = base_query.where(
-                WorkflowRun.id == args.get("last_id"),
-            ).first()
-
-            if not last_workflow_run:
-                raise ValueError("Last workflow run not exists")
-
-            workflow_runs = (
-                base_query.where(
-                    WorkflowRun.created_at < last_workflow_run.created_at, WorkflowRun.id != last_workflow_run.id
-                )
-                .order_by(WorkflowRun.created_at.desc())
-                .limit(limit)
-                .all()
-            )
-        else:
-            workflow_runs = base_query.order_by(WorkflowRun.created_at.desc()).limit(limit).all()
-
-        has_more = False
-        if len(workflow_runs) == limit:
-            current_page_first_workflow_run = workflow_runs[-1]
-            rest_count = base_query.where(
-                WorkflowRun.created_at < current_page_first_workflow_run.created_at,
-                WorkflowRun.id != current_page_first_workflow_run.id,
-            ).count()
-
-            if rest_count > 0:
-                has_more = True
-
-        return InfiniteScrollPagination(data=workflow_runs, limit=limit, has_more=has_more)
 
     def get_rag_pipeline_workflow_run(self, pipeline: Pipeline, run_id: str) -> WorkflowRun | None:
         """
@@ -1064,17 +1038,11 @@ class RagPipelineService:
         :param app_model: app model
         :param run_id: workflow run id
         """
-        workflow_run = (
-            db.session.query(WorkflowRun)
-            .where(
-                WorkflowRun.tenant_id == pipeline.tenant_id,
-                WorkflowRun.app_id == pipeline.id,
-                WorkflowRun.id == run_id,
-            )
-            .first()
+        return self._workflow_run_repo.get_workflow_run_by_id(
+            tenant_id=pipeline.tenant_id,
+            app_id=pipeline.id,
+            run_id=run_id,
         )
-
-        return workflow_run
 
     def get_rag_pipeline_workflow_run_node_executions(
         self,
@@ -1151,13 +1119,19 @@ class RagPipelineService:
         with Session(db.engine) as session:
             rag_pipeline_dsl_service = RagPipelineDslService(session)
             dsl = rag_pipeline_dsl_service.export_rag_pipeline_dsl(pipeline=pipeline, include_secret=True)
-
+        if args.get("icon_info") is None:
+            args["icon_info"] = {}
+        if args.get("description") is None:
+            raise ValueError("Description is required")
+        if args.get("name") is None:
+            raise ValueError("Name is required")
         pipeline_customized_template = PipelineCustomizedTemplate(
-            name=args.get("name"),
-            description=args.get("description"),
-            icon=args.get("icon_info"),
+            name=args.get("name") or "",
+            description=args.get("description") or "",
+            icon=args.get("icon_info") or {},
             tenant_id=pipeline.tenant_id,
             yaml_content=dsl,
+            install_count=0,
             position=max_position + 1 if max_position else 1,
             chunk_structure=dataset.chunk_structure,
             language="en-US",
@@ -1297,8 +1271,8 @@ class RagPipelineService:
         )
         providers_map = {provider.plugin_id: provider.to_dict() for provider in providers}
 
-        plugin_manifests = marketplace.batch_fetch_plugin_manifests(plugin_ids)
-        plugin_manifests_map = {manifest.plugin_id: manifest for manifest in plugin_manifests}
+        plugin_manifests = marketplace.batch_fetch_plugin_by_ids(plugin_ids)
+        plugin_manifests_map = {manifest["plugin_id"]: manifest for manifest in plugin_manifests}
 
         installed_plugin_list = []
         uninstalled_plugin_list = []
@@ -1308,14 +1282,7 @@ class RagPipelineService:
             else:
                 plugin_manifest = plugin_manifests_map.get(plugin_id)
                 if plugin_manifest:
-                    uninstalled_plugin_list.append(
-                        {
-                            "plugin_id": plugin_id,
-                            "name": plugin_manifest.name,
-                            "icon": plugin_manifest.icon,
-                            "plugin_unique_identifier": plugin_manifest.latest_package_identifier,
-                        }
-                    )
+                    uninstalled_plugin_list.append(plugin_manifest)
 
         # Build recommended plugins list
         return {

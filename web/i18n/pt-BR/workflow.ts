@@ -137,6 +137,19 @@ const translation = {
       export: 'Exportar DSL com valores secretos',
     },
   },
+  globalVar: {
+    title: 'Variáveis do sistema',
+    description: 'Variáveis do sistema são variáveis globais que qualquer nó pode referenciar sem conexões quando o tipo está correto, como o ID do usuário final e o ID do fluxo de trabalho.',
+    fieldsDescription: {
+      conversationId: 'ID da conversa',
+      dialogCount: 'Contagem de conversas',
+      userId: 'ID do usuário',
+      triggerTimestamp: 'Carimbo de data/hora do início da aplicação',
+      appId: 'ID da aplicação',
+      workflowId: 'ID do fluxo de trabalho',
+      workflowRunId: 'ID da execução do fluxo de trabalho',
+    },
+  },
   chatVariable: {
     panelTitle: 'Variáveis de Conversação',
     panelDescription: 'As Variáveis de Conversação são usadas para armazenar informações interativas que o LLM precisa lembrar, incluindo histórico de conversas, arquivos carregados, preferências do usuário. Elas são de leitura e escrita.',

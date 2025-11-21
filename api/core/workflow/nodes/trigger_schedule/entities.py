@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Union
+from typing import Literal, Union
 
 from pydantic import BaseModel, Field
 
@@ -11,11 +11,9 @@ class TriggerScheduleNodeData(BaseNodeData):
     """
 
     mode: str = Field(default="visual", description="Schedule mode: visual or cron")
-    frequency: Optional[str] = Field(
-        default=None, description="Frequency for visual mode: hourly, daily, weekly, monthly"
-    )
-    cron_expression: Optional[str] = Field(default=None, description="Cron expression for cron mode")
-    visual_config: Optional[dict] = Field(default=None, description="Visual configuration details")
+    frequency: str | None = Field(default=None, description="Frequency for visual mode: hourly, daily, weekly, monthly")
+    cron_expression: str | None = Field(default=None, description="Cron expression for cron mode")
+    visual_config: dict | None = Field(default=None, description="Visual configuration details")
     timezone: str = Field(default="UTC", description="Timezone for schedule execution")
 
 
@@ -26,26 +24,26 @@ class ScheduleConfig(BaseModel):
 
 
 class SchedulePlanUpdate(BaseModel):
-    node_id: Optional[str] = None
-    cron_expression: Optional[str] = None
-    timezone: Optional[str] = None
+    node_id: str | None = None
+    cron_expression: str | None = None
+    timezone: str | None = None
 
 
 class VisualConfig(BaseModel):
     """Visual configuration for schedule trigger"""
 
     # For hourly frequency
-    on_minute: Optional[int] = Field(default=0, ge=0, le=59, description="Minute of the hour (0-59)")
+    on_minute: int | None = Field(default=0, ge=0, le=59, description="Minute of the hour (0-59)")
 
     # For daily, weekly, monthly frequencies
-    time: Optional[str] = Field(default="12:00 AM", description="Time in 12-hour format (e.g., '2:30 PM')")
+    time: str | None = Field(default="12:00 AM", description="Time in 12-hour format (e.g., '2:30 PM')")
 
     # For weekly frequency
-    weekdays: Optional[list[Literal["sun", "mon", "tue", "wed", "thu", "fri", "sat"]]] = Field(
+    weekdays: list[Literal["sun", "mon", "tue", "wed", "thu", "fri", "sat"]] | None = Field(
         default=None, description="List of weekdays to run on"
     )
 
     # For monthly frequency
-    monthly_days: Optional[list[Union[int, Literal["last"]]]] = Field(
+    monthly_days: list[Union[int, Literal["last"]]] | None = Field(
         default=None, description="Days of month to run on (1-31 or 'last')"
     )

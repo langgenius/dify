@@ -69,6 +69,8 @@ const translation = {
       quarterToDate: 'Od początku kwartału',
       yearToDate: 'Od początku roku',
       allTime: 'Cały czas',
+      custom: 'Niestandardowy',
+      last30days: 'Ostatnie 30 dni',
     },
     annotation: {
       all: 'Wszystkie',

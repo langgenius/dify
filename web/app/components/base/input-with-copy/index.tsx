@@ -67,7 +67,7 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
           inputProps.className,
         )}
         value={value}
-        {...(({ size, ...rest }) => rest)(inputProps)}
+        {...(({ size: _size, ...rest }) => rest)(inputProps)}
       />
       {showCopyButton && (
         <div

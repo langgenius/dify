@@ -1,37 +1,26 @@
-import {
-  useCallback,
-  useMemo,
-} from 'react'
-import type {
-  Node,
-  ToolWithProvider,
-} from '../types'
-import {
-  BlockEnum,
-} from '../types'
-import {
-  useStore,
-  useWorkflowStore,
-} from '../store'
+import { useCallback, useMemo } from 'react'
+import type { Node, ToolWithProvider } from '../types'
+import { BlockEnum } from '../types'
+import { useStore, useWorkflowStore } from '../store'
 import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { TriggerWithProvider } from '../block-selector/types'
 
-const isTriggerPluginNode = (data: Node['data']): data is PluginTriggerNodeType => {
-  return data.type === BlockEnum.TriggerPlugin
-}
+const isTriggerPluginNode = (data: Node['data']): data is PluginTriggerNodeType => data.type === BlockEnum.TriggerPlugin
 
-const isToolNode = (data: Node['data']): data is ToolNodeType => {
-  return data.type === BlockEnum.Tool
-}
+const isToolNode = (data: Node['data']): data is ToolNodeType => data.type === BlockEnum.Tool
 
-const isDataSourceNode = (data: Node['data']): data is DataSourceNodeType => {
-  return data.type === BlockEnum.DataSource
-}
+const isDataSourceNode = (data: Node['data']): data is DataSourceNodeType => data.type === BlockEnum.DataSource
 
 const findTriggerPluginIcon = (
   identifiers: (string | undefined)[],
@@ -49,15 +38,17 @@ const findTriggerPluginIcon = (
 }
 
 export const useToolIcon = (data?: Node['data']) => {
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   const { data: triggerPlugins } = useAllTriggerPlugins()
+
   const toolIcon = useMemo(() => {
     if (!data)
       return ''
+
     if (isTriggerPluginNode(data)) {
       const icon = findTriggerPluginIcon(
         [
@@ -67,8 +58,10 @@ export const useToolIcon = (data?: Node['data']) => {
         ],
         triggerPlugins,
       )
-      return icon || ''
+      if (icon)
+        return icon
     }
+
     if (isToolNode(data)) {
       let primaryCollection: ToolWithProvider[] | undefined
       switch (data.provider_type) {
@@ -116,24 +109,30 @@ export const useToolIcon = (data?: Node['data']) => {
 
       return ''
     }
+
     if (isDataSourceNode(data))
       return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon || ''
+
     return ''
-  }, [data, dataSourceList, buildInTools, customTools, mcpTools, workflowTools, triggerPlugins])
+  }, [data, dataSourceList, buildInTools, customTools, workflowTools, mcpTools, triggerPlugins])
 
   return toolIcon
 }
 
 export const useGetToolIcon = () => {
-  const workflowStore = useWorkflowStore()
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const { data: triggerPlugins } = useAllTriggerPlugins()
+  const workflowStore = useWorkflowStore()
 
   const getToolIcon = useCallback((data: Node['data']) => {
     const {
-      buildInTools,
-      customTools,
-      workflowTools,
-      mcpTools,
+      buildInTools: storeBuiltInTools,
+      customTools: storeCustomTools,
+      workflowTools: storeWorkflowTools,
+      mcpTools: storeMcpTools,
       dataSourceList,
     } = workflowStore.getState()
 
@@ -149,29 +148,26 @@ export const useGetToolIcon = () => {
     }
 
     if (isToolNode(data)) {
-      let primaryCollection: ToolWithProvider[] | undefined
-      switch (data.provider_type) {
-        case CollectionType.custom:
-          primaryCollection = customTools
-          break
-        case CollectionType.mcp:
-          primaryCollection = mcpTools
-          break
-        case CollectionType.workflow:
-          primaryCollection = workflowTools
-          break
-        case CollectionType.builtIn:
-        default:
-          primaryCollection = buildInTools
-          break
-      }
+      const primaryCollection = (() => {
+        switch (data.provider_type) {
+          case CollectionType.custom:
+            return storeCustomTools ?? customTools
+          case CollectionType.mcp:
+            return storeMcpTools ?? mcpTools
+          case CollectionType.workflow:
+            return storeWorkflowTools ?? workflowTools
+          case CollectionType.builtIn:
+          default:
+            return storeBuiltInTools ?? buildInTools
+        }
+      })()
 
       const collectionsToSearch = [
         primaryCollection,
-        buildInTools,
-        customTools,
-        workflowTools,
-        mcpTools,
+        storeBuiltInTools ?? buildInTools,
+        storeCustomTools ?? customTools,
+        storeWorkflowTools ?? workflowTools,
+        storeMcpTools ?? mcpTools,
       ] as Array<ToolWithProvider[] | undefined>
 
       const seen = new Set<ToolWithProvider[]>()
@@ -200,7 +196,7 @@ export const useGetToolIcon = () => {
       return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon
 
     return undefined
-  }, [workflowStore, triggerPlugins])
+  }, [workflowStore, triggerPlugins, buildInTools, customTools, workflowTools, mcpTools])
 
   return getToolIcon
 }

@@ -22,6 +22,7 @@ import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/no
 import useKnowledgeBaseSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-base/use-single-run-form-params'
 
 import useToolGetDataForCheckMore from '@/app/components/workflow/nodes/tool/use-get-data-for-check-more'
+import useTriggerPluginGetDataForCheckMore from '@/app/components/workflow/nodes/trigger-plugin/use-check-params'
 import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 
 // import
@@ -30,10 +31,12 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
+import { useWorkflowRunValidation } from '@/app/components/workflow/hooks/use-checklist'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { useInvalidLastRun } from '@/service/use-workflow'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { isSupportCustomRunForm } from '@/app/components/workflow/utils'
+import Toast from '@/app/components/base/toast'
 
 const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.LLM]: useLLMSingleRunFormParams,
@@ -102,7 +105,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.KnowledgeBase]: undefined,
   [BlockEnum.TriggerWebhook]: undefined,
   [BlockEnum.TriggerSchedule]: undefined,
-  [BlockEnum.TriggerPlugin]: undefined,
+  [BlockEnum.TriggerPlugin]: useTriggerPluginGetDataForCheckMore,
 }
 
 const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {
@@ -144,6 +147,17 @@ const useLastRun = <T>({
     moreDataForCheckValid: getDataForCheckMore(),
     isRunAfterSingleRun,
   })
+
+  const { warningNodes } = useWorkflowRunValidation()
+  const blockIfChecklistFailed = useCallback(() => {
+    const warningForNode = warningNodes.find(item => item.id === id)
+    if (!warningForNode)
+      return false
+
+    const message = warningForNode.errorMessage || 'This node has unresolved checklist issues'
+    Toast.notify({ type: 'error', message })
+    return true
+  }, [warningNodes, id])
 
   const {
     hideSingleRun,
@@ -217,6 +231,8 @@ const useLastRun = <T>({
   const invalidLastRun = useInvalidLastRun(flowType, flowId, id)
 
   const handleRunWithParams = async (data: Record<string, any>) => {
+    if (blockIfChecklistFailed())
+      return
     const { isValid } = checkValid()
     if (!isValid)
       return
@@ -315,6 +331,8 @@ const useLastRun = <T>({
   }
 
   const handleSingleRun = () => {
+    if (blockIfChecklistFailed())
+      return
     const { isValid } = checkValid()
     if (!isValid)
       return

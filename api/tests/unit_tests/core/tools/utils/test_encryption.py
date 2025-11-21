@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 
 from core.entities.provider_entities import BasicProviderConfig
-from core.tools.utils.encryption import ProviderConfigEncrypter
+from core.helper.provider_encryption import ProviderConfigEncrypter
 
 
 # ---------------------------
@@ -88,7 +88,7 @@ def test_encrypt_missing_secret_key_is_ok(encrypter_obj):
 
 
 # ============================================================
-# ProviderConfigEncrypter.mask_tool_credentials()
+# ProviderConfigEncrypter.mask_plugin_credentials()
 # ============================================================
 
 
@@ -107,7 +107,7 @@ def test_mask_tool_credentials_long_secret(encrypter_obj, raw, prefix, suffix):
     data_in = {"username": "alice", "password": raw}
     data_copy = copy.deepcopy(data_in)
 
-    out = encrypter_obj.mask_tool_credentials(data_in)
+    out = encrypter_obj.mask_plugin_credentials(data_in)
     masked = out["password"]
 
     assert masked.startswith(prefix)
@@ -122,7 +122,7 @@ def test_mask_tool_credentials_short_secret(encrypter_obj, raw):
     """
     For length <= 6: fully mask with '*' of same length.
     """
-    out = encrypter_obj.mask_tool_credentials({"password": raw})
+    out = encrypter_obj.mask_plugin_credentials({"password": raw})
     assert out["password"] == ("*" * len(raw))
 
 
@@ -131,7 +131,7 @@ def test_mask_tool_credentials_missing_key_noop(encrypter_obj):
     data_in = {"username": "alice"}
     data_copy = copy.deepcopy(data_in)
 
-    out = encrypter_obj.mask_tool_credentials(data_in)
+    out = encrypter_obj.mask_plugin_credentials(data_in)
     assert out["username"] == "alice"
     assert data_in == data_copy
 

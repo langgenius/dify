@@ -13,10 +13,27 @@ const nodeDefault: NodeDefault<EndNodeType> = {
   defaultValue: {
     outputs: [],
   },
-  checkValid() {
+  checkValid(payload: EndNodeType, t: any) {
+    const outputs = payload.outputs || []
+
+    let errorMessage = ''
+    if (!outputs.length) {
+      errorMessage = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.end.output.variable') })
+    }
+    else {
+      const invalidOutput = outputs.find((output) => {
+        const variableName = output.variable?.trim()
+        const hasSelector = Array.isArray(output.value_selector) && output.value_selector.length > 0
+        return !variableName || !hasSelector
+      })
+
+      if (invalidOutput)
+        errorMessage = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.end.output.variable') })
+    }
+
     return {
-      isValid: true,
-      errorMessage: '',
+      isValid: !errorMessage,
+      errorMessage,
     }
   },
 }

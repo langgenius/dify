@@ -39,6 +39,7 @@ const TimePicker = ({
   notClearable = false,
   triggerFullWidth = false,
   showTimezone = false,
+  placement = 'bottom-start',
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -204,7 +205,7 @@ const TimePicker = ({
     <PortalToFollowElem
       open={isOpen}
       onOpenChange={setIsOpen}
-      placement='bottom-start'
+      placement={placement}
     >
       <PortalToFollowElemTrigger className={triggerFullWidth ? '!block w-full' : undefined}>
         {renderTrigger ? (renderTrigger({

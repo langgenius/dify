@@ -22,6 +22,7 @@ import { languages } from '@/i18n-config/language'
 import Tooltip from '@/app/components/base/tooltip'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 import cn from '@/utils/classnames'
@@ -113,7 +114,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     if (isFreePlan)
       setShowPricingModal()
     else
-      setShowAccountSettingModal({ payload: 'billing' })
+      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
   useEffect(() => {

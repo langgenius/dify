@@ -315,7 +315,7 @@ const FormInputItem: FC<Props> = ({
     onChange({
       ...value,
       [variable]: {
-        ...(varInput || {}),
+        ...varInput,
         type: VarKindType.constant,
         value: selected,
       },

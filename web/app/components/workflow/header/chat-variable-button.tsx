@@ -7,13 +7,16 @@ import cn from '@/utils/classnames'
 
 const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
+  const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
   const setShowChatVariablePanel = useStore(s => s.setShowChatVariablePanel)
   const setShowEnvPanel = useStore(s => s.setShowEnvPanel)
+  const setShowGlobalVariablePanel = useStore(s => s.setShowGlobalVariablePanel)
   const setShowDebugAndPreviewPanel = useStore(s => s.setShowDebugAndPreviewPanel)
 
   const handleClick = () => {
     setShowChatVariablePanel(true)
     setShowEnvPanel(false)
+    setShowGlobalVariablePanel(false)
     setShowDebugAndPreviewPanel(false)
   }
 
@@ -21,7 +24,7 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
     <Button
       className={cn(
         'p-2',
-        theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+        theme === 'dark' && showChatVariablePanel && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
       )}
       disabled={disabled}
       onClick={handleClick}

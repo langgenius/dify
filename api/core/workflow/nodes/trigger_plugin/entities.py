@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Any, Literal, Optional, Union
+from typing import Any, Literal, Union
 
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
@@ -39,7 +39,7 @@ class TriggerEventNodeData(BaseNodeData):
             return type
 
     title: str
-    desc: Optional[str] = None
+    desc: str | None = None
     plugin_id: str = Field(..., description="Plugin ID")
     provider_id: str = Field(..., description="Provider ID")
     event_name: str = Field(..., description="Event name")
@@ -62,7 +62,7 @@ class TriggerEventNodeData(BaseNodeData):
             Mapping[str, Any]: A dictionary containing the generated parameters.
 
         """
-        result: Mapping[str, Any] = {}
+        result: dict[str, Any] = {}
         for parameter_name in self.event_parameters:
             parameter: EventParameter | None = parameter_schemas.get(parameter_name)
             if not parameter:
