@@ -2,10 +2,9 @@ import io
 
 from flask import send_file
 from flask_restx import Resource, reqparse
-from werkzeug.exceptions import Forbidden
 
 from controllers.console import api, console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -85,12 +84,10 @@ class ModelProviderCredentialApi(Resource):
     @api.expect(parser_post_cred)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
+        _, current_tenant_id = current_account_with_tenant()
         args = parser_post_cred.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -110,11 +107,10 @@ class ModelProviderCredentialApi(Resource):
     @api.expect(parser_put_cred)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def put(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
 
         args = parser_put_cred.parse_args()
 
@@ -136,12 +132,10 @@ class ModelProviderCredentialApi(Resource):
     @api.expect(parser_delete_cred)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def delete(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
+        _, current_tenant_id = current_account_with_tenant()
         args = parser_delete_cred.parse_args()
 
         model_provider_service = ModelProviderService()
@@ -162,11 +156,10 @@ class ModelProviderCredentialSwitchApi(Resource):
     @api.expect(parser_switch)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
         args = parser_switch.parse_args()
 
         service = ModelProviderService()
@@ -250,11 +243,10 @@ class PreferredProviderTypeUpdateApi(Resource):
     @api.expect(parser_preferred)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
 
         tenant_id = current_tenant_id
 

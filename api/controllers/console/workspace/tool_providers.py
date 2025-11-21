@@ -14,6 +14,7 @@ from controllers.console import api, console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
+    is_admin_or_owner_required,
     setup_required,
 )
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
@@ -115,11 +116,10 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @api.expect(parser_delete)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider):
-        user, tenant_id = current_account_with_tenant()
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        _, tenant_id = current_account_with_tenant()
 
         args = parser_delete.parse_args()
 
@@ -177,13 +177,10 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @api.expect(parser_update)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider):
         user, tenant_id = current_account_with_tenant()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
-
         user_id = user.id
 
         args = parser_update.parse_args()
@@ -242,12 +239,10 @@ class ToolApiProviderAddApi(Resource):
     @api.expect(parser_api_add)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         user_id = user.id
 
@@ -336,12 +331,10 @@ class ToolApiProviderUpdateApi(Resource):
     @api.expect(parser_api_update)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         user_id = user.id
 
@@ -372,12 +365,10 @@ class ToolApiProviderDeleteApi(Resource):
     @api.expect(parser_api_delete)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         user_id = user.id
 
@@ -496,12 +487,10 @@ class ToolWorkflowProviderCreateApi(Resource):
     @api.expect(parser_create)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         user_id = user.id
 
@@ -539,13 +528,10 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @api.expect(parser_workflow_update)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
-
         user_id = user.id
 
         args = parser_workflow_update.parse_args()
@@ -577,12 +563,10 @@ class ToolWorkflowProviderDeleteApi(Resource):
     @api.expect(parser_workflow_delete)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self):
         user, tenant_id = current_account_with_tenant()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         user_id = user.id
 
@@ -734,17 +718,14 @@ class ToolLabelsApi(Resource):
 class ToolPluginOAuthApi(Resource):
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def get(self, provider):
         tool_provider = ToolProviderID(provider)
         plugin_id = tool_provider.plugin_id
         provider_name = tool_provider.provider_name
 
-        # todo check permission
         user, tenant_id = current_account_with_tenant()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
 
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id=tenant_id, provider=provider)
         if oauth_client_params is None:
@@ -856,14 +837,12 @@ class ToolOAuthCustomClient(Resource):
     @api.expect(parser_custom)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
-    def post(self, provider):
+    def post(self, provider: str):
         args = parser_custom.parse_args()
 
-        user, tenant_id = current_account_with_tenant()
-
-        if not user.is_admin_or_owner:
-            raise Forbidden()
+        _, tenant_id = current_account_with_tenant()
 
         return BuiltinToolManageService.save_custom_oauth_client_params(
             tenant_id=tenant_id,
