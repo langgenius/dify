@@ -424,18 +424,27 @@ class TestRedisSubscription:
         # Should not enqueue messages from wrong channels
         assert subscription._queue.empty()
 
+    @pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
     def test_listener_thread_handles_redis_exceptions(self, subscription: _RedisSubscription, mock_pubsub: MagicMock):
         """Test that listener thread handles Redis exceptions gracefully."""
         mock_pubsub.get_message.side_effect = Exception("Redis error")
 
         subscription._start_if_needed()
+        thread = subscription._listener_thread
 
         # Wait for thread to handle exception
         time.sleep(0.2)
 
-        # Thread should still be alive but not processing
-        assert subscription._listener_thread is not None
-        assert not subscription._listener_thread.is_alive()
+        # Thread should have died due to exception
+        assert thread is not None
+        assert not thread.is_alive()
+
+        # Ensure subscription is closed to prevent further thread activity
+        subscription.close()
+        
+        # Wait for any cleanup to complete
+        if thread.is_alive():
+            thread.join(timeout=1.0)
 
     def test_listener_thread_stops_when_closed(self, subscription: _RedisSubscription, mock_pubsub: MagicMock):
         """Test that listener thread stops when subscription is closed."""
@@ -847,6 +856,7 @@ class TestRedisShardedSubscription:
         # Should not enqueue regular messages in sharded subscription
         assert sharded_subscription._queue.empty()
 
+    @pytest.mark.filterwarnings("ignore::pytest.PytestUnhandledThreadExceptionWarning")
     def test_listener_thread_handles_redis_exceptions(
         self, sharded_subscription: _RedisShardedSubscription, mock_pubsub: MagicMock
     ):
@@ -854,13 +864,21 @@ class TestRedisShardedSubscription:
         mock_pubsub.get_sharded_message.side_effect = Exception("Redis error")
 
         sharded_subscription._start_if_needed()
+        thread = sharded_subscription._listener_thread
 
         # Wait for thread to handle exception
         time.sleep(0.2)
 
-        # Thread should still be alive but not processing
-        assert sharded_subscription._listener_thread is not None
-        assert not sharded_subscription._listener_thread.is_alive()
+        # Thread should have died due to exception
+        assert thread is not None
+        assert not thread.is_alive()
+
+        # Ensure subscription is closed to prevent further thread activity
+        sharded_subscription.close()
+        
+        # Wait for any cleanup to complete
+        if thread.is_alive():
+            thread.join(timeout=1.0)
 
     def test_listener_thread_stops_when_closed(
         self, sharded_subscription: _RedisShardedSubscription, mock_pubsub: MagicMock
