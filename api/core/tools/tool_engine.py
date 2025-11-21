@@ -107,9 +107,21 @@ class ToolEngine:
                 tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
             )
 
+            # detect return_direct signal from variable messages
+            return_direct = False
+            for m in message_list:
+                if m.type == ToolInvokeMessage.MessageType.VARIABLE:
+                    variable = cast(ToolInvokeMessage.VariableMessage, m.message)
+                    if variable and variable.variable_name == "return_direct":
+                        try:
+                            return_direct = bool(variable.variable_value)
+                        except Exception:
+                            return_direct = False
+
             plain_text = ToolEngine._convert_tool_response_to_str(message_list)
 
             meta = invocation_meta_dict["meta"]
+            meta.extra = {"return_direct": return_direct}
 
             # hit the callback handler
             agent_tool_callback.on_tool_end(
@@ -254,6 +266,9 @@ class ToolEngine:
                         ensure_ascii=False,
                     )
                 )
+            elif response.type == ToolInvokeMessage.MessageType.VARIABLE:
+                # internal variable messages should not be surfaced into plain text
+                continue
             else:
                 parts.append(str(response.message))
 
