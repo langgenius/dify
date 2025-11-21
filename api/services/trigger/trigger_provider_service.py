@@ -181,19 +181,21 @@ class TriggerProviderService:
 
                     # Create provider record
                     subscription = TriggerSubscription(
-                        id=subscription_id or str(uuid.uuid4()),
                         tenant_id=tenant_id,
                         user_id=user_id,
                         name=name,
                         endpoint_id=endpoint_id,
                         provider_id=str(provider_id),
-                        parameters=parameters,
-                        properties=properties_encrypter.encrypt(dict(properties)),
-                        credentials=credential_encrypter.encrypt(dict(credentials)) if credential_encrypter else {},
+                        parameters=dict(parameters),
+                        properties=dict(properties_encrypter.encrypt(dict(properties))),
+                        credentials=dict(credential_encrypter.encrypt(dict(credentials)))
+                        if credential_encrypter
+                        else {},
                         credential_type=credential_type.value,
                         credential_expires_at=credential_expires_at,
                         expires_at=expires_at,
                     )
+                    subscription.id = subscription_id or str(uuid.uuid4())
 
                     session.add(subscription)
                     session.commit()

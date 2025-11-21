@@ -326,9 +326,9 @@ class RagPipelineTransformService:
                             datasource_info=data_source_info,
                             input_data={},
                             created_by=document.created_by,
-                            created_at=document.created_at,
                             datasource_node_id=file_node_id,
                         )
+                        document_pipeline_execution_log.created_at = document.created_at
                         db.session.add(document)
                         db.session.add(document_pipeline_execution_log)
             elif document.data_source_type == "notion_import":
@@ -354,9 +354,9 @@ class RagPipelineTransformService:
                     datasource_info=data_source_info,
                     input_data={},
                     created_by=document.created_by,
-                    created_at=document.created_at,
                     datasource_node_id=notion_node_id,
                 )
+                document_pipeline_execution_log.created_at = document.created_at
                 db.session.add(document)
                 db.session.add(document_pipeline_execution_log)
             elif document.data_source_type == "website_crawl":
@@ -383,8 +383,8 @@ class RagPipelineTransformService:
                     datasource_info=data_source_info,
                     input_data={},
                     created_by=document.created_by,
-                    created_at=document.created_at,
                     datasource_node_id=datasource_node_id,
                 )
+                document_pipeline_execution_log.created_at = document.created_at
                 db.session.add(document)
                 db.session.add(document_pipeline_execution_log)
