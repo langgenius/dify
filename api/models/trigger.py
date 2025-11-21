@@ -271,7 +271,7 @@ class WorkflowTriggerLog(Base):
         }
 
 
-class WorkflowWebhookTrigger(Base):
+class WorkflowWebhookTrigger(TypeBase):
     """
     Workflow Webhook Trigger
 
@@ -294,18 +294,19 @@ class WorkflowWebhookTrigger(Base):
         sa.UniqueConstraint("webhook_id", name="uniq_webhook_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     webhook_id: Mapped[str] = mapped_column(String(24), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
         server_onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @cached_property

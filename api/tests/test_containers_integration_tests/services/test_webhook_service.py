@@ -132,7 +132,7 @@ class TestWebhookService:
             app_id=app.id,
             node_id="webhook_node",
             tenant_id=tenant.id,
-            webhook_id=webhook_id,
+            webhook_id=str(webhook_id),
             created_by=account.id,
         )
         db_session_with_containers.add(webhook_trigger)
