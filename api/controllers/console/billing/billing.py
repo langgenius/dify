@@ -48,17 +48,17 @@ class Invoices(Resource):
 
 @console_ns.route("/billing/partners/<string:partner_key>/tenants")
 class PartnerTenants(Resource):
-    @api.doc("sync_partner_tenants_bindings")
-    @api.doc(description="Sync partner tenants bindings")
-    @api.doc(params={"partner_key": "Partner key"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("sync_partner_tenants_bindings")
+    @console_ns.doc(description="Sync partner tenants bindings")
+    @console_ns.doc(params={"partner_key": "Partner key"})
+    @console_ns.expect(
+        console_ns.model(
             "SyncPartnerTenantsBindingsRequest",
             {"click_id": fields.String(required=True, description="Click Id from partner referral link")},
         )
     )
-    @api.response(200, "Tenants synced to partner successfully")
-    @api.response(400, "Invalid partner information")
+    @console_ns.response(200, "Tenants synced to partner successfully")
+    @console_ns.response(400, "Invalid partner information")
     @setup_required
     @login_required
     @account_initialization_required

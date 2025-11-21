@@ -170,12 +170,12 @@ def _api_prerequisite(f: Callable[P, R]):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
-    @api.expect(_create_pagination_parser())
-    @api.doc("get_workflow_variables")
-    @api.doc(description="Get draft workflow variables")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.doc(params={"page": "Page number (1-100000)", "limit": "Number of items per page (1-100)"})
-    @api.response(200, "Workflow variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
+    @console_ns.expect(_create_pagination_parser())
+    @console_ns.doc("get_workflow_variables")
+    @console_ns.doc(description="Get draft workflow variables")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(params={"page": "Page number (1-100000)", "limit": "Number of items per page (1-100)"})
+    @console_ns.response(200, "Workflow variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
     def get(self, app_model: App):

@@ -40,8 +40,8 @@ class OAuthDataSource(Resource):
             {"data": fields.Raw(description="Authorization URL or 'internal' for internal setup")},
         ),
     )
-    @api.response(400, "Invalid provider")
-    @api.response(403, "Admin privileges required")
+    @console_ns.response(400, "Invalid provider")
+    @console_ns.response(403, "Admin privileges required")
     @is_admin_or_owner_required
     def get(self, provider: str):
         # The role of the current user in the table must be admin or owner
