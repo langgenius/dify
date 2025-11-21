@@ -1,8 +1,6 @@
 from flask_restx import Resource, fields, reqparse
 
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
-from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginPermissionDeniedError

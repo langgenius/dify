@@ -3,8 +3,6 @@ import logging
 from flask_restx import Resource, reqparse
 
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
-from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError

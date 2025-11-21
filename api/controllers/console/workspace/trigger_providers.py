@@ -7,8 +7,6 @@ from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
-from controllers.console import api
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from controllers.web.error import NotFoundError
 from core.model_runtime.utils.encoders import jsonable_encoder

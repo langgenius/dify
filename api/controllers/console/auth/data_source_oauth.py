@@ -5,8 +5,6 @@ from flask import current_app, redirect, request
 from flask_restx import Resource, fields
 
 from configs import dify_config
-from controllers.console import console_ns
-from libs.login import current_account_with_tenant, login_required
 from controllers.console import api, console_ns
 from controllers.console.wraps import is_admin_or_owner_required
 from libs.login import login_required
