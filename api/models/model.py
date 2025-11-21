@@ -594,7 +594,7 @@ class InstalledApp(TypeBase):
         return tenant
 
 
-class OAuthProviderApp(Base):
+class OAuthProviderApp(TypeBase):
     """
     Globally shared OAuth provider app information.
     Only for Dify Cloud.
@@ -606,18 +606,21 @@ class OAuthProviderApp(Base):
         sa.Index("oauth_provider_app_client_id_idx", "client_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
-    app_icon = mapped_column(String(255), nullable=False)
-    app_label = mapped_column(sa.JSON, nullable=False, default="{}")
-    client_id = mapped_column(String(255), nullable=False)
-    client_secret = mapped_column(String(255), nullable=False)
-    redirect_uris = mapped_column(sa.JSON, nullable=False, default="[]")
-    scope = mapped_column(
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
+    app_icon: Mapped[str] = mapped_column(String(255), nullable=False)
+    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    client_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    client_secret: Mapped[str] = mapped_column(String(255), nullable=False)
+    redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default="[]")
+    scope: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
         server_default=sa.text("'read:name read:email read:avatar read:interface_language read:timezone'"),
+        default="read:name read:email read:avatar read:interface_language read:timezone",
     )
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class Conversation(Base):
