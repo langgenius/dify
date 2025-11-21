@@ -1,42 +1,20 @@
-import React, { useCallback, useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpload } from '../hooks/use-upload'
 import { ACCEPT_TYPES } from '../constants'
 import { useFileStoreWithSelector } from '../store'
-import ImageItem from './image-item'
 import { RiImageAddLine } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
-import type { ImageInfo } from '@/app/components/datasets/common/image-previewer'
-import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
 
 const ImageUploader = () => {
   const { t } = useTranslation()
   const files = useFileStoreWithSelector(s => s.files)
-  const [previewIndex, setPreviewIndex] = useState(0)
-  const [previewImages, setPreviewImages] = useState<ImageInfo[]>([])
-
-  const handleImagePreview = useCallback((fileId: string) => {
-    const index = files.findIndex(item => item.id === fileId)
-    if (index === -1) return
-    setPreviewIndex(index)
-    setPreviewImages(files.map(item => ({
-      url: item.base64Url || item.sourceUrl || '',
-      name: item.name,
-      size: item.size,
-    })))
-  }, [files])
-
-  const handleClosePreview = useCallback(() => {
-    setPreviewImages([])
-  }, [])
 
   const {
     fileUploadConfig,
     uploaderRef,
     fileChangeHandle,
     selectHandle,
-    handleRemoveFile,
-    handleReUploadFile,
   } = useUpload()
 
   return (
@@ -51,18 +29,6 @@ const ImageUploader = () => {
         onChange={fileChangeHandle}
       />
       <div className='flex flex-wrap gap-1'>
-        {
-          files.map(file => (
-            <ImageItem
-              key={file.id}
-              file={file}
-              showDeleteAction
-              onRemove={handleRemoveFile}
-              onReUpload={handleReUploadFile}
-              onPreview={handleImagePreview}
-            />
-          ))
-        }
         <Tooltip
           popupContent={t('datasetHitTesting.imageUploader.tooltip', {
             size: fileUploadConfig.imageFileSizeLimit,
@@ -91,13 +57,6 @@ const ImageUploader = () => {
           </div>
         </Tooltip>
       </div>
-      {previewImages.length > 0 && (
-        <ImagePreviewer
-          images={previewImages}
-          initialIndex={previewIndex}
-          onClose={handleClosePreview}
-        />
-      )}
     </div>
   )
 }

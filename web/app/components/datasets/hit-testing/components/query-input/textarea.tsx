@@ -18,7 +18,7 @@ const Textarea = ({
 
   return (
     <div className={cn(
-      'relative flex-1 overflow-hidden rounded-t-[10px] border-t-[0.5px] border-components-panel-border-subtle bg-background-default px-4 pb-11 pt-3',
+      'relative flex-1 overflow-hidden rounded-t-[10px] border-t-[0.5px] border-components-panel-border-subtle bg-background-default px-4 pb-0 pt-3',
       text.length > 200 && 'border-state-destructive-active',
     )}>
       <textarea
