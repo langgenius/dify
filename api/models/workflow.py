@@ -7,7 +7,19 @@ from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, Select, exists, orm, select
+from sqlalchemy import (
+    DateTime,
+    Index,
+    PrimaryKeyConstraint,
+    Select,
+    String,
+    UniqueConstraint,
+    exists,
+    func,
+    orm,
+    select,
+)
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
@@ -26,10 +38,8 @@ from libs.uuid_utils import uuidv7
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
-    from models.model import AppMode, UploadFile
+    from .model import AppMode, UploadFile
 
-from sqlalchemy import Index, PrimaryKeyConstraint, String, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
@@ -38,7 +48,7 @@ from factories import variable_factory
 from libs import helper
 
 from .account import Account
-from .base import Base, DefaultFieldsMixin
+from .base import Base, DefaultFieldsMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType
 from .types import EnumText, LongText, StringUUID
@@ -1137,7 +1147,7 @@ class WorkflowAppLog(Base):
         }
 
 
-class ConversationVariable(Base):
+class ConversationVariable(TypeBase):
     __tablename__ = "workflow_conversation_variables"
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
@@ -1145,20 +1155,11 @@ class ConversationVariable(Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
     data: Mapped[str] = mapped_column(LongText, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), index=True
+        DateTime, nullable=False, server_default=func.current_timestamp(), index=True, init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
-
-    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str):
-        self.id = id
-        self.app_id = app_id
-        self.conversation_id = conversation_id
-        self.data = data
 
     @classmethod
     def from_variable(cls, *, app_id: str, conversation_id: str, variable: Variable) -> "ConversationVariable":
