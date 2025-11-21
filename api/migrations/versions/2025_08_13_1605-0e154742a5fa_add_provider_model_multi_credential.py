@@ -13,6 +13,10 @@ import sqlalchemy as sa
 from sqlalchemy.sql import table, column
 
 
+def _is_pg(conn):
+    return conn.dialect.name == "postgresql"
+
+
 # revision identifiers, used by Alembic.
 revision = '0e154742a5fa'
 down_revision = 'e8446f481c1e'
@@ -22,18 +26,34 @@ depends_on = None
 
 def upgrade():
     # Create provider_model_credentials table
-    op.create_table('provider_model_credentials',
-    sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuidv7()'), nullable=False),
-    sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
-    sa.Column('provider_name', sa.String(length=255), nullable=False),
-    sa.Column('model_name', sa.String(length=255), nullable=False),
-    sa.Column('model_type', sa.String(length=40), nullable=False),
-    sa.Column('credential_name', sa.String(length=255), nullable=False),
-    sa.Column('encrypted_config', sa.Text(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-    sa.PrimaryKeyConstraint('id', name='provider_model_credential_pkey')
-    )
+    conn = op.get_bind()
+    
+    if _is_pg(conn):
+        op.create_table('provider_model_credentials',
+        sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuidv7()'), nullable=False),
+        sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
+        sa.Column('provider_name', sa.String(length=255), nullable=False),
+        sa.Column('model_name', sa.String(length=255), nullable=False),
+        sa.Column('model_type', sa.String(length=40), nullable=False),
+        sa.Column('credential_name', sa.String(length=255), nullable=False),
+        sa.Column('encrypted_config', sa.Text(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.PrimaryKeyConstraint('id', name='provider_model_credential_pkey')
+        )
+    else:
+        op.create_table('provider_model_credentials',
+        sa.Column('id', models.types.StringUUID(), nullable=False),
+        sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
+        sa.Column('provider_name', sa.String(length=255), nullable=False),
+        sa.Column('model_name', sa.String(length=255), nullable=False),
+        sa.Column('model_type', sa.String(length=40), nullable=False),
+        sa.Column('credential_name', sa.String(length=255), nullable=False),
+        sa.Column('encrypted_config', models.types.LongText(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
+        sa.PrimaryKeyConstraint('id', name='provider_model_credential_pkey')
+        )
 
     # Create index for provider_model_credentials
     with op.batch_alter_table('provider_model_credentials', schema=None) as batch_op:
@@ -66,31 +86,57 @@ def upgrade():
 
 def migrate_existing_provider_models_data():
     """migrate provider_models table data to provider_model_credentials"""
-
+    conn = op.get_bind()
     # Define table structure for data manipulation
-    provider_models_table = table('provider_models',
-        column('id', models.types.StringUUID()),
-        column('tenant_id', models.types.StringUUID()),
-        column('provider_name', sa.String()),
-        column('model_name', sa.String()),
-        column('model_type', sa.String()),
-        column('encrypted_config', sa.Text()),
-        column('created_at', sa.DateTime()),
-        column('updated_at', sa.DateTime()),
-        column('credential_id', models.types.StringUUID()),
-    )
+    if _is_pg(conn):
+        provider_models_table = table('provider_models',
+            column('id', models.types.StringUUID()),
+            column('tenant_id', models.types.StringUUID()),
+            column('provider_name', sa.String()),
+            column('model_name', sa.String()),
+            column('model_type', sa.String()),
+            column('encrypted_config', sa.Text()),
+            column('created_at', sa.DateTime()),
+            column('updated_at', sa.DateTime()),
+            column('credential_id', models.types.StringUUID()),
+        )
+    else:
+        provider_models_table = table('provider_models',
+            column('id', models.types.StringUUID()),
+            column('tenant_id', models.types.StringUUID()),
+            column('provider_name', sa.String()),
+            column('model_name', sa.String()),
+            column('model_type', sa.String()),
+            column('encrypted_config', models.types.LongText()),
+            column('created_at', sa.DateTime()),
+            column('updated_at', sa.DateTime()),
+            column('credential_id', models.types.StringUUID()),
+        )
 
-    provider_model_credentials_table = table('provider_model_credentials',
-        column('id', models.types.StringUUID()),
-        column('tenant_id', models.types.StringUUID()),
-        column('provider_name', sa.String()),
-        column('model_name', sa.String()),
-        column('model_type', sa.String()),
-        column('credential_name', sa.String()),
-        column('encrypted_config', sa.Text()),
-        column('created_at', sa.DateTime()),
-        column('updated_at', sa.DateTime())
-    )
+    if _is_pg(conn):
+        provider_model_credentials_table = table('provider_model_credentials',
+            column('id', models.types.StringUUID()),
+            column('tenant_id', models.types.StringUUID()),
+            column('provider_name', sa.String()),
+            column('model_name', sa.String()),
+            column('model_type', sa.String()),
+            column('credential_name', sa.String()),
+            column('encrypted_config', sa.Text()),
+            column('created_at', sa.DateTime()),
+            column('updated_at', sa.DateTime())
+        )
+    else:
+        provider_model_credentials_table = table('provider_model_credentials',
+            column('id', models.types.StringUUID()),
+            column('tenant_id', models.types.StringUUID()),
+            column('provider_name', sa.String()),
+            column('model_name', sa.String()),
+            column('model_type', sa.String()),
+            column('credential_name', sa.String()),
+            column('encrypted_config', models.types.LongText()),
+            column('created_at', sa.DateTime()),
+            column('updated_at', sa.DateTime())
+        )
 
 
     # Get database connection
@@ -137,8 +183,14 @@ def migrate_existing_provider_models_data():
 
 def downgrade():
     # Re-add encrypted_config column to provider_models table
-    with op.batch_alter_table('provider_models', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('encrypted_config', sa.Text(), nullable=True))
+    conn = op.get_bind()
+    
+    if _is_pg(conn):
+        with op.batch_alter_table('provider_models', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('encrypted_config', sa.Text(), nullable=True))
+    else:
+        with op.batch_alter_table('provider_models', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('encrypted_config', models.types.LongText(), nullable=True))
 
     if not context.is_offline_mode():
         # Migrate data back from provider_model_credentials to provider_models

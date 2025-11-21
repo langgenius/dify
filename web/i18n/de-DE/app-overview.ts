@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Abschießen',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'Backend-Service-API',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'In Betrieb',
       disable: 'Deaktivieren',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'Die Funktion {{feature}} wird im Trigger-Knoten-Modus nicht unterstützt.',
     },
   },
   analysis: {

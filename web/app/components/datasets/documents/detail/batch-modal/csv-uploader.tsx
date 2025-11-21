@@ -12,6 +12,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import type { FileItem } from '@/models/datasets'
 import { upload } from '@/service/base'
+import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import useSWR from 'swr'
 import { fetchFileUploadConfig } from '@/service/common'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
@@ -74,7 +75,8 @@ const CSVUploader: FC<Props> = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
+        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        notify({ type: 'error', message: errorMessage })
         const errorFile = {
           ...fileItem,
           progress: -2,

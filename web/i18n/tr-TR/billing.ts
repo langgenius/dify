@@ -78,7 +78,7 @@ const translation = {
     freeTrialTipPrefix: 'Kaydolun ve bir',
     priceTip: 'iş alanı başına/',
     documentsRequestQuota: '{{count,number}}/dakika Bilgi İsteği Oran Limiti',
-    apiRateLimitUnit: '{{count,number}}/gün',
+    apiRateLimitUnit: '{{count,number}}',
     documents: '{{count,number}} Bilgi Belgesi',
     comparePlanAndFeatures: 'Planları ve özellikleri karşılaştır',
     self: 'Kendi Barındırılan',
@@ -96,6 +96,19 @@ const translation = {
     startBuilding: 'İnşa Etmeye Başlayın',
     taxTip: 'Tüm abonelik fiyatları (aylık/yıllık) geçerli vergiler (ör. KDV, satış vergisi) hariçtir.',
     taxTipSecond: 'Bölgenizde geçerli vergi gereksinimleri yoksa, ödeme sayfanızda herhangi bir vergi görünmeyecek ve tüm abonelik süresi boyunca ek bir ücret tahsil edilmeyecektir.',
+    triggerEvents: {
+      unlimited: 'Sınırsız Tetikleme Olayları',
+      tooltip: 'Eklenti, Zamanlama veya Webhook tetikleyicileri aracılığıyla iş akışlarını otomatik olarak başlatan etkinliklerin sayısı.',
+    },
+    workflowExecution: {
+      faster: 'Daha Hızlı İş Akışı Yürütme',
+      tooltip: 'İş akışı yürütme kuyruğu önceliği ve hızı.',
+      priority: 'Öncelikli İş Akışı Yürütme',
+      standard: 'Standart İş Akışı Yürütme',
+    },
+    startNodes: {
+      unlimited: 'Sınırsız Tetikleyiciler/iş akışı',
+    },
   },
   plans: {
     sandbox: {
@@ -186,8 +199,17 @@ const translation = {
     buildApps: 'Uygulama Geliştir',
     annotationQuota: 'Notlandırma Kotası',
     documentsUploadQuota: 'Belgeler Yükleme Kotası',
+    triggerEvents: 'Tetikleyici Olaylar',
+    perMonth: 'ayda',
   },
   teamMembers: 'Ekip Üyeleri',
+  triggerLimitModal: {
+    upgrade: 'Güncelle',
+    title: 'Daha fazla tetikleyici olayı açmak için yükseltin',
+    dismiss: 'Kapat',
+    description: 'Bu plan için iş akışı etkinliği tetikleyici sınırına ulaştınız.',
+    usageTitle: 'TETİKLEYİCİ OLAYLAR',
+  },
 }
 
 export default translation
