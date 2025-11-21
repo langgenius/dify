@@ -140,6 +140,10 @@ class GraphEngine:
         pause_handler = PauseCommandHandler()
         self._command_processor.register_handler(PauseCommand, pause_handler)
 
+        # === Extensibility ===
+        # Layers allow plugins to extend engine functionality
+        self._layers: list[GraphEngineLayer] = []
+
         # === Worker Pool Setup ===
         # Capture Flask app context for worker threads
         flask_app: Flask | None = None
@@ -164,6 +168,7 @@ class GraphEngine:
             max_workers=self._max_workers,
             scale_up_threshold=self._scale_up_threshold,
             scale_down_idle_time=self._scale_down_idle_time,
+            layers=self._layers,
         )
 
         # === Orchestration ===
@@ -195,10 +200,6 @@ class GraphEngine:
             execution_coordinator=self._execution_coordinator,
             event_emitter=self._event_manager,
         )
-
-        # === Extensibility ===
-        # Layers allow plugins to extend engine functionality
-        self._layers: list[GraphEngineLayer] = []
 
         # === Validation ===
         # Ensure all nodes share the same GraphRuntimeState instance
