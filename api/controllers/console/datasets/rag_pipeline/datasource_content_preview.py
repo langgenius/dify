@@ -38,7 +38,7 @@ class DataSourceContentPreviewApi(Resource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        args = Parser.model_validate(api.payload)
+        args = Parser.model_validate(console_ns.payload)
 
         inputs = args.inputs
         datasource_type = args.datasource_type
