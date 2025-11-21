@@ -1938,7 +1938,7 @@ class Tag(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class TagBinding(Base):
+class TagBinding(TypeBase):
     __tablename__ = "tag_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tag_binding_pkey"),
@@ -1946,12 +1946,14 @@ class TagBinding(Base):
         sa.Index("tag_bind_tag_id_idx", "tag_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=True)
-    tag_id = mapped_column(StringUUID, nullable=True)
-    target_id = mapped_column(StringUUID, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    tag_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    target_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class TraceAppConfig(Base):
