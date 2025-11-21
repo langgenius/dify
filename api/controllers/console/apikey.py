@@ -12,7 +12,7 @@ from models.dataset import Dataset
 from models.model import ApiToken, App
 
 from . import api, console_ns
-from .wraps import account_initialization_required, edit_permission_required, setup_required
+from .wraps import account_initialization_required, setup_required
 
 api_key_fields = {
     "id": fields.String,
@@ -52,18 +52,18 @@ class BaseApiKeyListResource(Resource):
     token_prefix: str | None = None
     max_keys = 10
 
+    def _has_permission(self, user):
+        if self.resource_type == "dataset":
+            return user.is_dataset_editor
+        return user.has_edit_permission
+
     @marshal_with(api_key_list)
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         current_user, current_tenant_id = current_account_with_tenant()
 
-        if self.resource_type == "dataset":
-            has_permission = current_user.is_dataset_editor
-        else:
-            has_permission = current_user.has_edit_permission
-
-        if not has_permission:
+        if not self._has_permission(current_user):
             raise Forbidden()
 
         _get_resource(resource_id, current_tenant_id, self.resource_model)
@@ -75,11 +75,13 @@ class BaseApiKeyListResource(Resource):
         return {"items": keys}
 
     @marshal_with(api_key_fields)
-    @edit_permission_required
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        _, current_tenant_id = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        if not self._has_permission(current_user):
+            raise Forbidden()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
         current_key_count = (
             db.session.query(ApiToken)
@@ -112,6 +114,11 @@ class BaseApiKeyResource(Resource):
     resource_model: type | None = None
     resource_id_field: str | None = None
 
+    def _has_permission(self, user):
+        if self.resource_type == "dataset":
+            return user.is_dataset_editor
+        return user.is_admin_or_owner
+
     def delete(self, resource_id, api_key_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
@@ -119,8 +126,8 @@ class BaseApiKeyResource(Resource):
         current_user, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
 
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # Enforce role-based permission per resource type
+        if not self._has_permission(current_user):
             raise Forbidden()
 
         key = (
