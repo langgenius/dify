@@ -105,6 +105,12 @@ class KeywordStoreConfig(BaseSettings):
 
 
 class DatabaseConfig(BaseSettings):
+    # Database type selector
+    DB_TYPE: Literal["postgresql", "mysql", "oceanbase"] = Field(
+        description="Database type to use. OceanBase is MySQL-compatible.",
+        default="postgresql",
+    )
+
     DB_HOST: str = Field(
         description="Hostname or IP address of the database server.",
         default="localhost",
@@ -140,10 +146,10 @@ class DatabaseConfig(BaseSettings):
         default="",
     )
 
-    SQLALCHEMY_DATABASE_URI_SCHEME: str = Field(
-        description="Database URI scheme for SQLAlchemy connection.",
-        default="postgresql",
-    )
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def SQLALCHEMY_DATABASE_URI_SCHEME(self) -> str:
+        return "postgresql" if self.DB_TYPE == "postgresql" else "mysql+pymysql"
 
     @computed_field  # type: ignore[prop-decorator]
     @property
@@ -204,15 +210,15 @@ class DatabaseConfig(BaseSettings):
         # Parse DB_EXTRAS for 'options'
         db_extras_dict = dict(parse_qsl(self.DB_EXTRAS))
         options = db_extras_dict.get("options", "")
-        # Always include timezone
-        timezone_opt = "-c timezone=UTC"
-        if options:
-            # Merge user options and timezone
-            merged_options = f"{options} {timezone_opt}"
-        else:
-            merged_options = timezone_opt
-
-        connect_args = {"options": merged_options}
+        connect_args = {}
+        # Use the dynamic SQLALCHEMY_DATABASE_URI_SCHEME property
+        if self.SQLALCHEMY_DATABASE_URI_SCHEME.startswith("postgresql"):
+            timezone_opt = "-c timezone=UTC"
+            if options:
+                merged_options = f"{options} {timezone_opt}"
+            else:
+                merged_options = timezone_opt
+            connect_args = {"options": merged_options}
 
         return {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,

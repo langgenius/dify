@@ -27,6 +27,10 @@ import models as models
 import sqlalchemy as sa
 
 
+def _is_pg(conn):
+    return conn.dialect.name == "postgresql"
+
+
 # revision identifiers, used by Alembic.
 revision = '1c9ba48be8e4'
 down_revision = '58eb7bdb93fe'
@@ -40,7 +44,11 @@ def upgrade():
     # The ability to specify source timestamp has been removed because its type signature is incompatible with
     # PostgreSQL 18's `uuidv7` function. This capability is rarely needed in practice, as IDs can be
     # generated and controlled within the application layer.
-    op.execute(sa.text(r"""
+    conn = op.get_bind()
+    
+    if _is_pg(conn):
+        # PostgreSQL: Create uuidv7 functions
+        op.execute(sa.text(r"""
 /* Main function to generate a uuidv7 value with millisecond precision */
 CREATE FUNCTION uuidv7() RETURNS uuid
 AS
@@ -63,7 +71,7 @@ COMMENT ON FUNCTION uuidv7 IS
     'Generate a uuid-v7 value with a 48-bit timestamp (millisecond precision) and 74 bits of randomness';
 """))
 
-    op.execute(sa.text(r"""
+        op.execute(sa.text(r"""
 CREATE FUNCTION uuidv7_boundary(timestamptz) RETURNS uuid
 AS
 $$
@@ -79,8 +87,15 @@ COMMENT ON FUNCTION uuidv7_boundary(timestamptz) IS
     'Generate a non-random uuidv7 with the given timestamp (first 48 bits) and all random bits to 0. As the smallest possible uuidv7 for that timestamp, it may be used as a boundary for partitions.';
 """
 ))
+    else:
+        pass
 
 
 def downgrade():
-    op.execute(sa.text("DROP FUNCTION uuidv7"))
-    op.execute(sa.text("DROP FUNCTION uuidv7_boundary"))
+    conn = op.get_bind()
+    
+    if _is_pg(conn):
+        op.execute(sa.text("DROP FUNCTION uuidv7"))
+        op.execute(sa.text("DROP FUNCTION uuidv7_boundary"))
+    else:
+        pass

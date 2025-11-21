@@ -90,7 +90,6 @@ const translation = {
   intro5: '公開することができます',
   intro6: '独立したサービスとして',
   unavailable: '利用不可',
-  unavailableTip: '埋め込みモデルが利用できません。デフォルトの埋め込みモデルを設定する必要があります',
   datasets: 'ナレッジベース',
   datasetsApi: 'API ACCESS',
   externalKnowledgeForm: {

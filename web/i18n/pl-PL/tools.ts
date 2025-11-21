@@ -209,6 +209,7 @@ const translation = {
       clientSecret: 'Tajny klucz klienta',
       useDynamicClientRegistration: 'Użyj dynamicznej rejestracji klienta',
       clientID: 'ID klienta',
+      redirectUrlWarning: 'Proszę skonfigurować swój adres URL przekierowania OAuth na:',
     },
     delete: 'Usuń serwer MCP',
     deleteConfirmTitle: 'Usunąć {mcp}?',

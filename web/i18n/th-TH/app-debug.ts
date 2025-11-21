@@ -104,8 +104,6 @@ const translation = {
       selected: 'เลือกความรู้',
       title: 'ความรู้',
       toCreate: 'ไปที่สร้าง',
-      words: 'นิรุกติ',
-      textBlocks: 'บล็อกข้อความ',
       noData: 'คุณสามารถนําเข้าความรู้เป็นบริบทได้',
       selectTitle: 'เลือกข้อมูลอ้างอิง ความรู้',
     },

@@ -35,6 +35,7 @@ from core.workflow.entities.workflow_pause import WorkflowPauseEntity
 from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
+from libs.helper import convert_datetime_to_date
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
@@ -599,8 +600,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get daily runs statistics using raw SQL for optimal performance.
         """
-        sql_query = """SELECT
-    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+        converted_created_at = convert_datetime_to_date("created_at")
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
     COUNT(id) AS runs
 FROM
     workflow_runs
@@ -646,8 +648,9 @@ WHERE
         """
         Get daily terminals statistics using raw SQL for optimal performance.
         """
-        sql_query = """SELECT
-    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+        converted_created_at = convert_datetime_to_date("created_at")
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
     COUNT(DISTINCT created_by) AS terminal_count
 FROM
     workflow_runs
@@ -693,8 +696,9 @@ WHERE
         """
         Get daily token cost statistics using raw SQL for optimal performance.
         """
-        sql_query = """SELECT
-    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+        converted_created_at = convert_datetime_to_date("created_at")
+        sql_query = f"""SELECT
+    {converted_created_at} AS date,
     SUM(total_tokens) AS token_count
 FROM
     workflow_runs
@@ -745,13 +749,14 @@ WHERE
         """
         Get average app interaction statistics using raw SQL for optimal performance.
         """
-        sql_query = """SELECT
+        converted_created_at = convert_datetime_to_date("c.created_at")
+        sql_query = f"""SELECT
     AVG(sub.interactions) AS interactions,
     sub.date
 FROM
     (
         SELECT
-            DATE(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+            {converted_created_at} AS date,
             c.created_by,
             COUNT(c.id) AS interactions
         FROM
@@ -760,8 +765,8 @@ FROM
             c.tenant_id = :tenant_id
             AND c.app_id = :app_id
             AND c.triggered_from = :triggered_from
-            {{start}}
-            {{end}}
+            {{{{start}}}}
+            {{{{end}}}}
         GROUP BY
             date, c.created_by
     ) sub
