@@ -359,7 +359,10 @@ class TenantPluginPermission(TypeBase):
     )
 
 
+# FIX ME: temp fix for https://github.com/langgenius/dify/issues/28471#issuecomment-3561090208
 from models.base import Base
+
+
 class TenantPluginAutoUpgradeStrategy(Base):
     class StrategySetting(enum.StrEnum):
         DISABLED = "disabled"
