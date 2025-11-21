@@ -1431,22 +1431,28 @@ class AppAnnotationHitHistory(Base):
         return account
 
 
-class AppAnnotationSetting(Base):
+class AppAnnotationSetting(TypeBase):
     __tablename__ = "app_annotation_settings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="app_annotation_settings_pkey"),
         sa.Index("app_annotation_settings_app_idx", "app_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
-    score_threshold = mapped_column(Float, nullable=False, server_default=sa.text("0"))
-    collection_binding_id = mapped_column(StringUUID, nullable=False)
-    created_user_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_user_id = mapped_column(StringUUID, nullable=False)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    score_threshold: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
+    collection_binding_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property

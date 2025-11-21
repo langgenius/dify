@@ -871,12 +871,13 @@ class TestAnnotationService:
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -931,12 +932,13 @@ class TestAnnotationService:
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1033,12 +1035,13 @@ class TestAnnotationService:
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1094,12 +1097,13 @@ class TestAnnotationService:
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1166,12 +1170,14 @@ class TestAnnotationService:
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
+
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1227,12 +1233,13 @@ class TestAnnotationService:
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
