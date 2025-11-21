@@ -319,7 +319,7 @@ class TestDatasetServiceCreateEmptyDataset:
 
         # Mock retrieval model
         retrieval_model = DatasetCreateTestDataFactory.create_retrieval_model_mock()
-        retrieval_model_dict = {"search_method": "semantic_search", "top_k": 2}
+        retrieval_model_dict = {"search_method": "semantic_search", "top_k": 2, "score_threshold": 0.0}
 
         mock_db = mock_dataset_service_dependencies["db_session"]
         mock_db.add = Mock()
