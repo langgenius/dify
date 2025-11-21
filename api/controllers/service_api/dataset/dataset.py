@@ -5,6 +5,7 @@ from flask_restx import marshal, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
 from controllers.service_api.wraps import (
@@ -614,11 +615,10 @@ class DatasetTagsApi(DatasetApiResource):
             403: "Forbidden - insufficient permissions",
         }
     )
-    def delete(self, tenant_id: str):
+    @validate_dataset_token
+    @edit_permission_required
+    def delete(self, _, dataset_id):
         """Delete a knowledge type tag."""
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         args = tag_delete_parser.parse_args()
         TagService.delete_tag(args["tag_id"])
 

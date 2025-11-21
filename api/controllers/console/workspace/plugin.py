@@ -7,7 +7,7 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.console import api, console_ns
 from controllers.console.workspace import plugin_permission_required
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from libs.login import current_account_with_tenant, login_required
@@ -132,9 +132,11 @@ class PluginAssetApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        req = reqparse.RequestParser()
-        req.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
-        req.add_argument("file_name", type=str, required=True, location="args")
+        req = (
+            reqparse.RequestParser()
+            .add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+            .add_argument("file_name", type=str, required=True, location="args")
+        )
         args = req.parse_args()
 
         _, tenant_id = current_account_with_tenant()
@@ -619,13 +621,10 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
     @api.expect(parser_dynamic)
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def get(self):
-        # check if the user is admin or owner
         current_user, tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
         user_id = current_user.id
 
         args = parser_dynamic.parse_args()
@@ -770,9 +769,11 @@ class PluginReadmeApi(Resource):
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
-        parser.add_argument("language", type=str, required=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("plugin_unique_identifier", type=str, required=True, location="args")
+            .add_argument("language", type=str, required=False, location="args")
+        )
         args = parser.parse_args()
         return jsonable_encoder(
             {
