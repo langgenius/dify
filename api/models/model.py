@@ -611,7 +611,7 @@ class OAuthProviderApp(TypeBase):
     app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
     client_id: Mapped[str] = mapped_column(String(255), nullable=False)
     client_secret: Mapped[str] = mapped_column(String(255), nullable=False)
-    redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default="[]")
+    redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default_factory=list)
     scope: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
