@@ -1,11 +1,11 @@
 """
-Integration tests for Redis broadcast channel implementation using TestContainers.
+Integration tests for Redis sharded broadcast channel implementation using TestContainers.
 
-This test suite covers real Redis interactions including:
+Covers real Redis 7+ sharded pub/sub interactions including:
 - Multiple producer/consumer scenarios
-- Network failure scenarios
-- Performance under load
-- Real-world usage patterns
+- Topic isolation
+- Concurrency under load
+- Resource cleanup accounting via PUBSUB SHARDNUMSUB
 """
 
 import threading
@@ -20,16 +20,19 @@ from testcontainers.redis import RedisContainer
 
 from libs.broadcast_channel.channel import BroadcastChannel, Subscription, Topic
 from libs.broadcast_channel.exc import SubscriptionClosedError
-from libs.broadcast_channel.redis.channel import BroadcastChannel as RedisBroadcastChannel
+from libs.broadcast_channel.redis.sharded_channel import (
+    ShardedRedisBroadcastChannel,
+)
 
 
-class TestRedisBroadcastChannelIntegration:
-    """Integration tests for Redis broadcast channel with real Redis instance."""
+class TestShardedRedisBroadcastChannelIntegration:
+    """Integration tests for Redis sharded broadcast channel with real Redis 7 instance."""
 
     @pytest.fixture(scope="class")
     def redis_container(self) -> Iterator[RedisContainer]:
-        """Create a Redis container for integration testing."""
-        with RedisContainer(image="redis:6-alpine") as container:
+        """Create a Redis 7 container for integration testing (required for sharded pub/sub)."""
+        # Redis 7+ is required for SPUBLISH/SSUBSCRIBE
+        with RedisContainer(image="redis:7-alpine") as container:
             yield container
 
     @pytest.fixture(scope="class")
@@ -41,16 +44,16 @@ class TestRedisBroadcastChannelIntegration:
 
     @pytest.fixture
     def broadcast_channel(self, redis_client: redis.Redis) -> BroadcastChannel:
-        """Create a BroadcastChannel instance with real Redis client."""
-        return RedisBroadcastChannel(redis_client)
+        """Create a ShardedRedisBroadcastChannel instance with real Redis client."""
+        return ShardedRedisBroadcastChannel(redis_client)
 
     @classmethod
-    def _get_test_topic_name(cls):
-        return f"test_topic_{uuid.uuid4()}"
+    def _get_test_topic_name(cls) -> str:
+        return f"test_sharded_topic_{uuid.uuid4()}"
 
-    # ==================== Basic Functionality Tests ===================='
+    # ==================== Basic Functionality Tests ====================
 
-    def test_close_an_active_subscription_should_stop_iteration(self, broadcast_channel):
+    def test_close_an_active_subscription_should_stop_iteration(self, broadcast_channel: BroadcastChannel):
         topic_name = self._get_test_topic_name()
         topic = broadcast_channel.topic(topic_name)
         subscription = topic.subscribe()
@@ -64,23 +67,20 @@ class TestRedisBroadcastChannelIntegration:
             return msgs
 
         with ThreadPoolExecutor(max_workers=1) as executor:
-            producer_future = executor.submit(consume)
+            consumer_future = executor.submit(consume)
             consuming_event.wait()
             subscription.close()
-            msgs = producer_future.result(timeout=1)
+            msgs = consumer_future.result(timeout=2)
         assert msgs == []
 
     def test_end_to_end_messaging(self, broadcast_channel: BroadcastChannel):
-        """Test complete end-to-end messaging flow."""
-        topic_name = "test-topic"
-        message = b"hello world"
+        """Test complete end-to-end messaging flow (sharded)."""
+        topic_name = self._get_test_topic_name()
+        message = b"hello sharded world"
 
-        # Create producer and subscriber
         topic = broadcast_channel.topic(topic_name)
         producer = topic.as_producer()
         subscription = topic.subscribe()
-
-        # Publish and receive message
 
         def producer_thread():
             time.sleep(0.1)  # Small delay to ensure subscriber is ready
@@ -94,12 +94,10 @@ class TestRedisBroadcastChannelIntegration:
                 received_messages.append(msg)
             return received_messages
 
-        # Run producer and consumer
         with ThreadPoolExecutor(max_workers=2) as executor:
             producer_future = executor.submit(producer_thread)
             consumer_future = executor.submit(consumer_thread)
 
-            # Wait for completion
             producer_future.result(timeout=5.0)
             received_messages = consumer_future.result(timeout=5.0)
 
@@ -107,46 +105,24 @@ class TestRedisBroadcastChannelIntegration:
         assert received_messages[0] == message
 
     def test_multiple_subscribers_same_topic(self, broadcast_channel: BroadcastChannel):
-        """Test message broadcasting to multiple subscribers.
-
-        This test ensures the publisher only sends after all subscribers have actually started
-        their Redis Pub/Sub subscriptions to avoid race conditions/flakiness.
-        """
-        topic_name = "broadcast-topic"
-        message = b"broadcast message"
+        """Test message broadcasting to multiple sharded subscribers."""
+        topic_name = self._get_test_topic_name()
+        message = b"broadcast sharded message"
         subscriber_count = 5
 
-        # Create producer and multiple subscribers
         topic = broadcast_channel.topic(topic_name)
         producer = topic.as_producer()
         subscriptions = [topic.subscribe() for _ in range(subscriber_count)]
-        ready_events = [threading.Event() for _ in range(subscriber_count)]
 
         def producer_thread():
-            # Wait for all subscribers to start (with a reasonable timeout)
-            deadline = time.time() + 5.0
-            for ev in ready_events:
-                remaining = deadline - time.time()
-                if remaining <= 0:
-                    break
-                ev.wait(timeout=max(0.0, remaining))
-            # Now publish the message
+            time.sleep(0.2)  # Allow all subscribers to connect
             producer.publish(message)
             time.sleep(0.2)
             for sub in subscriptions:
                 sub.close()
 
-        def consumer_thread(subscription: Subscription, ready_event: threading.Event) -> list[bytes]:
+        def consumer_thread(subscription: Subscription) -> list[bytes]:
             received_msgs = []
-            # Prime the subscription to ensure the underlying Pub/Sub is started
-            try:
-                _ = subscription.receive(0.01)
-            except SubscriptionClosedError:
-                ready_event.set()
-                return received_msgs
-            # Signal readiness after first receive returns (subscription started)
-            ready_event.set()
-
             while True:
                 try:
                     msg = subscription.receive(0.1)
@@ -159,37 +135,29 @@ class TestRedisBroadcastChannelIntegration:
                     break
             return received_msgs
 
-        # Run producer and consumers
         with ThreadPoolExecutor(max_workers=subscriber_count + 1) as executor:
             producer_future = executor.submit(producer_thread)
-            consumer_futures = [
-                executor.submit(consumer_thread, subscription, ready_events[idx])
-                for idx, subscription in enumerate(subscriptions)
-            ]
+            consumer_futures = [executor.submit(consumer_thread, subscription) for subscription in subscriptions]
 
-            # Wait for completion
             producer_future.result(timeout=10.0)
             msgs_by_consumers = []
             for future in as_completed(consumer_futures, timeout=10.0):
                 msgs_by_consumers.append(future.result())
 
-        # Close all subscriptions
         for subscription in subscriptions:
             subscription.close()
 
-        # Verify all subscribers received the message
         for msgs in msgs_by_consumers:
             assert len(msgs) == 1
             assert msgs[0] == message
 
     def test_topic_isolation(self, broadcast_channel: BroadcastChannel):
-        """Test that different topics are isolated from each other."""
-        topic1_name = "topic1"
-        topic2_name = "topic2"
-        message1 = b"message for topic1"
-        message2 = b"message for topic2"
+        """Test that different sharded topics are isolated from each other."""
+        topic1_name = self._get_test_topic_name()
+        topic2_name = self._get_test_topic_name()
+        message1 = b"message for sharded topic1"
+        message2 = b"message for sharded topic2"
 
-        # Create producers and subscribers for different topics
         topic1 = broadcast_channel.topic(topic1_name)
         topic2 = broadcast_channel.topic(topic2_name)
 
@@ -208,28 +176,25 @@ class TestRedisBroadcastChannelIntegration:
                         break
             return received
 
-        # Run all threads
         with ThreadPoolExecutor(max_workers=3) as executor:
             producer_future = executor.submit(producer_thread)
             consumer1_future = executor.submit(consumer_by_thread, topic1)
             consumer2_future = executor.submit(consumer_by_thread, topic2)
 
-            # Wait for completion
             producer_future.result(timeout=5.0)
             received_by_topic1 = consumer1_future.result(timeout=5.0)
             received_by_topic2 = consumer2_future.result(timeout=5.0)
 
-        # Verify topic isolation
         assert len(received_by_topic1) == 1
         assert len(received_by_topic2) == 1
         assert received_by_topic1[0] == message1
         assert received_by_topic2[0] == message2
 
-    # ==================== Performance Tests ====================
+    # ==================== Performance / Concurrency ====================
 
     def test_concurrent_producers(self, broadcast_channel: BroadcastChannel):
-        """Test multiple producers publishing to the same topic."""
-        topic_name = "concurrent-producers-topic"
+        """Test multiple producers publishing to the same sharded topic."""
+        topic_name = self._get_test_topic_name()
         producer_count = 5
         messages_per_producer = 5
 
@@ -246,7 +211,7 @@ class TestRedisBroadcastChannelIntegration:
                 message = f"producer_{producer_idx}_msg_{i}".encode()
                 produced.add(message)
                 producer.publish(message)
-                time.sleep(0.001)  # Small delay to avoid overwhelming
+                time.sleep(0.001)
             return produced
 
         def consumer_thread() -> set[bytes]:
@@ -263,59 +228,81 @@ class TestRedisBroadcastChannelIntegration:
                             break
                         else:
                             continue
-
                     received_msgs.add(msg)
             return received_msgs
 
-        # Run producers and consumer
         with ThreadPoolExecutor(max_workers=producer_count + 1) as executor:
             consumer_future = executor.submit(consumer_thread)
             consumer_ready.wait()
             producer_futures = [executor.submit(producer_thread, i) for i in range(producer_count)]
 
             sent_msgs: set[bytes] = set()
-            # Wait for completion
             for future in as_completed(producer_futures, timeout=30.0):
                 sent_msgs.update(future.result())
 
             subscription.close()
             consumer_received_msgs = consumer_future.result(timeout=30.0)
 
-        # Verify message content
         assert sent_msgs == consumer_received_msgs
 
-    # ==================== Resource Management Tests ====================
+    # ==================== Resource Management ====================
+
+    def _get_sharded_numsub(self, redis_client: redis.Redis, topic_name: str) -> int:
+        """Return number of sharded subscribers for a given topic using PUBSUB SHARDNUMSUB.
+
+        Redis returns a flat list like [channel1, count1, channel2, count2, ...].
+        We request a single channel, so parse accordingly.
+        """
+        try:
+            res = redis_client.execute_command("PUBSUB", "SHARDNUMSUB", topic_name)
+        except Exception:
+            return 0
+        # Normalize different possible return shapes from drivers
+        if isinstance(res, (list, tuple)):
+            # Expect [channel, count] (bytes/str, int)
+            if len(res) >= 2:
+                key = res[0]
+                cnt = res[1]
+                if key == topic_name or (isinstance(key, (bytes, bytearray)) and key == topic_name.encode()):
+                    try:
+                        return int(cnt)
+                    except Exception:
+                        return 0
+            # Fallback parse pairs
+            count = 0
+            for i in range(0, len(res) - 1, 2):
+                key = res[i]
+                cnt = res[i + 1]
+                if key == topic_name or (isinstance(key, (bytes, bytearray)) and key == topic_name.encode()):
+                    try:
+                        count = int(cnt)
+                    except Exception:
+                        count = 0
+                    break
+            return count
+        return 0
 
     def test_subscription_cleanup(self, broadcast_channel: BroadcastChannel, redis_client: redis.Redis):
-        """Test proper cleanup of subscription resources."""
-        topic_name = "cleanup-test-topic"
+        """Test proper cleanup of sharded subscription resources via SHARDNUMSUB."""
+        topic_name = self._get_test_topic_name()
 
-        # Create multiple subscriptions
         topic = broadcast_channel.topic(topic_name)
 
         def _consume(sub: Subscription):
-            for i in sub:
+            for _ in sub:
                 pass
 
         subscriptions = []
-        for i in range(5):
+        for _ in range(5):
             subscription = topic.subscribe()
             subscriptions.append(subscription)
 
-            # Start all subscriptions
             thread = threading.Thread(target=_consume, args=(subscription,))
             thread.start()
             time.sleep(0.01)
 
-        # Verify subscriptions are active
-        pubsub_info = redis_client.pubsub_numsub(topic_name)
-        # pubsub_numsub returns list of tuples, find our topic
-        topic_subscribers = 0
-        for channel, count in pubsub_info:
-            # the channel name returned by redis is bytes.
-            if channel == topic_name.encode():
-                topic_subscribers = count
-                break
+        # Verify subscriptions are active using SHARDNUMSUB
+        topic_subscribers = self._get_sharded_numsub(redis_client, topic_name)
         assert topic_subscribers >= 5
 
         # Close all subscriptions
@@ -326,10 +313,5 @@ class TestRedisBroadcastChannelIntegration:
         time.sleep(1)
 
         # Verify subscriptions are cleaned up
-        pubsub_info_after = redis_client.pubsub_numsub(topic_name)
-        topic_subscribers_after = 0
-        for channel, count in pubsub_info_after:
-            if channel == topic_name.encode():
-                topic_subscribers_after = count
-                break
+        topic_subscribers_after = self._get_sharded_numsub(redis_client, topic_name)
         assert topic_subscribers_after == 0
