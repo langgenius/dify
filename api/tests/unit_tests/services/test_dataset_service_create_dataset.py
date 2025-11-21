@@ -79,7 +79,7 @@ class DatasetCreateTestDataFactory:
         **kwargs,
     ) -> Mock:
         """Create a mock dataset."""
-        dataset = Mock(spec=Dataset)
+        dataset = create_autospec(Dataset, instance=True)
         dataset.id = dataset_id
         dataset.name = name
         dataset.tenant_id = tenant_id
