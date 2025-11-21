@@ -983,8 +983,9 @@ class DraftWorkflowTriggerRunApi(Resource):
         Poll for trigger events and execute full workflow when event arrives
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, location="json", nullable=False)
+        parser = reqparse.RequestParser().add_argument(
+            "node_id", type=str, required=True, location="json", nullable=False
+        )
         args = parser.parse_args()
         node_id = args["node_id"]
         workflow_service = WorkflowService()
@@ -1136,8 +1137,9 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_ids", type=list, required=True, location="json", nullable=False)
+        parser = reqparse.RequestParser().add_argument(
+            "node_ids", type=list, required=True, location="json", nullable=False
+        )
         args = parser.parse_args()
         node_ids = args["node_ids"]
         workflow_service = WorkflowService()

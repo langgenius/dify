@@ -315,3 +315,19 @@ def edit_permission_required(f: Callable[P, R]):
         return f(*args, **kwargs)
 
     return decorated_function
+
+
+def is_admin_or_owner_required(f: Callable[P, R]):
+    @wraps(f)
+    def decorated_function(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        from libs.login import current_user
+        from models import Account
+
+        user = current_user._get_current_object()
+        if not isinstance(user, Account) or not user.is_admin_or_owner:
+            raise Forbidden()
+        return f(*args, **kwargs)
+
+    return decorated_function

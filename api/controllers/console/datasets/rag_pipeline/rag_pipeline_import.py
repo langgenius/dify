@@ -1,11 +1,11 @@
 from flask_restx import Resource, marshal_with, reqparse  # type: ignore
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     account_initialization_required,
+    edit_permission_required,
     setup_required,
 )
 from extensions.ext_database import db
@@ -21,12 +21,11 @@ class RagPipelineImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @marshal_with(pipeline_import_fields)
     def post(self):
         # Check user role first
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
         parser = (
             reqparse.RequestParser()
@@ -71,12 +70,10 @@ class RagPipelineImportConfirmApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @marshal_with(pipeline_import_fields)
     def post(self, import_id):
         current_user, _ = current_account_with_tenant()
-        # Check user role first
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
         # Create service with session
         with Session(db.engine) as session:
@@ -98,12 +95,9 @@ class RagPipelineImportCheckDependenciesApi(Resource):
     @login_required
     @get_rag_pipeline
     @account_initialization_required
+    @edit_permission_required
     @marshal_with(pipeline_import_check_dependencies_fields)
     def get(self, pipeline: Pipeline):
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         with Session(db.engine) as session:
             import_service = RagPipelineDslService(session)
             result = import_service.check_dependencies(pipeline=pipeline)
@@ -117,12 +111,9 @@ class RagPipelineExportApi(Resource):
     @login_required
     @get_rag_pipeline
     @account_initialization_required
+    @edit_permission_required
     def get(self, pipeline: Pipeline):
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
-            # Add include_secret params
+        # Add include_secret params
         parser = reqparse.RequestParser().add_argument("include_secret", type=str, default="false", location="args")
         args = parser.parse_args()
 
