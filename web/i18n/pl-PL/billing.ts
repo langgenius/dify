@@ -103,6 +103,19 @@ const translation = {
     startBuilding: 'Zacznij budować',
     taxTip: 'Wszystkie ceny subskrypcji (miesięczne/roczne) nie obejmują obowiązujących podatków (np. VAT, podatek od sprzedaży).',
     taxTipSecond: 'Jeśli w Twoim regionie nie ma obowiązujących przepisów podatkowych, podatek nie pojawi się podczas realizacji zamówienia i nie zostaną naliczone żadne dodatkowe opłaty przez cały okres subskrypcji.',
+    triggerEvents: {
+      unlimited: 'Nieograniczone zdarzenia wyzwalające',
+      tooltip: 'Liczba zdarzeń, które automatycznie uruchamiają przepływy pracy za pomocą wtyczki, harmonogramu lub wyzwalaczy Webhook.',
+    },
+    workflowExecution: {
+      standard: 'Standardowe wykonywanie przepływu pracy',
+      tooltip: 'Priorytet i szybkość wykonywania kolejki przepływu pracy.',
+      priority: 'Wykonywanie przepływu pracy według priorytetu',
+      faster: 'Szybsze wykonywanie przepływu pracy',
+    },
+    startNodes: {
+      unlimited: 'Nieograniczone wyzwalacze/przepływ pracy',
+    },
   },
   plans: {
     sandbox: {
@@ -196,8 +209,17 @@ const translation = {
     buildApps: 'Twórz aplikacje',
     annotationQuota: 'Kwota aneksji',
     vectorSpaceTooltip: 'Dokumenty z trybem indeksowania o wysokiej jakości będą zużywać zasoby magazynu danych wiedzy. Gdy magazyn danych wiedzy osiągnie limit, nowe dokumenty nie będą przesyłane.',
+    perMonth: 'miesięcznie',
+    triggerEvents: 'Wydarzenia wyzwalające',
   },
   teamMembers: 'Członkowie zespołu',
+  triggerLimitModal: {
+    upgrade: 'Uaktualnij',
+    usageTitle: 'WYDARZENIA WYZWALAJĄCE',
+    description: 'Osiągnąłeś limit wyzwalaczy zdarzeń przepływu pracy dla tego planu.',
+    title: 'Uaktualnij, aby odblokować więcej zdarzeń wyzwalających',
+    dismiss: 'Odrzuć',
+  },
 }
 
 export default translation
