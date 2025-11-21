@@ -123,27 +123,24 @@ class EndUserAuthenticationProvider(TypeBase):
 
     __tablename__ = "tool_enduser_authentication_providers"
     __table_args__ = (
-        sa.PrimaryKeyConstraint("id", name="tool_enduser_authentication_provider_pkey"),
         sa.UniqueConstraint("tenant_id", "provider", "end_user_id", "name", name="unique_enduser_authentication_provider"),
-        sa.Index("tool_enduser_authentication_provider_tenant_id_idx", "tenant_id"),
-        sa.Index("tool_enduser_authentication_provider_end_user_id_idx", "end_user_id"),
     )
 
     # id of the authentication provider
-    id: Mapped[str] = mapped_column(StringUUID, default=uuidv7, init=False)
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=uuidv7, init=False)
     name: Mapped[str] = mapped_column(
         String(256),
         nullable=False,
         default="API KEY 1",
     )
     # id of the tenant
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
     # id of the end user
-    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
     # name of the tool provider
-    provider: Mapped[str] = mapped_column(String(256), nullable=False)
+    provider: Mapped[str] = mapped_column(sa.Text, nullable=False)
     # encrypted credentials for the end user
-    encrypted_credentials: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
+    encrypted_credentials: Mapped[str] = mapped_column(sa.Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, default=datetime.now, init=False
     )
