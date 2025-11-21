@@ -115,6 +115,7 @@ const useBatchEditDocumentMetadata = ({
       return {
         document_id: documentId,
         metadata_list: newMetadataList,
+        partial_update: docIndex < 0,
       }
     })
     return res

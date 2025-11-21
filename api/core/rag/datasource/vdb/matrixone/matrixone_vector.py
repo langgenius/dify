@@ -22,6 +22,18 @@ logger = logging.getLogger(__name__)
 P = ParamSpec("P")
 R = TypeVar("R")
 
+T = TypeVar("T", bound="MatrixoneVector")
+
+
+def ensure_client(func: Callable[Concatenate[T, P], R]):
+    @wraps(func)
+    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs):
+        if self.client is None:
+            self.client = self._get_client(None, False)
+        return func(self, *args, **kwargs)
+
+    return wrapper
+
 
 class MatrixoneConfig(BaseModel):
     host: str = "localhost"
@@ -204,19 +216,6 @@ class MatrixoneVector(BaseVector):
     def delete(self):
         assert self.client is not None
         self.client.delete()
-
-
-T = TypeVar("T", bound=MatrixoneVector)
-
-
-def ensure_client(func: Callable[Concatenate[T, P], R]):
-    @wraps(func)
-    def wrapper(self: T, *args: P.args, **kwargs: P.kwargs):
-        if self.client is None:
-            self.client = self._get_client(None, False)
-        return func(self, *args, **kwargs)
-
-    return wrapper
 
 
 class MatrixoneVectorFactory(AbstractVectorFactory):
