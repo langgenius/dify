@@ -1165,7 +1165,7 @@ class ExternalKnowledgeBindings(TypeBase):
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None, init=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
