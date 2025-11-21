@@ -5,7 +5,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 import services
 from controllers.console import api, console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from fields.dataset_fields import (
     dataset_detail_fields,
     dataset_retrieval_model_fields,
@@ -19,13 +19,12 @@ from fields.dataset_fields import (
     vector_setting_fields,
     weighted_score_fields,
 )
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
-from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
+
 
 def _get_or_create_model(model_name: str, field_def):
     existing = api.models.get(model_name)
