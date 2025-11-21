@@ -1176,7 +1176,7 @@ class ExternalKnowledgeBindings(TypeBase):
     )
 
 
-class DatasetAutoDisableLog(Base):
+class DatasetAutoDisableLog(TypeBase):
     __tablename__ = "dataset_auto_disable_logs"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_auto_disable_log_pkey"),
@@ -1185,12 +1185,14 @@ class DatasetAutoDisableLog(Base):
         sa.Index("dataset_auto_disable_log_created_atx", "created_at"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    document_id = mapped_column(StringUUID, nullable=False)
-    notified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    notified: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
+    )
 
 
 class RateLimitLog(TypeBase):
