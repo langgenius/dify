@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from core.app.app_config.entities import VariableEntity
+from core.app.app_config.entities import OutputVariableEntity, VariableEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 
 
@@ -23,6 +23,19 @@ class WorkflowToolConfigurationUtils:
             return []
 
         return [VariableEntity.model_validate(variable) for variable in start_node.get("data", {}).get("variables", [])]
+
+    @classmethod
+    def get_workflow_graph_output(cls, graph: Mapping[str, Any]) -> Sequence[OutputVariableEntity]:
+        """
+        get workflow graph output
+        """
+        nodes = graph.get("nodes", [])
+        end_node = next(filter(lambda x: x.get("data", {}).get("type") == "end", nodes), None)
+
+        if not end_node:
+            return []
+
+        return [OutputVariableEntity.model_validate(output) for output in end_node.get("data", {}).get("outputs", [])]
 
     @classmethod
     def check_is_synced(

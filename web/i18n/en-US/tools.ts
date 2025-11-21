@@ -113,6 +113,13 @@ const translation = {
       description: 'Description',
       descriptionPlaceholder: 'Description of the parameter\'s meaning',
     },
+    toolOutput: {
+      title: 'Tool Output',
+      name: 'Name',
+      reserved: 'Reserved',
+      reservedParameterDuplicateTip: 'Custom output variables name cannot be the same as reserved parameters',
+      description: 'Description',
+    },
     customDisclaimer: 'Custom disclaimer',
     customDisclaimerPlaceholder: 'Please enter custom disclaimer',
     confirmTitle: 'Confirm to save ?',
