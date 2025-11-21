@@ -265,8 +265,8 @@ class ExternalDatasetService:
         external_knowledge_binding = ExternalKnowledgeBindings(
             tenant_id=tenant_id,
             dataset_id=dataset.id,
-            external_knowledge_api_id=args.get("external_knowledge_api_id"),
-            external_knowledge_id=args.get("external_knowledge_id"),
+            external_knowledge_api_id=args.get("external_knowledge_api_id") or "",
+            external_knowledge_id=args.get("external_knowledge_id") or "",
             created_by=user_id,
         )
         db.session.add(external_knowledge_binding)

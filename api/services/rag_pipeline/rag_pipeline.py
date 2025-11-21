@@ -1126,9 +1126,9 @@ class RagPipelineService:
         if args.get("name") is None:
             raise ValueError("Name is required")
         pipeline_customized_template = PipelineCustomizedTemplate(
-            name=args.get("name"),
-            description=args.get("description"),
-            icon=args.get("icon_info"),
+            name=args.get("name") or "",
+            description=args.get("description") or "",
+            icon=args.get("icon_info") or {},
             tenant_id=pipeline.tenant_id,
             yaml_content=dsl,
             install_count=0,
