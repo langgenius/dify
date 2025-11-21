@@ -7,7 +7,8 @@ from enum import StrEnum
 from typing import Any, ClassVar
 
 from sqlalchemy import Engine, orm, select
-from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.dialects.mysql import insert as mysql_insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.sql.expression import and_, or_
 
@@ -627,28 +628,51 @@ def _batch_upsert_draft_variable(
     #
     # For these reasons, we use the SQLAlchemy query builder and rely on dialect-specific
     # insert operations instead of the ORM layer.
-    stmt = insert(WorkflowDraftVariable).values([_model_to_insertion_dict(v) for v in draft_vars])
-    if policy == _UpsertPolicy.OVERWRITE:
-        stmt = stmt.on_conflict_do_update(
-            index_elements=WorkflowDraftVariable.unique_app_id_node_id_name(),
-            set_={
+
+    # Use different insert statements based on database type
+    if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
+        stmt = pg_insert(WorkflowDraftVariable).values([_model_to_insertion_dict(v) for v in draft_vars])
+        if policy == _UpsertPolicy.OVERWRITE:
+            stmt = stmt.on_conflict_do_update(
+                index_elements=WorkflowDraftVariable.unique_app_id_node_id_name(),
+                set_={
+                    # Refresh creation timestamp to ensure updated variables
+                    # appear first in chronologically sorted result sets.
+                    "created_at": stmt.excluded.created_at,
+                    "updated_at": stmt.excluded.updated_at,
+                    "last_edited_at": stmt.excluded.last_edited_at,
+                    "description": stmt.excluded.description,
+                    "value_type": stmt.excluded.value_type,
+                    "value": stmt.excluded.value,
+                    "visible": stmt.excluded.visible,
+                    "editable": stmt.excluded.editable,
+                    "node_execution_id": stmt.excluded.node_execution_id,
+                    "file_id": stmt.excluded.file_id,
+                },
+            )
+        elif policy == _UpsertPolicy.IGNORE:
+            stmt = stmt.on_conflict_do_nothing(index_elements=WorkflowDraftVariable.unique_app_id_node_id_name())
+    else:
+        stmt = mysql_insert(WorkflowDraftVariable).values([_model_to_insertion_dict(v) for v in draft_vars])  # type: ignore[assignment]
+        if policy == _UpsertPolicy.OVERWRITE:
+            stmt = stmt.on_duplicate_key_update(  # type: ignore[attr-defined]
                 # Refresh creation timestamp to ensure updated variables
                 # appear first in chronologically sorted result sets.
-                "created_at": stmt.excluded.created_at,
-                "updated_at": stmt.excluded.updated_at,
-                "last_edited_at": stmt.excluded.last_edited_at,
-                "description": stmt.excluded.description,
-                "value_type": stmt.excluded.value_type,
-                "value": stmt.excluded.value,
-                "visible": stmt.excluded.visible,
-                "editable": stmt.excluded.editable,
-                "node_execution_id": stmt.excluded.node_execution_id,
-                "file_id": stmt.excluded.file_id,
-            },
-        )
-    elif policy == _UpsertPolicy.IGNORE:
-        stmt = stmt.on_conflict_do_nothing(index_elements=WorkflowDraftVariable.unique_app_id_node_id_name())
-    else:
+                created_at=stmt.inserted.created_at,  # type: ignore[attr-defined]
+                updated_at=stmt.inserted.updated_at,  # type: ignore[attr-defined]
+                last_edited_at=stmt.inserted.last_edited_at,  # type: ignore[attr-defined]
+                description=stmt.inserted.description,  # type: ignore[attr-defined]
+                value_type=stmt.inserted.value_type,  # type: ignore[attr-defined]
+                value=stmt.inserted.value,  # type: ignore[attr-defined]
+                visible=stmt.inserted.visible,  # type: ignore[attr-defined]
+                editable=stmt.inserted.editable,  # type: ignore[attr-defined]
+                node_execution_id=stmt.inserted.node_execution_id,  # type: ignore[attr-defined]
+                file_id=stmt.inserted.file_id,  # type: ignore[attr-defined]
+            )
+        elif policy == _UpsertPolicy.IGNORE:
+            stmt = stmt.prefix_with("IGNORE")
+
+    if policy not in [_UpsertPolicy.OVERWRITE, _UpsertPolicy.IGNORE]:
         raise Exception("Invalid value for update policy.")
     session.execute(stmt)
 
@@ -808,7 +832,11 @@ class DraftVariableSaver:
             # We only save conversation variable here.
             if selector[0] != CONVERSATION_VARIABLE_NODE_ID:
                 continue
-            segment = WorkflowDraftVariable.build_segment_with_type(segment_type=item.value_type, value=item.new_value)
+            # Conversation variables are exposed as NUMBER in the UI even if their
+            # persisted type is INTEGER. Allow float updates by loosening the type
+            # to NUMBER here so downstream storage infers the precise subtype.
+            segment_type = SegmentType.NUMBER if item.value_type == SegmentType.INTEGER else item.value_type
+            segment = WorkflowDraftVariable.build_segment_with_type(segment_type=segment_type, value=item.new_value)
             draft_vars.append(
                 WorkflowDraftVariable.new_conversation_variable(
                     app_id=self._app_id,
@@ -1026,7 +1054,7 @@ class DraftVariableSaver:
             return
         if self._node_type == NodeType.VARIABLE_ASSIGNER:
             draft_vars = self._build_from_variable_assigner_mapping(process_data=process_data)
-        elif self._node_type == NodeType.START:
+        elif self._node_type == NodeType.START or self._node_type.is_trigger_node:
             draft_vars = self._build_variables_from_start_mapping(outputs)
         else:
             draft_vars = self._build_variables_from_mapping(outputs)

@@ -117,8 +117,6 @@ const translation = {
     dataSet: {
       title: 'प्रसंग',
       noData: 'आप संदर्भ के रूप में ज्ञान आयात कर सकते हैं',
-      words: 'शब्द',
-      textBlocks: 'पाठ खंड',
       selectTitle: 'संदर्भ ज्ञान का चयन करें',
       selected: 'ज्ञान चुना गया',
       noDataSet: 'कोई ज्ञान नहीं मिला',
@@ -279,7 +277,6 @@ const translation = {
   variableTable: {
     key: 'वेरिएबल कुंजी',
     name: 'उपयोगकर्ता इनपुट फ़ील्ड नाम',
-    optional: 'वैकल्पिक',
     type: 'इनपुट प्रकार',
     action: 'क्रियाएँ',
     typeString: 'स्ट्रिंग',

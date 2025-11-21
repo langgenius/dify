@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Četrtletje do danes',
       yearToDate: 'Leto do danes',
       allTime: 'Vse obdobje',
+      last30days: 'Zadnjih 30 dni',
+      custom: 'Po meri',
     },
     annotation: {
       all: 'Vse',

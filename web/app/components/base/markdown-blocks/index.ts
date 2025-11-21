@@ -5,9 +5,11 @@
 
 export { default as AudioBlock } from './audio-block'
 export { default as CodeBlock } from './code-block'
+export * from './plugin-img'
+export * from './plugin-paragraph'
 export { default as Img } from './img'
-export { default as Link } from './link'
 export { default as Paragraph } from './paragraph'
+export { default as Link } from './link'
 export { default as PreCode } from './pre-code'
 export { default as ScriptBlock } from './script-block'
 export { default as VideoBlock } from './video-block'

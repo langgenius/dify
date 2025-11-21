@@ -86,7 +86,7 @@ const translation = {
     teamMember_one: '{{count,number}} član ekipe',
     teamMember_other: '{{count,number}} Članov ekipe',
     documentsRequestQuota: '{{count,number}}/min Omejitev stopnje zahtev po znanju',
-    apiRateLimitUnit: '{{count,number}}/dan',
+    apiRateLimitUnit: '{{count,number}}',
     priceTip: 'na delovnem prostoru/',
     freeTrialTipPrefix: 'Prijavite se in prejmite',
     cloud: 'Oblačna storitev',
@@ -96,6 +96,19 @@ const translation = {
     startBuilding: 'Začnite graditi',
     taxTip: 'Vse cene naročnin (mesečne/letne) ne vključujejo veljavnih davkov (npr. DDV, davek na promet).',
     taxTipSecond: 'Če vaša regija nima veljavnih davčnih zahtev, se v vaši košarici ne bo prikazal noben davek in za celotno obdobje naročnine vam ne bodo zaračunani nobeni dodatni stroški.',
+    triggerEvents: {
+      unlimited: 'Neomejeni sprožilni dogodki',
+      tooltip: 'Število dogodkov, ki samodejno sprožijo delovne tokove prek vtičnika, urnika ali sprožilcev spletnih klicev.',
+    },
+    workflowExecution: {
+      standard: 'Izvajanje standardnega delovnega procesa',
+      priority: 'Izvajanje prednostnega poteka dela',
+      tooltip: 'Prednostna vrstni red in hitrost izvajanja delovnega toka.',
+      faster: 'Hitrejše izvajanje delovnega procesa',
+    },
+    startNodes: {
+      unlimited: 'Neomejeni sprožilci/poteki dela',
+    },
   },
   plans: {
     sandbox: {
@@ -186,8 +199,17 @@ const translation = {
     annotationQuota: 'Quota za anotacijo',
     teamMembers: 'Člani ekipe',
     buildApps: 'Gradite aplikacije',
+    perMonth: 'na mesec',
+    triggerEvents: 'Sprožilni dogodki',
   },
   teamMembers: 'Člani ekipe',
+  triggerLimitModal: {
+    dismiss: 'Zavrni',
+    usageTitle: 'SPROŽITVENI DOGODKI',
+    description: 'Dosegli ste omejitev sprožilcev dogodkov delovnega toka za ta načrt.',
+    title: 'Nadgradite za odklep več sprožilnih dogodkov',
+    upgrade: 'Nadgradnja',
+  },
 }
 
 export default translation
