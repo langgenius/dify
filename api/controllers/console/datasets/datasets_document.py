@@ -162,6 +162,7 @@ class DatasetDocumentListApi(Resource):
             "keyword": "Search keyword",
             "sort": "Sort order (default: -created_at)",
             "fetch": "Fetch full details (default: false)",
+            "status": "Filter documents by display status",
         }
     )
     @api.response(200, "Documents retrieved successfully")
@@ -175,6 +176,7 @@ class DatasetDocumentListApi(Resource):
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
         sort = request.args.get("sort", default="-created_at", type=str)
+        status = request.args.get("status", default=None, type=str)
         # "yes", "true", "t", "y", "1" convert to True, while others convert to False.
         try:
             fetch_val = request.args.get("fetch", default="false")
@@ -202,6 +204,9 @@ class DatasetDocumentListApi(Resource):
             raise Forbidden(str(e))
 
         query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=current_tenant_id)
+
+        if status:
+            query = DocumentService.apply_display_status_filter(query, status)
 
         if search:
             search = f"%{search}%"
@@ -746,7 +751,7 @@ class DocumentApi(DocumentResource):
                 "name": document.name,
                 "created_from": document.created_from,
                 "created_by": document.created_by,
-                "created_at": document.created_at.timestamp(),
+                "created_at": int(document.created_at.timestamp()),
                 "tokens": document.tokens,
                 "indexing_status": document.indexing_status,
                 "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,
@@ -779,7 +784,7 @@ class DocumentApi(DocumentResource):
                 "name": document.name,
                 "created_from": document.created_from,
                 "created_by": document.created_by,
-                "created_at": document.created_at.timestamp(),
+                "created_at": int(document.created_at.timestamp()),
                 "tokens": document.tokens,
                 "indexing_status": document.indexing_status,
                 "completed_at": int(document.completed_at.timestamp()) if document.completed_at else None,

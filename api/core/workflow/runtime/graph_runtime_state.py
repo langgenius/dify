@@ -3,8 +3,8 @@ from __future__ import annotations
 import importlib
 import json
 from collections.abc import Mapping, Sequence
-from collections.abc import Mapping as TypingMapping
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 from pydantic.json import pydantic_encoder
@@ -99,11 +99,28 @@ class ResponseStreamCoordinatorProtocol(Protocol):
 class GraphProtocol(Protocol):
     """Structural interface required from graph instances attached to the runtime state."""
 
-    nodes: TypingMapping[str, object]
-    edges: TypingMapping[str, object]
+    nodes: Mapping[str, object]
+    edges: Mapping[str, object]
     root_node: object
 
     def get_outgoing_edges(self, node_id: str) -> Sequence[object]: ...
+
+
+@dataclass(slots=True)
+class _GraphRuntimeStateSnapshot:
+    """Immutable view of a serialized runtime state snapshot."""
+
+    start_at: float
+    total_tokens: int
+    node_run_steps: int
+    llm_usage: LLMUsage
+    outputs: dict[str, Any]
+    variable_pool: VariablePool
+    has_variable_pool: bool
+    ready_queue_dump: str | None
+    graph_execution_dump: str | None
+    response_coordinator_dump: str | None
+    paused_nodes: tuple[str, ...]
 
 
 class GraphRuntimeState:
@@ -293,69 +310,28 @@ class GraphRuntimeState:
 
         return json.dumps(snapshot, default=pydantic_encoder)
 
-    def loads(self, data: str | Mapping[str, Any]) -> None:
+    @classmethod
+    def from_snapshot(cls, data: str | Mapping[str, Any]) -> GraphRuntimeState:
         """Restore runtime state from a serialized snapshot."""
 
-        payload: dict[str, Any]
-        if isinstance(data, str):
-            payload = json.loads(data)
-        else:
-            payload = dict(data)
+        snapshot = cls._parse_snapshot_payload(data)
 
-        version = payload.get("version")
-        if version != "1.0":
-            raise ValueError(f"Unsupported GraphRuntimeState snapshot version: {version}")
+        state = cls(
+            variable_pool=snapshot.variable_pool,
+            start_at=snapshot.start_at,
+            total_tokens=snapshot.total_tokens,
+            llm_usage=snapshot.llm_usage,
+            outputs=snapshot.outputs,
+            node_run_steps=snapshot.node_run_steps,
+        )
+        state._apply_snapshot(snapshot)
+        return state
 
-        self._start_at = float(payload.get("start_at", 0.0))
-        total_tokens = int(payload.get("total_tokens", 0))
-        if total_tokens < 0:
-            raise ValueError("total_tokens must be non-negative")
-        self._total_tokens = total_tokens
+    def loads(self, data: str | Mapping[str, Any]) -> None:
+        """Restore runtime state from a serialized snapshot (legacy API)."""
 
-        node_run_steps = int(payload.get("node_run_steps", 0))
-        if node_run_steps < 0:
-            raise ValueError("node_run_steps must be non-negative")
-        self._node_run_steps = node_run_steps
-
-        llm_usage_payload = payload.get("llm_usage", {})
-        self._llm_usage = LLMUsage.model_validate(llm_usage_payload)
-
-        self._outputs = deepcopy(payload.get("outputs", {}))
-
-        variable_pool_payload = payload.get("variable_pool")
-        if variable_pool_payload is not None:
-            self._variable_pool = VariablePool.model_validate(variable_pool_payload)
-
-        ready_queue_payload = payload.get("ready_queue")
-        if ready_queue_payload is not None:
-            self._ready_queue = self._build_ready_queue()
-            self._ready_queue.loads(ready_queue_payload)
-        else:
-            self._ready_queue = None
-
-        graph_execution_payload = payload.get("graph_execution")
-        self._graph_execution = None
-        self._pending_graph_execution_workflow_id = None
-        if graph_execution_payload is not None:
-            try:
-                execution_payload = json.loads(graph_execution_payload)
-                self._pending_graph_execution_workflow_id = execution_payload.get("workflow_id")
-            except (json.JSONDecodeError, TypeError, AttributeError):
-                self._pending_graph_execution_workflow_id = None
-            self.graph_execution.loads(graph_execution_payload)
-
-        response_payload = payload.get("response_coordinator")
-        if response_payload is not None:
-            if self._graph is not None:
-                self.response_coordinator.loads(response_payload)
-            else:
-                self._pending_response_coordinator_dump = response_payload
-        else:
-            self._pending_response_coordinator_dump = None
-            self._response_coordinator = None
-
-        paused_nodes_payload = payload.get("paused_nodes", [])
-        self._paused_nodes = set(map(str, paused_nodes_payload))
+        snapshot = self._parse_snapshot_payload(data)
+        self._apply_snapshot(snapshot)
 
     def register_paused_node(self, node_id: str) -> None:
         """Record a node that should resume when execution is continued."""
@@ -391,3 +367,106 @@ class GraphRuntimeState:
         module = importlib.import_module("core.workflow.graph_engine.response_coordinator")
         coordinator_cls = module.ResponseStreamCoordinator
         return coordinator_cls(variable_pool=self.variable_pool, graph=graph)
+
+    # ------------------------------------------------------------------
+    # Snapshot helpers
+    # ------------------------------------------------------------------
+    @classmethod
+    def _parse_snapshot_payload(cls, data: str | Mapping[str, Any]) -> _GraphRuntimeStateSnapshot:
+        payload: dict[str, Any]
+        if isinstance(data, str):
+            payload = json.loads(data)
+        else:
+            payload = dict(data)
+
+        version = payload.get("version")
+        if version != "1.0":
+            raise ValueError(f"Unsupported GraphRuntimeState snapshot version: {version}")
+
+        start_at = float(payload.get("start_at", 0.0))
+
+        total_tokens = int(payload.get("total_tokens", 0))
+        if total_tokens < 0:
+            raise ValueError("total_tokens must be non-negative")
+
+        node_run_steps = int(payload.get("node_run_steps", 0))
+        if node_run_steps < 0:
+            raise ValueError("node_run_steps must be non-negative")
+
+        llm_usage_payload = payload.get("llm_usage", {})
+        llm_usage = LLMUsage.model_validate(llm_usage_payload)
+
+        outputs_payload = deepcopy(payload.get("outputs", {}))
+
+        variable_pool_payload = payload.get("variable_pool")
+        has_variable_pool = variable_pool_payload is not None
+        variable_pool = VariablePool.model_validate(variable_pool_payload) if has_variable_pool else VariablePool()
+
+        ready_queue_payload = payload.get("ready_queue")
+        graph_execution_payload = payload.get("graph_execution")
+        response_payload = payload.get("response_coordinator")
+        paused_nodes_payload = payload.get("paused_nodes", [])
+
+        return _GraphRuntimeStateSnapshot(
+            start_at=start_at,
+            total_tokens=total_tokens,
+            node_run_steps=node_run_steps,
+            llm_usage=llm_usage,
+            outputs=outputs_payload,
+            variable_pool=variable_pool,
+            has_variable_pool=has_variable_pool,
+            ready_queue_dump=ready_queue_payload,
+            graph_execution_dump=graph_execution_payload,
+            response_coordinator_dump=response_payload,
+            paused_nodes=tuple(map(str, paused_nodes_payload)),
+        )
+
+    def _apply_snapshot(self, snapshot: _GraphRuntimeStateSnapshot) -> None:
+        self._start_at = snapshot.start_at
+        self._total_tokens = snapshot.total_tokens
+        self._node_run_steps = snapshot.node_run_steps
+        self._llm_usage = snapshot.llm_usage.model_copy()
+        self._outputs = deepcopy(snapshot.outputs)
+        if snapshot.has_variable_pool or self._variable_pool is None:
+            self._variable_pool = snapshot.variable_pool
+
+        self._restore_ready_queue(snapshot.ready_queue_dump)
+        self._restore_graph_execution(snapshot.graph_execution_dump)
+        self._restore_response_coordinator(snapshot.response_coordinator_dump)
+        self._paused_nodes = set(snapshot.paused_nodes)
+
+    def _restore_ready_queue(self, payload: str | None) -> None:
+        if payload is not None:
+            self._ready_queue = self._build_ready_queue()
+            self._ready_queue.loads(payload)
+        else:
+            self._ready_queue = None
+
+    def _restore_graph_execution(self, payload: str | None) -> None:
+        self._graph_execution = None
+        self._pending_graph_execution_workflow_id = None
+
+        if payload is None:
+            return
+
+        try:
+            execution_payload = json.loads(payload)
+            self._pending_graph_execution_workflow_id = execution_payload.get("workflow_id")
+        except (json.JSONDecodeError, TypeError, AttributeError):
+            self._pending_graph_execution_workflow_id = None
+
+        self.graph_execution.loads(payload)
+
+    def _restore_response_coordinator(self, payload: str | None) -> None:
+        if payload is None:
+            self._pending_response_coordinator_dump = None
+            self._response_coordinator = None
+            return
+
+        if self._graph is not None:
+            self.response_coordinator.loads(payload)
+            self._pending_response_coordinator_dump = None
+            return
+
+        self._pending_response_coordinator_dump = payload
+        self._response_coordinator = None

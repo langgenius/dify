@@ -3,7 +3,7 @@ import { useState } from 'react'
 import TagInput from '.'
 
 const meta = {
-  title: 'Base/TagInput',
+  title: 'Base/Data Entry/TagInput',
   component: TagInput,
   parameters: {
     layout: 'centered',
