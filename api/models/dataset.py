@@ -1034,7 +1034,7 @@ class DatasetCollectionBinding(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class TidbAuthBinding(TypeBase):
+class TidbAuthBinding(Base):
     __tablename__ = "tidb_auth_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tidb_auth_bindings_pkey"),
@@ -1043,17 +1043,15 @@ class TidbAuthBinding(TypeBase):
         sa.Index("tidb_auth_bindings_created_at_idx", "created_at"),
         sa.Index("tidb_auth_bindings_status_idx", "status"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()))
     tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     cluster_id: Mapped[str] = mapped_column(String(255), nullable=False)
     cluster_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    status: Mapped[str] = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'CREATING'"))
     account: Mapped[str] = mapped_column(String(255), nullable=False)
     password: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
-    )
+    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    status: Mapped[str] = mapped_column(sa.String(255), nullable=False, server_default=sa.text("'CREATING'"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class Whitelist(TypeBase):
