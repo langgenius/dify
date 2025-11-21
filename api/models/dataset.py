@@ -926,21 +926,25 @@ class AppDatasetJoin(TypeBase):
         return db.session.get(App, self.app_id)
 
 
-class DatasetQuery(Base):
+class DatasetQuery(TypeBase):
     __tablename__ = "dataset_queries"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_query_pkey"),
         sa.Index("dataset_query_dataset_id_idx", "dataset_id"),
     )
 
-    id = mapped_column(StringUUID, primary_key=True, nullable=False, default=lambda: str(uuid4()))
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    content = mapped_column(LongText, nullable=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, primary_key=True, nullable=False, default=lambda: str(uuid4()), init=False
+    )
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    content: Mapped[str] = mapped_column(LongText, nullable=False)
     source: Mapped[str] = mapped_column(String(255), nullable=False)
-    source_app_id = mapped_column(StringUUID, nullable=True)
-    created_by_role = mapped_column(String(255), nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    source_app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
+    )
 
 
 class DatasetKeywordTable(TypeBase):
