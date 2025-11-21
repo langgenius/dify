@@ -1,10 +1,15 @@
 from flask_restx import Resource, fields, marshal_with, reqparse
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    is_admin_or_owner_required,
+    setup_required,
+)
 from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from libs.datetime_utils import naive_utc_now
@@ -79,17 +84,13 @@ class AppSite(Resource):
     @api.response(404, "App not found")
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     @get_app_model
     @marshal_with(app_site_model)
     def post(self, app_model):
         args = parse_app_site_args()
         current_user, _ = current_account_with_tenant()
-
-        # The role of the current user in the ta table must be editor, admin, or owner
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
         if not site:
             raise NotFound
@@ -133,16 +134,12 @@ class AppSiteAccessTokenReset(Resource):
     @api.response(404, "App or site not found")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model
     @marshal_with(app_site_model)
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin or owner
         current_user, _ = current_account_with_tenant()
-
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
         site = db.session.query(Site).where(Site.app_id == app_model.id).first()
 
         if not site:

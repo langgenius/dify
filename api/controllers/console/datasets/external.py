@@ -19,12 +19,13 @@ from fields.dataset_fields import (
     vector_setting_fields,
     weighted_score_fields,
 )
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
-
 
 def _get_or_create_model(model_name: str, field_def):
     existing = api.models.get(model_name)
@@ -257,12 +258,10 @@ class ExternalDatasetCreateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = (
             reqparse.RequestParser()
             .add_argument("external_knowledge_api_id", type=str, required=True, nullable=False, location="json")

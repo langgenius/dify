@@ -122,6 +122,13 @@ class Dataset(Base):
         return db.session.get(Account, self.created_by)
 
     @property
+    def author_name(self) -> str | None:
+        account = db.session.get(Account, self.created_by)
+        if account:
+            return account.name
+        return None
+
+    @property
     def latest_process_rule(self):
         return (
             db.session.query(DatasetProcessRule)

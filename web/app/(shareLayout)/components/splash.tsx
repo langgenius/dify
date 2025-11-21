@@ -58,7 +58,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
 
     (async () => {
       // if access mode is public, user login is always true, but the app login(passport) may be expired
-      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode!)
+      const { userLoggedIn, appLoggedIn } = await webAppLoginStatus(shareCode!, embeddedUserId || undefined)
       if (userLoggedIn && appLoggedIn) {
         redirectOrFinish()
       }
