@@ -191,6 +191,15 @@ def timezone(timezone_string):
     raise ValueError(error)
 
 
+def convert_datetime_to_date(field, target_timezone: str = ":tz"):
+    if dify_config.DB_TYPE == "postgresql":
+        return f"DATE(DATE_TRUNC('day', {field} AT TIME ZONE 'UTC' AT TIME ZONE {target_timezone}))"
+    elif dify_config.DB_TYPE == "mysql":
+        return f"DATE(CONVERT_TZ({field}, 'UTC', {target_timezone}))"
+    else:
+        raise NotImplementedError(f"Unsupported database type: {dify_config.DB_TYPE}")
+
+
 def generate_string(n):
     letters_digits = string.ascii_letters + string.digits
     result = ""
