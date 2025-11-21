@@ -1272,28 +1272,34 @@ class PipelineBuiltInTemplate(TypeBase):
     )
 
 
-class PipelineCustomizedTemplate(Base):  # type: ignore[name-defined]
+class PipelineCustomizedTemplate(TypeBase):
     __tablename__ = "pipeline_customized_templates"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="pipeline_customized_template_pkey"),
         sa.Index("pipeline_customized_template_tenant_idx", "tenant_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    name = mapped_column(sa.String(255), nullable=False)
-    description = mapped_column(LongText, nullable=False)
-    chunk_structure = mapped_column(sa.String(255), nullable=False)
-    icon = mapped_column(sa.JSON, nullable=False)
-    position = mapped_column(sa.Integer, nullable=False)
-    yaml_content = mapped_column(LongText, nullable=False)
-    install_count = mapped_column(sa.Integer, nullable=False, default=0)
-    language = mapped_column(sa.String(255), nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    updated_by = mapped_column(StringUUID, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    description: Mapped[str] = mapped_column(LongText, nullable=False)
+    chunk_structure: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    icon: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    yaml_content: Mapped[str] = mapped_column(LongText, nullable=False)
+    install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    language: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
