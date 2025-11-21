@@ -412,11 +412,11 @@ class TestDatasetServiceCreateEmptyDataset:
             description=None,
             indexing_technique=None,
             account=account,
-            permission="all_team",
+            permission="all_team_members",
         )
 
         # Assert
-        assert result.permission == "all_team"
+        assert result.permission == "all_team_members"
         mock_db.commit.assert_called_once()
 
     # ==================== External Dataset Creation Tests ====================
