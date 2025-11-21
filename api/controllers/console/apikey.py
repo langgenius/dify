@@ -56,7 +56,15 @@ class BaseApiKeyListResource(Resource):
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
-        _, current_tenant_id = current_account_with_tenant()
+        current_user, current_tenant_id = current_account_with_tenant()
+
+        if self.resource_type == "dataset":
+            has_permission = current_user.has_edit_permission or current_user.is_dataset_operator
+        else:
+            has_permission = current_user.has_edit_permission
+
+        if not has_permission:
+            raise Forbidden()
 
         _get_resource(resource_id, current_tenant_id, self.resource_model)
         keys = db.session.scalars(
