@@ -5,8 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import TypeBase
-
+from .base import TypeBase
 from .engine import db
 from .model import Message
 from .types import StringUUID

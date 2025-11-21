@@ -22,11 +22,10 @@ from core.rag.index_processor.constant.built_in_field import BuiltInField, Metad
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_storage import storage
 from libs.uuid_utils import uuidv7
-from models.base import TypeBase
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 from .account import Account
-from .base import Base
+from .base import Base, TypeBase
 from .engine import db
 from .model import App, Tag, TagBinding, UploadFile
 from .types import AdjustedJSON, BinaryData, LongText, StringUUID, adjusted_json_index

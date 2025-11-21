@@ -31,7 +31,7 @@ from .provider_ids import GenericProviderID
 from .types import LongText, StringUUID
 
 if TYPE_CHECKING:
-    from models.workflow import Workflow
+    from .workflow import Workflow
 
 
 class DifySetup(TypeBase):
