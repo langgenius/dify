@@ -30,6 +30,7 @@ PREVIEW_WORDS_LIMIT = 3000
 
 class FileService:
     _session_maker: sessionmaker
+    ALLOWED_CATEGORIES = {"knowledge", "profiles", "public"}
 
     def __init__(self, session_factory: sessionmaker | Engine | None = None):
         if isinstance(session_factory, Engine):
@@ -48,6 +49,7 @@ class FileService:
         user: Union[Account, EndUser],
         source: Literal["datasets"] | None = None,
         source_url: str = "",
+        category: str | None = None,
     ) -> UploadFile:
         # get file extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
@@ -59,9 +61,20 @@ class FileService:
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
 
+        # derive category
+        if source == "datasets":
+            derived_category = "knowledge"
+        else:
+            derived_category = category if category in self.ALLOWED_CATEGORIES else "public"
+
         # check if extension is in blacklist
         if extension and extension in dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST:
             raise BlockedFileExtensionError(f"File extension '.{extension}' is not allowed for security reasons")
+
+        if derived_category == "profiles" and extension not in IMAGE_EXTENSIONS:
+            raise UnsupportedFileTypeError()
+        if derived_category == "knowledge" and extension not in DOCUMENT_EXTENSIONS:
+            raise UnsupportedFileTypeError()
 
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
@@ -77,8 +90,9 @@ class FileService:
         file_uuid = str(uuid.uuid4())
 
         current_tenant_id = extract_tenant_id(user)
-
-        file_key = "upload_files/" + (current_tenant_id or "") + "/" + file_uuid + "." + extension
+        file_key = "/".join(
+            filter(None, ["upload_files", derived_category, current_tenant_id, f"{file_uuid}.{extension}"])
+        )
 
         # save file to storage
         storage.save(file_key, content)
@@ -128,7 +142,7 @@ class FileService:
             text_name = text_name[:200]
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
-        file_key = "upload_files/" + tenant_id + "/" + file_uuid + ".txt"
+        file_key = f"upload_files/knowledge/{tenant_id}/{file_uuid}.txt"
 
         # save file to storage
         storage.save(file_key, text.encode("utf-8"))
