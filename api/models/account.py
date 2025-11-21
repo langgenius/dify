@@ -384,8 +384,8 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
     upgrade_mode: Mapped[UpgradeMode] = mapped_column(
         String(16), nullable=False, server_default="exclude", default=UpgradeMode.EXCLUDE
     )
-    exclude_plugins: Mapped[list[str]] = mapped_column(sa.ARRAY(String(255)), nullable=False, default=lambda: [])
-    include_plugins: Mapped[list[str]] = mapped_column(sa.ARRAY(String(255)), nullable=False, default=lambda: [])
+    exclude_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default=lambda: [])
+    include_plugins: Mapped[list[str]] = mapped_column(sa.JSON, nullable=False, default=lambda: [])
     upgrade_time_of_day: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), init=False
