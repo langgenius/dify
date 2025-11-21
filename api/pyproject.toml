@@ -29,7 +29,7 @@ dependencies = [
     "googleapis-common-protos==1.63.0",
     "gunicorn~=23.0.0",
     "httpx[socks]~=0.27.0",
-    "jieba==0.42.1",
+    "jieba3k==0.35.1",
     "json-repair>=0.41.1",
     "langfuse~=2.51.3",
     "langsmith~=0.1.77",

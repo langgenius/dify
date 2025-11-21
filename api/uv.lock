@@ -1344,7 +1344,7 @@ dependencies = [
     { name = "gunicorn" },
     { name = "httpx", extra = ["socks"] },
     { name = "httpx-sse" },
-    { name = "jieba" },
+    { name = "jieba3k" },
     { name = "json-repair" },
     { name = "langfuse" },
     { name = "langsmith" },
@@ -1538,7 +1538,7 @@ requires-dist = [
     { name = "gunicorn", specifier = "~=23.0.0" },
     { name = "httpx", extras = ["socks"], specifier = "~=0.27.0" },
     { name = "httpx-sse", specifier = "~=0.4.0" },
-    { name = "jieba", specifier = "==0.42.1" },
+    { name = "jieba3k", specifier = "==0.35.1" },
     { name = "json-repair", specifier = ">=0.41.1" },
     { name = "langfuse", specifier = "~=2.51.3" },
     { name = "langsmith", specifier = "~=0.1.77" },
@@ -2921,6 +2921,12 @@ name = "jieba"
 version = "0.42.1"
 source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/c6/cb/18eeb235f833b726522d7ebed54f2278ce28ba9438e3135ab0278d9792a2/jieba-0.42.1.tar.gz", hash = "sha256:055ca12f62674fafed09427f176506079bc135638a14e23e25be909131928db2", size = 19214172, upload-time = "2020-01-20T14:27:23.5Z" }
+
+[[package]]
+name = "jieba3k"
+version = "0.35.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a9/cb/2c8332bcdc14d33b0bedd18ae0a4981a069c3513e445120da3c3f23a8aaa/jieba3k-0.35.1.zip", hash = "sha256:980a4f2636b778d312518066be90c7697d410dd5a472385f5afced71a2db1c10", size = 7423646, upload-time = "2014-11-15T05:47:47.978Z" }
 
 [[package]]
 name = "jinja2"
