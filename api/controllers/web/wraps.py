@@ -38,7 +38,7 @@ def validate_jwt_token(view: Callable[Concatenate[App, EndUser, P], R] | None = 
     return decorator
 
 
-def decode_jwt_token(app_code: str | None = None):
+def decode_jwt_token(app_code: str | None = None, user_id: str | None = None):
     system_features = FeatureService.get_system_features()
     if not app_code:
         app_code = str(request.headers.get(HEADER_NAME_APP_CODE))
@@ -62,6 +62,10 @@ def decode_jwt_token(app_code: str | None = None):
             end_user = session.scalar(select(EndUser).where(EndUser.id == end_user_id))
             if not end_user:
                 raise NotFound()
+
+            # Validate user_id against end_user's session_id if provided
+            if user_id is not None and end_user.session_id != user_id:
+                raise Unauthorized("Authentication has expired.")
 
         # for enterprise webapp auth
         app_web_auth_enabled = False

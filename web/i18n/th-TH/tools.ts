@@ -205,6 +205,7 @@ const translation = {
       clientSecretPlaceholder: 'รหัสลับของลูกค้า',
       useDynamicClientRegistration: 'ใช้การลงทะเบียนลูกค้าแบบไดนามิก',
       clientID: 'รหัสลูกค้า',
+      redirectUrlWarning: 'กรุณากำหนด URL การเปลี่ยนเส้นทาง OAuth ของคุณเป็น:',
     },
     delete: 'ลบเซิร์ฟเวอร์ MCP',
     deleteConfirmTitle: 'คุณต้องการลบ {mcp} หรือไม่?',
