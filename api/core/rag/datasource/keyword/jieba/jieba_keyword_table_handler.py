@@ -1,7 +1,7 @@
 import re
 from typing import cast
 
-from jieba3k import analyse  # type: ignore
+from jieba import analyse  # type: ignore  # module provided by jieba3k
 
 from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS, STOPWORDS_FILE
 
@@ -27,7 +27,7 @@ class JiebaKeywordTableHandler:
         if self.__class__._stopwords_initialized:
             return
         analyse.set_stop_words(str(STOPWORDS_FILE))
-        # Keep jieba3k's TF-IDF stopword set aligned with our curated list (newline added in load_stopwords()).
+        # Keep jieba's TF-IDF stopword set aligned with our curated list (newline added in load_stopwords()).
         analyse.default_tfidf.stop_words = set(STOPWORDS)  # type: ignore
         self.__class__._stopwords_initialized = True
 

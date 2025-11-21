@@ -5,7 +5,7 @@ import re
 import uuid
 from typing import Any
 
-import jieba3k.posseg as pseg  # type: ignore
+import jieba.posseg as pseg  # type: ignore  # module provided by jieba3k
 import numpy
 import oracledb
 from oracledb.connection import Connection
