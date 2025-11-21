@@ -2,7 +2,6 @@ const translation = {
   title: 'Outils',
   createCustomTool: 'Créer un Outil Personnalisé',
   type: {
-    all: 'Tout',
     builtIn: 'Intégré',
     custom: 'Personnalisé',
     workflow: 'Flux de travail',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'Après avoir configuré les identifiants, tous les membres de l\'espace de travail peuvent utiliser cet outil lors de l\'orchestration des applications.',
   },
   includeToolNum: '{{num}} outils inclus',
-  addTool: 'Ajouter un outil',
   createTool: {
     title: 'Créer un Outil Personnalisé',
     editAction: 'Configurer',
@@ -143,9 +141,7 @@ const translation = {
   addToolModal: {
     type: 'type',
     added: 'supplémentaire',
-    add: 'ajouter',
     category: 'catégorie',
-    manageInTools: 'Gérer dans Outils',
     custom: {
       title: 'Aucun outil personnalisé disponible',
       tip: 'Créer un outil personnalisé',
@@ -209,6 +205,7 @@ const translation = {
       authentication: 'Authentification',
       useDynamicClientRegistration: 'Utiliser l\'enregistrement dynamique des clients',
       clientSecret: 'Secret client',
+      redirectUrlWarning: 'Veuillez configurer votre URL de redirection OAuth sur :',
     },
     delete: 'Supprimer le Serveur MCP',
     deleteConfirmTitle: 'Souhaitez-vous supprimer {mcp}?',

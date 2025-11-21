@@ -121,7 +121,7 @@ describe('formatNumberAbbreviated', () => {
     expect(formatNumberAbbreviated(1000000)).toBe('1M')
     expect(formatNumberAbbreviated(1500000)).toBe('1.5M')
     expect(formatNumberAbbreviated(2300000)).toBe('2.3M')
-    expect(formatNumberAbbreviated(999999999)).toBe('1000M')
+    expect(formatNumberAbbreviated(999999999)).toBe('1B')
   })
 
   it('should format billions with B suffix', () => {
@@ -145,7 +145,7 @@ describe('formatNumberAbbreviated', () => {
   it('should handle edge cases', () => {
     expect(formatNumberAbbreviated(950)).toBe('950')
     expect(formatNumberAbbreviated(1001)).toBe('1k')
-    expect(formatNumberAbbreviated(999999)).toBe('1000k')
+    expect(formatNumberAbbreviated(999999)).toBe('1M')
   })
 })
 

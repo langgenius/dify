@@ -586,6 +586,13 @@ class DraftWorkflowNodeRunApi(Resource):
         return workflow_node_execution
 
 
+parser_publish = (
+    reqparse.RequestParser()
+    .add_argument("marked_name", type=str, required=False, default="", location="json")
+    .add_argument("marked_comment", type=str, required=False, default="", location="json")
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
     @api.doc("get_published_workflow")
@@ -610,6 +617,7 @@ class PublishedWorkflowApi(Resource):
         # return workflow, if not found, return None
         return workflow
 
+    @api.expect(parser_publish)
     @setup_required
     @login_required
     @account_initialization_required
@@ -620,12 +628,8 @@ class PublishedWorkflowApi(Resource):
         Publish workflow
         """
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("marked_name", type=str, required=False, default="", location="json")
-            .add_argument("marked_comment", type=str, required=False, default="", location="json")
-        )
-        args = parser.parse_args()
+
+        args = parser_publish.parse_args()
 
         # Validate name and comment length
         if args.marked_name and len(args.marked_name) > 20:
@@ -680,6 +684,9 @@ class DefaultBlockConfigsApi(Resource):
         return workflow_service.get_default_block_configs()
 
 
+parser_block = reqparse.RequestParser().add_argument("q", type=str, location="args")
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
     @api.doc("get_default_block_config")
@@ -687,6 +694,7 @@ class DefaultBlockConfigApi(Resource):
     @api.doc(params={"app_id": "Application ID", "block_type": "Block type"})
     @api.response(200, "Default block configuration retrieved successfully")
     @api.response(404, "Block type not found")
+    @api.expect(parser_block)
     @setup_required
     @login_required
     @account_initialization_required
@@ -696,8 +704,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        parser = reqparse.RequestParser().add_argument("q", type=str, location="args")
-        args = parser.parse_args()
+        args = parser_block.parse_args()
 
         q = args.get("q")
 
@@ -713,8 +720,18 @@ class DefaultBlockConfigApi(Resource):
         return workflow_service.get_default_block_config(node_type=block_type, filters=filters)
 
 
+parser_convert = (
+    reqparse.RequestParser()
+    .add_argument("name", type=str, required=False, nullable=True, location="json")
+    .add_argument("icon_type", type=str, required=False, nullable=True, location="json")
+    .add_argument("icon", type=str, required=False, nullable=True, location="json")
+    .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/convert-to-workflow")
 class ConvertToWorkflowApi(Resource):
+    @api.expect(parser_convert)
     @api.doc("convert_to_workflow")
     @api.doc(description="Convert application to workflow mode")
     @api.doc(params={"app_id": "Application ID"})
@@ -735,14 +752,7 @@ class ConvertToWorkflowApi(Resource):
         current_user, _ = current_account_with_tenant()
 
         if request.data:
-            parser = (
-                reqparse.RequestParser()
-                .add_argument("name", type=str, required=False, nullable=True, location="json")
-                .add_argument("icon_type", type=str, required=False, nullable=True, location="json")
-                .add_argument("icon", type=str, required=False, nullable=True, location="json")
-                .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
-            )
-            args = parser.parse_args()
+            args = parser_convert.parse_args()
         else:
             args = {}
 
@@ -756,8 +766,18 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
+parser_workflows = (
+    reqparse.RequestParser()
+    .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+    .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=10, location="args")
+    .add_argument("user_id", type=str, required=False, location="args")
+    .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
+)
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
+    @api.expect(parser_workflows)
     @api.doc("get_all_published_workflows")
     @api.doc(description="Get all published workflows for an application")
     @api.doc(params={"app_id": "Application ID"})
@@ -774,16 +794,9 @@ class PublishedAllWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-            .add_argument("user_id", type=str, required=False, location="args")
-            .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
-        )
-        args = parser.parse_args()
-        page = int(args.get("page", 1))
-        limit = int(args.get("limit", 10))
+        args = parser_workflows.parse_args()
+        page = args["page"]
+        limit = args["limit"]
         user_id = args.get("user_id")
         named_only = args.get("named_only", False)
 
@@ -970,8 +983,9 @@ class DraftWorkflowTriggerRunApi(Resource):
         Poll for trigger events and execute full workflow when event arrives
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, location="json", nullable=False)
+        parser = reqparse.RequestParser().add_argument(
+            "node_id", type=str, required=True, location="json", nullable=False
+        )
         args = parser.parse_args()
         node_id = args["node_id"]
         workflow_service = WorkflowService()
@@ -1123,8 +1137,9 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_ids", type=list, required=True, location="json", nullable=False)
+        parser = reqparse.RequestParser().add_argument(
+            "node_ids", type=list, required=True, location="json", nullable=False
+        )
         args = parser.parse_args()
         node_ids = args["node_ids"]
         workflow_service = WorkflowService()

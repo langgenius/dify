@@ -138,6 +138,9 @@ const translation = {
       running: 'In Service',
       disable: 'Disabled',
     },
+    disableTooltip: {
+      triggerMode: 'The {{feature}} feature is not supported in Trigger Node mode.',
+    },
   },
   analysis: {
     title: 'Analysis',

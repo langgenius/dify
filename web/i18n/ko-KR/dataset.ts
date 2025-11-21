@@ -18,7 +18,6 @@ const translation = {
   intro5: '이처럼',
   intro6: ' 독립적인 ChatGPT 인덱스 플러그인으로 공개할 수 있습니다',
   unavailable: '사용 불가',
-  unavailableTip: '임베딩 모델을 사용할 수 없습니다. 기본 임베딩 모델을 설정해야 합니다.',
   datasets: '지식',
   datasetsApi: 'API',
   retrieval: {
