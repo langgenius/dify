@@ -318,7 +318,13 @@ class ToolNode(BaseNode):
                     json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                stream_text = f"Link: {message.message.text}\n"
+                # Check if this LINK message is a file link
+                file_obj = (message.meta or {}).get("file")
+                if isinstance(file_obj, File):
+                    files.append(file_obj)
+                    stream_text = f"File: {message.message.text}\n"
+                else:
+                    stream_text = f"Link: {message.message.text}\n"
                 text += stream_text
                 yield RunStreamChunkEvent(chunk_content=stream_text, from_variable_selector=[node_id, "text"])
             elif message.type == ToolInvokeMessage.MessageType.VARIABLE:
