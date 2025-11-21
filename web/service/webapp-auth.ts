@@ -30,10 +30,13 @@ type isWebAppLogin = {
   app_logged_in: boolean
 }
 
-export async function webAppLoginStatus(shareCode: string) {
+export async function webAppLoginStatus(shareCode: string, userId?: string) {
   // always need to check login to prevent passport from being outdated
   // check remotely, the access token could be in cookie (enterprise SSO redirected with https)
-  const { logged_in, app_logged_in } = await getPublic<isWebAppLogin>(`/login/status?app_code=${shareCode}`)
+  const params = new URLSearchParams({ app_code: shareCode })
+  if (userId)
+    params.append('user_id', userId)
+  const { logged_in, app_logged_in } = await getPublic<isWebAppLogin>(`/login/status?${params.toString()}`)
   return {
     userLoggedIn: logged_in,
     appLoggedIn: app_logged_in,
