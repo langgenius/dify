@@ -14,6 +14,7 @@ from core.helper import encrypter
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
+from libs.uuid_utils import uuidv7
 from models.base import TypeBase
 
 from .engine import db
@@ -129,11 +130,10 @@ class EndUserAuthenticationProvider(TypeBase):
     )
 
     # id of the authentication provider
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"), init=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=uuidv7, init=False)
     name: Mapped[str] = mapped_column(
         String(256),
         nullable=False,
-        server_default=sa.text("'API KEY 1'"),
         default="API KEY 1",
     )
     # id of the tenant
@@ -145,20 +145,20 @@ class EndUserAuthenticationProvider(TypeBase):
     # encrypted credentials for the end user
     encrypted_credentials: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+        sa.DateTime, nullable=False, default=datetime.now, init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
         nullable=False,
-        server_default=func.current_timestamp(),
+        default=datetime.now,
         onupdate=func.current_timestamp(),
         init=False,
     )
     # credential type, e.g., "api-key", "oauth2"
     credential_type: Mapped[str] = mapped_column(
-        String(32), nullable=False, server_default=sa.text("'api-key'"), default="api-key"
+        String(32), nullable=False, default="api-key"
     )
-    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, server_default=sa.text("-1"), default=-1)
+    expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=-1)
 
     @property
     def credentials(self) -> dict[str, Any]:
