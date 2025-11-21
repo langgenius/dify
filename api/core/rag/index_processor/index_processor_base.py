@@ -1,8 +1,8 @@
 """Abstract interface for document loader implementations."""
 
+import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-import re
 from typing import TYPE_CHECKING, Any, Optional
 
 from configs import dify_config
@@ -15,10 +15,10 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
+from extensions.ext_database import db
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
-from extensions.ext_database import db
 
 if TYPE_CHECKING:
     from core.model_manager import ModelInstance
@@ -114,19 +114,23 @@ class BaseIndexProcessor(ABC):
         """
         multi_model_documents = []
         text = document.page_content
+        
+        # Collect all upload_file_ids including duplicates to preserve occurrence count
+        upload_file_id_list = []
+        
+        # For data before v0.10.0
         pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
         matches = re.finditer(pattern, text)
-        upload_file_ids = []
         for match in matches:
             upload_file_id = match.group(1)
-            upload_file_ids.append(upload_file_id)
+            upload_file_id_list.append(upload_file_id)
 
         # For data after v0.10.0
         pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
-            upload_file_ids.append(upload_file_id)
+            upload_file_id_list.append(upload_file_id)
 
         # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
         # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
@@ -134,10 +138,22 @@ class BaseIndexProcessor(ABC):
         matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
-            upload_file_ids.append(upload_file_id)
-        upload_files = db.session.query(UploadFile).filter(UploadFile.id.in_(upload_file_ids)).all()
-        if upload_files:
-            for upload_file in upload_files:
+            upload_file_id_list.append(upload_file_id)
+        
+        if not upload_file_id_list:
+            return multi_model_documents
+        
+        # Get unique IDs for database query
+        unique_upload_file_ids = list(set(upload_file_id_list))
+        upload_files = db.session.query(UploadFile).filter(UploadFile.id.in_(unique_upload_file_ids)).all()
+        
+        # Create a mapping from ID to UploadFile for quick lookup
+        upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
+        
+        # Create a Document for each occurrence (including duplicates)
+        for upload_file_id in upload_file_id_list:
+            upload_file = upload_file_map.get(upload_file_id)
+            if upload_file:
                 multi_model_documents.append(Document(
                     page_content=upload_file.name,
                     metadata={
