@@ -7,7 +7,7 @@
 <p align="center">
   <a href="https://cloud.dify.ai">ডিফাই ক্লাউড</a> ·
   <a href="https://docs.dify.ai/self-hosting/quick-start/docker-compose">সেল্ফ-হোস্টিং</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/">ডকুমেন্টেশন</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction">ডকুমেন্টেশন</a> ·
   <a href="https://dify.ai/pricing">Dify পণ্যের রূপভেদ</a>
 </p>
 
