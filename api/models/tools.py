@@ -12,8 +12,8 @@ from sqlalchemy.orm import Mapped, mapped_column
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from models.base import TypeBase
 
+from .base import TypeBase
 from .engine import db
 from .model import Account, App, Tenant
 from .types import LongText, StringUUID

@@ -6,8 +6,8 @@ from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.datetime_utils import naive_utc_now
-from models.base import TypeBase
 
+from .base import TypeBase
 from .types import BinaryData, LongText
 
 

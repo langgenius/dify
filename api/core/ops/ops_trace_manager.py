@@ -274,6 +274,8 @@ class OpsTraceManager:
             raise ValueError("App not found")
 
         tenant_id = app.tenant_id
+        if trace_config_data.tracing_config is None:
+            raise ValueError("Tracing config cannot be None.")
         decrypt_tracing_config = cls.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )

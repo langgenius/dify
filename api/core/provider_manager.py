@@ -309,11 +309,12 @@ class ProviderManager:
                     (model for model in available_models if model.model == "gpt-4"), available_models[0]
                 )
 
-                default_model = TenantDefaultModel()
-                default_model.tenant_id = tenant_id
-                default_model.model_type = model_type.to_origin_model_type()
-                default_model.provider_name = available_model.provider.provider
-                default_model.model_name = available_model.model
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type.to_origin_model_type(),
+                    provider_name=available_model.provider.provider,
+                    model_name=available_model.model,
+                )
                 db.session.add(default_model)
                 db.session.commit()
 
