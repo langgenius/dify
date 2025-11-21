@@ -949,7 +949,7 @@ class WorkflowService:
             node_data = node.get("data", {})
             node_type = node_data.get("type")
 
-            if node_type == "human_input":
+            if node_type == NodeType.HUMAN_INPUT:
                 self._validate_human_input_node_data(node_data)
 
     def validate_features_structure(self, app_model: App, features: dict):

@@ -84,3 +84,13 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         )
 
         return list(self.session.scalars(query).all())
+
+    def get_by_workflow_run_id(self, workflow_run_id: str) -> WorkflowTriggerLog | None:
+        """Get the trigger log associated with a workflow run."""
+        query = (
+            select(WorkflowTriggerLog)
+            .where(WorkflowTriggerLog.workflow_run_id == workflow_run_id)
+            .order_by(WorkflowTriggerLog.created_at.desc())
+            .limit(1)
+        )
+        return self.session.scalar(query)

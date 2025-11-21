@@ -16,8 +16,8 @@ from core.workflow.graph_events import (
 from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.human_input import HumanInputNode
 from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.nodes.llm.entities import (
     ContextConfig,
     LLMNodeChatModelMessage,

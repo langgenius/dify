@@ -107,6 +107,7 @@ class ConsoleHumanInputFormApi(Resource):
         parser.add_argument("inputs", type=dict, required=True, location="json")
         parser.add_argument("action", type=str, required=True, location="json")
         args = parser.parse_args()
+        current_user, _ = current_account_with_tenant()
 
         # Submit the form
         service = HumanInputService(db.engine)
@@ -114,6 +115,7 @@ class ConsoleHumanInputFormApi(Resource):
             form_id=form_id,
             selected_action_id=args["action"],
             form_data=args["inputs"],
+            user=current_user,
         )
 
         return jsonify({})

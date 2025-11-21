@@ -57,18 +57,19 @@ class HumanInputForm(DefaultFieldsMixin, Base):
 
     completed_by_recipient_id: Mapped[str | None] = mapped_column(
         StringUUID,
-        sa.ForeignKey("human_input_recipients.id"),
         nullable=True,
     )
 
     deliveries: Mapped[list["HumanInputDelivery"]] = relationship(
         "HumanInputDelivery",
+        primaryjoin="HumanInputForm.id ==  foreign(HumanInputDelivery.form_id)",
+        uselist=True,
         back_populates="form",
         lazy="raise",
     )
     completed_by_recipient: Mapped["HumanInputFormRecipient | None"] = relationship(
-        "HumanInputRecipient",
-        primaryjoin="HumanInputForm.completed_by_recipient_id == HumanInputRecipient.id",
+        "HumanInputFormRecipient",
+        primaryjoin="HumanInputForm.completed_by_recipient_id == foreign(HumanInputFormRecipient.id)",
         lazy="raise",
         viewonly=True,
     )
@@ -79,7 +80,6 @@ class HumanInputDelivery(DefaultFieldsMixin, Base):
 
     form_id: Mapped[str] = mapped_column(
         StringUUID,
-        sa.ForeignKey("human_input_forms.id"),
         nullable=False,
     )
     delivery_method_type: Mapped[DeliveryMethodType] = mapped_column(
@@ -91,11 +91,16 @@ class HumanInputDelivery(DefaultFieldsMixin, Base):
 
     form: Mapped[HumanInputForm] = relationship(
         "HumanInputForm",
+        uselist=False,
+        foreign_keys=[form_id],
+        primaryjoin="HumanInputDelivery.form_id == HumanInputForm.id",
         back_populates="deliveries",
         lazy="raise",
     )
+
     recipients: Mapped[list["HumanInputFormRecipient"]] = relationship(
-        "HumanInputRecipient",
+        "HumanInputFormRecipient",
+        primaryjoin="HumanInputDelivery.id == foreign(HumanInputFormRecipient.delivery_id)",
         uselist=True,
         back_populates="delivery",
         # Require explicit preloading
@@ -162,6 +167,7 @@ class HumanInputFormRecipient(DefaultFieldsMixin, Base):
         uselist=False,
         foreign_keys=[delivery_id],
         back_populates="recipients",
+        primaryjoin="HumanInputFormRecipient.delivery_id == HumanInputDelivery.id",
         # Require explicit preloading
         lazy="raise",
     )
@@ -170,7 +176,7 @@ class HumanInputFormRecipient(DefaultFieldsMixin, Base):
         "HumanInputForm",
         uselist=False,
         foreign_keys=[form_id],
-        back_populates="recipients",
+        primaryjoin="HumanInputFormRecipient.form_id == HumanInputForm.id",
         # Require explicit preloading
         lazy="raise",
     )

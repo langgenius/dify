@@ -2,16 +2,27 @@
 
 from __future__ import annotations
 
+import dataclasses
+from datetime import datetime
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
 
 from core.repositories.human_input_reposotiry import (
+    HumanInputFormReadRepository,
+    HumanInputFormRecord,
     HumanInputFormRepositoryImpl,
     _WorkspaceMemberInfo,
 )
-from core.workflow.nodes.human_input.entities import ExternalRecipient, MemberRecipient
+from core.workflow.nodes.human_input.entities import (
+    ExternalRecipient,
+    FormDefinition,
+    MemberRecipient,
+    TimeoutUnit,
+    UserAction,
+)
+from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,
@@ -39,6 +50,23 @@ def _patch_recipient_factory(monkeypatch: pytest.MonkeyPatch) -> list[SimpleName
 
     monkeypatch.setattr(HumanInputFormRecipient, "new", classmethod(fake_new))
     return created
+
+
+@pytest.fixture(autouse=True)
+def _stub_selectinload(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Avoid SQLAlchemy mapper configuration in tests using fake sessions."""
+
+    class _FakeSelect:
+        def options(self, *_args, **_kwargs):  # type: ignore[no-untyped-def]
+            return self
+
+        def where(self, *_args, **_kwargs):  # type: ignore[no-untyped-def]
+            return self
+
+    monkeypatch.setattr(
+        "core.repositories.human_input_reposotiry.selectinload", lambda *args, **kwargs: "_loader_option"
+    )
+    monkeypatch.setattr("core.repositories.human_input_reposotiry.select", lambda *args, **kwargs: _FakeSelect())
 
 
 class TestHumanInputFormRepositoryImplHelpers:
@@ -125,3 +153,201 @@ class TestHumanInputFormRepositoryImplHelpers:
         assert len(recipients) == 2
         emails = {EmailMemberRecipientPayload.model_validate_json(r.recipient_payload).email for r in recipients}
         assert emails == {"member1@example.com", "member2@example.com"}
+
+
+def _make_form_definition() -> str:
+    return FormDefinition(
+        form_content="hello",
+        inputs=[],
+        user_actions=[UserAction(id="submit", title="Submit")],
+        rendered_content="<p>hello</p>",
+        timeout=1,
+        timeout_unit=TimeoutUnit.HOUR,
+    ).model_dump_json()
+
+
+@dataclasses.dataclass
+class _DummyForm:
+    id: str
+    workflow_run_id: str
+    node_id: str
+    tenant_id: str
+    form_definition: str
+    rendered_content: str
+    expiration_time: datetime
+    selected_action_id: str | None = None
+    submitted_data: str | None = None
+    submitted_at: datetime | None = None
+    submission_user_id: str | None = None
+    submission_end_user_id: str | None = None
+    completed_by_recipient_id: str | None = None
+
+
+@dataclasses.dataclass
+class _DummyRecipient:
+    id: str
+    form_id: str
+    recipient_type: RecipientType
+    access_token: str
+    form: _DummyForm | None = None
+
+
+class _FakeScalarResult:
+    def __init__(self, obj):
+        self._obj = obj
+
+    def first(self):
+        return self._obj
+
+
+class _FakeSession:
+    def __init__(
+        self,
+        *,
+        scalars_result=None,
+        forms: dict[str, _DummyForm] | None = None,
+        recipients: dict[str, _DummyRecipient] | None = None,
+    ):
+        self._scalars_result = scalars_result
+        self.forms = forms or {}
+        self.recipients = recipients or {}
+
+    def scalars(self, _query):
+        return _FakeScalarResult(self._scalars_result)
+
+    def get(self, model_cls, obj_id):  # type: ignore[no-untyped-def]
+        if getattr(model_cls, "__name__", None) == "HumanInputForm":
+            return self.forms.get(obj_id)
+        if getattr(model_cls, "__name__", None) == "HumanInputFormRecipient":
+            return self.recipients.get(obj_id)
+        return None
+
+    def add(self, _obj):
+        return None
+
+    def flush(self):
+        return None
+
+    def refresh(self, _obj):
+        return None
+
+    def begin(self):
+        return self
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return None
+
+
+def _session_factory(session: _FakeSession):
+    class _SessionContext:
+        def __enter__(self):
+            return session
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+    def _factory(*_args, **_kwargs):
+        return _SessionContext()
+
+    return _factory
+
+
+class TestHumanInputFormReadRepository:
+    def test_get_by_token_returns_record(self):
+        form = _DummyForm(
+            id="form-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            tenant_id="tenant-1",
+            form_definition=_make_form_definition(),
+            rendered_content="<p>hello</p>",
+            expiration_time=naive_utc_now(),
+        )
+        recipient = _DummyRecipient(
+            id="recipient-1",
+            form_id=form.id,
+            recipient_type=RecipientType.WEBAPP,
+            access_token="token-123",
+            form=form,
+        )
+        session = _FakeSession(scalars_result=recipient)
+        repo = HumanInputFormReadRepository(_session_factory(session))
+
+        record = repo.get_by_token("token-123")
+
+        assert record is not None
+        assert record.form_id == form.id
+        assert record.recipient_type == RecipientType.WEBAPP
+        assert record.submitted is False
+
+    def test_get_by_form_id_and_recipient_type_uses_recipient(self):
+        form = _DummyForm(
+            id="form-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            tenant_id="tenant-1",
+            form_definition=_make_form_definition(),
+            rendered_content="<p>hello</p>",
+            expiration_time=naive_utc_now(),
+        )
+        recipient = _DummyRecipient(
+            id="recipient-1",
+            form_id=form.id,
+            recipient_type=RecipientType.WEBAPP,
+            access_token="token-123",
+            form=form,
+        )
+        session = _FakeSession(scalars_result=recipient)
+        repo = HumanInputFormReadRepository(_session_factory(session))
+
+        record = repo.get_by_form_id_and_recipient_type(form_id=form.id, recipient_type=RecipientType.WEBAPP)
+
+        assert record is not None
+        assert record.recipient_id == recipient.id
+        assert record.access_token == recipient.access_token
+
+    def test_mark_submitted_updates_fields(self, monkeypatch: pytest.MonkeyPatch):
+        fixed_now = datetime(2024, 1, 1, 0, 0, 0)
+        monkeypatch.setattr("core.repositories.human_input_reposotiry.naive_utc_now", lambda: fixed_now)
+
+        form = _DummyForm(
+            id="form-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            tenant_id="tenant-1",
+            form_definition=_make_form_definition(),
+            rendered_content="<p>hello</p>",
+            expiration_time=fixed_now,
+        )
+        recipient = _DummyRecipient(
+            id="recipient-1",
+            form_id="form-1",
+            recipient_type=RecipientType.WEBAPP,
+            access_token="token-123",
+        )
+        session = _FakeSession(
+            forms={form.id: form},
+            recipients={recipient.id: recipient},
+        )
+        repo = HumanInputFormReadRepository(_session_factory(session))
+
+        record: HumanInputFormRecord = repo.mark_submitted(
+            form_id=form.id,
+            recipient_id=recipient.id,
+            selected_action_id="approve",
+            form_data={"field": "value"},
+            submission_user_id="user-1",
+            submission_end_user_id="end-user-1",
+        )
+
+        assert form.selected_action_id == "approve"
+        assert form.completed_by_recipient_id == recipient.id
+        assert form.submission_user_id == "user-1"
+        assert form.submission_end_user_id == "end-user-1"
+        assert form.submitted_at == fixed_now
+        assert record.submitted is True
+        assert record.selected_action_id == "approve"
+        assert record.submitted_data == {"field": "value"}

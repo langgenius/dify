@@ -61,8 +61,8 @@ class ConcurrentPublisher:
                     messages.append(message)
                     if self.delay > 0:
                         time.sleep(self.delay)
-                except Exception as e:
-                    _logger.error("Publisher %s error: %s", thread_id, e)
+                except Exception:
+                    _logger.exception("Pubmsg=lisher %s", thread_id)
 
             with self._lock:
                 self.published_messages.append(messages)
@@ -308,8 +308,8 @@ def measure_throughput(
         try:
             operation()
             count += 1
-        except Exception as e:
-            _logger.error("Operation failed: %s", e)
+        except Exception:
+            _logger.exception("Operation failed")
             break
 
     elapsed = time.time() - start_time

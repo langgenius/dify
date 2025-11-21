@@ -28,10 +28,11 @@ class TestPauseReasonDiscriminator:
                 {
                     "reason": {
                         "TYPE": "human_input_required",
-                        "human_input_form_id": "form_id",
+                        "form_id": "form_id",
+                        "form_content": "form_content",
                     },
                 },
-                HumanInputRequired(human_input_form_id="form_id"),
+                HumanInputRequired(form_id="form_id", form_content="form_content"),
                 id="HumanInputRequired",
             ),
             pytest.param(
@@ -56,7 +57,7 @@ class TestPauseReasonDiscriminator:
     @pytest.mark.parametrize(
         "reason",
         [
-            HumanInputRequired(human_input_form_id="form_id"),
+            HumanInputRequired(form_id="form_id", form_content="form_content"),
             SchedulingPause(message="Hold on"),
         ],
         ids=lambda x: type(x).__name__,

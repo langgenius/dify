@@ -14,12 +14,8 @@ from core.app.features.rate_limiting.rate_limit import rate_limit_context
 from enums.quota_type import QuotaType, unlimited
 from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
-from models.workflow import Workflow
-from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
-from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
-from services.errors.app import WorkflowIdFormatError, WorkflowNotFoundError
-from services.errors.llm import InvokeRateLimitError
+from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.workflow_service import WorkflowService
 from tasks.app_generate.workflow_execute_task import ChatflowExecutionParams, chatflow_execute_task
 
@@ -259,7 +255,7 @@ class AppGenerateService:
     ):
         if workflow_run.status.is_ended():
             # TODO(QuantumGhost): handled the ended scenario.
-            return
+            pass
 
         generator = AdvancedChatAppGenerator()
 

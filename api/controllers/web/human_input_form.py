@@ -70,6 +70,7 @@ class HumanInputFormApi(WebApiResource):
                 form_token=web_app_form_token,
                 selected_action_id=args["action"],
                 form_data=args["inputs"],
+                submission_end_user_id=_end_user.id,
             )
         except FormNotFoundError:
             raise NotFoundError("Form not found")

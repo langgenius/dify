@@ -269,16 +269,6 @@ class HumanInputNodeData(BaseNodeData):
         return variable_mappings
 
 
-class HumanInputRequired(BaseModel):
-    """Event data for human input required."""
-
-    form_id: str
-    node_id: str
-    form_content: str
-    inputs: list[FormInput]
-    web_app_form_token: Optional[str] = None
-
-
 class FormDefinition(BaseModel):
     form_content: str
     inputs: list[FormInput] = Field(default_factory=list)

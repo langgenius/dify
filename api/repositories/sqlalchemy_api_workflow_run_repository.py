@@ -505,7 +505,6 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             # Mark as resumed
             pause_model.resumed_at = naive_utc_now()
-            workflow_run.pause_id = None  # type: ignore
             workflow_run.status = WorkflowExecutionStatus.RUNNING
 
             session.add(pause_model)

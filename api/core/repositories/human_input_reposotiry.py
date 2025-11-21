@@ -1,10 +1,11 @@
 import dataclasses
 import json
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import Engine, select
-from sqlalchemy.orm import Session, sessionmaker, selectinload
+from sqlalchemy.orm import Session, selectinload, sessionmaker
 
 from core.workflow.nodes.human_input.entities import (
     DeliveryChannelConfig,
@@ -83,6 +84,53 @@ class _FormSubmissionImpl(FormSubmission):
         if submitted_data is None:
             raise AssertionError(f"submitted_data should not be None, form_id={self._form_model.id}")
         return json.loads(submitted_data)
+
+
+@dataclasses.dataclass(frozen=True)
+class HumanInputFormRecord:
+    form_id: str
+    workflow_run_id: str
+    node_id: str
+    tenant_id: str
+    definition: FormDefinition
+    rendered_content: str
+    expiration_time: datetime
+    selected_action_id: str | None
+    submitted_data: Mapping[str, Any] | None
+    submitted_at: datetime | None
+    submission_user_id: str | None
+    submission_end_user_id: str | None
+    completed_by_recipient_id: str | None
+    recipient_id: str | None
+    recipient_type: RecipientType | None
+    access_token: str | None
+
+    @property
+    def submitted(self) -> bool:
+        return self.submitted_at is not None
+
+    @classmethod
+    def from_models(
+        cls, form_model: HumanInputForm, recipient_model: HumanInputFormRecipient | None
+    ) -> "HumanInputFormRecord":
+        return cls(
+            form_id=form_model.id,
+            workflow_run_id=form_model.workflow_run_id,
+            node_id=form_model.node_id,
+            tenant_id=form_model.tenant_id,
+            definition=FormDefinition.model_validate_json(form_model.form_definition),
+            rendered_content=form_model.rendered_content,
+            expiration_time=form_model.expiration_time,
+            selected_action_id=form_model.selected_action_id,
+            submitted_data=json.loads(form_model.submitted_data) if form_model.submitted_data else None,
+            submitted_at=form_model.submitted_at,
+            submission_user_id=form_model.submission_user_id,
+            submission_end_user_id=form_model.submission_end_user_id,
+            completed_by_recipient_id=form_model.completed_by_recipient_id,
+            recipient_id=recipient_model.id if recipient_model else None,
+            recipient_type=recipient_model.recipient_type if recipient_model else None,
+            access_token=recipient_model.access_token if recipient_model else None,
+        )
 
 
 class HumanInputFormRepositoryImpl:
@@ -275,11 +323,74 @@ class HumanInputFormRepositoryImpl:
 
         return _FormSubmissionImpl(form_model=form_model)
 
-    def get_form_by_token(self, token: str, recipient_type: RecipientType | None = None):
+
+class HumanInputFormReadRepository:
+    """Read/write repository for fetching and submitting human input forms."""
+
+    def __init__(self, session_factory: sessionmaker | Engine):
+        if isinstance(session_factory, Engine):
+            session_factory = sessionmaker(bind=session_factory)
+        self._session_factory = session_factory
+
+    def get_by_token(self, form_token: str) -> HumanInputFormRecord | None:
         query = (
             select(HumanInputFormRecipient)
             .options(selectinload(HumanInputFormRecipient.form))
-            .where()
-
+            .where(HumanInputFormRecipient.access_token == form_token)
+        )
         with self._session_factory(expire_on_commit=False) as session:
-            form_recipient = session.qu
+            recipient_model = session.scalars(query).first()
+            if recipient_model is None or recipient_model.form is None:
+                return None
+            return HumanInputFormRecord.from_models(recipient_model.form, recipient_model)
+
+    def get_by_form_id_and_recipient_type(
+        self,
+        form_id: str,
+        recipient_type: RecipientType,
+    ) -> HumanInputFormRecord | None:
+        query = (
+            select(HumanInputFormRecipient)
+            .options(selectinload(HumanInputFormRecipient.form))
+            .where(
+                HumanInputFormRecipient.form_id == form_id,
+                HumanInputFormRecipient.recipient_type == recipient_type,
+            )
+        )
+        with self._session_factory(expire_on_commit=False) as session:
+            recipient_model = session.scalars(query).first()
+            if recipient_model is None or recipient_model.form is None:
+                return None
+            return HumanInputFormRecord.from_models(recipient_model.form, recipient_model)
+
+    def mark_submitted(
+        self,
+        *,
+        form_id: str,
+        recipient_id: str | None,
+        selected_action_id: str,
+        form_data: Mapping[str, Any],
+        submission_user_id: str | None,
+        submission_end_user_id: str | None,
+    ) -> HumanInputFormRecord:
+        with self._session_factory(expire_on_commit=False) as session, session.begin():
+            form_model = session.get(HumanInputForm, form_id)
+            if form_model is None:
+                raise FormNotFoundError(f"form not found, id={form_id}")
+
+            recipient_model = session.get(HumanInputFormRecipient, recipient_id) if recipient_id else None
+
+            form_model.selected_action_id = selected_action_id
+            form_model.submitted_data = json.dumps(form_data)
+            form_model.submitted_at = naive_utc_now()
+            form_model.submission_user_id = submission_user_id
+            form_model.submission_end_user_id = submission_end_user_id
+            form_model.completed_by_recipient_id = recipient_id
+
+            session.add(form_model)
+            session.flush()
+            session.refresh(form_model)
+            if recipient_model is not None:
+                session.refresh(recipient_model)
+
+            return HumanInputFormRecord.from_models(form_model, recipient_model)

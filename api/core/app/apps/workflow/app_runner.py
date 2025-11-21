@@ -43,6 +43,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         graph_engine_layers: Sequence[GraphEngineLayer] = (),
+        graph_runtime_state: GraphRuntimeState | None = None,
     ):
         super().__init__(
             queue_manager=queue_manager,
@@ -56,6 +57,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._resume_graph_runtime_state = graph_runtime_state
 
     @trace_span(WorkflowAppRunnerHandler)
     def run(self):
@@ -65,17 +67,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
 
-        system_inputs = SystemVariable(
-            files=self.application_generate_entity.files,
-            user_id=self._sys_user_id,
-            app_id=app_config.app_id,
-            timestamp=int(naive_utc_now().timestamp()),
-            workflow_id=app_config.workflow_id,
-            workflow_execution_id=self.application_generate_entity.workflow_execution_id,
-        )
+        resume_state = self._resume_graph_runtime_state
 
-        # if only single iteration or single loop run is requested
-        if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
+        if resume_state is not None:
+            graph_runtime_state = resume_state
+            variable_pool = graph_runtime_state.variable_pool
+        elif self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             graph, variable_pool, graph_runtime_state = self._prepare_single_node_execution(
                 workflow=self._workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
@@ -85,7 +82,14 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             inputs = self.application_generate_entity.inputs
 
             # Create a variable pool.
-
+            system_inputs = SystemVariable(
+                files=self.application_generate_entity.files,
+                user_id=self._sys_user_id,
+                app_id=app_config.app_id,
+                timestamp=int(naive_utc_now().timestamp()),
+                workflow_id=app_config.workflow_id,
+                workflow_execution_id=self.application_generate_entity.workflow_execution_id,
+            )
             variable_pool = VariablePool(
                 system_variables=system_inputs,
                 user_inputs=inputs,
@@ -95,7 +99,10 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
             graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
-            # init graph
+        # init graph (for both resumed and fresh runs when not single-step)
+        if resume_state is not None or not (
+            self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run
+        ):
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,

@@ -109,3 +109,15 @@ class WorkflowTriggerLogRepository(Protocol):
             A sequence of recent WorkflowTriggerLog instances
         """
         ...
+
+    def get_by_workflow_run_id(self, workflow_run_id: str) -> WorkflowTriggerLog | None:
+        """
+        Retrieve a trigger log associated with a specific workflow run.
+
+        Args:
+            workflow_run_id: Identifier of the workflow run
+
+        Returns:
+            The matching WorkflowTriggerLog if present, None otherwise
+        """
+        ...

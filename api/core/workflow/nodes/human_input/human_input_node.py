@@ -1,4 +1,3 @@
-import dataclasses
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any
@@ -16,11 +15,6 @@ from .entities import HumanInputNodeData
 _SELECTED_BRANCH_KEY = "selected_branch"
 
 logger = logging.getLogger(__name__)
-
-
-@dataclasses.dataclass
-class _FormSubmissionResult:
-    action_id: str
 
 
 class HumanInputNode(Node[HumanInputNodeData]):
