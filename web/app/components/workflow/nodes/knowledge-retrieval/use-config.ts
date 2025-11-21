@@ -290,7 +290,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   }, [])
 
   const filterFileVar = useCallback((varPayload: Var) => {
-    return varPayload.type === VarType.file
+    return varPayload.type === VarType.file || varPayload.type === VarType.arrayFile
   }, [])
 
   const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
