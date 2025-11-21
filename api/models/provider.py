@@ -118,7 +118,7 @@ class Provider(TypeBase):
             return self.is_valid and self.token_is_set
 
 
-class ProviderModel(Base):
+class ProviderModel(TypeBase):
     """
     Provider model representing the API provider_models and their configurations.
     """
@@ -132,16 +132,16 @@ class ProviderModel(Base):
         ),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     provider_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_name: Mapped[str] = mapped_column(String(255), nullable=False)
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
-    credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"))
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
     @cached_property
