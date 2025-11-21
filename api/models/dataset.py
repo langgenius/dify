@@ -1332,34 +1332,42 @@ class Pipeline(Base):  # type: ignore[name-defined]
         return session.query(Dataset).where(Dataset.pipeline_id == self.id).first()
 
 
-class DocumentPipelineExecutionLog(Base):
+class DocumentPipelineExecutionLog(TypeBase):
     __tablename__ = "document_pipeline_execution_logs"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="document_pipeline_execution_log_pkey"),
         sa.Index("document_pipeline_execution_logs_document_id_idx", "document_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
-    pipeline_id = mapped_column(StringUUID, nullable=False)
-    document_id = mapped_column(StringUUID, nullable=False)
-    datasource_type = mapped_column(sa.String(255), nullable=False)
-    datasource_info = mapped_column(LongText, nullable=False)
-    datasource_node_id = mapped_column(sa.String(255), nullable=False)
-    input_data = mapped_column(sa.JSON, nullable=False)
-    created_by = mapped_column(StringUUID, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
+    pipeline_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    datasource_type: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    datasource_info: Mapped[str] = mapped_column(LongText, nullable=False)
+    datasource_node_id: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    input_data: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
-class PipelineRecommendedPlugin(Base):
+class PipelineRecommendedPlugin(TypeBase):
     __tablename__ = "pipeline_recommended_plugins"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="pipeline_recommended_plugin_pkey"),)
 
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
-    plugin_id = mapped_column(LongText, nullable=False)
-    provider_name = mapped_column(LongText, nullable=False)
-    position = mapped_column(sa.Integer, nullable=False, default=0)
-    active = mapped_column(sa.Boolean, nullable=False, default=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
+    plugin_id: Mapped[str] = mapped_column(LongText, nullable=False)
+    provider_name: Mapped[str] = mapped_column(LongText, nullable=False)
+    position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
+    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
