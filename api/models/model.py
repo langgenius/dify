@@ -1947,9 +1947,9 @@ class TagBinding(TypeBase):
     )
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
-    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
-    tag_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
-    target_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    tag_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    target_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
