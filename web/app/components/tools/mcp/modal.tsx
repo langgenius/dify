@@ -24,6 +24,8 @@ import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
 import TabSlider from '@/app/components/base/tab-slider'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import Switch from '@/app/components/base/switch'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
+import { API_PREFIX } from '@/config'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -141,8 +143,8 @@ const MCPModal = ({
 
   const isValidUrl = (string: string) => {
     try {
-      const urlPattern = /^(https?:\/\/)((([a-z\d]([a-z\d-]*[a-z\d])*)\.)+[a-z]{2,}|((\d{1,3}\.){3}\d{1,3})|localhost)(:\d+)?(\/[-a-z\d%_.~+]*)*(\?[;&a-z\d%_.~+=-]*)?/i
-      return urlPattern.test(string)
+      const url = new URL(string)
+      return url.protocol === 'http:' || url.protocol === 'https:'
     }
     catch {
       return false
@@ -313,6 +315,17 @@ const MCPModal = ({
                     />
                     <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.useDynamicClientRegistration')}</span>
                   </div>
+                  {!isDynamicRegistration && (
+                    <div className='mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3'>
+                      <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0 text-text-warning' />
+                      <div className='system-xs-regular text-text-secondary'>
+                        <div className='mb-1'>{t('tools.mcp.modal.redirectUrlWarning')}</div>
+                        <code className='system-xs-medium block break-all rounded bg-state-warning-active px-2 py-1 text-text-secondary'>
+                          {`${API_PREFIX}/mcp/oauth/callback`}
+                        </code>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>

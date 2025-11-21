@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,
@@ -148,8 +148,12 @@ class DraftRagPipelineApi(Resource):
         }
 
 
+parser_run = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
 class RagPipelineDraftRunIterationNodeApi(Resource):
+    @api.expect(parser_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -162,8 +166,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = parser_run.parse_args()
 
         try:
             response = PipelineGenerateService.generate_single_iteration(
@@ -184,9 +187,11 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 class RagPipelineDraftRunLoopNodeApi(Resource):
+    @api.expect(parser_run)
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     def post(self, pipeline: Pipeline, node_id: str):
         """
@@ -194,11 +199,8 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
-        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = parser_run.parse_args()
 
         try:
             response = PipelineGenerateService.generate_single_loop(
@@ -217,11 +219,22 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
             raise InternalServerError()
 
 
+parser_draft_run = (
+    reqparse.RequestParser()
+    .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+    .add_argument("datasource_type", type=str, required=True, location="json")
+    .add_argument("datasource_info_list", type=list, required=True, location="json")
+    .add_argument("start_node_id", type=str, required=True, location="json")
+)
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run")
 class DraftRagPipelineRunApi(Resource):
+    @api.expect(parser_draft_run)
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     def post(self, pipeline: Pipeline):
         """
@@ -229,17 +242,8 @@ class DraftRagPipelineRunApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("datasource_type", type=str, required=True, location="json")
-            .add_argument("datasource_info_list", type=list, required=True, location="json")
-            .add_argument("start_node_id", type=str, required=True, location="json")
-        )
-        args = parser.parse_args()
+        args = parser_draft_run.parse_args()
 
         try:
             response = PipelineGenerateService.generate(
@@ -255,11 +259,25 @@ class DraftRagPipelineRunApi(Resource):
             raise InvokeRateLimitHttpError(ex.description)
 
 
+parser_published_run = (
+    reqparse.RequestParser()
+    .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+    .add_argument("datasource_type", type=str, required=True, location="json")
+    .add_argument("datasource_info_list", type=list, required=True, location="json")
+    .add_argument("start_node_id", type=str, required=True, location="json")
+    .add_argument("is_preview", type=bool, required=True, location="json", default=False)
+    .add_argument("response_mode", type=str, required=True, location="json", default="streaming")
+    .add_argument("original_document_id", type=str, required=False, location="json")
+)
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/run")
 class PublishedRagPipelineRunApi(Resource):
+    @api.expect(parser_published_run)
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     def post(self, pipeline: Pipeline):
         """
@@ -267,20 +285,8 @@ class PublishedRagPipelineRunApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("datasource_type", type=str, required=True, location="json")
-            .add_argument("datasource_info_list", type=list, required=True, location="json")
-            .add_argument("start_node_id", type=str, required=True, location="json")
-            .add_argument("is_preview", type=bool, required=True, location="json", default=False)
-            .add_argument("response_mode", type=str, required=True, location="json", default="streaming")
-            .add_argument("original_document_id", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = parser_published_run.parse_args()
 
         streaming = args["response_mode"] == "streaming"
 
@@ -381,11 +387,21 @@ class PublishedRagPipelineRunApi(Resource):
 #
 #         return result
 #
+parser_rag_run = (
+    reqparse.RequestParser()
+    .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+    .add_argument("datasource_type", type=str, required=True, location="json")
+    .add_argument("credential_id", type=str, required=False, location="json")
+)
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
+    @api.expect(parser_rag_run)
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     def post(self, pipeline: Pipeline, node_id: str):
         """
@@ -393,16 +409,8 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("datasource_type", type=str, required=True, location="json")
-            .add_argument("credential_id", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = parser_rag_run.parse_args()
 
         inputs = args.get("inputs")
         if inputs is None:
@@ -429,8 +437,10 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run")
 class RagPipelineDraftDatasourceNodeRunApi(Resource):
+    @api.expect(parser_rag_run)
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     @get_rag_pipeline
     def post(self, pipeline: Pipeline, node_id: str):
@@ -439,16 +449,8 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("datasource_type", type=str, required=True, location="json")
-            .add_argument("credential_id", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = parser_rag_run.parse_args()
 
         inputs = args.get("inputs")
         if inputs is None:
@@ -473,10 +475,17 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
         )
 
 
+parser_run_api = reqparse.RequestParser().add_argument(
+    "inputs", type=dict, required=True, nullable=False, location="json"
+)
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run")
 class RagPipelineDraftNodeRunApi(Resource):
+    @api.expect(parser_run_api)
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     @get_rag_pipeline
     @marshal_with(workflow_run_node_execution_fields)
@@ -486,13 +495,8 @@ class RagPipelineDraftNodeRunApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
-        parser = reqparse.RequestParser().add_argument(
-            "inputs", type=dict, required=True, nullable=False, location="json"
-        )
-        args = parser.parse_args()
+        args = parser_run_api.parse_args()
 
         inputs = args.get("inputs")
         if inputs == None:
@@ -513,6 +517,7 @@ class RagPipelineDraftNodeRunApi(Resource):
 class RagPipelineTaskStopApi(Resource):
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     @get_rag_pipeline
     def post(self, pipeline: Pipeline, task_id: str):
@@ -521,8 +526,6 @@ class RagPipelineTaskStopApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
 
@@ -534,6 +537,7 @@ class PublishedRagPipelineApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     @marshal_with(workflow_fields)
     def get(self, pipeline: Pipeline):
@@ -541,9 +545,6 @@ class PublishedRagPipelineApi(Resource):
         Get published pipeline
         """
         # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
         if not pipeline.is_published:
             return None
         # fetch published workflow by pipeline
@@ -556,6 +557,7 @@ class PublishedRagPipelineApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     def post(self, pipeline: Pipeline):
         """
@@ -563,9 +565,6 @@ class PublishedRagPipelineApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         rag_pipeline_service = RagPipelineService()
         with Session(db.engine) as session:
             pipeline = session.merge(pipeline)
@@ -592,38 +591,33 @@ class DefaultRagPipelineBlockConfigsApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     def get(self, pipeline: Pipeline):
         """
         Get default block config
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         # Get default block configs
         rag_pipeline_service = RagPipelineService()
         return rag_pipeline_service.get_default_block_configs()
 
 
+parser_default = reqparse.RequestParser().add_argument("q", type=str, location="args")
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultRagPipelineBlockConfigApi(Resource):
+    @api.expect(parser_default)
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     def get(self, pipeline: Pipeline, block_type: str):
         """
         Get default block config
         """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser().add_argument("q", type=str, location="args")
-        args = parser.parse_args()
+        args = parser_default.parse_args()
 
         q = args.get("q")
 
@@ -639,11 +633,22 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         return rag_pipeline_service.get_default_block_config(node_type=block_type, filters=filters)
 
 
+parser_wf = (
+    reqparse.RequestParser()
+    .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+    .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=10, location="args")
+    .add_argument("user_id", type=str, required=False, location="args")
+    .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
+)
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows")
 class PublishedAllRagPipelineApi(Resource):
+    @api.expect(parser_wf)
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     @marshal_with(workflow_pagination_fields)
     def get(self, pipeline: Pipeline):
@@ -651,19 +656,10 @@ class PublishedAllRagPipelineApi(Resource):
         Get published workflows
         """
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-            .add_argument("user_id", type=str, required=False, location="args")
-            .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
-        )
-        args = parser.parse_args()
-        page = int(args.get("page", 1))
-        limit = int(args.get("limit", 10))
+        args = parser_wf.parse_args()
+        page = args["page"]
+        limit = args["limit"]
         user_id = args.get("user_id")
         named_only = args.get("named_only", False)
 
@@ -691,11 +687,20 @@ class PublishedAllRagPipelineApi(Resource):
             }
 
 
+parser_wf_id = (
+    reqparse.RequestParser()
+    .add_argument("marked_name", type=str, required=False, location="json")
+    .add_argument("marked_comment", type=str, required=False, location="json")
+)
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")
 class RagPipelineByIdApi(Resource):
+    @api.expect(parser_wf_id)
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_rag_pipeline
     @marshal_with(workflow_fields)
     def patch(self, pipeline: Pipeline, workflow_id: str):
@@ -704,22 +709,14 @@ class RagPipelineByIdApi(Resource):
         """
         # Check permission
         current_user, _ = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("marked_name", type=str, required=False, location="json")
-            .add_argument("marked_comment", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = parser_wf_id.parse_args()
 
         # Validate name and comment length
         if args.marked_name and len(args.marked_name) > 20:
             raise ValueError("Marked name cannot exceed 20 characters")
         if args.marked_comment and len(args.marked_comment) > 100:
             raise ValueError("Marked comment cannot exceed 100 characters")
-        args = parser.parse_args()
 
         # Prepare update data
         update_data = {}
@@ -752,8 +749,12 @@ class RagPipelineByIdApi(Resource):
         return workflow
 
 
+parser_parameters = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters")
 class PublishedRagPipelineSecondStepApi(Resource):
+    @api.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -763,8 +764,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
         """
         Get second step parameters of rag pipeline
         """
-        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = parser_parameters.parse_args()
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -777,6 +777,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/pre-processing/parameters")
 class PublishedRagPipelineFirstStepApi(Resource):
+    @api.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -786,8 +787,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = parser_parameters.parse_args()
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -800,6 +800,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/pre-processing/parameters")
 class DraftRagPipelineFirstStepApi(Resource):
+    @api.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -809,8 +810,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = parser_parameters.parse_args()
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -823,6 +823,7 @@ class DraftRagPipelineFirstStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/parameters")
 class DraftRagPipelineSecondStepApi(Resource):
+    @api.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -832,8 +833,7 @@ class DraftRagPipelineSecondStepApi(Resource):
         """
         Get second step parameters of rag pipeline
         """
-        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = parser_parameters.parse_args()
         node_id = args.get("node_id")
         if not node_id:
             raise ValueError("Node ID is required")
@@ -845,8 +845,16 @@ class DraftRagPipelineSecondStepApi(Resource):
         }
 
 
+parser_wf_run = (
+    reqparse.RequestParser()
+    .add_argument("last_id", type=uuid_value, location="args")
+    .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+)
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs")
 class RagPipelineWorkflowRunListApi(Resource):
+    @api.expect(parser_wf_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -856,12 +864,7 @@ class RagPipelineWorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("last_id", type=uuid_value, location="args")
-            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        )
-        args = parser.parse_args()
+        args = parser_wf_run.parse_args()
 
         rag_pipeline_service = RagPipelineService()
         result = rag_pipeline_service.get_rag_pipeline_paginate_workflow_runs(pipeline=pipeline, args=args)
@@ -961,8 +964,18 @@ class RagPipelineTransformApi(Resource):
         return result
 
 
+parser_var = (
+    reqparse.RequestParser()
+    .add_argument("datasource_type", type=str, required=True, location="json")
+    .add_argument("datasource_info", type=dict, required=True, location="json")
+    .add_argument("start_node_id", type=str, required=True, location="json")
+    .add_argument("start_node_title", type=str, required=True, location="json")
+)
+
+
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect")
 class RagPipelineDatasourceVariableApi(Resource):
+    @api.expect(parser_var)
     @setup_required
     @login_required
     @account_initialization_required
@@ -974,14 +987,7 @@ class RagPipelineDatasourceVariableApi(Resource):
         Set datasource variables
         """
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("datasource_type", type=str, required=True, location="json")
-            .add_argument("datasource_info", type=dict, required=True, location="json")
-            .add_argument("start_node_id", type=str, required=True, location="json")
-            .add_argument("start_node_title", type=str, required=True, location="json")
-        )
-        args = parser.parse_args()
+        args = parser_var.parse_args()
 
         rag_pipeline_service = RagPipelineService()
         workflow_node_execution = rag_pipeline_service.set_datasource_variables(

@@ -3,7 +3,7 @@ import uuid
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, Forbidden, abort
+from werkzeug.exceptions import BadRequest, abort
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
@@ -12,14 +12,16 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     edit_permission_required,
     enterprise_license_required,
+    is_admin_or_owner_required,
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
+from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
 from libs.login import current_account_with_tenant, login_required
 from libs.validators import validate_description_length
-from models import App
+from models import App, Workflow
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -105,6 +107,35 @@ class AppListApi(Resource):
             for app in app_pagination.items:
                 if str(app.id) in res:
                     app.access_mode = res[str(app.id)].access_mode
+
+        workflow_capable_app_ids = [
+            str(app.id) for app in app_pagination.items if app.mode in {"workflow", "advanced-chat"}
+        ]
+        draft_trigger_app_ids: set[str] = set()
+        if workflow_capable_app_ids:
+            draft_workflows = (
+                db.session.execute(
+                    select(Workflow).where(
+                        Workflow.version == Workflow.VERSION_DRAFT,
+                        Workflow.app_id.in_(workflow_capable_app_ids),
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            trigger_node_types = {
+                NodeType.TRIGGER_WEBHOOK,
+                NodeType.TRIGGER_SCHEDULE,
+                NodeType.TRIGGER_PLUGIN,
+            }
+            for workflow in draft_workflows:
+                for _, node_data in workflow.walk_nodes():
+                    if node_data.get("type") in trigger_node_types:
+                        draft_trigger_app_ids.add(str(workflow.app_id))
+                        break
+
+        for app in app_pagination.items:
+            app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
 
         return marshal(app_pagination, app_pagination_fields), 200
 
@@ -220,10 +251,8 @@ class AppApi(Resource):
         args = parser.parse_args()
 
         app_service = AppService()
-        # Construct ArgsDict from parsed arguments
-        from services.app_service import AppService as AppServiceType
 
-        args_dict: AppServiceType.ArgsDict = {
+        args_dict: AppService.ArgsDict = {
             "name": args["name"],
             "description": args.get("description", ""),
             "icon_type": args.get("icon_type", ""),
@@ -353,12 +382,15 @@ class AppExportApi(Resource):
         }
 
 
+parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json", help="Name to check")
+
+
 @console_ns.route("/apps/<uuid:app_id>/name")
 class AppNameApi(Resource):
     @api.doc("check_app_name")
     @api.doc(description="Check if app name is available")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(api.parser().add_argument("name", type=str, required=True, location="args", help="Name to check"))
+    @api.expect(parser)
     @api.response(200, "Name availability checked")
     @setup_required
     @login_required
@@ -367,7 +399,6 @@ class AppNameApi(Resource):
     @marshal_with(app_detail_fields)
     @edit_permission_required
     def post(self, app_model):
-        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
 
         app_service = AppService()
@@ -455,15 +486,11 @@ class AppApiStatus(Resource):
     @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model
     @marshal_with(app_detail_fields)
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin or owner
-        current_user, _ = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
         parser = reqparse.RequestParser().add_argument("enable_api", type=bool, required=True, location="json")
         args = parser.parse_args()
 

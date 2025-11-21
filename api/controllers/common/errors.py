@@ -25,6 +25,12 @@ class UnsupportedFileTypeError(BaseHTTPException):
     code = 415
 
 
+class BlockedFileExtensionError(BaseHTTPException):
+    error_code = "file_extension_blocked"
+    description = "The file extension is blocked for security reasons."
+    code = 400
+
+
 class TooManyFilesError(BaseHTTPException):
     error_code = "too_many_files"
     description = "Only one file is allowed."

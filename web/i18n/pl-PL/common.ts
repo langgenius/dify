@@ -166,7 +166,6 @@ const translation = {
     workspace: 'Przestrzeń robocza',
     createWorkspace: 'Utwórz przestrzeń roboczą',
     helpCenter: 'Pomoc',
-    communityFeedback: 'Opinie',
     roadmap: 'Plan działania',
     community: 'Społeczność',
     about: 'O',
@@ -175,6 +174,7 @@ const translation = {
     github: 'GitHub',
     compliance: 'Zgodność',
     contactUs: 'Skontaktuj się z nami',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'KONTO',
@@ -744,6 +744,7 @@ const translation = {
     uploadFromComputerReadError: 'Odczyt pliku nie powiódł się, spróbuj ponownie.',
     fileExtensionNotSupport: 'Rozszerzenie pliku nie jest obsługiwane',
     uploadFromComputer: 'Przesyłanie lokalne',
+    fileExtensionBlocked: 'Ten typ pliku jest zablokowany ze względów bezpieczeństwa',
   },
   license: {
     expiring_plural: 'Wygasa za {{count}} dni',

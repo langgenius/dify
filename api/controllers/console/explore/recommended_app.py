@@ -1,7 +1,7 @@
 from flask_restx import Resource, fields, marshal_with, reqparse
 
 from constants.languages import languages
-from controllers.console import console_ns
+from controllers.console import api, console_ns
 from controllers.console.wraps import account_initialization_required
 from libs.helper import AppIconUrlField
 from libs.login import current_user, login_required
@@ -35,15 +35,18 @@ recommended_app_list_fields = {
 }
 
 
+parser_apps = reqparse.RequestParser().add_argument("language", type=str, location="args")
+
+
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
+    @api.expect(parser_apps)
     @login_required
     @account_initialization_required
     @marshal_with(recommended_app_list_fields)
     def get(self):
         # language args
-        parser = reqparse.RequestParser().add_argument("language", type=str, location="args")
-        args = parser.parse_args()
+        args = parser_apps.parse_args()
 
         language = args.get("language")
         if language and language in languages:

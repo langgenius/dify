@@ -6,9 +6,7 @@ from core.helper.code_executor.template_transformer import TemplateTransformer
 class Python3TemplateTransformer(TemplateTransformer):
     @classmethod
     def get_runner_script(cls) -> str:
-        runner_script = dedent(f"""
-            # declare main function
-            {cls._code_placeholder}
+        runner_script = dedent(f"""            {cls._code_placeholder}
 
             import json
             from base64 import b64decode

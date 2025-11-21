@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Контекст', // Context
       noData: 'Ви можете імпортувати знання як контекст', // You can import Knowledge as context
-      words: 'Слова', // Words
-      textBlocks: 'Текстові блоки', // Text Blocks
       selectTitle: 'Виберіть довідкові знання', // Select reference Knowledge
       selected: 'Знання обрані', // Knowledge selected
       noDataSet: 'Знання не знайдені', // No Knowledge found
@@ -273,7 +271,6 @@ const translation = {
   variableTable: {
     key: 'Ключ змінної', // Variable Key
     name: 'Назва поля для введення користувача', // User Input Field Name
-    optional: 'Додатково', // Optional
     type: 'Тип введення', // Input Type
     action: 'Дії', // Actions
     typeString: 'Рядок', // String
