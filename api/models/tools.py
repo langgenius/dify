@@ -133,7 +133,8 @@ class EndUserAuthenticationProvider(TypeBase):
     name: Mapped[str] = mapped_column(
         String(256),
         nullable=False,
-        server_default=sa.text("'API KEY 1'::character varying"),
+        server_default=sa.text("'API KEY 1'"),
+        default="API KEY 1",
     )
     # id of the tenant
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
