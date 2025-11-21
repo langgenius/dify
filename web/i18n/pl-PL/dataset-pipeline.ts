@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Ustawienia dokumentu',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       searchPlaceholder: 'Szukaj w plikach...',
@@ -128,7 +128,7 @@ const translation = {
     notSupportedFileType: 'Ten typ pliku nie jest obsługiwany',
     emptyFolder: 'Ten folder jest pusty',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Potwierdzenie',
@@ -149,6 +149,7 @@ const translation = {
   knowledgeNameAndIconPlaceholder: 'Podaj nazwę Bazy Wiedzy',
   editPipelineInfo: 'Edytowanie informacji o potoku',
   knowledgeDescriptionPlaceholder: 'Opisz, co znajduje się w tej Bazie wiedzy. Szczegółowy opis umożliwia sztucznej inteligencji dokładniejszy dostęp do zawartości zestawu danych. Jeśli pole jest puste, Dify użyje domyślnej strategii trafień. (Opcjonalnie)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

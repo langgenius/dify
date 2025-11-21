@@ -35,10 +35,6 @@ const translation = {
       description: 'Выполняйте полнотекстовый поиск и векторный поиск одновременно, переранжируйте, чтобы выбрать наилучшее соответствие запросу пользователя. Пользователи могут выбрать установку весов или настройку модели переранжирования.',
       recommend: 'Рекомендуется',
     },
-    invertedIndex: {
-      title: 'Инвертированный индекс',
-      description: 'Инвертированный индекс - это структура, используемая для эффективного поиска. Организованный по терминам, каждый термин указывает на документы или веб-страницы, содержащие его.',
-    },
     change: 'Изменить',
     changeRetrievalMethod: 'Изменить метод поиска',
     keyword_search: {
@@ -236,6 +232,10 @@ const translation = {
     title: 'Сервисный API',
     disabled: 'Отключено',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

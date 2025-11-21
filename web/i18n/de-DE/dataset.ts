@@ -35,10 +35,6 @@ const translation = {
       description: 'Führe Volltextsuche und Vektorsuchen gleichzeitig aus, ordne neu, um die beste Übereinstimmung für die Abfrage des Benutzers auszuwählen. Konfiguration des Rerank-Modell-APIs ist notwendig.',
       recommend: 'Empfehlen',
     },
-    invertedIndex: {
-      title: 'Invertierter Index',
-      description: 'Ein invertierter Index ist eine Struktur, die für effiziente Abfragen verwendet wird. Organisiert nach Begriffen, zeigt jeder Begriff auf Dokumente oder Webseiten, die ihn enthalten.',
-    },
     change: 'Ändern',
     changeRetrievalMethod: 'Abfragemethode ändern',
     keyword_search: {
@@ -236,6 +232,10 @@ const translation = {
     enabled: 'Im Dienst',
     disabled: 'Behindert',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

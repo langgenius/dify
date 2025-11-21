@@ -326,6 +326,7 @@ const translation = {
     'multi-files': '파일 목록',
     'uploadFileTypes': '파일 형식 업로드',
     'maxNumberOfUploads': '최대 업로드 수',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'localUpload': '로컬 업로드',
     'json': 'JSON 코드',
     'jsonSchema': 'JSON 스키마',

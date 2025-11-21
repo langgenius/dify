@@ -329,6 +329,7 @@ const translation = {
     'multi-files': 'Liste des fichiers',
     'both': 'Les deux',
     'maxNumberOfUploads': 'Nombre maximal de téléchargements',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'localUpload': 'Téléchargement local',
     'single-file': 'En file indienne',
     'optional': 'optionnel',

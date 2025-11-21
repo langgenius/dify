@@ -364,7 +364,6 @@ const translation = {
     'content': 'İçerik',
     'required': 'Gerekli',
     'errorMsg': {
-      varNameRequired: 'Değişken adı gereklidir',
       labelNameRequired: 'Etiket adı gereklidir',
       varNameCanBeRepeat: 'Değişken adı tekrar edemez',
       atLeastOneOption: 'En az bir seçenek gereklidir',
@@ -401,6 +400,7 @@ const translation = {
     'text-input': 'Kısa Metin',
     'both': 'Her ikisi',
     'maxNumberOfUploads': 'Maksimum yükleme sayısı',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'checkbox': 'Onay kutusu',
     'json': 'JSON Kodu',
     'optional': 'isteğe bağlı',

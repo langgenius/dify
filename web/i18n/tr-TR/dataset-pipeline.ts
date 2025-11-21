@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Belge Ayarları',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Tüm Dosyalar',
@@ -128,7 +128,7 @@ const translation = {
     notSupportedFileType: 'Bu dosya türü desteklenmiyor',
     emptyFolder: 'Bu klasör boş',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Onay',
@@ -149,6 +149,7 @@ const translation = {
   pipelineNameAndIcon: 'İşlem hattı adı & simgesi',
   editPipelineInfo: 'İşlem hattı bilgilerini düzenleme',
   knowledgeDescriptionPlaceholder: 'Bu Bilgi Bankasında neler olduğunu açıklayın. Ayrıntılı bir açıklama, yapay zekanın veri kümesinin içeriğine daha doğru bir şekilde erişmesini sağlar. Boşsa, Dify varsayılan isabet stratejisini kullanacaktır. (İsteğe bağlı)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

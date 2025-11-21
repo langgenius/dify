@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: '문서 설정',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: '모든 파일',
@@ -128,7 +128,7 @@ const translation = {
     resetKeywords: '키워드 재설정',
     notSupportedFileType: '이 파일 형식은 지원되지 않습니다',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: '확인',
@@ -149,6 +149,7 @@ const translation = {
   editPipelineInfo: '파이프라인 정보 편집',
   knowledgeNameAndIconPlaceholder: '기술 자료의 이름을 입력하십시오.',
   knowledgeDescriptionPlaceholder: '이 기술 자료에 포함된 내용을 설명하십시오. 자세한 설명을 통해 AI는 데이터 세트의 콘텐츠에 보다 정확하게 액세스할 수 있습니다. 비어 있으면 Dify는 기본 히트 전략을 사용합니다. (선택 사항)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

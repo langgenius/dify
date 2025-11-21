@@ -28,10 +28,12 @@ const translation = {
       viewDetails: 'مشاهده جزئیات',
       loading: 'پردازش... لطفاً منتظر بمانید',
       error: 'خطا در حین اجرا رخ داد',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'پیشنهاداتی برای RAG',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

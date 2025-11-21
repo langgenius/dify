@@ -28,10 +28,12 @@ const translation = {
       loading: 'Prelucrare... Te rog să aştepţi',
       viewDetails: 'Vezi detalii',
       error: 'A apărut o eroare în timpul execuției',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'Sugestii pentru RAG',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

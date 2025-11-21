@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Pengaturan Dokumen',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Semua File',
@@ -128,7 +128,7 @@ const translation = {
     emptySearchResult: 'Tidak ada barang yang ditemukan',
     emptyFolder: 'Folder ini kosong',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Konfirmasi',
@@ -149,6 +149,7 @@ const translation = {
   knowledgeNameAndIcon: 'Nama & ikon pengetahuan',
   knowledgeDescriptionPlaceholder: 'Jelaskan apa yang ada di Basis Pengetahuan ini. Deskripsi terperinci memungkinkan AI mengakses konten kumpulan data dengan lebih akurat. Jika kosong, Dify akan menggunakan strategi hit default. (Opsional)',
   editPipelineInfo: 'Mengedit info alur',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

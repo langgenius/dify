@@ -28,10 +28,12 @@ const translation = {
       viewDetails: 'Poglej podrobnosti',
       loading: 'Predelava... Počakaj, prosim',
       error: 'Med izvajanjem je prišlo do napake',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'Predlogi za RAG',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

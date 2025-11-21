@@ -39,11 +39,6 @@ const translation = {
         'Wykonaj jednocześnie pełnotekstowe wyszukiwanie i wyszukiwanie wektorowe, ponownie porządkuj, aby wybrać najlepsze dopasowanie dla zapytania użytkownika. Konieczna jest konfiguracja API Rerank model.',
       recommend: 'Polecany',
     },
-    invertedIndex: {
-      title: 'Indeks odwrócony',
-      description:
-        'Indeks odwrócony to struktura używana do efektywnego odzyskiwania informacji. Zorganizowane według terminów, każdy termin wskazuje na dokumenty lub strony internetowe zawierające go.',
-    },
     change: 'Zmień',
     changeRetrievalMethod: 'Zmień metodę odzyskiwania',
     keyword_search: {
@@ -241,6 +236,10 @@ const translation = {
     disabled: 'Niepełnosprawny',
     enabled: 'W serwisie',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

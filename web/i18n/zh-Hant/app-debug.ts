@@ -292,7 +292,6 @@ const translation = {
     'required': '必填',
     'hide': '隱藏',
     'errorMsg': {
-      varNameRequired: '變數名稱必填',
       labelNameRequired: '顯示名稱必填',
       varNameCanBeRepeat: '變數名稱不能重複',
       atLeastOneOption: '至少需要一個選項',
@@ -328,6 +327,7 @@ const translation = {
     'localUpload': '本地上傳',
     'single-file': '單個檔',
     'maxNumberOfUploads': '最大上傳次數',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'checkbox': '核取方塊',
     'optional': '可選的',
     'jsonSchema': 'JSON Schema',

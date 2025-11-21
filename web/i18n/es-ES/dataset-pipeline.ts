@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Parametrizaciones de documentos',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allBuckets: 'Todos los depósitos de Cloud Storage',
@@ -128,7 +128,7 @@ const translation = {
     emptyFolder: 'Esta carpeta está vacía',
     notSupportedFileType: 'Este tipo de archivo no es compatible',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Confirmación',
@@ -149,6 +149,7 @@ const translation = {
   pipelineNameAndIcon: 'Nombre e icono de la tubería',
   knowledgePermissions: 'Permisos',
   editPipelineInfo: 'Editar información de canalización',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

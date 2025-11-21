@@ -51,6 +51,7 @@ const translation = {
       title: 'Starea ta educațională a expirat',
     },
     isAboutToExpire: {
+      title: 'Statutul tău educațional va expira pe {{date}}',
       summary: 'Nu te îngrijora — aceasta nu va afecta abonamentul tău curent, dar nu veți primi discountul educațional atunci când se reinnoiește, cu excepția cazului în care îți verifici din nou statutul.',
     },
     stillInEducation: {

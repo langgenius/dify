@@ -35,10 +35,6 @@ const translation = {
       description: 'Ejecuta búsquedas de texto completo y búsquedas vectoriales simultáneamente, reordena para seleccionar la mejor coincidencia para la consulta del usuario. Es necesaria la configuración de las API del modelo de reordenamiento.',
       recommend: 'Recomendar',
     },
-    invertedIndex: {
-      title: 'Índice Invertido',
-      description: 'El Índice Invertido es una estructura utilizada para la recuperación eficiente. Organizado por términos, cada término apunta a documentos o páginas web que lo contienen.',
-    },
     change: 'Cambiar',
     changeRetrievalMethod: 'Cambiar método de recuperación',
     keyword_search: {
@@ -236,6 +232,10 @@ const translation = {
     title: 'API de servicios',
     disabled: 'Discapacitado',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

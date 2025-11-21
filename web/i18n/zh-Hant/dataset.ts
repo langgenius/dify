@@ -35,10 +35,6 @@ const translation = {
       description: '同時執行全文檢索和向量檢索，並應用重排序步驟，從兩類查詢結果中選擇匹配使用者問題的最佳結果，需配置 Rerank 模型 API',
       recommend: '推薦',
     },
-    invertedIndex: {
-      title: '倒排索引',
-      description: '倒排索引是一種用於高效檢索的結構。按術語組織，每個術語指向包含它的文件或網頁',
-    },
     change: '更改',
     changeRetrievalMethod: '更改檢索方法',
     keyword_search: {
@@ -236,6 +232,10 @@ const translation = {
     title: '服務 API',
     disabled: '已停用',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

@@ -36,10 +36,6 @@ const translation = {
       description: 'Виконуйте повнотекстовий пошук і векторний пошук одночасно, повторно ранжуючи, щоб вибрати найкращу відповідність на запит користувача. Необхідна конфігурація Rerank model API.',
       recommend: 'Рекомендовано',
     },
-    invertedIndex: {
-      title: 'Інвертований індекс',
-      description: 'Інвертований індекс – це структура, яка використовується для ефективного пошуку. Організований за термінами, кожен термін вказує на документи або веб-сторінки, що його містять.',
-    },
     change: 'Змінити',
     changeRetrievalMethod: 'Змінити метод пошуку',
     keyword_search: {
@@ -237,6 +233,10 @@ const translation = {
     enabled: 'У службі',
     title: 'Сервісний API',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

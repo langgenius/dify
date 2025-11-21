@@ -35,10 +35,6 @@ const translation = {
       description: 'Thực hiện tìm kiếm toàn văn bản và tìm kiếm vector đồng thời, sắp xếp lại để chọn kết quả phù hợp nhất với truy vấn của người dùng. Yêu cầu cấu hình API mô hình Rerank.',
       recommend: 'Đề xuất',
     },
-    invertedIndex: {
-      title: 'Chỉ mục Ngược',
-      description: 'Chỉ mục Ngược là một cấu trúc được sử dụng cho việc truy xuất hiệu quả. Nó được tổ chức theo thuật ngữ, mỗi thuật ngữ trỏ đến tài liệu hoặc trang web chứa nó.',
-    },
     change: 'Thay đổi',
     changeRetrievalMethod: 'Thay đổi phương pháp truy xuất',
     keyword_search: {
@@ -236,6 +232,10 @@ const translation = {
     disabled: 'Vô hiệu hóa',
     title: 'Giao diện lập trình dịch vụ',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation
