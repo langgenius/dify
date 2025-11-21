@@ -81,6 +81,7 @@ const translation = {
     },
     addUrl: '新增 URL',
     learnMore: '瞭解更多資訊',
+    sort: {},
   },
   metadata: {
     title: '元資料',

@@ -1,8 +1,11 @@
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from core.file.models import File
+
+if TYPE_CHECKING:
+    pass
 
 
 class ArrayValidation(StrEnum):
@@ -155,6 +158,17 @@ class SegmentType(StrEnum):
             return isinstance(value, File)
         elif self == SegmentType.NONE:
             return value is None
+        elif self == SegmentType.GROUP:
+            from .segment_group import SegmentGroup
+            from .segments import Segment
+
+            if isinstance(value, SegmentGroup):
+                return all(isinstance(item, Segment) for item in value.value)
+
+            if isinstance(value, list):
+                return all(isinstance(item, Segment) for item in value)
+
+            return False
         else:
             raise AssertionError("this statement should be unreachable.")
 

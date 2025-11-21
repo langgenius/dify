@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: '발사',
+      enableTooltip: {},
     },
     apiInfo: {
       title: '백엔드 서비스 API',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: '서비스 중',
       disable: '비활성',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: '트리거 노드 모드에서는 {{feature}} 기능이 지원되지 않습니다.',
     },
   },
   analysis: {
