@@ -54,6 +54,9 @@ class TenantIsolatedTaskQueue:
                 serialized_data = wrapper.serialize()
                 serialized_tasks.append(serialized_data)
 
+        if not serialized_tasks:
+            return
+
         redis_client.lpush(self._queue, *serialized_tasks)
 
     def pull_tasks(self, count: int = 1) -> Sequence[Any]:

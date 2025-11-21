@@ -18,6 +18,7 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
+import { AppModeEnum } from '@/types/app'
 
 const DebugWithMultipleModel = () => {
   const {
@@ -33,7 +34,7 @@ const DebugWithMultipleModel = () => {
   } = useDebugWithMultipleModelContext()
 
   const { eventEmitter } = useEventEmitterContextContext()
-  const isChatMode = mode === 'chat' || mode === 'agent-chat'
+  const isChatMode = mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT
 
   const handleSend = useCallback((message: string, files?: FileEntity[]) => {
     if (checkCanSend && !checkCanSend())

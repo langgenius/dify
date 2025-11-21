@@ -200,7 +200,7 @@ export const formatBooleanInputs = (useInputs?: PromptVariable[] | null, inputs?
     return inputs
   const res = { ...inputs }
   useInputs.forEach((item) => {
-    const isBooleanInput = item.type === 'boolean'
+    const isBooleanInput = item.type === 'checkbox'
     if (isBooleanInput) {
       // Convert boolean inputs to boolean type
       res[item.key] = !!res[item.key]
