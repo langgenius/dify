@@ -27,7 +27,6 @@ class AdvancedPromptTemplateList(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        
         args = parser.parse_args(strict=True)
 
         return AdvancedPromptTemplateService.get_prompt(args)

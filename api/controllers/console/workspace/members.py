@@ -66,7 +66,6 @@ class MemberInviteEmailApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("members")
     def post(self):
-        
         args = parser_invite.parse_args(strict=True)
 
         invitee_emails = args["emails"]
@@ -159,7 +158,6 @@ class MemberUpdateRoleApi(Resource):
     @login_required
     @account_initialization_required
     def put(self, member_id):
-        
         args = parser_update.parse_args(strict=True)
         new_role = args["role"]
 
@@ -212,7 +210,6 @@ class SendOwnerTransferEmailApi(Resource):
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        
         args = parser_send.parse_args(strict=True)
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
@@ -256,7 +253,6 @@ class OwnerTransferCheckApi(Resource):
     @account_initialization_required
     @is_allow_transfer_owner
     def post(self):
-        
         args = parser_owner.parse_args(strict=True)
         # check if the current user is the owner of the workspace
         current_user, _ = current_account_with_tenant()

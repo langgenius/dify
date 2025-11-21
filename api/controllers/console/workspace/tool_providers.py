@@ -431,8 +431,6 @@ class ToolApiProviderSchemaApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        
-
         args = parser_schema.parse_args(strict=True)
 
         return ApiToolManageService.parser_api_schema(
@@ -842,7 +840,6 @@ class ToolOAuthCustomClient(Resource):
     @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
-        
         args = parser_custom.parse_args(strict=True)
 
         _, tenant_id = current_account_with_tenant()
@@ -1009,7 +1006,6 @@ class ToolProviderMCPApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self):
-        
         args = parser_mcp_delete.parse_args(strict=True)
         _, current_tenant_id = current_account_with_tenant()
 
@@ -1033,7 +1029,6 @@ class ToolMCPAuthApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        
         args = parser_auth.parse_args(strict=True)
         provider_id = args["provider_id"]
         _, tenant_id = current_account_with_tenant()
@@ -1149,7 +1144,6 @@ parser_cb = (
 class ToolMCPCallbackApi(Resource):
     @api.expect(parser_cb)
     def get(self):
-        
         args = parser_cb.parse_args(strict=True)
         state_key = args["state"]
         authorization_code = args["code"]

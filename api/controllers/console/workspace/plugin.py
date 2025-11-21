@@ -71,7 +71,6 @@ class PluginListLatestVersionsApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        
         args = parser_latest.parse_args(strict=True)
 
         try:
@@ -116,7 +115,6 @@ class PluginIconApi(Resource):
     @api.expect(parser_icon)
     @setup_required
     def get(self):
-        
         args = parser_icon.parse_args(strict=True)
 
         try:
@@ -543,7 +541,6 @@ class PluginUninstallApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        
         args = parser_uninstall.parse_args(strict=True)
 
         _, tenant_id = current_account_with_tenant()

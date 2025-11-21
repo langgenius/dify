@@ -399,7 +399,6 @@ class AppNameApi(Resource):
     @marshal_with(app_detail_fields)
     @edit_permission_required
     def post(self, app_model):
-        
         args = parser.parse_args(strict=True)
 
         app_service = AppService()

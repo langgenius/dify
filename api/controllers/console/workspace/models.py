@@ -540,7 +540,6 @@ class ModelProviderModelParameterRuleApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        
         args = parser_parameter.parse_args(strict=True)
         _, tenant_id = current_account_with_tenant()
 
