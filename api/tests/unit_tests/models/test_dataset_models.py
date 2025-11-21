@@ -1,75 +1,20 @@
 """
 Comprehensive unit tests for Dataset models.
 
-This test suite validates the core dataset domain models used in Dify's knowledge base system.
-It ensures data integrity, relationship handling, and proper model behavior without requiring
-a database connection (uses mocking for database operations).
-
-Test Coverage:
---------------
-1. Dataset Model Validation (TestDatasetModelValidation)
-   - Field validation (required/optional)
-   - Indexing techniques (high_quality, economy)
-   - Provider types (vendor, external)
-   - JSON property parsing (index_struct, retrieval_model)
-   - Collection name generation
-
-2. Document Model Relationships (TestDocumentModelRelationships)
-   - Document lifecycle and status transitions
-   - Data source type validation
-   - Display status computation for different states
-   - Relationship with Dataset and DocumentSegment
-
-3. DocumentSegment Indexing (TestDocumentSegmentIndexing)
-   - Segment creation with indexing metadata
-   - QA model support (question-answer pairs)
-   - Status tracking and error handling
-   - Hit count and usage metrics
-
-4. Embedding Storage (TestEmbeddingStorage)
-   - Vector embedding serialization using pickle
-   - Large dimension vector handling (1536D)
-   - Binary data storage validation
-
-5. Supporting Models
-   - DatasetProcessRule: Processing configuration and rules
-   - DatasetKeywordTable: Keyword indexing
-   - AppDatasetJoin: App-Dataset relationships
-   - ChildChunk: Hierarchical chunk structure
-
-6. Integration Tests
-   - Dataset → Document → Segment hierarchy
-   - Cascade operations and aggregations
-   - Navigation between related entities
-   - Model serialization (to_dict)
-
-Usage:
-------
-Run all tests:
-    pytest api/tests/unit_tests/models/test_dataset_models.py -v
-
-Run specific test class:
-    pytest api/tests/unit_tests/models/test_dataset_models.py::TestDatasetModelValidation -v
-
-Run with coverage:
-    pytest api/tests/unit_tests/models/test_dataset_models.py --cov=models.dataset
-
-Notes:
-------
-- All tests use mocking to avoid database dependencies
-- Tests follow Arrange-Act-Assert (AAA) pattern
-- UUIDs are generated for test data to ensure uniqueness
-- Default values are set by database, not model instantiation
+This test suite covers:
+- Dataset model validation
+- Document model relationships
+- Segment model indexing
+- Dataset-Document cascade deletes
+- Embedding storage validation
 """
 
-# Standard library imports
 import json
 import pickle
 from datetime import UTC, datetime
 from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
-# Model imports - Core dataset domain models
 from models.dataset import (
     AppDatasetJoin,
     ChildChunk,
@@ -83,31 +28,13 @@ from models.dataset import (
 
 
 class TestDatasetModelValidation:
-    """
-    Test suite for Dataset model validation and basic operations.
-
-    Dataset is the root entity in the knowledge base hierarchy:
-    Dataset → Document → DocumentSegment
-
-    Key attributes:
-    - tenant_id: Multi-tenancy identifier
-    - name: Human-readable dataset name
-    - indexing_technique: 'high_quality' (vector) or 'economy' (keyword)
-    - provider: 'vendor' (Dify-managed) or 'external' (third-party)
-    - embedding_model: Model used for vector embeddings (e.g., 'text-embedding-ada-002')
-    """
+    """Test suite for Dataset model validation and basic operations."""
 
     def test_dataset_creation_with_required_fields(self):
-        """
-        Test creating a dataset with all required fields.
-
-        Validates that a Dataset can be instantiated with minimal required fields.
-        Note: Default values (provider='vendor', permission='only_me') are set by
-        the database, not during model instantiation.
-        """
-        # Arrange - Prepare test data
-        tenant_id = str(uuid4())  # Simulates a tenant in multi-tenant system
-        created_by = str(uuid4())  # User ID who created the dataset
+        """Test creating a dataset with all required fields."""
+        # Arrange
+        tenant_id = str(uuid4())
+        created_by = str(uuid4())
 
         # Act
         dataset = Dataset(
@@ -145,14 +72,8 @@ class TestDatasetModelValidation:
         assert dataset.embedding_model_provider == "openai"
 
     def test_dataset_indexing_technique_validation(self):
-        """
-        Test dataset indexing technique values.
-
-        Indexing techniques determine how documents are indexed:
-        - 'high_quality': Uses vector embeddings for semantic search (more accurate, higher cost)
-        - 'economy': Uses keyword-based indexing (faster, lower cost)
-        """
-        # Arrange & Act - Create datasets with different indexing techniques
+        """Test dataset indexing technique values."""
+        # Arrange & Act
         dataset_high_quality = Dataset(
             tenant_id=str(uuid4()),
             name="High Quality Dataset",
@@ -199,13 +120,8 @@ class TestDatasetModelValidation:
         assert "external" in Dataset.PROVIDER_LIST
 
     def test_dataset_index_struct_dict_property(self):
-        """
-        Test index_struct_dict property parsing.
-
-        The index_struct field stores JSON metadata about the vector index.
-        The property automatically parses the JSON string into a Python dict.
-        """
-        # Arrange - Create index structure metadata
+        """Test index_struct_dict property parsing."""
+        # Arrange
         index_struct_data = {"type": "vector", "dimension": 1536}
         dataset = Dataset(
             tenant_id=str(uuid4()),
@@ -288,21 +204,7 @@ class TestDatasetModelValidation:
 
 
 class TestDocumentModelRelationships:
-    """
-    Test suite for Document model relationships and properties.
-
-    Document represents a single file or content source within a Dataset.
-    Each document goes through a processing pipeline:
-    1. waiting → 2. parsing → 3. cleaning → 4. splitting → 5. indexing → 6. completed
-
-    Key attributes:
-    - dataset_id: Parent dataset reference
-    - data_source_type: 'upload_file', 'notion_import', or 'website_crawl'
-    - indexing_status: Current processing stage
-    - enabled: Whether document is active in search
-    - archived: Whether document is archived (soft delete)
-    - word_count: Total words in document (aggregated from segments)
-    """
+    """Test suite for Document model relationships and properties."""
 
     def test_document_creation_with_required_fields(self):
         """Test creating a document with all required fields."""
@@ -342,14 +244,8 @@ class TestDocumentModelRelationships:
         assert "website_crawl" in Document.DATA_SOURCES
 
     def test_document_display_status_queuing(self):
-        """
-        Test document display_status property for queuing state.
-
-        The display_status property computes a user-friendly status from
-        multiple internal fields (indexing_status, is_paused, enabled, archived).
-        'queuing' means the document is waiting to be processed.
-        """
-        # Arrange - Create document in waiting state
+        """Test document display_status property for queuing state."""
+        # Arrange
         document = Document(
             tenant_id=str(uuid4()),
             dataset_id=str(uuid4()),
@@ -391,16 +287,8 @@ class TestDocumentModelRelationships:
         assert status == "paused"
 
     def test_document_display_status_indexing(self):
-        """
-        Test document display_status property for indexing state.
-
-        Multiple internal statuses map to 'indexing' display status:
-        - parsing: Extracting text from file
-        - cleaning: Removing noise and formatting
-        - splitting: Breaking into chunks/segments
-        - indexing: Creating vector embeddings
-        """
-        # Arrange - Test all indexing sub-states
+        """Test document display_status property for indexing state."""
+        # Arrange
         for indexing_status in ["parsing", "cleaning", "splitting", "indexing"]:
             document = Document(
                 tenant_id=str(uuid4()),
@@ -510,15 +398,8 @@ class TestDocumentModelRelationships:
         assert status == "archived"
 
     def test_document_data_source_info_dict_property(self):
-        """
-        Test data_source_info_dict property parsing.
-
-        The data_source_info field stores JSON metadata about the document source.
-        For upload_file: Contains upload_file_id and file metadata
-        For notion_import: Contains Notion page/database info
-        For website_crawl: Contains URL and crawl settings
-        """
-        # Arrange - Create document with source metadata
+        """Test data_source_info_dict property parsing."""
+        # Arrange
         data_source_info = {"upload_file_id": str(uuid4()), "file_name": "test.pdf"}
         document = Document(
             tenant_id=str(uuid4()),
@@ -606,36 +487,11 @@ class TestDocumentModelRelationships:
 
 
 class TestDocumentSegmentIndexing:
-    """
-    Test suite for DocumentSegment model indexing and operations.
-
-    DocumentSegment represents a chunk of text from a Document.
-    Documents are split into segments for:
-    - More granular search results
-    - Token limit management
-    - Better context relevance
-
-    Key attributes:
-    - document_id: Parent document reference
-    - position: Order within the document (1-indexed)
-    - content: The actual text content
-    - word_count: Number of words in content
-    - tokens: Number of tokens for embedding model
-    - index_node_id: Vector index identifier
-    - keywords: Extracted keywords for hybrid search
-    - hit_count: Number of times retrieved in searches
-    """
+    """Test suite for DocumentSegment model indexing and operations."""
 
     def test_document_segment_creation_with_required_fields(self):
-        """
-        Test creating a document segment with all required fields.
-
-        Segments are the atomic units of search. Each segment contains:
-        - A portion of the document text
-        - Metadata for indexing (position, word count, tokens)
-        - Tracking info (created_by, status, timestamps)
-        """
-        # Arrange - Prepare segment data
+        """Test creating a document segment with all required fields."""
+        # Arrange
         tenant_id = str(uuid4())
         dataset_id = str(uuid4())
         document_id = str(uuid4())
@@ -692,15 +548,8 @@ class TestDocumentSegmentIndexing:
         assert segment.keywords == keywords
 
     def test_document_segment_with_answer_field(self):
-        """
-        Test creating a document segment with answer field for QA model.
-
-        QA (Question-Answer) model segments store both:
-        - content: The question
-        - answer: The corresponding answer
-        This enables Q&A style knowledge bases.
-        """
-        # Arrange - Create Q&A pair
+        """Test creating a document segment with answer field for QA model."""
+        # Arrange
         content = "What is AI?"
         answer = "AI stands for Artificial Intelligence."
 
@@ -821,23 +670,7 @@ class TestDocumentSegmentIndexing:
 
 
 class TestEmbeddingStorage:
-    """
-    Test suite for Embedding model storage and retrieval.
-
-    Embedding model stores vector representations of text for semantic search.
-    Embeddings are cached to avoid redundant API calls to embedding providers.
-
-    Key attributes:
-    - model_name: Embedding model identifier (e.g., 'text-embedding-ada-002')
-    - hash: Content hash for deduplication
-    - provider_name: Embedding provider (e.g., 'openai', 'cohere')
-    - embedding: Pickled binary data of float vector
-
-    Storage strategy:
-    - Vectors are serialized using pickle for efficient storage
-    - Hash-based lookup prevents duplicate embeddings
-    - Supports large dimension vectors (up to 1536D for OpenAI models)
-    """
+    """Test suite for Embedding model storage and retrieval."""
 
     def test_embedding_creation_with_required_fields(self):
         """Test creating an embedding with required fields."""
@@ -861,14 +694,8 @@ class TestEmbeddingStorage:
         assert embedding.embedding == b"binary_data"
 
     def test_embedding_set_and_get_embedding(self):
-        """
-        Test setting and getting embedding data.
-
-        The embedding vector is stored as pickled binary data.
-        set_embedding() serializes the float list to bytes.
-        get_embedding() deserializes bytes back to float list.
-        """
-        # Arrange - Create sample embedding vector
+        """Test setting and getting embedding data."""
+        # Arrange
         embedding_data = [0.1, 0.2, 0.3, 0.4, 0.5]
         embedding = Embedding(
             model_name="text-embedding-ada-002",
@@ -1128,28 +955,11 @@ class TestChildChunk:
 
 
 class TestDatasetDocumentCascadeDeletes:
-    """
-    Test suite for Dataset-Document cascade delete operations.
-
-    Tests the aggregation and relationship queries between Dataset and Document models.
-    These tests validate that:
-    - Datasets can count their documents and segments
-    - Word counts are properly aggregated from documents
-    - Hit counts are properly aggregated from segments
-    - Filtering works correctly (enabled, completed, archived)
-
-    Note: These tests use mocking to simulate database queries without
-    requiring an actual database connection.
-    """
+    """Test suite for Dataset-Document cascade delete operations."""
 
     def test_dataset_with_documents_relationship(self):
-        """
-        Test dataset can track its documents.
-
-        The total_documents property counts all documents in a dataset,
-        regardless of their status (enabled, disabled, archived).
-        """
-        # Arrange - Create dataset and mock database query
+        """Test dataset can track its documents."""
+        # Arrange
         dataset_id = str(uuid4())
         dataset = Dataset(
             tenant_id=str(uuid4()),
@@ -1160,15 +970,14 @@ class TestDatasetDocumentCascadeDeletes:
         dataset.id = dataset_id
 
         # Mock the database session query
-        # This simulates: db.session.query(func.count(Document.id)).where(...).scalar()
         mock_query = MagicMock()
-        mock_query.where.return_value.scalar.return_value = 3  # Simulate 3 documents
+        mock_query.where.return_value.scalar.return_value = 3
 
         with patch("models.dataset.db.session.query", return_value=mock_query):
-            # Act - Call the property that triggers the query
+            # Act
             total_docs = dataset.total_documents
 
-            # Assert - Verify the mocked result is returned
+            # Assert
             assert total_docs == 3
 
     def test_dataset_available_documents_count(self):
@@ -1257,15 +1066,14 @@ class TestDatasetDocumentCascadeDeletes:
         document.id = document_id
 
         # Mock the database session query
-        # Simulates: db.session.query(DocumentSegment).where(...).count()
         mock_query = MagicMock()
-        mock_query.where.return_value.count.return_value = 10  # 10 segments
+        mock_query.where.return_value.count.return_value = 10
 
         with patch("models.dataset.db.session.query", return_value=mock_query):
-            # Act - Access the segment_count property
+            # Act
             segment_count = document.segment_count
 
-            # Assert - Verify count is correct
+            # Assert
             assert segment_count == 10
 
     def test_document_hit_count_aggregation(self):
@@ -1297,18 +1105,7 @@ class TestDatasetDocumentCascadeDeletes:
 
 
 class TestDocumentSegmentNavigation:
-    """
-    Test suite for DocumentSegment navigation properties.
-
-    DocumentSegments have navigation properties to access related entities:
-    - dataset: Parent dataset
-    - document: Parent document
-    - previous_segment: Previous segment in document (by position)
-    - next_segment: Next segment in document (by position)
-
-    These properties enable traversing the knowledge base hierarchy and
-    navigating between sequential segments.
-    """
+    """Test suite for DocumentSegment navigation properties."""
 
     def test_document_segment_dataset_property(self):
         """Test segment can access its parent dataset."""
@@ -1334,12 +1131,11 @@ class TestDocumentSegmentNavigation:
         mock_dataset.id = dataset_id
 
         # Mock the database session scalar
-        # Simulates: db.session.scalar(select(Dataset).where(...))
         with patch("models.dataset.db.session.scalar", return_value=mock_dataset):
-            # Act - Access the dataset property (triggers query)
+            # Act
             dataset = segment.dataset
 
-            # Assert - Verify the mocked dataset is returned
+            # Assert
             assert dataset is not None
             assert dataset.id == dataset_id
 
@@ -1451,36 +1247,15 @@ class TestDocumentSegmentNavigation:
 
 
 class TestModelIntegration:
-    """
-    Test suite for model integration scenarios.
-
-    Integration tests validate the complete hierarchy and interactions
-    between Dataset, Document, and DocumentSegment models.
-
-    These tests ensure:
-    - Models can be created with proper relationships
-    - Foreign key references are maintained
-    - Serialization (to_dict) works correctly
-    - Complex queries and aggregations function properly
-    """
+    """Test suite for model integration scenarios."""
 
     def test_complete_dataset_document_segment_hierarchy(self):
-        """
-        Test complete hierarchy from dataset to segment.
-
-        Validates the three-tier knowledge base structure:
-        Dataset (knowledge base) → Document (file) → Segment (chunk)
-
-        This hierarchy enables:
-        - Organizing multiple documents in a dataset
-        - Breaking documents into searchable chunks
-        - Maintaining relationships for filtering and aggregation
-        """
-        # Arrange - Create complete hierarchy
-        tenant_id = str(uuid4())  # Shared tenant
-        dataset_id = str(uuid4())  # Parent dataset
-        document_id = str(uuid4())  # Parent document
-        created_by = str(uuid4())  # Creator
+        """Test complete hierarchy from dataset to segment."""
+        # Arrange
+        tenant_id = str(uuid4())
+        dataset_id = str(uuid4())
+        document_id = str(uuid4())
+        created_by = str(uuid4())
 
         # Create dataset
         dataset = Dataset(
@@ -1549,18 +1324,16 @@ class TestModelIntegration:
         )
 
         # Mock segment_count and hit_count
-        with (
-            patch.object(Document, "segment_count", new_callable=lambda: property(lambda self: 5)),
-            patch.object(Document, "hit_count", new_callable=lambda: property(lambda self: 10)),
-        ):
+        with patch.object(Document, "segment_count", new_callable=lambda: property(lambda self: 5)), \
+             patch.object(Document, "hit_count", new_callable=lambda: property(lambda self: 10)):
             # Act
             result = document.to_dict()
 
-            # Assert - Verify all fields are correctly serialized
+            # Assert
             assert result["tenant_id"] == tenant_id
             assert result["dataset_id"] == dataset_id
             assert result["name"] == "test.pdf"
             assert result["word_count"] == 100
             assert result["indexing_status"] == "completed"
-            assert result["segment_count"] == 5  # Mocked value
-            assert result["hit_count"] == 10  # Mocked value
+            assert result["segment_count"] == 5
+            assert result["hit_count"] == 10
