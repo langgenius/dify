@@ -63,7 +63,7 @@ const DetailHeader = ({
   const { t } = useTranslation()
   const { userProfile: { timezone } } = useAppContext()
 
-  const { theme } = useTheme()
+  const { theme, resolvedTheme } = useTheme()
   const locale = useGetLanguage()
   const { locale: currentLocale } = useI18N()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
@@ -86,7 +86,7 @@ const DetailHeader = ({
     alternative_plugin_id,
   } = detail
 
-  const { author, category, name, label, description, icon, verified, tool } = detail.declaration || detail
+  const { author, category, name, label, description, icon, icon_dark, verified, tool } = detail.declaration || detail
   const isTool = category === PluginCategoryEnum.tool
   const providerBriefInfo = tool?.identity
   const providerKey = `${plugin_id}/${providerBriefInfo?.name}`
@@ -108,6 +108,12 @@ const DetailHeader = ({
 
     return false
   }, [isFromMarketplace, latest_version, version])
+
+  const currentTheme = theme === 'system' ? resolvedTheme : theme
+  const iconFileName = currentTheme === 'dark' && icon_dark ? icon_dark : icon
+  const iconSrc = iconFileName
+    ? (iconFileName.startsWith('http') ? iconFileName : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${iconFileName}`)
+    : ''
 
   const detailUrl = useMemo(() => {
     if (isFromGitHub)
@@ -214,7 +220,7 @@ const DetailHeader = ({
     <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3', isReadmeView && 'border-b-0 bg-transparent p-0')}>
       <div className="flex">
         <div className={cn('overflow-hidden rounded-xl border border-components-panel-border-subtle', isReadmeView && 'bg-components-panel-bg')}>
-          <Icon src={icon.startsWith('http') ? icon : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`} />
+          <Icon src={iconSrc} />
         </div>
         <div className="ml-3 w-0 grow">
           <div className="flex h-5 items-center">

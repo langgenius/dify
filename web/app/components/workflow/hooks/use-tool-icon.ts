@@ -15,6 +15,7 @@ import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { TriggerWithProvider } from '../block-selector/types'
+import { useTheme } from 'next-themes'
 
 const isTriggerPluginNode = (data: Node['data']): data is PluginTriggerNodeType => data.type === BlockEnum.TriggerPlugin
 
@@ -22,17 +23,30 @@ const isToolNode = (data: Node['data']): data is ToolNodeType => data.type === B
 
 const isDataSourceNode = (data: Node['data']): data is DataSourceNodeType => data.type === BlockEnum.DataSource
 
+type IconValue = ToolWithProvider['icon']
+
+const resolveIconByTheme = (
+  currentTheme: string | undefined,
+  icon?: IconValue,
+  iconDark?: IconValue,
+) => {
+  if (currentTheme === 'dark' && iconDark)
+    return iconDark
+  return icon
+}
+
 const findTriggerPluginIcon = (
   identifiers: (string | undefined)[],
   triggers: TriggerWithProvider[] | undefined,
+  currentTheme?: string,
 ) => {
   const targetTriggers = triggers || []
   for (const identifier of identifiers) {
     if (!identifier)
       continue
     const matched = targetTriggers.find(trigger => trigger.id === identifier || canFindTool(trigger.id, identifier))
-    if (matched?.icon)
-      return matched.icon
+    if (matched)
+      return resolveIconByTheme(currentTheme, matched.icon, matched.icon_dark)
   }
   return undefined
 }
@@ -44,6 +58,8 @@ export const useToolIcon = (data?: Node['data']) => {
   const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   const { data: triggerPlugins } = useAllTriggerPlugins()
+  const { theme, resolvedTheme } = useTheme()
+  const currentTheme = theme === 'system' ? resolvedTheme : theme
 
   const toolIcon = useMemo(() => {
     if (!data)
@@ -57,6 +73,7 @@ export const useToolIcon = (data?: Node['data']) => {
           data.provider_name,
         ],
         triggerPlugins,
+        currentTheme,
       )
       if (icon)
         return icon
@@ -100,21 +117,28 @@ export const useToolIcon = (data?: Node['data']) => {
             return true
           return data.provider_name === toolWithProvider.name
         })
-        if (matched?.icon)
-          return matched.icon
+        if (matched) {
+          const icon = resolveIconByTheme(currentTheme, matched.icon, matched.icon_dark)
+          if (icon)
+            return icon
+        }
       }
 
-      if (data.provider_icon)
-        return data.provider_icon
+      const fallbackIcon = resolveIconByTheme(currentTheme, data.provider_icon, data.provider_icon_dark)
+      if (fallbackIcon)
+        return fallbackIcon
 
       return ''
     }
 
-    if (isDataSourceNode(data))
-      return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon || ''
+    if (isDataSourceNode(data)) {
+      const matchedDataSource = dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)
+      const icon = resolveIconByTheme(currentTheme, matchedDataSource?.icon, matchedDataSource?.icon_dark)
+      return icon || ''
+    }
 
     return ''
-  }, [data, dataSourceList, buildInTools, customTools, workflowTools, mcpTools, triggerPlugins])
+  }, [data, dataSourceList, buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, currentTheme])
 
   return toolIcon
 }
@@ -126,6 +150,8 @@ export const useGetToolIcon = () => {
   const { data: mcpTools } = useAllMCPTools()
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const workflowStore = useWorkflowStore()
+  const { theme, resolvedTheme } = useTheme()
+  const currentTheme = theme === 'system' ? resolvedTheme : theme
 
   const getToolIcon = useCallback((data: Node['data']) => {
     const {
@@ -144,6 +170,7 @@ export const useGetToolIcon = () => {
           data.provider_name,
         ],
         triggerPlugins,
+        currentTheme,
       )
     }
 
@@ -182,21 +209,27 @@ export const useGetToolIcon = () => {
             return true
           return data.provider_name === toolWithProvider.name
         })
-        if (matched?.icon)
-          return matched.icon
+        if (matched) {
+          const icon = resolveIconByTheme(currentTheme, matched.icon, matched.icon_dark)
+          if (icon)
+            return icon
+        }
       }
 
-      if (data.provider_icon)
-        return data.provider_icon
+      const fallbackIcon = resolveIconByTheme(currentTheme, data.provider_icon, data.provider_icon_dark)
+      if (fallbackIcon)
+        return fallbackIcon
 
       return undefined
     }
 
-    if (isDataSourceNode(data))
-      return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon
+    if (isDataSourceNode(data)) {
+      const matchedDataSource = dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)
+      return resolveIconByTheme(currentTheme, matchedDataSource?.icon, matchedDataSource?.icon_dark)
+    }
 
     return undefined
-  }, [workflowStore, triggerPlugins, buildInTools, customTools, workflowTools, mcpTools])
+  }, [workflowStore, triggerPlugins, buildInTools, customTools, workflowTools, mcpTools, currentTheme])
 
   return getToolIcon
 }
