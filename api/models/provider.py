@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.uuid_utils import uuidv7
 
-from .base import Base, TypeBase
+from .base import TypeBase
 from .engine import db
 from .types import LongText, StringUUID
 

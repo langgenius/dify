@@ -25,7 +25,7 @@ from libs.uuid_utils import uuidv7
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 from .account import Account
-from .base import Base, TypeBase
+from .base import TypeBase
 from .engine import db
 from .model import App, Tag, TagBinding, UploadFile
 from .types import AdjustedJSON, BinaryData, LongText, StringUUID, adjusted_json_index
