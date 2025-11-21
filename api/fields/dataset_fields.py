@@ -75,6 +75,7 @@ dataset_detail_fields = {
     "document_count": fields.Integer,
     "word_count": fields.Integer,
     "created_by": fields.String,
+    "author_name": fields.String,
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,
