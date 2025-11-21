@@ -139,7 +139,9 @@ class ProviderModel(TypeBase):
     model_type: Mapped[str] = mapped_column(String(40), nullable=False)
     credential_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     is_valid: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=text("false"), default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )

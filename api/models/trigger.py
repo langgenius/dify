@@ -300,7 +300,9 @@ class WorkflowWebhookTrigger(TypeBase):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     webhook_id: Mapped[str] = mapped_column(String(24), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -356,7 +358,9 @@ class WorkflowPluginTrigger(TypeBase):
     provider_id: Mapped[str] = mapped_column(String(512), nullable=False)
     event_name: Mapped[str] = mapped_column(String(255), nullable=False)
     subscription_id: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
@@ -397,11 +401,13 @@ class AppTrigger(TypeBase):
     node_id: Mapped[str | None] = mapped_column(String(64), nullable=False)
     trigger_type: Mapped[str] = mapped_column(EnumText(AppTriggerType, length=50), nullable=False)
     title: Mapped[str] = mapped_column(String(255), nullable=False)
-    provider_name: Mapped[str] = mapped_column(String(255), server_default="") # why it is nullable?
+    provider_name: Mapped[str] = mapped_column(String(255), server_default="")  # why it is nullable?
     status: Mapped[str] = mapped_column(
         EnumText(AppTriggerStatus, length=50), nullable=False, default=AppTriggerStatus.ENABLED
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
