@@ -1,7 +1,5 @@
 import uuid
-from typing import cast
 
-from flask_login import current_user
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -12,15 +10,17 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
+    edit_permission_required,
     enterprise_license_required,
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
+from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from libs.validators import validate_description_length
-from models import Account, App
+from models import App, Workflow
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -56,6 +56,7 @@ class AppListApi(Resource):
     @enterprise_license_required
     def get(self):
         """Get app list"""
+        current_user, current_tenant_id = current_account_with_tenant()
 
         def uuid_list(value):
             try:
@@ -63,34 +64,36 @@ class AppListApi(Resource):
             except ValueError:
                 abort(400, message="Invalid UUID format in tag_ids.")
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument(
-            "mode",
-            type=str,
-            choices=[
-                "completion",
-                "chat",
-                "advanced-chat",
-                "workflow",
-                "agent-chat",
-                "channel",
-                "all",
-            ],
-            default="all",
-            location="args",
-            required=False,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
+            .add_argument(
+                "mode",
+                type=str,
+                choices=[
+                    "completion",
+                    "chat",
+                    "advanced-chat",
+                    "workflow",
+                    "agent-chat",
+                    "channel",
+                    "all",
+                ],
+                default="all",
+                location="args",
+                required=False,
+            )
+            .add_argument("name", type=str, location="args", required=False)
+            .add_argument("tag_ids", type=uuid_list, location="args", required=False)
+            .add_argument("is_created_by_me", type=inputs.boolean, location="args", required=False)
         )
-        parser.add_argument("name", type=str, location="args", required=False)
-        parser.add_argument("tag_ids", type=uuid_list, location="args", required=False)
-        parser.add_argument("is_created_by_me", type=inputs.boolean, location="args", required=False)
 
         args = parser.parse_args()
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_user.current_tenant_id, args)
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, args)
         if not app_pagination:
             return {"data": [], "total": 0, "page": 1, "limit": 20, "has_more": False}
 
@@ -103,6 +106,35 @@ class AppListApi(Resource):
             for app in app_pagination.items:
                 if str(app.id) in res:
                     app.access_mode = res[str(app.id)].access_mode
+
+        workflow_capable_app_ids = [
+            str(app.id) for app in app_pagination.items if app.mode in {"workflow", "advanced-chat"}
+        ]
+        draft_trigger_app_ids: set[str] = set()
+        if workflow_capable_app_ids:
+            draft_workflows = (
+                db.session.execute(
+                    select(Workflow).where(
+                        Workflow.version == Workflow.VERSION_DRAFT,
+                        Workflow.app_id.in_(workflow_capable_app_ids),
+                    )
+                )
+                .scalars()
+                .all()
+            )
+            trigger_node_types = {
+                NodeType.TRIGGER_WEBHOOK,
+                NodeType.TRIGGER_SCHEDULE,
+                NodeType.TRIGGER_PLUGIN,
+            }
+            for workflow in draft_workflows:
+                for _, node_data in workflow.walk_nodes():
+                    if node_data.get("type") in trigger_node_types:
+                        draft_trigger_app_ids.add(str(workflow.app_id))
+                        break
+
+        for app in app_pagination.items:
+            app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
 
         return marshal(app_pagination, app_pagination_fields), 200
 
@@ -129,30 +161,26 @@ class AppListApi(Resource):
     @account_initialization_required
     @marshal_with(app_detail_fields)
     @cloud_edition_billing_resource_check("apps")
+    @edit_permission_required
     def post(self):
         """Create app"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
-        parser.add_argument("description", type=validate_description_length, location="json")
-        parser.add_argument("mode", type=str, choices=ALLOW_CREATE_APP_MODES, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
+        current_user, current_tenant_id = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("name", type=str, required=True, location="json")
+            .add_argument("description", type=validate_description_length, location="json")
+            .add_argument("mode", type=str, choices=ALLOW_CREATE_APP_MODES, location="json")
+            .add_argument("icon_type", type=str, location="json")
+            .add_argument("icon", type=str, location="json")
+            .add_argument("icon_background", type=str, location="json")
+        )
         args = parser.parse_args()
-
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
 
         if "mode" not in args or args["mode"] is None:
             raise BadRequest("mode is required")
 
         app_service = AppService()
-        if not isinstance(current_user, Account):
-            raise ValueError("current_user must be an Account instance")
-        if current_user.current_tenant_id is None:
-            raise ValueError("current_user.current_tenant_id cannot be None")
-        app = app_service.create_app(current_user.current_tenant_id, args, current_user)
+        app = app_service.create_app(current_tenant_id, args, current_user)
 
         return app, 201
 
@@ -205,28 +233,25 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
+    @edit_permission_required
     @marshal_with(app_detail_fields_with_site)
     def put(self, app_model):
         """Update app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("description", type=validate_description_length, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
-        parser.add_argument("use_icon_as_answer_icon", type=bool, location="json")
-        parser.add_argument("max_active_requests", type=int, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("name", type=str, required=True, nullable=False, location="json")
+            .add_argument("description", type=validate_description_length, location="json")
+            .add_argument("icon_type", type=str, location="json")
+            .add_argument("icon", type=str, location="json")
+            .add_argument("icon_background", type=str, location="json")
+            .add_argument("use_icon_as_answer_icon", type=bool, location="json")
+            .add_argument("max_active_requests", type=int, location="json")
+        )
         args = parser.parse_args()
 
         app_service = AppService()
-        # Construct ArgsDict from parsed arguments
-        from services.app_service import AppService as AppServiceType
 
-        args_dict: AppServiceType.ArgsDict = {
+        args_dict: AppService.ArgsDict = {
             "name": args["name"],
             "description": args.get("description", ""),
             "icon_type": args.get("icon_type", ""),
@@ -248,12 +273,9 @@ class AppApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def delete(self, app_model):
         """Delete app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
         app_service = AppService()
         app_service.delete_app(app_model)
 
@@ -283,27 +305,28 @@ class AppCopyApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
+    @edit_permission_required
     @marshal_with(app_detail_fields_with_site)
     def post(self, app_model):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=validate_description_length, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("name", type=str, location="json")
+            .add_argument("description", type=validate_description_length, location="json")
+            .add_argument("icon_type", type=str, location="json")
+            .add_argument("icon", type=str, location="json")
+            .add_argument("icon_background", type=str, location="json")
+        )
         args = parser.parse_args()
 
         with Session(db.engine) as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
-            account = cast(Account, current_user)
             result = import_service.import_app(
-                account=account,
+                account=current_user,
                 import_mode=ImportMode.YAML_CONTENT,
                 yaml_content=yaml_content,
                 name=args.get("name"),
@@ -340,16 +363,15 @@ class AppExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def get(self, app_model):
         """Export app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
         # Add include_secret params
-        parser = reqparse.RequestParser()
-        parser.add_argument("include_secret", type=inputs.boolean, default=False, location="args")
-        parser.add_argument("workflow_id", type=str, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("include_secret", type=inputs.boolean, default=False, location="args")
+            .add_argument("workflow_id", type=str, location="args")
+        )
         args = parser.parse_args()
 
         return {
@@ -359,25 +381,23 @@ class AppExportApi(Resource):
         }
 
 
+parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json", help="Name to check")
+
+
 @console_ns.route("/apps/<uuid:app_id>/name")
 class AppNameApi(Resource):
     @api.doc("check_app_name")
     @api.doc(description="Check if app name is available")
     @api.doc(params={"app_id": "Application ID"})
-    @api.expect(api.parser().add_argument("name", type=str, required=True, location="args", help="Name to check"))
+    @api.expect(parser)
     @api.response(200, "Name availability checked")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model
     @marshal_with(app_detail_fields)
+    @edit_permission_required
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, location="json")
         args = parser.parse_args()
 
         app_service = AppService()
@@ -408,14 +428,13 @@ class AppIconApi(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_detail_fields)
+    @edit_permission_required
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("icon", type=str, location="json")
+            .add_argument("icon_background", type=str, location="json")
+        )
         args = parser.parse_args()
 
         app_service = AppService()
@@ -441,13 +460,9 @@ class AppSiteStatus(Resource):
     @account_initialization_required
     @get_app_model
     @marshal_with(app_detail_fields)
+    @edit_permission_required
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("enable_site", type=bool, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("enable_site", type=bool, required=True, location="json")
         args = parser.parse_args()
 
         app_service = AppService()
@@ -475,11 +490,11 @@ class AppApiStatus(Resource):
     @marshal_with(app_detail_fields)
     def post(self, app_model):
         # The role of the current user in the ta table must be admin or owner
+        current_user, _ = current_account_with_tenant()
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("enable_api", type=bool, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("enable_api", type=bool, required=True, location="json")
         args = parser.parse_args()
 
         app_service = AppService()
@@ -520,13 +535,14 @@ class AppTraceApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def post(self, app_id):
         # add app trace
-        if not current_user.is_editor:
-            raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("enabled", type=bool, required=True, location="json")
-        parser.add_argument("tracing_provider", type=str, required=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("enabled", type=bool, required=True, location="json")
+            .add_argument("tracing_provider", type=str, required=True, location="json")
+        )
         args = parser.parse_args()
 
         OpsTraceManager.update_app_tracing_config(

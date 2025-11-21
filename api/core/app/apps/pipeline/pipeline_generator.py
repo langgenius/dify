@@ -41,18 +41,14 @@ from core.workflow.repositories.workflow_execution_repository import WorkflowExe
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader
 from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
 from models.dataset import Document, DocumentPipelineExecutionLog, Pipeline
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from services.datasource_provider_service import DatasourceProviderService
-from services.feature_service import FeatureService
-from services.file_service import FileService
+from services.rag_pipeline.rag_pipeline_task_proxy import RagPipelineTaskProxy
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
-from tasks.rag_pipeline.priority_rag_pipeline_run_task import priority_rag_pipeline_run_task
-from tasks.rag_pipeline.rag_pipeline_run_task import rag_pipeline_run_task
 
 logger = logging.getLogger(__name__)
 
@@ -248,34 +244,7 @@ class PipelineGenerator(BaseAppGenerator):
                 )
 
         if rag_pipeline_invoke_entities:
-            # store the rag_pipeline_invoke_entities to object storage
-            text = [item.model_dump() for item in rag_pipeline_invoke_entities]
-            name = "rag_pipeline_invoke_entities.json"
-            # Convert list to proper JSON string
-            json_text = json.dumps(text)
-            upload_file = FileService(db.engine).upload_text(json_text, name, user.id, dataset.tenant_id)
-            features = FeatureService.get_features(dataset.tenant_id)
-            if features.billing.subscription.plan == "sandbox":
-                tenant_pipeline_task_key = f"tenant_pipeline_task:{dataset.tenant_id}"
-                tenant_self_pipeline_task_queue = f"tenant_self_pipeline_task_queue:{dataset.tenant_id}"
-
-                if redis_client.get(tenant_pipeline_task_key):
-                    # Add to waiting queue using List operations (lpush)
-                    redis_client.lpush(tenant_self_pipeline_task_queue, upload_file.id)
-                else:
-                    # Set flag and execute task
-                    redis_client.set(tenant_pipeline_task_key, 1, ex=60 * 60)
-                    rag_pipeline_run_task.delay(  # type: ignore
-                        rag_pipeline_invoke_entities_file_id=upload_file.id,
-                        tenant_id=dataset.tenant_id,
-                    )
-
-            else:
-                priority_rag_pipeline_run_task.delay(  # type: ignore
-                    rag_pipeline_invoke_entities_file_id=upload_file.id,
-                    tenant_id=dataset.tenant_id,
-                )
-
+            RagPipelineTaskProxy(dataset.tenant_id, user.id, rag_pipeline_invoke_entities).delay()
         # return batch, dataset, documents
         return {
             "batch": batch,
@@ -352,6 +321,8 @@ class PipelineGenerator(BaseAppGenerator):
                     "application_generate_entity": application_generate_entity,
                     "workflow_thread_pool_id": workflow_thread_pool_id,
                     "variable_loader": variable_loader,
+                    "workflow_execution_repository": workflow_execution_repository,
+                    "workflow_node_execution_repository": workflow_node_execution_repository,
                 },
             )
 
@@ -367,8 +338,6 @@ class PipelineGenerator(BaseAppGenerator):
                 workflow=workflow,
                 queue_manager=queue_manager,
                 user=user,
-                workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
                 stream=streaming,
                 draft_var_saver_factory=draft_var_saver_factory,
             )
@@ -573,6 +542,8 @@ class PipelineGenerator(BaseAppGenerator):
         queue_manager: AppQueueManager,
         context: contextvars.Context,
         variable_loader: VariableLoader,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         workflow_thread_pool_id: str | None = None,
     ) -> None:
         """
@@ -620,6 +591,8 @@ class PipelineGenerator(BaseAppGenerator):
                         variable_loader=variable_loader,
                         workflow=workflow,
                         system_user_id=system_user_id,
+                        workflow_execution_repository=workflow_execution_repository,
+                        workflow_node_execution_repository=workflow_node_execution_repository,
                     )
 
                     runner.run()
@@ -648,8 +621,6 @@ class PipelineGenerator(BaseAppGenerator):
         workflow: Workflow,
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
-        workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
         stream: bool = False,
     ) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
@@ -660,7 +631,6 @@ class PipelineGenerator(BaseAppGenerator):
         :param queue_manager: queue manager
         :param user: account or end user
         :param stream: is stream
-        :param workflow_node_execution_repository: optional repository for workflow node execution
         :return:
         """
         # init generate task pipeline
@@ -670,8 +640,6 @@ class PipelineGenerator(BaseAppGenerator):
             queue_manager=queue_manager,
             user=user,
             stream=stream,
-            workflow_node_execution_repository=workflow_node_execution_repository,
-            workflow_execution_repository=workflow_execution_repository,
             draft_var_saver_factory=draft_var_saver_factory,
         )
 

@@ -7,6 +7,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
+from services.plugin.plugin_service import PluginService
 from services.tools.tools_transform_service import ToolTransformService
 
 
@@ -16,15 +17,14 @@ class TestToolTransformService:
     @pytest.fixture
     def mock_external_service_dependencies(self):
         """Mock setup for external service dependencies."""
-        with (
-            patch("services.tools.tools_transform_service.dify_config") as mock_dify_config,
-        ):
-            # Setup default mock returns
-            mock_dify_config.CONSOLE_API_URL = "https://console.example.com"
+        with patch("services.tools.tools_transform_service.dify_config") as mock_dify_config:
+            with patch("services.plugin.plugin_service.dify_config", new=mock_dify_config):
+                # Setup default mock returns
+                mock_dify_config.CONSOLE_API_URL = "https://console.example.com"
 
-            yield {
-                "dify_config": mock_dify_config,
-            }
+                yield {
+                    "dify_config": mock_dify_config,
+                }
 
     def _create_test_tool_provider(
         self, db_session_with_containers, mock_external_service_dependencies, provider_type="api"
@@ -111,13 +111,13 @@ class TestToolTransformService:
         filename = "test_icon.png"
 
         # Act: Execute the method under test
-        result = ToolTransformService.get_plugin_icon_url(tenant_id, filename)
+        result = PluginService.get_plugin_icon_url(str(tenant_id), filename)
 
         # Assert: Verify the expected outcomes
         assert result is not None
         assert isinstance(result, str)
         assert "console/api/workspaces/current/plugin/icon" in result
-        assert tenant_id in result
+        assert str(tenant_id) in result
         assert filename in result
         assert result.startswith("https://console.example.com")
 
@@ -142,13 +142,13 @@ class TestToolTransformService:
         filename = "test_icon.png"
 
         # Act: Execute the method under test
-        result = ToolTransformService.get_plugin_icon_url(tenant_id, filename)
+        result = PluginService.get_plugin_icon_url(str(tenant_id), filename)
 
         # Assert: Verify the expected outcomes
         assert result is not None
         assert isinstance(result, str)
         assert result.startswith("/console/api/workspaces/current/plugin/icon")
-        assert tenant_id in result
+        assert str(tenant_id) in result
         assert filename in result
 
         # Verify URL structure
@@ -332,7 +332,7 @@ class TestToolTransformService:
         provider = {"type": ToolProviderType.BUILT_IN, "name": fake.company(), "icon": "🔧"}
 
         # Act: Execute the method under test
-        ToolTransformService.repack_provider(tenant_id, provider)
+        ToolTransformService.repack_provider(str(tenant_id), provider)
 
         # Assert: Verify the expected outcomes
         assert "icon" in provider
@@ -356,7 +356,7 @@ class TestToolTransformService:
 
         # Create provider entity with plugin_id
         provider = ToolProviderApiEntity(
-            id=fake.uuid4(),
+            id=str(fake.uuid4()),
             author=fake.name(),
             name=fake.company(),
             description=I18nObject(en_US=fake.text(max_nb_chars=100)),
@@ -378,14 +378,14 @@ class TestToolTransformService:
         assert provider.icon is not None
         assert isinstance(provider.icon, str)
         assert "console/api/workspaces/current/plugin/icon" in provider.icon
-        assert tenant_id in provider.icon
+        assert str(tenant_id) in provider.icon
         assert "test_icon.png" in provider.icon
 
         # Verify dark icon handling
         assert provider.icon_dark is not None
         assert isinstance(provider.icon_dark, str)
         assert "console/api/workspaces/current/plugin/icon" in provider.icon_dark
-        assert tenant_id in provider.icon_dark
+        assert str(tenant_id) in provider.icon_dark
         assert "test_icon_dark.png" in provider.icon_dark
 
     def test_repack_provider_entity_no_plugin_success(
@@ -421,7 +421,7 @@ class TestToolTransformService:
         )
 
         # Act: Execute the method under test
-        ToolTransformService.repack_provider(tenant_id, provider)
+        ToolTransformService.repack_provider(str(tenant_id), provider)
 
         # Assert: Verify the expected outcomes
         assert provider.icon is not None
@@ -519,7 +519,7 @@ class TestToolTransformService:
         with patch("services.tools.tools_transform_service.create_provider_encrypter") as mock_encrypter:
             mock_encrypter_instance = Mock()
             mock_encrypter_instance.decrypt.return_value = {"api_key": "decrypted_key"}
-            mock_encrypter_instance.mask_tool_credentials.return_value = {"api_key": ""}
+            mock_encrypter_instance.mask_plugin_credentials.return_value = {"api_key": ""}
             mock_encrypter.return_value = (mock_encrypter_instance, None)
 
             # Act: Execute the method under test

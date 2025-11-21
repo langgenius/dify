@@ -29,6 +29,12 @@ from core.plugin.impl.exc import (
     PluginPermissionDeniedError,
     PluginUniqueIdentifierError,
 )
+from core.trigger.errors import (
+    EventIgnoreError,
+    TriggerInvokeError,
+    TriggerPluginInvokeError,
+    TriggerProviderCredentialValidationError,
+)
 
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
 _plugin_daemon_timeout_config = cast(
@@ -43,7 +49,7 @@ elif isinstance(_plugin_daemon_timeout_config, httpx.Timeout):
 else:
     plugin_daemon_request_timeout = httpx.Timeout(_plugin_daemon_timeout_config)
 
-T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
+T = TypeVar("T", bound=(BaseModel | dict[str, Any] | list[Any] | bool | str))
 
 logger = logging.getLogger(__name__)
 
@@ -53,10 +59,10 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        headers: dict | None = None,
-        data: bytes | dict | str | None = None,
-        params: dict | None = None,
-        files: dict | None = None,
+        headers: dict[str, str] | None = None,
+        data: bytes | dict[str, Any] | str | None = None,
+        params: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
     ) -> httpx.Response:
         """
         Make a request to the plugin daemon inner API.
@@ -87,17 +93,17 @@ class BasePluginClient:
     def _prepare_request(
         self,
         path: str,
-        headers: dict | None,
-        data: bytes | dict | str | None,
-        params: dict | None,
-        files: dict | None,
-    ) -> tuple[str, dict, bytes | dict | str | None, dict | None, dict | None]:
+        headers: dict[str, str] | None,
+        data: bytes | dict[str, Any] | str | None,
+        params: dict[str, Any] | None,
+        files: dict[str, Any] | None,
+    ) -> tuple[str, dict[str, str], bytes | dict[str, Any] | str | None, dict[str, Any] | None, dict[str, Any] | None]:
         url = plugin_daemon_inner_api_baseurl / path
         prepared_headers = dict(headers or {})
         prepared_headers["X-Api-Key"] = dify_config.PLUGIN_DAEMON_KEY
         prepared_headers.setdefault("Accept-Encoding", "gzip, deflate, br")
 
-        prepared_data: bytes | dict | str | None = (
+        prepared_data: bytes | dict[str, Any] | str | None = (
             data if isinstance(data, (bytes, str, dict)) or data is None else None
         )
         if isinstance(data, dict):
@@ -112,10 +118,10 @@ class BasePluginClient:
         self,
         method: str,
         path: str,
-        params: dict | None = None,
-        headers: dict | None = None,
-        data: bytes | dict | None = None,
-        files: dict | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        data: bytes | dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
     ) -> Generator[str, None, None]:
         """
         Make a stream request to the plugin daemon inner API
@@ -138,7 +144,7 @@ class BasePluginClient:
         try:
             with httpx.stream(**stream_kwargs) as response:
                 for raw_line in response.iter_lines():
-                    if raw_line is None:
+                    if not raw_line:
                         continue
                     line = raw_line.decode("utf-8") if isinstance(raw_line, bytes) else raw_line
                     line = line.strip()
@@ -155,10 +161,10 @@ class BasePluginClient:
         method: str,
         path: str,
         type_: type[T],
-        headers: dict | None = None,
-        data: bytes | dict | None = None,
-        params: dict | None = None,
-        files: dict | None = None,
+        headers: dict[str, str] | None = None,
+        data: bytes | dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
@@ -171,27 +177,27 @@ class BasePluginClient:
         method: str,
         path: str,
         type_: type[T],
-        headers: dict | None = None,
+        headers: dict[str, str] | None = None,
         data: bytes | None = None,
-        params: dict | None = None,
-        files: dict | None = None,
+        params: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params, files)
-        return type_(**response.json())  # type: ignore
+        return type_(**response.json())  # type: ignore[return-value]
 
     def _request_with_plugin_daemon_response(
         self,
         method: str,
         path: str,
         type_: type[T],
-        headers: dict | None = None,
-        data: bytes | dict | None = None,
-        params: dict | None = None,
-        files: dict | None = None,
-        transformer: Callable[[dict], dict] | None = None,
+        headers: dict[str, str] | None = None,
+        data: bytes | dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
+        transformer: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
@@ -239,10 +245,10 @@ class BasePluginClient:
         method: str,
         path: str,
         type_: type[T],
-        headers: dict | None = None,
-        data: bytes | dict | None = None,
-        params: dict | None = None,
-        files: dict | None = None,
+        headers: dict[str, str] | None = None,
+        data: bytes | dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        files: dict[str, Any] | None = None,
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
@@ -302,6 +308,14 @@ class BasePluginClient:
                         raise CredentialsValidateFailedError(error_object.get("message"))
                     case EndpointSetupFailedError.__name__:
                         raise EndpointSetupFailedError(error_object.get("message"))
+                    case TriggerProviderCredentialValidationError.__name__:
+                        raise TriggerProviderCredentialValidationError(error_object.get("message"))
+                    case TriggerPluginInvokeError.__name__:
+                        raise TriggerPluginInvokeError(description=error_object.get("description"))
+                    case TriggerInvokeError.__name__:
+                        raise TriggerInvokeError(error_object.get("message"))
+                    case EventIgnoreError.__name__:
+                        raise EventIgnoreError(description=error_object.get("description"))
                     case _:
                         raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:

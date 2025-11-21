@@ -1,17 +1,14 @@
-from datetime import datetime
-
-import pytz  # pip install pytz
 import sqlalchemy as sa
-from flask_login import current_user
+from flask import abort
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -20,10 +17,10 @@ from fields.conversation_fields import (
     conversation_pagination_fields,
     conversation_with_summary_pagination_fields,
 )
-from libs.datetime_utils import naive_utc_now
+from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.helper import DatetimeString
-from libs.login import login_required
-from models import Account, Conversation, EndUser, Message, MessageAnnotation
+from libs.login import current_account_with_tenant, login_required
+from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
@@ -57,18 +54,24 @@ class CompletionConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_pagination_fields)
+    @edit_permission_required
     def get(self, app_model):
-        if not current_user.is_editor:
-            raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument(
-            "annotation_status", type=str, choices=["annotated", "not_annotated", "all"], default="all", location="args"
+        current_user, _ = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("keyword", type=str, location="args")
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument(
+                "annotation_status",
+                type=str,
+                choices=["annotated", "not_annotated", "all"],
+                default="all",
+                location="args",
+            )
+            .add_argument("page", type=int_range(1, 99999), default=1, location="args")
+            .add_argument("limit", type=int_range(1, 100), default=20, location="args")
         )
-        parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
         query = sa.select(Conversation).where(
@@ -84,25 +87,18 @@ class CompletionConversationApi(Resource):
             )
 
         account = current_user
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
+        assert account.timezone is not None
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             query = query.where(Conversation.created_at >= start_datetime_utc)
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=59)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
+            end_datetime_utc = end_datetime_utc.replace(second=59)
             query = query.where(Conversation.created_at < end_datetime_utc)
 
         # FIXME, the type ignore in this file
@@ -137,9 +133,8 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_message_detail_fields)
+    @edit_permission_required
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)
@@ -154,14 +149,12 @@ class CompletionConversationDetailApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
+    @edit_permission_required
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
         conversation_id = str(conversation_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -206,26 +199,32 @@ class ChatConversationApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_with_summary_pagination_fields)
+    @edit_permission_required
     def get(self, app_model):
-        if not current_user.is_editor:
-            raise Forbidden()
-        parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument(
-            "annotation_status", type=str, choices=["annotated", "not_annotated", "all"], default="all", location="args"
-        )
-        parser.add_argument("message_count_gte", type=int_range(1, 99999), required=False, location="args")
-        parser.add_argument("page", type=int_range(1, 99999), required=False, default=1, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        parser.add_argument(
-            "sort_by",
-            type=str,
-            choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-            required=False,
-            default="-updated_at",
-            location="args",
+        current_user, _ = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("keyword", type=str, location="args")
+            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+            .add_argument(
+                "annotation_status",
+                type=str,
+                choices=["annotated", "not_annotated", "all"],
+                default="all",
+                location="args",
+            )
+            .add_argument("message_count_gte", type=int_range(1, 99999), required=False, location="args")
+            .add_argument("page", type=int_range(1, 99999), required=False, default=1, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+            .add_argument(
+                "sort_by",
+                type=str,
+                choices=["created_at", "-created_at", "updated_at", "-updated_at"],
+                required=False,
+                default="-updated_at",
+                location="args",
+            )
         )
         args = parser.parse_args()
 
@@ -260,29 +259,22 @@ class ChatConversationApi(Resource):
             )
 
         account = current_user
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
+        assert account.timezone is not None
 
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
-
+        if start_datetime_utc:
             match args["sort_by"]:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at >= start_datetime_utc)
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at >= start_datetime_utc)
 
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=59)
-
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
-
+        if end_datetime_utc:
+            end_datetime_utc = end_datetime_utc.replace(second=59)
             match args["sort_by"]:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at <= end_datetime_utc)
@@ -341,9 +333,8 @@ class ChatConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @marshal_with(conversation_detail_fields)
+    @edit_permission_required
     def get(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_model, conversation_id)
@@ -358,14 +349,12 @@ class ChatConversationDetailApi(Resource):
     @login_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
+    @edit_permission_required
     def delete(self, app_model, conversation_id):
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
         conversation_id = str(conversation_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -374,6 +363,7 @@ class ChatConversationDetailApi(Resource):
 
 
 def _get_conversation(app_model, conversation_id):
+    current_user, _ = current_account_with_tenant()
     conversation = (
         db.session.query(Conversation)
         .where(Conversation.id == conversation_id, Conversation.app_id == app_model.id)

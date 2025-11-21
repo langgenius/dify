@@ -7,8 +7,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import Float, and_, or_, select, text
-from sqlalchemy import cast as sqlalchemy_cast
+from sqlalchemy import and_, or_, select
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -72,6 +71,19 @@ default_retrieval_model: dict[str, Any] = {
 class DatasetRetrieval:
     def __init__(self, application_generate_entity=None):
         self.application_generate_entity = application_generate_entity
+        self._llm_usage = LLMUsage.empty_usage()
+
+    @property
+    def llm_usage(self) -> LLMUsage:
+        return self._llm_usage.model_copy()
+
+    def _record_usage(self, usage: LLMUsage | None) -> None:
+        if usage is None or usage.total_tokens <= 0:
+            return
+        if self._llm_usage.total_tokens == 0:
+            self._llm_usage = usage
+        else:
+            self._llm_usage = self._llm_usage.plus(usage)
 
     def retrieve(
         self,
@@ -312,15 +324,18 @@ class DatasetRetrieval:
             )
             tools.append(message_tool)
         dataset_id = None
+        router_usage = LLMUsage.empty_usage()
         if planning_strategy == PlanningStrategy.REACT_ROUTER:
             react_multi_dataset_router = ReactMultiDatasetRouter()
-            dataset_id = react_multi_dataset_router.invoke(
+            dataset_id, router_usage = react_multi_dataset_router.invoke(
                 query, tools, model_config, model_instance, user_id, tenant_id
             )
 
         elif planning_strategy == PlanningStrategy.ROUTER:
             function_call_router = FunctionCallMultiDatasetRouter()
-            dataset_id = function_call_router.invoke(query, tools, model_config, model_instance)
+            dataset_id, router_usage = function_call_router.invoke(query, tools, model_config, model_instance)
+
+        self._record_usage(router_usage)
 
         if dataset_id:
             # get retrieval model config
@@ -983,7 +998,8 @@ class DatasetRetrieval:
             )
 
             # handle invoke result
-            result_text, _ = self._handle_invoke_result(invoke_result=invoke_result)
+            result_text, usage = self._handle_invoke_result(invoke_result=invoke_result)
+            self._record_usage(usage)
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
             automatic_metadata_filters = []
@@ -1006,60 +1022,55 @@ class DatasetRetrieval:
         self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
     ):
         if value is None and condition not in ("empty", "not empty"):
-            return
+            return filters
 
-        key = f"{metadata_name}_{sequence}"
-        key_value = f"{metadata_name}_{sequence}_value"
+        json_field = DatasetDocument.doc_metadata[metadata_name].as_string()
+
         match condition:
             case "contains":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"%{value}%"}
-                    )
-                )
+                filters.append(json_field.like(f"%{value}%"))
+
             case "not contains":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"%{value}%"}
-                    )
-                )
+                filters.append(json_field.notlike(f"%{value}%"))
+
             case "start with":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"{value}%"}
-                    )
-                )
+                filters.append(json_field.like(f"{value}%"))
 
             case "end with":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"%{value}"}
-                    )
-                )
+                filters.append(json_field.like(f"%{value}"))
+
             case "is" | "=":
                 if isinstance(value, str):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name] == f'"{value}"')
-                else:
-                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) == value)
+                    filters.append(json_field == value)
+                elif isinstance(value, (int, float)):
+                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
+
             case "is not" | "≠":
                 if isinstance(value, str):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name] != f'"{value}"')
-                else:
-                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != value)
+                    filters.append(json_field != value)
+                elif isinstance(value, (int, float)):
+                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
+
             case "not empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].isnot(None))
+
             case "before" | "<":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) < value)
+                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() < value)
+
             case "after" | ">":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) > value)
+                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() > value)
+
             case "≤" | "<=":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) <= value)
+                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() <= value)
+
             case "≥" | ">=":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) >= value)
+                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
             case _:
                 pass
+
         return filters
 
     def _fetch_model_config(

@@ -19,7 +19,6 @@ const translation = {
   intro5: 'kann erstellt werden',
   intro6: ' als ein eigenständiges ChatGPT-Index-Plugin zum Veröffentlichen',
   unavailable: 'Nicht verfügbar',
-  unavailableTip: 'Einbettungsmodell ist nicht verfügbar, das Standard-Einbettungsmodell muss konfiguriert werden',
   datasets: 'WISSEN',
   datasetsApi: 'API',
   retrieval: {
@@ -226,6 +225,17 @@ const translation = {
   updated: 'Aktualisierte',
   externalKnowledgeBase: 'Externe Wissensdatenbank',
   createFromPipeline: 'Aus Wissenspipeline erstellen',
+  serviceApi: {
+    card: {
+      title: 'Backend-Dienst-API',
+      apiReference: 'API Referenz',
+      apiKey: 'API-Schlüssel',
+      endpoint: 'Service-API-Endpunkt',
+    },
+    title: 'Service-API',
+    enabled: 'Im Dienst',
+    disabled: 'Behindert',
+  },
 }
 
 export default translation

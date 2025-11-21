@@ -19,7 +19,6 @@ const translation = {
   intro5: 'peut être créé',
   intro6: 'comme un plug-in d\'index ChatGPT autonome à publier',
   unavailable: 'Indisponible',
-  unavailableTip: 'Le modèle d\'embedding n\'est pas disponible, le modèle d\'embedding par défaut doit être configuré',
   datasets: 'CONNAISSANCE',
   datasetsApi: 'API',
   retrieval: {
@@ -226,6 +225,17 @@ const translation = {
   updated: 'Actualisé',
   createFromPipeline: 'Créer à partir du pipeline de connaissances',
   externalKnowledgeBase: 'Base de connaissances externe',
+  serviceApi: {
+    card: {
+      apiKey: 'Clé API',
+      apiReference: 'Référence API',
+      title: 'API du service backend',
+      endpoint: 'Point de terminaison de l\'API',
+    },
+    enabled: 'En service',
+    title: 'API de service',
+    disabled: 'désactivé',
+  },
 }
 
 export default translation

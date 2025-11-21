@@ -73,7 +73,7 @@ const translation = {
     },
     ragAPIRequestTooltip: 'به تعداد درخواست‌های API که فقط قابلیت‌های پردازش پایگاه دانش Dify را فراخوانی می‌کنند اشاره دارد.',
     receiptInfo: 'فقط صاحب تیم و مدیر تیم می‌توانند اشتراک تهیه کنند و اطلاعات صورتحساب را مشاهده کنند',
-    apiRateLimitUnit: '{{count,number}}/روز',
+    apiRateLimitUnit: '{{count,number}}',
     cloud: 'سرویس ابری',
     documents: '{{count,number}} سندهای دانش',
     self: 'خود میزبان',

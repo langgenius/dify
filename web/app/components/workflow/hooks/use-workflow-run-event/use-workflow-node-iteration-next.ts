@@ -1,6 +1,6 @@
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { IterationNextResponse } from '@/types/workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 

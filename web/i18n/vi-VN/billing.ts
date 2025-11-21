@@ -90,7 +90,7 @@ const translation = {
     teamMember_other: '{{count,number}} thành viên trong nhóm',
     documents: '{{count,number}} Tài liệu Kiến thức',
     getStarted: 'Bắt đầu',
-    apiRateLimitUnit: '{{count,number}}/ngày',
+    apiRateLimitUnit: '{{count,number}}',
     freeTrialTipSuffix: 'Không cần thẻ tín dụng',
     documentsRequestQuotaTooltip: 'Chỉ định tổng số hành động mà một không gian làm việc có thể thực hiện mỗi phút trong cơ sở tri thức, bao gồm tạo mới tập dữ liệu, xóa, cập nhật, tải tài liệu lên, thay đổi, lưu trữ và truy vấn cơ sở tri thức. Chỉ số này được sử dụng để đánh giá hiệu suất của các yêu cầu cơ sở tri thức. Ví dụ, nếu một người dùng Sandbox thực hiện 10 lần kiểm tra liên tiếp trong một phút, không gian làm việc của họ sẽ bị hạn chế tạm thời không thực hiện các hành động sau trong phút tiếp theo: tạo mới tập dữ liệu, xóa, cập nhật và tải tài liệu lên hoặc thay đổi.',
     startBuilding: 'Bắt đầu xây dựng',

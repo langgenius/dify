@@ -39,11 +39,13 @@ class WeaviateConfig(BaseModel):
 
     Attributes:
         endpoint: Weaviate server endpoint URL
+        grpc_endpoint: Optional Weaviate gRPC server endpoint URL
         api_key: Optional API key for authentication
         batch_size: Number of objects to batch per insert operation
     """
 
     endpoint: str
+    grpc_endpoint: str | None = None
     api_key: str | None = None
     batch_size: int = 100
 
@@ -88,9 +90,22 @@ class WeaviateVector(BaseVector):
         http_secure = p.scheme == "https"
         http_port = p.port or (443 if http_secure else 80)
 
-        grpc_host = host
-        grpc_secure = http_secure
-        grpc_port = 443 if grpc_secure else 50051
+        # Parse gRPC configuration
+        if config.grpc_endpoint:
+            # Urls without scheme won't be parsed correctly in some python versions,
+            # see https://bugs.python.org/issue27657
+            grpc_endpoint_with_scheme = (
+                config.grpc_endpoint if "://" in config.grpc_endpoint else f"grpc://{config.grpc_endpoint}"
+            )
+            grpc_p = urlparse(grpc_endpoint_with_scheme)
+            grpc_host = grpc_p.hostname or "localhost"
+            grpc_port = grpc_p.port or (443 if grpc_p.scheme == "grpcs" else 50051)
+            grpc_secure = grpc_p.scheme == "grpcs"
+        else:
+            # Infer from HTTP endpoint as fallback
+            grpc_host = host
+            grpc_secure = http_secure
+            grpc_port = 443 if grpc_secure else 50051
 
         client = weaviate.connect_to_custom(
             http_host=host,
@@ -100,6 +115,7 @@ class WeaviateVector(BaseVector):
             grpc_port=grpc_port,
             grpc_secure=grpc_secure,
             auth_credentials=Auth.api_key(config.api_key) if config.api_key else None,
+            skip_init_checks=True,  # Skip PyPI version check to avoid unnecessary HTTP requests
         )
 
         if not client.is_ready():
@@ -250,7 +266,6 @@ class WeaviateVector(BaseVector):
                 )
             )
 
-        batch_size = max(1, int(dify_config.WEAVIATE_BATCH_SIZE or 100))
         with col.batch.dynamic() as batch:
             for obj in objs:
                 batch.add_object(properties=obj.properties, uuid=obj.uuid, vector=obj.vector)
@@ -348,7 +363,10 @@ class WeaviateVector(BaseVector):
         for obj in res.objects:
             properties = dict(obj.properties or {})
             text = properties.pop(Field.TEXT_KEY.value, "")
-            distance = (obj.metadata.distance if obj.metadata else None) or 1.0
+            if obj.metadata and obj.metadata.distance is not None:
+                distance = obj.metadata.distance
+            else:
+                distance = 1.0
             score = 1.0 - distance
 
             if score > score_threshold:
@@ -429,6 +447,7 @@ class WeaviateVectorFactory(AbstractVectorFactory):
             collection_name=collection_name,
             config=WeaviateConfig(
                 endpoint=dify_config.WEAVIATE_ENDPOINT or "",
+                grpc_endpoint=dify_config.WEAVIATE_GRPC_ENDPOINT or "",
                 api_key=dify_config.WEAVIATE_API_KEY,
                 batch_size=dify_config.WEAVIATE_BATCH_SIZE,
             ),

@@ -91,7 +91,7 @@ Todas os recursos do Dify vêm com APIs correspondentes, permitindo que você in
   Use nossa [documentação](https://docs.dify.ai) para referências adicionais e instruções mais detalhadas.
 
 - **Dify para empresas/organizações</br>**
-  Oferecemos recursos adicionais voltados para empresas. [Envie suas perguntas através deste chatbot](https://udify.app/chat/22L1zSxg6yW1cWQg) ou [envie-nos um e-mail](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) para discutir necessidades empresariais. </br>
+  Oferecemos recursos adicionais voltados para empresas. Você pode [falar conosco por e-mail](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) para discutir necessidades empresariais. <br/>
 
   > Para startups e pequenas empresas que utilizam AWS, confira o [Dify Premium no AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) e implemente no seu próprio AWS VPC com um clique. É uma oferta AMI acessível com a opção de criar aplicativos com logotipo e marca personalizados.
 
@@ -125,6 +125,14 @@ Após a execução, você pode acessar o painel do Dify no navegador em [http://
 ## Próximos passos
 
 Se precisar personalizar a configuração, consulte os comentários no nosso arquivo [.env.example](../../docker/.env.example) e atualize os valores correspondentes no seu arquivo `.env`. Além disso, talvez seja necessário fazer ajustes no próprio arquivo `docker-compose.yaml`, como alterar versões de imagem, mapeamentos de portas ou montagens de volumes, com base no seu ambiente de implantação específico e nas suas necessidades. Após fazer quaisquer alterações, execute novamente `docker-compose up -d`. Você pode encontrar a lista completa de variáveis de ambiente disponíveis [aqui](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+
+### Monitoramento de Métricas com Grafana
+
+Importe o dashboard para o Grafana, usando o banco de dados PostgreSQL do Dify como fonte de dados, para monitorar métricas na granularidade de aplicativos, inquilinos, mensagens e muito mais.
+
+- [Dashboard do Grafana por @bowenliang123](https://github.com/bowenliang123/dify-grafana-dashboard)
+
+### Implantação com Kubernetes
 
 Se deseja configurar uma instalação de alta disponibilidade, há [Helm Charts](https://helm.sh/) e arquivos YAML contribuídos pela comunidade que permitem a implantação do Dify no Kubernetes.
 

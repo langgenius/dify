@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.9.1"
+version = "1.10.0"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -37,6 +37,7 @@ dependencies = [
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
     "opik~=1.8.72",
+    "litellm==1.77.1", # Pinned to avoid madoka dependency issue
     "opentelemetry-api==1.27.0",
     "opentelemetry-distro==0.48b0",
     "opentelemetry-exporter-otlp==1.27.0",
@@ -63,7 +64,7 @@ dependencies = [
     "pycryptodome==3.19.1",
     "pydantic~=2.11.4",
     "pydantic-extra-types~=2.10.3",
-    "pydantic-settings~=2.9.1",
+    "pydantic-settings~=2.11.0",
     "pyjwt~=2.10.1",
     "pypdfium2==4.30.0",
     "python-docx~=1.1.0",
@@ -74,11 +75,10 @@ dependencies = [
     "resend~=2.9.0",
     "sentry-sdk[flask]~=2.28.0",
     "sqlalchemy~=2.0.29",
-    "starlette==0.47.2",
+    "starlette==0.49.1",
     "tiktoken~=0.9.0",
     "transformers~=4.56.1",
     "unstructured[docx,epub,md,ppt,pptx]~=0.16.1",
-    "weave~=0.51.0",
     "yarl~=1.18.3",
     "webvtt-py~=0.5.1",
     "sseclient-py~=1.8.0",
@@ -86,7 +86,10 @@ dependencies = [
     "sendgrid~=6.12.3",
     "flask-restx~=1.3.0",
     "packaging~=23.2",
+    "croniter>=6.0.0",
     "weaviate-client==4.17.0",
+    "apscheduler>=3.11.0",
+    "weave>=0.52.16",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -117,7 +120,7 @@ dev = [
     "pytest-cov~=4.1.0",
     "pytest-env~=1.1.3",
     "pytest-mock~=3.14.0",
-    "testcontainers~=4.10.0",
+    "testcontainers~=4.13.2",
     "types-aiofiles~=24.1.0",
     "types-beautifulsoup4~=4.12.0",
     "types-cachetools~=5.5.0",
@@ -167,6 +170,7 @@ dev = [
     "mypy~=1.17.1",
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "sseclient-py>=1.8.0",
+    "pytest-timeout>=2.4.0",
 ]
 
 ############################################################
@@ -208,14 +212,14 @@ vdb = [
     "pgvector==0.2.5",
     "pymilvus~=2.5.0",
     "pymochow==2.2.9",
-    "pyobvector~=0.2.15",
+    "pyobvector~=0.2.17",
     "qdrant-client==1.9.0",
-    "tablestore==6.2.0",
+    "tablestore==6.3.7",
     "tcvectordb~=1.6.4",
     "tidb-vector==0.0.9",
     "upstash-vector==0.6.0",
     "volcengine-compat~=1.0.0",
-    "weaviate-client>=4.0.0,<5.0.0",
+    "weaviate-client==4.17.0",
     "xinference-client~=1.2.2",
     "mo-vector~=0.1.13",
     "mysql-connector-python>=9.3.0",

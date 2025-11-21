@@ -16,7 +16,7 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
-import { imageUpload } from '@/app/components/base/image-uploader/utils'
+import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { BubbleTextMod } from '@/app/components/base/icons/src/vender/solid/communication'
 import {
@@ -67,8 +67,9 @@ const CustomWebAppBrand = () => {
         setUploadProgress(100)
         setFileId(res.id)
       },
-      onErrorCallback: () => {
-        notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
+      onErrorCallback: (error?: any) => {
+        const errorMessage = getImageUploadErrorMessage(error, t('common.imageUploader.uploadFromComputerUploadError'), t)
+        notify({ type: 'error', message: errorMessage })
         setUploadProgress(-1)
       },
     }, false, '/workspaces/custom-config/webapp-logo/upload')

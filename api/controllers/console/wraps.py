@@ -10,6 +10,7 @@ from flask import abort, request
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.login import current_account_with_tenant
@@ -30,10 +31,7 @@ def account_initialization_required(view: Callable[P, R]):
     def decorated(*args: P.args, **kwargs: P.kwargs):
         # check account initialization
         current_user, _ = current_account_with_tenant()
-
-        account = current_user
-
-        if account.status == AccountStatus.UNINITIALIZED:
+        if current_user.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
 
         return view(*args, **kwargs)
@@ -136,7 +134,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
-                    if features.billing.subscription.plan == "sandbox":
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         abort(
                             403,
                             "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
@@ -249,9 +247,9 @@ def email_password_login_enabled(view: Callable[P, R]):
     return decorated
 
 
-def email_register_enabled(view):
+def email_register_enabled(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
         if features.is_allow_register:
             return view(*args, **kwargs)
@@ -299,3 +297,21 @@ def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
         abort(403)
 
     return decorated
+
+
+def edit_permission_required(f: Callable[P, R]):
+    @wraps(f)
+    def decorated_function(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        from libs.login import current_user
+        from models import Account
+
+        user = current_user._get_current_object()  # type: ignore
+        if not isinstance(user, Account):
+            raise Forbidden()
+        if not current_user.has_edit_permission:
+            raise Forbidden()
+        return f(*args, **kwargs)
+
+    return decorated_function

@@ -21,8 +21,6 @@ const translation = {
   intro6:
     ' एक स्वतंत्र ChatGPT इंडेक्स प्लग-इन के रूप में प्रकाशित करने के लिए',
   unavailable: 'उपलब्ध नहीं',
-  unavailableTip:
-    'एम्बेडिंग मॉडल उपलब्ध नहीं है, डिफ़ॉल्ट एम्बेडिंग मॉडल को कॉन्फ़िगर किया जाना चाहिए',
   datasets: 'ज्ञान',
   datasetsApi: 'API पहुँच',
   retrieval: {
@@ -233,6 +231,17 @@ const translation = {
   updated: 'अपडेट किया गया',
   externalKnowledgeBase: 'बाहरी ज्ञान आधार',
   createFromPipeline: 'ज्ञान पाइपलाइन से बनाएं',
+  serviceApi: {
+    card: {
+      apiReference: 'एपीआई संदर्भ',
+      apiKey: 'एपीआई कुंजी',
+      title: 'बैकएंड सेवा एपीआई',
+      endpoint: 'सेवा एपीआई एंडपॉइंट',
+    },
+    enabled: 'सेवा में',
+    disabled: 'अक्षम',
+    title: 'सेवा एपीआई',
+  },
 }
 
 export default translation

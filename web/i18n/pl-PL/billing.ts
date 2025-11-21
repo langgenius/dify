@@ -91,7 +91,7 @@ const translation = {
     freeTrialTipPrefix: 'Zarejestruj się i zdobądź',
     teamMember_other: '{{count,number}} członków zespołu',
     teamWorkspace: '{{count,number}} Zespół Workspace',
-    apiRateLimitUnit: '{{count,number}}/dzień',
+    apiRateLimitUnit: '{{count,number}}',
     cloud: 'Usługa chmurowa',
     teamMember_one: '{{count,number}} Członek zespołu',
     priceTip: 'na przestrzeń roboczą/',

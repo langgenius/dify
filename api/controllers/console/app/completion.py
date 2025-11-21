@@ -2,7 +2,7 @@ import logging
 
 from flask import request
 from flask_restx import Resource, fields, reqparse
-from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
 from controllers.console import api, console_ns
@@ -15,7 +15,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -64,13 +64,15 @@ class CompletionMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, location="json", default="")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, location="json")
+            .add_argument("query", type=str, location="json", default="")
+            .add_argument("files", type=list, required=False, location="json")
+            .add_argument("model_config", type=dict, required=True, location="json")
+            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+            .add_argument("retriever_from", type=str, required=False, default="dev", location="json")
+        )
         args = parser.parse_args()
 
         streaming = args["response_mode"] != "blocking"
@@ -157,22 +159,19 @@ class ChatMessageApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
+    @edit_permission_required
     def post(self, app_model):
-        if not isinstance(current_user, Account):
-            raise Forbidden()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, required=True, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("model_config", type=dict, required=True, location="json")
-        parser.add_argument("conversation_id", type=uuid_value, location="json")
-        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, location="json")
+            .add_argument("query", type=str, required=True, location="json")
+            .add_argument("files", type=list, required=False, location="json")
+            .add_argument("model_config", type=dict, required=True, location="json")
+            .add_argument("conversation_id", type=uuid_value, location="json")
+            .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
+            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+            .add_argument("retriever_from", type=str, required=False, default="dev", location="json")
+        )
         args = parser.parse_args()
 
         streaming = args["response_mode"] != "blocking"

@@ -29,8 +29,7 @@ class ConversationVariablesApi(Resource):
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
     @marshal_with(paginated_conversation_variable_fields)
     def get(self, app_model):
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_id", type=str, location="args")
+        parser = reqparse.RequestParser().add_argument("conversation_id", type=str, location="args")
         args = parser.parse_args()
 
         stmt = (

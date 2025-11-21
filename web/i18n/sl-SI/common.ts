@@ -165,7 +165,6 @@ const translation = {
     workspace: 'Delovni prostor',
     createWorkspace: 'Ustvari delovni prostor',
     helpCenter: 'Pomoč',
-    communityFeedback: 'Povratne informacije',
     roadmap: 'Načrt razvoja',
     community: 'Skupnost',
     about: 'O nas',
@@ -173,6 +172,8 @@ const translation = {
     support: 'Podpora',
     github: 'GitHub',
     compliance: 'Skladnost',
+    contactUs: 'Kontaktirajte nas',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'SPLOŠNO',
@@ -791,6 +792,7 @@ const translation = {
     uploadFromComputer: 'Lokalno nalaganje',
     uploadFromComputerLimit: 'Nalaganje {{type}} ne sme presegati {{size}}',
     uploadFromComputerReadError: 'Branje datoteke ni uspelo, poskusite znova.',
+    fileExtensionBlocked: 'Ta vrsta datoteke je zaradi varnostnih razlogov blokirana',
   },
   tag: {
     addTag: 'Dodajanje oznak',

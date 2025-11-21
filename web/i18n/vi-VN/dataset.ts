@@ -19,7 +19,6 @@ const translation = {
   intro5: 'có thể được tạo',
   intro6: ' dưới dạng một plugin chỉ mục ChatGPT độc lập để xuất bản',
   unavailable: 'Không khả dụng',
-  unavailableTip: 'Mô hình nhúng không khả dụng, cần cấu hình mô hình nhúng mặc định',
   datasets: 'BỘ KIẾN THỨC',
   datasetsApi: 'API',
   retrieval: {
@@ -226,6 +225,17 @@ const translation = {
   updated: 'Cập nhật',
   createFromPipeline: 'Tạo từ quy trình kiến thức',
   externalKnowledgeBase: 'Cơ sở kiến thức bên ngoài',
+  serviceApi: {
+    card: {
+      title: 'API dịch vụ backend',
+      endpoint: 'Điểm cuối API dịch vụ',
+      apiKey: 'Khóa API',
+      apiReference: 'Tham chiếu API',
+    },
+    enabled: 'Đang phục vụ',
+    disabled: 'Vô hiệu hóa',
+    title: 'Giao diện lập trình dịch vụ',
+  },
 }
 
 export default translation
