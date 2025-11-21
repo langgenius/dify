@@ -860,12 +860,13 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
@@ -919,12 +920,13 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
@@ -1020,12 +1022,13 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
@@ -1080,12 +1083,13 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
@@ -1151,12 +1155,13 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
@@ -1211,12 +1216,13 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
