@@ -441,7 +441,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 return None
             pause_reason_models = self._get_reasons_by_pause_id(session, pause_model.id)
 
-            human_input_form = []
+            human_input_form: list[Any] = []
             # TODO(QuantumGhost): query human_input_forms model and rebuild PauseReason
 
         return _PrivateWorkflowPauseEntity(
