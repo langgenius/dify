@@ -13,15 +13,36 @@ from extensions.ext_database import db as global_db
 
 @files_ns.route("/tools/<uuid:file_id>.<string:extension>")
 class ToolFileApi(Resource):
+    @files_ns.doc("get_tool_file")
+    @files_ns.doc(description="Download a tool file by ID using signed parameters")
+    @files_ns.doc(
+        params={
+            "file_id": "Tool file identifier",
+            "extension": "Expected file extension",
+            "timestamp": "Unix timestamp used in the signature",
+            "nonce": "Random string used in the signature",
+            "sign": "HMAC signature verifying the request",
+            "as_attachment": "Whether to download the file as an attachment",
+        }
+    )
+    @files_ns.doc(
+        responses={
+            200: "Tool file stream returned successfully",
+            403: "Forbidden - invalid signature",
+            404: "File not found",
+            415: "Unsupported file type",
+        }
+    )
     def get(self, file_id, extension):
         file_id = str(file_id)
 
-        parser = reqparse.RequestParser()
-
-        parser.add_argument("timestamp", type=str, required=True, location="args")
-        parser.add_argument("nonce", type=str, required=True, location="args")
-        parser.add_argument("sign", type=str, required=True, location="args")
-        parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("timestamp", type=str, required=True, location="args")
+            .add_argument("nonce", type=str, required=True, location="args")
+            .add_argument("sign", type=str, required=True, location="args")
+            .add_argument("as_attachment", type=bool, required=False, default=False, location="args")
+        )
 
         args = parser.parse_args()
         if not verify_tool_file_signature(

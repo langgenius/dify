@@ -61,6 +61,10 @@ const translation = {
     deSelectAll: 'Desmarcar tudo',
     selectAll: 'Selecionar tudo',
     config: 'Configuração',
+    no: 'Não',
+    yes: 'Sim',
+    deleteConfirmTitle: 'Excluir?',
+    confirmAction: 'Por favor, confirme sua ação.',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -157,7 +161,6 @@ const translation = {
     workspace: 'Espaço de trabalho',
     createWorkspace: 'Criar Espaço de Trabalho',
     helpCenter: 'Ajuda',
-    communityFeedback: 'Feedback',
     roadmap: 'Roteiro',
     community: 'Comunidade',
     about: 'Sobre',
@@ -165,6 +168,8 @@ const translation = {
     github: 'GitHub',
     support: 'Suporte',
     compliance: 'Conformidade',
+    contactUs: 'Contate-Nos',
+    forum: 'Fórum',
   },
   settings: {
     accountGroup: 'CONTA',
@@ -721,6 +726,7 @@ const translation = {
     uploadFromComputerReadError: 'Falha na leitura do arquivo, tente novamente.',
     uploadFromComputerLimit: 'Carregar arquivo não pode exceder {{size}}',
     uploadFromComputerUploadError: 'Falha no upload do arquivo, faça o upload novamente.',
+    fileExtensionBlocked: 'Este tipo de arquivo está bloqueado por razões de segurança',
   },
   license: {
     expiring: 'Expirando em um dia',

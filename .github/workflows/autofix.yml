@@ -2,6 +2,8 @@ name: autofix.ci
 on:
   pull_request:
     branches: ["main"]
+  push:
+    branches: ["main"]
 permissions:
   contents: read
 
@@ -26,10 +28,17 @@ jobs:
           # Format code
           uv run ruff format ..
 
+      - name: count migration progress
+        run: |
+          cd api
+          ./cnt_base.sh
+
       - name: ast-grep
         run: |
           uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
           uvx --from ast-grep-cli sg --pattern 'session.query($WHATEVER).filter($HERE)' --rewrite 'session.query($WHATEVER).where($HERE)' -l py --update-all
+          uvx --from ast-grep-cli sg -p '$A = db.Column($$$B)' -r '$A = mapped_column($$$B)' -l py --update-all
+          uvx --from ast-grep-cli sg -p '$A : $T = db.Column($$$B)' -r '$A : $T = mapped_column($$$B)' -l py --update-all
           # Convert Optional[T] to T | None (ignoring quoted types)
           cat > /tmp/optional-rule.yml << 'EOF'
           id: convert-optional-to-union

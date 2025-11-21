@@ -60,6 +60,8 @@ const translation = {
       yearToDate: 'Tahun hingga saat ini',
       allTime: 'Sepanjang masa',
       last12months: '12 bulan terakhir',
+      custom: 'Kustom',
+      last30days: '30 Hari Terakhir',
     },
     annotation: {
       all: 'Semua',
@@ -74,6 +76,7 @@ const translation = {
     workflowTitle: 'Log Detail',
     title: 'Log Percakapan',
     fileListLabel: 'Rincian File',
+    testWithParams: 'Uji Dengan Param',
   },
   agentLogDetail: {
     iterations: 'Iterasi',

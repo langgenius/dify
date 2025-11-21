@@ -1,17 +1,18 @@
 import logging
-from typing import NoReturn
+from collections.abc import Callable
+from functools import wraps
+from typing import NoReturn, ParamSpec, TypeVar
 
 from flask import Response
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
 from controllers.console import api, console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvalidArgumentError, NotFoundError
 from core.file import helpers as file_helpers
 from core.variables.segment_group import SegmentGroup
@@ -21,9 +22,8 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID, SYSTEM_VARIAB
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
-from libs.login import current_user, login_required
+from libs.login import login_required
 from models import App, AppMode
-from models.account import Account
 from models.workflow import WorkflowDraftVariable
 from services.workflow_draft_variable_service import WorkflowDraftVariableList, WorkflowDraftVariableService
 from services.workflow_service import WorkflowService
@@ -58,16 +58,18 @@ def _serialize_var_value(variable: WorkflowDraftVariable):
 
 
 def _create_pagination_parser():
-    parser = reqparse.RequestParser()
-    parser.add_argument(
-        "page",
-        type=inputs.int_range(1, 100_000),
-        required=False,
-        default=1,
-        location="args",
-        help="the page of data requested",
+    parser = (
+        reqparse.RequestParser()
+        .add_argument(
+            "page",
+            type=inputs.int_range(1, 100_000),
+            required=False,
+            default=1,
+            location="args",
+            help="the page of data requested",
+        )
+        .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
     )
-    parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
     return parser
 
 
@@ -139,8 +141,11 @@ _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS = {
     "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_VARIABLE_FIELDS), attribute=_get_items),
 }
 
+P = ParamSpec("P")
+R = TypeVar("R")
 
-def _api_prerequisite(f):
+
+def _api_prerequisite(f: Callable[P, R]):
     """Common prerequisites for all draft workflow variable APIs.
 
     It ensures the following conditions are satisfied:
@@ -154,11 +159,10 @@ def _api_prerequisite(f):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    def wrapper(*args, **kwargs):
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
+    @wraps(f)
+    def wrapper(*args: P.args, **kwargs: P.kwargs):
         return f(*args, **kwargs)
 
     return wrapper
@@ -166,6 +170,7 @@ def _api_prerequisite(f):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
+    @api.expect(_create_pagination_parser())
     @api.doc("get_workflow_variables")
     @api.doc(description="Get draft workflow variables")
     @api.doc(params={"app_id": "Application ID"})
@@ -320,10 +325,11 @@ class VariableApi(Resource):
         #         "upload_file_id": "1602650a-4fe4-423c-85a2-af76c083e3c4"
         #     }
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
-        # Parse 'value' field as-is to maintain its original data structure
-        parser.add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
+            .add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
+        )
 
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),

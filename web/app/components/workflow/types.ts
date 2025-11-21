@@ -5,10 +5,7 @@ import type {
   XYPosition,
 } from 'reactflow'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type {
-  DataSourceDefaultValue,
-  ToolDefaultValue,
-} from '@/app/components/workflow/block-selector/types'
+import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
@@ -19,7 +16,7 @@ import type {
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { PluginMeta } from '../plugins/types'
+import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 
@@ -50,6 +47,9 @@ export enum BlockEnum {
   DataSource = 'datasource',
   DataSourceEmpty = 'datasource-empty',
   KnowledgeBase = 'knowledge-index',
+  TriggerSchedule = 'trigger-schedule',
+  TriggerWebhook = 'trigger-webhook',
+  TriggerPlugin = 'trigger-plugin',
 }
 
 export enum ControlMode {
@@ -103,9 +103,11 @@ export type CommonNodeType<T = {}> = {
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
   credential_id?: string
+  subscription_id?: string
+  provider_id?: string
   _dimmed?: boolean
-} & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
-  & Partial<Pick<DataSourceDefaultValue, 'plugin_id' | 'provider_type' | 'provider_name' | 'datasource_name'>>
+  _pluginInstallLocked?: boolean
+} & T & Partial<PluginDefaultValue>
 
 export type CommonEdgeType = {
   _hovering?: boolean
@@ -176,7 +178,7 @@ export type ConversationVariable = {
 
 export type GlobalVariable = {
   name: string
-  value_type: 'string' | 'number'
+  value_type: 'string' | 'number' | 'integer'
   description: string
 }
 
@@ -341,7 +343,7 @@ export type NodeDefault<T = {}> = {
   }) => Var[]
 }
 
-export type OnSelectBlock = (type: BlockEnum, toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue) => void
+export type OnSelectBlock = (type: BlockEnum, pluginDefaultValue?: PluginDefaultValue) => void
 
 export enum WorkflowRunningStatus {
   Waiting = 'waiting',
@@ -359,6 +361,7 @@ export enum WorkflowVersion {
 export enum NodeRunningStatus {
   NotStart = 'not-start',
   Waiting = 'waiting',
+  Listening = 'listening',
   Running = 'running',
   Succeeded = 'succeeded',
   Failed = 'failed',
@@ -372,14 +375,14 @@ export type OnNodeAdd = (
     nodeType: BlockEnum
     sourceHandle?: string
     targetHandle?: string
-    toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue
+    pluginDefaultValue?: PluginDefaultValue
   },
   oldNodesPayload: {
     prevNodeId?: string
     prevNodeSourceHandle?: string
     nextNodeId?: string
     nextNodeTargetHandle?: string
-  }
+  },
 ) => void
 
 export type CheckValidRes = {
@@ -449,18 +452,12 @@ export type MoreInfo = {
 export type ToolWithProvider = Collection & {
   tools: Tool[]
   meta: PluginMeta
-}
-
-export type UninstalledRecommendedPlugin = {
-  plugin_id: string
-  name: string
-  icon: string
-  plugin_unique_identifier: string
+  plugin_unique_identifier?: string
 }
 
 export type RAGRecommendedPlugins = {
   installed_recommended_plugins: ToolWithProvider[]
-  uninstalled_recommended_plugins: UninstalledRecommendedPlugin[]
+  uninstalled_recommended_plugins: Plugin[]
 }
 
 export enum SupportUploadFileTypes {
@@ -499,4 +496,24 @@ export enum VersionHistoryContextMenuOptions {
 
 export type ChildNodeTypeCount = {
   [key: string]: number;
+}
+
+export const TRIGGER_NODE_TYPES = [
+  BlockEnum.TriggerSchedule,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+] as const
+
+// Type-safe trigger node type extracted from TRIGGER_NODE_TYPES array
+export type TriggerNodeType = typeof TRIGGER_NODE_TYPES[number]
+
+export function isTriggerNode(nodeType: BlockEnum): boolean {
+  return TRIGGER_NODE_TYPES.includes(nodeType as any)
+}
+
+export type Block = {
+  classification?: string
+  type: BlockEnum
+  title: string
+  description?: string
 }

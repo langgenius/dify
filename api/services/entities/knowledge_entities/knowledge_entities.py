@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
+
 
 class ParentMode(StrEnum):
     FULL_DOC = "full-doc"
@@ -95,7 +97,7 @@ class WeightModel(BaseModel):
 
 
 class RetrievalModel(BaseModel):
-    search_method: Literal["hybrid_search", "semantic_search", "full_text_search", "keyword_search"]
+    search_method: RetrievalMethod
     reranking_enable: bool
     reranking_model: RerankingModel | None = None
     reranking_mode: str | None = None
@@ -156,6 +158,7 @@ class MetadataDetail(BaseModel):
 class DocumentMetadataOperation(BaseModel):
     document_id: str
     metadata_list: list[MetadataDetail]
+    partial_update: bool = False
 
 
 class MetadataOperationData(BaseModel):

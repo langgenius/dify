@@ -9,13 +9,13 @@ from core.rag.models.document import Document
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.dataset import Dataset, DatasetQuery
 
 logger = logging.getLogger(__name__)
 
 default_retrieval_model = {
-    "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
+    "search_method": RetrievalMethod.SEMANTIC_SEARCH,
     "reranking_enable": False,
     "reranking_model": {"reranking_provider_name": "", "reranking_model_name": ""},
     "top_k": 4,
@@ -46,7 +46,7 @@ class HitTestingService:
 
             from core.app.app_config.entities import MetadataFilteringCondition
 
-            metadata_filtering_conditions = MetadataFilteringCondition(**metadata_filtering_conditions)
+            metadata_filtering_conditions = MetadataFilteringCondition.model_validate(metadata_filtering_conditions)
 
             metadata_filter_document_ids, metadata_condition = dataset_retrieval.get_metadata_filter_condition(
                 dataset_ids=[dataset.id],
@@ -63,7 +63,7 @@ class HitTestingService:
             if metadata_condition and not document_ids_filter:
                 return cls.compact_retrieve_response(query, [])
         all_documents = RetrievalService.retrieve(
-            retrieval_method=retrieval_model.get("search_method", "semantic_search"),
+            retrieval_method=RetrievalMethod(retrieval_model.get("search_method", RetrievalMethod.SEMANTIC_SEARCH)),
             dataset_id=dataset.id,
             query=query,
             top_k=retrieval_model.get("top_k", 4),
@@ -88,7 +88,7 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(query, all_documents)  # type: ignore
+        return cls.compact_retrieve_response(query, all_documents)
 
     @classmethod
     def external_retrieve(

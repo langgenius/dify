@@ -11,7 +11,7 @@ type Props = {
   groupName: string
   toolList: ToolWithProvider[]
   hasSearchText: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
@@ -39,7 +39,6 @@ const Item: FC<Props> = ({
             key={tool.id}
             payload={tool}
             viewType={ViewType.tree}
-            isShowLetterIndex={false}
             hasSearchText={hasSearchText}
             onSelect={onSelect}
             canNotSelectMultiple={canNotSelectMultiple}

@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -22,10 +22,16 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.nodes import NodeType
 from events.app_event import app_was_created
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow, WorkflowType
+
+
+class _NodeType(TypedDict):
+    id: str
+    position: None
+    data: dict[str, Any]
 
 
 class WorkflowConverter:
@@ -217,7 +223,7 @@ class WorkflowConverter:
 
         return app_config
 
-    def _convert_to_start_node(self, variables: list[VariableEntity]):
+    def _convert_to_start_node(self, variables: list[VariableEntity]) -> _NodeType:
         """
         Convert to Start Node
         :param variables: list of variables
@@ -228,14 +234,14 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "START",
-                "type": NodeType.START.value,
+                "type": NodeType.START,
                 "variables": [jsonable_encoder(v) for v in variables],
             },
         }
 
     def _convert_to_http_request_node(
         self, app_model: App, variables: list[VariableEntity], external_data_variables: list[ExternalDataVariableEntity]
-    ) -> tuple[list[dict], dict[str, str]]:
+    ) -> tuple[list[_NodeType], dict[str, str]]:
         """
         Convert API Based Extension to HTTP Request Node
         :param app_model: App instance
@@ -273,7 +279,7 @@ class WorkflowConverter:
                 inputs[v.variable] = "{{#start." + v.variable + "#}}"
 
             request_body = {
-                "point": APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY.value,
+                "point": APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY,
                 "params": {
                     "app_id": app_model.id,
                     "tool_variable": tool_variable,
@@ -285,12 +291,12 @@ class WorkflowConverter:
             request_body_json = json.dumps(request_body)
             request_body_json = request_body_json.replace(r"\{\{", "{{").replace(r"\}\}", "}}")
 
-            http_request_node = {
+            http_request_node: _NodeType = {
                 "id": f"http_request_{index}",
                 "position": None,
                 "data": {
                     "title": f"HTTP REQUEST {api_based_extension.name}",
-                    "type": NodeType.HTTP_REQUEST.value,
+                    "type": NodeType.HTTP_REQUEST,
                     "method": "post",
                     "url": api_based_extension.api_endpoint,
                     "authorization": {"type": "api-key", "config": {"type": "bearer", "api_key": api_key}},
@@ -303,12 +309,12 @@ class WorkflowConverter:
             nodes.append(http_request_node)
 
             # append code node for response body parsing
-            code_node: dict[str, Any] = {
+            code_node: _NodeType = {
                 "id": f"code_{index}",
                 "position": None,
                 "data": {
                     "title": f"Parse {api_based_extension.name} Response",
-                    "type": NodeType.CODE.value,
+                    "type": NodeType.CODE,
                     "variables": [{"variable": "response_json", "value_selector": [http_request_node["id"], "body"]}],
                     "code_language": "python3",
                     "code": "import json\n\ndef main(response_json: str) -> str:\n    response_body = json.loads("
@@ -326,7 +332,7 @@ class WorkflowConverter:
 
     def _convert_to_knowledge_retrieval_node(
         self, new_app_mode: AppMode, dataset_config: DatasetEntity, model_config: ModelConfigEntity
-    ) -> dict | None:
+    ) -> _NodeType | None:
         """
         Convert datasets to Knowledge Retrieval Node
         :param new_app_mode: new app mode
@@ -348,7 +354,7 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "KNOWLEDGE RETRIEVAL",
-                "type": NodeType.KNOWLEDGE_RETRIEVAL.value,
+                "type": NodeType.KNOWLEDGE_RETRIEVAL,
                 "query_variable_selector": query_variable_selector,
                 "dataset_ids": dataset_config.dataset_ids,
                 "retrieval_mode": retrieve_config.retrieve_strategy.value,
@@ -384,7 +390,7 @@ class WorkflowConverter:
         prompt_template: PromptTemplateEntity,
         file_upload: FileUploadConfig | None = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
-    ):
+    ) -> _NodeType:
         """
         Convert to LLM Node
         :param original_app_mode: original app mode
@@ -396,16 +402,16 @@ class WorkflowConverter:
         :param external_data_variable_node_mapping: external data variable node mapping
         """
         # fetch start and knowledge retrieval node
-        start_node = next(filter(lambda n: n["data"]["type"] == NodeType.START.value, graph["nodes"]))
+        start_node = next(filter(lambda n: n["data"]["type"] == NodeType.START, graph["nodes"]))
         knowledge_retrieval_node = next(
-            filter(lambda n: n["data"]["type"] == NodeType.KNOWLEDGE_RETRIEVAL.value, graph["nodes"]), None
+            filter(lambda n: n["data"]["type"] == NodeType.KNOWLEDGE_RETRIEVAL, graph["nodes"]), None
         )
 
         role_prefix = None
         prompts: Any | None = None
 
         # Chat Model
-        if model_config.mode == LLMMode.CHAT.value:
+        if model_config.mode == LLMMode.CHAT:
             if prompt_template.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
                 if not prompt_template.simple_prompt_template:
                     raise ValueError("Simple prompt template is required")
@@ -517,7 +523,7 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "LLM",
-                "type": NodeType.LLM.value,
+                "type": NodeType.LLM,
                 "model": {
                     "provider": model_config.provider,
                     "name": model_config.model,
@@ -561,7 +567,7 @@ class WorkflowConverter:
 
         return template
 
-    def _convert_to_end_node(self):
+    def _convert_to_end_node(self) -> _NodeType:
         """
         Convert to End Node
         :return:
@@ -572,12 +578,12 @@ class WorkflowConverter:
             "position": None,
             "data": {
                 "title": "END",
-                "type": NodeType.END.value,
+                "type": NodeType.END,
                 "outputs": [{"variable": "result", "value_selector": ["llm", "text"]}],
             },
         }
 
-    def _convert_to_answer_node(self):
+    def _convert_to_answer_node(self) -> _NodeType:
         """
         Convert to Answer Node
         :return:
@@ -586,7 +592,7 @@ class WorkflowConverter:
         return {
             "id": "answer",
             "position": None,
-            "data": {"title": "ANSWER", "type": NodeType.ANSWER.value, "answer": "{{#llm.text#}}"},
+            "data": {"title": "ANSWER", "type": NodeType.ANSWER, "answer": "{{#llm.text#}}"},
         }
 
     def _create_edge(self, source: str, target: str):
@@ -598,7 +604,7 @@ class WorkflowConverter:
         """
         return {"id": f"{source}-{target}", "source": source, "target": target}
 
-    def _append_node(self, graph: dict, node: dict):
+    def _append_node(self, graph: dict[str, Any], node: _NodeType):
         """
         Append Node to Graph
 

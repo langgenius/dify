@@ -91,7 +91,7 @@ const translation = {
     freeTrialTipPrefix: 'Zarejestruj się i zdobądź',
     teamMember_other: '{{count,number}} członków zespołu',
     teamWorkspace: '{{count,number}} Zespół Workspace',
-    apiRateLimitUnit: '{{count,number}}/dzień',
+    apiRateLimitUnit: '{{count,number}}',
     cloud: 'Usługa chmurowa',
     teamMember_one: '{{count,number}} Członek zespołu',
     priceTip: 'na przestrzeń roboczą/',
@@ -101,6 +101,21 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/min Limit wiedzy na żądanie',
     documentsRequestQuotaTooltip: 'Określa całkowitą liczbę działań, jakie przestrzeń robocza może wykonać na minutę w ramach bazy wiedzy, w tym tworzenie zbiorów danych, usuwanie, aktualizacje, przesyłanie dokumentów, modyfikacje, archiwizowanie i zapytania do bazy wiedzy. Ta metryka jest używana do oceny wydajności zapytań do bazy wiedzy. Na przykład, jeśli użytkownik Sandbox wykona 10 kolejnych testów w ciągu jednej minuty, jego przestrzeń robocza zostanie tymczasowo ograniczona w wykonywaniu następujących działań przez następną minutę: tworzenie zbiorów danych, usuwanie, aktualizacje oraz przesyłanie lub modyfikacje dokumentów.',
     startBuilding: 'Zacznij budować',
+    taxTip: 'Wszystkie ceny subskrypcji (miesięczne/roczne) nie obejmują obowiązujących podatków (np. VAT, podatek od sprzedaży).',
+    taxTipSecond: 'Jeśli w Twoim regionie nie ma obowiązujących przepisów podatkowych, podatek nie pojawi się podczas realizacji zamówienia i nie zostaną naliczone żadne dodatkowe opłaty przez cały okres subskrypcji.',
+    triggerEvents: {
+      unlimited: 'Nieograniczone zdarzenia wyzwalające',
+      tooltip: 'Liczba zdarzeń, które automatycznie uruchamiają przepływy pracy za pomocą wtyczki, harmonogramu lub wyzwalaczy Webhook.',
+    },
+    workflowExecution: {
+      standard: 'Standardowe wykonywanie przepływu pracy',
+      tooltip: 'Priorytet i szybkość wykonywania kolejki przepływu pracy.',
+      priority: 'Wykonywanie przepływu pracy według priorytetu',
+      faster: 'Szybsze wykonywanie przepływu pracy',
+    },
+    startNodes: {
+      unlimited: 'Nieograniczone wyzwalacze/przepływ pracy',
+    },
   },
   plans: {
     sandbox: {
@@ -194,8 +209,17 @@ const translation = {
     buildApps: 'Twórz aplikacje',
     annotationQuota: 'Kwota aneksji',
     vectorSpaceTooltip: 'Dokumenty z trybem indeksowania o wysokiej jakości będą zużywać zasoby magazynu danych wiedzy. Gdy magazyn danych wiedzy osiągnie limit, nowe dokumenty nie będą przesyłane.',
+    perMonth: 'miesięcznie',
+    triggerEvents: 'Wydarzenia wyzwalające',
   },
   teamMembers: 'Członkowie zespołu',
+  triggerLimitModal: {
+    upgrade: 'Uaktualnij',
+    usageTitle: 'WYDARZENIA WYZWALAJĄCE',
+    description: 'Osiągnąłeś limit wyzwalaczy zdarzeń przepływu pracy dla tego planu.',
+    title: 'Uaktualnij, aby odblokować więcej zdarzeń wyzwalających',
+    dismiss: 'Odrzuć',
+  },
 }
 
 export default translation

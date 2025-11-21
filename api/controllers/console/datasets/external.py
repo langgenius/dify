@@ -1,17 +1,13 @@
-from typing import cast
-
 from flask import request
-from flask_login import current_user
 from flask_restx import Resource, fields, marshal, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import api, console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from fields.dataset_fields import dataset_detail_fields
-from libs.login import login_required
-from models.account import Account
+from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
@@ -40,12 +36,13 @@ class ExternalApiTemplateListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        _, current_tenant_id = current_account_with_tenant()
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
 
         external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
-            page, limit, current_user.current_tenant_id, search
+            page, limit, current_tenant_id, search
         )
         response = {
             "data": [item.to_dict() for item in external_knowledge_apis],
@@ -60,20 +57,23 @@ class ExternalApiTemplateListApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="Name is required. Name must be between 1 to 100 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "settings",
-            type=dict,
-            location="json",
-            nullable=False,
-            required=True,
+        current_user, current_tenant_id = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "name",
+                nullable=False,
+                required=True,
+                help="Name is required. Name must be between 1 to 100 characters.",
+                type=_validate_name,
+            )
+            .add_argument(
+                "settings",
+                type=dict,
+                location="json",
+                nullable=False,
+                required=True,
+            )
         )
         args = parser.parse_args()
 
@@ -85,7 +85,7 @@ class ExternalApiTemplateListApi(Resource):
 
         try:
             external_knowledge_api = ExternalDatasetService.create_external_knowledge_api(
-                tenant_id=current_user.current_tenant_id, user_id=current_user.id, args=args
+                tenant_id=current_tenant_id, user_id=current_user.id, args=args
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -115,28 +115,31 @@ class ExternalApiTemplateApi(Resource):
     @login_required
     @account_initialization_required
     def patch(self, external_knowledge_api_id):
+        current_user, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="type is required. Name must be between 1 to 100 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "settings",
-            type=dict,
-            location="json",
-            nullable=False,
-            required=True,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "name",
+                nullable=False,
+                required=True,
+                help="type is required. Name must be between 1 to 100 characters.",
+                type=_validate_name,
+            )
+            .add_argument(
+                "settings",
+                type=dict,
+                location="json",
+                nullable=False,
+                required=True,
+            )
         )
         args = parser.parse_args()
         ExternalDatasetService.validate_api_list(args["settings"])
 
         external_knowledge_api = ExternalDatasetService.update_external_knowledge_api(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             user_id=current_user.id,
             external_knowledge_api_id=external_knowledge_api_id,
             args=args,
@@ -148,13 +151,13 @@ class ExternalApiTemplateApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, external_knowledge_api_id):
+        current_user, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not (current_user.is_editor or current_user.is_dataset_operator):
+        if not (current_user.has_edit_permission or current_user.is_dataset_operator):
             raise Forbidden()
 
-        ExternalDatasetService.delete_external_knowledge_api(current_user.current_tenant_id, external_knowledge_api_id)
+        ExternalDatasetService.delete_external_knowledge_api(current_tenant_id, external_knowledge_api_id)
         return {"result": "success"}, 204
 
 
@@ -197,23 +200,24 @@ class ExternalDatasetCreateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("external_knowledge_api_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("external_knowledge_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="name is required. Name must be between 1 to 100 characters.",
-            type=_validate_name,
+        current_user, current_tenant_id = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("external_knowledge_api_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("external_knowledge_id", type=str, required=True, nullable=False, location="json")
+            .add_argument(
+                "name",
+                nullable=False,
+                required=True,
+                help="name is required. Name must be between 1 to 100 characters.",
+                type=_validate_name,
+            )
+            .add_argument("description", type=str, required=False, nullable=True, location="json")
+            .add_argument("external_retrieval_model", type=dict, required=False, location="json")
         )
-        parser.add_argument("description", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
 
         args = parser.parse_args()
 
@@ -223,7 +227,7 @@ class ExternalDatasetCreateApi(Resource):
 
         try:
             dataset = ExternalDatasetService.create_external_dataset(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 user_id=current_user.id,
                 args=args,
             )
@@ -255,6 +259,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, dataset_id):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -265,10 +270,12 @@ class ExternalKnowledgeHitTestingApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("query", type=str, location="json")
-        parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
-        parser.add_argument("metadata_filtering_conditions", type=dict, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("query", type=str, location="json")
+            .add_argument("external_retrieval_model", type=dict, required=False, location="json")
+            .add_argument("metadata_filtering_conditions", type=dict, required=False, location="json")
+        )
         args = parser.parse_args()
 
         HitTestingService.hit_testing_args_check(args)
@@ -277,7 +284,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
             response = HitTestingService.external_retrieve(
                 dataset=dataset,
                 query=args["query"],
-                account=cast(Account, current_user),
+                account=current_user,
                 external_retrieval_model=args["external_retrieval_model"],
                 metadata_filtering_conditions=args["metadata_filtering_conditions"],
             )
@@ -304,15 +311,17 @@ class BedrockRetrievalApi(Resource):
     )
     @api.response(200, "Bedrock retrieval test completed")
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("retrieval_setting", nullable=False, required=True, type=dict, location="json")
-        parser.add_argument(
-            "query",
-            nullable=False,
-            required=True,
-            type=str,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("retrieval_setting", nullable=False, required=True, type=dict, location="json")
+            .add_argument(
+                "query",
+                nullable=False,
+                required=True,
+                type=str,
+            )
+            .add_argument("knowledge_id", nullable=False, required=True, type=str)
         )
-        parser.add_argument("knowledge_id", nullable=False, required=True, type=str)
         args = parser.parse_args()
 
         # Call the knowledge retrieval service

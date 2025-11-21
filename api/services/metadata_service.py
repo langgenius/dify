@@ -1,12 +1,11 @@
 import copy
 import logging
 
-from flask_login import current_user
-
 from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
+from libs.login import current_account_with_tenant
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
 from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
@@ -23,11 +22,11 @@ class MetadataService:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
-
+        current_user, current_tenant_id = current_account_with_tenant()
         # check if metadata name already exists
         if (
             db.session.query(DatasetMetadata)
-            .filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=metadata_args.name)
+            .filter_by(tenant_id=current_tenant_id, dataset_id=dataset_id, name=metadata_args.name)
             .first()
         ):
             raise ValueError("Metadata name already exists.")
@@ -35,7 +34,7 @@ class MetadataService:
             if field.value == metadata_args.name:
                 raise ValueError("Metadata name already exists in Built-in fields.")
         metadata = DatasetMetadata(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             dataset_id=dataset_id,
             type=metadata_args.type,
             name=metadata_args.name,
@@ -53,9 +52,10 @@ class MetadataService:
 
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
+        current_user, current_tenant_id = current_account_with_tenant()
         if (
             db.session.query(DatasetMetadata)
-            .filter_by(tenant_id=current_user.current_tenant_id, dataset_id=dataset_id, name=name)
+            .filter_by(tenant_id=current_tenant_id, dataset_id=dataset_id, name=name)
             .first()
         ):
             raise ValueError("Metadata name already exists.")
@@ -89,7 +89,7 @@ class MetadataService:
                     document.doc_metadata = doc_metadata
                     db.session.add(document)
             db.session.commit()
-            return metadata  # type: ignore
+            return metadata
         except Exception:
             logger.exception("Update metadata name failed")
         finally:
@@ -206,7 +206,10 @@ class MetadataService:
                 document = DocumentService.get_document(dataset.id, operation.document_id)
                 if document is None:
                     raise ValueError("Document not found.")
-                doc_metadata = {}
+                if operation.partial_update:
+                    doc_metadata = copy.deepcopy(document.doc_metadata) if document.doc_metadata else {}
+                else:
+                    doc_metadata = {}
                 for metadata_value in operation.metadata_list:
                     doc_metadata[metadata_value.name] = metadata_value.value
                 if dataset.built_in_field_enabled:
@@ -219,10 +222,23 @@ class MetadataService:
                 db.session.add(document)
                 db.session.commit()
                 # deal metadata binding
-                db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
+                if not operation.partial_update:
+                    db.session.query(DatasetMetadataBinding).filter_by(document_id=operation.document_id).delete()
+
+                current_user, current_tenant_id = current_account_with_tenant()
                 for metadata_value in operation.metadata_list:
+                    # check if binding already exists
+                    if operation.partial_update:
+                        existing_binding = (
+                            db.session.query(DatasetMetadataBinding)
+                            .filter_by(document_id=operation.document_id, metadata_id=metadata_value.id)
+                            .first()
+                        )
+                        if existing_binding:
+                            continue
+
                     dataset_metadata_binding = DatasetMetadataBinding(
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         dataset_id=dataset.id,
                         document_id=operation.document_id,
                         metadata_id=metadata_value.id,

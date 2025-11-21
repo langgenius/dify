@@ -20,8 +20,6 @@ const translation = {
   intro5: 'może być utworzona',
   intro6: ' jako samodzielny wtyczka indeksująca ChatGPT do publikacji',
   unavailable: 'Niedostępny',
-  unavailableTip:
-    'Model osadzający jest niedostępny, domyślny model osadzający musi być skonfigurowany',
   datasets: 'WIEDZA',
   datasetsApi: 'DOSTĘP DO API',
   retrieval: {
@@ -232,6 +230,17 @@ const translation = {
   updated: 'Aktualizowano',
   createFromPipeline: 'Tworzenie na podstawie potoku wiedzy',
   externalKnowledgeBase: 'Zewnętrzna baza wiedzy',
+  serviceApi: {
+    card: {
+      apiKey: 'Klucz API',
+      title: 'Usługa backendowa API',
+      apiReference: 'Dokumentacja API',
+      endpoint: 'Punkt końcowy API usługi',
+    },
+    title: 'Interfejs API usługi',
+    disabled: 'Niepełnosprawny',
+    enabled: 'W serwisie',
+  },
 }
 
 export default translation

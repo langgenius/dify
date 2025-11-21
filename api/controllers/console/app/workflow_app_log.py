@@ -28,6 +28,7 @@ class WorkflowAppLogApi(Resource):
             "created_at__after": "Filter logs created after this timestamp",
             "created_by_end_user_session_id": "Filter by end user session ID",
             "created_by_account": "Filter by account",
+            "detail": "Whether to return detailed logs",
             "page": "Page number (1-99999)",
             "limit": "Number of items per page (1-100)",
         }
@@ -42,33 +43,36 @@ class WorkflowAppLogApi(Resource):
         """
         Get workflow app logs
         """
-        parser = reqparse.RequestParser()
-        parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument(
-            "status", type=str, choices=["succeeded", "failed", "stopped", "partial-succeeded"], location="args"
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("keyword", type=str, location="args")
+            .add_argument(
+                "status", type=str, choices=["succeeded", "failed", "stopped", "partial-succeeded"], location="args"
+            )
+            .add_argument(
+                "created_at__before", type=str, location="args", help="Filter logs created before this timestamp"
+            )
+            .add_argument(
+                "created_at__after", type=str, location="args", help="Filter logs created after this timestamp"
+            )
+            .add_argument(
+                "created_by_end_user_session_id",
+                type=str,
+                location="args",
+                required=False,
+                default=None,
+            )
+            .add_argument(
+                "created_by_account",
+                type=str,
+                location="args",
+                required=False,
+                default=None,
+            )
+            .add_argument("detail", type=bool, location="args", required=False, default=False)
+            .add_argument("page", type=int_range(1, 99999), default=1, location="args")
+            .add_argument("limit", type=int_range(1, 100), default=20, location="args")
         )
-        parser.add_argument(
-            "created_at__before", type=str, location="args", help="Filter logs created before this timestamp"
-        )
-        parser.add_argument(
-            "created_at__after", type=str, location="args", help="Filter logs created after this timestamp"
-        )
-        parser.add_argument(
-            "created_by_end_user_session_id",
-            type=str,
-            location="args",
-            required=False,
-            default=None,
-        )
-        parser.add_argument(
-            "created_by_account",
-            type=str,
-            location="args",
-            required=False,
-            default=None,
-        )
-        parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
         args = parser.parse_args()
 
         args.status = WorkflowExecutionStatus(args.status) if args.status else None
@@ -90,6 +94,7 @@ class WorkflowAppLogApi(Resource):
                 created_at_after=args.created_at__after,
                 page=args.page,
                 limit=args.limit,
+                detail=args.detail,
                 created_by_end_user_session_id=args.created_by_end_user_session_id,
                 created_by_account=args.created_by_account,
             )

@@ -19,7 +19,6 @@ from core.file.enums import FileTransferMethod, FileType
 from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.variables.segments import ArrayAnySegment
 from core.variables.variables import ArrayAnyVariable
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, SystemVariableKey
 from core.workflow.node_events import NodeRunResult, StreamChunkEvent, StreamCompletedEvent
@@ -27,6 +26,7 @@ from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.tool.exc import ToolFileError
+from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from factories import file_factory
 from models.model import UploadFile
@@ -75,11 +75,11 @@ class DatasourceNode(Node):
 
         node_data = self._node_data
         variable_pool = self.graph_runtime_state.variable_pool
-        datasource_type_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE.value])
+        datasource_type_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE])
         if not datasource_type_segement:
             raise DatasourceNodeError("Datasource type is not set")
         datasource_type = str(datasource_type_segement.value) if datasource_type_segement.value else None
-        datasource_info_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO.value])
+        datasource_info_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_INFO])
         if not datasource_info_segement:
             raise DatasourceNodeError("Datasource info is not set")
         datasource_info_value = datasource_info_segement.value
@@ -267,7 +267,7 @@ class DatasourceNode(Node):
         return result
 
     def _fetch_files(self, variable_pool: VariablePool) -> list[File]:
-        variable = variable_pool.get(["sys", SystemVariableKey.FILES.value])
+        variable = variable_pool.get(["sys", SystemVariableKey.FILES])
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
 

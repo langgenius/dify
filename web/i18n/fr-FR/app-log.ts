@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Trimestre à ce jour',
       yearToDate: 'Année à ce jour',
       allTime: 'Tout le temps',
+      custom: 'Personnalisé',
+      last30days: 'Derniers 30 jours',
     },
     annotation: {
       all: 'Tous',
@@ -82,6 +84,7 @@ const translation = {
     workflowTitle: 'Détail du journal',
     fileListDetail: 'Détail',
     fileListLabel: 'Détails du fichier',
+    testWithParams: 'Test avec paramètres',
   },
   promptLog: 'Journal de consigne',
   agentLog: 'Journal des agents',

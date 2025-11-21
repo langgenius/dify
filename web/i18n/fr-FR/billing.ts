@@ -73,7 +73,7 @@ const translation = {
     ragAPIRequestTooltip: 'Fait référence au nombre d\'appels API invoquant uniquement les capacités de traitement de la base de connaissances de Dify.',
     receiptInfo: 'Seuls le propriétaire de l\'équipe et l\'administrateur de l\'équipe peuvent s\'abonner et consulter les informations de facturation',
     annotationQuota: 'Quota d’annotation',
-    apiRateLimitUnit: '{{count,number}}/jour',
+    apiRateLimitUnit: '{{count,number}}',
     priceTip: 'par espace de travail/',
     freeTrialTipSuffix: 'Aucune carte de crédit requise',
     teamWorkspace: '{{count,number}} Espace de travail d\'équipe',
@@ -94,6 +94,21 @@ const translation = {
     documents: '{{count,number}} Documents de connaissance',
     documentsRequestQuotaTooltip: 'Spécifie le nombre total d\'actions qu\'un espace de travail peut effectuer par minute dans la base de connaissances, y compris la création, la suppression, les mises à jour de jeux de données, le téléchargement de documents, les modifications, l\'archivage et les requêtes de la base de connaissances. Ce paramètre est utilisé pour évaluer les performances des requêtes de la base de connaissances. Par exemple, si un utilisateur de Sandbox effectue 10 tests de validité consécutifs en une minute, son espace de travail sera temporairement restreint dans l\'exécution des actions suivantes pendant la minute suivante : création, suppression, mises à jour de jeux de données, et téléchargements ou modifications de documents.',
     startBuilding: 'Commencez à construire',
+    taxTip: 'Tous les prix des abonnements (mensuels/annuels) s\'entendent hors taxes applicables (par exemple, TVA, taxe de vente).',
+    taxTipSecond: 'Si votre région n\'a pas de exigences fiscales applicables, aucune taxe n\'apparaîtra lors de votre paiement et vous ne serez pas facturé de frais supplémentaires pendant toute la durée de l\'abonnement.',
+    triggerEvents: {
+      unlimited: 'Événements Déclencheurs Illimités',
+      tooltip: 'Le nombre d\'événements qui déclenchent automatiquement des flux de travail via des déclencheurs Plugin, Planification ou Webhook.',
+    },
+    workflowExecution: {
+      priority: 'Exécution du flux de travail prioritaire',
+      standard: 'Exécution du flux de travail standard',
+      tooltip: 'Priorité et vitesse de la file d\'exécution des flux de travail.',
+      faster: 'Exécution de flux de travail plus rapide',
+    },
+    startNodes: {
+      unlimited: 'Déclencheurs/workflows illimités',
+    },
   },
   plans: {
     sandbox: {
@@ -104,7 +119,7 @@ const translation = {
     professional: {
       name: 'Professionnel',
       description: 'Pour les individus et les petites équipes afin de débloquer plus de puissance à un prix abordable.',
-      for: 'Pour les développeurs indépendants / petites équipes',
+      for: 'Pour les développeurs indépendants/petites équipes',
     },
     team: {
       name: 'Équipe',
@@ -184,8 +199,17 @@ const translation = {
     teamMembers: 'Membres de l\'équipe',
     annotationQuota: 'Quota d\'annotation',
     documentsUploadQuota: 'Quota de téléchargement de documents',
+    perMonth: 'par mois',
+    triggerEvents: 'Événements déclencheurs',
   },
   teamMembers: 'Membres de l\'équipe',
+  triggerLimitModal: {
+    upgrade: 'Mettre à niveau',
+    usageTitle: 'ÉVÉNEMENTS DÉCLENCHEURS',
+    description: 'Vous avez atteint la limite des déclencheurs d\'événements de flux de travail pour ce plan.',
+    dismiss: 'Fermer',
+    title: 'Mettez à niveau pour débloquer plus d\'événements déclencheurs',
+  },
 }
 
 export default translation

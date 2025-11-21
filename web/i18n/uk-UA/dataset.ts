@@ -20,7 +20,6 @@ const translation = {
   intro5: 'можна створити',
   intro6: ' як автономний плагін індексу ChatGPT для публікації',
   unavailable: 'Недоступно',
-  unavailableTip: 'Модель вбудовування недоступна, необхідно налаштувати модель вбудовування за замовчуванням',
   datasets: 'ЗНАННЯ',
   datasetsApi: 'API',
   retrieval: {
@@ -227,6 +226,17 @@ const translation = {
   updated: 'Оновлено',
   createFromPipeline: 'Створюйте на основі Knowledge Pipeline',
   externalKnowledgeBase: 'Зовнішня база знань',
+  serviceApi: {
+    card: {
+      title: 'API бекенд-сервіс',
+      apiReference: 'Посилання на API',
+      apiKey: 'Ключ API',
+      endpoint: 'Кінцева точка API сервісу',
+    },
+    disabled: 'Вимкнено',
+    enabled: 'У службі',
+    title: 'Сервісний API',
+  },
 }
 
 export default translation

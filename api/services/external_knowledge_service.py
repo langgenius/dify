@@ -62,7 +62,7 @@ class ExternalDatasetService:
             tenant_id=tenant_id,
             created_by=user_id,
             updated_by=user_id,
-            name=args.get("name"),
+            name=str(args.get("name")),
             description=args.get("description", ""),
             settings=json.dumps(args.get("settings"), ensure_ascii=False),
         )
@@ -88,9 +88,9 @@ class ExternalDatasetService:
             else:
                 raise ValueError(f"invalid endpoint: {endpoint}")
         try:
-            response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
-        except Exception:
-            raise ValueError(f"failed to connect to the endpoint: {endpoint}")
+            response = ssrf_proxy.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
+        except Exception as e:
+            raise ValueError(f"failed to connect to the endpoint: {endpoint}") from e
         if response.status_code == 502:
             raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
         if response.status_code == 404:
@@ -163,7 +163,7 @@ class ExternalDatasetService:
         external_knowledge_api = (
             db.session.query(ExternalKnowledgeApis).filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         )
-        if external_knowledge_api is None:
+        if external_knowledge_api is None or external_knowledge_api.settings is None:
             raise ValueError("api template not found")
         settings = json.loads(external_knowledge_api.settings)
         for setting in settings:
@@ -290,7 +290,7 @@ class ExternalDatasetService:
             .filter_by(id=external_knowledge_binding.external_knowledge_api_id)
             .first()
         )
-        if not external_knowledge_api:
+        if external_knowledge_api is None or external_knowledge_api.settings is None:
             raise ValueError("external api template not found")
 
         settings = json.loads(external_knowledge_api.settings)

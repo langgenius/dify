@@ -2,12 +2,11 @@ import logging
 
 import httpx
 from flask import current_app, redirect, request
-from flask_login import current_user
 from flask_restx import Resource, fields
-from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console import api, console_ns
+from controllers.console.wraps import is_admin_or_owner_required
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
@@ -43,10 +42,9 @@ class OAuthDataSource(Resource):
     )
     @api.response(400, "Invalid provider")
     @api.response(403, "Admin privileges required")
+    @is_admin_or_owner_required
     def get(self, provider: str):
         # The role of the current user in the table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
         OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)

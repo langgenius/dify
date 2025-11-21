@@ -10,7 +10,7 @@ from extensions.ext_database import db
 from libs.helper import TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password
-from models.account import Account, AccountStatus
+from models import Account, AccountStatus
 from models.model import App, EndUser, Site
 from services.app_service import AppService
 from services.enterprise.enterprise_service import EnterpriseService
@@ -36,7 +36,7 @@ class WebAppAuthService:
         if not account:
             raise AccountNotFoundError()
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise AccountLoginError("Account is banned.")
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
@@ -56,7 +56,7 @@ class WebAppAuthService:
         if not account:
             return None
 
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             raise Unauthorized("Account is banned.")
 
         return account
@@ -172,7 +172,8 @@ class WebAppAuthService:
                 return WebAppAuthType.EXTERNAL
 
         if app_code:
-            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_code(app_code)
+            app_id = AppService.get_app_id_by_code(app_code)
+            webapp_settings = EnterpriseService.WebAppAuth.get_app_access_mode_by_id(app_id=app_id)
             return cls.get_app_auth_type(access_mode=webapp_settings.access_mode)
 
         raise ValueError("Could not determine app authentication type.")
