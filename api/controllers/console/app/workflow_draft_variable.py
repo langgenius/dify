@@ -140,6 +140,35 @@ _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS = {
     "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_VARIABLE_FIELDS), attribute=_get_items),
 }
 
+# Register models for flask_restx to avoid dict type issues in Swagger
+workflow_draft_variable_without_value_model = api.model(
+    "WorkflowDraftVariableWithoutValue", _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS
+)
+
+workflow_draft_variable_model = api.model("WorkflowDraftVariable", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+
+workflow_draft_env_variable_model = api.model("WorkflowDraftEnvVariable", _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS)
+
+workflow_draft_env_variable_list_fields_copy = _WORKFLOW_DRAFT_ENV_VARIABLE_LIST_FIELDS.copy()
+workflow_draft_env_variable_list_fields_copy["items"] = fields.List(fields.Nested(workflow_draft_env_variable_model))
+workflow_draft_env_variable_list_model = api.model(
+    "WorkflowDraftEnvVariableList", workflow_draft_env_variable_list_fields_copy
+)
+
+workflow_draft_variable_list_without_value_fields_copy = _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS.copy()
+workflow_draft_variable_list_without_value_fields_copy["items"] = fields.List(
+    fields.Nested(workflow_draft_variable_without_value_model), attribute=_get_items
+)
+workflow_draft_variable_list_without_value_model = api.model(
+    "WorkflowDraftVariableListWithoutValue", workflow_draft_variable_list_without_value_fields_copy
+)
+
+workflow_draft_variable_list_fields_copy = _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS.copy()
+workflow_draft_variable_list_fields_copy["items"] = fields.List(
+    fields.Nested(workflow_draft_variable_model), attribute=_get_items
+)
+workflow_draft_variable_list_model = api.model("WorkflowDraftVariableList", workflow_draft_variable_list_fields_copy)
+
 
 def _api_prerequisite(f):
     """Common prerequisites for all draft workflow variable APIs.
@@ -171,9 +200,9 @@ class WorkflowVariableCollectionApi(Resource):
     @api.doc(description="Get draft workflow variables")
     @api.doc(params={"app_id": "Application ID"})
     @api.doc(params={"page": "Page number (1-100000)", "limit": "Number of items per page (1-100)"})
-    @api.response(200, "Workflow variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
+    @api.response(200, "Workflow variables retrieved successfully", workflow_draft_variable_list_without_value_model)
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
+    @marshal_with(workflow_draft_variable_list_without_value_model)
     def get(self, app_model: App):
         """
         Get draft workflow
@@ -236,9 +265,9 @@ class NodeVariableCollectionApi(Resource):
     @api.doc("get_node_variables")
     @api.doc(description="Get variables for a specific node")
     @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @api.response(200, "Node variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @api.response(200, "Node variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App, node_id: str):
         validate_node_id(node_id)
         with Session(bind=db.engine, expire_on_commit=False) as session:
@@ -269,10 +298,10 @@ class VariableApi(Resource):
     @api.doc("get_variable")
     @api.doc(description="Get a specific workflow variable")
     @api.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
-    @api.response(200, "Variable retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @api.response(200, "Variable retrieved successfully", workflow_draft_variable_model)
     @api.response(404, "Variable not found")
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @marshal_with(workflow_draft_variable_model)
     def get(self, app_model: App, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
@@ -295,10 +324,10 @@ class VariableApi(Resource):
             },
         )
     )
-    @api.response(200, "Variable updated successfully", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @api.response(200, "Variable updated successfully", workflow_draft_variable_model)
     @api.response(404, "Variable not found")
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @marshal_with(workflow_draft_variable_model)
     def patch(self, app_model: App, variable_id: str):
         # Request payload for file types:
         #
@@ -384,7 +413,7 @@ class VariableResetApi(Resource):
     @api.doc("reset_variable")
     @api.doc(description="Reset a workflow variable to its default value")
     @api.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
-    @api.response(200, "Variable reset successfully", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @api.response(200, "Variable reset successfully", workflow_draft_variable_model)
     @api.response(204, "Variable reset (no content)")
     @api.response(404, "Variable not found")
     @_api_prerequisite
@@ -410,7 +439,7 @@ class VariableResetApi(Resource):
         if resetted is None:
             return Response("", 204)
         else:
-            return marshal(resetted, _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+            return marshal(resetted, workflow_draft_variable_model)
 
 
 def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
@@ -432,10 +461,10 @@ class ConversationVariableCollectionApi(Resource):
     @api.doc("get_conversation_variables")
     @api.doc(description="Get conversation variables for workflow")
     @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Conversation variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @api.response(200, "Conversation variables retrieved successfully", workflow_draft_variable_list_model)
     @api.response(404, "Draft workflow not found")
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
         # so their IDs can be returned to the caller.
@@ -454,9 +483,9 @@ class SystemVariableCollectionApi(Resource):
     @api.doc("get_system_variables")
     @api.doc(description="Get system variables for workflow")
     @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "System variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @api.response(200, "System variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App):
         return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID)
 

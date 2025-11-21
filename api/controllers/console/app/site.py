@@ -11,6 +11,9 @@ from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
 from models import Site
 
+# Register model for flask_restx to avoid dict type issues in Swagger
+app_site_model = api.model("AppSite", app_site_fields)
+
 
 def parse_app_site_args():
     parser = (
@@ -71,14 +74,14 @@ class AppSite(Resource):
             },
         )
     )
-    @api.response(200, "Site configuration updated successfully", app_site_fields)
+    @api.response(200, "Site configuration updated successfully", app_site_model)
     @api.response(403, "Insufficient permissions")
     @api.response(404, "App not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model
-    @marshal_with(app_site_fields)
+    @marshal_with(app_site_model)
     def post(self, app_model):
         args = parse_app_site_args()
         current_user, _ = current_account_with_tenant()
@@ -125,14 +128,14 @@ class AppSiteAccessTokenReset(Resource):
     @api.doc("reset_app_site_access_token")
     @api.doc(description="Reset access token for application site")
     @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Access token reset successfully", app_site_fields)
+    @api.response(200, "Access token reset successfully", app_site_model)
     @api.response(403, "Insufficient permissions (admin/owner required)")
     @api.response(404, "App or site not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model
-    @marshal_with(app_site_fields)
+    @marshal_with(app_site_model)
     def post(self, app_model):
         # The role of the current user in the ta table must be admin or owner
         current_user, _ = current_account_with_tenant()

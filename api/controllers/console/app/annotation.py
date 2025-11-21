@@ -15,6 +15,7 @@ from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     annotation_fields,
     annotation_hit_history_fields,
+    build_annotation_model,
 )
 from libs.helper import uuid_value
 from libs.login import login_required
@@ -184,7 +185,7 @@ class AnnotationApi(Resource):
             },
         )
     )
-    @api.response(201, "Annotation created successfully", annotation_fields)
+    @api.response(201, "Annotation created successfully", build_annotation_model(api))
     @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -238,7 +239,11 @@ class AnnotationExportApi(Resource):
     @api.doc("export_annotations")
     @api.doc(description="Export all annotations for an app")
     @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Annotations exported successfully", fields.List(fields.Nested(annotation_fields)))
+    @api.response(
+        200,
+        "Annotations exported successfully",
+        api.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(api)))}),
+    )
     @api.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -263,7 +268,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @api.doc("update_delete_annotation")
     @api.doc(description="Update or delete an annotation")
     @api.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @api.response(200, "Annotation updated successfully", annotation_fields)
+    @api.response(200, "Annotation updated successfully", build_annotation_model(api))
     @api.response(204, "Annotation deleted successfully")
     @api.response(403, "Insufficient permissions")
     @api.expect(parser)
@@ -359,7 +364,12 @@ class AnnotationHitHistoryListApi(Resource):
         .add_argument("limit", type=int, location="args", default=20, help="Page size")
     )
     @api.response(
-        200, "Hit histories retrieved successfully", fields.List(fields.Nested(annotation_hit_history_fields))
+        200,
+        "Hit histories retrieved successfully",
+        api.model(
+            "AnnotationHitHistoryList",
+            {"data": fields.List(fields.Nested(api.model("AnnotationHitHistoryItem", annotation_hit_history_fields)))},
+        ),
     )
     @api.response(403, "Insufficient permissions")
     @setup_required

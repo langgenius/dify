@@ -24,6 +24,12 @@ api_key_fields = {
 
 api_key_list = {"data": fields.List(fields.Nested(api_key_fields), attribute="items")}
 
+api_key_item_model = api.model("ApiKeyItem", api_key_fields)
+
+api_key_list_model = api.model(
+    "ApiKeyList", {"data": fields.List(fields.Nested(api_key_item_model), attribute="items")}
+)
+
 
 def _get_resource(resource_id, tenant_id, resource_model):
     if resource_model == App:
@@ -52,7 +58,7 @@ class BaseApiKeyListResource(Resource):
     token_prefix: str | None = None
     max_keys = 10
 
-    @marshal_with(api_key_list)
+    @marshal_with(api_key_list_model)
     def get(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
@@ -66,7 +72,7 @@ class BaseApiKeyListResource(Resource):
         ).all()
         return {"items": keys}
 
-    @marshal_with(api_key_fields)
+    @marshal_with(api_key_item_model)
     @edit_permission_required
     def post(self, resource_id):
         assert self.resource_id_field is not None, "resource_id_field must be set"
@@ -139,7 +145,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @api.doc("get_app_api_keys")
     @api.doc(description="Get all API keys for an app")
     @api.doc(params={"resource_id": "App ID"})
-    @api.response(200, "Success", api_key_list)
+    @api.response(200, "Success", api_key_list_model)
     def get(self, resource_id):
         """Get all API keys for an app"""
         return super().get(resource_id)
@@ -147,7 +153,7 @@ class AppApiKeyListResource(BaseApiKeyListResource):
     @api.doc("create_app_api_key")
     @api.doc(description="Create a new API key for an app")
     @api.doc(params={"resource_id": "App ID"})
-    @api.response(201, "API key created successfully", api_key_fields)
+    @api.response(201, "API key created successfully", api_key_item_model)
     @api.response(400, "Maximum keys exceeded")
     def post(self, resource_id):
         """Create a new API key for an app"""
@@ -179,7 +185,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @api.doc("get_dataset_api_keys")
     @api.doc(description="Get all API keys for a dataset")
     @api.doc(params={"resource_id": "Dataset ID"})
-    @api.response(200, "Success", api_key_list)
+    @api.response(200, "Success", api_key_list_model)
     def get(self, resource_id):
         """Get all API keys for a dataset"""
         return super().get(resource_id)
@@ -187,7 +193,7 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
     @api.doc("create_dataset_api_key")
     @api.doc(description="Create a new API key for a dataset")
     @api.doc(params={"resource_id": "Dataset ID"})
-    @api.response(201, "API key created successfully", api_key_fields)
+    @api.response(201, "API key created successfully", api_key_item_model)
     @api.response(400, "Maximum keys exceeded")
     def post(self, resource_id):
         """Create a new API key for a dataset"""
