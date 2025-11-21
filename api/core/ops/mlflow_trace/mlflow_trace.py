@@ -213,7 +213,7 @@ class MLflowDataTrace(BaseTraceInstance):
         """Parse LLM inputs and attributes from LLM workflow node"""
         try:
             data = json.loads(node.process_data)
-        except Exception:
+        except (json.JSONDecodeError, TypeError):
             return {}, {}
 
         inputs = self._parse_prompts(data.get("prompts"))
