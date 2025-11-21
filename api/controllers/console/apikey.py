@@ -104,14 +104,11 @@ class BaseApiKeyResource(Resource):
     resource_model: type | None = None
     resource_id_field: str | None = None
 
-    def delete(self, resource_id, api_key_id):
+    def delete(self, resource_id: str, api_key_id: str):
         assert self.resource_id_field is not None, "resource_id_field must be set"
-        resource_id = str(resource_id)
-        api_key_id = str(api_key_id)
         current_user, current_tenant_id = current_account_with_tenant()
         _get_resource(resource_id, current_tenant_id, self.resource_model)
 
-        # The role of the current user in the ta table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 

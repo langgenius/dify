@@ -4,6 +4,8 @@ from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console import api, console_ns
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from fields.tag_fields import dataset_tag_fields
 from libs.login import current_account_with_tenant, login_required
 from models.model import Tag
@@ -91,12 +93,9 @@ class TagUpdateDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def delete(self, tag_id):
-        current_user, _ = current_account_with_tenant()
         tag_id = str(tag_id)
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
         TagService.delete_tag(tag_id)
 

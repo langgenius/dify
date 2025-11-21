@@ -16,14 +16,15 @@ from core.trigger.entities.entities import Subscription
 from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url, generate_webhook_trigger_endpoint
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from models.base import Base, TypeBase
-from models.engine import db
-from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
-from models.model import Account
-from models.types import EnumText, LongText, StringUUID
+
+from .base import Base, TypeBase
+from .engine import db
+from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
+from .model import Account
+from .types import EnumText, LongText, StringUUID
 
 
-class TriggerSubscription(Base):
+class TriggerSubscription(TypeBase):
     """
     Trigger provider model for managing credentials
     Supports multiple credential instances per provider
@@ -40,7 +41,7 @@ class TriggerSubscription(Base):
         UniqueConstraint("tenant_id", "provider_id", "name", name="unique_trigger_provider"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False, comment="Subscription instance name")
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -62,12 +63,15 @@ class TriggerSubscription(Base):
         Integer, default=-1, comment="Subscription instance expiration timestamp, -1 for never"
     )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
         server_onupdate=func.current_timestamp(),
+        init=False,
     )
 
     def is_credential_expired(self) -> bool:
@@ -100,24 +104,27 @@ class TriggerSubscription(Base):
 
 
 # system level trigger oauth client params
-class TriggerOAuthSystemClient(Base):
+class TriggerOAuthSystemClient(TypeBase):
     __tablename__ = "trigger_oauth_system_clients"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="trigger_oauth_system_client_pkey"),
         sa.UniqueConstraint("plugin_id", "provider", name="trigger_oauth_system_client_plugin_id_provider_idx"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the trigger provider
     encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime,
         nullable=False,
         server_default=func.current_timestamp(),
         server_onupdate=func.current_timestamp(),
+        init=False,
     )
 
 
@@ -134,7 +141,7 @@ class TriggerOAuthTenantClient(Base):
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
-    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
     # oauth params of the trigger provider
     encrypted_oauth_params: Mapped[str] = mapped_column(LongText, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())

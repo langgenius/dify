@@ -15,6 +15,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     enterprise_license_required,
+    is_admin_or_owner_required,
     setup_required,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -753,13 +754,11 @@ class DatasetApiKeyApi(Resource):
 
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     @marshal_with(api_key_fields)
     def post(self):
-        # The role of the current user in the ta table must be admin or owner
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
 
         current_key_count = (
             db.session.query(ApiToken)
@@ -794,15 +793,11 @@ class DatasetApiDeleteApi(Resource):
     @console_ns.response(204, "API key deleted successfully")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def delete(self, api_key_id):
-        current_user, current_tenant_id = current_account_with_tenant()
+        _, current_tenant_id = current_account_with_tenant()
         api_key_id = str(api_key_id)
-
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
         key = (
             db.session.query(ApiToken)
             .where(

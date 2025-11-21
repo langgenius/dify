@@ -5,7 +5,7 @@ from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 import services
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
@@ -200,12 +200,10 @@ class ExternalDatasetCreateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     def post(self):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         parser = (
             reqparse.RequestParser()
             .add_argument("external_knowledge_api_id", type=str, required=True, nullable=False, location="json")

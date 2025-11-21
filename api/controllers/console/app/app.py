@@ -3,7 +3,7 @@ import uuid
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, Forbidden, abort
+from werkzeug.exceptions import BadRequest, abort
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -12,6 +12,7 @@ from controllers.console.wraps import (
     cloud_edition_billing_resource_check,
     edit_permission_required,
     enterprise_license_required,
+    is_admin_or_owner_required,
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
@@ -485,15 +486,11 @@ class AppApiStatus(Resource):
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model
     @marshal_with(app_detail_fields)
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin or owner
-        current_user, _ = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
         parser = reqparse.RequestParser().add_argument("enable_api", type=bool, required=True, location="json")
         args = parser.parse_args()
 

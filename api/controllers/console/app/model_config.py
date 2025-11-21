@@ -3,11 +3,10 @@ from typing import cast
 
 from flask import request
 from flask_restx import Resource, fields
-from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.agent.entities import AgentToolEntity
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
@@ -48,15 +47,12 @@ class ModelConfigResource(Resource):
     @console_ns.response(404, "App not found")
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.AGENT_CHAT, AppMode.CHAT, AppMode.COMPLETION])
     def post(self, app_model):
         """Modify app model config"""
         current_user, current_tenant_id = current_account_with_tenant()
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
             tenant_id=current_tenant_id,
