@@ -114,7 +114,7 @@ All of Dify's offerings come with corresponding APIs, so you could effortlessly 
 
 - **Self-hosting Dify Community Edition</br>**
   Quickly get Dify running in your environment with this [starter guide](#quick-start).
-  Use our [documentation](https://docs.dify.ai/documentation/pages/getting-started/introduction/) for further references and more in-depth instructions.
+  Use our [documentation](https://docs.dify.ai/documentation/pages/getting-started/introduction) for further references and more in-depth instructions.
 
 - **Dify for enterprise / organizations</br>**
   We provide additional enterprise-centric features. [Log your questions for us through this chatbot](https://udify.app/chat/22L1zSxg6yW1cWQg) or [send us an email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) to discuss enterprise needs. </br>
