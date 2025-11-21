@@ -7,6 +7,7 @@ from flask import has_request_context
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from core.app.entities.task_entities import StreamEvent
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
 from core.tools.__base.tool import Tool
@@ -18,6 +19,7 @@ from core.tools.entities.tool_entities import (
     ToolProviderType,
 )
 from core.tools.errors import ToolInvokeError
+from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from factories.file_factory import build_from_mapping
 from libs.login import current_user
@@ -91,33 +93,28 @@ class WorkflowTool(Tool):
 
         self._latest_usage = LLMUsage.empty_usage()
 
+        streaming = False
+        should_stream = self._workflow_supports_streaming(workflow)
         result = generator.generate(
             app_model=app,
             workflow=workflow,
             user=user,
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
-            streaming=False,
+            streaming=should_stream,
             call_depth=self.workflow_call_depth + 1,
         )
-        assert isinstance(result, dict)
-        data = result.get("data", {})
+        if isinstance(result, Mapping):
+            data = result.get("data", {})
+            yield from self._emit_outputs_from_data(data)
+            return
+        streaming = True
 
-        if err := data.get("error"):
-            raise ToolInvokeError(err)
-
-        outputs = data.get("outputs")
-        if outputs is None:
-            outputs = {}
+        if streaming:
+            yield from self._stream_workflow_events(result)
         else:
-            outputs, files = self._extract_files(outputs)  # type: ignore
-            for file in files:
-                yield self.create_file_message(file)  # type: ignore
-
-        self._latest_usage = self._derive_usage_from_result(data)
-
-        yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
-        yield self.create_json_message(outputs, suppress_output=True)
+            data = result.get("data", {}) if isinstance(result, Mapping) else {}
+            yield from self._emit_outputs_from_data(data)
 
     @property
     def latest_usage(self) -> LLMUsage:
@@ -238,6 +235,90 @@ class WorkflowTool(Tool):
 
         return user
 
+    def _emit_outputs_from_data(self, data: Mapping[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
+        """
+        Emit final workflow outputs as tool messages.
+        """
+        if err := data.get("error"):
+            raise ToolInvokeError(err)
+
+        outputs = data.get("outputs") or {}
+        if not isinstance(outputs, Mapping):
+            raise ToolInvokeError("workflow outputs must be a mapping")
+
+        normalized_outputs, files = self._extract_files(dict(outputs))
+        for file in files:
+            yield self.create_file_message(file)
+
+        self._latest_usage = self._derive_usage_from_result(data)
+
+        answer_text = normalized_outputs.get("answer")
+        fallback_text = normalized_outputs.get("text")
+        if not data.get("_streamed_text_emitted"):
+            if isinstance(answer_text, str):
+                yield self.create_text_message(answer_text)
+            elif isinstance(fallback_text, str):
+                yield self.create_text_message(fallback_text)
+            elif normalized_outputs:
+                yield self.create_text_message(json.dumps(normalized_outputs, ensure_ascii=False))
+        yield self.create_json_message(dict(normalized_outputs), suppress_output=True)
+
+    def _stream_workflow_events(
+        self, stream: Generator[Mapping[str, Any] | str, None, None]
+    ) -> Generator[ToolInvokeMessage, None, None]:
+        """
+        Convert workflow streaming events into ToolInvokeMessages.
+        """
+        final_payload: dict[str, Any] | None = None
+
+        streamed_text_emitted = False
+
+        for chunk in stream:
+            if isinstance(chunk, str):
+                if chunk == StreamEvent.PING.value:
+                    continue
+                yield self.create_text_message(chunk)
+                continue
+
+            event = chunk.get("event")
+            if event == StreamEvent.ERROR.value:
+                message = chunk.get("message") or chunk.get("detail") or "workflow tool execution failed"
+                raise ToolInvokeError(message)
+
+            if event == StreamEvent.WORKFLOW_FINISHED.value:
+                final_payload = dict(chunk.get("data") or {})
+                continue
+
+            if event == StreamEvent.TEXT_CHUNK.value:
+                data = chunk.get("data") or {}
+                text = data.get("text")
+                if text:
+                    yield self.create_text_message(text)
+                    streamed_text_emitted = True
+                continue
+
+            if event == StreamEvent.MESSAGE_FILE.value:
+                url = chunk.get("url")
+                if url:
+                    message = self.create_link_message(url)
+                    message.meta = {
+                        "type": chunk.get("type"),
+                        "belongs_to": chunk.get("belongs_to"),
+                        "event": event,
+                    }
+                    yield message
+                continue
+
+            continue
+
+        if final_payload is None:
+            raise ToolInvokeError("workflow run did not complete")
+
+        if streamed_text_emitted:
+            final_payload["_streamed_text_emitted"] = True
+
+        yield from self._emit_outputs_from_data(final_payload)
+
     def _get_workflow(self, app_id: str, version: str) -> Workflow:
         """
         get the workflow by app id and version
@@ -270,6 +351,32 @@ class WorkflowTool(Tool):
             raise ValueError("app not found")
 
         return app
+
+    def _workflow_supports_streaming(self, workflow: Workflow | None) -> bool:
+        """
+        Determine whether the workflow contains nodes that benefit from streaming output.
+        Defaults to True to avoid changing legacy behavior when detection fails.
+        """
+        if workflow is None:
+            return True
+
+        try:
+            nodes = workflow.graph_dict.get("nodes", [])
+        except Exception:
+            return True
+
+        streaming_node_types = {
+            NodeType.ANSWER.value,
+            NodeType.LLM.value,
+            NodeType.AGENT.value,
+        }
+
+        for node in nodes:
+            node_type = node.get("data", {}).get("type")
+            if node_type in streaming_node_types:
+                return True
+
+        return False
 
     def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
         """
