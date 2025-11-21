@@ -257,12 +257,16 @@ class ExternalDatasetService:
 
         db.session.add(dataset)
         db.session.flush()
+        if args.get("external_knowledge_id") is None:
+            raise ValueError("external_knowledge_id is required")
+        if args.get("external_knowledge_api_id") is None:
+            raise ValueError("external_knowledge_api_id is required")
 
         external_knowledge_binding = ExternalKnowledgeBindings(
             tenant_id=tenant_id,
             dataset_id=dataset.id,
-            external_knowledge_api_id=str(args.get("external_knowledge_api_id")),
-            external_knowledge_id=str(args.get("external_knowledge_id")),
+            external_knowledge_api_id=args.get("external_knowledge_api_id"),
+            external_knowledge_id=args.get("external_knowledge_id"),
             created_by=user_id,
         )
         db.session.add(external_knowledge_binding)

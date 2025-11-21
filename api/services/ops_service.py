@@ -29,7 +29,8 @@ class OpsService:
         if not app:
             return None
         tenant_id = app.tenant_id
-        assert trace_config_data.tracing_config is not None
+        if trace_config_data.tracing_config is None:
+            raise ValueError("Tracing config cannot be None.")
         decrypt_tracing_config = OpsTraceManager.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )
