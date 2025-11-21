@@ -1764,19 +1764,21 @@ class ApiRequest(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class MessageChain(Base):
+class MessageChain(TypeBase):
     __tablename__ = "message_chains"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_chain_pkey"),
         sa.Index("message_chain_message_id_idx", "message_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    message_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
-    input = mapped_column(LongText, nullable=True)
-    output = mapped_column(LongText, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    input: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    output: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
+    )
 
 
 class MessageAgentThought(Base):
