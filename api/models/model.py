@@ -16,7 +16,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.file import helpers as file_helpers
 from core.tools.signature import sign_tool_file
 from core.workflow.enums import WorkflowExecutionStatus
@@ -1338,7 +1338,7 @@ class MessageFeedback(Base):
         }
 
 
-class MessageFile(Base):
+class MessageFile(TypeBase):
     __tablename__ = "message_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_file_pkey"),
@@ -1346,28 +1346,7 @@ class MessageFile(Base):
         sa.Index("message_file_created_by_idx", "created_by"),
     )
 
-    def __init__(
-        self,
-        *,
-        message_id: str,
-        type: FileType,
-        transfer_method: FileTransferMethod,
-        url: str | None = None,
-        belongs_to: Literal["user", "assistant"] | None = None,
-        upload_file_id: str | None = None,
-        created_by_role: CreatorUserRole,
-        created_by: str,
-    ):
-        self.message_id = message_id
-        self.type = type
-        self.transfer_method = transfer_method
-        self.url = url
-        self.belongs_to = belongs_to
-        self.upload_file_id = upload_file_id
-        self.created_by_role = created_by_role.value
-        self.created_by = created_by
-
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
     transfer_method: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -1376,7 +1355,9 @@ class MessageFile(Base):
     upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class MessageAnnotation(Base):

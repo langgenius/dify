@@ -851,13 +851,14 @@ class TestAgentService:
 
         # Add files to message
         from models.model import MessageFile
-
+        assert message.from_account_id is not None
         message_file1 = MessageFile(
             message_id=message.id,
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file1.jpg",
             belongs_to="user",
+            upload_file_id=str(fake.uuid4()),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
@@ -867,6 +868,7 @@ class TestAgentService:
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file2.png",
             belongs_to="user",
+            upload_file_id=str(fake.uuid4()),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
