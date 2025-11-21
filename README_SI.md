@@ -6,8 +6,8 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/quick-start/docker-compose">Samostojno gostovanje</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction/">Dokumentacija</a> ·
+  <a href="https://docs.dify.ai/self-hosting/quick-start/docker-compose">Samostojno gostovanje</a> ·
+  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction">Dokumentacija</a> ·
   <a href="https://dify.ai/pricing">Pregled ponudb izdelkov Dify</a>
 </p>
 
@@ -74,9 +74,9 @@ Po zagonu lahko dostopate do nadzorne plošče Dify v brskalniku na [http://loca
 
 #### Iskanje pomoči
 
-Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/quick-start/faqs) če naletite na težave pri nastavitvi Dify. Če imate še vedno težave, se obrnite na [skupnost ali nas](#community--contact).
+Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/self-hosting/quick-start/faqs) če naletite na težave pri nastavitvi Dify. Če imate še vedno težave, se obrnite na [skupnost ali nas](#community--contact).
 
-> Če želite prispevati k Difyju ali narediti dodaten razvoj, glejte naš vodnik za [uvajanje iz izvorne kode](https://docs.dify.ai/documentation/pages/getting-started/introduction//self-hosting/advanced-deployments/local-source-code)
+> Če želite prispevati k Difyju ali narediti dodaten razvoj, glejte naš vodnik za [uvajanje iz izvorne kode](https://docs.dify.ai/self-hosting/advanced-deployments/local-source-code)
 
 ## Ključne značilnosti
 
@@ -84,7 +84,7 @@ Prosimo, glejte naša pogosta vprašanja [FAQ](https://docs.dify.ai/documentatio
 Zgradite in preizkusite zmogljive poteke dela AI na vizualnem platnu, pri čemer izkoristite vse naslednje funkcije in več.
 
 **2. Celovita podpora za modele**:
-Brezhibna integracija s stotinami lastniških/odprtokodnih LLM-jev ducatov ponudnikov sklepanja in samostojnih rešitev, ki pokrivajo GPT, Mistral, Llama3 in vse modele, združljive z API-jem OpenAI. Celoten seznam podprtih ponudnikov modelov najdete [tukaj](https://docs.dify.ai/documentation/pages/getting-started/introduction//workspace/model-providers).
+Brezhibna integracija s stotinami lastniških/odprtokodnih LLM-jev ducatov ponudnikov sklepanja in samostojnih rešitev, ki pokrivajo GPT, Mistral, Llama3 in vse modele, združljive z API-jem OpenAI. Celoten seznam podprtih ponudnikov modelov najdete [tukaj](https://docs.dify.ai/documentation/pages/workspace/model-providers).
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
@@ -109,7 +109,7 @@ AVse ponudbe Difyja so opremljene z ustreznimi API-ji, tako da lahko Dify brez t
   Gostimo storitev Dify Cloud za vsakogar, ki jo lahko preizkusite brez nastavitev. Zagotavlja vse zmožnosti različice za samostojno namestitev in vključuje 200 brezplačnih klicev GPT-4 v načrtu peskovnika.
 
 - **Self-hosting Dify Community Edition</br>**
-  Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#quick-start) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai/documentation/pages/getting-started/introduction/) .
+  Hitro zaženite Dify v svojem okolju s tem [začetnim vodnikom](#quick-start) . Za dodatne reference in podrobnejša navodila uporabite našo [dokumentacijo](https://docs.dify.ai/documentation/pages/getting-started/introduction) .
 
 - **Dify za podjetja/organizacije</br>**
   Ponujamo dodatne funkcije, osredotočene na podjetja. Zabeležite svoja vprašanja prek tega klepetalnega robota ali nam pošljite e-pošto, da se pogovorimo o potrebah podjetja. </br>
