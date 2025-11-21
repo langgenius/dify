@@ -5,8 +5,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, MappedAsDataclass, mapped_co
 
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from models.engine import metadata
-from models.types import StringUUID
+
+from .engine import metadata
+from .types import StringUUID
 
 
 class Base(DeclarativeBase):
