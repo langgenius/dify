@@ -1440,7 +1440,7 @@ class AppAnnotationSetting(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    score_threshold: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
+    score_threshold: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"), default=0.0)
     collection_binding_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
