@@ -1245,24 +1245,30 @@ class DatasetMetadataBinding(Base):
     created_by = mapped_column(StringUUID, nullable=False)
 
 
-class PipelineBuiltInTemplate(Base):  # type: ignore[name-defined]
+class PipelineBuiltInTemplate(TypeBase):
     __tablename__ = "pipeline_built_in_templates"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="pipeline_built_in_template_pkey"),)
 
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
-    name = mapped_column(sa.String(255), nullable=False)
-    description = mapped_column(LongText, nullable=False)
-    chunk_structure = mapped_column(sa.String(255), nullable=False)
-    icon = mapped_column(sa.JSON, nullable=False)
-    yaml_content = mapped_column(LongText, nullable=False)
-    copyright = mapped_column(sa.String(255), nullable=False)
-    privacy_policy = mapped_column(sa.String(255), nullable=False)
-    position = mapped_column(sa.Integer, nullable=False)
-    install_count = mapped_column(sa.Integer, nullable=False, default=0)
-    language = mapped_column(sa.String(255), nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    description: Mapped[str] = mapped_column(LongText, nullable=False)
+    chunk_structure: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    icon: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    yaml_content: Mapped[str] = mapped_column(LongText, nullable=False)
+    copyright: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    privacy_policy: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
+    language: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
 
