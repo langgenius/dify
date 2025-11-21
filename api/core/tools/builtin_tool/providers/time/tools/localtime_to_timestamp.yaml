@@ -31,3 +31,14 @@ parameters:
       en_US: Timezone, such as Asia/Shanghai
       zh_Hans: 时区，比如 Asia/Shanghai
     default: Asia/Shanghai
+  - name: format
+    type: string
+    required: false
+    label:
+      en_US: Format
+      zh_Hans: 格式
+    human_description:
+      en_US: Time format in strftime standard, e.g., %Y-%m-%d %H:%M:%S
+      zh_Hans: strftime 标准的时间格式，例如 %Y-%m-%d %H:%M:%S
+    form: form
+    default: "%Y-%m-%d %H:%M:%S"

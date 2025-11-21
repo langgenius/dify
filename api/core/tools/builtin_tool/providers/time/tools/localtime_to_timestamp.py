@@ -25,7 +25,7 @@ class LocaltimeToTimestampTool(BuiltinTool):
         timezone = tool_parameters.get("timezone", "Asia/Shanghai")
         if not timezone:
             timezone = None
-        time_format = "%Y-%m-%d %H:%M:%S"
+        time_format = tool_parameters.get("format", "%Y-%m-%d %H:%M:%S")
 
         timestamp = self.localtime_to_timestamp(localtime, time_format, timezone)  # type: ignore
         if not timestamp:
@@ -37,8 +37,30 @@ class LocaltimeToTimestampTool(BuiltinTool):
     # TODO: this method's type is messy
     @staticmethod
     def localtime_to_timestamp(localtime: str, time_format: str, local_tz=None) -> int | None:
+        # Try common datetime formats if parsing fails
+        common_formats = [
+            time_format,
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d %H:%M:%S.%f",
+            "%Y/%m/%d %H:%M:%S",
+            "%Y/%m/%d %H:%M",
+            "%m/%d/%Y %H:%M:%S",
+            "%m/%d/%Y %H:%M",
+        ]
+
+        local_time = None
+        for fmt in common_formats:
+            try:
+                local_time = datetime.strptime(localtime, fmt)
+                break
+            except ValueError:
+                continue
+
+        if local_time is None:
+            raise ToolInvokeError(f"Unable to parse datetime string '{localtime}' with common formats")
+
         try:
-            local_time = datetime.strptime(localtime, time_format)
             if local_tz is None:
                 localtime = local_time.astimezone()  # type: ignore
             elif isinstance(local_tz, str):
