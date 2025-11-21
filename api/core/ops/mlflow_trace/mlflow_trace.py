@@ -2,10 +2,10 @@ import json
 import logging
 import os
 from datetime import datetime, timedelta
-from typing import cast
+from typing import Any, cast
 
 import mlflow
-from mlflow.entities import Document, Span, SpanEvent, SpanStatus, SpanStatusCode, SpanType
+from mlflow.entities import Document, Span, SpanEvent, SpanStatusCode, SpanType
 from mlflow.tracing.constant import SpanAttributeKey, TokenUsageKey, TraceMetadataKey
 from mlflow.tracing.fluent import start_span_no_context, update_current_trace
 from mlflow.tracing.provider import detach_span_from_context, set_span_in_context
@@ -23,7 +23,7 @@ from core.ops.entities.trace_entity import (
     TraceTaskName,
     WorkflowTraceInfo,
 )
-from core.workflow.nodes.enums import NodeType
+from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from models import EndUser
 from models.workflow import WorkflowNodeExecutionModel
@@ -53,7 +53,7 @@ class MLflowDataTrace(BaseTraceInstance):
         """Setup connection to Databricks-managed MLflow instances"""
         os.environ["DATABRICKS_HOST"] = config.host
 
-        if config.client_id:
+        if config.client_id and config.client_secret:
             # OAuth: https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m?language=Environment
             os.environ["DATABRICKS_CLIENT_ID"] = config.client_id
             os.environ["DATABRICKS_CLIENT_SECRET"] = config.client_secret
@@ -102,7 +102,7 @@ class MLflowDataTrace(BaseTraceInstance):
                 self.suggested_question_trace(trace_info)
             elif isinstance(trace_info, GenerateNameTraceInfo):
                 self.generate_name_trace(trace_info)
-        except Exception as e:
+        except Exception:
             logger.exception("[MLflow] Trace error")
             raise
 
@@ -165,9 +165,9 @@ class MLflowDataTrace(BaseTraceInstance):
 
                 # Handle node errors
                 if node.status != "succeeded":
-                    node_span.set_status(SpanStatus(SpanStatusCode.ERROR))
+                    node_span.set_status(SpanStatusCode.ERROR)
                     node_span.add_event(
-                        SpanEvent(
+                        SpanEvent(  # type: ignore[abstract]
                             name="exception",
                             attributes={
                                 "exception.message": f"Node failed with status: {node.status}",
@@ -191,9 +191,9 @@ class MLflowDataTrace(BaseTraceInstance):
 
             # Handle workflow-level errors
             if trace_info.error:
-                workflow_span.set_status(SpanStatus(SpanStatusCode.ERROR))
+                workflow_span.set_status(SpanStatusCode.ERROR)
                 workflow_span.add_event(
-                    SpanEvent(
+                    SpanEvent(  # type: ignore[abstract]
                         name="exception",
                         attributes={
                             "exception.message": trace_info.error,
@@ -209,8 +209,11 @@ class MLflowDataTrace(BaseTraceInstance):
                 end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
             )
 
-    def _parse_llm_inputs_and_attributes(self, node: WorkflowNodeExecutionModel) -> tuple[dict, dict]:
+    def _parse_llm_inputs_and_attributes(self, node: WorkflowNodeExecutionModel) -> tuple[Any, dict]:
         """Parse LLM inputs and attributes from LLM workflow node"""
+        if node.process_data is None:
+            return {}, {}
+
         try:
             data = json.loads(node.process_data)
         except (json.JSONDecodeError, TypeError):
@@ -263,13 +266,13 @@ class MLflowDataTrace(BaseTraceInstance):
         span = start_span_no_context(
             name=TraceTaskName.MESSAGE_TRACE.value,
             span_type=SpanType.LLM,
-            inputs=self._parse_prompts(trace_info.inputs),
+            inputs=self._parse_prompts(trace_info.inputs),  # type: ignore[arg-type]
             attributes={
-                "message_id": trace_info.message_id,
+                "message_id": trace_info.message_id,  # type: ignore[dict-item]
                 "model_provider": trace_info.message_data.model_provider,
                 "model_id": trace_info.message_data.model_id,
                 "conversation_mode": trace_info.conversation_mode,
-                "file_list": file_list,
+                "file_list": file_list,  # type: ignore[dict-item]
                 "total_price": trace_info.message_data.total_price,
                 **trace_info.metadata,
             },
@@ -298,9 +301,9 @@ class MLflowDataTrace(BaseTraceInstance):
         self._set_trace_metadata(span, trace_metadata)
 
         if trace_info.error:
-            span.set_status(SpanStatus(SpanStatusCode.ERROR))
+            span.set_status(SpanStatusCode.ERROR)
             span.add_event(
-                SpanEvent(
+                SpanEvent(  # type: ignore[abstract]
                     name="error",
                     attributes={
                         "exception.message": trace_info.error,
@@ -315,33 +318,33 @@ class MLflowDataTrace(BaseTraceInstance):
             end_time_ns=datetime_to_nanoseconds(trace_info.end_time),
         )
 
-    def _get_message_user_id(self, metadata: dict) -> str:
+    def _get_message_user_id(self, metadata: dict) -> str | None:
         if (end_user_id := metadata.get("from_end_user_id")) and (
             end_user_data := db.session.query(EndUser).where(EndUser.id == end_user_id).first()
         ):
             return end_user_data.session_id
 
-        return metadata.get("from_account_id")
+        return metadata.get("from_account_id")  # type: ignore[return-value]
 
     def tool_trace(self, trace_info: ToolTraceInfo):
         span = start_span_no_context(
             name=trace_info.tool_name,
             span_type=SpanType.TOOL,
-            inputs=trace_info.tool_inputs,
+            inputs=trace_info.tool_inputs,  # type: ignore[arg-type]
             attributes={
-                "message_id": trace_info.message_id,
-                "metadata": trace_info.metadata,
-                "tool_config": trace_info.tool_config,
-                "tool_parameters": trace_info.tool_parameters,
+                "message_id": trace_info.message_id,  # type: ignore[dict-item]
+                "metadata": trace_info.metadata,  # type: ignore[dict-item]
+                "tool_config": trace_info.tool_config,  # type: ignore[dict-item]
+                "tool_parameters": trace_info.tool_parameters,  # type: ignore[dict-item]
             },
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
 
         # Handle tool errors
         if trace_info.error:
-            span.set_status(SpanStatus(SpanStatusCode.ERROR))
+            span.set_status(SpanStatusCode.ERROR)
             span.add_event(
-                SpanEvent(
+                SpanEvent(  # type: ignore[abstract]
                     name="error",
                     attributes={
                         "exception.message": trace_info.error,
@@ -366,8 +369,8 @@ class MLflowDataTrace(BaseTraceInstance):
             span_type=SpanType.TOOL,
             inputs=trace_info.inputs or {},
             attributes={
-                "message_id": trace_info.message_id,
-                "metadata": trace_info.metadata,
+                "message_id": trace_info.message_id,  # type: ignore[dict-item]
+                "metadata": trace_info.metadata,  # type: ignore[dict-item]
             },
             start_time_ns=datetime_to_nanoseconds(start_time),
         )
@@ -390,8 +393,8 @@ class MLflowDataTrace(BaseTraceInstance):
             span_type=SpanType.RETRIEVER,
             inputs=trace_info.inputs,
             attributes={
-                "message_id": trace_info.message_id,
-                "metadata": trace_info.metadata,
+                "message_id": trace_info.message_id,  # type: ignore[dict-item]
+                "metadata": trace_info.metadata,  # type: ignore[dict-item]
             },
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
@@ -409,18 +412,18 @@ class MLflowDataTrace(BaseTraceInstance):
             span_type=SpanType.TOOL,
             inputs=trace_info.inputs,
             attributes={
-                "message_id": trace_info.message_id,
-                "model_provider": trace_info.model_provider,
-                "model_id": trace_info.model_id,
-                "total_tokens": trace_info.total_tokens or 0,
+                "message_id": trace_info.message_id,  # type: ignore[dict-item]
+                "model_provider": trace_info.model_provider,  # type: ignore[dict-item]
+                "model_id": trace_info.model_id,  # type: ignore[dict-item]
+                "total_tokens": trace_info.total_tokens or 0,  # type: ignore[dict-item]
             },
             start_time_ns=datetime_to_nanoseconds(start_time),
         )
 
         if trace_info.error:
-            span.set_status(SpanStatus(SpanStatusCode.ERROR))
+            span.set_status(SpanStatusCode.ERROR)
             span.add_event(
-                SpanEvent(
+                SpanEvent(  # type: ignore[abstract]
                     name="error",
                     attributes={
                         "exception.message": trace_info.error,
@@ -437,7 +440,7 @@ class MLflowDataTrace(BaseTraceInstance):
             name=TraceTaskName.GENERATE_NAME_TRACE.value,
             span_type=SpanType.CHAIN,
             inputs=trace_info.inputs,
-            attributes={"message_id": trace_info.message_id},
+            attributes={"message_id": trace_info.message_id},  # type: ignore[dict-item]
             start_time_ns=datetime_to_nanoseconds(trace_info.start_time),
         )
         span.end(outputs=trace_info.outputs, end_time_ns=datetime_to_nanoseconds(trace_info.end_time))
@@ -476,15 +479,17 @@ class MLflowDataTrace(BaseTraceInstance):
             NodeType.HTTP_REQUEST: SpanType.TOOL,
             NodeType.AGENT: SpanType.AGENT,
         }
-        return node_type_mapping.get(node_type, "CHAIN")  # anything else is a chain
+        return node_type_mapping.get(node_type, "CHAIN")  # type: ignore[arg-type,call-overload]
 
     def _set_trace_metadata(self, span: Span, metadata: dict):
+        token = None
         try:
             # NB: Set span in context such that we can use update_current_trace() API
             token = set_span_in_context(span)
             update_current_trace(metadata=metadata)
         finally:
-            detach_span_from_context(token)
+            if token:
+                detach_span_from_context(token)
 
     def _parse_prompts(self, prompts):
         """Postprocess prompts format to be standard chat messages"""
