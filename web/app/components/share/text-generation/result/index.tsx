@@ -1,13 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import { produce } from 'immer'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import NoData from '@/app/components/share/text-generation/no-data'
 import Toast from '@/app/components/base/toast'
-import { sendCompletionMessage, sendWorkflowMessage, updateFeedback } from '@/service/share'
+import Button from '@/app/components/base/button'
+import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import { RiLoader2Line } from '@remixicon/react'
+import { sendCompletionMessage, sendWorkflowMessage, stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
@@ -31,6 +34,7 @@ export type IResultProps = {
   isPC: boolean
   isMobile: boolean
   isInstalledApp: boolean
+  appId: string
   installedAppInfo?: InstalledApp
   isError: boolean
   isShowTextToSpeech: boolean
@@ -48,6 +52,8 @@ export type IResultProps = {
   completionFiles: VisionFile[]
   siteInfo: SiteInfo | null
   onRunStart: () => void
+  onRunControlChange?: (control: { onStop: () => Promise<void> | void; isStopping: boolean } | null) => void
+  hideInlineStopButton?: boolean
 }
 
 const Result: FC<IResultProps> = ({
@@ -56,6 +62,7 @@ const Result: FC<IResultProps> = ({
   isPC,
   isMobile,
   isInstalledApp,
+  appId,
   installedAppInfo,
   isError,
   isShowTextToSpeech,
@@ -73,13 +80,10 @@ const Result: FC<IResultProps> = ({
   completionFiles,
   siteInfo,
   onRunStart,
+  onRunControlChange,
+  hideInlineStopButton = false,
 }) => {
   const [isResponding, { setTrue: setRespondingTrue, setFalse: setRespondingFalse }] = useBoolean(false)
-  useEffect(() => {
-    if (controlStopResponding)
-      setRespondingFalse()
-  }, [controlStopResponding])
-
   const [completionRes, doSetCompletionRes] = useState<string>('')
   const completionResRef = useRef<string>('')
   const setCompletionRes = (res: string) => {
@@ -94,6 +98,29 @@ const Result: FC<IResultProps> = ({
     doSetWorkflowProcessData(data)
   }
   const getWorkflowProcessData = () => workflowProcessDataRef.current
+  const [currentTaskId, setCurrentTaskId] = useState<string | null>(null)
+  const [isStopping, setIsStopping] = useState(false)
+  const abortControllerRef = useRef<AbortController | null>(null)
+  const resetRunState = useCallback(() => {
+    setCurrentTaskId(null)
+    setIsStopping(false)
+    abortControllerRef.current = null
+    onRunControlChange?.(null)
+  }, [onRunControlChange])
+
+  useEffect(() => {
+    const abortCurrentRequest = () => {
+      abortControllerRef.current?.abort()
+    }
+
+    if (controlStopResponding) {
+      abortCurrentRequest()
+      setRespondingFalse()
+      resetRunState()
+    }
+
+    return abortCurrentRequest
+  }, [controlStopResponding, resetRunState, setRespondingFalse])
 
   const { notify } = Toast
   const isNoData = !completionRes
@@ -111,6 +138,40 @@ const Result: FC<IResultProps> = ({
   const logError = (message: string) => {
     notify({ type: 'error', message })
   }
+
+  const handleStop = useCallback(async () => {
+    if (!currentTaskId || isStopping)
+      return
+    setIsStopping(true)
+    try {
+      if (isWorkflow)
+        await stopWorkflowMessage(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+      else
+        await stopChatMessageResponding(appId, currentTaskId, isInstalledApp, installedAppInfo?.id || '')
+      abortControllerRef.current?.abort()
+    }
+    catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
+      notify({ type: 'error', message })
+    }
+    finally {
+      setIsStopping(false)
+    }
+  }, [appId, currentTaskId, installedAppInfo?.id, isInstalledApp, isStopping, isWorkflow, notify])
+
+  useEffect(() => {
+    if (!onRunControlChange)
+      return
+    if (isResponding && currentTaskId) {
+      onRunControlChange({
+        onStop: handleStop,
+        isStopping,
+      })
+    }
+    else {
+      onRunControlChange(null)
+    }
+  }, [currentTaskId, handleStop, isResponding, isStopping, onRunControlChange])
 
   const checkCanSend = () => {
     // batch will check outer
@@ -196,6 +257,7 @@ const Result: FC<IResultProps> = ({
       rating: null,
     })
     setCompletionRes('')
+    resetRunState()
 
     let res: string[] = []
     let tempMessageId = ''
@@ -213,6 +275,7 @@ const Result: FC<IResultProps> = ({
       if (!isEnd) {
         setRespondingFalse()
         onCompleted(getCompletionRes(), taskId, false)
+        resetRunState()
         isTimeout = true
       }
     })()
@@ -221,8 +284,10 @@ const Result: FC<IResultProps> = ({
       sendWorkflowMessage(
         data,
         {
-          onWorkflowStarted: ({ workflow_run_id }) => {
+          onWorkflowStarted: ({ workflow_run_id, task_id }) => {
             tempMessageId = workflow_run_id
+            setCurrentTaskId(task_id || null)
+            setIsStopping(false)
             setWorkflowProcessData({
               status: WorkflowRunningStatus.Running,
               tracing: [],
@@ -330,12 +395,38 @@ const Result: FC<IResultProps> = ({
               notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
               return
             }
+            const workflowStatus = data.status as WorkflowRunningStatus | undefined
+            const markNodesStopped = (traces?: WorkflowProcess['tracing']) => {
+              if (!traces)
+                return
+              const markTrace = (trace: WorkflowProcess['tracing'][number]) => {
+                if ([NodeRunningStatus.Running, NodeRunningStatus.Waiting].includes(trace.status as NodeRunningStatus))
+                  trace.status = NodeRunningStatus.Stopped
+                trace.details?.forEach(detailGroup => detailGroup.forEach(markTrace))
+                trace.retryDetail?.forEach(markTrace)
+                trace.parallelDetail?.children?.forEach(markTrace)
+              }
+              traces.forEach(markTrace)
+            }
+            if (workflowStatus === WorkflowRunningStatus.Stopped) {
+              setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
+                draft.status = WorkflowRunningStatus.Stopped
+                markNodesStopped(draft.tracing)
+              }))
+              setRespondingFalse()
+              resetRunState()
+              onCompleted(getCompletionRes(), taskId, false)
+              isEnd = true
+              return
+            }
             if (data.error) {
               notify({ type: 'error', message: data.error })
               setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
                 draft.status = WorkflowRunningStatus.Failed
+                markNodesStopped(draft.tracing)
               }))
               setRespondingFalse()
+              resetRunState()
               onCompleted(getCompletionRes(), taskId, false)
               isEnd = true
               return
@@ -357,6 +448,7 @@ const Result: FC<IResultProps> = ({
               }
             }
             setRespondingFalse()
+            resetRunState()
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)
             isEnd = true
@@ -376,12 +468,19 @@ const Result: FC<IResultProps> = ({
         },
         isInstalledApp,
         installedAppInfo?.id,
-      )
+      ).catch((error) => {
+        setRespondingFalse()
+        resetRunState()
+        const message = error instanceof Error ? error.message : String(error)
+        notify({ type: 'error', message })
+      })
     }
     else {
       sendCompletionMessage(data, {
-        onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
+        onData: (data: string, _isFirstMessage: boolean, { messageId, taskId }) => {
           tempMessageId = messageId
+          if (taskId && typeof taskId === 'string' && taskId.trim() !== '')
+            setCurrentTaskId(prev => prev ?? taskId)
           res.push(data)
           setCompletionRes(res.join(''))
         },
@@ -391,6 +490,7 @@ const Result: FC<IResultProps> = ({
             return
           }
           setRespondingFalse()
+          resetRunState()
           setMessageId(tempMessageId)
           onCompleted(getCompletionRes(), taskId, true)
           isEnd = true
@@ -405,8 +505,12 @@ const Result: FC<IResultProps> = ({
             return
           }
           setRespondingFalse()
+          resetRunState()
           onCompleted(getCompletionRes(), taskId, false)
           isEnd = true
+        },
+        getAbortController: (abortController) => {
+          abortControllerRef.current = abortController
         },
       }, isInstalledApp, installedAppInfo?.id)
     }
@@ -426,28 +530,46 @@ const Result: FC<IResultProps> = ({
   }, [controlRetry])
 
   const renderTextGenerationRes = () => (
-    <TextGenerationRes
-      isWorkflow={isWorkflow}
-      workflowProcessData={workflowProcessData}
-      isError={isError}
-      onRetry={handleSend}
-      content={completionRes}
-      messageId={messageId}
-      isInWebApp
-      moreLikeThis={moreLikeThisEnabled}
-      onFeedback={handleFeedback}
-      feedback={feedback}
-      onSave={handleSaveMessage}
-      isMobile={isMobile}
-      isInstalledApp={isInstalledApp}
-      installedAppId={installedAppInfo?.id}
-      isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
-      taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
-      controlClearMoreLikeThis={controlClearMoreLikeThis}
-      isShowTextToSpeech={isShowTextToSpeech}
-      hideProcessDetail
-      siteInfo={siteInfo}
-    />
+    <>
+      {!hideInlineStopButton && isResponding && currentTaskId && (
+        <div className={`mb-3 flex ${isPC ? 'justify-end' : 'justify-center'}`}>
+          <Button
+            variant='secondary'
+            disabled={isStopping}
+            onClick={handleStop}
+          >
+            {
+              isStopping
+                ? <RiLoader2Line className='mr-[5px] h-3.5 w-3.5 animate-spin' />
+                : <StopCircle className='mr-[5px] h-3.5 w-3.5' />
+            }
+            <span className='text-xs font-normal'>{t('appDebug.operation.stopResponding')}</span>
+          </Button>
+        </div>
+      )}
+      <TextGenerationRes
+        isWorkflow={isWorkflow}
+        workflowProcessData={workflowProcessData}
+        isError={isError}
+        onRetry={handleSend}
+        content={completionRes}
+        messageId={messageId}
+        isInWebApp
+        moreLikeThis={moreLikeThisEnabled}
+        onFeedback={handleFeedback}
+        feedback={feedback}
+        onSave={handleSaveMessage}
+        isMobile={isMobile}
+        isInstalledApp={isInstalledApp}
+        installedAppId={installedAppInfo?.id}
+        isLoading={isCallBatchAPI ? (!completionRes && isResponding) : false}
+        taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
+        controlClearMoreLikeThis={controlClearMoreLikeThis}
+        isShowTextToSpeech={isShowTextToSpeech}
+        hideProcessDetail
+        siteInfo={siteInfo}
+      />
+    </>
   )
 
   return (
