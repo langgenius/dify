@@ -1146,7 +1146,7 @@ class ExternalKnowledgeApis(TypeBase):
         return dataset_bindings
 
 
-class ExternalKnowledgeBindings(Base):
+class ExternalKnowledgeBindings(TypeBase):
     __tablename__ = "external_knowledge_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="external_knowledge_bindings_pkey"),
@@ -1156,16 +1156,18 @@ class ExternalKnowledgeBindings(Base):
         sa.Index("external_knowledge_bindings_external_knowledge_api_idx", "external_knowledge_api_id"),
     )
 
-    id = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    external_knowledge_api_id = mapped_column(StringUUID, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    external_knowledge_id = mapped_column(String(512), nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
+    id: Mapped[str] = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    external_knowledge_api_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    external_knowledge_id: Mapped[str] = mapped_column(String(512), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
 
 
