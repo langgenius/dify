@@ -153,6 +153,14 @@ const translation = {
       viewDocsLink: '{{key}} dökümanlarını görüntüle',
       removeConfirmTitle: '{{key}} yapılandırmasını kaldır?',
       removeConfirmContent: 'Mevcut yapılandırma kullanımda, kaldırılması İzleme özelliğini kapatacaktır.',
+      password: 'Parola',
+      clientId: 'OAuth İstemci Kimliği',
+      databricksHost: 'Databricks Çalışma Alanı URL\'si',
+      clientSecret: 'OAuth İstemci Sırrı',
+      username: 'Kullanıcı Adı',
+      experimentId: 'Deney Kimliği',
+      personalAccessToken: 'Kişisel Erişim Belirteci (eski)',
+      trackingUri: 'İzleme URI\'si',
     },
     view: 'Görünüm',
     opik: {
@@ -330,6 +338,8 @@ const translation = {
     pressEscToClose: 'Kapatmak için ESC tuşuna basın',
     startTyping: 'Arama yapmak için yazmaya başlayın',
   },
+  noUserInputNode: 'Eksik kullanıcı girdi düğümü',
+  notPublishedYet: 'Uygulama henüz yayımlanmadı',
 }
 
 export default translation

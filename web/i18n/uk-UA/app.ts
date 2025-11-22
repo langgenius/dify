@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: 'Переглянути документацію {{key}}',
       removeConfirmTitle: 'Видалити налаштування {{key}}?',
       removeConfirmContent: 'Поточне налаштування використовується, його видалення вимкне функцію Відстеження.',
+      password: 'Пароль',
+      databricksHost: 'URL робочого простору Databricks',
+      clientId: 'Ідентифікатор клієнта OAuth',
+      experimentId: 'Ідентифікатор експерименту',
+      trackingUri: 'Відстеження URI',
+      personalAccessToken: 'Персональний токен доступу (застарілий)',
+      username: 'Ім\'я користувача',
+      clientSecret: 'Секретний ключ клієнта OAuth',
     },
     view: 'Вид',
     opik: {
@@ -334,6 +342,8 @@ const translation = {
     startTyping: 'Почніть вводити для пошуку',
     pressEscToClose: 'Натисніть ESC, щоб закрити',
   },
+  notPublishedYet: 'Додаток ще не опублікований',
+  noUserInputNode: 'Відсутній вузол введення користувача',
 }
 
 export default translation

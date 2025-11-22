@@ -341,6 +341,8 @@ const translation = {
     noMatchingCommands: '一致するコマンドが見つかりません',
     tryDifferentSearch: '別の検索語句をお試しください',
   },
+  notPublishedYet: 'アプリはまだ公開されていません',
+  noUserInputNode: 'ユーザー入力ノードが見つかりません',
 }
 
 export default translation
