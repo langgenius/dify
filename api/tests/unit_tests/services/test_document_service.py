@@ -1028,6 +1028,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             mock_process_rule.return_value = process_rule
 
             # Act & Assert
-            with pytest.raises(Exception):
+            from services.errors.file import FileNotExistsError
+            with pytest.raises(FileNotExistsError):
                 DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account)
 
