@@ -576,9 +576,12 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
             patch("services.dataset_service.current_user") as mock_current_user,
             patch("services.dataset_service.generate_incremental_name") as mock_generate_name,
         ):
+            # Configure mock_current_user to behave like a Flask-Login proxy
+            # Default: no user (falsy)
+            mock_current_user.id = None
             yield {
                 "db_session": mock_db,
-                "current_user": mock_current_user,
+                "current_user_mock": mock_current_user,
                 "generate_name": mock_generate_name,
             }
 
@@ -590,9 +593,8 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         name = "RAG Pipeline Dataset"
         description = "RAG Pipeline Description"
 
-        # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
-        mock_rag_pipeline_dependencies["current_user"] = current_user
+        # Mock current user - set up the mock to have id attribute accessible directly
+        mock_rag_pipeline_dependencies["current_user_mock"].id = user_id
 
         # Mock database query (no duplicate name)
         mock_query = Mock()
@@ -638,9 +640,8 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         user_id = str(uuid4())
         auto_name = "Untitled 1"
 
-        # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
-        mock_rag_pipeline_dependencies["current_user"] = current_user
+        # Mock current user - set up the mock to have id attribute accessible directly
+        mock_rag_pipeline_dependencies["current_user_mock"].id = user_id
 
         # Mock database query (empty name, need to generate)
         mock_query = Mock()
@@ -682,9 +683,8 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         user_id = str(uuid4())
         name = "Duplicate RAG Dataset"
 
-        # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
-        mock_rag_pipeline_dependencies["current_user"] = current_user
+        # Mock current user - set up the mock to have id attribute accessible directly
+        mock_rag_pipeline_dependencies["current_user_mock"].id = user_id
 
         # Mock database query to return existing dataset
         existing_dataset = DatasetCreateTestDataFactory.create_dataset_mock(name=name)
@@ -712,8 +712,8 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         # Arrange
         tenant_id = str(uuid4())
 
-        # Mock current user as None
-        mock_rag_pipeline_dependencies["current_user"] = None
+        # Mock current user as None - set id to None so the check fails
+        mock_rag_pipeline_dependencies["current_user_mock"].id = None
 
         # Mock database query
         mock_query = Mock()
@@ -742,9 +742,8 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         user_id = str(uuid4())
         name = "Custom Permission RAG Dataset"
 
-        # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
-        mock_rag_pipeline_dependencies["current_user"] = current_user
+        # Mock current user - set up the mock to have id attribute accessible directly
+        mock_rag_pipeline_dependencies["current_user_mock"].id = user_id
 
         # Mock database query
         mock_query = Mock()
