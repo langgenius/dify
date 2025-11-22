@@ -77,6 +77,7 @@ const translation = {
     },
     executions: '{{num}} EGZEKUCJI',
     execution: 'WYKONANIE',
+    stopRun: 'Zatrzymaj bieg',
   },
   login: {
     backToHome: 'Powrót do strony głównej',
