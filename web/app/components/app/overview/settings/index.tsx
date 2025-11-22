@@ -51,6 +51,7 @@ export type ConfigParams = {
   icon: string
   icon_background?: string
   show_workflow_steps: boolean
+  show_reasoning: boolean
   use_icon_as_answer_icon: boolean
   enable_sso?: boolean
 }
@@ -80,6 +81,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     custom_disclaimer,
     default_language,
     show_workflow_steps,
+    show_reasoning,
     use_icon_as_answer_icon,
   } = appInfo.site
   const [inputInfo, setInputInfo] = useState({
@@ -92,6 +94,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     privacyPolicy: privacy_policy,
     customDisclaimer: custom_disclaimer,
     show_workflow_steps,
+    show_reasoning,
     use_icon_as_answer_icon,
     enable_sso: appInfo.enable_sso,
   })
@@ -128,6 +131,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       privacyPolicy: privacy_policy,
       customDisclaimer: custom_disclaimer,
       show_workflow_steps,
+      show_reasoning,
       use_icon_as_answer_icon,
       enable_sso: appInfo.enable_sso,
     })
@@ -135,7 +139,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     setAppIcon(icon_type === 'image'
       ? { type: 'image', url: icon_url!, fileId: icon }
       : { type: 'emoji', icon, background: icon_background! })
-  }, [appInfo, chat_color_theme, chat_color_theme_inverted, copyright, custom_disclaimer, default_language, description, icon, icon_background, icon_type, icon_url, privacy_policy, show_workflow_steps, title, use_icon_as_answer_icon])
+  }, [appInfo, chat_color_theme, chat_color_theme_inverted, copyright, custom_disclaimer, default_language, description, icon, icon_background, icon_type, icon_url, privacy_policy, show_workflow_steps, show_reasoning, title, use_icon_as_answer_icon])
 
   const onHide = () => {
     onClose()
@@ -196,6 +200,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       show_workflow_steps: inputInfo.show_workflow_steps,
+      show_reasoning: inputInfo.show_reasoning,
       use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
       enable_sso: inputInfo.enable_sso,
     }
@@ -335,6 +340,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               />
             </div>
             <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t(`${prefixSettings}.workflow.showDesc`)}</p>
+          </div>
+          {/* reasoning display */}
+          <div className='w-full'>
+            <div className='flex items-center justify-between'>
+              <div className={cn('system-sm-semibold py-1 text-text-secondary')}>{t(`${prefixSettings}.reasoning.subTitle`)}</div>
+              <Switch
+                defaultValue={inputInfo.show_reasoning}
+                onChange={v => setInputInfo({ ...inputInfo, show_reasoning: v })}
+              />
+            </div>
+            <p className='body-xs-regular pb-0.5 text-text-tertiary'>{t(`${prefixSettings}.reasoning.showDesc`)}</p>
           </div>
           {/* more settings switch */}
           <Divider className="my-0 h-px" />
