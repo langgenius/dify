@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef, useState } from 'react'
+import React, { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import Toast from '../../base/toast'
@@ -10,8 +10,11 @@ import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-me
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import Button from '@/app/components/base/button'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useDocLink } from '@/context/i18n'
+import { checkShowMultiModalTip } from '../settings/utils'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import type { IndexingType } from '../create/step-two'
 
 type Props = {
   indexMethod: string
@@ -32,15 +35,16 @@ const ModifyRetrievalModal: FC<Props> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const [retrievalConfig, setRetrievalConfig] = useState(value)
+  const embeddingModel = useDatasetDetailContextWithSelector(state => state.dataset?.embedding_model)
+  const embeddingModelProvider = useDatasetDetailContextWithSelector(state => state.dataset?.embedding_model_provider)
 
   // useClickAway(() => {
   //   if (ref)
   //     onHide()
   // }, ref)
 
-  const {
-    modelList: rerankModelList,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
 
   const handleSave = () => {
     if (
@@ -55,6 +59,23 @@ const ModifyRetrievalModal: FC<Props> = ({
     }
     onSave(retrievalConfig)
   }
+
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel: {
+        provider: embeddingModelProvider ?? '',
+        model: embeddingModel ?? '',
+      },
+      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+      },
+      indexMethod: indexMethod as IndexingType,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [embeddingModelProvider, embeddingModel, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, indexMethod, embeddingModelList, rerankModelList])
 
   if (!isShow)
     return null
@@ -104,6 +125,7 @@ const ModifyRetrievalModal: FC<Props> = ({
             <RetrievalMethodConfig
               value={retrievalConfig}
               onChange={setRetrievalConfig}
+              showMultiModalTip={showMultiModalTip}
             />
           )
           : (
