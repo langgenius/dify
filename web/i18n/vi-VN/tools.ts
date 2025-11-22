@@ -205,6 +205,7 @@ const translation = {
       configurations: 'Cấu hình',
       useDynamicClientRegistration: 'Sử dụng Đăng ký Khách hàng Động',
       clientSecretPlaceholder: 'Bí mật của khách hàng',
+      redirectUrlWarning: 'Vui lòng cấu hình URL chuyển hướng OAuth của bạn thành:',
     },
     delete: 'Xóa Máy chủ MCP',
     deleteConfirmTitle: 'Xóa {mcp}?',
