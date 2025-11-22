@@ -315,6 +315,15 @@ const translation = {
     noReadmeAvailable: 'No README available',
     failedToFetch: 'Failed to fetch README',
   },
+  action: {
+    checkForUpdates: 'Check for updates',
+    pluginInfo: 'Plugin info',
+    delete: 'Delete plugin',
+    deleteContentLeft: 'Are you sure you want to delete ',
+    deleteContentRight: '?',
+    credentialsWarning: 'This plugin has the following API keys/credentials configured:',
+    deleteCredentials: 'Also delete these API keys (if unchecked, they will remain and can be reused if you reinstall this plugin)',
+  },
 }
 
 export default translation

@@ -528,8 +528,38 @@ class PluginUpgradeFromGithubApi(Resource):
             raise ValueError(e)
 
 
+parser_check_credentials = reqparse.RequestParser().add_argument(
+    "plugin_installation_id", type=str, required=True, location="args"
+)
+
+
+@console_ns.route("/workspaces/current/plugin/uninstall/check-credentials")
+class PluginUninstallCheckCredentialsApi(Resource):
+    @api.expect(parser_check_credentials)
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(install_required=True)
+    def get(self):
+        """Check if plugin has associated credentials before uninstall."""
+        args = parser_check_credentials.parse_args()
+
+        _, tenant_id = current_account_with_tenant()
+
+        try:
+            credentials = PluginService.check_plugin_credentials(tenant_id, args["plugin_installation_id"])
+            return {
+                "has_credentials": len(credentials) > 0,
+                "credentials": [cred.to_dict() for cred in credentials],
+            }
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+
 parser_uninstall = reqparse.RequestParser().add_argument(
     "plugin_installation_id", type=str, required=True, location="json"
+).add_argument("delete_credentials", type=bool, required=False, default=False, location="json").add_argument(
+    "credential_ids", type=list, required=False, location="json"
 )
 
 
@@ -546,7 +576,13 @@ class PluginUninstallApi(Resource):
         _, tenant_id = current_account_with_tenant()
 
         try:
-            return {"success": PluginService.uninstall(tenant_id, args["plugin_installation_id"])}
+            result = PluginService.uninstall(
+                tenant_id,
+                args["plugin_installation_id"],
+                delete_credentials=args.get("delete_credentials", False),
+                credential_ids=args.get("credential_ids", []),
+            )
+            return {"success": result}
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
 

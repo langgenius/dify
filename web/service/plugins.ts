@@ -103,6 +103,24 @@ export const updatePermission = async (permissions: Permissions) => {
   return post('/workspaces/current/plugin/permission/change', { body: permissions })
 }
 
-export const uninstallPlugin = async (pluginId: string) => {
-  return post<UninstallPluginResponse>('/workspaces/current/plugin/uninstall', { body: { plugin_installation_id: pluginId } })
+export const checkPluginCredentials = async (pluginId: string) => {
+  return get<{
+    has_credentials: boolean
+    credentials: Array<{
+      credential_id: string
+      credential_name: string
+      credential_type: string
+      provider_name: string
+    }>
+  }>('/workspaces/current/plugin/uninstall/check-credentials', { params: { plugin_installation_id: pluginId } })
+}
+
+export const uninstallPlugin = async (pluginId: string, deleteCredentials: boolean = false, credentialIds?: string[]) => {
+  return post<UninstallPluginResponse>('/workspaces/current/plugin/uninstall', {
+    body: {
+      plugin_installation_id: pluginId,
+      delete_credentials: deleteCredentials,
+      credential_ids: credentialIds,
+    },
+  })
 }
