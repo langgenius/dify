@@ -1,4 +1,5 @@
 import logging
+import operator
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
@@ -268,6 +269,75 @@ class Node:
         # If you have introduced a new node type, please add it to `NODE_TYPE_CLASSES_MAPPING`
         # in `api/core/workflow/nodes/__init__.py`.
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
+
+    @classmethod
+    def get_node_type_classes_mapping(cls) -> Mapping["NodeType", Mapping[str, type["Node"]]]:
+        """Build mapping of NodeType -> {version -> Node subclass} at runtime.
+
+        - Ensures all node modules are imported (via importing core.workflow.nodes) so subclasses are loaded.
+        - Walks the subclass tree to find concrete Node implementations that define node_type and version().
+        - Chooses "latest" per node type by preferring the numerically highest version if possible; otherwise
+          falls back to lexicographical order.
+        """
+        # Best-effort import to trigger package __init__ side effects (which import concrete node modules)
+        try:
+            import importlib
+            import pkgutil
+
+            import core.workflow.nodes as _nodes_pkg
+
+            # Recursively import all modules under core.workflow.nodes to load subclasses
+            for _finder, _modname, _ispkg in pkgutil.walk_packages(_nodes_pkg.__path__, _nodes_pkg.__name__ + "."):
+                try:
+                    importlib.import_module(_modname)
+                except Exception:
+                    # Best-effort: ignore modules that fail to import during tests
+                    pass
+        except Exception:
+            pass
+
+        # Gather all subclasses (recursive)
+        def _iter_subclasses(base: type["Node"]) -> set[type["Node"]]:
+            seen: set[type[Node]] = set()
+            stack = list(base.__subclasses__())
+            while stack:
+                sub = stack.pop()
+                if sub in seen:
+                    continue
+                seen.add(sub)
+                stack.extend(list(sub.__subclasses__()))
+            return seen
+
+        mapping: dict[NodeType, dict[str, type[Node]]] = {}
+        for sub in _iter_subclasses(cls):
+            node_type = getattr(sub, "node_type", None)
+            version_fn = getattr(sub, "version", None)
+            if node_type is None or not callable(version_fn):
+                continue
+            try:
+                version = sub.version()
+            except Exception:
+                continue
+            if node_type not in mapping:
+                mapping[node_type] = {}
+            mapping[node_type][version] = sub  # type: ignore[assignment]
+
+        # Compute "latest" per node type
+        for node_type, versions in mapping.items():
+            # Prefer numeric sort when possible
+            numeric_pairs: list[tuple[str, float]] = []
+            for v in versions:
+                try:
+                    numeric_pairs.append((v, float(v)))
+                except Exception:
+                    pass
+            if numeric_pairs:
+                latest_key = max(numeric_pairs, key=operator.itemgetter(1))[0]
+            else:
+                latest_key = max(versions.keys())
+            versions["latest"] = versions[latest_key]
+
+        return mapping
 
     @property
     def retry(self) -> bool:

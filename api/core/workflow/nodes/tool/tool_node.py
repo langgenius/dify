@@ -12,7 +12,6 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.enums import (
@@ -450,8 +449,10 @@ class ToolNode(Node):
 
     @staticmethod
     def _extract_tool_usage(tool_runtime: Tool) -> LLMUsage:
-        if isinstance(tool_runtime, WorkflowTool):
-            return tool_runtime.latest_usage
+        # Avoid importing WorkflowTool at module import time; rely on duck typing
+        latest = getattr(tool_runtime, "latest_usage", None)
+        if latest is not None:
+            return latest  # type: ignore[return-value]
         return LLMUsage.empty_usage()
 
     @classmethod
