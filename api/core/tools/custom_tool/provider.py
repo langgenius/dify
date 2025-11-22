@@ -199,8 +199,7 @@ class ApiToolProviderController(ToolProviderController):
         :param tool_name: the name of the tool
         :return: the tool
         """
-        if self.tools is None:
-            self.get_tools(self.tenant_id)
+        self.get_tools(self.tenant_id)
 
         for tool in self.tools:
             if tool.entity.identity.name == tool_name:

@@ -106,9 +106,6 @@ class ExternalApiTemplateApi(Resource):
     def get(self, external_knowledge_api_id):
         external_knowledge_api_id = str(external_knowledge_api_id)
         external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
-        if external_knowledge_api is None:
-            raise NotFound("API template not found.")
-
         return external_knowledge_api.to_dict(), 200
 
     @setup_required

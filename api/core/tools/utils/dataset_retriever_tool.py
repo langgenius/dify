@@ -39,7 +39,7 @@ class DatasetRetrieverTool(Tool):
         get dataset tool
         """
         # check if retrieve_config is valid
-        if dataset_ids is None or len(dataset_ids) == 0:
+        if len(dataset_ids) == 0:
             return []
         if retrieve_config is None:
             return []
