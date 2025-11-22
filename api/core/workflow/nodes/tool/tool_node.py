@@ -12,7 +12,6 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.enums import (
@@ -430,7 +429,7 @@ class ToolNode(Node[ToolNodeData]):
         metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
             WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
         }
-        if usage.total_tokens > 0:
+        if isinstance(usage.total_tokens, int) and usage.total_tokens > 0:
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = usage.total_tokens
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = usage.total_price
             metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] = usage.currency
@@ -449,8 +448,17 @@ class ToolNode(Node[ToolNodeData]):
 
     @staticmethod
     def _extract_tool_usage(tool_runtime: Tool) -> LLMUsage:
-        if isinstance(tool_runtime, WorkflowTool):
-            return tool_runtime.latest_usage
+        # Avoid importing WorkflowTool at module import time; rely on duck typing
+        # Some runtimes expose `latest_usage`; mocks may synthesize arbitrary attributes.
+        latest = getattr(tool_runtime, "latest_usage", None)
+        # Normalize into a concrete LLMUsage. MagicMock returns truthy attribute objects
+        # for any name, so we must type-check here.
+        if isinstance(latest, LLMUsage):
+            return latest
+        if isinstance(latest, dict):
+            # Allow dict payloads from external runtimes
+            return LLMUsage.model_validate(latest)
+        # Fallback to empty usage when attribute is missing or not a valid payload
         return LLMUsage.empty_usage()
 
     @classmethod
