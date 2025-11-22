@@ -107,7 +107,7 @@ const translation = {
       standard: 'Execução Padrão de Fluxo de Trabalho',
     },
     startNodes: {
-      unlimited: 'Gatilhos/workflow ilimitados',
+      unlimited: 'Gatilhos/fluxo de trabalho ilimitados',
     },
   },
   plans: {
@@ -200,15 +200,15 @@ const translation = {
     vectorSpaceTooltip: 'Documentos com o modo de indexação de Alta Qualidade consumirã recursos de Armazenamento de Dados de Conhecimento. Quando o Armazenamento de Dados de Conhecimento atingir o limite, novos documentos não serão carregados.',
     buildApps: 'Desenvolver Apps',
     perMonth: 'por mês',
-    triggerEvents: 'Eventos Desencadeadores',
+    triggerEvents: 'Eventos de Gatilho',
   },
   teamMembers: 'Membros da equipe',
   triggerLimitModal: {
     dismiss: 'Dispensar',
-    usageTitle: 'EVENTOS DESENCADEADORES',
-    title: 'Atualize para desbloquear mais eventos de gatilho',
+    usageTitle: 'EVENTOS DE GATILHO',
+    title: 'Atualize para desbloquear mais Eventos de Gatilho',
     upgrade: 'Atualizar',
-    description: 'Você atingiu o limite de gatilhos de eventos de fluxo de trabalho para este plano.',
+    description: 'Você atingiu o limite de eventos de gatilho de fluxo de trabalho para este plano.',
   },
 }
 

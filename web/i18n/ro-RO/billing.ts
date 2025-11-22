@@ -206,7 +206,7 @@ const translation = {
   triggerLimitModal: {
     dismiss: 'Respinge',
     upgrade: 'Actualizare',
-    usageTitle: 'EVENIMENTE TRIGER',
+    usageTitle: 'EVENIMENTE DECLANȘATOARE',
     description: 'Ai atins limita de declanșatoare de evenimente de flux de lucru pentru acest plan.',
     title: 'Actualizează pentru a debloca mai multe evenimente declanșatoare',
   },
