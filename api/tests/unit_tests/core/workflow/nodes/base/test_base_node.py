@@ -33,6 +33,10 @@ def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined
     type_version_set: set[tuple[NodeType, str]] = set()
 
     for cls in classes:
+        # Only validate production node classes; skip test-defined subclasses and external helpers
+        module_name = getattr(cls, "__module__", "")
+        if not module_name.startswith("core."):
+            continue
         # Validate that 'version' is directly defined in the class (not inherited) by checking the class's __dict__
         assert "version" in cls.__dict__, f"class {cls} should have version method defined (NOT INHERITED.)"
         node_type = cls.node_type
