@@ -1,13 +1,10 @@
-from typing import Any
-from unittest.mock import Mock, create_autospec, patch
 from collections.abc import Sequence
+from unittest.mock import Mock, patch
 
 import pytest
 
-from extensions.ext_database import db
-from flask_login import current_user
 from models.account import Account
-from models.dataset import Dataset, Document, DatasetProcessRule, UploadFile
+from models.dataset import Dataset, Document, UploadFile
 from services.dataset_service import DocumentService
 
 
@@ -106,9 +103,7 @@ class TestDocumentServiceGetDocument:
         # Arrange
         dataset_id = "dataset-123"
         document_id = "doc-123"
-        document = DocumentTestDataFactory.create_document_mock(
-            document_id=document_id, dataset_id=dataset_id
-        )
+        document = DocumentTestDataFactory.create_document_mock(document_id=document_id, dataset_id=dataset_id)
 
         mock_query = Mock()
         mock_query.where.return_value = mock_query
@@ -210,10 +205,7 @@ class TestDocumentServiceGetDocumentByIds:
         """Test successful bulk retrieval of documents by ids."""
         # Arrange
         document_ids = ["doc-123", "doc-456", "doc-789"]
-        documents = [
-            DocumentTestDataFactory.create_document_mock(document_id=doc_id)
-            for doc_id in document_ids
-        ]
+        documents = [DocumentTestDataFactory.create_document_mock(document_id=doc_id) for doc_id in document_ids]
 
         mock_scalars = Mock()
         mock_scalars.all.return_value = documents
@@ -269,9 +261,7 @@ class TestDocumentServiceGetDocumentByDatasetId:
         # Arrange
         dataset_id = "dataset-123"
         documents = [
-            DocumentTestDataFactory.create_document_mock(
-                document_id=f"doc-{i}", dataset_id=dataset_id, enabled=True
-            )
+            DocumentTestDataFactory.create_document_mock(document_id=f"doc-{i}", dataset_id=dataset_id, enabled=True)
             for i in range(3)
         ]
 
@@ -578,9 +568,7 @@ class TestDocumentServiceDeleteDocument:
         with patch("services.dataset_service.document_was_deleted") as mock_signal:
             yield mock_signal
 
-    def test_delete_document_with_upload_file_success(
-        self, mock_db_session, mock_document_was_deleted
-    ):
+    def test_delete_document_with_upload_file_success(self, mock_db_session, mock_document_was_deleted):
         """Test successful deletion of document with upload_file data source."""
         # Arrange
         document = DocumentTestDataFactory.create_document_mock(
@@ -602,9 +590,7 @@ class TestDocumentServiceDeleteDocument:
         mock_db_session.delete.assert_called_once_with(document)
         mock_db_session.commit.assert_called_once()
 
-    def test_delete_document_without_file_id_success(
-        self, mock_db_session, mock_document_was_deleted
-    ):
+    def test_delete_document_without_file_id_success(self, mock_db_session, mock_document_was_deleted):
         """Test successful deletion of document without file_id."""
         # Arrange
         document = DocumentTestDataFactory.create_document_mock(
@@ -626,9 +612,7 @@ class TestDocumentServiceDeleteDocument:
         mock_db_session.delete.assert_called_once_with(document)
         mock_db_session.commit.assert_called_once()
 
-    def test_delete_document_with_none_data_source_info(
-        self, mock_db_session, mock_document_was_deleted
-    ):
+    def test_delete_document_with_none_data_source_info(self, mock_db_session, mock_document_was_deleted):
         """Test deletion of document with None data_source_info."""
         # Arrange
         document = DocumentTestDataFactory.create_document_mock(
@@ -783,9 +767,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
         # Arrange
         dataset = DocumentTestDataFactory.create_dataset_mock()
         account = DocumentTestDataFactory.create_user_mock()
-        document = DocumentTestDataFactory.create_document_mock(
-            dataset_id=dataset.id, display_status="available"
-        )
+        document = DocumentTestDataFactory.create_document_mock(dataset_id=dataset.id, display_status="available")
 
         knowledge_config = Mock()
         knowledge_config.original_document_id = document.id
@@ -803,9 +785,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             mock_now.return_value = "2024-01-01T00:00:00"
 
             # Act
-            result = DocumentService.update_document_with_dataset_id(
-                dataset, knowledge_config, account
-            )
+            result = DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
 
             # Assert
             assert result == document
@@ -817,9 +797,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             mock_db_session.commit.assert_called()
             mock_document_indexing_update_task.delay.assert_called_once()
 
-    def test_update_document_not_found(
-        self, mock_db_session, mock_current_user, mock_document_indexing_update_task
-    ):
+    def test_update_document_not_found(self, mock_db_session, mock_current_user, mock_document_indexing_update_task):
         """Test update when document is not found."""
         # Arrange
         dataset = DocumentTestDataFactory.create_dataset_mock()
@@ -838,6 +816,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
 
             # Act & Assert
             from werkzeug.exceptions import NotFound
+
             with pytest.raises(NotFound):
                 DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
 
@@ -848,9 +827,7 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
         # Arrange
         dataset = DocumentTestDataFactory.create_dataset_mock()
         account = DocumentTestDataFactory.create_user_mock()
-        document = DocumentTestDataFactory.create_document_mock(
-            dataset_id=dataset.id, display_status="error"
-        )
+        document = DocumentTestDataFactory.create_document_mock(dataset_id=dataset.id, display_status="error")
 
         knowledge_config = Mock()
         knowledge_config.original_document_id = document.id
@@ -893,9 +870,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
     ):
         """Test successful creation of new document from upload_file."""
         # Arrange
-        dataset = DocumentTestDataFactory.create_dataset_mock(
-            data_source_type=None, indexing_technique=None
-        )
+        dataset = DocumentTestDataFactory.create_dataset_mock(data_source_type=None, indexing_technique=None)
         account = DocumentTestDataFactory.create_user_mock()
         upload_file = DocumentTestDataFactory.create_upload_file_mock()
 
@@ -949,9 +924,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             mock_process_rule.return_value = process_rule
 
             # Act
-            documents, batch = DocumentService.save_document_with_dataset_id(
-                dataset, knowledge_config, account
-            )
+            documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account)
 
             # Assert
             assert len(documents) == 1
@@ -1029,6 +1002,6 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
             # Act & Assert
             from services.errors.file import FileNotExistsError
+
             with pytest.raises(FileNotExistsError):
                 DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account)
-
