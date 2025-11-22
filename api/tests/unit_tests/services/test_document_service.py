@@ -837,7 +837,8 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
             mock_not_found.return_value = mock_not_found_exception
 
             # Act & Assert
-            with pytest.raises(Exception):
+            from werkzeug.exceptions import NotFound
+            with pytest.raises(NotFound):
                 DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
 
     def test_update_document_not_available(
