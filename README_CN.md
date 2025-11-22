@@ -2,7 +2,7 @@
 
 <div align="center">
   <a href="https://cloud.dify.ai">Dify 云服务</a> ·
-  <a href="https://docs.dify.ai/cn/self-hosting/quick-start/docker-compose">自托管指南</a> ·
+  <a href="https://docs.dify.ai/cn/self-hosting/quick-start/docker-compose">自托管</a> ·
   <a href="https://docs.dify.ai/cn/documentation/pages/getting-started/introduction">使用指南</a> ·
   <a href="https://dify.ai/pricing">Dify 产品形态总览</a>
 </div>
