@@ -32,6 +32,7 @@ from core.workflow.enums import NodeType
 from core.workflow.graph_engine.manager import GraphEngineManager
 from extensions.ext_database import db
 from factories import file_factory, variable_factory
+from fields.member_fields import simple_account_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
@@ -48,6 +49,56 @@ from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseE
 
 logger = logging.getLogger(__name__)
 LISTENING_RETRY_IN = 2000
+
+# Register models for flask_restx to avoid dict type issues in Swagger
+# Register in dependency order: base models first, then dependent models
+
+# Base models
+simple_account_model = api.model("SimpleAccount", simple_account_fields)
+
+from fields.workflow_fields import pipeline_variable_fields, serialize_value_type
+
+conversation_variable_model = api.model(
+    "ConversationVariable",
+    {
+        "id": fields.String,
+        "name": fields.String,
+        "value_type": fields.String(attribute=serialize_value_type),
+        "value": fields.Raw,
+        "description": fields.String,
+    },
+)
+
+pipeline_variable_model = api.model("PipelineVariable", pipeline_variable_fields)
+
+# Workflow model with nested dependencies
+workflow_fields_copy = workflow_fields.copy()
+workflow_fields_copy["created_by"] = fields.Nested(simple_account_model, attribute="created_by_account")
+workflow_fields_copy["updated_by"] = fields.Nested(
+    simple_account_model, attribute="updated_by_account", allow_null=True
+)
+workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
+workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
+workflow_model = api.model("Workflow", workflow_fields_copy)
+
+# Workflow pagination model
+workflow_pagination_fields_copy = workflow_pagination_fields.copy()
+workflow_pagination_fields_copy["items"] = fields.List(fields.Nested(workflow_model), attribute="items")
+workflow_pagination_model = api.model("WorkflowPagination", workflow_pagination_fields_copy)
+
+# Reuse workflow_run_node_execution_model from workflow_run.py if already registered
+# Otherwise register it here
+from fields.end_user_fields import simple_end_user_fields
+
+try:
+    simple_end_user_model = api.models.get("SimpleEndUser")
+except (KeyError, AttributeError):
+    simple_end_user_model = api.model("SimpleEndUser", simple_end_user_fields)
+
+try:
+    workflow_run_node_execution_model = api.models.get("WorkflowRunNodeExecution")
+except (KeyError, AttributeError):
+    workflow_run_node_execution_model = api.model("WorkflowRunNodeExecution", workflow_run_node_execution_fields)
 
 
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
@@ -73,13 +124,13 @@ class DraftWorkflowApi(Resource):
     @api.doc("get_draft_workflow")
     @api.doc(description="Get draft workflow for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Draft workflow retrieved successfully", workflow_fields)
+    @api.response(200, "Draft workflow retrieved successfully", workflow_model)
     @api.response(404, "Draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -539,14 +590,14 @@ class DraftWorkflowNodeRunApi(Resource):
             },
         )
     )
-    @api.response(200, "Node run started successfully", workflow_run_node_execution_fields)
+    @api.response(200, "Node run started successfully", workflow_run_node_execution_model)
     @api.response(403, "Permission denied")
     @api.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_fields)
+    @marshal_with(workflow_run_node_execution_model)
     @edit_permission_required
     def post(self, app_model: App, node_id: str):
         """
@@ -598,13 +649,13 @@ class PublishedWorkflowApi(Resource):
     @api.doc("get_published_workflow")
     @api.doc(description="Get published workflow for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Published workflow retrieved successfully", workflow_fields)
+    @api.response(200, "Published workflow retrieved successfully", workflow_model)
     @api.response(404, "Published workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -781,12 +832,12 @@ class PublishedAllWorkflowApi(Resource):
     @api.doc("get_all_published_workflows")
     @api.doc(description="Get all published workflows for an application")
     @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Published workflows retrieved successfully", workflow_pagination_fields)
+    @api.response(200, "Published workflows retrieved successfully", workflow_pagination_model)
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_pagination_fields)
+    @marshal_with(workflow_pagination_model)
     @edit_permission_required
     def get(self, app_model: App):
         """
@@ -838,14 +889,14 @@ class WorkflowByIdApi(Resource):
             },
         )
     )
-    @api.response(200, "Workflow updated successfully", workflow_fields)
+    @api.response(200, "Workflow updated successfully", workflow_model)
     @api.response(404, "Workflow not found")
     @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_fields)
+    @marshal_with(workflow_model)
     @edit_permission_required
     def patch(self, app_model: App, workflow_id: str):
         """
@@ -929,14 +980,14 @@ class DraftWorkflowNodeLastRunApi(Resource):
     @api.doc("get_draft_workflow_node_last_run")
     @api.doc(description="Get last run result for draft workflow node")
     @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @api.response(200, "Node last run retrieved successfully", workflow_run_node_execution_fields)
+    @api.response(200, "Node last run retrieved successfully", workflow_run_node_execution_model)
     @api.response(404, "Node last run not found")
     @api.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_run_node_execution_fields)
+    @marshal_with(workflow_run_node_execution_model)
     def get(self, app_model: App, node_id: str):
         srv = WorkflowService()
         workflow = srv.get_draft_workflow(app_model)

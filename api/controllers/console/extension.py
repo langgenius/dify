@@ -9,6 +9,10 @@ from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
 from services.code_based_extension_service import CodeBasedExtensionService
 
+api_based_extension_model = api.model("ApiBasedExtensionModel", api_based_extension_fields)
+
+api_based_extension_list_model = fields.List(fields.Nested(api_based_extension_model))
+
 
 @console_ns.route("/code-based-extension")
 class CodeBasedExtensionAPI(Resource):
@@ -39,11 +43,11 @@ class CodeBasedExtensionAPI(Resource):
 class APIBasedExtensionAPI(Resource):
     @api.doc("get_api_based_extensions")
     @api.doc(description="Get all API-based extensions for current tenant")
-    @api.response(200, "Success", fields.List(fields.Nested(api_based_extension_fields)))
+    @api.response(200, "Success", api_based_extension_list_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_based_extension_fields)
+    @marshal_with(api_based_extension_model)
     def get(self):
         _, tenant_id = current_account_with_tenant()
         return APIBasedExtensionService.get_all_by_tenant_id(tenant_id)
@@ -60,11 +64,11 @@ class APIBasedExtensionAPI(Resource):
             },
         )
     )
-    @api.response(201, "Extension created successfully", api_based_extension_fields)
+    @api.response(201, "Extension created successfully", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_based_extension_fields)
+    @marshal_with(api_based_extension_model)
     def post(self):
         args = api.payload
         _, current_tenant_id = current_account_with_tenant()
@@ -84,11 +88,11 @@ class APIBasedExtensionDetailAPI(Resource):
     @api.doc("get_api_based_extension")
     @api.doc(description="Get API-based extension by ID")
     @api.doc(params={"id": "Extension ID"})
-    @api.response(200, "Success", api_based_extension_fields)
+    @api.response(200, "Success", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_based_extension_fields)
+    @marshal_with(api_based_extension_model)
     def get(self, id):
         api_based_extension_id = str(id)
         _, tenant_id = current_account_with_tenant()
@@ -108,11 +112,11 @@ class APIBasedExtensionDetailAPI(Resource):
             },
         )
     )
-    @api.response(200, "Extension updated successfully", api_based_extension_fields)
+    @api.response(200, "Extension updated successfully", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_based_extension_fields)
+    @marshal_with(api_based_extension_model)
     def post(self, id):
         api_based_extension_id = str(id)
         _, current_tenant_id = current_account_with_tenant()
