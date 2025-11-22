@@ -72,6 +72,7 @@ const translation = {
     },
     executions: '{{num}} ÁN TỬ HÌNH',
     execution: 'THI HÀNH',
+    stopRun: 'Dừng lại',
   },
   login: {
     backToHome: 'Trở về Trang Chủ',
