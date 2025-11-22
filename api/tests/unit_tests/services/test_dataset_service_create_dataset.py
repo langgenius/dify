@@ -781,9 +781,8 @@ class TestDatasetServiceCreateEmptyRagPipelineDataset:
         user_id = str(uuid4())
         name = "Icon Info RAG Dataset"
 
-        # Mock current user
-        current_user = DatasetCreateTestDataFactory.create_account_mock(account_id=user_id, tenant_id=tenant_id)
-        mock_rag_pipeline_dependencies["current_user"] = current_user
+        # Mock current user - set up the mock to have id attribute accessible directly
+        mock_rag_pipeline_dependencies["current_user_mock"].id = user_id
 
         # Mock database query
         mock_query = Mock()
