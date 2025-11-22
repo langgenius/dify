@@ -270,6 +270,7 @@ class OceanBaseVector(BaseVector):
             self._client.set_ob_hnsw_ef_search(ef_search)
             self._hnsw_ef_search = ef_search
         topk = kwargs.get("top_k", 10)
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
         try:
             cur = self._client.ann_search(
                 table_name=self._collection_name,
@@ -286,13 +287,15 @@ class OceanBaseVector(BaseVector):
         docs = []
         for _text, metadata, distance in cur:
             metadata = json.loads(metadata)
-            metadata["score"] = 1 - distance / math.sqrt(2)
-            docs.append(
-                Document(
-                    page_content=_text,
-                    metadata=metadata,
+            score = 1 - distance / math.sqrt(2)
+            metadata["score"] = score
+            if score >= score_threshold:
+                docs.append(
+                    Document(
+                        page_content=_text,
+                        metadata=metadata,
+                    )
                 )
-            )
         return docs
 
     def delete(self):
