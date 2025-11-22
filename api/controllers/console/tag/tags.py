@@ -53,7 +53,7 @@ class TagListApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = parser_tags.parse_args()
+        args = parser_tags.parse_args(strict=True)
         tag = TagService.save_tags(args)
 
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
@@ -79,7 +79,7 @@ class TagUpdateDeleteApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = parser_tag_id.parse_args()
+        args = parser_tag_id.parse_args(strict=True)
         tag = TagService.update_tags(args, tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
@@ -120,7 +120,19 @@ class TagBindingCreateApi(Resource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = parser_create.parse_args()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required."
+            )
+            .add_argument(
+                "target_id", type=str, nullable=False, required=True, location="json", help="Target ID is required."
+            )
+            .add_argument(
+                "type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type."
+            )
+        )
+        args = parser.parse_args()
         TagService.save_tag_binding(args)
 
         return {"result": "success"}, 200

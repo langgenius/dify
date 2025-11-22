@@ -52,7 +52,7 @@ class PluginListApi(Resource):
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = parser_list.parse_args()
+        args = parser_list.parse_args(strict=True)
         try:
             plugins_with_total = PluginService.list_with_total(tenant_id, args["page"], args["page_size"])
         except PluginDaemonClientSideError as e:
@@ -71,7 +71,7 @@ class PluginListLatestVersionsApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        args = parser_latest.parse_args()
+        args = parser_latest.parse_args(strict=True)
 
         try:
             versions = PluginService.list_latest_versions(args["plugin_ids"])
@@ -93,7 +93,7 @@ class PluginListInstallationsFromIdsApi(Resource):
     def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_ids.parse_args()
+        args = parser_ids.parse_args(strict=True)
 
         try:
             plugins = PluginService.list_installations_from_ids(tenant_id, args["plugin_ids"])
@@ -115,7 +115,7 @@ class PluginIconApi(Resource):
     @api.expect(parser_icon)
     @setup_required
     def get(self):
-        args = parser_icon.parse_args()
+        args = parser_icon.parse_args(strict=True)
 
         try:
             icon_bytes, mimetype = PluginService.get_asset(args["tenant_id"], args["filename"])
@@ -189,7 +189,7 @@ class PluginUploadFromGithubApi(Resource):
     def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_github.parse_args()
+        args = parser_github.parse_args(strict=True)
 
         try:
             response = PluginService.upload_pkg_from_github(tenant_id, args["repo"], args["version"], args["package"])
@@ -237,7 +237,7 @@ class PluginInstallFromPkgApi(Resource):
     @plugin_permission_required(install_required=True)
     def post(self):
         _, tenant_id = current_account_with_tenant()
-        args = parser_pkg.parse_args()
+        args = parser_pkg.parse_args(strict=True)
 
         # check if all plugin_unique_identifiers are valid string
         for plugin_unique_identifier in args["plugin_unique_identifiers"]:
@@ -302,7 +302,7 @@ class PluginInstallFromMarketplaceApi(Resource):
     def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_marketplace.parse_args()
+        args = parser_marketplace.parse_args(strict=True)
 
         # check if all plugin_unique_identifiers are valid string
         for plugin_unique_identifier in args["plugin_unique_identifiers"]:
@@ -331,7 +331,7 @@ class PluginFetchMarketplacePkgApi(Resource):
     @plugin_permission_required(install_required=True)
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = parser_pkgapi.parse_args()
+        args = parser_pkgapi.parse_args(strict=True)
 
         try:
             return jsonable_encoder(
@@ -361,7 +361,7 @@ class PluginFetchManifestApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_fetch.parse_args()
+        args = parser_fetch.parse_args(strict=True)
 
         try:
             return jsonable_encoder(
@@ -392,7 +392,7 @@ class PluginFetchInstallTasksApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_tasks.parse_args()
+        args = parser_tasks.parse_args(strict=True)
 
         try:
             return jsonable_encoder(
@@ -479,7 +479,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
     def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_marketplace_api.parse_args()
+        args = parser_marketplace_api.parse_args(strict=True)
 
         try:
             return jsonable_encoder(
@@ -541,7 +541,7 @@ class PluginUninstallApi(Resource):
     @account_initialization_required
     @plugin_permission_required(install_required=True)
     def post(self):
-        args = parser_uninstall.parse_args()
+        args = parser_uninstall.parse_args(strict=True)
 
         _, tenant_id = current_account_with_tenant()
 
@@ -570,7 +570,7 @@ class PluginChangePermissionApi(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        args = parser_change_post.parse_args()
+        args = parser_change_post.parse_args(strict=True)
 
         install_permission = TenantPluginPermission.InstallPermission(args["install_permission"])
         debug_permission = TenantPluginPermission.DebugPermission(args["debug_permission"])
@@ -664,7 +664,7 @@ class PluginChangePreferencesApi(Resource):
         if not user.is_admin_or_owner:
             raise Forbidden()
 
-        args = parser_change.parse_args()
+        args = parser_change.parse_args(strict=True)
 
         permission = args["permission"]
 
@@ -757,7 +757,7 @@ class PluginAutoUpgradeExcludePluginApi(Resource):
         # exclude one single plugin
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_exclude.parse_args()
+        args = parser_exclude.parse_args(strict=True)
 
         return jsonable_encoder({"success": PluginAutoUpgradeService.exclude_plugin(tenant_id, args["plugin_id"])})
 

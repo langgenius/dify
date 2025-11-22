@@ -114,7 +114,7 @@ class TextApi(Resource):
         Converts the provided text to audio using the specified voice.
         """
         try:
-            args = text_to_audio_parser.parse_args()
+            args = text_to_audio_parser.parse_args(strict=True)
 
             message_id = args.get("message_id", None)
             text = args.get("text", None)

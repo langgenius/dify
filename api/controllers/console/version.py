@@ -37,7 +37,7 @@ class VersionApi(Resource):
     )
     def get(self):
         """Check for application version updates"""
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         check_update_url = dify_config.CHECK_UPDATE_URL
 
         result = {

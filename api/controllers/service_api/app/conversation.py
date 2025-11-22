@@ -107,7 +107,7 @@ class ConversationApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        args = conversation_list_parser.parse_args()
+        args = conversation_list_parser.parse_args(strict=True)
 
         try:
             with Session(db.engine) as session:
@@ -176,7 +176,7 @@ class ConversationRenameApi(Resource):
 
         conversation_id = str(c_id)
 
-        args = conversation_rename_parser.parse_args()
+        args = conversation_rename_parser.parse_args(strict=True)
 
         try:
             return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
@@ -211,7 +211,7 @@ class ConversationVariablesApi(Resource):
 
         conversation_id = str(c_id)
 
-        args = conversation_variables_parser.parse_args()
+        args = conversation_variables_parser.parse_args(strict=True)
 
         try:
             return ConversationService.get_conversational_variable(
@@ -250,7 +250,7 @@ class ConversationVariableDetailApi(Resource):
         conversation_id = str(c_id)
         variable_id = str(variable_id)
 
-        args = conversation_variable_update_parser.parse_args()
+        args = conversation_variable_update_parser.parse_args(strict=True)
 
         try:
             return ConversationService.update_conversation_variable(

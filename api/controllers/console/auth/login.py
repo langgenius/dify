@@ -56,7 +56,7 @@ class LoginApi(Resource):
             .add_argument("remember_me", type=bool, required=False, default=False, location="json")
             .add_argument("invite_token", type=str, required=False, default=None, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
             raise AccountInFreezeError()
@@ -140,7 +140,7 @@ class ResetPasswordSendEmailApi(Resource):
             .add_argument("email", type=email, required=True, location="json")
             .add_argument("language", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if args["language"] is not None and args["language"] == "zh-Hans":
             language = "zh-Hans"
@@ -170,7 +170,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             .add_argument("email", type=email, required=True, location="json")
             .add_argument("language", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
@@ -207,7 +207,7 @@ class EmailCodeLoginApi(Resource):
             .add_argument("token", type=str, required=True, location="json")
             .add_argument("language", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         user_email = args["email"]
         language = args["language"]

@@ -38,7 +38,7 @@ class WorkflowDailyRunsStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         assert account.timezone is not None
 
@@ -83,7 +83,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         assert account.timezone is not None
 
@@ -128,7 +128,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         assert account.timezone is not None
 
@@ -173,7 +173,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
             .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
             .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         assert account.timezone is not None
 

@@ -33,7 +33,7 @@ class ModelProviderListApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
 
-        args = parser_model.parse_args()
+        args = parser_model.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.get("model_type"))
@@ -72,7 +72,7 @@ class ModelProviderCredentialApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
         # if credential_id is not provided, return current used credential
-        args = parser_cred.parse_args()
+        args = parser_cred.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         credentials = model_provider_service.get_provider_credential(
@@ -136,7 +136,7 @@ class ModelProviderCredentialApi(Resource):
     @account_initialization_required
     def delete(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
-        args = parser_delete_cred.parse_args()
+        args = parser_delete_cred.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_provider_credential(
@@ -160,7 +160,7 @@ class ModelProviderCredentialSwitchApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
-        args = parser_switch.parse_args()
+        args = parser_switch.parse_args(strict=True)
 
         service = ModelProviderService()
         service.switch_active_provider_credential(
@@ -184,7 +184,7 @@ class ModelProviderValidateApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
-        args = parser_validate.parse_args()
+        args = parser_validate.parse_args(strict=True)
 
         tenant_id = current_tenant_id
 
@@ -250,7 +250,7 @@ class PreferredProviderTypeUpdateApi(Resource):
 
         tenant_id = current_tenant_id
 
-        args = parser_preferred.parse_args()
+        args = parser_preferred.parse_args(strict=True)
 
         model_provider_service = ModelProviderService()
         model_provider_service.switch_preferred_provider(

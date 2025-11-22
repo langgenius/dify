@@ -106,7 +106,7 @@ class SegmentApi(DatasetApiResource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
         # validate args
-        args = segment_create_parser.parse_args()
+        args = segment_create_parser.parse_args(strict=True)
         if args["segments"] is not None:
             segments_limit = dify_config.DATASET_MAX_SEGMENTS_PER_REQUEST
             if segments_limit > 0 and len(args["segments"]) > segments_limit:
@@ -160,7 +160,7 @@ class SegmentApi(DatasetApiResource):
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
 
-        args = segment_list_parser.parse_args()
+        args = segment_list_parser.parse_args(strict=True)
 
         segments, total = SegmentService.get_segments(
             document_id=document_id,
@@ -266,7 +266,7 @@ class DatasetSegmentApi(DatasetApiResource):
             raise NotFound("Segment not found.")
 
         # validate args
-        args = segment_update_parser.parse_args()
+        args = segment_update_parser.parse_args(strict=True)
 
         updated_segment = SegmentService.update_segment(
             SegmentUpdateArgs.model_validate(args["segment"]), segment, document, dataset
@@ -360,7 +360,7 @@ class ChildChunkApi(DatasetApiResource):
                 raise ProviderNotInitializeError(ex.description)
 
         # validate args
-        args = child_chunk_create_parser.parse_args()
+        args = child_chunk_create_parser.parse_args(strict=True)
 
         try:
             child_chunk = SegmentService.create_child_chunk(args["content"], segment, document, dataset)
@@ -400,7 +400,7 @@ class ChildChunkApi(DatasetApiResource):
         if not segment:
             raise NotFound("Segment not found.")
 
-        args = child_chunk_list_parser.parse_args()
+        args = child_chunk_list_parser.parse_args(strict=True)
 
         page = args["page"]
         limit = min(args["limit"], 100)
@@ -533,7 +533,7 @@ class DatasetChildChunkApi(DatasetApiResource):
             raise NotFound("Child chunk not found.")
 
         # validate args
-        args = child_chunk_update_parser.parse_args()
+        args = child_chunk_update_parser.parse_args(strict=True)
 
         try:
             child_chunk = SegmentService.update_child_chunk(args["content"], child_chunk, segment, document, dataset)

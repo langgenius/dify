@@ -103,7 +103,7 @@ class WorkspaceListApi(Resource):
             .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
             .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
         tenants = db.paginate(select=stmt, page=args["page"], per_page=args["limit"], error_out=False)
@@ -161,7 +161,7 @@ class SwitchWorkspaceApi(Resource):
     @account_initialization_required
     def post(self):
         current_user, _ = current_account_with_tenant()
-        args = parser_switch.parse_args()
+        args = parser_switch.parse_args(strict=True)
 
         # check if tenant_id is valid, 403 if not
         try:
@@ -189,7 +189,7 @@ class CustomConfigWorkspaceApi(Resource):
             .add_argument("remove_webapp_brand", type=bool, location="json")
             .add_argument("replace_webapp_logo", type=str, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         tenant = db.get_or_404(Tenant, current_tenant_id)
 
         custom_config_dict = {
@@ -257,7 +257,7 @@ class WorkspaceInfoApi(Resource):
     # Change workspace name
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
-        args = parser_info.parse_args()
+        args = parser_info.parse_args(strict=True)
 
         if not current_tenant_id:
             raise ValueError("No current tenant")

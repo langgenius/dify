@@ -41,7 +41,7 @@ class EndpointCreateApi(Resource):
             .add_argument("settings", type=dict, required=True)
             .add_argument("name", type=str, required=True)
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         plugin_unique_identifier = args["plugin_unique_identifier"]
         settings = args["settings"]
@@ -86,7 +86,7 @@ class EndpointListApi(Resource):
             .add_argument("page", type=int, required=True, location="args")
             .add_argument("page_size", type=int, required=True, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         page = args["page"]
         page_size = args["page_size"]
@@ -132,7 +132,7 @@ class EndpointListForSinglePluginApi(Resource):
             .add_argument("page_size", type=int, required=True, location="args")
             .add_argument("plugin_id", type=str, required=True, location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         page = args["page"]
         page_size = args["page_size"]
@@ -172,7 +172,7 @@ class EndpointDeleteApi(Resource):
         user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         endpoint_id = args["endpoint_id"]
 
@@ -214,7 +214,7 @@ class EndpointUpdateApi(Resource):
             .add_argument("settings", type=dict, required=True)
             .add_argument("name", type=str, required=True)
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         endpoint_id = args["endpoint_id"]
         settings = args["settings"]
@@ -252,7 +252,7 @@ class EndpointEnableApi(Resource):
         user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         endpoint_id = args["endpoint_id"]
 
@@ -282,7 +282,7 @@ class EndpointDisableApi(Resource):
         user, tenant_id = current_account_with_tenant()
 
         parser = reqparse.RequestParser().add_argument("endpoint_id", type=str, required=True)
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         endpoint_id = args["endpoint_id"]
 

@@ -43,7 +43,7 @@ def parse_app_site_args():
         .add_argument("show_workflow_steps", type=bool, required=False, location="json")
         .add_argument("use_icon_as_answer_icon", type=bool, required=False, location="json")
     )
-    return parser.parse_args()
+    return parser.parse_args(strict=True)
 
 
 @console_ns.route("/apps/<uuid:app_id>/site")

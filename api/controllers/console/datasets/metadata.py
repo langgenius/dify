@@ -29,7 +29,7 @@ class DatasetMetadataCreateApi(Resource):
             .add_argument("type", type=str, required=True, nullable=False, location="json")
             .add_argument("name", type=str, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         metadata_args = MetadataArgs.model_validate(args)
 
         dataset_id_str = str(dataset_id)
@@ -63,7 +63,7 @@ class DatasetMetadataApi(Resource):
     def patch(self, dataset_id, metadata_id):
         current_user, _ = current_account_with_tenant()
         parser = reqparse.RequestParser().add_argument("name", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         name = args["name"]
 
         dataset_id_str = str(dataset_id)
@@ -142,7 +142,7 @@ class DocumentMetadataEditApi(Resource):
         parser = reqparse.RequestParser().add_argument(
             "operation_data", type=list, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         metadata_args = MetadataOperationData.model_validate(args)
 
         MetadataService.update_documents_metadata(dataset, metadata_args)

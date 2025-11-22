@@ -253,7 +253,7 @@ class DataSourceNotionApi(Resource):
             .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
             .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         # validate args
         DocumentService.estimate_args_validate(args)
         notion_info_list = args["notion_info_list"]

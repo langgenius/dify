@@ -30,7 +30,7 @@ class ConversationVariablesApi(Resource):
     @marshal_with(paginated_conversation_variable_fields)
     def get(self, app_model):
         parser = reqparse.RequestParser().add_argument("conversation_id", type=str, location="args")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         stmt = (
             select(ConversationVariable)
