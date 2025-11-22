@@ -8,6 +8,7 @@ from configs import dify_config
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.provider_entities import QuotaUnit
 from core.file.models import File
+from core.memory.node_scoped_memory import NodeScopedMemory
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -105,6 +106,28 @@ def fetch_memory(
 
     memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
     return memory
+
+
+def fetch_node_scoped_memory(
+    variable_pool: VariablePool,
+    *,
+    app_id: str,
+    node_id: str,
+    model_instance: ModelInstance,
+) -> NodeScopedMemory | None:
+    """Factory for per-node memory based on conversation scope.
+
+    Returns None if no conversation_id is present in the variable pool.
+    """
+    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
+    if not isinstance(conversation_id_variable, StringSegment):
+        return None
+    return NodeScopedMemory(
+        app_id=app_id,
+        conversation_id=conversation_id_variable.value,
+        node_id=node_id,
+        model_instance=model_instance,
+    )
 
 
 def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUsage):

@@ -5,14 +5,13 @@ import logging
 import re
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities import (
     ImagePromptMessageContent,
@@ -98,6 +97,24 @@ if TYPE_CHECKING:
     from core.workflow.runtime import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
+
+
+class ChatHistoryMemory(Protocol):
+    def get_history_prompt_messages(
+        self,
+        *,
+        max_token_limit: int = 2000,
+        message_limit: int | None = None,
+    ) -> Sequence[PromptMessage]: ...
+
+    def get_history_prompt_text(
+        self,
+        *,
+        human_prefix: str = "Human",
+        ai_prefix: str = "Assistant",
+        max_token_limit: int = 2000,
+        message_limit: int | None = None,
+    ) -> str: ...
 
 
 class LLMNode(Node):
@@ -215,13 +232,26 @@ class LLMNode(Node):
                 tenant_id=self.tenant_id,
             )
 
-            # fetch memory
-            memory = llm_utils.fetch_memory(
-                variable_pool=variable_pool,
-                app_id=self.app_id,
-                node_data_memory=self._node_data.memory,
-                model_instance=model_instance,
+            # fetch memory (shared) or node-scoped (independent)
+            independent_scope = (
+                self._node_data.memory and getattr(self._node_data.memory, "scope", "shared") == "independent"
             )
+            node_memory = None
+            memory_shared = None
+            if independent_scope:
+                node_memory = llm_utils.fetch_node_scoped_memory(
+                    variable_pool=variable_pool,
+                    app_id=self.app_id,
+                    node_id=self._node_id,
+                    model_instance=model_instance,
+                )
+            else:
+                memory_shared = llm_utils.fetch_memory(
+                    variable_pool=variable_pool,
+                    app_id=self.app_id,
+                    node_data_memory=self._node_data.memory,
+                    model_instance=model_instance,
+                )
 
             query: str | None = None
             if self._node_data.memory:
@@ -235,7 +265,7 @@ class LLMNode(Node):
                 sys_query=query,
                 sys_files=files,
                 context=context,
-                memory=memory,
+                memory=(node_memory if independent_scope else memory_shared),
                 model_config=model_config,
                 prompt_template=self._node_data.prompt_template,
                 memory_config=self._node_data.memory,
@@ -288,6 +318,10 @@ class LLMNode(Node):
                         if event.structured_output
                         else None
                     )
+
+                    # Persist node-scoped memory if enabled
+                    if independent_scope and node_memory:
+                        node_memory.clear()
 
                     # deduct quota
                     llm_utils.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
@@ -756,7 +790,7 @@ class LLMNode(Node):
         sys_query: str | None = None,
         sys_files: Sequence["File"],
         context: str | None = None,
-        memory: TokenBufferMemory | None = None,
+        memory: ChatHistoryMemory | None = None,
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
         memory_config: MemoryConfig | None = None,
@@ -1297,7 +1331,7 @@ def _calculate_rest_token(
 
 def _handle_memory_chat_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: ChatHistoryMemory | None,
     memory_config: MemoryConfig | None,
     model_config: ModelConfigWithCredentialsEntity,
 ) -> Sequence[PromptMessage]:
@@ -1314,7 +1348,7 @@ def _handle_memory_chat_mode(
 
 def _handle_memory_completion_mode(
     *,
-    memory: TokenBufferMemory | None,
+    memory: ChatHistoryMemory | None,
     memory_config: MemoryConfig | None,
     model_config: ModelConfigWithCredentialsEntity,
 ) -> str:

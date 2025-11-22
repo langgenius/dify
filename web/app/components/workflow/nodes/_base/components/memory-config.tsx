@@ -10,6 +10,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
 import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
+import { PortalSelect } from '@/app/components/base/select'
 
 const i18nPrefix = 'workflow.nodes.common.memory'
 const WINDOW_SIZE_MIN = 1
@@ -54,6 +55,8 @@ type Props = {
 const MEMORY_DEFAULT: Memory = {
   window: { enabled: false, size: WINDOW_SIZE_DEFAULT },
   query_prompt_template: '{{#sys.query#}}\n\n{{#sys.files#}}',
+  scope: 'shared',
+  clear_after_execution: false,
 }
 
 const MemoryConfig: FC<Props> = ({
@@ -143,6 +146,46 @@ const MemoryConfig: FC<Props> = ({
       >
         {payload && (
           <>
+            {/* memory scope + clear-after */}
+            <div className='mb-3 flex items-center justify-between'>
+              <div className='flex items-center space-x-2'>
+                <div className='system-xs-medium-uppercase text-text-tertiary'>Memory Mode</div>
+                <PortalSelect
+                  value={payload.scope ?? 'shared'}
+                  onSelect={(item) => {
+                    const v = item.value as 'shared' | 'independent'
+                    const newPayload = produce(config.data || MEMORY_DEFAULT, (draft) => {
+                      draft.scope = v
+                      // when switching back to shared, clear-after is not applicable
+                      if (draft.scope === 'shared')
+                        draft.clear_after_execution = false
+                    })
+                    onChange(newPayload)
+                  }}
+                  items={[
+                    { name: 'Shared (conversation)', value: 'shared' },
+                    { name: 'Independent (node)', value: 'independent' },
+                  ]}
+                  triggerClassName='w-[200px]'
+                  readonly={readonly}
+                />
+              </div>
+              <div className='flex items-center space-x-2'>
+                <div className='system-xs-medium-uppercase text-text-tertiary'>Clear After Execution</div>
+                <Switch
+                  defaultValue={!!payload.clear_after_execution}
+                  onChange={(enabled: boolean) => {
+                    const newPayload = produce(config.data || MEMORY_DEFAULT, (draft) => {
+                      draft.clear_after_execution = enabled
+                    })
+                    onChange(newPayload)
+                  }}
+                  size='md'
+                  disabled={readonly || (payload.scope ?? 'shared') !== 'independent'}
+                />
+              </div>
+            </div>
+
             {/* window size */}
             <div className='flex justify-between'>
               <div className='flex h-8 items-center space-x-2'>
