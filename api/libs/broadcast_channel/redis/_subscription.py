@@ -62,46 +62,72 @@ class RedisSubscriptionBase(Subscription):
         """Main listener loop for processing messages."""
         pubsub = self._pubsub
         assert pubsub is not None, "PubSub should not be None while starting listening."
-        while not self._closed.is_set():
-            raw_message = self._get_message()
+        try:
+            while not self._closed.is_set():
+                raw_message = self._get_message()
 
-            if raw_message is None:
-                continue
+                if raw_message is None:
+                    continue
 
-            if raw_message.get("type") != self._get_message_type():
-                continue
+                if raw_message.get("type") != self._get_message_type():
+                    continue
 
-            channel_field = raw_message.get("channel")
-            if isinstance(channel_field, bytes):
-                channel_name = channel_field.decode("utf-8")
-            elif isinstance(channel_field, str):
-                channel_name = channel_field
-            else:
-                channel_name = str(channel_field)
+                channel_field = raw_message.get("channel")
+                if isinstance(channel_field, bytes):
+                    channel_name = channel_field.decode("utf-8")
+                elif isinstance(channel_field, str):
+                    channel_name = channel_field
+                else:
+                    channel_name = str(channel_field)
 
-            if channel_name != self._topic:
+                if channel_name != self._topic:
+                    _logger.warning(
+                        "Ignoring %s message from unexpected channel %s", self._get_subscription_type(), channel_name
+                    )
+                    continue
+
+                payload_bytes: bytes | None = raw_message.get("data")
+                if not isinstance(payload_bytes, bytes):
+                    _logger.error(
+                        "Received invalid data from %s channel %s, type=%s",
+                        self._get_subscription_type(),
+                        self._topic,
+                        type(payload_bytes),
+                    )
+                    continue
+
+                self._enqueue_message(payload_bytes)
+        except Exception:
+            _logger.exception(
+                "Unexpected error in %s listener thread for channel %s",
+                self._get_subscription_type(),
+                self._topic,
+            )
+        finally:
+            _logger.debug(
+                "%s listener thread stopped for channel %s", self._get_subscription_type().title(), self._topic
+            )
+            try:
+                self._unsubscribe()
+            except Exception as e:
                 _logger.warning(
-                    "Ignoring %s message from unexpected channel %s", self._get_subscription_type(), channel_name
-                )
-                continue
-
-            payload_bytes: bytes | None = raw_message.get("data")
-            if not isinstance(payload_bytes, bytes):
-                _logger.error(
-                    "Received invalid data from %s channel %s, type=%s",
+                    "Error unsubscribing from %s channel %s: %s",
                     self._get_subscription_type(),
                     self._topic,
-                    type(payload_bytes),
+                    e,
                 )
-                continue
-
-            self._enqueue_message(payload_bytes)
-
-        _logger.debug("%s listener thread stopped for channel %s", self._get_subscription_type().title(), self._topic)
-        self._unsubscribe()
-        pubsub.close()
-        _logger.debug("%s PubSub closed for topic %s", self._get_subscription_type().title(), self._topic)
-        self._pubsub = None
+            try:
+                pubsub.close()
+                _logger.debug("%s PubSub closed for topic %s", self._get_subscription_type().title(), self._topic)
+            except Exception as e:
+                _logger.warning(
+                    "Error closing PubSub for %s channel %s: %s",
+                    self._get_subscription_type(),
+                    self._topic,
+                    e,
+                )
+            finally:
+                self._pubsub = None
 
     def _enqueue_message(self, payload: bytes) -> None:
         """Enqueue a message to the internal queue with dropping behavior."""
