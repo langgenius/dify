@@ -6,6 +6,8 @@ import pytest
 from models.account import Account
 from models.dataset import Dataset, Document, UploadFile
 from services.dataset_service import DocumentService
+from services.errors.file import FileNotExistsError
+from werkzeug.exceptions import NotFound
 
 
 class DocumentTestDataFactory:
@@ -671,7 +673,8 @@ class TestDocumentServiceDeleteDocuments:
         mock_scalars.all.return_value = documents
         mock_select = Mock()
         mock_select.where.return_value = mock_select
-        mock_db_session.scalars.return_value = mock_scalars
+        # Mock scalars as a method that returns the mock_scalars object
+        mock_db_session.scalars = Mock(return_value=mock_scalars)
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
@@ -724,7 +727,8 @@ class TestDocumentServiceDeleteDocuments:
         mock_scalars.all.return_value = documents
         mock_select = Mock()
         mock_select.where.return_value = mock_select
-        mock_db_session.scalars.return_value = mock_scalars
+        # Mock scalars as a method that returns the mock_scalars object
+        mock_db_session.scalars = Mock(return_value=mock_scalars)
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
@@ -808,16 +812,11 @@ class TestDocumentServiceUpdateDocumentWithDatasetId:
         with (
             patch("services.dataset_service.DatasetService.check_dataset_model_setting") as mock_check,
             patch("services.dataset_service.DocumentService.get_document") as mock_get_doc,
-            patch("services.dataset_service.NotFound") as mock_not_found,
         ):
             mock_get_doc.return_value = None
-            mock_not_found_exception = Exception("Document not found")
-            mock_not_found.return_value = mock_not_found_exception
 
             # Act & Assert
-            from werkzeug.exceptions import NotFound
-
-            with pytest.raises(NotFound):
+            with pytest.raises(NotFound, match="Document not found"):
                 DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
 
     def test_update_document_not_available(
@@ -899,7 +898,6 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         mock_scalars.all.return_value = []
         mock_select = Mock()
         mock_select.where.return_value = mock_select
-        mock_db_session.scalars.return_value = mock_scalars
 
         with (
             patch("services.dataset_service.DatasetService.check_doc_form") as mock_check_doc_form,
@@ -909,12 +907,36 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             patch("services.dataset_service.redis_client.lock") as mock_lock,
             patch("services.dataset_service.select") as mock_select_func,
             patch("services.dataset_service.DatasetProcessRule") as mock_process_rule,
+            patch("services.dataset_service.ModelManager") as mock_model_manager,
+            patch("services.dataset_service.DatasetCollectionBindingService") as mock_binding_service,
+            patch("services.dataset_service.DocumentIndexingTaskProxy") as mock_indexing_proxy,
+            patch("services.dataset_service.time.strftime") as mock_strftime,
+            patch("services.dataset_service.secrets.randbelow") as mock_randbelow,
         ):
             mock_features.return_value.billing.enabled = False
             mock_position.return_value = 1
             mock_lock.return_value.__enter__ = Mock()
             mock_lock.return_value.__exit__ = Mock(return_value=None)
             mock_select_func.return_value = mock_select
+            mock_strftime.return_value = "20240101120000"
+            mock_randbelow.return_value = 123456
+
+            # Mock ModelManager for embedding model
+            mock_embedding_model = Mock()
+            mock_embedding_model.model = "text-embedding-ada-002"
+            mock_embedding_model.provider = "openai"
+            mock_model_manager_instance = Mock()
+            mock_model_manager_instance.get_default_model_instance.return_value = mock_embedding_model
+            mock_model_manager.return_value = mock_model_manager_instance
+
+            # Mock DatasetCollectionBindingService
+            mock_collection_binding = Mock()
+            mock_collection_binding.id = "binding-123"
+            mock_binding_service.get_dataset_collection_binding.return_value = mock_collection_binding
+
+            # Mock DocumentIndexingTaskProxy
+            mock_task_instance = Mock()
+            mock_indexing_proxy.return_value = mock_task_instance
 
             document = DocumentTestDataFactory.create_document_mock()
             mock_build.return_value = document
@@ -986,22 +1008,21 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             patch("services.dataset_service.redis_client.lock") as mock_lock,
             patch("services.dataset_service.select") as mock_select_func,
             patch("services.dataset_service.DatasetProcessRule") as mock_process_rule,
-            patch("services.dataset_service.FileNotExistsError") as mock_file_error,
+            patch("services.dataset_service.time.strftime") as mock_strftime,
+            patch("services.dataset_service.secrets.randbelow") as mock_randbelow,
         ):
             mock_features.return_value.billing.enabled = False
             mock_position.return_value = 1
             mock_lock.return_value.__enter__ = Mock()
             mock_lock.return_value.__exit__ = Mock(return_value=None)
             mock_select_func.return_value = Mock()
-            mock_file_error_exception = Exception("File not found")
-            mock_file_error.return_value = mock_file_error_exception
+            mock_strftime.return_value = "20240101120000"
+            mock_randbelow.return_value = 123456
 
             process_rule = Mock()
             process_rule.id = "process-rule-123"
             mock_process_rule.return_value = process_rule
 
             # Act & Assert
-            from services.errors.file import FileNotExistsError
-
             with pytest.raises(FileNotExistsError):
                 DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account)
