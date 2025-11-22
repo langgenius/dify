@@ -113,7 +113,7 @@ class BaseApiKeyResource(Resource):
     resource_type: str | None = None
     resource_model: type | None = None
     resource_id_field: str | None = None
-    
+
     def _has_permission(self, user):
         if self.resource_type == "dataset":
             return user.is_dataset_editor
