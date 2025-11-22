@@ -270,8 +270,8 @@ class OceanBaseVector(BaseVector):
             self._client.set_ob_hnsw_ef_search(ef_search)
             self._hnsw_ef_search = ef_search
         topk = kwargs.get("top_k", 10)
-        score_threshold = float(kwargs.get("score_threshold") or 0.0)
         try:
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             cur = self._client.ann_search(
                 table_name=self._collection_name,
                 vec_column_name="vector",
@@ -286,10 +286,10 @@ class OceanBaseVector(BaseVector):
             raise Exception("Failed to search by vector. ", e)
         docs = []
         for _text, metadata, distance in cur:
-            metadata = json.loads(metadata)
             score = 1 - distance / math.sqrt(2)
-            metadata["score"] = score
             if score >= score_threshold:
+                metadata = json.loads(metadata)
+                metadata["score"] = score
                 docs.append(
                     Document(
                         page_content=_text,
