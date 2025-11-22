@@ -859,7 +859,6 @@ class TestAgentService:
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file1.jpg",
             belongs_to="user",
-            upload_file_id=str(fake.uuid4()),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
@@ -869,7 +868,6 @@ class TestAgentService:
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="http://example.com/file2.png",
             belongs_to="user",
-            upload_file_id=str(fake.uuid4()),
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=message.from_account_id,
         )
