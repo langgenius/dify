@@ -176,6 +176,14 @@ const translation = {
       title: 'Oblačni nadzor',
       description: 'Popolnoma upravljana in brez vzdrževanja platforma za opazovanje, ki jo zagotavlja Alibaba Cloud, omogoča takojšnje spremljanje, sledenje in ocenjevanje aplikacij Dify.',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Odprtokodna platforma LLMOps za sledenje eksperimentom, opazljivost in ocenjevanje, za gradnjo aplikacij AI/LLM z zaupanjem.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks ponuja popolnoma upravljan MLflow z močnim upravljanjem in varnostjo za shranjevanje podatkov sledenja.',
+    },
     tencent: {
       description: 'Tencent Application Performance Monitoring zagotavlja celovito sledenje in večdimenzionalno analizo za aplikacije LLM.',
       title: 'Tencent APM',
