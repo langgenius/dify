@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     ConversationCompletedError,
     DraftWorkflowNotExist,
@@ -153,7 +153,7 @@ parser_run = reqparse.RequestParser().add_argument("inputs", type=dict, location
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
 class RagPipelineDraftRunIterationNodeApi(Resource):
-    @api.expect(parser_run)
+    @console_ns.expect(parser_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -187,7 +187,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 class RagPipelineDraftRunLoopNodeApi(Resource):
-    @api.expect(parser_run)
+    @console_ns.expect(parser_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -230,7 +230,7 @@ parser_draft_run = (
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run")
 class DraftRagPipelineRunApi(Resource):
-    @api.expect(parser_draft_run)
+    @console_ns.expect(parser_draft_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -273,7 +273,7 @@ parser_published_run = (
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/run")
 class PublishedRagPipelineRunApi(Resource):
-    @api.expect(parser_published_run)
+    @console_ns.expect(parser_published_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -397,7 +397,7 @@ parser_rag_run = (
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
-    @api.expect(parser_rag_run)
+    @console_ns.expect(parser_rag_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -437,7 +437,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run")
 class RagPipelineDraftDatasourceNodeRunApi(Resource):
-    @api.expect(parser_rag_run)
+    @console_ns.expect(parser_rag_run)
     @setup_required
     @login_required
     @edit_permission_required
@@ -482,7 +482,7 @@ parser_run_api = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run")
 class RagPipelineDraftNodeRunApi(Resource):
-    @api.expect(parser_run_api)
+    @console_ns.expect(parser_run_api)
     @setup_required
     @login_required
     @edit_permission_required
@@ -607,7 +607,7 @@ parser_default = reqparse.RequestParser().add_argument("q", type=str, location="
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultRagPipelineBlockConfigApi(Resource):
-    @api.expect(parser_default)
+    @console_ns.expect(parser_default)
     @setup_required
     @login_required
     @account_initialization_required
@@ -644,7 +644,7 @@ parser_wf = (
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows")
 class PublishedAllRagPipelineApi(Resource):
-    @api.expect(parser_wf)
+    @console_ns.expect(parser_wf)
     @setup_required
     @login_required
     @account_initialization_required
@@ -696,7 +696,7 @@ parser_wf_id = (
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/<string:workflow_id>")
 class RagPipelineByIdApi(Resource):
-    @api.expect(parser_wf_id)
+    @console_ns.expect(parser_wf_id)
     @setup_required
     @login_required
     @account_initialization_required
@@ -754,7 +754,7 @@ parser_parameters = reqparse.RequestParser().add_argument("node_id", type=str, r
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/processing/parameters")
 class PublishedRagPipelineSecondStepApi(Resource):
-    @api.expect(parser_parameters)
+    @console_ns.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -777,7 +777,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/pre-processing/parameters")
 class PublishedRagPipelineFirstStepApi(Resource):
-    @api.expect(parser_parameters)
+    @console_ns.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -800,7 +800,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/pre-processing/parameters")
 class DraftRagPipelineFirstStepApi(Resource):
-    @api.expect(parser_parameters)
+    @console_ns.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -823,7 +823,7 @@ class DraftRagPipelineFirstStepApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/processing/parameters")
 class DraftRagPipelineSecondStepApi(Resource):
-    @api.expect(parser_parameters)
+    @console_ns.expect(parser_parameters)
     @setup_required
     @login_required
     @account_initialization_required
@@ -854,7 +854,7 @@ parser_wf_run = (
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflow-runs")
 class RagPipelineWorkflowRunListApi(Resource):
-    @api.expect(parser_wf_run)
+    @console_ns.expect(parser_wf_run)
     @setup_required
     @login_required
     @account_initialization_required
@@ -975,7 +975,7 @@ parser_var = (
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect")
 class RagPipelineDatasourceVariableApi(Resource):
-    @api.expect(parser_var)
+    @console_ns.expect(parser_var)
     @setup_required
     @login_required
     @account_initialization_required

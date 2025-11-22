@@ -2,7 +2,7 @@ from flask import request
 from flask_restx import Resource, fields, reqparse
 
 from constants.languages import supported_language
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -20,13 +20,13 @@ active_check_parser = (
 
 @console_ns.route("/activate/check")
 class ActivateCheckApi(Resource):
-    @api.doc("check_activation_token")
-    @api.doc(description="Check if activation token is valid")
-    @api.expect(active_check_parser)
-    @api.response(
+    @console_ns.doc("check_activation_token")
+    @console_ns.doc(description="Check if activation token is valid")
+    @console_ns.expect(active_check_parser)
+    @console_ns.response(
         200,
         "Success",
-        api.model(
+        console_ns.model(
             "ActivationCheckResponse",
             {
                 "is_valid": fields.Boolean(description="Whether token is valid"),
@@ -69,13 +69,13 @@ active_parser = (
 
 @console_ns.route("/activate")
 class ActivateApi(Resource):
-    @api.doc("activate_account")
-    @api.doc(description="Activate account with invitation token")
-    @api.expect(active_parser)
-    @api.response(
+    @console_ns.doc("activate_account")
+    @console_ns.doc(description="Activate account with invitation token")
+    @console_ns.expect(active_parser)
+    @console_ns.response(
         200,
         "Account activated successfully",
-        api.model(
+        console_ns.model(
             "ActivationResponse",
             {
                 "result": fields.String(description="Operation result"),
@@ -83,7 +83,7 @@ class ActivateApi(Resource):
             },
         ),
     )
-    @api.response(400, "Already activated or invalid token")
+    @console_ns.response(400, "Already activated or invalid token")
     def post(self):
         args = active_parser.parse_args()
 

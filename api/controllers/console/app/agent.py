@@ -1,6 +1,6 @@
 from flask_restx import Resource, fields, reqparse
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.helper import uuid_value
@@ -17,12 +17,14 @@ parser = (
 
 @console_ns.route("/apps/<uuid:app_id>/agent/logs")
 class AgentLogApi(Resource):
-    @api.doc("get_agent_logs")
-    @api.doc(description="Get agent execution logs for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(parser)
-    @api.response(200, "Agent logs retrieved successfully", fields.List(fields.Raw(description="Agent log entries")))
-    @api.response(400, "Invalid request parameters")
+    @console_ns.doc("get_agent_logs")
+    @console_ns.doc(description="Get agent execution logs for an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(parser)
+    @console_ns.response(
+        200, "Agent logs retrieved successfully", fields.List(fields.Raw(description="Agent log entries"))
+    )
+    @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
