@@ -608,7 +608,7 @@ class OAuthProviderApp(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
     app_icon: Mapped[str] = mapped_column(String(255), nullable=False)
-    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False)
+    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
     client_id: Mapped[str] = mapped_column(String(255), nullable=False)
     client_secret: Mapped[str] = mapped_column(String(255), nullable=False)
     redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default_factory=list)
