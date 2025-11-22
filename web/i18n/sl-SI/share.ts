@@ -73,6 +73,7 @@ const translation = {
     },
     execution: 'IZVEDBA',
     executions: '{{num}} IZVRŠITEV',
+    stopRun: 'Ustavi teči',
   },
   login: {
     backToHome: 'Nazaj na začetno stran',

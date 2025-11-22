@@ -174,11 +174,13 @@ const RunPanel: FC<RunProps> = ({
             created_by={executor}
             steps={runDetail.total_steps}
             exceptionCounts={runDetail.exceptions_count}
+            isListening={isListening}
           />
         )}
         {!loading && currentTab === 'DETAIL' && !runDetail && isListening && (
           <StatusPanel
             status={WorkflowRunningStatus.Running}
+            isListening={true}
           />
         )}
         {!loading && currentTab === 'TRACING' && (
