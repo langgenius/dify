@@ -1349,12 +1349,12 @@ class MessageFile(TypeBase):
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
-    transfer_method: Mapped[str] = mapped_column(String(255), nullable=False)
-    url: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    belongs_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    transfer_method: Mapped[FileTransferMethod] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    belongs_to: Mapped[Literal["user", "assistant"] | None] = mapped_column(String(255), nullable=True, default=None)
+    url: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
