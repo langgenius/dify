@@ -2,12 +2,12 @@ from collections.abc import Sequence
 from unittest.mock import Mock, patch
 
 import pytest
+from werkzeug.exceptions import NotFound
 
 from models.account import Account
 from models.dataset import Dataset, Document, UploadFile
 from services.dataset_service import DocumentService
 from services.errors.file import FileNotExistsError
-from werkzeug.exceptions import NotFound
 
 
 class DocumentTestDataFactory:
