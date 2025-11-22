@@ -72,6 +72,7 @@ const translation = {
     },
     execution: 'İFRAZAT',
     executions: '{{num}} İDAM',
+    stopRun: 'Dur Koş',
   },
   login: {
     backToHome: 'Ana Sayfaya Dön',
