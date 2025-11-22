@@ -608,9 +608,9 @@ class OAuthProviderApp(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
     app_icon: Mapped[str] = mapped_column(String(255), nullable=False)
-    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
     client_id: Mapped[str] = mapped_column(String(255), nullable=False)
     client_secret: Mapped[str] = mapped_column(String(255), nullable=False)
+    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
     redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default_factory=list)
     scope: Mapped[str] = mapped_column(
         String(255),
@@ -1440,7 +1440,7 @@ class AppAnnotationSetting(TypeBase):
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    score_threshold: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"), default=0.0)
+    score_threshold: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
     collection_binding_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
