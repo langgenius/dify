@@ -163,6 +163,14 @@ const translation = {
       description: 'Platforma de observabilitate SaaS oferită de Alibaba Cloud permite monitorizarea, urmărirea și evaluarea aplicațiilor Dify din cutie.',
       title: 'Monitorizarea Cloud',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Platformă LLMOps open source pentru urmărirea experimentelor, observabilitate și evaluare, pentru a construi aplicații AI/LLM cu încredere.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks oferă MLflow complet gestionat cu o puternică guvernanță și securitate pentru stocarea datelor de urmărire.',
+    },
     tencent: {
       title: 'Tencent APM',
       description: 'Monitorizarea Performanței Aplicațiilor Tencent oferă trasabilitate cuprinzătoare și analiză multidimensională pentru aplicațiile LLM.',

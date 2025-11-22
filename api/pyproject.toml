@@ -34,6 +34,7 @@ dependencies = [
     "langfuse~=2.51.3",
     "langsmith~=0.1.77",
     "markdown~=3.5.1",
+    "mlflow-skinny>=3.0.0",
     "numpy~=1.26.4",
     "openpyxl~=3.1.5",
     "opik~=1.8.72",
