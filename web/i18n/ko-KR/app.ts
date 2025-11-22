@@ -178,6 +178,14 @@ const translation = {
       title: '클라우드 모니터',
       description: '알리바바 클라우드에서 제공하는 완전 관리형 및 유지보수가 필요 없는 가시성 플랫폼은 Dify 애플리케이션의 모니터링, 추적 및 평가를 즉시 사용할 수 있도록 지원합니다.',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: '실험 추적, 관찰 가능성 및 평가를 위한 오픈 소스 LLMOps 플랫폼으로 AI/LLM 앱을 자신있게 구축합니다.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks는 강력한 거버넌스와 보안을 갖춘 완전 관리형 MLflow를 제공하여 트레이스 데이터 저장을 지원합니다.',
+    },
     tencent: {
       title: '텐센트 APM',
       description: '텐센트 애플리케이션 성능 모니터링은 LLM 애플리케이션에 대한 포괄적인 추적 및 다차원 분석을 제공합니다.',

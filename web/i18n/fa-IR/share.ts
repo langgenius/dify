@@ -72,6 +72,7 @@ const translation = {
     },
     executions: '{{num}} اعدام',
     execution: 'اجرا',
+    stopRun: 'توقف کن، بدو',
   },
   login: {
     backToHome: 'بازگشت به خانه',

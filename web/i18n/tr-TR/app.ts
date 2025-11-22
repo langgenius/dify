@@ -167,6 +167,14 @@ const translation = {
       title: 'Bulut İzleyici',
       description: 'Alibaba Cloud tarafından sağlanan tamamen yönetilen ve bakım gerektirmeyen gözlemleme platformu, Dify uygulamalarının kutudan çıkar çıkmaz izlenmesi, takip edilmesi ve değerlendirilmesine olanak tanır.',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Deney takibi, gözlemlenebilirlik ve değerlendirme için açık kaynaklı LLMOps platformu, AI/LLM uygulamalarını güvenle oluşturmak için.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks, iz veri depolama için güçlü yönetişim ve güvenlik ile tamamen yönetilen MLflow sunar.',
+    },
     tencent: {
       title: 'Tencent APM',
       description: 'Tencent Uygulama Performans İzleme, LLM uygulamaları için kapsamlı izleme ve çok boyutlu analiz sağlar.',
