@@ -238,22 +238,34 @@ class TestDatasetServiceGetDatasets:
         )
 
     def test_get_datasets_with_empty_tag_ids(self, mock_dependencies):
-        """Test get_datasets with empty tag_ids returns empty result."""
+        """Test get_datasets with empty tag_ids skips tag filtering and returns all matching datasets."""
         # Arrange
         tenant_id = str(uuid4())
         page = 1
         per_page = 20
         tag_ids = []
 
-        # Mock tag service
-        mock_dependencies["tag_service"].get_target_ids_by_tag_ids.return_value = []
+        # Mock pagination result - when tag_ids is empty, tag filtering is skipped
+        mock_paginate_result = Mock()
+        mock_paginate_result.items = [
+            DatasetRetrievalTestDataFactory.create_dataset_mock(
+                dataset_id=f"dataset-{i}", tenant_id=tenant_id
+            )
+            for i in range(3)
+        ]
+        mock_paginate_result.total = 3
+        mock_dependencies["paginate"].return_value = mock_paginate_result
 
         # Act
         datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant_id, tag_ids=tag_ids)
 
         # Assert
-        assert datasets == []
-        assert total == 0
+        # When tag_ids is empty, tag filtering is skipped, so normal query results are returned
+        assert len(datasets) == 3
+        assert total == 3
+        # Tag service should not be called when tag_ids is empty
+        mock_dependencies["tag_service"].get_target_ids_by_tag_ids.assert_not_called()
+        mock_dependencies["paginate"].assert_called_once()
 
     # ==================== Permission-Based Filtering Tests ====================
 
