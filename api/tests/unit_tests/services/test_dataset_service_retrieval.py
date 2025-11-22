@@ -248,9 +248,7 @@ class TestDatasetServiceGetDatasets:
         # Mock pagination result - when tag_ids is empty, tag filtering is skipped
         mock_paginate_result = Mock()
         mock_paginate_result.items = [
-            DatasetRetrievalTestDataFactory.create_dataset_mock(
-                dataset_id=f"dataset-{i}", tenant_id=tenant_id
-            )
+            DatasetRetrievalTestDataFactory.create_dataset_mock(dataset_id=f"dataset-{i}", tenant_id=tenant_id)
             for i in range(3)
         ]
         mock_paginate_result.total = 3
