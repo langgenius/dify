@@ -199,9 +199,7 @@ class TestDatasetServiceGetDatasets:
         mock_dependencies["paginate"].return_value = mock_paginate_result
 
         # Act
-        datasets, total = DatasetService.get_datasets(
-            page, per_page, tenant_id=tenant_id, search=search
-        )
+        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant_id, search=search)
 
         # Assert
         assert len(datasets) == 1
@@ -223,18 +221,14 @@ class TestDatasetServiceGetDatasets:
         # Mock pagination result
         mock_paginate_result = Mock()
         mock_paginate_result.items = [
-            DatasetRetrievalTestDataFactory.create_dataset_mock(
-                dataset_id=dataset_id, tenant_id=tenant_id
-            )
+            DatasetRetrievalTestDataFactory.create_dataset_mock(dataset_id=dataset_id, tenant_id=tenant_id)
             for dataset_id in target_ids
         ]
         mock_paginate_result.total = 2
         mock_dependencies["paginate"].return_value = mock_paginate_result
 
         # Act
-        datasets, total = DatasetService.get_datasets(
-            page, per_page, tenant_id=tenant_id, tag_ids=tag_ids
-        )
+        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant_id, tag_ids=tag_ids)
 
         # Assert
         assert len(datasets) == 2
@@ -255,9 +249,7 @@ class TestDatasetServiceGetDatasets:
         mock_dependencies["tag_service"].get_target_ids_by_tag_ids.return_value = []
 
         # Act
-        datasets, total = DatasetService.get_datasets(
-            page, per_page, tenant_id=tenant_id, tag_ids=tag_ids
-        )
+        datasets, total = DatasetService.get_datasets(page, per_page, tenant_id=tenant_id, tag_ids=tag_ids)
 
         # Assert
         assert datasets == []
@@ -307,9 +299,7 @@ class TestDatasetServiceGetDatasets:
         # Mock pagination result
         mock_paginate_result = Mock()
         mock_paginate_result.items = [
-            DatasetRetrievalTestDataFactory.create_dataset_mock(
-                dataset_id=f"dataset-{i}", tenant_id=tenant_id
-            )
+            DatasetRetrievalTestDataFactory.create_dataset_mock(dataset_id=f"dataset-{i}", tenant_id=tenant_id)
             for i in range(3)
         ]
         mock_paginate_result.total = 3
@@ -352,9 +342,7 @@ class TestDatasetServiceGetDatasets:
         mock_dependencies["paginate"].return_value = mock_paginate_result
 
         # Act
-        datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, tenant_id=tenant_id, user=user
-        )
+        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant_id, user=user)
 
         # Assert
         assert len(datasets) == 1
@@ -386,9 +374,7 @@ class TestDatasetServiceGetDatasets:
         mock_dependencies["paginate"].return_value = mock_paginate_result
 
         # Act
-        datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, tenant_id=tenant_id, user=user
-        )
+        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant_id, user=user)
 
         # Assert
         assert len(datasets) == 1
@@ -425,9 +411,7 @@ class TestDatasetServiceGetDatasets:
         mock_dependencies["paginate"].return_value = mock_paginate_result
 
         # Act
-        datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, tenant_id=tenant_id, user=user
-        )
+        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant_id, user=user)
 
         # Assert
         assert len(datasets) == 1
@@ -454,17 +438,13 @@ class TestDatasetServiceGetDatasets:
         # Mock pagination result
         mock_paginate_result = Mock()
         mock_paginate_result.items = [
-            DatasetRetrievalTestDataFactory.create_dataset_mock(
-                dataset_id=dataset_id, tenant_id=tenant_id
-            )
+            DatasetRetrievalTestDataFactory.create_dataset_mock(dataset_id=dataset_id, tenant_id=tenant_id)
         ]
         mock_paginate_result.total = 1
         mock_dependencies["paginate"].return_value = mock_paginate_result
 
         # Act
-        datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, tenant_id=tenant_id, user=user
-        )
+        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant_id, user=user)
 
         # Assert
         assert len(datasets) == 1
@@ -485,9 +465,7 @@ class TestDatasetServiceGetDatasets:
         mock_dependencies["db_session"].query.return_value = mock_query
 
         # Act
-        datasets, total = DatasetService.get_datasets(
-            page=1, per_page=20, tenant_id=tenant_id, user=user
-        )
+        datasets, total = DatasetService.get_datasets(page=1, per_page=20, tenant_id=tenant_id, user=user)
 
         # Assert
         assert datasets == []
@@ -557,9 +535,7 @@ class TestDatasetServiceGetDatasetsByIds:
         # Mock pagination result
         mock_paginate_result = Mock()
         mock_paginate_result.items = [
-            DatasetRetrievalTestDataFactory.create_dataset_mock(
-                dataset_id=dataset_id, tenant_id=tenant_id
-            )
+            DatasetRetrievalTestDataFactory.create_dataset_mock(dataset_id=dataset_id, tenant_id=tenant_id)
             for dataset_id in dataset_ids
         ]
         mock_paginate_result.total = len(dataset_ids)
@@ -625,9 +601,7 @@ class TestDatasetServiceGetProcessRules:
 
         # Mock database query
         mock_query = Mock()
-        mock_query.where.return_value.order_by.return_value.limit.return_value.one_or_none.return_value = (
-            process_rule
-        )
+        mock_query.where.return_value.order_by.return_value.limit.return_value.one_or_none.return_value = process_rule
         mock_dependencies["db_session"].query.return_value = mock_query
 
         # Act
@@ -675,9 +649,7 @@ class TestDatasetServiceGetDatasetQueries:
         # Mock pagination result
         mock_paginate_result = Mock()
         mock_paginate_result.items = [
-            DatasetRetrievalTestDataFactory.create_dataset_query_mock(
-                dataset_id=dataset_id, query_id=f"query-{i}"
-            )
+            DatasetRetrievalTestDataFactory.create_dataset_query_mock(dataset_id=dataset_id, query_id=f"query-{i}")
             for i in range(3)
         ]
         mock_paginate_result.total = 3
@@ -729,9 +701,7 @@ class TestDatasetServiceGetRelatedApps:
 
         # Mock app-dataset joins
         app_joins = [
-            DatasetRetrievalTestDataFactory.create_app_dataset_join_mock(
-                app_id=f"app-{i}", dataset_id=dataset_id
-            )
+            DatasetRetrievalTestDataFactory.create_app_dataset_join_mock(app_id=f"app-{i}", dataset_id=dataset_id)
             for i in range(2)
         ]
 
@@ -764,4 +734,3 @@ class TestDatasetServiceGetRelatedApps:
 
         # Assert
         assert result == []
-
