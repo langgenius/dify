@@ -342,7 +342,8 @@ class BaseAgentRunner(AppRunner):
             raise ValueError("agent thought not found")
 
         if thought:
-            agent_thought.thought += thought
+            existing_thought = agent_thought.thought or ""
+            agent_thought.thought = existing_thought + thought
 
         if tool_name:
             agent_thought.tool = tool_name
@@ -446,11 +447,13 @@ class BaseAgentRunner(AppRunner):
                         tool_calls: list[AssistantPromptMessage.ToolCall] = []
                         tool_call_response: list[ToolPromptMessage] = []
                         try:
-                            tool_inputs = json.loads(agent_thought.tool_input)
+                            tool_input_raw = agent_thought.tool_input or "{}"
+                            tool_inputs = json.loads(tool_input_raw)
                         except Exception:
                             tool_inputs = {tool: {} for tool in tools}
                         try:
-                            tool_responses = json.loads(agent_thought.observation)
+                            observation_raw = agent_thought.observation or ""
+                            tool_responses = json.loads(observation_raw)
                         except Exception:
                             tool_responses = dict.fromkeys(tools, agent_thought.observation)
 

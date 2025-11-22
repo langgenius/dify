@@ -9,7 +9,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.uuid_utils import uuidv7
 
-from .base import Base, TypeBase
+from .base import TypeBase
 from .engine import db
 from .types import LongText, StringUUID
 
@@ -262,7 +262,7 @@ class ProviderModelSetting(TypeBase):
     )
 
 
-class LoadBalancingModelConfig(Base):
+class LoadBalancingModelConfig(TypeBase):
     """
     Configurations for load balancing models.
     """
@@ -289,7 +289,7 @@ class LoadBalancingModelConfig(Base):
     )
 
 
-class ProviderCredential(Base):
+class ProviderCredential(TypeBase):
     """
     Provider credential - stores multiple named credentials for each provider
     """
@@ -311,7 +311,7 @@ class ProviderCredential(Base):
     )
 
 
-class ProviderModelCredential(Base):
+class ProviderModelCredential(TypeBase):
     """
     Provider model credential - stores multiple named credentials for each provider model
     """

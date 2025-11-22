@@ -97,45 +97,45 @@ def _create_node_execution_from_domain(
     """
     Create a WorkflowNodeExecutionModel database model from a WorkflowNodeExecution domain entity.
     """
-    node_execution = WorkflowNodeExecutionModel()
-    node_execution.id = execution.id
-    node_execution.tenant_id = tenant_id
-    node_execution.app_id = app_id
-    node_execution.workflow_id = execution.workflow_id
-    node_execution.triggered_from = triggered_from.value
-    node_execution.workflow_run_id = execution.workflow_execution_id
-    node_execution.index = execution.index
-    node_execution.predecessor_node_id = execution.predecessor_node_id
-    node_execution.node_id = execution.node_id
-    node_execution.node_type = execution.node_type.value
-    node_execution.title = execution.title
-    node_execution.node_execution_id = execution.node_execution_id
-
-    # Serialize complex data as JSON
     json_converter = WorkflowRuntimeTypeConverter()
-    node_execution.inputs = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
-    node_execution.process_data = (
+    inputs_json = json.dumps(json_converter.to_json_encodable(execution.inputs)) if execution.inputs else "{}"
+    process_json = (
         json.dumps(json_converter.to_json_encodable(execution.process_data)) if execution.process_data else "{}"
     )
-    node_execution.outputs = (
-        json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
-    )
-    # Convert metadata enum keys to strings for JSON serialization
+    outputs_json = json.dumps(json_converter.to_json_encodable(execution.outputs)) if execution.outputs else "{}"
     if execution.metadata:
         metadata_for_json = {
             key.value if hasattr(key, "value") else str(key): value for key, value in execution.metadata.items()
         }
-        node_execution.execution_metadata = json.dumps(json_converter.to_json_encodable(metadata_for_json))
+        metadata_json = json.dumps(json_converter.to_json_encodable(metadata_for_json))
     else:
-        node_execution.execution_metadata = "{}"
+        metadata_json = "{}"
 
-    node_execution.status = execution.status.value
-    node_execution.error = execution.error
-    node_execution.elapsed_time = execution.elapsed_time
-    node_execution.created_by_role = creator_user_role.value
-    node_execution.created_by = creator_user_id
+    node_execution = WorkflowNodeExecutionModel(
+        tenant_id=tenant_id,
+        app_id=app_id,
+        workflow_id=execution.workflow_id,
+        triggered_from=triggered_from.value,
+        workflow_run_id=execution.workflow_execution_id,
+        index=execution.index,
+        predecessor_node_id=execution.predecessor_node_id,
+        node_execution_id=execution.node_execution_id,
+        node_id=execution.node_id,
+        node_type=execution.node_type.value,
+        title=execution.title,
+        inputs=inputs_json,
+        process_data=process_json,
+        outputs=outputs_json,
+        status=execution.status.value,
+        error=execution.error,
+        elapsed_time=execution.elapsed_time if execution.elapsed_time is not None else 0,
+        execution_metadata=metadata_json,
+        created_by_role=creator_user_role.value,
+        created_by=creator_user_id,
+        finished_at=execution.finished_at,
+    )
+    node_execution.id = execution.id
     node_execution.created_at = execution.created_at
-    node_execution.finished_at = execution.finished_at
 
     return node_execution
 
