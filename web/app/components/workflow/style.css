@@ -24,3 +24,26 @@
 #workflow-container .react-flow__attribution {
   background: none !important;
 }
+
+#workflow-container.workflow-dragging .react-flow__node {
+  transition: none !important;
+  filter: none !important;
+}
+
+#workflow-container.workflow-dragging .react-flow__node .shadow-xs,
+#workflow-container.workflow-dragging .react-flow__node .shadow-sm,
+#workflow-container.workflow-dragging .react-flow__node .shadow,
+#workflow-container.workflow-dragging .react-flow__node .shadow-md,
+#workflow-container.workflow-dragging .react-flow__node .shadow-lg,
+#workflow-container.workflow-dragging .react-flow__node .shadow-xl {
+  box-shadow: none !important;
+}
+
+#workflow-container.workflow-dragging .react-flow__node [class*='backdrop-blur'] {
+  backdrop-filter: none !important;
+}
+
+#workflow-container.workflow-dragging .react-flow__edge-path,
+#workflow-container.workflow-dragging .react-flow__connection-path {
+  filter: none !important;
+}
