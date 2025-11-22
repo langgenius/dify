@@ -30,6 +30,7 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
   limit: 10,
   max_depth: '',
   use_sitemap: true,
+  crawl_entire_domain: false,
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
