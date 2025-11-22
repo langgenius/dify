@@ -178,8 +178,7 @@ def test_pause_command():
     assert any(isinstance(e, GraphRunStartedEvent) for e in events)
     pause_events = [e for e in events if isinstance(e, GraphRunPausedEvent)]
     assert len(pause_events) == 1
-    assert pause_events[0].reason == SchedulingPause(message="User requested pause")
+    assert pause_events[0].reasons == [SchedulingPause(message="User requested pause")]
 
     graph_execution = engine.graph_runtime_state.graph_execution
-    assert graph_execution.paused
-    assert graph_execution.pause_reason == SchedulingPause(message="User requested pause")
+    assert graph_execution.pause_reasons == [SchedulingPause(message="User requested pause")]

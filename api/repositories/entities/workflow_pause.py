@@ -7,7 +7,10 @@ and don't contain implementation details like tenant_id, app_id, etc.
 """
 
 from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from datetime import datetime
+
+from core.workflow.entities.pause_reason import PauseReason
 
 
 class WorkflowPauseEntity(ABC):
@@ -59,3 +62,15 @@ class WorkflowPauseEntity(ABC):
         the pause is not resumed yet.
         """
         pass
+
+    @abstractmethod
+    def get_pause_reasons(self) -> Sequence[PauseReason]:
+        """
+        Retrieve detailed reasons for this pause.
+
+        Returns a sequence of `PauseReason` objects describing the specific nodes and
+        reasons for which the workflow execution was paused.
+        This information is related to, but distinct from, the `PauseReason` type
+        defined in `api/core/workflow/entities/pause_reason.py`.
+        """
+        ...

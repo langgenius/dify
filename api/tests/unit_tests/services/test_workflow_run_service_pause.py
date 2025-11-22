@@ -17,6 +17,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.enums import WorkflowExecutionStatus
+from models.workflow import WorkflowPause
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_api_workflow_run_repository import _PrivateWorkflowPauseEntity
 from services.workflow_run_service import (
@@ -63,7 +64,7 @@ class TestDataFactory:
         **kwargs,
     ) -> MagicMock:
         """Create a mock WorkflowPauseModel object."""
-        mock_pause = MagicMock()
+        mock_pause = MagicMock(spec=WorkflowPause)
         mock_pause.id = id
         mock_pause.tenant_id = tenant_id
         mock_pause.app_id = app_id
@@ -78,37 +79,14 @@ class TestDataFactory:
         return mock_pause
 
     @staticmethod
-    def create_upload_file_mock(
-        id: str = "file-456",
-        key: str = "upload_files/test/state.json",
-        name: str = "state.json",
-        tenant_id: str = "tenant-456",
-        **kwargs,
-    ) -> MagicMock:
-        """Create a mock UploadFile object."""
-        mock_file = MagicMock()
-        mock_file.id = id
-        mock_file.key = key
-        mock_file.name = name
-        mock_file.tenant_id = tenant_id
-
-        for key, value in kwargs.items():
-            setattr(mock_file, key, value)
-
-        return mock_file
-
-    @staticmethod
     def create_pause_entity_mock(
         pause_model: MagicMock | None = None,
-        upload_file: MagicMock | None = None,
     ) -> _PrivateWorkflowPauseEntity:
         """Create a mock _PrivateWorkflowPauseEntity object."""
         if pause_model is None:
             pause_model = TestDataFactory.create_workflow_pause_mock()
-        if upload_file is None:
-            upload_file = TestDataFactory.create_upload_file_mock()
 
-        return _PrivateWorkflowPauseEntity.from_models(pause_model, upload_file)
+        return _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=[], human_input_form=[])
 
 
 class TestWorkflowRunService:
