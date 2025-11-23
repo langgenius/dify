@@ -150,6 +150,14 @@ const translation = {
       viewDocsLink: 'Zobacz dokumentację {{key}}',
       removeConfirmTitle: 'Usunąć konfigurację {{key}}?',
       removeConfirmContent: 'Obecna konfiguracja jest w użyciu, jej usunięcie wyłączy funkcję Śledzenia.',
+      password: 'Hasło',
+      experimentId: 'ID eksperymentu',
+      username: 'Nazwa użytkownika',
+      trackingUri: 'Śledzenie URI',
+      clientId: 'ID klienta OAuth',
+      personalAccessToken: 'Osobisty token dostępu (stary)',
+      clientSecret: 'Sekretny klucz klienta OAuth',
+      databricksHost: 'Adres URL obszaru roboczego Databricks',
     },
     view: 'Widok',
     opik: {
@@ -335,6 +343,8 @@ const translation = {
     startTyping: 'Zacznij pisać, aby wyszukać',
     pressEscToClose: 'Naciśnij ESC, aby zamknąć',
   },
+  notPublishedYet: 'Aplikacja nie została jeszcze opublikowana',
+  noUserInputNode: 'Brak węzła wejściowego użytkownika',
 }
 
 export default translation

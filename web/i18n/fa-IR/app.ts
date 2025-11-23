@@ -157,6 +157,14 @@ const translation = {
       viewDocsLink: 'مشاهده مستندات {{key}}',
       removeConfirmTitle: 'حذف پیکربندی {{key}}؟',
       removeConfirmContent: 'پیکربندی فعلی در حال استفاده است، حذف آن ویژگی ردیابی را غیرفعال خواهد کرد.',
+      clientId: 'شناسه مشتری OAuth',
+      username: 'نام کاربری',
+      password: 'رمز عبور',
+      experimentId: 'شناسه آزمایش',
+      personalAccessToken: 'نشانه دسترسی شخصی (قدیمی)',
+      databricksHost: 'نشانی اینترنتی محیط کاری دیتابریکس',
+      trackingUri: 'آدرس URI ردیابی',
+      clientSecret: 'رمز مخفی مشتری OAuth',
     },
     view: 'مشاهده',
     opik: {
@@ -334,6 +342,8 @@ const translation = {
     pressEscToClose: 'برای بستن ESC را فشار دهید',
     tips: 'برای حرکت به بالا و پایین کلیدهای ↑ و ↓ را فشار دهید',
   },
+  noUserInputNode: 'ورودی کاربر پیدا نشد',
+  notPublishedYet: 'اپ هنوز منتشر نشده است',
 }
 
 export default translation

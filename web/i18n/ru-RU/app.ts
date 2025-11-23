@@ -158,6 +158,14 @@ const translation = {
       viewDocsLink: 'Посмотреть документацию {{key}}',
       removeConfirmTitle: 'Удалить конфигурацию {{key}}?',
       removeConfirmContent: 'Текущая конфигурация используется, ее удаление отключит функцию трассировки.',
+      username: 'Имя пользователя',
+      password: 'Пароль',
+      experimentId: 'ID эксперимента',
+      trackingUri: 'URI отслеживания',
+      clientSecret: 'Секрет клиента OAuth',
+      databricksHost: 'URL рабочего пространства Databricks',
+      clientId: 'Идентификатор клиента OAuth',
+      personalAccessToken: 'Личный токен доступа (устаревший)',
     },
     opik: {
       title: 'Опик',
@@ -334,6 +342,8 @@ const translation = {
     selectToNavigate: 'Выберите для навигации',
     pressEscToClose: 'Нажмите ESC для закрытия',
   },
+  notPublishedYet: 'Приложение ещё не опубликовано',
+  noUserInputNode: 'Отсутствует узел ввода пользователя',
 }
 
 export default translation

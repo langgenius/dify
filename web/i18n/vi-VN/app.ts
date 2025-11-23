@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: 'Xem tài liệu {{key}}',
       removeConfirmTitle: 'Xóa cấu hình {{key}}?',
       removeConfirmContent: 'Cấu hình hiện tại đang được sử dụng, việc xóa nó sẽ tắt tính năng Theo dõi.',
+      username: 'Tên người dùng',
+      password: 'Mật khẩu',
+      clientId: 'ID Khách Hàng OAuth',
+      databricksHost: 'URL Workspace của Databricks',
+      trackingUri: 'URI theo dõi',
+      clientSecret: 'Bí mật Khách hàng OAuth',
+      personalAccessToken: 'Mã truy cập cá nhân (cũ)',
+      experimentId: 'Mã thí nghiệm',
     },
     view: 'Cảnh',
     opik: {
@@ -334,6 +342,8 @@ const translation = {
     pressEscToClose: 'Nhấn ESC để đóng',
     tips: 'Nhấn ↑↓ để duyệt',
   },
+  noUserInputNode: 'Thiếu nút nhập liệu của người dùng',
+  notPublishedYet: 'Ứng dụng chưa được phát hành',
 }
 
 export default translation

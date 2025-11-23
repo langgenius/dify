@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: 'Ver documentação de {{key}}',
       removeConfirmTitle: 'Remover configuração de {{key}}?',
       removeConfirmContent: 'A configuração atual está em uso, removê-la desligará o recurso de Rastreamento.',
+      password: 'Senha',
+      clientId: 'ID do Cliente OAuth',
+      clientSecret: 'Segredo do Cliente OAuth',
+      username: 'Nome de usuário',
+      personalAccessToken: 'Token de Acesso Pessoal (legado)',
+      experimentId: 'ID do Experimento',
+      trackingUri: 'URI de rastreamento',
+      databricksHost: 'URL do Workspace do Databricks',
     },
     view: 'Vista',
     opik: {
@@ -334,6 +342,8 @@ const translation = {
     pressEscToClose: 'Pressione ESC para fechar',
     startTyping: 'Comece a digitar para pesquisar',
   },
+  notPublishedYet: 'O aplicativo ainda não foi publicado',
+  noUserInputNode: 'Nodo de entrada do usuário ausente',
 }
 
 export default translation
