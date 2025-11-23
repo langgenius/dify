@@ -206,7 +206,7 @@ const translation = {
   triggerLimitModal: {
     dismiss: 'Dispensar',
     usageTitle: 'EVENTOS DE GATILHO',
-    title: 'Atualize para desbloquear mais Eventos de Gatilho',
+    title: 'Atualize para desbloquear mais eventos de gatilho',
     upgrade: 'Atualizar',
     description: 'Você atingiu o limite de eventos de gatilho de fluxo de trabalho para este plano.',
   },
