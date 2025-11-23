@@ -273,7 +273,7 @@ class OceanBaseVector(BaseVector):
         try:
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
         except (ValueError, TypeError) as e:
-            raise ValueError(f"Invalid score_threshold parameter: {e}")
+            raise ValueError(f"Invalid score_threshold parameter: {e}") from e
         try:
             cur = self._client.ann_search(
                 table_name=self._collection_name,
