@@ -672,7 +672,7 @@ class TestDocumentServiceDeleteDocuments:
         mock_select = Mock()
         mock_select.where.return_value = mock_select
         # Set up scalars mock chain - ensure scalars exists as a Mock
-        if not isinstance(getattr(mock_db_session, 'scalars', None), Mock):
+        if not isinstance(getattr(mock_db_session, "scalars", None), Mock):
             mock_db_session.scalars = Mock()
         mock_db_session.scalars.return_value.all.return_value = documents
 
@@ -726,7 +726,7 @@ class TestDocumentServiceDeleteDocuments:
         mock_select = Mock()
         mock_select.where.return_value = mock_select
         # Set up scalars mock chain - ensure scalars exists as a Mock
-        if not isinstance(getattr(mock_db_session, 'scalars', None), Mock):
+        if not isinstance(getattr(mock_db_session, "scalars", None), Mock):
             mock_db_session.scalars = Mock()
         mock_db_session.scalars.return_value.all.return_value = documents
 
@@ -897,7 +897,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         mock_select = Mock()
         mock_select.where.return_value = mock_select
         # Set up scalars mock chain - ensure scalars exists as a Mock
-        if not isinstance(getattr(mock_db_session, 'scalars', None), Mock):
+        if not isinstance(getattr(mock_db_session, "scalars", None), Mock):
             mock_db_session.scalars = Mock()
         mock_db_session.scalars.return_value.all.return_value = []
 
