@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: 'Voir la documentation de {{key}}',
       removeConfirmTitle: 'Supprimer la configuration de {{key}} ?',
       removeConfirmContent: 'La configuration actuelle est en cours d\'utilisation, sa suppression désactivera la fonction de Traçage.',
+      password: 'Mot de passe',
+      trackingUri: 'URI de suivi',
+      clientId: 'ID client OAuth',
+      clientSecret: 'Secret client OAuth',
+      username: 'Nom d\'utilisateur',
+      experimentId: 'ID de l\'expérience',
+      personalAccessToken: 'Jeton d\'accès personnel (ancien)',
+      databricksHost: 'URL de l\'espace de travail Databricks',
     },
     view: 'Vue',
     opik: {
@@ -334,6 +342,8 @@ const translation = {
     startTyping: 'Commencez à taper pour rechercher',
     selectToNavigate: 'Sélectionnez pour naviguer',
   },
+  noUserInputNode: 'Nœud d\'entrée utilisateur manquant',
+  notPublishedYet: 'L\'application n\'est pas encore publiée',
 }
 
 export default translation

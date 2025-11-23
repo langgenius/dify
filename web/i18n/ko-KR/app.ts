@@ -162,6 +162,14 @@ const translation = {
       removeConfirmTitle: '{{key}} 구성을 제거하시겠습니까?',
       removeConfirmContent:
         '현재 구성이 사용 중입니다. 제거하면 추적 기능이 꺼집니다.',
+      username: '사용자 이름',
+      trackingUri: '추적 URI',
+      password: '비밀번호',
+      experimentId: '실험 ID',
+      clientId: 'OAuth 클라이언트 ID',
+      clientSecret: 'OAuth 클라이언트 비밀',
+      databricksHost: 'Databricks 작업 영역 URL',
+      personalAccessToken: '개인 액세스 토큰(레거시)',
     },
     view: '보기',
     opik: {
@@ -354,6 +362,8 @@ const translation = {
     selectToNavigate: '선택하여 탐색하기',
     startTyping: '검색하려면 타이핑을 시작하세요',
   },
+  noUserInputNode: '사용자 입력 노드가 없습니다',
+  notPublishedYet: '앱이 아직 출시되지 않았습니다',
 }
 
 export default translation
