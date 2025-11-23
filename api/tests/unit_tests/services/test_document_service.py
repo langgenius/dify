@@ -670,7 +670,7 @@ class TestDocumentServiceDeleteDocuments:
             doc.data_source_info_dict = {"upload_file_id": "file-123"}
 
         mock_scalars_result = Mock()
-        mock_scalars_result.all.return_value = documents
+        mock_scalars_result.all = Mock(return_value=documents)
         mock_select = Mock()
         mock_select.where.return_value = mock_select
         # Mock scalars to return the mock_scalars_result
@@ -724,7 +724,7 @@ class TestDocumentServiceDeleteDocuments:
         ]
 
         mock_scalars_result = Mock()
-        mock_scalars_result.all.return_value = documents
+        mock_scalars_result.all = Mock(return_value=documents)
         mock_select = Mock()
         mock_select.where.return_value = mock_select
         # Mock scalars to return the mock_scalars_result
@@ -1014,6 +1014,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             patch("services.dataset_service.DatasetProcessRule") as mock_process_rule,
             patch("services.dataset_service.time.strftime") as mock_strftime,
             patch("services.dataset_service.secrets.randbelow") as mock_randbelow,
+            patch("services.dataset_service.naive_utc_now") as mock_naive_utc_now,
         ):
             mock_features.return_value.billing.enabled = False
             mock_position.return_value = 1
@@ -1022,6 +1023,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             mock_select_func.return_value = Mock()
             mock_strftime.return_value = "20240101120000"
             mock_randbelow.return_value = 123456
+            mock_naive_utc_now.return_value = "2024-01-01T00:00:00"
 
             process_rule = Mock()
             process_rule.id = "process-rule-123"
