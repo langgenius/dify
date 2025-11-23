@@ -669,12 +669,11 @@ class TestDocumentServiceDeleteDocuments:
         for doc in documents:
             doc.data_source_info_dict = {"upload_file_id": "file-123"}
 
+        mock_scalars = Mock()
+        mock_scalars.all.return_value = documents
         mock_select = Mock()
         mock_select.where.return_value = mock_select
-        # Set up scalars mock chain - ensure scalars exists as a Mock
-        if not isinstance(getattr(mock_db_session, "scalars", None), Mock):
-            mock_db_session.scalars = Mock()
-        mock_db_session.scalars.return_value.all.return_value = documents
+        mock_db_session.scalars.return_value = mock_scalars
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
@@ -723,12 +722,11 @@ class TestDocumentServiceDeleteDocuments:
             for doc_id in document_ids
         ]
 
+        mock_scalars = Mock()
+        mock_scalars.all.return_value = documents
         mock_select = Mock()
         mock_select.where.return_value = mock_select
-        # Set up scalars mock chain - ensure scalars exists as a Mock
-        if not isinstance(getattr(mock_db_session, "scalars", None), Mock):
-            mock_db_session.scalars = Mock()
-        mock_db_session.scalars.return_value.all.return_value = documents
+        mock_db_session.scalars.return_value = mock_scalars
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
@@ -894,12 +892,11 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         mock_query.first.return_value = upload_file
         mock_db_session.query.return_value = mock_query
 
+        mock_scalars = Mock()
+        mock_scalars.all.return_value = []
         mock_select = Mock()
         mock_select.where.return_value = mock_select
-        # Set up scalars mock chain - ensure scalars exists as a Mock
-        if not isinstance(getattr(mock_db_session, "scalars", None), Mock):
-            mock_db_session.scalars = Mock()
-        mock_db_session.scalars.return_value.all.return_value = []
+        mock_db_session.scalars.return_value = mock_scalars
 
         with (
             patch("services.dataset_service.DatasetService.check_doc_form") as mock_check_doc_form,
