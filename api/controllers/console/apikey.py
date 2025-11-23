@@ -1,14 +1,15 @@
 import flask_restx
-from extensions.ext_database import db
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
+
+from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
 from . import api, console_ns
 from .wraps import account_initialization_required, setup_required
@@ -67,7 +68,8 @@ class BaseApiKeyListResource(Resource):
         resource_id = str(resource_id)
         current_user, current_tenant_id = current_account_with_tenant()
 
-        if not self._has_permission(current_user):
+        # Keep non-dataset flows unchanged; enforce dataset permission explicitly.
+        if self.resource_type == "dataset" and not _has_dataset_permission(current_user):
             raise Forbidden()
 
         _get_resource(resource_id, current_tenant_id, self.resource_model)
