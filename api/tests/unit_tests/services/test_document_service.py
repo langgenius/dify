@@ -674,7 +674,7 @@ class TestDocumentServiceDeleteDocuments:
         mock_select = Mock()
         mock_select.where.return_value = mock_select
         # Mock scalars as a method that returns the mock_scalars object
-        mock_db_session.scalars = Mock(return_value=mock_scalars)
+        mock_db_session.scalars.return_value = mock_scalars
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
@@ -728,7 +728,7 @@ class TestDocumentServiceDeleteDocuments:
         mock_select = Mock()
         mock_select.where.return_value = mock_select
         # Mock scalars as a method that returns the mock_scalars object
-        mock_db_session.scalars = Mock(return_value=mock_scalars)
+        mock_db_session.scalars.return_value = mock_scalars
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
@@ -936,9 +936,11 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
 
             # Mock DocumentIndexingTaskProxy
             mock_task_instance = Mock()
+            mock_task_instance.delay = Mock()
             mock_indexing_proxy.return_value = mock_task_instance
 
             document = DocumentTestDataFactory.create_document_mock()
+            document.id = "doc-123"
             mock_build.return_value = document
 
             process_rule = Mock()
@@ -954,7 +956,9 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             mock_check_doc_form.assert_called_once()
             mock_build.assert_called_once()
             mock_db_session.add.assert_called()
+            mock_db_session.flush.assert_called()
             mock_db_session.commit.assert_called()
+            mock_task_instance.delay.assert_called_once()
 
     def test_save_document_with_dataset_id_missing_data_source(
         self, mock_db_session, mock_current_user, mock_document_indexing_task
