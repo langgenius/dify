@@ -671,6 +671,9 @@ class TestDocumentServiceDeleteDocuments:
 
         mock_select = Mock()
         mock_select.where.return_value = mock_select
+        # Set up scalars mock chain - ensure scalars exists as a Mock
+        if not isinstance(getattr(mock_db_session, 'scalars', None), Mock):
+            mock_db_session.scalars = Mock()
         mock_db_session.scalars.return_value.all.return_value = documents
 
         with patch("services.dataset_service.select") as mock_select_func:
@@ -722,6 +725,9 @@ class TestDocumentServiceDeleteDocuments:
 
         mock_select = Mock()
         mock_select.where.return_value = mock_select
+        # Set up scalars mock chain - ensure scalars exists as a Mock
+        if not isinstance(getattr(mock_db_session, 'scalars', None), Mock):
+            mock_db_session.scalars = Mock()
         mock_db_session.scalars.return_value.all.return_value = documents
 
         with patch("services.dataset_service.select") as mock_select_func:
@@ -888,12 +894,12 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         mock_query.first.return_value = upload_file
         mock_db_session.query.return_value = mock_query
 
-        mock_scalars_result = Mock()
-        mock_scalars_result.all.return_value = []
         mock_select = Mock()
         mock_select.where.return_value = mock_select
-        # Mock scalars for any queries that might use it
-        mock_db_session.scalars.return_value = mock_scalars_result
+        # Set up scalars mock chain - ensure scalars exists as a Mock
+        if not isinstance(getattr(mock_db_session, 'scalars', None), Mock):
+            mock_db_session.scalars = Mock()
+        mock_db_session.scalars.return_value.all.return_value = []
 
         with (
             patch("services.dataset_service.DatasetService.check_doc_form") as mock_check_doc_form,
@@ -906,6 +912,7 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
             patch("services.dataset_service.ModelManager") as mock_model_manager,
             patch("services.dataset_service.DatasetCollectionBindingService") as mock_binding_service,
             patch("services.dataset_service.DocumentIndexingTaskProxy") as mock_indexing_proxy,
+            patch("services.dataset_service.duplicate_document_indexing_task") as mock_duplicate_task,
             patch("services.dataset_service.time.strftime") as mock_strftime,
             patch("services.dataset_service.secrets.randbelow") as mock_randbelow,
         ):
