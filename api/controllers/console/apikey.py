@@ -1,15 +1,14 @@
 import flask_restx
+from extensions.ext_database import db
 from flask_restx import Resource, fields, marshal_with
 from flask_restx._http import HTTPStatus
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
-
-from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+from werkzeug.exceptions import Forbidden
 
 from . import api, console_ns
 from .wraps import account_initialization_required, setup_required
@@ -43,6 +42,11 @@ def _get_resource(resource_id, tenant_id, resource_model):
     return resource
 
 
+def _has_dataset_permission(user) -> bool:
+    """Centralized dataset permission check shared across API key handlers."""
+    return user.is_dataset_editor
+
+
 class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
@@ -54,7 +58,7 @@ class BaseApiKeyListResource(Resource):
 
     def _has_permission(self, user):
         if self.resource_type == "dataset":
-            return user.is_dataset_editor
+            return _has_dataset_permission(user)
         return user.has_edit_permission
 
     @marshal_with(api_key_list)
@@ -116,7 +120,7 @@ class BaseApiKeyResource(Resource):
 
     def _has_permission(self, user):
         if self.resource_type == "dataset":
-            return user.is_dataset_editor
+            return _has_dataset_permission(user)
         return user.is_admin_or_owner
 
     def delete(self, resource_id: str, api_key_id: str):
