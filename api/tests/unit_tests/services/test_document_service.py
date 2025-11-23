@@ -889,11 +889,11 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         mock_db_session.query.return_value = mock_query
 
         mock_scalars_result = Mock()
-        mock_scalars_result.all = Mock(return_value=[])
+        mock_scalars_result.all.return_value = []
         mock_select = Mock()
         mock_select.where.return_value = mock_select
         # Mock scalars for any queries that might use it
-        mock_db_session.scalars = Mock(return_value=mock_scalars_result)
+        mock_db_session.scalars.return_value = mock_scalars_result
 
         with (
             patch("services.dataset_service.DatasetService.check_doc_form") as mock_check_doc_form,
