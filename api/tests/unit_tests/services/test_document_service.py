@@ -224,7 +224,7 @@ class TestDocumentServiceGetDocumentByIds:
             # Assert
             assert isinstance(result, Sequence)
             assert len(result) == 3
-            assert all(doc in result for doc in documents)
+            assert set(result) == set(documents)
             mock_db_session.scalars.assert_called_once()
 
     def test_get_document_by_ids_empty_list(self, mock_db_session):
