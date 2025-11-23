@@ -163,7 +163,7 @@ const translation = {
       experimentId: 'شناسه آزمایش',
       personalAccessToken: 'نشانه دسترسی شخصی (قدیمی)',
       databricksHost: 'نشانی اینترنتی محیط کاری دیتابریکس',
-      trackingUri: 'ردیابی URI',
+      trackingUri: 'آدرس URI ردیابی',
       clientSecret: 'رمز مخفی مشتری OAuth',
     },
     view: 'مشاهده',
