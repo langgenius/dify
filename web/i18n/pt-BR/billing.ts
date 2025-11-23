@@ -107,7 +107,7 @@ const translation = {
       standard: 'Execução Padrão de Fluxo de Trabalho',
     },
     startNodes: {
-      unlimited: 'Gatilhos/fluxo de trabalho ilimitados',
+      unlimited: 'Eventos de Gatilho/fluxo de trabalho ilimitados',
     },
   },
   plans: {
