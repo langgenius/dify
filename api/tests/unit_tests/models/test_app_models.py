@@ -616,7 +616,7 @@ class TestMessageModel:
         app_id = str(uuid4())
         conversation_id = str(uuid4())
         now = datetime.now(UTC)
-        
+
         message = Message(
             app_id=app_id,
             conversation_id=conversation_id,
