@@ -20,6 +20,7 @@ export type AppContextValue = {
   isCurrentWorkspaceOwner: boolean
   isCurrentWorkspaceEditor: boolean
   isCurrentWorkspaceDatasetOperator: boolean
+  isCurrentWorkspaceDatasetEditor: boolean
   mutateCurrentWorkspace: VoidFunction
   langGeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
@@ -62,6 +63,7 @@ const AppContext = createContext<AppContextValue>({
   isCurrentWorkspaceOwner: false,
   isCurrentWorkspaceEditor: false,
   isCurrentWorkspaceDatasetOperator: false,
+  isCurrentWorkspaceDatasetEditor: false,
   mutateUserProfile: noop,
   mutateCurrentWorkspace: noop,
   langGeniusVersionInfo: initialLangGeniusVersionInfo,
@@ -89,6 +91,10 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
   const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
+  const isCurrentWorkspaceDatasetEditor = useMemo(
+    () => ['owner', 'admin', 'editor', 'dataset_operator'].includes(currentWorkspace.role),
+    [currentWorkspace.role],
+  )
   const updateUserProfileAndVersion = useCallback(async () => {
     if (userProfileResponse && !userProfileResponse.bodyUsed) {
       try {
@@ -170,6 +176,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceOwner,
       isCurrentWorkspaceEditor,
       isCurrentWorkspaceDatasetOperator,
+      isCurrentWorkspaceDatasetEditor,
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
     }}>

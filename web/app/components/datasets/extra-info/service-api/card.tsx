@@ -31,7 +31,7 @@ const Card = ({
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
 
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
-  const isDatasetApiKeyVisible = useAppContextSelector(state => state.isCurrentWorkspaceEditor || state.isCurrentWorkspaceDatasetOperator)
+  const canManageDatasetApiKeys = useAppContextSelector(state => state.isCurrentWorkspaceDatasetEditor)
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
@@ -105,7 +105,7 @@ const Card = ({
       </div>
       {/* Actions */}
       <div className='flex gap-x-1 border-t-[0.5px] border-divider-subtle p-4'>
-        {isDatasetApiKeyVisible && (
+        {canManageDatasetApiKeys && (
           <Button
             variant='ghost'
             size='small'
@@ -135,7 +135,7 @@ const Card = ({
           </Button>
         </Link>
       </div>
-      {isDatasetApiKeyVisible && (
+      {canManageDatasetApiKeys && (
         <SecretKeyModal
           isShow={isSecretKeyModalVisible}
           onClose={handleCloseSecretKeyModal}
