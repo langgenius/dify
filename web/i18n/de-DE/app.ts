@@ -146,6 +146,14 @@ const translation = {
       viewDocsLink: '{{key}}-Dokumentation ansehen',
       removeConfirmTitle: '{{key}}-Konfiguration entfernen?',
       removeConfirmContent: 'Die aktuelle Konfiguration wird verwendet. Das Entfernen wird die Nachverfolgungsfunktion ausschalten.',
+      password: 'Passwort',
+      databricksHost: 'Databricks-Workspace-URL',
+      clientSecret: 'OAuth-Client-Geheimnis',
+      personalAccessToken: 'Persönlicher Zugriffsschlüssel (Legacy)',
+      experimentId: 'Experiment-ID',
+      username: 'Benutzername',
+      trackingUri: 'Tracking-URI',
+      clientId: 'OAuth-Client-ID',
     },
     view: 'Ansehen',
     opik: {
@@ -336,6 +344,8 @@ const translation = {
     startTyping: 'Beginnen Sie mit der Eingabe, um zu suchen',
     selectToNavigate: 'Auswählen, um zu navigieren',
   },
+  notPublishedYet: 'App ist noch nicht veröffentlicht',
+  noUserInputNode: 'Fehlender Benutzereingabeknoten',
 }
 
 export default translation

@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: '{{key}} दस्तावेज़ देखें',
       removeConfirmTitle: '{{key}} कॉन्फ़िगरेशन हटाएं?',
       removeConfirmContent: 'वर्तमान कॉन्फ़िगरेशन उपयोग में है, इसे हटाने से ट्रेसिंग सुविधा बंद हो जाएगी।',
+      password: 'पासवर्ड',
+      clientId: 'OAuth क्लाइंट आईडी',
+      clientSecret: 'OAuth क्लाइंट सीक्रेट',
+      trackingUri: 'ट्रैकिंग यूआरआई',
+      username: 'उपयोगकर्ता नाम',
+      experimentId: 'प्रयोग आईडी',
+      databricksHost: 'डेटाब्रिक्स वर्कस्पेस यूआरएल',
+      personalAccessToken: 'व्यक्तिगत एक्सेस टोकन (पुराना)',
     },
     view: 'देखना',
     opik: {
@@ -334,6 +342,8 @@ const translation = {
     selectToNavigate: 'नेविगेट करने के लिए चुनें',
     tips: 'नेविगेट करने के लिए ↑↓ दबाएँ',
   },
+  noUserInputNode: 'उपयोगकर्ता इनपुट नोड गायब है',
+  notPublishedYet: 'ऐप अभी प्रकाशित नहीं हुआ है',
 }
 
 export default translation

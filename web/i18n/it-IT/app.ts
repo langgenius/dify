@@ -155,6 +155,14 @@ const translation = {
       removeConfirmTitle: 'Rimuovere la configurazione di {{key}}?',
       removeConfirmContent:
         'La configurazione attuale è in uso, rimuovendola disattiverà la funzione di Tracciamento.',
+      password: 'Password',
+      clientId: 'ID client OAuth',
+      username: 'Nome utente',
+      trackingUri: 'URI di tracciamento',
+      personalAccessToken: 'Token di accesso personale (legacy)',
+      clientSecret: 'Segreto del client OAuth',
+      experimentId: 'ID Esperimento',
+      databricksHost: 'URL dell\'area di lavoro Databricks',
     },
     view: 'Vista',
     opik: {
@@ -340,6 +348,8 @@ const translation = {
     tips: 'Premi ↑↓ per navigare',
     pressEscToClose: 'Premi ESC per chiudere',
   },
+  noUserInputNode: 'Nodo di input utente mancante',
+  notPublishedYet: 'L\'app non è ancora pubblicata',
 }
 
 export default translation

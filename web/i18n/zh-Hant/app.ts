@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: '查看{{key}}文件',
       removeConfirmTitle: '移除{{key}}配置？',
       removeConfirmContent: '當前配置正在使用中，移除它將關閉追蹤功能。',
+      experimentId: '實驗編號',
+      databricksHost: 'Databricks 工作區網址',
+      password: '密碼',
+      trackingUri: '追蹤 URI',
+      personalAccessToken: '個人存取權杖（舊版）',
+      clientSecret: 'OAuth 用戶端密鑰',
+      username: '使用者名稱',
+      clientId: 'OAuth 用戶端 ID',
     },
     opik: {
       title: '奧皮克',
@@ -333,6 +341,8 @@ const translation = {
     pressEscToClose: '按 ESC 鍵關閉',
     selectToNavigate: '選擇以進行導航',
   },
+  notPublishedYet: '應用程式尚未發布',
+  noUserInputNode: '缺少使用者輸入節點',
 }
 
 export default translation
