@@ -172,7 +172,7 @@ const translation = {
       removeConfirmContent: '現在の設定は使用中です。これを削除すると、トレース機能が無効になります。',
       clientId: 'OAuthクライアントID',
       clientSecret: 'OAuthクライアントシークレット',
-      personalAccessToken: '（非推奨）アクセストークン',
+      personalAccessToken: 'パーソナルアクセストークン（レガシー）',
       databricksHost: 'DatabricksワークスペースのURL',
     },
     weave: {
