@@ -669,12 +669,12 @@ class TestDocumentServiceDeleteDocuments:
         for doc in documents:
             doc.data_source_info_dict = {"upload_file_id": "file-123"}
 
-        mock_scalars = Mock()
-        mock_scalars.all.return_value = documents
+        mock_scalars_result = Mock()
+        mock_scalars_result.all.return_value = documents
         mock_select = Mock()
         mock_select.where.return_value = mock_select
-        # Mock scalars as a method that returns the mock_scalars object
-        mock_db_session.scalars.return_value = mock_scalars
+        # Mock scalars to return the mock_scalars_result
+        mock_db_session.scalars = Mock(return_value=mock_scalars_result)
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
@@ -723,12 +723,12 @@ class TestDocumentServiceDeleteDocuments:
             for doc_id in document_ids
         ]
 
-        mock_scalars = Mock()
-        mock_scalars.all.return_value = documents
+        mock_scalars_result = Mock()
+        mock_scalars_result.all.return_value = documents
         mock_select = Mock()
         mock_select.where.return_value = mock_select
-        # Mock scalars as a method that returns the mock_scalars object
-        mock_db_session.scalars.return_value = mock_scalars
+        # Mock scalars to return the mock_scalars_result
+        mock_db_session.scalars = Mock(return_value=mock_scalars_result)
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
