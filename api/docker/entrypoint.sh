@@ -68,7 +68,15 @@ if [[ "${MODE}" == "worker" ]]; then
     --prefetch-multiplier=${CELERY_PREFETCH_MULTIPLIER:-1}
 
 elif [[ "${MODE}" == "beat" ]]; then
-  exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
+  # In Kubernetes with a read-only filesystem, Celery beat cannot create its schedule file.
+  # Use a writable path such as /tmp/celerybeat-schedule.db.
+  if [[ -n "${CELERY_BEAT_SCHEDULE_FILENAME}" ]]; then
+    echo "Using schedule file: ${CELERY_BEAT_SCHEDULE_FILENAME}"
+    BEAT_OPTIONS="--schedule=${CELERY_BEAT_SCHEDULE_FILENAME}"
+  fi
+
+  exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO} "${BEAT_OPTIONS}"
+
 else
   if [[ "${DEBUG}" == "true" ]]; then
     exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
