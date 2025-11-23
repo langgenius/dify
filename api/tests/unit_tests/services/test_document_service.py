@@ -892,9 +892,9 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         mock_query.first.return_value = upload_file
         mock_db_session.query.return_value = mock_query
 
-        mock_scalars = Mock()
+        mock_scalars = MagicMock()
         mock_scalars.all.return_value = []
-        mock_select = Mock()
+        mock_select = MagicMock()
         mock_select.where.return_value = mock_select
         mock_db_session.scalars.return_value = mock_scalars
 
