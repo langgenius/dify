@@ -163,6 +163,14 @@ const translation = {
       viewDocsLink: 'Ogled dokumentov {{key}}',
       removeConfirmTitle: 'Odstraniti konfiguracijo {{key}}?',
       removeConfirmContent: 'Trenutna konfiguracija je v uporabi, odstranitev bo onemogočila funkcijo sledenja.',
+      password: 'Geslo',
+      personalAccessToken: 'Osebni dostopni žeton (stari)',
+      experimentId: 'ID eksperimenta',
+      clientSecret: 'OAuth skrivnost odjemalca',
+      trackingUri: 'Sledenje URI',
+      clientId: 'ID odjemalca OAuth',
+      databricksHost: 'URL delovnega prostora Databricks',
+      username: 'Uporabniško ime',
     },
     opik: {
       description: 'Opik je odprtokodna platforma za ocenjevanje, testiranje in spremljanje aplikacij LLM.',
@@ -334,6 +342,8 @@ const translation = {
     selectToNavigate: 'Izberite za navigacijo',
     tips: 'Pritisnite ↑↓ za navigacijo',
   },
+  notPublishedYet: 'Aplikacija še ni objavljena',
+  noUserInputNode: 'Manjka vozel uporabniškega vnosa',
 }
 
 export default translation
