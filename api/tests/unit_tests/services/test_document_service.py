@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 from werkzeug.exceptions import NotFound
@@ -209,9 +209,9 @@ class TestDocumentServiceGetDocumentByIds:
         document_ids = ["doc-123", "doc-456", "doc-789"]
         documents = [DocumentTestDataFactory.create_document_mock(document_id=doc_id) for doc_id in document_ids]
 
-        mock_scalars = Mock()
+        mock_scalars = MagicMock()
         mock_scalars.all.return_value = documents
-        mock_select = Mock()
+        mock_select = MagicMock()
         mock_select.where.return_value = mock_select
         mock_db_session.scalars.return_value = mock_scalars
 
@@ -267,9 +267,9 @@ class TestDocumentServiceGetDocumentByDatasetId:
             for i in range(3)
         ]
 
-        mock_scalars = Mock()
+        mock_scalars = MagicMock()
         mock_scalars.all.return_value = documents
-        mock_select = Mock()
+        mock_select = MagicMock()
         mock_select.where.return_value = mock_select
         mock_db_session.scalars.return_value = mock_scalars
 
@@ -330,9 +330,9 @@ class TestDocumentServiceGetWorkingDocumentsByDatasetId:
             for i in range(2)
         ]
 
-        mock_scalars = Mock()
+        mock_scalars = MagicMock()
         mock_scalars.all.return_value = documents
-        mock_select = Mock()
+        mock_select = MagicMock()
         mock_select.where.return_value = mock_select
         mock_db_session.scalars.return_value = mock_scalars
 
@@ -396,9 +396,9 @@ class TestDocumentServiceGetErrorDocumentsByDatasetId:
         )
         documents = [error_doc, paused_doc]
 
-        mock_scalars = Mock()
+        mock_scalars = MagicMock()
         mock_scalars.all.return_value = documents
-        mock_select = Mock()
+        mock_select = MagicMock()
         mock_select.where.return_value = mock_select
         mock_db_session.scalars.return_value = mock_scalars
 
@@ -465,9 +465,9 @@ class TestDocumentServiceGetBatchDocuments:
             for i in range(2)
         ]
 
-        mock_scalars = Mock()
+        mock_scalars = MagicMock()
         mock_scalars.all.return_value = documents
-        mock_select = Mock()
+        mock_select = MagicMock()
         mock_select.where.return_value = mock_select
         mock_db_session.scalars.return_value = mock_scalars
 
@@ -669,9 +669,9 @@ class TestDocumentServiceDeleteDocuments:
         for doc in documents:
             doc.data_source_info_dict = {"upload_file_id": "file-123"}
 
-        mock_scalars = Mock()
+        mock_scalars = MagicMock()
         mock_scalars.all.return_value = documents
-        mock_select = Mock()
+        mock_select = MagicMock()
         mock_select.where.return_value = mock_select
         mock_db_session.scalars.return_value = mock_scalars
 
@@ -722,9 +722,9 @@ class TestDocumentServiceDeleteDocuments:
             for doc_id in document_ids
         ]
 
-        mock_scalars = Mock()
+        mock_scalars = MagicMock()
         mock_scalars.all.return_value = documents
-        mock_select = Mock()
+        mock_select = MagicMock()
         mock_select.where.return_value = mock_select
         mock_db_session.scalars.return_value = mock_scalars
 
