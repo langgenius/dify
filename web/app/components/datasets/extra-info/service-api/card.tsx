@@ -31,6 +31,7 @@ const Card = ({
   const [isSecretKeyModalVisible, setIsSecretKeyModalVisible] = useState(false)
 
   const isCurrentWorkspaceManager = useAppContextSelector(state => state.isCurrentWorkspaceManager)
+  const canManageDatasetApiKeys = useAppContextSelector(state => state.isCurrentWorkspaceDatasetEditor)
 
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
@@ -104,17 +105,19 @@ const Card = ({
       </div>
       {/* Actions */}
       <div className='flex gap-x-1 border-t-[0.5px] border-divider-subtle p-4'>
-        <Button
-          variant='ghost'
-          size='small'
-          className='gap-x-px text-text-tertiary'
-          onClick={handleOpenSecretKeyModal}
-        >
-          <RiKey2Line className='size-3.5 shrink-0' />
-          <span className='system-xs-medium px-[3px]'>
-            {t('dataset.serviceApi.card.apiKey')}
-          </span>
-        </Button>
+        {canManageDatasetApiKeys && (
+          <Button
+            variant='ghost'
+            size='small'
+            className='gap-x-px text-text-tertiary'
+            onClick={handleOpenSecretKeyModal}
+          >
+            <RiKey2Line className='size-3.5 shrink-0' />
+            <span className='system-xs-medium px-[3px]'>
+              {t('dataset.serviceApi.card.apiKey')}
+            </span>
+          </Button>
+        )}
         <Link
           href={apiReferenceUrl}
           target='_blank'
@@ -132,10 +135,12 @@ const Card = ({
           </Button>
         </Link>
       </div>
-      <SecretKeyModal
-        isShow={isSecretKeyModalVisible}
-        onClose={handleCloseSecretKeyModal}
-      />
+      {canManageDatasetApiKeys && (
+        <SecretKeyModal
+          isShow={isSecretKeyModalVisible}
+          onClose={handleCloseSecretKeyModal}
+        />
+      )}
     </div>
   )
 }
