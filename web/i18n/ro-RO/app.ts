@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: 'Vizualizați documentația {{key}}',
       removeConfirmTitle: 'Eliminați configurația {{key}}?',
       removeConfirmContent: 'Configurația curentă este în uz, eliminarea acesteia va dezactiva funcția de Urmărire.',
+      clientSecret: 'Secret client OAuth',
+      password: 'Parolă',
+      experimentId: 'ID-ul experimentului',
+      databricksHost: 'URL-ul spațiului de lucru Databricks',
+      trackingUri: 'URI de urmărire',
+      personalAccessToken: 'Token de acces personal (vechi)',
+      clientId: 'ID client OAuth',
+      username: 'Nume de utilizator',
     },
     view: 'Vedere',
     opik: {
@@ -334,6 +342,8 @@ const translation = {
     tips: 'Apăsați ↑↓ pentru a naviga',
     pressEscToClose: 'Apăsați ESC pentru a închide',
   },
+  notPublishedYet: 'Aplicația nu este încă publicată',
+  noUserInputNode: 'Lipsă nod de intrare pentru utilizator',
 }
 
 export default translation
