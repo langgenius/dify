@@ -669,11 +669,11 @@ class TestDocumentServiceDeleteDocuments:
         for doc in documents:
             doc.data_source_info_dict = {"upload_file_id": "file-123"}
 
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = documents
+        mock_scalars_result = MagicMock()
+        mock_scalars_result.all = MagicMock(return_value=documents)
         mock_select = MagicMock()
         mock_select.where.return_value = mock_select
-        mock_db_session.scalars.return_value = mock_scalars
+        mock_db_session.scalars = MagicMock(return_value=mock_scalars_result)
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
@@ -722,11 +722,11 @@ class TestDocumentServiceDeleteDocuments:
             for doc_id in document_ids
         ]
 
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = documents
+        mock_scalars_result = MagicMock()
+        mock_scalars_result.all = MagicMock(return_value=documents)
         mock_select = MagicMock()
         mock_select.where.return_value = mock_select
-        mock_db_session.scalars.return_value = mock_scalars
+        mock_db_session.scalars = MagicMock(return_value=mock_scalars_result)
 
         with patch("services.dataset_service.select") as mock_select_func:
             mock_select_func.return_value = mock_select
@@ -892,11 +892,11 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         mock_query.first.return_value = upload_file
         mock_db_session.query.return_value = mock_query
 
-        mock_scalars = MagicMock()
-        mock_scalars.all.return_value = []
+        mock_scalars_result = MagicMock()
+        mock_scalars_result.all = MagicMock(return_value=[])
         mock_select = MagicMock()
         mock_select.where.return_value = mock_select
-        mock_db_session.scalars.return_value = mock_scalars
+        mock_db_session.scalars = MagicMock(return_value=mock_scalars_result)
 
         with (
             patch("services.dataset_service.DatasetService.check_doc_form") as mock_check_doc_form,
