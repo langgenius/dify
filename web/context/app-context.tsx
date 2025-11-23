@@ -92,8 +92,8 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
   const isCurrentWorkspaceDatasetEditor = useMemo(
-    () => ['owner', 'admin', 'editor', 'dataset_operator'].includes(currentWorkspace.role),
-    [currentWorkspace.role],
+    () => isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator,
+    [isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator],
   )
   const updateUserProfileAndVersion = useCallback(async () => {
     if (userProfileResponse && !userProfileResponse.bodyUsed) {
