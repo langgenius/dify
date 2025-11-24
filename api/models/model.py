@@ -16,7 +16,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
+from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.file import helpers as file_helpers
 from core.tools.signature import sign_tool_file
 from core.workflow.enums import WorkflowExecutionStatus
@@ -24,22 +24,24 @@ from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 
 from .account import Account, Tenant
-from .base import Base
+from .base import Base, TypeBase
 from .engine import db
 from .enums import CreatorUserRole
 from .provider_ids import GenericProviderID
 from .types import LongText, StringUUID
 
 if TYPE_CHECKING:
-    from models.workflow import Workflow
+    from .workflow import Workflow
 
 
-class DifySetup(Base):
+class DifySetup(TypeBase):
     __tablename__ = "dify_setups"
     __table_args__ = (sa.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
 
     version: Mapped[str] = mapped_column(String(255), nullable=False)
-    setup_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    setup_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class AppMode(StrEnum):
@@ -561,7 +563,7 @@ class RecommendedApp(Base):
         return app
 
 
-class InstalledApp(Base):
+class InstalledApp(TypeBase):
     __tablename__ = "installed_apps"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="installed_app_pkey"),
@@ -570,14 +572,16 @@ class InstalledApp(Base):
         sa.UniqueConstraint("tenant_id", "app_id", name="unique_tenant_app"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    app_id = mapped_column(StringUUID, nullable=False)
-    app_owner_tenant_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_owner_tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    last_used_at = mapped_column(sa.DateTime, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    is_pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @property
     def app(self) -> App | None:
@@ -590,7 +594,7 @@ class InstalledApp(Base):
         return tenant
 
 
-class OAuthProviderApp(Base):
+class OAuthProviderApp(TypeBase):
     """
     Globally shared OAuth provider app information.
     Only for Dify Cloud.
@@ -602,18 +606,21 @@ class OAuthProviderApp(Base):
         sa.Index("oauth_provider_app_client_id_idx", "client_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
-    app_icon = mapped_column(String(255), nullable=False)
-    app_label = mapped_column(sa.JSON, nullable=False, default="{}")
-    client_id = mapped_column(String(255), nullable=False)
-    client_secret = mapped_column(String(255), nullable=False)
-    redirect_uris = mapped_column(sa.JSON, nullable=False, default="[]")
-    scope = mapped_column(
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
+    app_icon: Mapped[str] = mapped_column(String(255), nullable=False)
+    client_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    client_secret: Mapped[str] = mapped_column(String(255), nullable=False)
+    app_label: Mapped[dict] = mapped_column(sa.JSON, nullable=False, default_factory=dict)
+    redirect_uris: Mapped[list] = mapped_column(sa.JSON, nullable=False, default_factory=list)
+    scope: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
         server_default=sa.text("'read:name read:email read:avatar read:interface_language read:timezone'"),
+        default="read:name read:email read:avatar read:interface_language read:timezone",
     )
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class Conversation(Base):
@@ -1331,7 +1338,7 @@ class MessageFeedback(Base):
         }
 
 
-class MessageFile(Base):
+class MessageFile(TypeBase):
     __tablename__ = "message_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_file_pkey"),
@@ -1339,37 +1346,18 @@ class MessageFile(Base):
         sa.Index("message_file_created_by_idx", "created_by"),
     )
 
-    def __init__(
-        self,
-        *,
-        message_id: str,
-        type: FileType,
-        transfer_method: FileTransferMethod,
-        url: str | None = None,
-        belongs_to: Literal["user", "assistant"] | None = None,
-        upload_file_id: str | None = None,
-        created_by_role: CreatorUserRole,
-        created_by: str,
-    ):
-        self.message_id = message_id
-        self.type = type
-        self.transfer_method = transfer_method
-        self.url = url
-        self.belongs_to = belongs_to
-        self.upload_file_id = upload_file_id
-        self.created_by_role = created_by_role.value
-        self.created_by = created_by
-
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
-    transfer_method: Mapped[str] = mapped_column(String(255), nullable=False)
-    url: Mapped[str | None] = mapped_column(LongText, nullable=True)
-    belongs_to: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
+    transfer_method: Mapped[FileTransferMethod] = mapped_column(String(255), nullable=False)
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    belongs_to: Mapped[Literal["user", "assistant"] | None] = mapped_column(String(255), nullable=True, default=None)
+    url: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    upload_file_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class MessageAnnotation(Base):
@@ -1443,22 +1431,28 @@ class AppAnnotationHitHistory(Base):
         return account
 
 
-class AppAnnotationSetting(Base):
+class AppAnnotationSetting(TypeBase):
     __tablename__ = "app_annotation_settings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="app_annotation_settings_pkey"),
         sa.Index("app_annotation_settings_app_idx", "app_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
-    score_threshold = mapped_column(Float, nullable=False, server_default=sa.text("0"))
-    collection_binding_id = mapped_column(StringUUID, nullable=False)
-    created_user_id = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_user_id = mapped_column(StringUUID, nullable=False)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    score_threshold: Mapped[float] = mapped_column(Float, nullable=False, server_default=sa.text("0"))
+    collection_binding_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
@@ -1533,25 +1527,31 @@ class EndUser(Base, UserMixin):
     )
 
 
-class AppMCPServer(Base):
+class AppMCPServer(TypeBase):
     __tablename__ = "app_mcp_servers"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="app_mcp_server_pkey"),
         sa.UniqueConstraint("tenant_id", "app_id", name="unique_app_mcp_server_tenant_app_id"),
         sa.UniqueConstraint("server_code", name="unique_app_mcp_server_server_code"),
     )
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    app_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(String(255), nullable=False)
     server_code: Mapped[str] = mapped_column(String(255), nullable=False)
-    status = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'"))
-    parameters = mapped_column(LongText, nullable=False)
+    status: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'normal'"))
+    parameters: Mapped[str] = mapped_column(LongText, nullable=False)
 
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @staticmethod
@@ -1737,36 +1737,40 @@ class UploadFile(Base):
         self.source_url = source_url
 
 
-class ApiRequest(Base):
+class ApiRequest(TypeBase):
     __tablename__ = "api_requests"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="api_request_pkey"),
         sa.Index("api_request_token_idx", "tenant_id", "api_token_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    api_token_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    api_token_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     path: Mapped[str] = mapped_column(String(255), nullable=False)
-    request = mapped_column(LongText, nullable=True)
-    response = mapped_column(LongText, nullable=True)
+    request: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    response: Mapped[str | None] = mapped_column(LongText, nullable=True)
     ip: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
-class MessageChain(Base):
+class MessageChain(TypeBase):
     __tablename__ = "message_chains"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_chain_pkey"),
         sa.Index("message_chain_message_id_idx", "message_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    message_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
-    input = mapped_column(LongText, nullable=True)
-    output = mapped_column(LongText, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    input: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    output: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
+    )
 
 
 class MessageAgentThought(Base):
@@ -1928,7 +1932,7 @@ class Tag(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
-class TagBinding(Base):
+class TagBinding(TypeBase):
     __tablename__ = "tag_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tag_binding_pkey"),
@@ -1936,30 +1940,38 @@ class TagBinding(Base):
         sa.Index("tag_bind_tag_id_idx", "tag_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=True)
-    tag_id = mapped_column(StringUUID, nullable=True)
-    target_id = mapped_column(StringUUID, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    tag_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    target_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
-class TraceAppConfig(Base):
+class TraceAppConfig(TypeBase):
     __tablename__ = "trace_app_config"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tracing_app_config_pkey"),
         sa.Index("trace_app_config_app_id_idx", "app_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    app_id = mapped_column(StringUUID, nullable=False)
-    tracing_provider = mapped_column(String(255), nullable=True)
-    tracing_config = mapped_column(sa.JSON, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    tracing_provider: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    tracing_config: Mapped[dict | None] = mapped_column(sa.JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
-    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+    is_active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"), default=True)
 
     @property
     def tracing_config_dict(self) -> dict[str, Any]:

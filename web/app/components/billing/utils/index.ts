@@ -9,6 +9,13 @@ const parseLimit = (limit: number) => {
   return limit
 }
 
+const parseRateLimit = (limit: number) => {
+  if (limit === 0 || limit === -1)
+    return NUM_INFINITE
+
+  return limit
+}
+
 const normalizeResetDate = (resetDate?: number | null) => {
   if (typeof resetDate !== 'number' || resetDate <= 0)
     return null
@@ -46,9 +53,9 @@ const getResetInDaysFromDate = (resetDate?: number | null) => {
 export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
   const planType = data.billing.subscription.plan
   const planPreset = ALL_PLANS[planType]
-  const resolveLimit = (limit?: number, fallback?: number) => {
+  const resolveRateLimit = (limit?: number, fallback?: number) => {
     const value = limit ?? fallback ?? 0
-    return parseLimit(value)
+    return parseRateLimit(value)
   }
   const getQuotaUsage = (quota?: BillingQuota) => quota?.usage ?? 0
   const getQuotaResetInDays = (quota?: BillingQuota) => {
@@ -74,8 +81,8 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
       teamMembers: parseLimit(data.members.limit),
       annotatedResponse: parseLimit(data.annotation_quota_limit.limit),
       documentsUploadQuota: parseLimit(data.documents_upload_quota.limit),
-      apiRateLimit: resolveLimit(data.api_rate_limit?.limit, planPreset?.apiRateLimit ?? NUM_INFINITE),
-      triggerEvents: resolveLimit(data.trigger_event?.limit, planPreset?.triggerEvents),
+      apiRateLimit: resolveRateLimit(data.api_rate_limit?.limit, planPreset?.apiRateLimit ?? NUM_INFINITE),
+      triggerEvents: resolveRateLimit(data.trigger_event?.limit, planPreset?.triggerEvents),
     },
     reset: {
       apiRateLimit: getQuotaResetInDays(data.api_rate_limit),

@@ -7,7 +7,19 @@ from typing import TYPE_CHECKING, Any, Optional, Union, cast
 from uuid import uuid4
 
 import sqlalchemy as sa
-from sqlalchemy import DateTime, Select, exists, orm, select
+from sqlalchemy import (
+    DateTime,
+    Index,
+    PrimaryKeyConstraint,
+    Select,
+    String,
+    UniqueConstraint,
+    exists,
+    func,
+    orm,
+    select,
+)
+from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from core.file.constants import maybe_file_object
 from core.file.models import File
@@ -26,10 +38,8 @@ from libs.uuid_utils import uuidv7
 from ._workflow_exc import NodeNotFoundError, WorkflowDataError
 
 if TYPE_CHECKING:
-    from models.model import AppMode, UploadFile
+    from .model import AppMode, UploadFile
 
-from sqlalchemy import Index, PrimaryKeyConstraint, String, UniqueConstraint, func
-from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from constants import DEFAULT_FILE_NUMBER_LIMITS, HIDDEN_VALUE
 from core.helper import encrypter
@@ -38,7 +48,7 @@ from factories import variable_factory
 from libs import helper
 
 from .account import Account
-from .base import Base, DefaultFieldsMixin
+from .base import Base, DefaultFieldsMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole, DraftVariableType, ExecutionOffLoadType
 from .types import EnumText, LongText, StringUUID
@@ -76,7 +86,7 @@ class WorkflowType(StrEnum):
         :param app_mode: app mode
         :return: workflow type
         """
-        from models.model import AppMode
+        from .model import AppMode
 
         app_mode = app_mode if isinstance(app_mode, AppMode) else AppMode.value_of(app_mode)
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
@@ -403,7 +413,7 @@ class Workflow(Base):
 
         For accurate checking, use a direct query with tenant_id, app_id, and version.
         """
-        from models.tools import WorkflowToolProvider
+        from .tools import WorkflowToolProvider
 
         stmt = select(
             exists().where(
@@ -624,7 +634,7 @@ class WorkflowRun(Base):
 
     @property
     def created_by_end_user(self):
-        from models.model import EndUser
+        from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
@@ -643,7 +653,7 @@ class WorkflowRun(Base):
 
     @property
     def message(self):
-        from models.model import Message
+        from .model import Message
 
         return (
             db.session.query(Message).where(Message.app_id == self.app_id, Message.workflow_run_id == self.id).first()
@@ -859,16 +869,20 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     @property
     def created_by_account(self):
         created_by_role = CreatorUserRole(self.created_by_role)
-        # TODO(-LAN-): Avoid using db.session.get() here.
-        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+        if created_by_role == CreatorUserRole.ACCOUNT:
+            stmt = select(Account).where(Account.id == self.created_by)
+            return db.session.scalar(stmt)
+        return None
 
     @property
     def created_by_end_user(self):
-        from models.model import EndUser
+        from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
-        # TODO(-LAN-): Avoid using db.session.get() here.
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+        if created_by_role == CreatorUserRole.END_USER:
+            stmt = select(EndUser).where(EndUser.id == self.created_by)
+            return db.session.scalar(stmt)
+        return None
 
     @property
     def inputs_dict(self):
@@ -1052,7 +1066,7 @@ class WorkflowAppLogCreatedFrom(StrEnum):
         raise ValueError(f"invalid workflow app log created from value {value}")
 
 
-class WorkflowAppLog(Base):
+class WorkflowAppLog(TypeBase):
     """
     Workflow App execution log, excluding workflow debugging records.
 
@@ -1088,7 +1102,7 @@ class WorkflowAppLog(Base):
         sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1096,7 +1110,9 @@ class WorkflowAppLog(Base):
     created_from: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @property
     def workflow_run(self):
@@ -1118,7 +1134,7 @@ class WorkflowAppLog(Base):
 
     @property
     def created_by_end_user(self):
-        from models.model import EndUser
+        from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
@@ -1137,7 +1153,7 @@ class WorkflowAppLog(Base):
         }
 
 
-class ConversationVariable(Base):
+class ConversationVariable(TypeBase):
     __tablename__ = "workflow_conversation_variables"
 
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
@@ -1145,20 +1161,11 @@ class ConversationVariable(Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
     data: Mapped[str] = mapped_column(LongText, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, server_default=func.current_timestamp(), index=True
+        DateTime, nullable=False, server_default=func.current_timestamp(), index=True, init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        server_default=func.current_timestamp(),
-        onupdate=func.current_timestamp(),
+        DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp(), init=False
     )
-
-    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str):
-        self.id = id
-        self.app_id = app_id
-        self.conversation_id = conversation_id
-        self.data = data
 
     @classmethod
     def from_variable(cls, *, app_id: str, conversation_id: str, variable: Variable) -> "ConversationVariable":
