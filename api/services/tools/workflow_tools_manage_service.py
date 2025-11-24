@@ -291,7 +291,7 @@ class WorkflowToolManageService:
         if len(workflow_tools) == 0:
             raise ValueError(f"Tool {db_tool.id} not found")
 
-        tool_entity = tool.get_tools(db_tool.tenant_id)[0].entity
+        tool_entity = workflow_tools[0].entity
         # get output schema from workflow tool entity
         output_schema = tool_entity.output_schema
 
