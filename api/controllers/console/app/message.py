@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 # Register in dependency order: base models first, then dependent models
 
 # Base models
-simple_account_model = api.model(
+simple_account_model = console_ns.model(
     "SimpleAccount",
     {
         "id": fields.String,
@@ -47,7 +47,7 @@ simple_account_model = api.model(
     },
 )
 
-message_file_model = api.model(
+message_file_model = console_ns.model(
     "MessageFile",
     {
         "id": fields.String,
@@ -62,7 +62,7 @@ message_file_model = api.model(
     },
 )
 
-agent_thought_model = api.model(
+agent_thought_model = console_ns.model(
     "AgentThought",
     {
         "id": fields.String,
@@ -80,7 +80,7 @@ agent_thought_model = api.model(
 )
 
 # Models that depend on simple_account_model
-feedback_model = api.model(
+feedback_model = console_ns.model(
     "Feedback",
     {
         "rating": fields.String,
@@ -91,7 +91,7 @@ feedback_model = api.model(
     },
 )
 
-annotation_model = api.model(
+annotation_model = console_ns.model(
     "Annotation",
     {
         "id": fields.String,
@@ -102,7 +102,7 @@ annotation_model = api.model(
     },
 )
 
-annotation_hit_history_model = api.model(
+annotation_hit_history_model = console_ns.model(
     "AnnotationHitHistory",
     {
         "annotation_id": fields.String(attribute="id"),
@@ -112,7 +112,7 @@ annotation_hit_history_model = api.model(
 )
 
 # Message detail model that depends on multiple models
-message_detail_model = api.model(
+message_detail_model = console_ns.model(
     "MessageDetail",
     {
         "id": fields.String,
@@ -142,7 +142,7 @@ message_detail_model = api.model(
 )
 
 # Message infinite scroll pagination model
-message_infinite_scroll_pagination_model = api.model(
+message_infinite_scroll_pagination_model = console_ns.model(
     "MessageInfiniteScrollPagination",
     {
         "limit": fields.Integer,
@@ -154,17 +154,17 @@ message_infinite_scroll_pagination_model = api.model(
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
 class ChatMessageListApi(Resource):
-    @api.doc("list_chat_messages")
-    @api.doc(description="Get chat messages for a conversation with pagination")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
+    @console_ns.doc("list_chat_messages")
+    @console_ns.doc(description="Get chat messages for a conversation with pagination")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.parser()
         .add_argument("conversation_id", type=str, required=True, location="args", help="Conversation ID")
         .add_argument("first_id", type=str, location="args", help="First message ID for pagination")
         .add_argument("limit", type=int, location="args", default=20, help="Number of messages to return (1-100)")
     )
-    @api.response(200, "Success", message_infinite_scroll_pagination_model)
-    @api.response(404, "Conversation not found")
+    @console_ns.response(200, "Success", message_infinite_scroll_pagination_model)
+    @console_ns.response(404, "Conversation not found")
     @login_required
     @account_initialization_required
     @setup_required
@@ -371,11 +371,11 @@ class MessageSuggestedQuestionApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/messages/<uuid:message_id>")
 class MessageApi(Resource):
-    @api.doc("get_message")
-    @api.doc(description="Get message details by ID")
-    @api.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
-    @api.response(200, "Message retrieved successfully", message_detail_model)
-    @api.response(404, "Message not found")
+    @console_ns.doc("get_message")
+    @console_ns.doc(description="Get message details by ID")
+    @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
+    @console_ns.response(200, "Message retrieved successfully", message_detail_model)
+    @console_ns.response(404, "Message not found")
     @get_app_model
     @setup_required
     @login_required

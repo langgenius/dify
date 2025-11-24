@@ -16,14 +16,14 @@ from models.model import AppMode
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register base model first
-conversation_variable_model = api.model("ConversationVariable", conversation_variable_fields)
+conversation_variable_model = console_ns.model("ConversationVariable", conversation_variable_fields)
 
 # For nested models, need to replace nested dict with registered model
 paginated_conversation_variable_fields_copy = paginated_conversation_variable_fields.copy()
 paginated_conversation_variable_fields_copy["data"] = fields.List(
     fields.Nested(conversation_variable_model), attribute="data"
 )
-paginated_conversation_variable_model = api.model(
+paginated_conversation_variable_model = console_ns.model(
     "PaginatedConversationVariable", paginated_conversation_variable_fields_copy
 )
 
@@ -38,7 +38,7 @@ class ConversationVariablesApi(Resource):
             "conversation_id", type=str, location="args", help="Conversation ID to filter variables"
         )
     )
-    @api.response(200, "Conversation variables retrieved successfully", paginated_conversation_variable_model)
+    @console_ns.response(200, "Conversation variables retrieved successfully", paginated_conversation_variable_model)
     @setup_required
     @login_required
     @account_initialization_required

@@ -17,7 +17,7 @@ from libs.login import current_account_with_tenant, login_required
 from models import Site
 
 # Register model for flask_restx to avoid dict type issues in Swagger
-app_site_model = api.model("AppSite", app_site_fields)
+app_site_model = console_ns.model("AppSite", app_site_fields)
 
 
 def parse_app_site_args():
@@ -79,9 +79,9 @@ class AppSite(Resource):
             },
         )
     )
-    @api.response(200, "Site configuration updated successfully", app_site_model)
-    @api.response(403, "Insufficient permissions")
-    @api.response(404, "App not found")
+    @console_ns.response(200, "Site configuration updated successfully", app_site_model)
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(404, "App not found")
     @setup_required
     @login_required
     @edit_permission_required
@@ -126,12 +126,12 @@ class AppSite(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/site/access-token-reset")
 class AppSiteAccessTokenReset(Resource):
-    @api.doc("reset_app_site_access_token")
-    @api.doc(description="Reset access token for application site")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Access token reset successfully", app_site_model)
-    @api.response(403, "Insufficient permissions (admin/owner required)")
-    @api.response(404, "App or site not found")
+    @console_ns.doc("reset_app_site_access_token")
+    @console_ns.doc(description="Reset access token for application site")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Access token reset successfully", app_site_model)
+    @console_ns.response(403, "Insufficient permissions (admin/owner required)")
+    @console_ns.response(404, "App or site not found")
     @setup_required
     @login_required
     @is_admin_or_owner_required

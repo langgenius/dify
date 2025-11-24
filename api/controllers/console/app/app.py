@@ -39,19 +39,19 @@ ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "co
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register base models first
-tag_model = api.model("Tag", tag_fields)
+tag_model = console_ns.model("Tag", tag_fields)
 
-workflow_partial_model = api.model("WorkflowPartial", _workflow_partial_fields_dict)
+workflow_partial_model = console_ns.model("WorkflowPartial", _workflow_partial_fields_dict)
 
-model_config_model = api.model("ModelConfig", model_config_fields)
+model_config_model = console_ns.model("ModelConfig", model_config_fields)
 
-model_config_partial_model = api.model("ModelConfigPartial", model_config_partial_fields)
+model_config_partial_model = console_ns.model("ModelConfigPartial", model_config_partial_fields)
 
-deleted_tool_model = api.model("DeletedTool", deleted_tool_fields)
+deleted_tool_model = console_ns.model("DeletedTool", deleted_tool_fields)
 
-site_model = api.model("Site", site_fields)
+site_model = console_ns.model("Site", site_fields)
 
-app_partial_model = api.model(
+app_partial_model = console_ns.model(
     "AppPartial",
     {
         "id": fields.String,
@@ -78,7 +78,7 @@ app_partial_model = api.model(
     },
 )
 
-app_detail_model = api.model(
+app_detail_model = console_ns.model(
     "AppDetail",
     {
         "id": fields.String,
@@ -102,7 +102,7 @@ app_detail_model = api.model(
     },
 )
 
-app_detail_with_site_model = api.model(
+app_detail_with_site_model = console_ns.model(
     "AppDetailWithSite",
     {
         "id": fields.String,
@@ -131,7 +131,7 @@ app_detail_with_site_model = api.model(
     },
 )
 
-app_pagination_model = api.model(
+app_pagination_model = console_ns.model(
     "AppPagination",
     {
         "page": fields.Integer,
@@ -163,7 +163,7 @@ class AppListApi(Resource):
         .add_argument("tag_ids", type=str, location="args", help="Comma-separated tag IDs")
         .add_argument("is_created_by_me", type=bool, location="args", help="Filter by creator")
     )
-    @api.response(200, "Success", app_pagination_model)
+    @console_ns.response(200, "Success", app_pagination_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -267,9 +267,9 @@ class AppListApi(Resource):
             },
         )
     )
-    @api.response(201, "App created successfully", app_detail_model)
-    @api.response(403, "Insufficient permissions")
-    @api.response(400, "Invalid request parameters")
+    @console_ns.response(201, "App created successfully", app_detail_model)
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -301,10 +301,10 @@ class AppListApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>")
 class AppApi(Resource):
-    @api.doc("get_app_detail")
-    @api.doc(description="Get application details")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Success", app_detail_with_site_model)
+    @console_ns.doc("get_app_detail")
+    @console_ns.doc(description="Get application details")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Success", app_detail_with_site_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -340,9 +340,9 @@ class AppApi(Resource):
             },
         )
     )
-    @api.response(200, "App updated successfully", app_detail_with_site_model)
-    @api.response(403, "Insufficient permissions")
-    @api.response(400, "Invalid request parameters")
+    @console_ns.response(200, "App updated successfully", app_detail_with_site_model)
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -413,8 +413,8 @@ class AppCopyApi(Resource):
             },
         )
     )
-    @api.response(201, "App copied successfully", app_detail_with_site_model)
-    @api.response(403, "Insufficient permissions")
+    @console_ns.response(201, "App copied successfully", app_detail_with_site_model)
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -567,8 +567,8 @@ class AppSiteStatus(Resource):
             "AppSiteStatusRequest", {"enable_site": fields.Boolean(required=True, description="Enable or disable site")}
         )
     )
-    @api.response(200, "Site status updated successfully", app_detail_model)
-    @api.response(403, "Insufficient permissions")
+    @console_ns.response(200, "Site status updated successfully", app_detail_model)
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -595,8 +595,8 @@ class AppApiStatus(Resource):
             "AppApiStatusRequest", {"enable_api": fields.Boolean(required=True, description="Enable or disable API")}
         )
     )
-    @api.response(200, "API status updated successfully", app_detail_model)
-    @api.response(403, "Insufficient permissions")
+    @console_ns.response(200, "API status updated successfully", app_detail_model)
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @is_admin_or_owner_required

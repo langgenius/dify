@@ -185,8 +185,8 @@ class AnnotationApi(Resource):
             },
         )
     )
-    @api.response(201, "Annotation created successfully", build_annotation_model(api))
-    @api.response(403, "Insufficient permissions")
+    @console_ns.response(201, "Annotation created successfully", build_annotation_model(api))
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -236,15 +236,15 @@ class AnnotationApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/export")
 class AnnotationExportApi(Resource):
-    @api.doc("export_annotations")
-    @api.doc(description="Export all annotations for an app")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(
+    @console_ns.doc("export_annotations")
+    @console_ns.doc(description="Export all annotations for an app")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(
         200,
         "Annotations exported successfully",
-        api.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(api)))}),
+        console_ns.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(api)))}),
     )
-    @api.response(403, "Insufficient permissions")
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -265,13 +265,13 @@ parser = (
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
-    @api.doc("update_delete_annotation")
-    @api.doc(description="Update or delete an annotation")
-    @api.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @api.response(200, "Annotation updated successfully", build_annotation_model(api))
-    @api.response(204, "Annotation deleted successfully")
-    @api.response(403, "Insufficient permissions")
-    @api.expect(parser)
+    @console_ns.doc("update_delete_annotation")
+    @console_ns.doc(description="Update or delete an annotation")
+    @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
+    @console_ns.response(200, "Annotation updated successfully", build_annotation_model(api))
+    @console_ns.response(204, "Annotation deleted successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
@@ -363,12 +363,16 @@ class AnnotationHitHistoryListApi(Resource):
         .add_argument("page", type=int, location="args", default=1, help="Page number")
         .add_argument("limit", type=int, location="args", default=20, help="Page size")
     )
-    @api.response(
+    @console_ns.response(
         200,
         "Hit histories retrieved successfully",
-        api.model(
+        console_ns.model(
             "AnnotationHitHistoryList",
-            {"data": fields.List(fields.Nested(api.model("AnnotationHitHistoryItem", annotation_hit_history_fields)))},
+            {
+                "data": fields.List(
+                    fields.Nested(console_ns.model("AnnotationHitHistoryItem", annotation_hit_history_fields))
+                )
+            },
         ),
     )
     @console_ns.response(403, "Insufficient permissions")

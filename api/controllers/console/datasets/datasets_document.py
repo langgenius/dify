@@ -66,7 +66,7 @@ logger = logging.getLogger(__name__)
 def _get_or_create_model(model_name: str, field_def):
     existing = api.models.get(model_name)
     if existing is None:
-        existing = api.model(model_name, field_def)
+        existing = console_ns.model(model_name, field_def)
     return existing
 
 
@@ -402,8 +402,8 @@ class DatasetInitApi(Resource):
             },
         )
     )
-    @api.response(201, "Dataset initialized successfully", dataset_and_document_model)
-    @api.response(400, "Invalid request parameters")
+    @console_ns.response(201, "Dataset initialized successfully", dataset_and_document_model)
+    @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required

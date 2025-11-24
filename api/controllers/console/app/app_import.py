@@ -24,14 +24,16 @@ from .. import console_ns
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register base model first
-leaked_dependency_model = api.model("LeakedDependency", leaked_dependency_fields)
+leaked_dependency_model = console_ns.model("LeakedDependency", leaked_dependency_fields)
 
-app_import_model = api.model("AppImport", app_import_fields)
+app_import_model = console_ns.model("AppImport", app_import_fields)
 
 # For nested models, need to replace nested dict with registered model
 app_import_check_dependencies_fields_copy = app_import_check_dependencies_fields.copy()
 app_import_check_dependencies_fields_copy["leaked_dependencies"] = fields.List(fields.Nested(leaked_dependency_model))
-app_import_check_dependencies_model = api.model("AppImportCheckDependencies", app_import_check_dependencies_fields_copy)
+app_import_check_dependencies_model = console_ns.model(
+    "AppImportCheckDependencies", app_import_check_dependencies_fields_copy
+)
 
 parser = (
     reqparse.RequestParser()

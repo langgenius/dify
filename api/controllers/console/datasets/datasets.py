@@ -58,7 +58,7 @@ from services.dataset_service import DatasetPermissionService, DatasetService, D
 def _get_or_create_model(model_name: str, field_def):
     existing = api.models.get(model_name)
     if existing is None:
-        existing = api.model(model_name, field_def)
+        existing = console_ns.model(model_name, field_def)
     return existing
 
 
@@ -348,12 +348,12 @@ class DatasetListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>")
 class DatasetApi(Resource):
-    @api.doc("get_dataset")
-    @api.doc(description="Get dataset details")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Dataset retrieved successfully", dataset_detail_model)
-    @api.response(404, "Dataset not found")
-    @api.response(403, "Permission denied")
+    @console_ns.doc("get_dataset")
+    @console_ns.doc(description="Get dataset details")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Dataset retrieved successfully", dataset_detail_model)
+    @console_ns.response(404, "Dataset not found")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -411,9 +411,9 @@ class DatasetApi(Resource):
             },
         )
     )
-    @api.response(200, "Dataset updated successfully", dataset_detail_model)
-    @api.response(404, "Dataset not found")
-    @api.response(403, "Permission denied")
+    @console_ns.response(200, "Dataset updated successfully", dataset_detail_model)
+    @console_ns.response(404, "Dataset not found")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -573,10 +573,10 @@ class DatasetUseCheckApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
 class DatasetQueryApi(Resource):
-    @api.doc("get_dataset_queries")
-    @api.doc(description="Get dataset query history")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Query history retrieved successfully", dataset_query_detail_model)
+    @console_ns.doc("get_dataset_queries")
+    @console_ns.doc(description="Get dataset query history")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Query history retrieved successfully", dataset_query_detail_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -719,10 +719,10 @@ class DatasetIndexingEstimateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/related-apps")
 class DatasetRelatedAppListApi(Resource):
-    @api.doc("get_dataset_related_apps")
-    @api.doc(description="Get applications related to dataset")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Related apps retrieved successfully", related_app_list_model)
+    @console_ns.doc("get_dataset_related_apps")
+    @console_ns.doc(description="Get applications related to dataset")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Related apps retrieved successfully", related_app_list_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -807,9 +807,9 @@ class DatasetApiKeyApi(Resource):
     token_prefix = "dataset-"
     resource_type = "dataset"
 
-    @api.doc("get_dataset_api_keys")
-    @api.doc(description="Get dataset API keys")
-    @api.response(200, "API keys retrieved successfully", api_key_list_model)
+    @console_ns.doc("get_dataset_api_keys")
+    @console_ns.doc(description="Get dataset API keys")
+    @console_ns.response(200, "API keys retrieved successfully", api_key_list_model)
     @setup_required
     @login_required
     @account_initialization_required

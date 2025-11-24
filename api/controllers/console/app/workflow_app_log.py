@@ -36,7 +36,7 @@ class WorkflowAppLogApi(Resource):
             "limit": "Number of items per page (1-100)",
         }
     )
-    @api.response(200, "Workflow app logs retrieved successfully", workflow_app_log_pagination_model)
+    @console_ns.response(200, "Workflow app logs retrieved successfully", workflow_app_log_pagination_model)
     @setup_required
     @login_required
     @account_initialization_required

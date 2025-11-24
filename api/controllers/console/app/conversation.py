@@ -25,7 +25,7 @@ from services.errors.conversation import ConversationNotExistsError
 # Register in dependency order: base models first, then dependent models
 
 # Base models
-simple_account_model = api.model(
+simple_account_model = console_ns.model(
     "SimpleAccount",
     {
         "id": fields.String,
@@ -34,7 +34,7 @@ simple_account_model = api.model(
     },
 )
 
-feedback_stat_model = api.model(
+feedback_stat_model = console_ns.model(
     "FeedbackStat",
     {
         "like": fields.Integer,
@@ -42,7 +42,7 @@ feedback_stat_model = api.model(
     },
 )
 
-status_count_model = api.model(
+status_count_model = console_ns.model(
     "StatusCount",
     {
         "success": fields.Integer,
@@ -51,7 +51,7 @@ status_count_model = api.model(
     },
 )
 
-message_file_model = api.model(
+message_file_model = console_ns.model(
     "MessageFile",
     {
         "id": fields.String,
@@ -66,7 +66,7 @@ message_file_model = api.model(
     },
 )
 
-agent_thought_model = api.model(
+agent_thought_model = console_ns.model(
     "AgentThought",
     {
         "id": fields.String,
@@ -83,7 +83,7 @@ agent_thought_model = api.model(
     },
 )
 
-simple_model_config_model = api.model(
+simple_model_config_model = console_ns.model(
     "SimpleModelConfig",
     {
         "model": fields.Raw(attribute="model_dict"),
@@ -91,7 +91,7 @@ simple_model_config_model = api.model(
     },
 )
 
-model_config_model = api.model(
+model_config_model = console_ns.model(
     "ModelConfig",
     {
         "opening_statement": fields.String,
@@ -104,7 +104,7 @@ model_config_model = api.model(
 )
 
 # Models that depend on simple_account_model
-feedback_model = api.model(
+feedback_model = console_ns.model(
     "Feedback",
     {
         "rating": fields.String,
@@ -115,7 +115,7 @@ feedback_model = api.model(
     },
 )
 
-annotation_model = api.model(
+annotation_model = console_ns.model(
     "Annotation",
     {
         "id": fields.String,
@@ -126,7 +126,7 @@ annotation_model = api.model(
     },
 )
 
-annotation_hit_history_model = api.model(
+annotation_hit_history_model = console_ns.model(
     "AnnotationHitHistory",
     {
         "annotation_id": fields.String(attribute="id"),
@@ -136,7 +136,7 @@ annotation_hit_history_model = api.model(
 )
 
 # Simple message detail model
-simple_message_detail_model = api.model(
+simple_message_detail_model = console_ns.model(
     "SimpleMessageDetail",
     {
         "inputs": FilesContainedField,
@@ -147,7 +147,7 @@ simple_message_detail_model = api.model(
 )
 
 # Message detail model that depends on multiple models
-message_detail_model = api.model(
+message_detail_model = console_ns.model(
     "MessageDetail",
     {
         "id": fields.String,
@@ -177,7 +177,7 @@ message_detail_model = api.model(
 )
 
 # Conversation models
-conversation_fields_model = api.model(
+conversation_fields_model = console_ns.model(
     "Conversation",
     {
         "id": fields.String,
@@ -198,7 +198,7 @@ conversation_fields_model = api.model(
     },
 )
 
-conversation_pagination_model = api.model(
+conversation_pagination_model = console_ns.model(
     "ConversationPagination",
     {
         "page": fields.Integer,
@@ -209,7 +209,7 @@ conversation_pagination_model = api.model(
     },
 )
 
-conversation_message_detail_model = api.model(
+conversation_message_detail_model = console_ns.model(
     "ConversationMessageDetail",
     {
         "id": fields.String,
@@ -223,7 +223,7 @@ conversation_message_detail_model = api.model(
     },
 )
 
-conversation_with_summary_model = api.model(
+conversation_with_summary_model = console_ns.model(
     "ConversationWithSummary",
     {
         "id": fields.String,
@@ -247,7 +247,7 @@ conversation_with_summary_model = api.model(
     },
 )
 
-conversation_with_summary_pagination_model = api.model(
+conversation_with_summary_pagination_model = console_ns.model(
     "ConversationWithSummaryPagination",
     {
         "page": fields.Integer,
@@ -258,7 +258,7 @@ conversation_with_summary_pagination_model = api.model(
     },
 )
 
-conversation_detail_model = api.model(
+conversation_detail_model = console_ns.model(
     "ConversationDetail",
     {
         "id": fields.String,
@@ -299,8 +299,8 @@ class CompletionConversationApi(Resource):
         .add_argument("page", type=int, location="args", default=1, help="Page number")
         .add_argument("limit", type=int, location="args", default=20, help="Page size (1-100)")
     )
-    @api.response(200, "Success", conversation_pagination_model)
-    @api.response(403, "Insufficient permissions")
+    @console_ns.response(200, "Success", conversation_pagination_model)
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -374,12 +374,12 @@ class CompletionConversationApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
 class CompletionConversationDetailApi(Resource):
-    @api.doc("get_completion_conversation")
-    @api.doc(description="Get completion conversation details with messages")
-    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @api.response(200, "Success", conversation_message_detail_model)
-    @api.response(403, "Insufficient permissions")
-    @api.response(404, "Conversation not found")
+    @console_ns.doc("get_completion_conversation")
+    @console_ns.doc(description="Get completion conversation details with messages")
+    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @console_ns.response(200, "Success", conversation_message_detail_model)
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -444,8 +444,8 @@ class ChatConversationApi(Resource):
             help="Sort field and direction",
         )
     )
-    @api.response(200, "Success", conversation_with_summary_pagination_model)
-    @api.response(403, "Insufficient permissions")
+    @console_ns.response(200, "Success", conversation_with_summary_pagination_model)
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -574,12 +574,12 @@ class ChatConversationApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
 class ChatConversationDetailApi(Resource):
-    @api.doc("get_chat_conversation")
-    @api.doc(description="Get chat conversation details")
-    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @api.response(200, "Success", conversation_detail_model)
-    @api.response(403, "Insufficient permissions")
-    @api.response(404, "Conversation not found")
+    @console_ns.doc("get_chat_conversation")
+    @console_ns.doc(description="Get chat conversation details")
+    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @console_ns.response(200, "Success", conversation_detail_model)
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required

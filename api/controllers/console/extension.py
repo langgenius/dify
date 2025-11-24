@@ -9,7 +9,7 @@ from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
 from services.code_based_extension_service import CodeBasedExtensionService
 
-api_based_extension_model = api.model("ApiBasedExtensionModel", api_based_extension_fields)
+api_based_extension_model = console_ns.model("ApiBasedExtensionModel", api_based_extension_fields)
 
 api_based_extension_list_model = fields.List(fields.Nested(api_based_extension_model))
 
@@ -43,9 +43,9 @@ class CodeBasedExtensionAPI(Resource):
 
 @console_ns.route("/api-based-extension")
 class APIBasedExtensionAPI(Resource):
-    @api.doc("get_api_based_extensions")
-    @api.doc(description="Get all API-based extensions for current tenant")
-    @api.response(200, "Success", api_based_extension_list_model)
+    @console_ns.doc("get_api_based_extensions")
+    @console_ns.doc(description="Get all API-based extensions for current tenant")
+    @console_ns.response(200, "Success", api_based_extension_list_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -66,7 +66,7 @@ class APIBasedExtensionAPI(Resource):
             },
         )
     )
-    @api.response(201, "Extension created successfully", api_based_extension_model)
+    @console_ns.response(201, "Extension created successfully", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -87,10 +87,10 @@ class APIBasedExtensionAPI(Resource):
 
 @console_ns.route("/api-based-extension/<uuid:id>")
 class APIBasedExtensionDetailAPI(Resource):
-    @api.doc("get_api_based_extension")
-    @api.doc(description="Get API-based extension by ID")
-    @api.doc(params={"id": "Extension ID"})
-    @api.response(200, "Success", api_based_extension_model)
+    @console_ns.doc("get_api_based_extension")
+    @console_ns.doc(description="Get API-based extension by ID")
+    @console_ns.doc(params={"id": "Extension ID"})
+    @console_ns.response(200, "Success", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -114,7 +114,7 @@ class APIBasedExtensionDetailAPI(Resource):
             },
         )
     )
-    @api.response(200, "Extension updated successfully", api_based_extension_model)
+    @console_ns.response(200, "Extension updated successfully", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required

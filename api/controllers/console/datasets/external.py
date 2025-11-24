@@ -29,7 +29,7 @@ from services.knowledge_service import ExternalDatasetTestService
 def _get_or_create_model(model_name: str, field_def):
     existing = api.models.get(model_name)
     if existing is None:
-        existing = api.model(model_name, field_def)
+        existing = console_ns.model(model_name, field_def)
     return existing
 
 
@@ -251,9 +251,9 @@ class ExternalDatasetCreateApi(Resource):
             },
         )
     )
-    @api.response(201, "External dataset created successfully", dataset_detail_model)
-    @api.response(400, "Invalid parameters")
-    @api.response(403, "Permission denied")
+    @console_ns.response(201, "External dataset created successfully", dataset_detail_model)
+    @console_ns.response(400, "Invalid parameters")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required

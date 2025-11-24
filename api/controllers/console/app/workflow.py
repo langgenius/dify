@@ -54,11 +54,11 @@ LISTENING_RETRY_IN = 2000
 # Register in dependency order: base models first, then dependent models
 
 # Base models
-simple_account_model = api.model("SimpleAccount", simple_account_fields)
+simple_account_model = console_ns.model("SimpleAccount", simple_account_fields)
 
 from fields.workflow_fields import pipeline_variable_fields, serialize_value_type
 
-conversation_variable_model = api.model(
+conversation_variable_model = console_ns.model(
     "ConversationVariable",
     {
         "id": fields.String,
@@ -69,7 +69,7 @@ conversation_variable_model = api.model(
     },
 )
 
-pipeline_variable_model = api.model("PipelineVariable", pipeline_variable_fields)
+pipeline_variable_model = console_ns.model("PipelineVariable", pipeline_variable_fields)
 
 # Workflow model with nested dependencies
 workflow_fields_copy = workflow_fields.copy()
@@ -79,12 +79,12 @@ workflow_fields_copy["updated_by"] = fields.Nested(
 )
 workflow_fields_copy["conversation_variables"] = fields.List(fields.Nested(conversation_variable_model))
 workflow_fields_copy["rag_pipeline_variables"] = fields.List(fields.Nested(pipeline_variable_model))
-workflow_model = api.model("Workflow", workflow_fields_copy)
+workflow_model = console_ns.model("Workflow", workflow_fields_copy)
 
 # Workflow pagination model
 workflow_pagination_fields_copy = workflow_pagination_fields.copy()
 workflow_pagination_fields_copy["items"] = fields.List(fields.Nested(workflow_model), attribute="items")
-workflow_pagination_model = api.model("WorkflowPagination", workflow_pagination_fields_copy)
+workflow_pagination_model = console_ns.model("WorkflowPagination", workflow_pagination_fields_copy)
 
 # Reuse workflow_run_node_execution_model from workflow_run.py if already registered
 # Otherwise register it here
@@ -93,12 +93,12 @@ from fields.end_user_fields import simple_end_user_fields
 try:
     simple_end_user_model = api.models.get("SimpleEndUser")
 except (KeyError, AttributeError):
-    simple_end_user_model = api.model("SimpleEndUser", simple_end_user_fields)
+    simple_end_user_model = console_ns.model("SimpleEndUser", simple_end_user_fields)
 
 try:
     workflow_run_node_execution_model = api.models.get("WorkflowRunNodeExecution")
 except (KeyError, AttributeError):
-    workflow_run_node_execution_model = api.model("WorkflowRunNodeExecution", workflow_run_node_execution_fields)
+    workflow_run_node_execution_model = console_ns.model("WorkflowRunNodeExecution", workflow_run_node_execution_fields)
 
 
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
@@ -121,11 +121,11 @@ def _parse_file(workflow: Workflow, files: list[dict] | None = None) -> Sequence
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft")
 class DraftWorkflowApi(Resource):
-    @api.doc("get_draft_workflow")
-    @api.doc(description="Get draft workflow for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Draft workflow retrieved successfully", workflow_model)
-    @api.response(404, "Draft workflow not found")
+    @console_ns.doc("get_draft_workflow")
+    @console_ns.doc(description="Get draft workflow for an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Draft workflow retrieved successfully", workflow_model)
+    @console_ns.response(404, "Draft workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -590,9 +590,9 @@ class DraftWorkflowNodeRunApi(Resource):
             },
         )
     )
-    @api.response(200, "Node run started successfully", workflow_run_node_execution_model)
-    @api.response(403, "Permission denied")
-    @api.response(404, "Node not found")
+    @console_ns.response(200, "Node run started successfully", workflow_run_node_execution_model)
+    @console_ns.response(403, "Permission denied")
+    @console_ns.response(404, "Node not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -646,11 +646,11 @@ parser_publish = (
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
 class PublishedWorkflowApi(Resource):
-    @api.doc("get_published_workflow")
-    @api.doc(description="Get published workflow for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Published workflow retrieved successfully", workflow_model)
-    @api.response(404, "Published workflow not found")
+    @console_ns.doc("get_published_workflow")
+    @console_ns.doc(description="Get published workflow for an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Published workflow retrieved successfully", workflow_model)
+    @console_ns.response(404, "Published workflow not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -828,11 +828,11 @@ parser_workflows = (
 
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
-    @api.expect(parser_workflows)
-    @api.doc("get_all_published_workflows")
-    @api.doc(description="Get all published workflows for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Published workflows retrieved successfully", workflow_pagination_model)
+    @console_ns.expect(parser_workflows)
+    @console_ns.doc("get_all_published_workflows")
+    @console_ns.doc(description="Get all published workflows for an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Published workflows retrieved successfully", workflow_pagination_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -889,9 +889,9 @@ class WorkflowByIdApi(Resource):
             },
         )
     )
-    @api.response(200, "Workflow updated successfully", workflow_model)
-    @api.response(404, "Workflow not found")
-    @api.response(403, "Permission denied")
+    @console_ns.response(200, "Workflow updated successfully", workflow_model)
+    @console_ns.response(404, "Workflow not found")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -977,12 +977,12 @@ class WorkflowByIdApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/nodes/<string:node_id>/last-run")
 class DraftWorkflowNodeLastRunApi(Resource):
-    @api.doc("get_draft_workflow_node_last_run")
-    @api.doc(description="Get last run result for draft workflow node")
-    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @api.response(200, "Node last run retrieved successfully", workflow_run_node_execution_model)
-    @api.response(404, "Node last run not found")
-    @api.response(403, "Permission denied")
+    @console_ns.doc("get_draft_workflow_node_last_run")
+    @console_ns.doc(description="Get last run result for draft workflow node")
+    @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @console_ns.response(200, "Node last run retrieved successfully", workflow_run_node_execution_model)
+    @console_ns.response(404, "Node last run not found")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
