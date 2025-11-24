@@ -6,11 +6,8 @@ analytics, optimization recommendations, and cache management.
 """
 
 import logging
-from typing import Any
 
-from flask import request
-from flask_restx import Resource, fields, marshal_with, reqparse
-from werkzeug.exceptions import NotFound
+from flask_restx import Namespace, Resource, fields, marshal_with, reqparse
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model

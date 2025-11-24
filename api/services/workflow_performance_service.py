@@ -6,26 +6,20 @@ for workflow executions. It collects metrics, generates insights, and provides
 actionable recommendations for improving workflow performance.
 """
 
-import hashlib
 import logging
-from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Optional
 
 from sqlalchemy import and_, case, desc, func, select
-from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.workflow import WorkflowRun
 from models.workflow_performance import (
     OptimizationCategory,
     OptimizationSeverity,
-    WorkflowCacheEntry,
     WorkflowNodePerformance,
     WorkflowOptimizationRecommendation,
     WorkflowPerformanceMetrics,
-    WorkflowPerformanceTrend,
 )
 
 logger = logging.getLogger(__name__)
