@@ -7,11 +7,9 @@ enhance reliability.
 """
 
 import logging
-from collections import defaultdict
 from datetime import timedelta
-from typing import Any, Optional
 
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, func, select
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -158,6 +156,11 @@ class WorkflowOptimizationAdvisor:
                         "Add timeout limits to prevent hanging executions",
                     ]
                 
+                # Calculate improvement percentage
+                improvement_pct = int(
+                    (bottleneck['avg_execution_time'] - 1.0) / bottleneck['avg_execution_time'] * 100
+                )
+                
                 recommendation = WorkflowPerformanceService.create_optimization_recommendation(
                     app_id=app_id,
                     workflow_id=workflow_id,
@@ -169,10 +172,7 @@ class WorkflowOptimizationAdvisor:
                     ),
                     category=OptimizationCategory.PERFORMANCE,
                     severity=severity,
-                    estimated_improvement=(
-                        f"{int((bottleneck['avg_execution_time'] - 1.0) / "
-                        f"bottleneck['avg_execution_time'] * 100)}% faster execution"
-                    ),
+                    estimated_improvement=f"{improvement_pct}% faster execution",
                     affected_nodes=[bottleneck["node_id"]],
                     recommendation_steps=steps,
                     code_example=code_example,

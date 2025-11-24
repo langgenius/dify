@@ -9,11 +9,10 @@ and cache invalidation strategies.
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Optional
 
 from sqlalchemy import and_, case, delete, desc, func, select
-from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
