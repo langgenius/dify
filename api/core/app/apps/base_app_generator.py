@@ -93,7 +93,11 @@ class BaseAppGenerator:
         if value is None:
             if variable_entity.required:
                 raise ValueError(f"{variable_entity.variable} is required in input form")
-            return value
+            # Use default value and continue validation to ensure type conversion
+            value = variable_entity.default
+            # If default is also None, return None directly
+            if value is None:
+                return None
 
         if variable_entity.type in {
             VariableEntityType.TEXT_INPUT,
