@@ -15,8 +15,8 @@
    ```bash
    cd ../docker
    cp middleware.env.example middleware.env
-   # change the profile to other vector database if you are not using weaviate
-   docker compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d
+   # change the profile to mysql if you are not using postgres,change the profile to other vector database if you are not using weaviate
+   docker compose -f docker-compose.middleware.yaml --profile postgresql --profile weaviate -p dify up -d
    cd ../api
    ```
 
@@ -25,6 +25,10 @@
    ```cli
    cp .env.example .env
    ```
+
+> [!IMPORTANT]
+>
+> When the frontend and backend run on different subdomains, set COOKIE_DOMAIN to the site’s top-level domain (e.g., `example.com`). The frontend and backend must be under the same top-level domain in order to share authentication cookies.
 
 1. Generate a `SECRET_KEY` in the `.env` file.
 
@@ -80,7 +84,7 @@
 1. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
 ```bash
-uv run celery -A app.celery worker -P threads -c 2 --loglevel INFO -Q dataset,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,priority_pipeline,pipeline
+uv run celery -A app.celery worker -P threads -c 2 --loglevel INFO -Q dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor
 ```
 
 Additionally, if you want to debug the celery scheduled tasks, you can run the following command in another terminal to start the beat service:

@@ -76,7 +76,7 @@ const translation = {
     priceTip: 'por espacio de trabajo/',
     teamMember_one: '{{count, número}} Miembro del Equipo',
     getStarted: 'Comenzar',
-    apiRateLimitUnit: '{{count, número}}/día',
+    apiRateLimitUnit: '{{count, número}}',
     freeTrialTipSuffix: 'No se requiere tarjeta de crédito',
     unlimitedApiRate: 'Sin límite de tasa de API',
     apiRateLimit: 'Límite de tasa de API',
@@ -96,6 +96,19 @@ const translation = {
     startBuilding: 'Empezar a construir',
     taxTip: 'Todos los precios de suscripción (mensuales/anuales) excluyen los impuestos aplicables (por ejemplo, IVA, impuesto sobre ventas).',
     taxTipSecond: 'Si su región no tiene requisitos fiscales aplicables, no se mostrará ningún impuesto en su pago y no se le cobrará ninguna tarifa adicional durante todo el período de suscripción.',
+    triggerEvents: {
+      unlimited: 'Eventos de Disparo Ilimitados',
+      tooltip: 'El número de eventos que inician automáticamente flujos de trabajo mediante desencadenadores de Plugin, Programación o Webhook.',
+    },
+    workflowExecution: {
+      tooltip: 'Prioridad y velocidad de la cola de ejecución de flujos de trabajo.',
+      standard: 'Ejecución estándar del flujo de trabajo',
+      priority: 'Ejecución de flujo de trabajo prioritaria',
+      faster: 'Ejecución de flujo de trabajo más rápida',
+    },
+    startNodes: {
+      unlimited: 'Disparadores/flujo de trabajo ilimitados',
+    },
   },
   plans: {
     sandbox: {
@@ -186,8 +199,17 @@ const translation = {
     teamMembers: 'Miembros del equipo',
     annotationQuota: 'Cuota de anotación',
     vectorSpaceTooltip: 'Los documentos con el modo de indexación de alta calidad consumirán recursos de Almacenamiento de Datos de Conocimiento. Cuando el Almacenamiento de Datos de Conocimiento alcanza el límite, no se subirán nuevos documentos.',
+    triggerEvents: 'Eventos desencadenantes',
+    perMonth: 'por mes',
   },
   teamMembers: 'Miembros del equipo',
+  triggerLimitModal: {
+    dismiss: 'Descartar',
+    upgrade: 'Actualizar',
+    usageTitle: 'EVENTOS DESENCADENANTES',
+    title: 'Actualiza para desbloquear más eventos desencadenantes',
+    description: 'Has alcanzado el límite de activadores de eventos de flujo de trabajo para este plan.',
+  },
 }
 
 export default translation
