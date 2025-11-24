@@ -28,10 +28,12 @@ const translation = {
       viewDetails: 'Подробнее',
       loading: 'Обработка... Подождите',
       error: 'Ошибка произошла во время выполнения',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'Предложения по КГР',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

@@ -9,7 +9,10 @@ const translation = {
   buyPermissionDeniedTip:
     'Contatta l\'amministratore della tua azienda per abbonarti',
   plansCommon: {
-    title: 'Scegli un piano adatto a te',
+    title: {
+      plans: 'plans',
+      description: 'Select the plan that best fits your team\'s needs.',
+    },
     yearlyTip: 'Ottieni 2 mesi gratis abbonandoti annualmente!',
     mostPopular: 'Più Popolare',
     planRange: {
@@ -141,28 +144,28 @@ const translation = {
       description:
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
-      features: {
-        4: 'SSO',
-        8: 'Supporto tecnico professionale',
-        6: 'Sicurezza e controlli avanzati',
-        1: 'Autorizzazione Licenza Commerciale',
-        2: 'Funzionalità esclusive per le aziende',
-        3: 'Spazi di lavoro multipli e gestione aziendale',
-        0: 'Soluzioni di distribuzione scalabili di livello aziendale',
-        5: 'SLA negoziati dai partner Dify',
-        7: 'Aggiornamenti e manutenzione da parte di Dify ufficialmente',
-      },
+      features: [
+        'Soluzioni di distribuzione scalabili di livello aziendale',
+        'Autorizzazione Licenza Commerciale',
+        'Funzionalità esclusive per le aziende',
+        'Spazi di lavoro multipli e gestione aziendale',
+        'SSO',
+        'SLA negoziati dai partner Dify',
+        'Sicurezza e controlli avanzati',
+        'Aggiornamenti e manutenzione da parte di Dify ufficialmente',
+        'Supporto tecnico professionale',
+      ],
       price: 'Personalizzato',
       for: 'Per team di grandi dimensioni',
       btnText: 'Contatta le vendite',
       priceTip: 'Solo fatturazione annuale',
     },
     community: {
-      features: {
-        0: 'Tutte le funzionalità principali rilasciate nel repository pubblico',
-        2: 'Conforme alla licenza Open Source Dify',
-        1: 'Area di lavoro singola',
-      },
+      features: [
+        'Tutte le funzionalità principali rilasciate nel repository pubblico',
+        'Area di lavoro singola',
+        'Conforme alla licenza Open Source Dify',
+      ],
       name: 'Comunità',
       btnText: 'Inizia con la comunità',
       includesTitle: 'Caratteristiche Gratuite:',
@@ -171,12 +174,12 @@ const translation = {
       for: 'Per utenti individuali, piccole squadre o progetti non commerciali',
     },
     premium: {
-      features: {
-        3: 'Supporto prioritario via e-mail e chat',
-        1: 'Area di lavoro singola',
-        0: 'Affidabilità autogestita da vari fornitori di servizi cloud',
-        2: 'Personalizzazione del logo e del marchio WebApp',
-      },
+      features: [
+        'Affidabilità autogestita da vari fornitori di servizi cloud',
+        'Area di lavoro singola',
+        'Personalizzazione del logo e del marchio WebApp',
+        'Supporto prioritario via e-mail e chat',
+      ],
       name: 'Premium',
       priceTip: 'Basato su Cloud Marketplace',
       includesTitle: 'Tutto dalla Community, oltre a:',

@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'डॉक्यूमेंट सेटिंग्स',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'सभी फ़ाइलें',
@@ -128,7 +128,7 @@ const translation = {
     notSupportedFileType: 'यह फ़ाइल प्रकार समर्थित नहीं है',
     emptySearchResult: 'कोई सामान नहीं मिला',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'पुष्टि',
@@ -149,6 +149,7 @@ const translation = {
   inputField: 'इनपुट फ़ील्ड',
   editPipelineInfo: 'पाइपलाइन जानकारी संपादित करें',
   knowledgeDescriptionPlaceholder: 'इस ज्ञान आधार में क्या है इसका वर्णन करें। एक विस्तृत विवरण एआई को डेटा सेट की सामग्री को अधिक सटीकता से एक्सेस करने की अनुमति देता है। यदि खाली है, तो डिफी डिफ़ॉल्ट हिट रणनीति का उपयोग करेगा। (वैकल्पिक)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

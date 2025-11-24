@@ -391,6 +391,7 @@ const translation = {
     'defaultValue': 'Nilai default',
     'localUpload': 'Unggahan Lokal',
     'maxNumberOfUploads': 'Jumlah upload maksimal',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'both': 'Keduanya',
     'uploadFileTypes': 'Unggah Jenis File',
     'unit': 'Satuan',

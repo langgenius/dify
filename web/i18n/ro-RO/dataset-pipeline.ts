@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Fluxul de cunoștințe publicat',
+      tip: '<CustomLink>Accesați Documente</CustomLink> pentru a adăuga sau gestiona documente.',
     },
     error: {
       message: 'Nu s-a reușit publicarea canalului de cunoștințe',
@@ -54,6 +55,7 @@ const translation = {
     successTip: 'Exportați cu succes DSL',
   },
   details: {
+    createdBy: 'De {{author}}',
     structure: 'Structură',
     structureTooltip: 'Structura de bucăți determină modul în care documentele sunt împărțite și indexate - oferind modurile General, Părinte-Copil și Întrebări și răspunsuri - și este unică pentru fiecare bază de cunoștințe.',
   },
@@ -109,6 +111,8 @@ const translation = {
     stepThree: {
       learnMore: 'Află mai multe',
     },
+    selectOnlineDocumentTip: 'Procesează până la {{count}} pagini',
+    selectOnlineDriveTip: 'Procesează până la {{count}} fișiere, maximum {{fileSize}} MB fiecare',
     characters: 'Caractere',
     backToDataSource: 'Sursa datelor',
     title: 'Adăugarea documentelor',
@@ -116,19 +120,26 @@ const translation = {
   documentSettings: {
     title: 'Setări document',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: 'Pagini {{name}}',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Toate fișierele',
       allBuckets: 'Toate gălețile de stocare în cloud',
       searchPlaceholder: 'Căutați fișiere...',
+      searchResult: 'Găsiți {{searchResultsLength}} elemente în folderul „{{folderName}}”',
     },
+    notConnected: '{{name}} nu este conectat',
+    notConnectedTip: 'Pentru a sincroniza cu {{name}}, trebuie mai întâi stabilită conexiunea cu {{name}}.',
     resetKeywords: 'Resetați cuvintele cheie',
     emptyFolder: 'Acest folder este gol',
     notSupportedFileType: 'Acest tip de fișier nu este acceptat',
     emptySearchResult: 'Nu au fost găsite obiecte',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{pluginName}} al lui {{credentialName}}',
+  },
   conversion: {
     confirm: {
       title: 'Confirmare',
@@ -149,6 +160,7 @@ const translation = {
   knowledgeNameAndIconPlaceholder: 'Vă rugăm să introduceți numele bazei de cunoștințe',
   knowledgeDescriptionPlaceholder: 'Descrieți ce este în această bază de cunoștințe. O descriere detaliată permite AI să acceseze mai precis conținutul setului de date. Dacă este gol, Dify va folosi strategia implicită de accesare. (Opțional)',
   inputField: 'Câmp de intrare',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

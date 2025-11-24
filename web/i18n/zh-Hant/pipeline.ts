@@ -28,10 +28,12 @@ const translation = {
       viewDetails: '查看詳情',
       error: '執行期間發生錯誤',
       loading: '處理中...請稍候',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'RAG 的建議',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

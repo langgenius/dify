@@ -28,10 +28,12 @@ const translation = {
       viewDetails: 'ดูรายละเอียด',
       error: 'เกิดข้อผิดพลาดระหว่างการดําเนินการ',
       loading: 'กำลังประมวลผล...กรุณารอ',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'คําแนะนําสําหรับ RAG',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

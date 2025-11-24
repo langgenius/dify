@@ -349,6 +349,7 @@ const translation = {
     'localUpload': 'Przesyłanie lokalne',
     'uploadFileTypes': 'Typy przesyłanych plików',
     'maxNumberOfUploads': 'Maksymalna liczba przesyłanych plików',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'single-file': 'Pojedynczy plik',
     'content': 'Zawartość',
     'multi-files': 'Lista plików',

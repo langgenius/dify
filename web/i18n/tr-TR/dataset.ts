@@ -35,10 +35,6 @@ const translation = {
       description: 'Tam metin arama ve vektör aramalarını aynı anda çalıştırın, kullanıcı sorgusu için en iyi eşleşmeyi seçmek için yeniden sıralayın. Kullanıcılar ağırlıklar ayarlayabilir veya bir Yeniden Sıralama modeli yapılandırabilir.',
       recommend: 'Önerilir',
     },
-    invertedIndex: {
-      title: 'Ters Dizine Kayıt',
-      description: 'Ters Dizine Kayıt, verimli geri alım için kullanılan bir yapıdır. Terimlere göre düzenlenir ve her terim, onu içeren belgelere veya web sayfalarına işaret eder.',
-    },
     change: 'Değiştir',
     changeRetrievalMethod: 'Geri alma yöntemini değiştir',
     keyword_search: {
@@ -236,6 +232,10 @@ const translation = {
     enabled: 'Hizmette',
     title: 'Servis API\'si',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

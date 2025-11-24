@@ -77,10 +77,6 @@ const translation = {
       title: 'Pencarian Hibrida',
       description: 'Jalankan pencarian teks lengkap dan pencarian vektor secara bersamaan, peringkatkan ulang untuk memilih kecocokan terbaik untuk kueri pengguna. Pengguna dapat memilih untuk mengatur bobot atau mengonfigurasi ke model Rerank.',
     },
-    invertedIndex: {
-      title: 'Indeks Terbalik',
-      description: 'Indeks Terbalik adalah struktur yang digunakan untuk pengambilan yang efisien. Diatur berdasarkan istilah, setiap istilah menunjuk ke dokumen atau halaman web yang berisinya.',
-    },
     change: 'Ubah',
     changeRetrievalMethod: 'Ubah metode pengambilan',
     keyword_search: {
@@ -229,6 +225,10 @@ const translation = {
     enabled: 'Sedang Beroperasi',
     disabled: 'Dinonaktifkan',
   },
+  docAllEnabled_one: '{{count}} document from {{name}} enabled',
+  docAllEnabled_other: '{{count}} documents from {{name}} enabled',
+  partialEnabled_one: '{{count}} document from {{name}} enabled',
+  partialEnabled_other: '{{count}} documents from {{name}} enabled',
 }
 
 export default translation

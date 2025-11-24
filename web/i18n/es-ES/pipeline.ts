@@ -28,10 +28,12 @@ const translation = {
       loading: 'Tratamiento... Espera',
       viewDetails: 'Ver detalles',
       error: 'Error ocurrido durante la ejecución',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'Sugerencias para el GAR',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

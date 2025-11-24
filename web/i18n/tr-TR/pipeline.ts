@@ -28,10 +28,12 @@ const translation = {
       loading: 'Işleme... Lütfen bekleyin',
       viewDetails: 'Ayrıntıları görüntüleme',
       error: 'Yürütme sırasında hata oluştu',
+      footerTip: 'The preview is the result of the last run',
     },
   },
   ragToolSuggestions: {
     title: 'RAG için Öneriler',
+    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
   },
 }
 

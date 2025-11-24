@@ -51,6 +51,7 @@ const translation = {
       title: '您的教育狀態已過期',
     },
     isAboutToExpire: {
+      title: '您的教育版即將到期',
       summary: '別擔心 — 這不會影響你當前的訂閱，但當它續訂時，如果你沒有重新確認你的身份，你將不會獲得教育折扣。',
     },
     stillInEducation: {

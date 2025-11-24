@@ -326,6 +326,7 @@ const translation = {
     'both': 'ambos',
     'single-file': 'En fila india',
     'maxNumberOfUploads': 'Número máximo de cargas',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'multi-files': 'Lista de archivos',
     'jsonSchema': 'Esquema JSON',
     'json': 'Código JSON',

@@ -345,6 +345,7 @@ const translation = {
     'localUpload': 'Локальне завантаження',
     'uploadFileTypes': 'Типи файлів для завантаження',
     'maxNumberOfUploads': 'Максимальна кількість завантажень',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'jsonSchema': 'JSON схема',
     'optional': 'додатковий',
     'json': 'JSON Код',

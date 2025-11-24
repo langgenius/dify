@@ -116,7 +116,7 @@ const translation = {
   documentSettings: {
     title: 'Параметри документа',
   },
-  onlineDocument: {},
+  onlineDocument: { },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Всі файли',
@@ -128,7 +128,7 @@ const translation = {
     resetKeywords: 'Скидання ключових слів',
     notSupportedFileType: 'Цей тип файлу не підтримується',
   },
-  credentialSelector: {},
+  credentialSelector: { },
   conversion: {
     confirm: {
       title: 'Підтвердження',
@@ -149,6 +149,7 @@ const translation = {
   pipelineNameAndIcon: 'Назва та піктограма воронки продажів',
   editPipelineInfo: 'Як редагувати інформацію про воронку продажів',
   knowledgeDescriptionPlaceholder: 'Опишіть, що є в цій Базі знань. Детальний опис дозволяє штучному інтелекту більш точно отримати доступ до вмісту набору даних. Якщо значення порожнє, Dify використовуватиме стратегію удару за замовчуванням. (Необов\'язково)',
+  configurationTip: 'Configuration tip',
 }
 
 export default translation

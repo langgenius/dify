@@ -353,6 +353,7 @@ const translation = {
     'multi-files': 'फ़ाइल सूची',
     'single-file': 'एकल फ़ाइल',
     'maxNumberOfUploads': 'अधिकतम अपलोड संख्या',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'uploadFileTypes': 'फ़ाइल प्रकार अपलोड करें',
     'localUpload': 'स्थानीय अपलोड',
     'jsonSchema': 'JSON स्कीमा',

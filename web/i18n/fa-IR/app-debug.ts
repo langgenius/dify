@@ -569,6 +569,8 @@ const translation = {
     message: 'بازنشانی تغییرات را دور می اندازد و آخرین پیکربندی منتشر شده را بازیابی می کند.',
   },
   errorMessage: {
+    nameOfKeyRequired: 'نام کلید: {{key}} الزامی است',
+    valueOfVarRequired: 'مقدار {{key}} نمی‌تواند خالی باشد',
     notSelectModel: 'لطفا یک مدل را انتخاب کنید',
     waitForResponse: 'لطفا منتظر بمانید تا پاسخ به پیام قبلی کامل شود.',
     queryRequired: 'درخواست متن الزامی است.',
@@ -587,13 +589,21 @@ const translation = {
     name: 'نام فیلد ورودی کاربر',
     type: 'نوع ورودی',
   },
-  varKeyError: {},
+  varKeyError: {
+    canNoBeEmpty: '{{key}} باید پر شود',
+    tooLong: '{{key}} بیش از حد طولانی است. نباید بیشتر از ۳۰ نویسه باشد',
+    notValid: '{{key}} نامعتبر است. فقط می‌تواند شامل حروف، اعداد و زیرخط باشد',
+    notStartWithNumber: '{{key}} نمی‌تواند با عدد شروع شود',
+    keyAlreadyExists: '{{key}} از قبل وجود دارد',
+  },
   otherError: {
     promptNoBeEmpty: 'اعلان نمی تواند خالی باشد',
     historyNoBeEmpty: 'سابقه مکالمه باید در اعلان تنظیم شود',
     queryNoBeEmpty: 'پرس و جو باید در اعلان تنظیم شود',
   },
   variableConfig: {
+    'description': 'تنظیمات برای متغیر {{varName}}',
+    'notSet': 'تنظیم نشده، {{input}} را در اعلان پیشوند تایپ کنید',
     'file': {
       image: {
         name: 'تصویر',
@@ -632,6 +642,7 @@ const translation = {
     'maxLength': 'حداکثر طول',
     'varName': 'نام متغیر',
     'maxNumberOfUploads': 'حداکثر تعداد آپلود',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'noDefaultValue': 'بدون مقدار پیش فرض',
     'addOption': 'افزودن گزینه',
     'stringTitle': 'گزینه های جعبه متن فرم',
@@ -704,6 +715,10 @@ const translation = {
     add: 'اضافه کردن',
     title: 'افتتاحیه مکالمه',
     openingQuestion: 'سوالات آغازین',
+    placeholder: 'پیام بازگشایی خود را اینجا بنویسید، می‌توانید از متغیرها استفاده کنید، تلاش کنید {{variable}} را تایپ کنید.',
+    openingQuestionPlaceholder: 'می‌توانید از متغیرها استفاده کنید، تلاش کنید {{variable}} را تایپ کنید.',
+    varTip: 'می‌توانید از متغیرها استفاده کنید، تلاش کنید {{variable}} را تایپ کنید.',
+    notIncludeKey: 'اعلان اولیه شامل متغیر {{key}} نیست. لطفاً آن را به اعلان اضافه کنید.',
     noDataPlaceHolder: 'شروع مکالمه با کاربر می تواند به هوش مصنوعی کمک کند تا در برنامه های مکالمه ارتباط نزدیک تری با آنها برقرار کند.',
   },
   modelConfig: {
@@ -785,6 +800,7 @@ const translation = {
   },
   result: 'متن خروجی',
   completionSubTitle: 'اعلان پیشوند',
+  promptTip: 'دستورالعمل‌ها و محدودیت‌ها پاسخ‌های هوش مصنوعی را هدایت می‌کنند. متغیرهایی مانند {{input}} را درج کنید. این اعلان برای کاربران قابل مشاهده نخواهد بود.',
   variableTitle: 'متغیرهای',
   formattingChangedTitle: 'قالب بندی تغییر کرد',
   chatSubTitle: 'دستورالعمل',
@@ -795,6 +811,7 @@ const translation = {
   debugAsMultipleModel: 'اشکال زدایی به عنوان چندین مدل',
   formattingChangedText: 'با تغییر قالب بندی، ناحیه اشکال زدایی بازنشانی می شود، مطمئن هستید؟',
   variableTip: 'کاربران متغیرها را در یک فرم پر می کنند و به طور خودکار متغیرها را در اعلان جایگزین می کنند.',
+  notSetVar: 'متغیرها به کاربران اجازه می‌دهند هنگام پر کردن فرم، واژه‌ها یا جملات آغازین را به اعلان اضافه کنند. می‌توانید وارد کردن "{{input}}" را در متن اعلان امتحان کنید.',
   autoAddVar: 'متغیرهای تعریف نشده که در پیش اعلان ارجاع داده شده اند، آیا می خواهید آنها را به صورت ورودی کاربر اضافه کنید؟',
 }
 
