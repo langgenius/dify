@@ -1,12 +1,12 @@
 from unittest.mock import MagicMock
 
 import pytest
-
-from core.variables import ArrayNumberSegment, ArrayStringSegment
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+
+from core.variables import ArrayNumberSegment, ArrayStringSegment
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.nodes.list_operator.node import ListOperatorNode
 from models.workflow import WorkflowType
 
@@ -45,6 +45,7 @@ class TestListOperatorNode:
     @pytest.fixture
     def list_operator_node_factory(self, graph_init_params, mock_graph, mock_graph_runtime_state):
         """Factory fixture for creating ListOperatorNode instances."""
+
         def _create_node(config, mock_variable):
             mock_graph_runtime_state.variable_pool.get.return_value = mock_variable
             return ListOperatorNode(
@@ -54,6 +55,7 @@ class TestListOperatorNode:
                 graph=mock_graph,
                 graph_runtime_state=mock_graph_runtime_state,
             )
+
         return _create_node
 
     def test_node_initialization(self, mock_graph, mock_graph_runtime_state, graph_init_params):
@@ -540,4 +542,3 @@ class TestListOperatorNode:
 
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == [1, 3, 5, 7, 9]
-
