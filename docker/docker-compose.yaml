@@ -842,12 +842,16 @@ services:
       # Mount the redis data directory to the container.
       - ./volumes/redis/data:/data
     # Set the redis password when startup redis server.
-    command: >
-      redis-server 
-      --requirepass ${REDIS_PASSWORD:-difyai123456}
-      --dir /data  # <-- THÊM: Buộc Redis dùng /data làm root dir cho RDB/AOF
-      --stop-writes-on-bgsave-error no  # <-- THÊM: Tránh chặn writes nếu RDB fail tạm thời
-      --appendonly yes  # <-- THÊM: Bật AOF cho persistence tốt hơn RDB (tùy chọn)
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:-difyai123456}
+      - --dir
+      - /data  # Buộc lưu RDB vào /data (fix "unknown dir")
+      - --stop-writes-on-bgsave-error
+      - no  # Tránh chặn writes nếu RDB fail
+      - --appendonly
+      - yes  # Bật AOF persistence (tùy chọn, an toàn hơn RDB)
     healthcheck:
       test:
         [
