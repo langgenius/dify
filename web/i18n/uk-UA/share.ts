@@ -72,6 +72,7 @@ const translation = {
     },
     execution: 'ВИКОНАННЯ',
     executions: '{{num}} ВИКОНАНЬ',
+    stopRun: 'Зупинити виконання',
   },
   login: {
     backToHome: 'Повернутися на головну',

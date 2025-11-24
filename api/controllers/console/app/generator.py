@@ -2,7 +2,7 @@ from collections.abc import Sequence
 
 from flask_restx import Resource, fields, reqparse
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -11,6 +11,7 @@ from controllers.console.app.error import (
 )
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.llm_generator import LLMGenerator
@@ -23,10 +24,10 @@ from services.workflow_service import WorkflowService
 
 @console_ns.route("/rule-generate")
 class RuleGenerateApi(Resource):
-    @api.doc("generate_rule_config")
-    @api.doc(description="Generate rule configuration using LLM")
-    @api.expect(
-        api.model(
+    @console_ns.doc("generate_rule_config")
+    @console_ns.doc(description="Generate rule configuration using LLM")
+    @console_ns.expect(
+        console_ns.model(
             "RuleGenerateRequest",
             {
                 "instruction": fields.String(required=True, description="Rule generation instruction"),
@@ -35,9 +36,9 @@ class RuleGenerateApi(Resource):
             },
         )
     )
-    @api.response(200, "Rule configuration generated successfully")
-    @api.response(400, "Invalid request parameters")
-    @api.response(402, "Provider quota exceeded")
+    @console_ns.response(200, "Rule configuration generated successfully")
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -72,10 +73,10 @@ class RuleGenerateApi(Resource):
 
 @console_ns.route("/rule-code-generate")
 class RuleCodeGenerateApi(Resource):
-    @api.doc("generate_rule_code")
-    @api.doc(description="Generate code rules using LLM")
-    @api.expect(
-        api.model(
+    @console_ns.doc("generate_rule_code")
+    @console_ns.doc(description="Generate code rules using LLM")
+    @console_ns.expect(
+        console_ns.model(
             "RuleCodeGenerateRequest",
             {
                 "instruction": fields.String(required=True, description="Code generation instruction"),
@@ -87,9 +88,9 @@ class RuleCodeGenerateApi(Resource):
             },
         )
     )
-    @api.response(200, "Code rules generated successfully")
-    @api.response(400, "Invalid request parameters")
-    @api.response(402, "Provider quota exceeded")
+    @console_ns.response(200, "Code rules generated successfully")
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -125,10 +126,10 @@ class RuleCodeGenerateApi(Resource):
 
 @console_ns.route("/rule-structured-output-generate")
 class RuleStructuredOutputGenerateApi(Resource):
-    @api.doc("generate_structured_output")
-    @api.doc(description="Generate structured output rules using LLM")
-    @api.expect(
-        api.model(
+    @console_ns.doc("generate_structured_output")
+    @console_ns.doc(description="Generate structured output rules using LLM")
+    @console_ns.expect(
+        console_ns.model(
             "StructuredOutputGenerateRequest",
             {
                 "instruction": fields.String(required=True, description="Structured output generation instruction"),
@@ -136,9 +137,9 @@ class RuleStructuredOutputGenerateApi(Resource):
             },
         )
     )
-    @api.response(200, "Structured output generated successfully")
-    @api.response(400, "Invalid request parameters")
-    @api.response(402, "Provider quota exceeded")
+    @console_ns.response(200, "Structured output generated successfully")
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -171,10 +172,10 @@ class RuleStructuredOutputGenerateApi(Resource):
 
 @console_ns.route("/instruction-generate")
 class InstructionGenerateApi(Resource):
-    @api.doc("generate_instruction")
-    @api.doc(description="Generate instruction for workflow nodes or general use")
-    @api.expect(
-        api.model(
+    @console_ns.doc("generate_instruction")
+    @console_ns.doc(description="Generate instruction for workflow nodes or general use")
+    @console_ns.expect(
+        console_ns.model(
             "InstructionGenerateRequest",
             {
                 "flow_id": fields.String(required=True, description="Workflow/Flow ID"),
@@ -187,9 +188,9 @@ class InstructionGenerateApi(Resource):
             },
         )
     )
-    @api.response(200, "Instruction generated successfully")
-    @api.response(400, "Invalid request parameters or flow/workflow not found")
-    @api.response(402, "Provider quota exceeded")
+    @console_ns.response(200, "Instruction generated successfully")
+    @console_ns.response(400, "Invalid request parameters or flow/workflow not found")
+    @console_ns.response(402, "Provider quota exceeded")
     @setup_required
     @login_required
     @account_initialization_required
@@ -206,13 +207,11 @@ class InstructionGenerateApi(Resource):
         )
         args = parser.parse_args()
         _, current_tenant_id = current_account_with_tenant()
-        code_template = (
-            Python3CodeProvider.get_default_code()
-            if args["language"] == "python"
-            else (JavascriptCodeProvider.get_default_code())
-            if args["language"] == "javascript"
-            else ""
+        providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
+        code_provider: type[CodeNodeProvider] | None = next(
+            (p for p in providers if p.is_accept_language(args["language"])), None
         )
+        code_template = code_provider.get_default_code() if code_provider else ""
         try:
             # Generate from nothing for a workflow node
             if (args["current"] == code_template or args["current"] == "") and args["node_id"] != "":
@@ -284,10 +283,10 @@ class InstructionGenerateApi(Resource):
 
 @console_ns.route("/instruction-generate/template")
 class InstructionGenerationTemplateApi(Resource):
-    @api.doc("get_instruction_template")
-    @api.doc(description="Get instruction generation template")
-    @api.expect(
-        api.model(
+    @console_ns.doc("get_instruction_template")
+    @console_ns.doc(description="Get instruction generation template")
+    @console_ns.expect(
+        console_ns.model(
             "InstructionTemplateRequest",
             {
                 "instruction": fields.String(required=True, description="Template instruction"),
@@ -295,8 +294,8 @@ class InstructionGenerationTemplateApi(Resource):
             },
         )
     )
-    @api.response(200, "Template retrieved successfully")
-    @api.response(400, "Invalid request parameters")
+    @console_ns.response(200, "Template retrieved successfully")
+    @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required

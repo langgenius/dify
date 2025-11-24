@@ -33,6 +33,7 @@ import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import { useLogout } from '@/service/use-common'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 export default function AppSelector() {
   const itemClassName = `
@@ -68,7 +69,7 @@ export default function AppSelector() {
     <div className="">
       <Menu as="div" className="relative inline-block text-left">
         {
-          ({ open }) => (
+          ({ open, close }) => (
             <>
               <MenuButton className={cn('inline-flex items-center rounded-[20px] p-0.5 hover:bg-background-default-dodge', open && 'bg-background-default-dodge')}>
                 <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={36} />
@@ -122,7 +123,7 @@ export default function AppSelector() {
                     <MenuItem>
                       <div className={cn(itemClassName,
                         'data-[active]:bg-state-base-hover',
-                      )} onClick={() => setShowAccountSettingModal({ payload: 'members' })}>
+                      )} onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}>
                         <RiSettings3Line className='size-4 shrink-0 text-text-tertiary' />
                         <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.settings')}</div>
                       </div>
@@ -142,7 +143,7 @@ export default function AppSelector() {
                           <RiArrowRightUpLine className='size-[14px] shrink-0 text-text-tertiary' />
                         </Link>
                       </MenuItem>
-                      <Support />
+                      <Support closeAccountDropdown={close} />
                       {IS_CLOUD_EDITION && isCurrentWorkspaceOwner && <Compliance />}
                     </div>
                     <div className='p-1'>

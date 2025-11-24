@@ -29,6 +29,11 @@ const translation = {
     refresh: '重新开始',
     reset: '重置',
     search: '搜索',
+    noSearchResults: '没有找到{{content}}',
+    resetKeywords: '重置关键词',
+    selectCount: '已选择 {{count}} 项',
+    searchCount: '找到 {{count}} 个 {{content}}',
+    noSearchCount: '0 个 {{content}}',
     change: '更改',
     remove: '移除',
     send: '发送',
@@ -71,6 +76,7 @@ const translation = {
     more: '更多',
     selectAll: '全选',
     deSelectAll: '取消全选',
+    now: '现在',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
@@ -79,7 +85,9 @@ const translation = {
   placeholder: {
     input: '请输入',
     select: '请选择',
+    search: '搜索...',
   },
+  noData: '暂无数据',
   label: {
     optional: '（可选）',
   },
@@ -173,15 +181,16 @@ const translation = {
     emailSupport: '邮件支持',
     workspace: '工作空间',
     createWorkspace: '创建工作空间',
-    helpCenter: '帮助文档',
+    helpCenter: '查看帮助文档',
     support: '支持',
     compliance: '合规',
-    communityFeedback: '用户反馈',
+    forum: '论坛',
     roadmap: '路线图',
     github: 'GitHub',
     community: '社区',
     about: '关于',
     logout: '登出',
+    contactUs: '联系我们',
   },
   compliance: {
     soc2Type1: 'SOC 2 Type I Report',
@@ -727,6 +736,7 @@ const translation = {
     uploadFromComputerLimit: '上传 {{type}} 不能超过 {{size}}',
     pasteFileLinkInvalid: '文件链接无效',
     fileExtensionNotSupport: '文件类型不支持',
+    fileExtensionBlocked: '出于安全考虑，该文件类型已被禁止上传',
   },
   tag: {
     placeholder: '全部标签',
@@ -766,6 +776,12 @@ const translation = {
     subtitle: '请告诉我们这次回应出错的原因。',
     title: '提供反馈',
     placeholder: '请描述发生了什么问题或我们可以如何改进...',
+  },
+  dynamicSelect: {
+    error: '加载选项失败',
+    noData: '没有可用的选项',
+    loading: '加载选项...',
+    selected: '已选择 {{count}} 项',
   },
 }
 

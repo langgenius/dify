@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.9.1
+    image: langgenius/dify-api:1.10.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -17,33 +17,36 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
+      seekdb:
+        condition: service_healthy
+        required: false
       redis:
         condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
-    # TODO: Remove this entrypoint override when weaviate-client 4.17.0 is included in the next Dify release
-    entrypoint:
-      - /bin/bash
-      - -c
-      - |
-        uv pip install --system weaviate-client==4.17.0
-        exec /bin/bash /app/api/docker/entrypoint.sh
     networks:
       - ssrf_proxy_network
       - default
 
   # worker service
-  # The Celery worker for processing the queue.
+  # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.9.1
+    image: langgenius/dify-api:1.10.0
     restart: always
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
-      # Startup mode, 'worker' starts the Celery worker for processing the queue.
+      # Startup mode, 'worker' starts the Celery worker for processing all queues.
       MODE: worker
       SENTRY_DSN: ${API_SENTRY_DSN:-}
       SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
@@ -51,20 +54,23 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
+      seekdb:
+        condition: service_healthy
+        required: false
       redis:
         condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
-    # TODO: Remove this entrypoint override when weaviate-client 4.17.0 is included in the next Dify release
-    entrypoint:
-      - /bin/bash
-      - -c
-      - |
-        uv pip install --system weaviate-client==4.17.0
-        exec /bin/bash /app/api/docker/entrypoint.sh
     networks:
       - ssrf_proxy_network
       - default
@@ -72,7 +78,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.9.1
+    image: langgenius/dify-api:1.10.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -80,8 +86,18 @@ services:
       # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
       MODE: beat
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
+      seekdb:
+        condition: service_healthy
+        required: false
       redis:
         condition: service_started
     networks:
@@ -90,11 +106,12 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.9.1
+    image: langgenius/dify-web:1.10.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
+      NEXT_PUBLIC_COOKIE_DOMAIN: ${NEXT_PUBLIC_COOKIE_DOMAIN:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
@@ -114,9 +131,12 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
-  # The postgres database.
-  db:
+      
+  # The PostgreSQL database.
+  db_postgres:
     image: postgres:15-alpine
+    profiles:
+      - postgresql
     restart: always
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -129,6 +149,8 @@ services:
                -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
                -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
+               -c 'statement_timeout=${POSTGRES_STATEMENT_TIMEOUT:-0}'
+               -c 'idle_in_transaction_session_timeout=${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-0}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
@@ -137,15 +159,45 @@ services:
           "CMD",
           "pg_isready",
           "-h",
-          "db",
+          "db_postgres",
           "-U",
           "${PGUSER:-postgres}",
           "-d",
-          "${POSTGRES_DB:-dify}",
+          "${DB_DATABASE:-dify}",
         ]
       interval: 1s
       timeout: 3s
       retries: 60
+
+  # The mysql database.
+  db_mysql:
+    image: mysql:8.0
+    profiles:
+      - mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
+    command: >
+      --max_connections=1000
+      --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
+      --innodb_log_file_size=${MYSQL_INNODB_LOG_FILE_SIZE:-128M}
+      --innodb_flush_log_at_trx_commit=${MYSQL_INNODB_FLUSH_LOG_AT_TRX_COMMIT:-2}
+    volumes:
+      - ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "mysqladmin",
+          "ping",
+          "-u",
+          "root",
+          "-p${MYSQL_PASSWORD:-difyai123456}",
+        ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
 
   # The redis cache.
   redis:
@@ -191,7 +243,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.3.0-local
+    image: langgenius/dify-plugin-daemon:0.4.1-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -247,8 +299,18 @@ services:
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
+        required: false
+      db_mysql:
+        condition: service_healthy
+        required: false
+      oceanbase:
+        condition: service_healthy
+        required: false
+      seekdb:
+        condition: service_healthy
+        required: false
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -363,6 +425,63 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+
+  # OceanBase vector database
+  oceanbase:
+    image: oceanbase/oceanbase-ce:4.3.5-lts
+    container_name: oceanbase
+    profiles:
+      - oceanbase
+    restart: always
+    volumes:
+      - ./volumes/oceanbase/data:/root/ob
+      - ./volumes/oceanbase/conf:/root/.obd/cluster
+      - ./volumes/oceanbase/init.d:/root/boot/init.d
+    environment:
+      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+      OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
+      OB_SERVER_IP: 127.0.0.1
+      MODE: mini
+      LANG: en_US.UTF-8
+    ports:
+      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'obclient -h127.0.0.1 -P2881 -uroot@test -p${OCEANBASE_VECTOR_PASSWORD:-difyai123456} -e "SELECT 1;"',
+        ]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+      timeout: 10s
+
+  # seekdb vector database
+  seekdb: 
+    image: oceanbase/seekdb:latest
+    container_name: seekdb
+    profiles:
+      - seekdb
+    restart: always
+    volumes:
+      - ./volumes/seekdb:/var/lib/oceanbase
+    environment:
+      ROOT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      MEMORY_LIMIT: ${SEEKDB_MEMORY_LIMIT:-2G}
+      REPORTER: dify-ai-seekdb
+    ports:
+      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'mysql -h127.0.0.1 -P2881 -uroot -p${OCEANBASE_VECTOR_PASSWORD:-difyai123456} -e "SELECT 1;"',
+        ]
+      interval: 5s
+      retries: 60
+      timeout: 5s
 
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
@@ -498,38 +617,6 @@ services:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
-
-  # OceanBase vector database
-  oceanbase:
-    image: oceanbase/oceanbase-ce:4.3.5-lts
-    container_name: oceanbase
-    profiles:
-      - oceanbase
-    restart: always
-    volumes:
-      - ./volumes/oceanbase/data:/root/ob
-      - ./volumes/oceanbase/conf:/root/.obd/cluster
-      - ./volumes/oceanbase/init.d:/root/boot/init.d
-    environment:
-      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
-      OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
-      OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
-      OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
-      OB_SERVER_IP: 127.0.0.1
-      MODE: mini
-      LANG: en_US.UTF-8
-    ports:
-      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'obclient -h127.0.0.1 -P2881 -uroot@test -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
-        ]
-      interval: 10s
-      retries: 30
-      start_period: 30s
-      timeout: 10s
 
   # Oracle vector database
   oracle:

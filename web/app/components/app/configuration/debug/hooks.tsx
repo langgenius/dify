@@ -12,12 +12,15 @@ import type {
   ChatConfig,
   ChatItem,
 } from '@/app/components/base/chat/types'
+import cloneDeep from 'lodash-es/cloneDeep'
 import {
   AgentStrategy,
 } from '@/types/app'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 
 export const useDebugWithSingleOrMultipleModel = (appId: string) => {
   const localeDebugWithSingleOrMultipleModelConfigs = localStorage.getItem('app-debug-with-single-or-multiple-models')
@@ -95,16 +98,14 @@ export const useConfigFromDebugContext = () => {
   const config: ChatConfig = {
     pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
     prompt_type: promptMode,
-    chat_prompt_config: isAdvancedMode ? chatPromptConfig : {},
-    completion_prompt_config: isAdvancedMode ? completionPromptConfig : {},
+    chat_prompt_config: isAdvancedMode ? chatPromptConfig : cloneDeep(DEFAULT_CHAT_PROMPT_CONFIG),
+    completion_prompt_config: isAdvancedMode ? completionPromptConfig : cloneDeep(DEFAULT_COMPLETION_PROMPT_CONFIG),
     user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
     dataset_query_variable: contextVar || '',
     opening_statement: introduction,
-    more_like_this: {
-      enabled: false,
-    },
+    more_like_this: modelConfig.more_like_this ?? { enabled: false },
     suggested_questions: openingSuggestedQuestions,
-    suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
+    suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig ?? { enabled: false },
     text_to_speech: textToSpeechConfig,
     speech_to_text: speechToTextConfig,
     retriever_resource: citationConfig,
@@ -121,8 +122,13 @@ export const useConfigFromDebugContext = () => {
     },
     file_upload: {
       image: visionConfig,
+      allowed_file_upload_methods: visionConfig.transfer_methods ?? [],
+      allowed_file_types: [SupportUploadFileTypes.image],
+      max_length: visionConfig.number_limits ?? 0,
+      number_limits: visionConfig.number_limits,
     },
     annotation_reply: annotationConfig,
+    system_parameters: modelConfig.system_parameters,
 
     supportAnnotation: true,
     appId,

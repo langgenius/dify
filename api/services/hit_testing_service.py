@@ -82,13 +82,18 @@ class HitTestingService:
         logger.debug("Hit testing retrieve in %s seconds", end - start)
 
         dataset_query = DatasetQuery(
-            dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
+            dataset_id=dataset.id,
+            content=query,
+            source="hit_testing",
+            source_app_id=None,
+            created_by_role="account",
+            created_by=account.id,
         )
 
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(query, all_documents)  # type: ignore
+        return cls.compact_retrieve_response(query, all_documents)
 
     @classmethod
     def external_retrieve(
@@ -118,7 +123,12 @@ class HitTestingService:
         logger.debug("External knowledge hit testing retrieve in %s seconds", end - start)
 
         dataset_query = DatasetQuery(
-            dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
+            dataset_id=dataset.id,
+            content=query,
+            source="hit_testing",
+            source_app_id=None,
+            created_by_role="account",
+            created_by=account.id,
         )
 
         db.session.add(dataset_query)

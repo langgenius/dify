@@ -1,4 +1,4 @@
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal_with, reqparse
 from sqlalchemy.orm import Session
 
 from controllers.console.app.wraps import get_app_model
@@ -9,7 +9,11 @@ from controllers.console.wraps import (
     setup_required,
 )
 from extensions.ext_database import db
-from fields.app_fields import app_import_check_dependencies_fields, app_import_fields
+from fields.app_fields import (
+    app_import_check_dependencies_fields,
+    app_import_fields,
+    leaked_dependency_fields,
+)
 from libs.login import current_account_with_tenant, login_required
 from models.model import App
 from services.app_dsl_service import AppDslService, ImportStatus
@@ -18,30 +22,45 @@ from services.feature_service import FeatureService
 
 from .. import console_ns
 
+# Register models for flask_restx to avoid dict type issues in Swagger
+# Register base model first
+leaked_dependency_model = console_ns.model("LeakedDependency", leaked_dependency_fields)
+
+app_import_model = console_ns.model("AppImport", app_import_fields)
+
+# For nested models, need to replace nested dict with registered model
+app_import_check_dependencies_fields_copy = app_import_check_dependencies_fields.copy()
+app_import_check_dependencies_fields_copy["leaked_dependencies"] = fields.List(fields.Nested(leaked_dependency_model))
+app_import_check_dependencies_model = console_ns.model(
+    "AppImportCheckDependencies", app_import_check_dependencies_fields_copy
+)
+
+parser = (
+    reqparse.RequestParser()
+    .add_argument("mode", type=str, required=True, location="json")
+    .add_argument("yaml_content", type=str, location="json")
+    .add_argument("yaml_url", type=str, location="json")
+    .add_argument("name", type=str, location="json")
+    .add_argument("description", type=str, location="json")
+    .add_argument("icon_type", type=str, location="json")
+    .add_argument("icon", type=str, location="json")
+    .add_argument("icon_background", type=str, location="json")
+    .add_argument("app_id", type=str, location="json")
+)
+
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
+    @console_ns.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_import_fields)
+    @marshal_with(app_import_model)
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     def post(self):
         # Check user role first
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("mode", type=str, required=True, location="json")
-            .add_argument("yaml_content", type=str, location="json")
-            .add_argument("yaml_url", type=str, location="json")
-            .add_argument("name", type=str, location="json")
-            .add_argument("description", type=str, location="json")
-            .add_argument("icon_type", type=str, location="json")
-            .add_argument("icon", type=str, location="json")
-            .add_argument("icon_background", type=str, location="json")
-            .add_argument("app_id", type=str, location="json")
-        )
         args = parser.parse_args()
 
         # Create service with session
@@ -79,7 +98,7 @@ class AppImportConfirmApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_import_fields)
+    @marshal_with(app_import_model)
     @edit_permission_required
     def post(self, import_id):
         # Check user role first
@@ -105,7 +124,7 @@ class AppImportCheckDependenciesApi(Resource):
     @login_required
     @get_app_model
     @account_initialization_required
-    @marshal_with(app_import_check_dependencies_fields)
+    @marshal_with(app_import_check_dependencies_model)
     @edit_permission_required
     def get(self, app_model: App):
         with Session(db.engine) as session:

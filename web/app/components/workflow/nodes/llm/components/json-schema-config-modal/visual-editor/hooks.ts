@@ -1,4 +1,4 @@
-import produce from 'immer'
+import { produce } from 'immer'
 import type { VisualEditorProps } from '.'
 import { useMittContext } from './context'
 import { useVisualEditorStore } from './store'

@@ -6,8 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
-from sqlalchemy import Float, and_, func, or_, select, text
-from sqlalchemy import cast as sqlalchemy_cast
+from sqlalchemy import and_, func, literal, or_, select
 from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -15,14 +14,11 @@ from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEnti
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.message_entities import (
-    PromptMessageRole,
-)
-from core.model_runtime.entities.model_entities import (
-    ModelFeature,
-    ModelType,
-)
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.model_runtime.entities.message_entities import PromptMessageRole
+from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import ModelMode
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
@@ -33,8 +29,14 @@ from core.variables import (
 )
 from core.variables.segments import ArrayObjectSegment
 from core.workflow.entities import GraphInitParams
-from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.enums import (
+    ErrorStrategy,
+    NodeType,
+    WorkflowNodeExecutionMetadataKey,
+    WorkflowNodeExecutionStatus,
+)
 from core.workflow.node_events import ModelInvokeCompletedEvent, NodeRunResult
+from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.knowledge_retrieval.template_prompts import (
@@ -80,7 +82,7 @@ default_retrieval_model = {
 }
 
 
-class KnowledgeRetrievalNode(Node):
+class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node):
     node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
     _node_data: KnowledgeRetrievalNodeData
@@ -141,7 +143,7 @@ class KnowledgeRetrievalNode(Node):
     def version(cls):
         return "1"
 
-    def _run(self) -> NodeRunResult:  # type: ignore
+    def _run(self) -> NodeRunResult:
         # extract variables
         variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
         if not isinstance(variable, StringSegment):
@@ -182,14 +184,21 @@ class KnowledgeRetrievalNode(Node):
                 )
 
         # retrieve knowledge
+        usage = LLMUsage.empty_usage()
         try:
-            results = self._fetch_dataset_retriever(node_data=self._node_data, query=query)
+            results, usage = self._fetch_dataset_retriever(node_data=self._node_data, query=query)
             outputs = {"result": ArrayObjectSegment(value=results)}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs=variables,
-                process_data={},
+                process_data={"usage": jsonable_encoder(usage)},
                 outputs=outputs,  # type: ignore
+                metadata={
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+                },
+                llm_usage=usage,
             )
 
         except KnowledgeRetrievalNodeError as e:
@@ -199,6 +208,7 @@ class KnowledgeRetrievalNode(Node):
                 inputs=variables,
                 error=str(e),
                 error_type=type(e).__name__,
+                llm_usage=usage,
             )
         # Temporary handle all exceptions from DatasetRetrieval class here.
         except Exception as e:
@@ -207,11 +217,15 @@ class KnowledgeRetrievalNode(Node):
                 inputs=variables,
                 error=str(e),
                 error_type=type(e).__name__,
+                llm_usage=usage,
             )
         finally:
             db.session.close()
 
-    def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[dict[str, Any]]:
+    def _fetch_dataset_retriever(
+        self, node_data: KnowledgeRetrievalNodeData, query: str
+    ) -> tuple[list[dict[str, Any]], LLMUsage]:
+        usage = LLMUsage.empty_usage()
         available_datasets = []
         dataset_ids = node_data.dataset_ids
 
@@ -245,9 +259,10 @@ class KnowledgeRetrievalNode(Node):
             if not dataset:
                 continue
             available_datasets.append(dataset)
-        metadata_filter_document_ids, metadata_condition = self._get_metadata_filter_condition(
+        metadata_filter_document_ids, metadata_condition, metadata_usage = self._get_metadata_filter_condition(
             [dataset.id for dataset in available_datasets], query, node_data
         )
+        usage = self._merge_usage(usage, metadata_usage)
         all_documents = []
         dataset_retrieval = DatasetRetrieval()
         if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
@@ -330,6 +345,8 @@ class KnowledgeRetrievalNode(Node):
                 metadata_filter_document_ids=metadata_filter_document_ids,
                 metadata_condition=metadata_condition,
             )
+        usage = self._merge_usage(usage, dataset_retrieval.llm_usage)
+
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
         retrieval_resource_list = []
@@ -406,11 +423,12 @@ class KnowledgeRetrievalNode(Node):
             )
             for position, item in enumerate(retrieval_resource_list, start=1):
                 item["metadata"]["position"] = position
-        return retrieval_resource_list
+        return retrieval_resource_list, usage
 
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
-    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None]:
+    ) -> tuple[dict[str, list[str]] | None, MetadataCondition | None, LLMUsage]:
+        usage = LLMUsage.empty_usage()
         document_query = db.session.query(Document).where(
             Document.dataset_id.in_(dataset_ids),
             Document.indexing_status == "completed",
@@ -420,9 +438,12 @@ class KnowledgeRetrievalNode(Node):
         filters: list[Any] = []
         metadata_condition = None
         if node_data.metadata_filtering_mode == "disabled":
-            return None, None
+            return None, None, usage
         elif node_data.metadata_filtering_mode == "automatic":
-            automatic_metadata_filters = self._automatic_metadata_filter_func(dataset_ids, query, node_data)
+            automatic_metadata_filters, automatic_usage = self._automatic_metadata_filter_func(
+                dataset_ids, query, node_data
+            )
+            usage = self._merge_usage(usage, automatic_usage)
             if automatic_metadata_filters:
                 conditions = []
                 for sequence, filter in enumerate(automatic_metadata_filters):
@@ -443,7 +464,7 @@ class KnowledgeRetrievalNode(Node):
                 metadata_condition = MetadataCondition(
                     logical_operator=node_data.metadata_filtering_conditions.logical_operator
                     if node_data.metadata_filtering_conditions
-                    else "or",  # type: ignore
+                    else "or",
                     conditions=conditions,
                 )
         elif node_data.metadata_filtering_mode == "manual":
@@ -457,10 +478,10 @@ class KnowledgeRetrievalNode(Node):
                             expected_value = self.graph_runtime_state.variable_pool.convert_template(
                                 expected_value
                             ).value[0]
-                            if expected_value.value_type in {"number", "integer", "float"}:  # type: ignore
-                                expected_value = expected_value.value  # type: ignore
-                            elif expected_value.value_type == "string":  # type: ignore
-                                expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()  # type: ignore
+                            if expected_value.value_type in {"number", "integer", "float"}:
+                                expected_value = expected_value.value
+                            elif expected_value.value_type == "string":
+                                expected_value = re.sub(r"[\r\n\t]+", " ", expected_value.text).strip()
                             else:
                                 raise ValueError("Invalid expected metadata value type")
                     conditions.append(
@@ -487,7 +508,7 @@ class KnowledgeRetrievalNode(Node):
             if (
                 node_data.metadata_filtering_conditions
                 and node_data.metadata_filtering_conditions.logical_operator == "and"
-            ):  # type: ignore
+            ):
                 document_query = document_query.where(and_(*filters))
             else:
                 document_query = document_query.where(or_(*filters))
@@ -496,11 +517,12 @@ class KnowledgeRetrievalNode(Node):
         metadata_filter_document_ids = defaultdict(list) if documents else None  # type: ignore
         for document in documents:
             metadata_filter_document_ids[document.dataset_id].append(document.id)  # type: ignore
-        return metadata_filter_document_ids, metadata_condition
+        return metadata_filter_document_ids, metadata_condition, usage
 
     def _automatic_metadata_filter_func(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
-    ) -> list[dict[str, Any]]:
+    ) -> tuple[list[dict[str, Any]], LLMUsage]:
+        usage = LLMUsage.empty_usage()
         # get all metadata field
         stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
         metadata_fields = db.session.scalars(stmt).all()
@@ -548,6 +570,7 @@ class KnowledgeRetrievalNode(Node):
             for event in generator:
                 if isinstance(event, ModelInvokeCompletedEvent):
                     result_text = event.text
+                    usage = self._merge_usage(usage, event.usage)
                     break
 
             result_text_json = parse_and_check_json_markdown(result_text, [])
@@ -564,8 +587,8 @@ class KnowledgeRetrievalNode(Node):
                             }
                         )
         except Exception:
-            return []
-        return automatic_metadata_filters
+            return [], usage
+        return automatic_metadata_filters, usage
 
     def _process_metadata_filter_func(
         self, sequence: int, condition: str, metadata_name: str, value: Any, filters: list[Any]
@@ -573,79 +596,79 @@ class KnowledgeRetrievalNode(Node):
         if value is None and condition not in ("empty", "not empty"):
             return filters
 
-        key = f"{metadata_name}_{sequence}"
-        key_value = f"{metadata_name}_{sequence}_value"
+        json_field = Document.doc_metadata[metadata_name].as_string()
+
         match condition:
             case "contains":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"%{value}%"}
-                    )
-                )
+                filters.append(json_field.like(f"%{value}%"))
+
             case "not contains":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"%{value}%"}
-                    )
-                )
+                filters.append(json_field.notlike(f"%{value}%"))
+
             case "start with":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"{value}%"}
-                    )
-                )
+                filters.append(json_field.like(f"{value}%"))
+
             case "end with":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"%{value}"}
-                    )
-                )
+                filters.append(json_field.like(f"%{value}"))
             case "in":
                 if isinstance(value, str):
-                    escaped_values = [v.strip().replace("'", "''") for v in str(value).split(",")]
-                    escaped_value_str = ",".join(escaped_values)
+                    value_list = [v.strip() for v in value.split(",") if v.strip()]
+                elif isinstance(value, (list, tuple)):
+                    value_list = [str(v) for v in value if v is not None]
                 else:
-                    escaped_value_str = str(value)
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} = any(string_to_array(:{key_value},','))")).params(
-                        **{key: metadata_name, key_value: escaped_value_str}
-                    )
-                )
+                    value_list = [str(value)] if value is not None else []
+
+                if not value_list:
+                    filters.append(literal(False))
+                else:
+                    filters.append(json_field.in_(value_list))
+
             case "not in":
                 if isinstance(value, str):
-                    escaped_values = [v.strip().replace("'", "''") for v in str(value).split(",")]
-                    escaped_value_str = ",".join(escaped_values)
+                    value_list = [v.strip() for v in value.split(",") if v.strip()]
+                elif isinstance(value, (list, tuple)):
+                    value_list = [str(v) for v in value if v is not None]
                 else:
-                    escaped_value_str = str(value)
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} != all(string_to_array(:{key_value},','))")).params(
-                        **{key: metadata_name, key_value: escaped_value_str}
-                    )
-                )
-            case "=" | "is":
+                    value_list = [str(value)] if value is not None else []
+
+                if not value_list:
+                    filters.append(literal(True))
+                else:
+                    filters.append(json_field.notin_(value_list))
+
+            case "is" | "=":
                 if isinstance(value, str):
-                    filters.append(Document.doc_metadata[metadata_name] == f'"{value}"')
-                else:
-                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) == value)
+                    filters.append(json_field == value)
+                elif isinstance(value, (int, float)):
+                    filters.append(Document.doc_metadata[metadata_name].as_float() == value)
+
             case "is not" | "≠":
                 if isinstance(value, str):
-                    filters.append(Document.doc_metadata[metadata_name] != f'"{value}"')
-                else:
-                    filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) != value)
+                    filters.append(json_field != value)
+                elif isinstance(value, (int, float)):
+                    filters.append(Document.doc_metadata[metadata_name].as_float() != value)
+
             case "empty":
                 filters.append(Document.doc_metadata[metadata_name].is_(None))
+
             case "not empty":
                 filters.append(Document.doc_metadata[metadata_name].isnot(None))
+
             case "before" | "<":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) < value)
+                filters.append(Document.doc_metadata[metadata_name].as_float() < value)
+
             case "after" | ">":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) > value)
+                filters.append(Document.doc_metadata[metadata_name].as_float() > value)
+
             case "≤" | "<=":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) <= value)
+                filters.append(Document.doc_metadata[metadata_name].as_float() <= value)
+
             case "≥" | ">=":
-                filters.append(sqlalchemy_cast(Document.doc_metadata[metadata_name].astext, Float) >= value)
+                filters.append(Document.doc_metadata[metadata_name].as_float() >= value)
+
             case _:
                 pass
+
         return filters
 
     @classmethod

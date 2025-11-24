@@ -115,9 +115,7 @@ const translation = {
         noVarTip: 'silakan buat variabel di bawah bagian Variabel',
       },
       notSupportSelectMulti: 'Saat ini hanya mendukung satu Pengetahuan',
-      textBlocks: 'Blok Teks',
       selectTitle: 'Pilih referensi Pengetahuan',
-      words: 'Kata',
       toCreate: 'Pergi ke membuat',
       noDataSet: 'Tidak ada Pengetahuan yang ditemukan',
       noData: 'Anda dapat mengimpor Pengetahuan sebagai konteks',
@@ -325,7 +323,6 @@ const translation = {
   variableTable: {
     action: 'Tindakan',
     typeString: 'String',
-    optional: 'Fakultatif',
     typeSelect: 'Pilih',
     type: 'Jenis Masukan',
     key: 'Kunci Variabel',

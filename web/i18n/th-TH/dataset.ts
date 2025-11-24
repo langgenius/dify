@@ -74,7 +74,6 @@ const translation = {
   intro5: 'สามารถสร้างได้',
   intro6: 'เป็นปลั๊กอินดัชนี ChatGPT แบบสแตนด์อโลนเพื่อเผยแพร่',
   unavailable: 'ไม่',
-  unavailableTip: 'โมเดลการฝังไม่พร้อมใช้งาน จําเป็นต้องกําหนดค่าโมเดลการฝังเริ่มต้น',
   datasets: 'ความรู้',
   datasetsApi: 'การเข้าถึง API',
   externalKnowledgeForm: {

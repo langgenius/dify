@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from obs import ObsClient  # type: ignore
+from obs import ObsClient
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage

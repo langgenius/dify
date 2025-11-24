@@ -59,6 +59,14 @@ const ToolPicker: FC<Props> = ({
       name: t('plugin.category.extensions'),
     },
     {
+      key: PLUGIN_TYPE_SEARCH_MAP.datasource,
+      name: t('plugin.category.datasources'),
+    },
+    {
+      key: PLUGIN_TYPE_SEARCH_MAP.trigger,
+      name: t('plugin.category.triggers'),
+    },
+    {
       key: PLUGIN_TYPE_SEARCH_MAP.bundle,
       name: t('plugin.category.bundles'),
     },
@@ -119,12 +127,13 @@ const ToolPicker: FC<Props> = ({
       onOpenChange={onShowChange}
     >
       <PortalToFollowElemTrigger
+        className='block w-full'
         onClick={toggleShowPopup}
       >
         {trigger}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className={cn('relative min-h-20 w-[436px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
+        <div className={cn('relative min-h-20 w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
           <div className='p-2 pb-1'>
             <SearchBox
               search={query}

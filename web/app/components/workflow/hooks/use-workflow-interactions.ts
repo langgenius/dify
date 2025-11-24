@@ -2,7 +2,7 @@ import {
   useCallback,
 } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStore, useWorkflowStore } from '../store'
 import {
   CUSTOM_NODE,
@@ -316,7 +316,10 @@ export const useWorkflowUpdate = () => {
         edges: initialEdges(edges, nodes),
       },
     } as any)
-    setViewport(viewport)
+
+    // Only set viewport if it exists and is valid
+    if (viewport && typeof viewport.x === 'number' && typeof viewport.y === 'number' && typeof viewport.zoom === 'number')
+      setViewport(viewport)
   }, [eventEmitter, reactflow])
 
   return {

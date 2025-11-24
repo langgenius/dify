@@ -161,7 +161,6 @@ const translation = {
     workspace: 'Arbeitsbereich',
     createWorkspace: 'Arbeitsbereich erstellen',
     helpCenter: 'Hilfe',
-    communityFeedback: 'Rückmeldung',
     roadmap: 'Fahrplan',
     community: 'Gemeinschaft',
     about: 'Über',
@@ -169,6 +168,8 @@ const translation = {
     compliance: 'Einhaltung',
     support: 'Unterstützung',
     github: 'GitHub',
+    contactUs: 'Kontaktieren Sie uns',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'KONTO',
@@ -725,6 +726,7 @@ const translation = {
     uploadFromComputerLimit: 'Datei hochladen darf {{size}} nicht überschreiten',
     uploadFromComputerReadError: 'Lesen der Datei fehlgeschlagen, bitte versuchen Sie es erneut.',
     fileExtensionNotSupport: 'Dateiendung nicht bedient',
+    fileExtensionBlocked: 'Dieser Dateityp ist aus Sicherheitsgründen gesperrt',
   },
   license: {
     expiring: 'Läuft an einem Tag ab',

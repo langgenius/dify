@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import {
   useWorkflowStore,
@@ -7,6 +7,7 @@ import {
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks/use-workflow'
+import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { API_PREFIX } from '@/config'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineRefreshDraft } from '.'
@@ -83,7 +84,7 @@ export const useNodesSyncDraft = () => {
     }
   }, [getPostParams, getNodesReadOnly])
 
-  const doSyncWorkflowDraft = useCallback(async (
+  const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
     callback?: {
       onSuccess?: () => void
@@ -120,6 +121,8 @@ export const useNodesSyncDraft = () => {
       }
     }
   }, [getPostParams, getNodesReadOnly, workflowStore, handleRefreshWorkflowDraft])
+
+  const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
 
   return {
     doSyncWorkflowDraft,

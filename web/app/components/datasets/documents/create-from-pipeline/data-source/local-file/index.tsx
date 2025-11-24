@@ -8,6 +8,7 @@ import cn from '@/utils/classnames'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
 import { upload } from '@/service/base'
+import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { IS_CE_EDITION } from '@/config'
@@ -15,7 +16,7 @@ import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
-import produce from 'immer'
+import { produce } from 'immer'
 import dynamic from 'next/dynamic'
 
 const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-chart'), { ssr: false })
@@ -121,6 +122,8 @@ const LocalFile = ({
     return isValidType && isValidSize
   }, [fileUploadConfig, notify, t, ACCEPTS])
 
+  type UploadResult = Awaited<ReturnType<typeof upload>>
+
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
     formData.append('file', fileItem.file)
@@ -136,10 +139,14 @@ const LocalFile = ({
       data: formData,
       onprogress: onProgress,
     }, false, undefined, '?source=datasets')
-      .then((res: File) => {
-        const completeFile = {
+      .then((res: UploadResult) => {
+        const updatedFile = Object.assign({}, fileItem.file, {
+          id: res.id,
+          ...(res as Partial<File>),
+        }) as File
+        const completeFile: FileItem = {
           fileID: fileItem.fileID,
-          file: res,
+          file: updatedFile,
           progress: -1,
         }
         const index = fileListRef.current.findIndex(item => item.fileID === fileItem.fileID)
@@ -148,7 +155,8 @@ const LocalFile = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
+        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        notify({ type: 'error', message: errorMessage })
         updateFile(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
       })
@@ -287,7 +295,7 @@ const LocalFile = ({
             <RiUploadCloud2Line className='mr-2 size-5' />
 
             <span>
-              {t('datasetCreation.stepOne.uploader.button')}
+              {notSupportBatchUpload ? t('datasetCreation.stepOne.uploader.buttonSingleFile') : t('datasetCreation.stepOne.uploader.button')}
               {allowedExtensions.length > 0 && (
                 <label className='ml-1 cursor-pointer text-text-accent' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
               )}
@@ -296,7 +304,7 @@ const LocalFile = ({
           <div>{t('datasetCreation.stepOne.uploader.tip', {
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
-            batchCount: fileUploadConfig.batch_count_limit,
+            batchCount: notSupportBatchUpload ? 1 : fileUploadConfig.batch_count_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>
