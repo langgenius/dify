@@ -5,7 +5,7 @@ import pytest
 from models.account import Account
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
 from services.dataset_service import SegmentService
-from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 
 
@@ -1064,4 +1064,3 @@ class TestSegmentServiceDeleteChildChunk:
                 SegmentService.delete_child_chunk(chunk, dataset)
 
             mock_db_session.rollback.assert_called_once()
-
