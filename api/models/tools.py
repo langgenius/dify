@@ -157,7 +157,10 @@ class EndUserAuthenticationProvider(TypeBase):
     def credentials(self) -> dict[str, Any]:
         if not self.encrypted_credentials:
             return {}
-        return cast(dict[str, Any], json.loads(self.encrypted_credentials))
+        try:
+            return cast(dict[str, Any], json.loads(self.encrypted_credentials))
+        except json.JSONDecodeError:
+            return {}
 
 
 class ApiToolProvider(TypeBase):
