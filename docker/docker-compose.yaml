@@ -834,7 +834,7 @@ services:
 
   # The redis cache.
   redis:
-    image: redis:6-alpine
+    image: redis:7-alpine
     restart: always
     environment:
       REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
@@ -842,13 +842,21 @@ services:
       # Mount the redis data directory to the container.
       - ./volumes/redis/data:/data
     # Set the redis password when startup redis server.
-    command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
+    command: >
+      redis-server 
+      --requirepass ${REDIS_PASSWORD:-difyai123456}
+      --dir /data  # <-- THÊM: Buộc Redis dùng /data làm root dir cho RDB/AOF
+      --stop-writes-on-bgsave-error no  # <-- THÊM: Tránh chặn writes nếu RDB fail tạm thời
+      --appendonly yes  # <-- THÊM: Bật AOF cho persistence tốt hơn RDB (tùy chọn)
     healthcheck:
       test:
         [
           "CMD-SHELL",
           "redis-cli -a ${REDIS_PASSWORD:-difyai123456} ping | grep -q PONG",
         ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # The DifySandbox
   sandbox:
