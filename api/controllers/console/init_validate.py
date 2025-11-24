@@ -11,19 +11,19 @@ from libs.helper import StrLen
 from models.model import DifySetup
 from services.account_service import TenantService
 
-from . import api, console_ns
+from . import console_ns
 from .error import AlreadySetupError, InitValidateFailedError
 from .wraps import only_edition_self_hosted
 
 
 @console_ns.route("/init")
 class InitValidateAPI(Resource):
-    @api.doc("get_init_status")
-    @api.doc(description="Get initialization validation status")
-    @api.response(
+    @console_ns.doc("get_init_status")
+    @console_ns.doc(description="Get initialization validation status")
+    @console_ns.response(
         200,
         "Success",
-        model=api.model(
+        model=console_ns.model(
             "InitStatusResponse",
             {"status": fields.String(description="Initialization status", enum=["finished", "not_started"])},
         ),
@@ -35,20 +35,20 @@ class InitValidateAPI(Resource):
             return {"status": "finished"}
         return {"status": "not_started"}
 
-    @api.doc("validate_init_password")
-    @api.doc(description="Validate initialization password for self-hosted edition")
-    @api.expect(
-        api.model(
+    @console_ns.doc("validate_init_password")
+    @console_ns.doc(description="Validate initialization password for self-hosted edition")
+    @console_ns.expect(
+        console_ns.model(
             "InitValidateRequest",
             {"password": fields.String(required=True, description="Initialization password", max_length=30)},
         )
     )
-    @api.response(
+    @console_ns.response(
         201,
         "Success",
-        model=api.model("InitValidateResponse", {"result": fields.String(description="Operation result")}),
+        model=console_ns.model("InitValidateResponse", {"result": fields.String(description="Operation result")}),
     )
-    @api.response(400, "Already setup or validation failed")
+    @console_ns.response(400, "Already setup or validation failed")
     @only_edition_self_hosted
     def post(self):
         """Validate initialization password"""
@@ -57,8 +57,7 @@ class InitValidateAPI(Resource):
         if tenant_count > 0:
             raise AlreadySetupError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("password", type=StrLen(30), required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("password", type=StrLen(30), required=True, location="json")
         input_password = parser.parse_args()["password"]
 
         if input_password != os.environ.get("INIT_PASSWORD"):

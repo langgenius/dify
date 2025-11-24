@@ -11,8 +11,8 @@ import {
 import Link from 'next/link'
 import Image from 'next/image'
 import SettingCog from '../assets/setting-gear-mod.svg'
-import OrangeEffect from '../assets/option-card-effect-orange.svg'
-import FamilyMod from '../assets/family-mod.svg'
+import BlueEffect from '../assets/option-card-effect-blue.svg'
+import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import Note from '../assets/note-mod.svg'
 import FileList from '../assets/file-list-3-fill.svg'
 import { indexMethodIcon } from '../icons'
@@ -568,9 +568,9 @@ const StepTwo = ({
         params,
         {
           onSuccess(data) {
-            updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-            updateResultCache && updateResultCache(data)
-            updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
+            updateIndexingTypeCache?.(indexType as string)
+            updateResultCache?.(data)
+            updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
           },
         },
       )
@@ -578,17 +578,18 @@ const StepTwo = ({
     else {
       await createDocumentMutation.mutateAsync(params, {
         onSuccess(data) {
-          updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-          updateResultCache && updateResultCache(data)
-          updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
+          updateIndexingTypeCache?.(indexType as string)
+          updateResultCache?.(data)
+          updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
         },
       })
     }
     if (mutateDatasetRes)
       mutateDatasetRes()
     invalidDatasetList()
-    onStepChange && onStepChange(+1)
-    isSetting && onSave && onSave()
+    onStepChange?.(+1)
+    if (isSetting)
+      onSave?.()
   }
 
   useEffect(() => {
@@ -732,9 +733,10 @@ const StepTwo = ({
           )
           && <OptionCard
             title={t('datasetCreation.stepTwo.parentChild')}
-            icon={<Image width={20} height={20} src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
-            effectImg={OrangeEffect.src}
-            activeHeaderClassName='bg-dataset-option-card-orange-gradient'
+            icon={<ParentChildChunk className='h-[20px] w-[20px]' />}
+            effectImg={BlueEffect.src}
+            className='text-util-colors-blue-light-blue-light-500'
+            activeHeaderClassName='bg-dataset-option-card-blue-gradient'
             description={t('datasetCreation.stepTwo.parentChildTip')}
             isActive={currentDocForm === ChunkingMode.parentChild}
             onSwitched={() => handleChangeDocform(ChunkingMode.parentChild)}
@@ -1026,7 +1028,7 @@ const StepTwo = ({
         {!isSetting
           ? (
             <div className='mt-8 flex items-center py-2'>
-              <Button onClick={() => onStepChange && onStepChange(-1)}>
+              <Button onClick={() => onStepChange?.(-1)}>
                 <RiArrowLeftLine className='mr-1 h-4 w-4' />
                 {t('datasetCreation.stepTwo.previousStep')}
               </Button>

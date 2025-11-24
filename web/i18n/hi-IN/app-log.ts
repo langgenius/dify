@@ -67,6 +67,8 @@ const translation = {
       quarterToDate: 'तिमाही तक तिथि',
       yearToDate: 'वर्ष तक तिथि',
       allTime: 'सभी समय',
+      last30days: 'पिछले 30 दिन',
+      custom: 'कस्टम',
     },
     annotation: {
       all: 'सभी',
@@ -84,6 +86,7 @@ const translation = {
     workflowTitle: 'लॉग विवरण',
     fileListDetail: 'विस्तार',
     fileListLabel: 'फ़ाइल विवरण',
+    testWithParams: 'पैरामीटर्स के साथ परीक्षण',
   },
   promptLog: 'प्रॉम्प्ट लॉग',
   agentLog: 'एजेंट लॉग',

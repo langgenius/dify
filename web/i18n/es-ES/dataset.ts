@@ -19,7 +19,6 @@ const translation = {
   intro5: 'se puede crear',
   intro6: ' como un complemento independiente de ChatGPT para publicar',
   unavailable: 'No disponible',
-  unavailableTip: 'El modelo de incrustación no está disponible, es necesario configurar el modelo de incrustación predeterminado',
   datasets: 'CONOCIMIENTO',
   datasetsApi: 'ACCESO A LA API',
   retrieval: {
@@ -226,6 +225,17 @@ const translation = {
   externalKnowledgeBase: 'Base de conocimientos externa',
   createFromPipeline: 'Crear desde Knowledge Pipeline',
   updated: 'Actualizado',
+  serviceApi: {
+    card: {
+      apiReference: 'Referencia de la API',
+      apiKey: 'Clave API',
+      endpoint: 'Punto de enlace de la API de servicio',
+      title: 'API del servicio de backend',
+    },
+    enabled: 'En servicio',
+    title: 'API de servicios',
+    disabled: 'Discapacitado',
+  },
 }
 
 export default translation

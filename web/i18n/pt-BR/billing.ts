@@ -80,7 +80,7 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/min Limite de Taxa de Solicitação de Conhecimento',
     cloud: 'Serviço de Nuvem',
     teamWorkspace: '{{count,number}} Espaço de Trabalho da Equipe',
-    apiRateLimitUnit: '{{count,number}}/dia',
+    apiRateLimitUnit: '{{count,number}}',
     freeTrialTipSuffix: 'Nenhum cartão de crédito necessário',
     teamMember_other: '{{count,number}} Membros da Equipe',
     comparePlanAndFeatures: 'Compare planos e recursos',
@@ -94,6 +94,21 @@ const translation = {
     apiRateLimitTooltip: 'O limite da taxa da API se aplica a todas as solicitações feitas através da API Dify, incluindo geração de texto, conversas de chat, execuções de fluxo de trabalho e processamento de documentos.',
     documentsRequestQuotaTooltip: 'Especifica o número total de ações que um espaço de trabalho pode realizar por minuto dentro da base de conhecimento, incluindo criação, exclusão, atualizações de conjuntos de dados, uploads de documentos, modificações, arquivamento e consultas à base de conhecimento. Esse métrica é utilizada para avaliar o desempenho das solicitações à base de conhecimento. Por exemplo, se um usuário do Sandbox realizar 10 testes de impacto consecutivos dentro de um minuto, seu espaço de trabalho ficará temporariamente restrito de realizar as seguintes ações no minuto seguinte: criação, exclusão, atualizações de conjuntos de dados e uploads ou modificações de documentos.',
     startBuilding: 'Comece a construir',
+    taxTip: 'Todos os preços de assinatura (mensal/anual) não incluem os impostos aplicáveis (por exemplo, IVA, imposto sobre vendas).',
+    taxTipSecond: 'Se a sua região não tiver requisitos fiscais aplicáveis, nenhum imposto aparecerá no seu checkout e você não será cobrado por taxas adicionais durante todo o período da assinatura.',
+    triggerEvents: {
+      unlimited: 'Eventos de Gatilho Ilimitados',
+      tooltip: 'O número de eventos que iniciam automaticamente fluxos de trabalho através de disparadores de Plugin, Agendamento ou Webhook.',
+    },
+    workflowExecution: {
+      tooltip: 'Prioridade e velocidade da fila de execução de fluxo de trabalho.',
+      priority: 'Execução de Fluxo de Trabalho Prioritário',
+      faster: 'Execução de Fluxo de Trabalho Mais Rápida',
+      standard: 'Execução Padrão de Fluxo de Trabalho',
+    },
+    startNodes: {
+      unlimited: 'Gatilhos/workflow ilimitados',
+    },
   },
   plans: {
     sandbox: {
@@ -184,8 +199,17 @@ const translation = {
     vectorSpace: 'Armazenamento de Dados do Conhecimento',
     vectorSpaceTooltip: 'Documentos com o modo de indexação de Alta Qualidade consumirã recursos de Armazenamento de Dados de Conhecimento. Quando o Armazenamento de Dados de Conhecimento atingir o limite, novos documentos não serão carregados.',
     buildApps: 'Desenvolver Apps',
+    perMonth: 'por mês',
+    triggerEvents: 'Eventos Desencadeadores',
   },
   teamMembers: 'Membros da equipe',
+  triggerLimitModal: {
+    dismiss: 'Dispensar',
+    usageTitle: 'EVENTOS DESENCADEADORES',
+    title: 'Atualize para desbloquear mais eventos de gatilho',
+    upgrade: 'Atualizar',
+    description: 'Você atingiu o limite de gatilhos de eventos de fluxo de trabalho para este plano.',
+  },
 }
 
 export default translation

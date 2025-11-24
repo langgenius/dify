@@ -153,6 +153,14 @@ const translation = {
       viewDocsLink: '{{key}} dökümanlarını görüntüle',
       removeConfirmTitle: '{{key}} yapılandırmasını kaldır?',
       removeConfirmContent: 'Mevcut yapılandırma kullanımda, kaldırılması İzleme özelliğini kapatacaktır.',
+      password: 'Parola',
+      clientId: 'OAuth İstemci Kimliği',
+      databricksHost: 'Databricks Çalışma Alanı URL\'si',
+      clientSecret: 'OAuth İstemci Sırrı',
+      username: 'Kullanıcı Adı',
+      experimentId: 'Deney Kimliği',
+      personalAccessToken: 'Kişisel Erişim Belirteci (eski)',
+      trackingUri: 'İzleme URI\'si',
     },
     view: 'Görünüm',
     opik: {
@@ -166,6 +174,18 @@ const translation = {
     aliyun: {
       title: 'Bulut İzleyici',
       description: 'Alibaba Cloud tarafından sağlanan tamamen yönetilen ve bakım gerektirmeyen gözlemleme platformu, Dify uygulamalarının kutudan çıkar çıkmaz izlenmesi, takip edilmesi ve değerlendirilmesine olanak tanır.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Deney takibi, gözlemlenebilirlik ve değerlendirme için açık kaynaklı LLMOps platformu, AI/LLM uygulamalarını güvenle oluşturmak için.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks, iz veri depolama için güçlü yönetişim ve güvenlik ile tamamen yönetilen MLflow sunar.',
+    },
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Uygulama Performans İzleme, LLM uygulamaları için kapsamlı izleme ve çok boyutlu analiz sağlar.',
     },
   },
   answerIcon: {
@@ -318,6 +338,8 @@ const translation = {
     pressEscToClose: 'Kapatmak için ESC tuşuna basın',
     startTyping: 'Arama yapmak için yazmaya başlayın',
   },
+  noUserInputNode: 'Eksik kullanıcı girdi düğümü',
+  notPublishedYet: 'Uygulama henüz yayımlanmadı',
 }
 
 export default translation

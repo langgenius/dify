@@ -37,15 +37,18 @@ const ConfigProvider = ({
   const notAllowCustomCredential = provider.allow_custom_token === false
 
   const renderTrigger = useCallback(() => {
+    const text = hasCredential ? t('common.operation.config') : t('common.operation.setup')
     const Item = (
       <Button
-        className='grow'
+        className='flex grow'
         size='small'
         variant={!authorized ? 'secondary-accent' : 'secondary'}
+        title={text}
       >
-        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
-        {hasCredential && t('common.operation.config')}
-        {!hasCredential && t('common.operation.setup')}
+        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5 shrink-0' />
+        <span className='w-0 grow truncate text-left'>
+          {text}
+        </span>
       </Button>
     )
     if (notAllowCustomCredential && !hasCredential) {

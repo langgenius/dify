@@ -66,6 +66,8 @@ const translation = {
       quarterToDate: '분기 초부터 오늘까지',
       yearToDate: '연 초부터 오늘까지',
       allTime: '모든 기간',
+      last30days: '최근 30일',
+      custom: '사용자 정의',
     },
     annotation: {
       all: '모두',
@@ -83,6 +85,7 @@ const translation = {
     workflowTitle: '로그 세부 정보',
     fileListDetail: '세부',
     fileListLabel: '파일 세부 정보',
+    testWithParams: '매개변수로 테스트',
   },
   promptLog: '프롬프트 로그',
   agentLog: '에이전트 로그',

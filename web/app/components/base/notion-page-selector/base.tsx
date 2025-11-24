@@ -10,6 +10,7 @@ import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/servi
 import Header from '../../datasets/create/website/base/header'
 import type { DataSourceCredential } from '../../header/account-setting/data-source-page-new/types'
 import Loading from '../loading'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 type NotionPageSelectorProps = {
   value?: string[]
@@ -93,7 +94,7 @@ const NotionPageSelector = ({
   const defaultSelectedPagesId = useMemo(() => {
     return [...Array.from(pagesMapAndSelectedPagesId[1]), ...(value || [])]
   }, [pagesMapAndSelectedPagesId, value])
-  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
+  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(() => new Set(defaultSelectedPagesId))
 
   useEffect(() => {
     setSelectedPagesId(new Set(defaultSelectedPagesId))
@@ -124,7 +125,7 @@ const NotionPageSelector = ({
   }, [pagesMapAndSelectedPagesId, onPreview])
 
   const handleConfigureNotion = useCallback(() => {
-    setShowAccountSettingModal({ payload: 'data-source' })
+    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
   }, [setShowAccountSettingModal])
 
   if (isFetchingNotionPagesError) {

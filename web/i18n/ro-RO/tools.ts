@@ -2,7 +2,6 @@ const translation = {
   title: 'Instrumente',
   createCustomTool: 'Creează Instrument Personalizat',
   type: {
-    all: 'Toate',
     builtIn: 'Incorporat',
     custom: 'Personalizat',
     workflow: 'Flux de lucru',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'După configurarea credențialelor, toți membrii din spațiul de lucru pot utiliza acest instrument la orchestrarea aplicațiilor.',
   },
   includeToolNum: '{{num}} instrumente incluse',
-  addTool: 'Adaugă Instrument',
   createTool: {
     title: 'Creează Instrument Personalizat',
     editAction: 'Configurează',
@@ -143,8 +141,6 @@ const translation = {
   addToolModal: {
     added: 'adăugat',
     category: 'categorie',
-    manageInTools: 'Gestionați în Instrumente',
-    add: 'adăuga',
     type: 'tip',
     custom: {
       title: 'Niciun instrument personalizat disponibil',
@@ -203,6 +199,13 @@ const translation = {
       maskedHeadersTip: 'Valorile de antet sunt mascate pentru securitate. Modificările vor actualiza valorile reale.',
       headersTip: 'Header-uri HTTP suplimentare de trimis cu cererile către serverul MCP',
       noHeaders: 'Nu sunt configurate antete personalizate.',
+      authentication: 'Autentificare',
+      configurations: 'Configurații',
+      clientSecretPlaceholder: 'Secretul Clientului',
+      clientID: 'ID client',
+      useDynamicClientRegistration: 'Utilizați înregistrarea dinamică a clientului',
+      clientSecret: 'Secretul Clientului',
+      redirectUrlWarning: 'Vă rugăm să configurați URL-ul de redirecționare OAuth astfel:',
     },
     delete: 'Eliminare Server MCP',
     deleteConfirmTitle: 'Ștergeți {mcp}?',
@@ -242,6 +245,10 @@ const translation = {
         confirm: 'Activare Server MCP',
       },
       publishTip: 'Aplicație nepublicată. Publicați aplicația mai întâi.',
+    },
+    toolItem: {
+      parameters: 'Parametri',
+      noDescription: 'Fără descriere',
     },
   },
   allTools: 'Toate instrumentele',

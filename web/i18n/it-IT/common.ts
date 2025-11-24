@@ -61,6 +61,10 @@ const translation = {
     selectAll: 'Seleziona tutto',
     deSelectAll: 'Deseleziona tutto',
     config: 'Config',
+    no: 'No',
+    yes: 'Sì',
+    confirmAction: 'Per favore conferma la tua azione.',
+    deleteConfirmTitle: 'Eliminare?',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -166,7 +170,6 @@ const translation = {
     workspace: 'Workspace',
     createWorkspace: 'Crea Workspace',
     helpCenter: 'Aiuto',
-    communityFeedback: 'Feedback',
     roadmap: 'Tabella di marcia',
     community: 'Comunità',
     about: 'Informazioni',
@@ -174,6 +177,8 @@ const translation = {
     support: 'Supporto',
     compliance: 'Conformità',
     github: 'GitHub',
+    contactUs: 'Contattaci',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'ACCOUNT',
@@ -527,6 +532,7 @@ const translation = {
       editModelCredential: 'Modificare le credenziali del modello',
     },
     parametersInvalidRemoved: 'Alcuni parametri non sono validi e sono stati rimossi.',
+    installDataSourceProvider: 'Installa i fornitori di sorgenti dati',
   },
   dataSource: {
     add: 'Aggiungi una fonte di dati',
@@ -750,6 +756,7 @@ const translation = {
     uploadFromComputerUploadError: 'Caricamento del file non riuscito, carica di nuovo.',
     pasteFileLink: 'Incolla il collegamento del file',
     uploadFromComputerReadError: 'Lettura del file non riuscita, riprovare.',
+    fileExtensionBlocked: 'Questo tipo di file è bloccato per motivi di sicurezza',
   },
   license: {
     expiring_plural: 'Scadenza tra {{count}} giorni',

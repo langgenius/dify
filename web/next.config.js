@@ -1,4 +1,7 @@
 const { codeInspectorPlugin } = require('code-inspector-plugin')
+
+const isDev = process.env.NODE_ENV === 'development'
+
 const withPWA = require('next-pwa')({
   dest: 'public',
   register: true,
@@ -91,6 +94,7 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
+  transpilePackages: ['echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({
       bundler: 'turbopack'
@@ -111,7 +115,6 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: [
-      '@remixicon/react',
       '@heroicons/react'
     ],
   },
@@ -137,6 +140,9 @@ const nextConfig = {
     ]
   },
   output: 'standalone',
+  compiler: {
+    removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
+  }
 }
 
 module.exports = withPWA(withBundleAnalyzer(withMDX(nextConfig)))

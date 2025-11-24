@@ -8,11 +8,9 @@ from sqlalchemy.orm import Session
 
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.entities.app_invoke_entities import (
-    InvokeFrom,
-    WorkflowAppGenerateEntity,
-)
+from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     MessageQueueMessage,
@@ -53,27 +51,20 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities import GraphRuntimeState, WorkflowExecution
-from core.workflow.enums import WorkflowExecutionStatus, WorkflowType
+from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
-from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
-from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
+from core.workflow.runtime import GraphRuntimeState
 from core.workflow.system_variable import SystemVariable
-from core.workflow.workflow_cycle_manager import CycleManagerWorkflowInfo, WorkflowCycleManager
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser
-from models.workflow import (
-    Workflow,
-    WorkflowAppLog,
-    WorkflowAppLogCreatedFrom,
-)
+from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom
 
 logger = logging.getLogger(__name__)
 
 
-class WorkflowAppGenerateTaskPipeline:
+class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
     """
     WorkflowAppGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
@@ -85,8 +76,6 @@ class WorkflowAppGenerateTaskPipeline:
         queue_manager: AppQueueManager,
         user: Union[Account, EndUser],
         stream: bool,
-        workflow_execution_repository: WorkflowExecutionRepository,
-        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
         draft_var_saver_factory: DraftVariableSaverFactory,
     ):
         self._base_task_pipeline = BasedGenerateTaskPipeline(
@@ -99,42 +88,30 @@ class WorkflowAppGenerateTaskPipeline:
             self._user_id = user.id
             user_session_id = user.session_id
             self._created_by_role = CreatorUserRole.END_USER
-        elif isinstance(user, Account):
+        else:
             self._user_id = user.id
             user_session_id = user.id
             self._created_by_role = CreatorUserRole.ACCOUNT
-        else:
-            raise ValueError(f"Invalid user type: {type(user)}")
-
-        self._workflow_cycle_manager = WorkflowCycleManager(
-            application_generate_entity=application_generate_entity,
-            workflow_system_variables=SystemVariable(
-                files=application_generate_entity.files,
-                user_id=user_session_id,
-                app_id=application_generate_entity.app_config.app_id,
-                workflow_id=workflow.id,
-                workflow_execution_id=application_generate_entity.workflow_execution_id,
-            ),
-            workflow_info=CycleManagerWorkflowInfo(
-                workflow_id=workflow.id,
-                workflow_type=WorkflowType(workflow.type),
-                version=workflow.version,
-                graph_data=workflow.graph_dict,
-            ),
-            workflow_execution_repository=workflow_execution_repository,
-            workflow_node_execution_repository=workflow_node_execution_repository,
-        )
-
-        self._workflow_response_converter = WorkflowResponseConverter(
-            application_generate_entity=application_generate_entity,
-            user=user,
-        )
 
         self._application_generate_entity = application_generate_entity
         self._workflow_features_dict = workflow.features_dict
-        self._workflow_run_id = ""
+        self._workflow_execution_id = ""
         self._invoke_from = queue_manager.invoke_from
         self._draft_var_saver_factory = draft_var_saver_factory
+        self._workflow = workflow
+        self._workflow_system_variables = SystemVariable(
+            files=application_generate_entity.files,
+            user_id=user_session_id,
+            app_id=application_generate_entity.app_config.app_id,
+            workflow_id=workflow.id,
+            workflow_execution_id=application_generate_entity.workflow_execution_id,
+        )
+        self._workflow_response_converter = WorkflowResponseConverter(
+            application_generate_entity=application_generate_entity,
+            user=user,
+            system_variables=self._workflow_system_variables,
+        )
+        self._graph_runtime_state: GraphRuntimeState | None = self._base_task_pipeline.queue_manager.graph_runtime_state
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """
@@ -261,14 +238,8 @@ class WorkflowAppGenerateTaskPipeline:
 
     def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
-        if not self._workflow_run_id:
+        if not self._workflow_execution_id:
             raise ValueError("workflow run not initialized.")
-
-    def _ensure_graph_runtime_initialized(self, graph_runtime_state: GraphRuntimeState | None) -> GraphRuntimeState:
-        """Fluent validation for graph runtime state."""
-        if not graph_runtime_state:
-            raise ValueError("graph runtime state not initialized.")
-        return graph_runtime_state
 
     def _handle_ping_event(self, event: QueuePingEvent, **kwargs) -> Generator[PingStreamResponse, None, None]:
         """Handle ping events."""
@@ -283,12 +254,14 @@ class WorkflowAppGenerateTaskPipeline:
         self, event: QueueWorkflowStartedEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow started events."""
-        # init workflow run
-        workflow_execution = self._workflow_cycle_manager.handle_workflow_run_start()
-        self._workflow_run_id = workflow_execution.id_
+        runtime_state = self._resolve_graph_runtime_state()
+
+        run_id = self._extract_workflow_run_id(runtime_state)
+        self._workflow_execution_id = run_id
         start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
-            workflow_execution=workflow_execution,
+            workflow_run_id=run_id,
+            workflow_id=self._workflow.id,
         )
         yield start_resp
 
@@ -296,14 +269,9 @@ class WorkflowAppGenerateTaskPipeline:
         """Handle node retry events."""
         self._ensure_workflow_initialized()
 
-        workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_retried(
-            workflow_execution_id=self._workflow_run_id,
-            event=event,
-        )
         response = self._workflow_response_converter.workflow_node_retry_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
-            workflow_node_execution=workflow_node_execution,
         )
 
         if response:
@@ -315,13 +283,9 @@ class WorkflowAppGenerateTaskPipeline:
         """Handle node started events."""
         self._ensure_workflow_initialized()
 
-        workflow_node_execution = self._workflow_cycle_manager.handle_node_execution_start(
-            workflow_execution_id=self._workflow_run_id, event=event
-        )
         node_start_response = self._workflow_response_converter.workflow_node_start_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
-            workflow_node_execution=workflow_node_execution,
         )
 
         if node_start_response:
@@ -331,14 +295,12 @@ class WorkflowAppGenerateTaskPipeline:
         self, event: QueueNodeSucceededEvent, **kwargs
     ) -> Generator[StreamResponse, None, None]:
         """Handle node succeeded events."""
-        workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_success(event=event)
         node_success_response = self._workflow_response_converter.workflow_node_finish_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
-            workflow_node_execution=workflow_node_execution,
         )
 
-        self._save_output_for_event(event, workflow_node_execution.id)
+        self._save_output_for_event(event, event.node_execution_id)
 
         if node_success_response:
             yield node_success_response
@@ -349,17 +311,13 @@ class WorkflowAppGenerateTaskPipeline:
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle various node failure events."""
-        workflow_node_execution = self._workflow_cycle_manager.handle_workflow_node_execution_failed(
-            event=event,
-        )
         node_failed_response = self._workflow_response_converter.workflow_node_finish_to_stream_response(
             event=event,
             task_id=self._application_generate_entity.task_id,
-            workflow_node_execution=workflow_node_execution,
         )
 
         if isinstance(event, QueueNodeExceptionEvent):
-            self._save_output_for_event(event, workflow_node_execution.id)
+            self._save_output_for_event(event, event.node_execution_id)
 
         if node_failed_response:
             yield node_failed_response
@@ -372,7 +330,7 @@ class WorkflowAppGenerateTaskPipeline:
 
         iter_start_resp = self._workflow_response_converter.workflow_iteration_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
+            workflow_execution_id=self._workflow_execution_id,
             event=event,
         )
         yield iter_start_resp
@@ -385,7 +343,7 @@ class WorkflowAppGenerateTaskPipeline:
 
         iter_next_resp = self._workflow_response_converter.workflow_iteration_next_to_stream_response(
             task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
+            workflow_execution_id=self._workflow_execution_id,
             event=event,
         )
         yield iter_next_resp
@@ -398,7 +356,7 @@ class WorkflowAppGenerateTaskPipeline:
 
         iter_finish_resp = self._workflow_response_converter.workflow_iteration_completed_to_stream_response(
             task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
+            workflow_execution_id=self._workflow_execution_id,
             event=event,
         )
         yield iter_finish_resp
@@ -409,7 +367,7 @@ class WorkflowAppGenerateTaskPipeline:
 
         loop_start_resp = self._workflow_response_converter.workflow_loop_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
+            workflow_execution_id=self._workflow_execution_id,
             event=event,
         )
         yield loop_start_resp
@@ -420,7 +378,7 @@ class WorkflowAppGenerateTaskPipeline:
 
         loop_next_resp = self._workflow_response_converter.workflow_loop_next_to_stream_response(
             task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
+            workflow_execution_id=self._workflow_execution_id,
             event=event,
         )
         yield loop_next_resp
@@ -433,7 +391,7 @@ class WorkflowAppGenerateTaskPipeline:
 
         loop_finish_resp = self._workflow_response_converter.workflow_loop_completed_to_stream_response(
             task_id=self._application_generate_entity.task_id,
-            workflow_execution_id=self._workflow_run_id,
+            workflow_execution_id=self._workflow_execution_id,
             event=event,
         )
         yield loop_finish_resp
@@ -442,33 +400,22 @@ class WorkflowAppGenerateTaskPipeline:
         self,
         event: QueueWorkflowSucceededEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow succeeded events."""
+        _ = trace_manager
         self._ensure_workflow_initialized()
-        validated_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
+        validated_state = self._ensure_graph_runtime_initialized()
+        workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
+            task_id=self._application_generate_entity.task_id,
+            workflow_id=self._workflow.id,
+            status=WorkflowExecutionStatus.SUCCEEDED,
+            graph_runtime_state=validated_state,
+        )
 
         with self._database_session() as session:
-            workflow_execution = self._workflow_cycle_manager.handle_workflow_run_success(
-                workflow_run_id=self._workflow_run_id,
-                total_tokens=validated_state.total_tokens,
-                total_steps=validated_state.node_run_steps,
-                outputs=event.outputs,
-                conversation_id=None,
-                trace_manager=trace_manager,
-                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
-            )
-
-            # save workflow app log
-            self._save_workflow_app_log(session=session, workflow_execution=workflow_execution)
-
-            workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
-                session=session,
-                task_id=self._application_generate_entity.task_id,
-                workflow_execution=workflow_execution,
-            )
+            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
 
         yield workflow_finish_resp
 
@@ -476,34 +423,23 @@ class WorkflowAppGenerateTaskPipeline:
         self,
         event: QueueWorkflowPartialSuccessEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow partial success events."""
+        _ = trace_manager
         self._ensure_workflow_initialized()
-        validated_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
+        validated_state = self._ensure_graph_runtime_initialized()
+        workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
+            task_id=self._application_generate_entity.task_id,
+            workflow_id=self._workflow.id,
+            status=WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+            graph_runtime_state=validated_state,
+            exceptions_count=event.exceptions_count,
+        )
 
         with self._database_session() as session:
-            workflow_execution = self._workflow_cycle_manager.handle_workflow_run_partial_success(
-                workflow_run_id=self._workflow_run_id,
-                total_tokens=validated_state.total_tokens,
-                total_steps=validated_state.node_run_steps,
-                outputs=event.outputs,
-                exceptions_count=event.exceptions_count,
-                conversation_id=None,
-                trace_manager=trace_manager,
-                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
-            )
-
-            # save workflow app log
-            self._save_workflow_app_log(session=session, workflow_execution=workflow_execution)
-
-            workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
-                session=session,
-                task_id=self._application_generate_entity.task_id,
-                workflow_execution=workflow_execution,
-            )
+            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
 
         yield workflow_finish_resp
 
@@ -511,37 +447,33 @@ class WorkflowAppGenerateTaskPipeline:
         self,
         event: Union[QueueWorkflowFailedEvent, QueueStopEvent],
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
         trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle workflow failed and stop events."""
+        _ = trace_manager
         self._ensure_workflow_initialized()
-        validated_state = self._ensure_graph_runtime_initialized(graph_runtime_state)
+        validated_state = self._ensure_graph_runtime_initialized()
+
+        if isinstance(event, QueueWorkflowFailedEvent):
+            status = WorkflowExecutionStatus.FAILED
+            error = event.error
+            exceptions_count = event.exceptions_count
+        else:
+            status = WorkflowExecutionStatus.STOPPED
+            error = event.get_stop_reason()
+            exceptions_count = 0
+        workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
+            task_id=self._application_generate_entity.task_id,
+            workflow_id=self._workflow.id,
+            status=status,
+            graph_runtime_state=validated_state,
+            error=error,
+            exceptions_count=exceptions_count,
+        )
 
         with self._database_session() as session:
-            workflow_execution = self._workflow_cycle_manager.handle_workflow_run_failed(
-                workflow_run_id=self._workflow_run_id,
-                total_tokens=validated_state.total_tokens,
-                total_steps=validated_state.node_run_steps,
-                status=WorkflowExecutionStatus.FAILED
-                if isinstance(event, QueueWorkflowFailedEvent)
-                else WorkflowExecutionStatus.STOPPED,
-                error_message=event.error if isinstance(event, QueueWorkflowFailedEvent) else event.get_stop_reason(),
-                conversation_id=None,
-                trace_manager=trace_manager,
-                exceptions_count=event.exceptions_count if isinstance(event, QueueWorkflowFailedEvent) else 0,
-                external_trace_id=self._application_generate_entity.extras.get("external_trace_id"),
-            )
-
-            # save workflow app log
-            self._save_workflow_app_log(session=session, workflow_execution=workflow_execution)
-
-            workflow_finish_resp = self._workflow_response_converter.workflow_finish_to_stream_response(
-                session=session,
-                task_id=self._application_generate_entity.task_id,
-                workflow_execution=workflow_execution,
-            )
+            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
 
         yield workflow_finish_resp
 
@@ -601,7 +533,6 @@ class WorkflowAppGenerateTaskPipeline:
         self,
         event: AppQueueEvent,
         *,
-        graph_runtime_state: GraphRuntimeState | None = None,
         tts_publisher: AppGeneratorTTSPublisher | None = None,
         trace_manager: TraceQueueManager | None = None,
         queue_message: Union[WorkflowQueueMessage, MessageQueueMessage] | None = None,
@@ -614,7 +545,6 @@ class WorkflowAppGenerateTaskPipeline:
         if handler := handlers.get(event_type):
             yield from handler(
                 event,
-                graph_runtime_state=graph_runtime_state,
                 tts_publisher=tts_publisher,
                 trace_manager=trace_manager,
                 queue_message=queue_message,
@@ -631,7 +561,6 @@ class WorkflowAppGenerateTaskPipeline:
         ):
             yield from self._handle_node_failed_events(
                 event,
-                graph_runtime_state=graph_runtime_state,
                 tts_publisher=tts_publisher,
                 trace_manager=trace_manager,
                 queue_message=queue_message,
@@ -642,7 +571,6 @@ class WorkflowAppGenerateTaskPipeline:
         if isinstance(event, (QueueWorkflowFailedEvent, QueueStopEvent)):
             yield from self._handle_workflow_failed_and_stop_events(
                 event,
-                graph_runtime_state=graph_runtime_state,
                 tts_publisher=tts_publisher,
                 trace_manager=trace_manager,
                 queue_message=queue_message,
@@ -661,15 +589,12 @@ class WorkflowAppGenerateTaskPipeline:
         Process stream response using elegant Fluent Python patterns.
         Maintains exact same functionality as original 44-if-statement version.
         """
-        # Initialize graph runtime state
-        graph_runtime_state = None
-
         for queue_message in self._base_task_pipeline.queue_manager.listen():
             event = queue_message.event
 
             match event:
                 case QueueWorkflowStartedEvent():
-                    graph_runtime_state = event.graph_runtime_state
+                    self._resolve_graph_runtime_state()
                     yield from self._handle_workflow_started_event(event)
 
                 case QueueTextChunkEvent():
@@ -681,12 +606,19 @@ class WorkflowAppGenerateTaskPipeline:
                     yield from self._handle_error_event(event)
                     break
 
+                case QueueWorkflowFailedEvent():
+                    yield from self._handle_workflow_failed_and_stop_events(event)
+                    break
+
+                case QueueStopEvent():
+                    yield from self._handle_workflow_failed_and_stop_events(event)
+                    break
+
                 # Handle all other events through elegant dispatch
                 case _:
                     if responses := list(
                         self._dispatch_event(
                             event,
-                            graph_runtime_state=graph_runtime_state,
                             tts_publisher=tts_publisher,
                             trace_manager=trace_manager,
                             queue_message=queue_message,
@@ -697,7 +629,7 @@ class WorkflowAppGenerateTaskPipeline:
         if tts_publisher:
             tts_publisher.publish(None)
 
-    def _save_workflow_app_log(self, *, session: Session, workflow_execution: WorkflowExecution):
+    def _save_workflow_app_log(self, *, session: Session, workflow_run_id: str | None):
         invoke_from = self._application_generate_entity.invoke_from
         if invoke_from == InvokeFrom.SERVICE_API:
             created_from = WorkflowAppLogCreatedFrom.SERVICE_API
@@ -709,14 +641,18 @@ class WorkflowAppGenerateTaskPipeline:
             # not save log for debugging
             return
 
-        workflow_app_log = WorkflowAppLog()
-        workflow_app_log.tenant_id = self._application_generate_entity.app_config.tenant_id
-        workflow_app_log.app_id = self._application_generate_entity.app_config.app_id
-        workflow_app_log.workflow_id = workflow_execution.workflow_id
-        workflow_app_log.workflow_run_id = workflow_execution.id_
-        workflow_app_log.created_from = created_from.value
-        workflow_app_log.created_by_role = self._created_by_role
-        workflow_app_log.created_by = self._user_id
+        if not workflow_run_id:
+            return
+
+        workflow_app_log = WorkflowAppLog(
+            tenant_id=self._application_generate_entity.app_config.tenant_id,
+            app_id=self._application_generate_entity.app_config.app_id,
+            workflow_id=self._workflow.id,
+            workflow_run_id=workflow_run_id,
+            created_from=created_from.value,
+            created_by_role=self._created_by_role,
+            created_by=self._user_id,
+        )
 
         session.add(workflow_app_log)
         session.commit()

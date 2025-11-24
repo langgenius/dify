@@ -35,7 +35,53 @@ export const NODE_LAYOUT_HORIZONTAL_PADDING = 60
 export const NODE_LAYOUT_VERTICAL_PADDING = 60
 export const NODE_LAYOUT_MIN_DISTANCE = 100
 
-export const PARALLEL_DEPTH_LIMIT = 3
+export const isInWorkflowPage = () => {
+  const pathname = globalThis.location.pathname
+  return /^\/app\/[^/]+\/workflow$/.test(pathname) || /^\/workflow\/[^/]+$/.test(pathname)
+}
+export const getGlobalVars = (isChatMode: boolean): Var[] => {
+  const isInWorkflow = isInWorkflowPage()
+  const vars: Var[] = [
+    ...(isChatMode ? [
+      {
+        variable: 'sys.dialogue_count',
+        type: VarType.number,
+      },
+      {
+        variable: 'sys.conversation_id',
+        type: VarType.string,
+      },
+    ] : []),
+    {
+      variable: 'sys.user_id',
+      type: VarType.string,
+    },
+    {
+      variable: 'sys.app_id',
+      type: VarType.string,
+    },
+    {
+      variable: 'sys.workflow_id',
+      type: VarType.string,
+    },
+    {
+      variable: 'sys.workflow_run_id',
+      type: VarType.string,
+    },
+    ...((isInWorkflow && !isChatMode) ? [
+      {
+        variable: 'sys.timestamp',
+        type: VarType.number,
+      },
+    ] : []),
+  ]
+  return vars
+}
+
+export const VAR_SHOW_NAME_MAP: Record<string, string> = {
+  'sys.query': 'query',
+  'sys.files': 'files',
+}
 
 export const RETRIEVAL_OUTPUT_STRUCT = `{
   "content": "",
@@ -58,7 +104,7 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
 }`
 
 export const SUPPORT_OUTPUT_VARS_NODE = [
-  BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
+  BlockEnum.Start, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
   BlockEnum.ParameterExtractor, BlockEnum.Iteration, BlockEnum.Loop,
   BlockEnum.DocExtractor, BlockEnum.ListFilter,

@@ -1,6 +1,6 @@
 from collections.abc import Generator
 from dataclasses import dataclass, field
-from typing import TypeVar, Union, cast
+from typing import TypeVar, Union
 
 from core.agent.entities import AgentInvokeMessage
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -87,7 +87,8 @@ def merge_blob_chunks(
                     ),
                     meta=resp.meta,
                 )
-                yield cast(MessageType, merged_message)
+                assert isinstance(merged_message, (ToolInvokeMessage, AgentInvokeMessage))
+                yield merged_message  # type: ignore
                 # Clean up the buffer
                 del files[chunk_id]
         else:

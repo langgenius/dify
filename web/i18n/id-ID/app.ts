@@ -142,6 +142,14 @@ const translation = {
       removeConfirmContent: 'Konfigurasi saat ini sedang digunakan, menghapusnya akan mematikan fitur Pelacakan.',
       title: 'Konfigurasi',
       secretKey: 'Kunci Rahasia',
+      experimentId: 'ID Eksperimen',
+      trackingUri: 'URI Pelacakan',
+      clientId: 'ID Klien OAuth',
+      clientSecret: 'Rahasia Klien OAuth',
+      username: 'Nama Pengguna',
+      databricksHost: 'URL Workspace Databricks',
+      personalAccessToken: 'Token Akses Pribadi (lama)',
+      password: 'Kata sandi',
     },
     expand: 'Memperluas',
     disabledTip: 'Silakan konfigurasi penyedia terlebih dahulu',
@@ -155,6 +163,18 @@ const translation = {
     description: 'Mengonfigurasi penyedia LLMOps Pihak Ketiga dan melacak performa aplikasi.',
     inUse: 'Sedang digunakan',
     tracingDescription: 'Tangkap konteks lengkap eksekusi aplikasi, termasuk panggilan LLM, konteks, perintah, permintaan HTTP, dan lainnya, ke platform pelacakan pihak ketiga.',
+    tencent: {
+      title: 'Tencent APM',
+      description: 'Tencent Application Performance Monitoring menyediakan pelacakan komprehensif dan analisis multi-dimensi untuk aplikasi LLM.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'MLflow adalah platform sumber terbuka untuk manajemen eksperimen, evaluasi, dan pemantauan aplikasi LLM.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks menawarkan MLflow yang sepenuhnya dikelola dengan tata kelola dan keamanan yang kuat untuk menyimpan data jejak.',
+    },
   },
   appSelector: {
     placeholder: 'Pilih aplikasi...',
@@ -305,6 +325,8 @@ const translation = {
   openInExplore: 'Buka di Jelajahi',
   showMyCreatedAppsOnly: 'Dibuat oleh saya',
   appDeleteFailed: 'Gagal menghapus aplikasi',
+  noUserInputNode: 'Node input pengguna hilang',
+  notPublishedYet: 'Aplikasi belum diterbitkan',
 }
 
 export default translation

@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from obs import ObsClient  # type: ignore
+from obs import ObsClient
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -45,7 +45,7 @@ class HuaweiObsStorage(BaseStorage):
 
     def _get_meta(self, filename):
         res = self.client.getObjectMetadata(bucketName=self.bucket_name, objectKey=filename)
-        if res.status < 300:
+        if res and res.status and res.status < 300:
             return res
         else:
             return None

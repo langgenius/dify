@@ -88,7 +88,7 @@ const translation = {
     freeTrialTip: '200 회의 OpenAI 호출 무료 체험을 받으세요. ',
     annualBilling: '연간 청구',
     getStarted: '시작하기',
-    apiRateLimitUnit: '{{count,number}}/일',
+    apiRateLimitUnit: '{{count,number}}',
     freeTrialTipSuffix: '신용카드 없음',
     teamWorkspace: '{{count,number}} 팀 작업 공간',
     self: '자체 호스팅',
@@ -103,6 +103,21 @@ const translation = {
     documentsRequestQuotaTooltip:
       '지식 기반 내에서 작업 공간이 분당 수행할 수 있는 총 작업 수를 지정합니다. 여기에는 데이터 세트 생성, 삭제, 업데이트, 문서 업로드, 수정, 보관 및 지식 기반 쿼리가 포함됩니다. 이 지표는 지식 기반 요청의 성능을 평가하는 데 사용됩니다. 예를 들어, 샌드박스 사용자가 1 분 이내에 10 회의 연속 히트 테스트를 수행하면, 해당 작업 공간은 다음 1 분 동안 데이터 세트 생성, 삭제, 업데이트 및 문서 업로드 또는 수정과 같은 작업을 수행하는 것이 일시적으로 제한됩니다.',
     startBuilding: '구축 시작',
+    taxTip: '모든 구독 요금(월간/연간)에는 해당 세금(예: 부가가치세, 판매세)이 포함되어 있지 않습니다.',
+    taxTipSecond: '귀하의 지역에 적용 가능한 세금 요구 사항이 없는 경우, 결제 시 세금이 표시되지 않으며 전체 구독 기간 동안 추가 요금이 부과되지 않습니다.',
+    triggerEvents: {
+      unlimited: '무제한 트리거 이벤트',
+      tooltip: '플러그인, 스케줄 또는 웹훅 트리거를 통해 워크플로를 자동으로 시작하는 이벤트 수입니다.',
+    },
+    workflowExecution: {
+      faster: '더 빠른 작업 흐름 실행',
+      standard: '표준 워크플로 실행',
+      priority: '우선 순위 작업 흐름 실행',
+      tooltip: '워크플로 실행 대기열 우선순위 및 속도.',
+    },
+    startNodes: {
+      unlimited: '무제한 트리거/워크플로',
+    },
   },
   plans: {
     sandbox: {
@@ -197,8 +212,17 @@ const translation = {
     documentsUploadQuota: '문서 업로드 한도',
     vectorSpaceTooltip:
       '고품질 색인 모드를 사용하는 문서는 지식 데이터 저장소 자원을 소모합니다. 지식 데이터 저장소가 한도에 도달하면 새 문서를 업로드할 수 없습니다.',
+    triggerEvents: '트리거 이벤트',
+    perMonth: '월별',
   },
   teamMembers: '팀원들',
+  triggerLimitModal: {
+    usageTitle: '트리거 이벤트',
+    dismiss: '닫기',
+    title: '업그레이드하여 더 많은 트리거 이벤트 잠금 해제',
+    description: '이 요금제의 워크플로 이벤트 트리거 한도에 도달했습니다.',
+    upgrade: '업그레이드',
+  },
 }
 
 export default translation

@@ -1,5 +1,5 @@
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
-import type { AppIconType, AppMode, RetrievalConfig, TransferMethod } from '@/types/app'
+import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
@@ -50,6 +50,7 @@ export type DataSet = {
   permission: DatasetPermission
   data_source_type: DataSourceType
   indexing_technique: IndexingType
+  author_name?: string
   created_by: string
   updated_by: string
   updated_at: number
@@ -344,6 +345,8 @@ export type WebsiteCrawlInfo = {
   description: string
   source_url: string
   title: string
+  provider?: string
+  job_id?: string
 }
 
 export type OnlineDocumentInfo = {
@@ -660,7 +663,7 @@ export type ExternalKnowledgeBaseHitTestingResponse = {
 export type RelatedApp = {
   id: string
   name: string
-  mode: AppMode
+  mode: AppModeEnum
   icon_type: AppIconType | null
   icon: string
   icon_background: string

@@ -46,13 +46,13 @@ class SupabaseStorage(BaseStorage):
         Path(target_filepath).write_bytes(result)
 
     def exists(self, filename):
-        result = self.client.storage.from_(self.bucket_name).list(filename)
-        if result.count() > 0:
+        result = self.client.storage.from_(self.bucket_name).list(path=filename)
+        if len(result) > 0:
             return True
         return False
 
     def delete(self, filename):
-        self.client.storage.from_(self.bucket_name).remove(filename)
+        self.client.storage.from_(self.bucket_name).remove([filename])
 
     def bucket_exists(self):
         buckets = self.client.storage.list_buckets()

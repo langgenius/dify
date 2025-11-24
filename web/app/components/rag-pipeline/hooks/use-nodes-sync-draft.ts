@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import {
   useWorkflowStore,
@@ -7,6 +7,7 @@ import {
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks/use-workflow'
+import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { API_PREFIX } from '@/config'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { usePipelineRefreshDraft } from '.'
@@ -77,13 +78,13 @@ export const useNodesSyncDraft = () => {
 
     if (postParams) {
       navigator.sendBeacon(
-        `${API_PREFIX}${postParams.url}?_token=${localStorage.getItem('console_token')}`,
+        `${API_PREFIX}${postParams.url}`,
         JSON.stringify(postParams.params),
       )
     }
   }, [getPostParams, getNodesReadOnly])
 
-  const doSyncWorkflowDraft = useCallback(async (
+  const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
     callback?: {
       onSuccess?: () => void
@@ -104,7 +105,7 @@ export const useNodesSyncDraft = () => {
         const res = await syncWorkflowDraft(postParams)
         setSyncWorkflowDraftHash(res.hash)
         setDraftUpdatedAt(res.updated_at)
-        callback?.onSuccess && callback.onSuccess()
+        callback?.onSuccess?.()
       }
       catch (error: any) {
         if (error && error.json && !error.bodyUsed) {
@@ -113,13 +114,15 @@ export const useNodesSyncDraft = () => {
               handleRefreshWorkflowDraft()
           })
         }
-        callback?.onError && callback.onError()
+        callback?.onError?.()
       }
       finally {
-        callback?.onSettled && callback.onSettled()
+        callback?.onSettled?.()
       }
     }
   }, [getPostParams, getNodesReadOnly, workflowStore, handleRefreshWorkflowDraft])
+
+  const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
 
   return {
     doSyncWorkflowDraft,

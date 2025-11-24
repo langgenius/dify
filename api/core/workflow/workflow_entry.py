@@ -9,7 +9,7 @@ from core.app.apps.exc import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File
 from core.workflow.constants import ENVIRONMENT_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph import Graph
 from core.workflow.graph_engine import GraphEngine
@@ -20,6 +20,7 @@ from core.workflow.graph_events import GraphEngineEvent, GraphNodeEventBase, Gra
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from factories import file_factory
@@ -227,7 +228,7 @@ class WorkflowEntry:
             "height": node_height,
             "type": "custom",
             "data": {
-                "type": NodeType.START.value,
+                "type": NodeType.START,
                 "title": "Start",
                 "desc": "Start",
             },
@@ -416,4 +417,14 @@ class WorkflowEntry:
 
             # append variable and value to variable pool
             if variable_node_id != ENVIRONMENT_VARIABLE_NODE_ID:
+                # In single run, the input_value is set as the LLM's structured output value within the variable_pool.
+                if len(variable_key_list) == 2 and variable_key_list[0] == "structured_output":
+                    input_value = {variable_key_list[1]: input_value}
+                    variable_key_list = variable_key_list[0:1]
+
+                    # Support for a single node to reference multiple structured_output variables
+                    current_variable = variable_pool.get([variable_node_id] + variable_key_list)
+                    if current_variable and isinstance(current_variable.value, dict):
+                        input_value = current_variable.value | input_value
+
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)

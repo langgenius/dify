@@ -28,9 +28,9 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
         </div>
         <div
           className='system-xs-medium grow truncate text-right text-text-secondary'
-          title={data.retrieval_model.search_method}
+          title={data.retrieval_model?.search_method}
         >
-          {settingsDisplay[data.retrieval_model.search_method as keyof typeof settingsDisplay]}
+          {settingsDisplay[data.retrieval_model?.search_method as keyof typeof settingsDisplay]}
         </div>
       </div>
     </div>

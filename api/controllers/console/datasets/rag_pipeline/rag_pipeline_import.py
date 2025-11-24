@@ -1,52 +1,51 @@
-from typing import cast
-
-from flask_login import current_user  # type: ignore
 from flask_restx import Resource, marshal_with, reqparse  # type: ignore
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     account_initialization_required,
+    edit_permission_required,
     setup_required,
 )
 from extensions.ext_database import db
 from fields.rag_pipeline_fields import pipeline_import_check_dependencies_fields, pipeline_import_fields
-from libs.login import login_required
-from models import Account
+from libs.login import current_account_with_tenant, login_required
 from models.dataset import Pipeline
 from services.app_dsl_service import ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
 
 
+@console_ns.route("/rag/pipelines/imports")
 class RagPipelineImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @marshal_with(pipeline_import_fields)
     def post(self):
         # Check user role first
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("mode", type=str, required=True, location="json")
-        parser.add_argument("yaml_content", type=str, location="json")
-        parser.add_argument("yaml_url", type=str, location="json")
-        parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=str, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
-        parser.add_argument("pipeline_id", type=str, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("mode", type=str, required=True, location="json")
+            .add_argument("yaml_content", type=str, location="json")
+            .add_argument("yaml_url", type=str, location="json")
+            .add_argument("name", type=str, location="json")
+            .add_argument("description", type=str, location="json")
+            .add_argument("icon_type", type=str, location="json")
+            .add_argument("icon", type=str, location="json")
+            .add_argument("icon_background", type=str, location="json")
+            .add_argument("pipeline_id", type=str, location="json")
+        )
         args = parser.parse_args()
 
         # Create service with session
         with Session(db.engine) as session:
             import_service = RagPipelineDslService(session)
             # Import app
-            account = cast(Account, current_user)
+            account = current_user
             result = import_service.import_rag_pipeline(
                 account=account,
                 import_mode=args["mode"],
@@ -59,47 +58,46 @@ class RagPipelineImportApi(Resource):
 
         # Return appropriate status code based on result
         status = result.status
-        if status == ImportStatus.FAILED.value:
+        if status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
-        elif status == ImportStatus.PENDING.value:
+        elif status == ImportStatus.PENDING:
             return result.model_dump(mode="json"), 202
         return result.model_dump(mode="json"), 200
 
 
+@console_ns.route("/rag/pipelines/imports/<string:import_id>/confirm")
 class RagPipelineImportConfirmApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @marshal_with(pipeline_import_fields)
     def post(self, import_id):
-        # Check user role first
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         # Create service with session
         with Session(db.engine) as session:
             import_service = RagPipelineDslService(session)
             # Confirm import
-            account = cast(Account, current_user)
+            account = current_user
             result = import_service.confirm_import(import_id=import_id, account=account)
             session.commit()
 
         # Return appropriate status code based on result
-        if result.status == ImportStatus.FAILED.value:
+        if result.status == ImportStatus.FAILED:
             return result.model_dump(mode="json"), 400
         return result.model_dump(mode="json"), 200
 
 
+@console_ns.route("/rag/pipelines/imports/<string:pipeline_id>/check-dependencies")
 class RagPipelineImportCheckDependenciesApi(Resource):
     @setup_required
     @login_required
     @get_rag_pipeline
     @account_initialization_required
+    @edit_permission_required
     @marshal_with(pipeline_import_check_dependencies_fields)
     def get(self, pipeline: Pipeline):
-        if not current_user.is_editor:
-            raise Forbidden()
-
         with Session(db.engine) as session:
             import_service = RagPipelineDslService(session)
             result = import_service.check_dependencies(pipeline=pipeline)
@@ -107,18 +105,16 @@ class RagPipelineImportCheckDependenciesApi(Resource):
         return result.model_dump(mode="json"), 200
 
 
+@console_ns.route("/rag/pipelines/<string:pipeline_id>/exports")
 class RagPipelineExportApi(Resource):
     @setup_required
     @login_required
     @get_rag_pipeline
     @account_initialization_required
+    @edit_permission_required
     def get(self, pipeline: Pipeline):
-        if not current_user.is_editor:
-            raise Forbidden()
-
-            # Add include_secret params
-        parser = reqparse.RequestParser()
-        parser.add_argument("include_secret", type=str, default="false", location="args")
+        # Add include_secret params
+        parser = reqparse.RequestParser().add_argument("include_secret", type=str, default="false", location="args")
         args = parser.parse_args()
 
         with Session(db.engine) as session:
@@ -128,22 +124,3 @@ class RagPipelineExportApi(Resource):
             )
 
         return {"data": result}, 200
-
-
-# Import Rag Pipeline
-api.add_resource(
-    RagPipelineImportApi,
-    "/rag/pipelines/imports",
-)
-api.add_resource(
-    RagPipelineImportConfirmApi,
-    "/rag/pipelines/imports/<string:import_id>/confirm",
-)
-api.add_resource(
-    RagPipelineImportCheckDependenciesApi,
-    "/rag/pipelines/imports/<string:pipeline_id>/check-dependencies",
-)
-api.add_resource(
-    RagPipelineExportApi,
-    "/rag/pipelines/<string:pipeline_id>/exports",
-)

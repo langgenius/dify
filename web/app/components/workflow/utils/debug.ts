@@ -21,5 +21,8 @@ export const outputToVarInInspect = ({
     value_type: VarType.string, // TODO: wait for api or get from node
     value,
     edited: false,
+    visible: true,
+    is_truncated: false,
+    full_content: { size_bytes: 0, download_url: '' },
   }
 }

@@ -12,9 +12,10 @@ P = ParamSpec("P")
 R = TypeVar("R")
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
+from libs.token import extract_access_token
 from models.model import App, InstalledApp, RecommendedApp
 
 
@@ -24,19 +25,9 @@ def admin_required(view: Callable[P, R]):
         if not dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
 
-        auth_header = request.headers.get("Authorization")
-        if auth_header is None:
+        auth_token = extract_access_token(request)
+        if not auth_token:
             raise Unauthorized("Authorization header is missing.")
-
-        if " " not in auth_header:
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
-        auth_scheme, auth_token = auth_header.split(None, 1)
-        auth_scheme = auth_scheme.lower()
-
-        if auth_scheme != "bearer":
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
-
         if auth_token != dify_config.ADMIN_API_KEY:
             raise Unauthorized("API key is invalid.")
 
@@ -47,10 +38,10 @@ def admin_required(view: Callable[P, R]):
 
 @console_ns.route("/admin/insert-explore-apps")
 class InsertExploreAppListApi(Resource):
-    @api.doc("insert_explore_app")
-    @api.doc(description="Insert or update an app in the explore list")
-    @api.expect(
-        api.model(
+    @console_ns.doc("insert_explore_app")
+    @console_ns.doc(description="Insert or update an app in the explore list")
+    @console_ns.expect(
+        console_ns.model(
             "InsertExploreAppRequest",
             {
                 "app_id": fields.String(required=True, description="Application ID"),
@@ -64,21 +55,23 @@ class InsertExploreAppListApi(Resource):
             },
         )
     )
-    @api.response(200, "App updated successfully")
-    @api.response(201, "App inserted successfully")
-    @api.response(404, "App not found")
+    @console_ns.response(200, "App updated successfully")
+    @console_ns.response(201, "App inserted successfully")
+    @console_ns.response(404, "App not found")
     @only_edition_cloud
     @admin_required
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("app_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("desc", type=str, location="json")
-        parser.add_argument("copyright", type=str, location="json")
-        parser.add_argument("privacy_policy", type=str, location="json")
-        parser.add_argument("custom_disclaimer", type=str, location="json")
-        parser.add_argument("language", type=supported_language, required=True, nullable=False, location="json")
-        parser.add_argument("category", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("position", type=int, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("app_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("desc", type=str, location="json")
+            .add_argument("copyright", type=str, location="json")
+            .add_argument("privacy_policy", type=str, location="json")
+            .add_argument("custom_disclaimer", type=str, location="json")
+            .add_argument("language", type=supported_language, required=True, nullable=False, location="json")
+            .add_argument("category", type=str, required=True, nullable=False, location="json")
+            .add_argument("position", type=int, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()
@@ -138,10 +131,10 @@ class InsertExploreAppListApi(Resource):
 
 @console_ns.route("/admin/insert-explore-apps/<uuid:app_id>")
 class InsertExploreAppApi(Resource):
-    @api.doc("delete_explore_app")
-    @api.doc(description="Remove an app from the explore list")
-    @api.doc(params={"app_id": "Application ID to remove"})
-    @api.response(204, "App removed successfully")
+    @console_ns.doc("delete_explore_app")
+    @console_ns.doc(description="Remove an app from the explore list")
+    @console_ns.doc(params={"app_id": "Application ID to remove"})
+    @console_ns.response(204, "App removed successfully")
     @only_edition_cloud
     @admin_required
     def delete(self, app_id):

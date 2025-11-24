@@ -6,10 +6,13 @@ from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.enums import (
@@ -36,7 +39,7 @@ from .exc import (
 )
 
 if TYPE_CHECKING:
-    from core.workflow.entities import VariablePool
+    from core.workflow.runtime import VariablePool
 
 
 class ToolNode(Node):
@@ -79,7 +82,7 @@ class ToolNode(Node):
             # But for backward compatibility with historical data
             # this version field judgment is still preserved here.
             variable_pool: VariablePool | None = None
-            if node_data.version != "1" or node_data.tool_node_version != "1":
+            if node_data.version != "1" or node_data.tool_node_version is not None:
                 variable_pool = self.graph_runtime_state.variable_pool
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self._node_id, self._node_data, self.invoke_from, variable_pool
@@ -136,13 +139,14 @@ class ToolNode(Node):
 
         try:
             # convert tool messages
-            yield from self._transform_message(
+            _ = yield from self._transform_message(
                 messages=message_stream,
                 tool_info=tool_info,
                 parameters_for_log=parameters_for_log,
                 user_id=self.user_id,
                 tenant_id=self.tenant_id,
                 node_id=self._node_id,
+                tool_runtime=tool_runtime,
             )
         except ToolInvokeError as e:
             yield StreamCompletedEvent(
@@ -160,10 +164,7 @@ class ToolNode(Node):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error="An error occurred in the plugin, "
-                    f"please contact the author of {node_data.provider_name} for help, "
-                    f"error type: {e.get_error_type()}, "
-                    f"error details: {e.get_error_message()}",
+                    error=e.to_user_friendly_error(plugin_name=node_data.provider_name),
                     error_type=type(e).__name__,
                 )
             )
@@ -224,7 +225,7 @@ class ToolNode(Node):
         return result
 
     def _fetch_files(self, variable_pool: "VariablePool") -> list[File]:
-        variable = variable_pool.get(["sys", SystemVariableKey.FILES.value])
+        variable = variable_pool.get(["sys", SystemVariableKey.FILES])
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
 
@@ -236,7 +237,8 @@ class ToolNode(Node):
         user_id: str,
         tenant_id: str,
         node_id: str,
-    ) -> Generator:
+        tool_runtime: Tool,
+    ) -> Generator[NodeEventBase, None, LLMUsage]:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """
@@ -424,16 +426,33 @@ class ToolNode(Node):
                 is_final=True,
             )
 
+        usage = self._extract_tool_usage(tool_runtime)
+
+        metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
+            WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
+        }
+        if usage.total_tokens > 0:
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = usage.total_tokens
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = usage.total_price
+            metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] = usage.currency
+
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
-                metadata={
-                    WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
-                },
+                metadata=metadata,
                 inputs=parameters_for_log,
+                llm_usage=usage,
             )
         )
+
+        return usage
+
+    @staticmethod
+    def _extract_tool_usage(tool_runtime: Tool) -> LLMUsage:
+        if isinstance(tool_runtime, WorkflowTool):
+            return tool_runtime.latest_usage
+        return LLMUsage.empty_usage()
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

@@ -1,7 +1,7 @@
 import type { MouseEvent } from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import type {
   NodeDragHandler,
   NodeMouseHandler,
@@ -16,9 +16,9 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import type { ToolDefaultValue } from '../block-selector/types'
+import type { PluginDefaultValue } from '../block-selector/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
-import { BlockEnum } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 import { useWorkflowStore } from '../store'
 import {
   CUSTOM_EDGE,
@@ -63,6 +63,15 @@ import type { RAGPipelineVariables } from '@/models/pipeline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
 
+// Entry node deletion restriction has been removed to allow empty workflows
+
+// Entry node (Start/Trigger) wrapper offsets for alignment
+// Must match the values in use-helpline.ts
+const ENTRY_NODE_WRAPPER_OFFSET = {
+  x: 0,
+  y: 21, // Adjusted based on visual testing feedback
+} as const
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -70,7 +79,7 @@ export const useNodesInteractions = () => {
   const reactflow = useReactFlow()
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { checkNestedParallelLimit, getAfterNodesInSameBranch } = useWorkflow()
+  const { getAfterNodesInSameBranch } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { getWorkflowReadOnly } = useWorkflowReadOnly()
   const { handleSetHelpline } = useHelpline()
@@ -138,21 +147,51 @@ export const useNodesInteractions = () => {
       const newNodes = produce(nodes, (draft) => {
         const currentNode = draft.find(n => n.id === node.id)!
 
-        if (showVerticalHelpLineNodesLength > 0)
-          currentNode.position.x = showVerticalHelpLineNodes[0].position.x
-        else if (restrictPosition.x !== undefined)
-          currentNode.position.x = restrictPosition.x
-        else if (restrictLoopPosition.x !== undefined)
-          currentNode.position.x = restrictLoopPosition.x
-        else currentNode.position.x = node.position.x
+        // Check if current dragging node is an entry node
+        const isCurrentEntryNode = isTriggerNode(node.data.type as any) || node.data.type === BlockEnum.Start
 
-        if (showHorizontalHelpLineNodesLength > 0)
-          currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
-        else if (restrictPosition.y !== undefined)
+        // X-axis alignment with offset consideration
+        if (showVerticalHelpLineNodesLength > 0) {
+          const targetNode = showVerticalHelpLineNodes[0]
+          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+
+          // Calculate the wrapper position needed to align the inner nodes
+          // Target inner position = target.position + target.offset
+          // Current inner position should equal target inner position
+          // So: current.position + current.offset = target.position + target.offset
+          // Therefore: current.position = target.position + target.offset - current.offset
+          const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.x : 0
+          const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.x : 0
+          currentNode.position.x = targetNode.position.x + targetOffset - currentOffset
+        }
+        else if (restrictPosition.x !== undefined) {
+          currentNode.position.x = restrictPosition.x
+        }
+        else if (restrictLoopPosition.x !== undefined) {
+          currentNode.position.x = restrictLoopPosition.x
+        }
+        else {
+          currentNode.position.x = node.position.x
+        }
+
+        // Y-axis alignment with offset consideration
+        if (showHorizontalHelpLineNodesLength > 0) {
+          const targetNode = showHorizontalHelpLineNodes[0]
+          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+
+          const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
+          const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
+          currentNode.position.y = targetNode.position.y + targetOffset - currentOffset
+        }
+        else if (restrictPosition.y !== undefined) {
           currentNode.position.y = restrictPosition.y
-        else if (restrictLoopPosition.y !== undefined)
+        }
+        else if (restrictLoopPosition.y !== undefined) {
           currentNode.position.y = restrictLoopPosition.y
-        else currentNode.position.y = node.position.y
+        }
+        else {
+          currentNode.position.y = node.position.y
+        }
       })
       setNodes(newNodes)
     },
@@ -357,6 +396,7 @@ export const useNodesInteractions = () => {
       if (node.type === CUSTOM_ITERATION_START_NODE) return
       if (node.type === CUSTOM_LOOP_START_NODE) return
       if (node.data.type === BlockEnum.DataSourceEmpty) return
+      if (node.data._pluginInstallLocked) return
       handleNodeSelect(node.id)
     },
     [handleNodeSelect],
@@ -436,21 +476,13 @@ export const useNodesInteractions = () => {
         draft.push(newEdge)
       })
 
-      if (checkNestedParallelLimit(newNodes, newEdges, targetNode)) {
-        setNodes(newNodes)
-        setEdges(newEdges)
+      setNodes(newNodes)
+      setEdges(newEdges)
 
-        handleSyncWorkflowDraft()
-        saveStateToHistory(WorkflowHistoryEvent.NodeConnect, {
-          nodeId: targetNode?.id,
-        })
-      }
-      else {
-        const { setConnectingNodePayload, setEnteringNodePayload }
-          = workflowStore.getState()
-        setConnectingNodePayload(undefined)
-        setEnteringNodePayload(undefined)
-      }
+      handleSyncWorkflowDraft()
+      saveStateToHistory(WorkflowHistoryEvent.NodeConnect, {
+        nodeId: targetNode?.id,
+      })
     },
     [
       getNodesReadOnly,
@@ -458,7 +490,6 @@ export const useNodesInteractions = () => {
       workflowStore,
       handleSyncWorkflowDraft,
       saveStateToHistory,
-      checkNestedParallelLimit,
     ],
   )
 
@@ -744,7 +775,7 @@ export const useNodesInteractions = () => {
         nodeType,
         sourceHandle = 'source',
         targetHandle = 'target',
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       { prevNodeId, prevNodeSourceHandle, nextNodeId, nextNodeTargetHandle },
     ) => {
@@ -765,7 +796,7 @@ export const useNodesInteractions = () => {
               nodesWithSameType.length > 0
                 ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
                 : defaultValue.title,
-            ...toolDefaultValue,
+            ...pluginDefaultValue,
             selected: true,
             _showAddVariablePopup:
               (nodeType === BlockEnum.VariableAssigner
@@ -934,13 +965,8 @@ export const useNodesInteractions = () => {
           if (newEdge) draft.push(newEdge)
         })
 
-        if (checkNestedParallelLimit(newNodes, newEdges, prevNode)) {
-          setNodes(newNodes)
-          setEdges(newEdges)
-        }
-        else {
-          return false
-        }
+        setNodes(newNodes)
+        setEdges(newEdges)
       }
       if (!prevNodeId && nextNodeId) {
         const nextNodeIndex = nodes.findIndex(node => node.id === nextNodeId)
@@ -1087,17 +1113,11 @@ export const useNodesInteractions = () => {
             draft.push(newEdge)
           })
 
-          if (checkNestedParallelLimit(newNodes, newEdges, nextNode)) {
-            setNodes(newNodes)
-            setEdges(newEdges)
-          }
-          else {
-            return false
-          }
+          setNodes(newNodes)
+          setEdges(newEdges)
         }
         else {
-          if (checkNestedParallelLimit(newNodes, edges)) setNodes(newNodes)
-          else return false
+          setNodes(newNodes)
         }
       }
       if (prevNodeId && nextNodeId) {
@@ -1297,7 +1317,6 @@ export const useNodesInteractions = () => {
       saveStateToHistory,
       workflowStore,
       getAfterNodesInSameBranch,
-      checkNestedParallelLimit,
       nodesMetaDataMap,
     ],
   )
@@ -1307,7 +1326,7 @@ export const useNodesInteractions = () => {
       currentNodeId: string,
       nodeType: BlockEnum,
       sourceHandle: string,
-      toolDefaultValue?: ToolDefaultValue,
+      pluginDefaultValue?: PluginDefaultValue,
     ) => {
       if (getNodesReadOnly()) return
 
@@ -1331,7 +1350,7 @@ export const useNodesInteractions = () => {
             nodesWithSameType.length > 0
               ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
               : defaultValue.title,
-          ...toolDefaultValue,
+          ...pluginDefaultValue,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
           selected: currentNode.data.selected,
@@ -1466,6 +1485,7 @@ export const useNodesInteractions = () => {
         // If no nodeId is provided, fall back to the current behavior
         const bundledNodes = nodes.filter((node) => {
           if (!node.data._isBundled) return false
+          if (node.type === CUSTOM_NOTE_NODE) return true
           const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
           if (metaData.isSingleton) return false
           return !node.data.isInIteration && !node.data.isInLoop
@@ -1478,6 +1498,7 @@ export const useNodesInteractions = () => {
 
         const selectedNode = nodes.find((node) => {
           if (!node.data.selected) return false
+          if (node.type === CUSTOM_NOTE_NODE) return true
           const { metaData } = nodesMetaDataMap![node.data.type as BlockEnum]
           return !metaData.isSingleton
         })
@@ -1516,7 +1537,7 @@ export const useNodesInteractions = () => {
           = generateNewNode({
             type: nodeToPaste.type,
             data: {
-              ...nodesMetaDataMap![nodeType].defaultValue,
+              ...(nodeToPaste.type !== CUSTOM_NOTE_NODE && nodesMetaDataMap![nodeType].defaultValue),
               ...nodeToPaste.data,
               selected: false,
               _isBundled: false,
@@ -1675,7 +1696,7 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
     const bundledNodes = nodes.filter(
-      node => node.data._isBundled && node.data.type !== BlockEnum.Start,
+      node => node.data._isBundled,
     )
 
     if (bundledNodes.length) {
@@ -1688,7 +1709,7 @@ export const useNodesInteractions = () => {
     if (edgeSelected) return
 
     const selectedNode = nodes.find(
-      node => node.data.selected && node.data.type !== BlockEnum.Start,
+      node => node.data.selected,
     )
 
     if (selectedNode) handleNodeDelete(selectedNode.id)

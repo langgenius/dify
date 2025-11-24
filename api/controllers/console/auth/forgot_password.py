@@ -6,7 +6,7 @@ from flask_restx import Resource, fields, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.auth.error import (
     EmailCodeError,
     EmailPasswordResetLimitError,
@@ -20,17 +20,17 @@ from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
-from models.account import Account
+from models import Account
 from services.account_service import AccountService, TenantService
 from services.feature_service import FeatureService
 
 
 @console_ns.route("/forgot-password")
 class ForgotPasswordSendEmailApi(Resource):
-    @api.doc("send_forgot_password_email")
-    @api.doc(description="Send password reset email")
-    @api.expect(
-        api.model(
+    @console_ns.doc("send_forgot_password_email")
+    @console_ns.doc(description="Send password reset email")
+    @console_ns.expect(
+        console_ns.model(
             "ForgotPasswordEmailRequest",
             {
                 "email": fields.String(required=True, description="Email address"),
@@ -38,10 +38,10 @@ class ForgotPasswordSendEmailApi(Resource):
             },
         )
     )
-    @api.response(
+    @console_ns.response(
         200,
         "Email sent successfully",
-        api.model(
+        console_ns.model(
             "ForgotPasswordEmailResponse",
             {
                 "result": fields.String(description="Operation result"),
@@ -50,13 +50,15 @@ class ForgotPasswordSendEmailApi(Resource):
             },
         ),
     )
-    @api.response(400, "Invalid email or rate limit exceeded")
+    @console_ns.response(400, "Invalid email or rate limit exceeded")
     @setup_required
     @email_password_login_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("language", type=str, required=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=email, required=True, location="json")
+            .add_argument("language", type=str, required=False, location="json")
+        )
         args = parser.parse_args()
 
         ip_address = extract_remote_ip(request)
@@ -83,10 +85,10 @@ class ForgotPasswordSendEmailApi(Resource):
 
 @console_ns.route("/forgot-password/validity")
 class ForgotPasswordCheckApi(Resource):
-    @api.doc("check_forgot_password_code")
-    @api.doc(description="Verify password reset code")
-    @api.expect(
-        api.model(
+    @console_ns.doc("check_forgot_password_code")
+    @console_ns.doc(description="Verify password reset code")
+    @console_ns.expect(
+        console_ns.model(
             "ForgotPasswordCheckRequest",
             {
                 "email": fields.String(required=True, description="Email address"),
@@ -95,10 +97,10 @@ class ForgotPasswordCheckApi(Resource):
             },
         )
     )
-    @api.response(
+    @console_ns.response(
         200,
         "Code verified successfully",
-        api.model(
+        console_ns.model(
             "ForgotPasswordCheckResponse",
             {
                 "is_valid": fields.Boolean(description="Whether code is valid"),
@@ -107,14 +109,16 @@ class ForgotPasswordCheckApi(Resource):
             },
         ),
     )
-    @api.response(400, "Invalid code or token")
+    @console_ns.response(400, "Invalid code or token")
     @setup_required
     @email_password_login_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
-        parser.add_argument("code", type=str, required=True, location="json")
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("email", type=str, required=True, location="json")
+            .add_argument("code", type=str, required=True, location="json")
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         user_email = args["email"]
@@ -148,10 +152,10 @@ class ForgotPasswordCheckApi(Resource):
 
 @console_ns.route("/forgot-password/resets")
 class ForgotPasswordResetApi(Resource):
-    @api.doc("reset_password")
-    @api.doc(description="Reset password with verification token")
-    @api.expect(
-        api.model(
+    @console_ns.doc("reset_password")
+    @console_ns.doc(description="Reset password with verification token")
+    @console_ns.expect(
+        console_ns.model(
             "ForgotPasswordResetRequest",
             {
                 "token": fields.String(required=True, description="Verification token"),
@@ -160,19 +164,21 @@ class ForgotPasswordResetApi(Resource):
             },
         )
     )
-    @api.response(
+    @console_ns.response(
         200,
         "Password reset successfully",
-        api.model("ForgotPasswordResetResponse", {"result": fields.String(description="Operation result")}),
+        console_ns.model("ForgotPasswordResetResponse", {"result": fields.String(description="Operation result")}),
     )
-    @api.response(400, "Invalid token or password mismatch")
+    @console_ns.response(400, "Invalid token or password mismatch")
     @setup_required
     @email_password_login_enabled
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("new_password", type=valid_password, required=True, nullable=False, location="json")
-        parser.add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("token", type=str, required=True, nullable=False, location="json")
+            .add_argument("new_password", type=valid_password, required=True, nullable=False, location="json")
+            .add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
         # Validate passwords match
@@ -221,8 +227,3 @@ class ForgotPasswordResetApi(Resource):
             TenantService.create_tenant_member(tenant, account, role="owner")
             account.current_tenant = tenant
             tenant_was_created.send(tenant)
-
-
-api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")
-api.add_resource(ForgotPasswordCheckApi, "/forgot-password/validity")
-api.add_resource(ForgotPasswordResetApi, "/forgot-password/resets")

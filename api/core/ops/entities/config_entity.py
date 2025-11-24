@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ValidationInfo, field_validator
 
-from core.ops.utils import validate_project_name, validate_url, validate_url_with_path
+from core.ops.utils import validate_integer_id, validate_project_name, validate_url, validate_url_with_path
 
 
 class TracingProviderEnum(StrEnum):
@@ -13,6 +13,9 @@ class TracingProviderEnum(StrEnum):
     OPIK = "opik"
     WEAVE = "weave"
     ALIYUN = "aliyun"
+    MLFLOW = "mlflow"
+    DATABRICKS = "databricks"
+    TENCENT = "tencent"
 
 
 class BaseTracingConfig(BaseModel):
@@ -191,7 +194,77 @@ class AliyunConfig(BaseTracingConfig):
     @field_validator("endpoint")
     @classmethod
     def endpoint_validator(cls, v, info: ValidationInfo):
-        return cls.validate_endpoint_url(v, "https://tracing-analysis-dc-hz.aliyuncs.com")
+        # aliyun uses two URL formats, which may include a URL path
+        return validate_url_with_path(v, "https://tracing-analysis-dc-hz.aliyuncs.com")
+
+
+class TencentConfig(BaseTracingConfig):
+    """
+    Tencent APM tracing config
+    """
+
+    token: str
+    endpoint: str
+    service_name: str
+
+    @field_validator("token")
+    @classmethod
+    def token_validator(cls, v, info: ValidationInfo):
+        if not v or v.strip() == "":
+            raise ValueError("Token cannot be empty")
+        return v
+
+    @field_validator("endpoint")
+    @classmethod
+    def endpoint_validator(cls, v, info: ValidationInfo):
+        return cls.validate_endpoint_url(v, "https://apm.tencentcloudapi.com")
+
+    @field_validator("service_name")
+    @classmethod
+    def service_name_validator(cls, v, info: ValidationInfo):
+        return cls.validate_project_field(v, "dify_app")
+
+
+class MLflowConfig(BaseTracingConfig):
+    """
+    Model class for MLflow tracing config.
+    """
+
+    tracking_uri: str = "http://localhost:5000"
+    experiment_id: str = "0"  # Default experiment id in MLflow is 0
+    username: str | None = None
+    password: str | None = None
+
+    @field_validator("tracking_uri")
+    @classmethod
+    def tracking_uri_validator(cls, v, info: ValidationInfo):
+        if isinstance(v, str) and v.startswith("databricks"):
+            raise ValueError(
+                "Please use Databricks tracing config below to record traces to Databricks-managed MLflow instances."
+            )
+        return validate_url_with_path(v, "http://localhost:5000")
+
+    @field_validator("experiment_id")
+    @classmethod
+    def experiment_id_validator(cls, v, info: ValidationInfo):
+        return validate_integer_id(v)
+
+
+class DatabricksConfig(BaseTracingConfig):
+    """
+    Model class for Databricks (Databricks-managed MLflow) tracing config.
+    """
+
+    experiment_id: str
+    host: str
+    client_id: str | None = None
+    client_secret: str | None = None
+    personal_access_token: str | None = None
+
+    @field_validator("experiment_id")
+    @classmethod
+    def experiment_id_validator(cls, v, info: ValidationInfo):
+        return validate_integer_id(v)
 
 
 OPS_FILE_PATH = "ops_trace/"

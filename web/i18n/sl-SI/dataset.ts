@@ -75,7 +75,6 @@ const translation = {
   intro5: 'se lahko ustvari',
   intro6: ' kot samostojni vtičnik ChatGPT za objavo',
   unavailable: 'Ni na voljo',
-  unavailableTip: 'Vdelani model ni na voljo, potrebno je konfigurirati privzeti vdelani model',
   datasets: 'ZNANJE',
   datasetsApi: 'API DOSTOP',
   externalKnowledgeForm: {
@@ -226,6 +225,17 @@ const translation = {
   createFromPipeline: 'Ustvarjanje iz cevovoda znanja',
   updated: 'Posodobljene',
   externalKnowledgeBase: 'Zunanja baza znanja',
+  serviceApi: {
+    card: {
+      apiKey: 'API ključ',
+      endpoint: 'Vhodna točka API storitve',
+      title: 'API storitev za zaledje',
+      apiReference: 'API Referenca',
+    },
+    title: 'Storitveni API',
+    disabled: 'Onemogočeno',
+    enabled: 'V storitvi',
+  },
 }
 
 export default translation

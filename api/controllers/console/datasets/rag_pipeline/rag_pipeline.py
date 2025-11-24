@@ -4,7 +4,7 @@ from flask import request
 from flask_restx import Resource, reqparse
 from sqlalchemy.orm import Session
 
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
     enterprise_license_required,
@@ -20,18 +20,19 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 logger = logging.getLogger(__name__)
 
 
-def _validate_name(name):
+def _validate_name(name: str) -> str:
     if not name or len(name) < 1 or len(name) > 40:
         raise ValueError("Name must be between 1 to 40 characters.")
     return name
 
 
-def _validate_description_length(description):
+def _validate_description_length(description: str) -> str:
     if len(description) > 400:
         raise ValueError("Description cannot exceed 400 characters.")
     return description
 
 
+@console_ns.route("/rag/pipeline/templates")
 class PipelineTemplateListApi(Resource):
     @setup_required
     @login_required
@@ -45,6 +46,7 @@ class PipelineTemplateListApi(Resource):
         return pipeline_templates, 200
 
 
+@console_ns.route("/rag/pipeline/templates/<string:template_id>")
 class PipelineTemplateDetailApi(Resource):
     @setup_required
     @login_required
@@ -57,35 +59,38 @@ class PipelineTemplateDetailApi(Resource):
         return pipeline_template, 200
 
 
+@console_ns.route("/rag/pipeline/customized/templates/<string:template_id>")
 class CustomizedPipelineTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
     def patch(self, template_id: str):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="Name must be between 1 to 40 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "description",
-            type=str,
-            nullable=True,
-            required=False,
-            default="",
-        )
-        parser.add_argument(
-            "icon_info",
-            type=dict,
-            location="json",
-            nullable=True,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "name",
+                nullable=False,
+                required=True,
+                help="Name must be between 1 to 40 characters.",
+                type=_validate_name,
+            )
+            .add_argument(
+                "description",
+                type=_validate_description_length,
+                nullable=True,
+                required=False,
+                default="",
+            )
+            .add_argument(
+                "icon_info",
+                type=dict,
+                location="json",
+                nullable=True,
+            )
         )
         args = parser.parse_args()
-        pipeline_template_info = PipelineTemplateInfoEntity(**args)
+        pipeline_template_info = PipelineTemplateInfoEntity.model_validate(args)
         RagPipelineService.update_customized_pipeline_template(template_id, pipeline_template_info)
         return 200
 
@@ -112,6 +117,7 @@ class CustomizedPipelineTemplateApi(Resource):
         return {"data": template.yaml_content}, 200
 
 
+@console_ns.route("/rag/pipelines/<string:pipeline_id>/customized/publish")
 class PublishCustomizedPipelineTemplateApi(Resource):
     @setup_required
     @login_required
@@ -119,46 +125,30 @@ class PublishCustomizedPipelineTemplateApi(Resource):
     @enterprise_license_required
     @knowledge_pipeline_publish_enabled
     def post(self, pipeline_id: str):
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "name",
-            nullable=False,
-            required=True,
-            help="Name must be between 1 to 40 characters.",
-            type=_validate_name,
-        )
-        parser.add_argument(
-            "description",
-            type=str,
-            nullable=True,
-            required=False,
-            default="",
-        )
-        parser.add_argument(
-            "icon_info",
-            type=dict,
-            location="json",
-            nullable=True,
+        parser = (
+            reqparse.RequestParser()
+            .add_argument(
+                "name",
+                nullable=False,
+                required=True,
+                help="Name must be between 1 to 40 characters.",
+                type=_validate_name,
+            )
+            .add_argument(
+                "description",
+                type=_validate_description_length,
+                nullable=True,
+                required=False,
+                default="",
+            )
+            .add_argument(
+                "icon_info",
+                type=dict,
+                location="json",
+                nullable=True,
+            )
         )
         args = parser.parse_args()
         rag_pipeline_service = RagPipelineService()
         rag_pipeline_service.publish_customized_pipeline_template(pipeline_id, args)
         return {"result": "success"}
-
-
-api.add_resource(
-    PipelineTemplateListApi,
-    "/rag/pipeline/templates",
-)
-api.add_resource(
-    PipelineTemplateDetailApi,
-    "/rag/pipeline/templates/<string:template_id>",
-)
-api.add_resource(
-    CustomizedPipelineTemplateApi,
-    "/rag/pipeline/customized/templates/<string:template_id>",
-)
-api.add_resource(
-    PublishCustomizedPipelineTemplateApi,
-    "/rag/pipelines/<string:pipeline_id>/customized/publish",
-)

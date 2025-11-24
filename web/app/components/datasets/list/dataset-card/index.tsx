@@ -11,9 +11,6 @@ import cn from '@/utils/classnames'
 import { useHover } from 'ahooks'
 import { RiFileTextFill, RiMoreFill, RiRobot2Fill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
-import { useGetLanguage } from '@/context/i18n'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import RenameDatasetModal from '../../rename-modal'
 import Confirm from '@/app/components/base/confirm'
@@ -24,7 +21,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
-dayjs.extend(relativeTime)
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -87,10 +84,10 @@ const DatasetCard = ({
       return t('dataset.partialEnabled', { count: dataset.document_count, num: availableDocCount })
   }, [t, dataset.document_count, dataset.total_available_documents])
 
-  const language = useGetLanguage()
-  const formatTimeFromNow = useCallback((time: number) => {
-    return dayjs(time * 1_000).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
-  }, [language])
+  const { formatTimeFromNow } = useFormatTimeFromNow()
+  const editTimeText = useMemo(() => {
+    return `${t('datasetDocuments.segment.editedAt')} ${formatTimeFromNow(dataset.updated_at * 1000)}`
+  }, [t, dataset.updated_at, formatTimeFromNow])
 
   const openRenameModal = useCallback(() => {
     setShowRenameModal(true)
@@ -163,12 +160,12 @@ const DatasetCard = ({
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
-          isExternalProvider
-            ? push(`/datasets/${dataset.id}/hitTesting`)
-            // eslint-disable-next-line sonarjs/no-nested-conditional
-            : isPipelineUnpublished
-              ? push(`/datasets/${dataset.id}/pipeline`)
-              : push(`/datasets/${dataset.id}/documents`)
+          if (isExternalProvider)
+            push(`/datasets/${dataset.id}/hitTesting`)
+          else if (isPipelineUnpublished)
+            push(`/datasets/${dataset.id}/pipeline`)
+          else
+            push(`/datasets/${dataset.id}/documents`)
         }}
       >
         {!dataset.embedding_available && (
@@ -198,6 +195,11 @@ const DatasetCard = ({
               title={dataset.name}
             >
               {dataset.name}
+            </div>
+            <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
+              <div className='truncate' title={dataset.author_name}>{dataset.author_name}</div>
+              <div>·</div>
+              <div className='truncate' title={editTimeText}>{editTimeText}</div>
             </div>
             <div className='system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary'>
               {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
@@ -269,7 +271,7 @@ const DatasetCard = ({
             </Tooltip>
           )}
           <span className='system-xs-regular text-divider-deep'>/</span>
-          <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at)}`}</span>
+          <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
         </div>
         <div className='absolute right-2 top-2 z-[5] hidden group-hover:block'>
           <CustomPopover

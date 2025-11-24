@@ -35,7 +35,7 @@ import {
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
 import type { Plugin } from '@/app/components/plugins/types'
-import { PluginType } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -278,7 +278,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
     if (searchText) {
       queryPluginsWithDebounced({
         query: searchText,
-        category: PluginType.model,
+        category: PluginCategoryEnum.model,
         exclude,
         type: 'plugin',
         sortBy: 'install_count',
@@ -288,7 +288,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
     else {
       queryPlugins({
         query: '',
-        category: PluginType.model,
+        category: PluginCategoryEnum.model,
         type: 'plugin',
         pageSize: 1000,
         exclude,
@@ -323,15 +323,18 @@ export const useRefreshModel = () => {
   const { eventEmitter } = useEventEmitterContextContext()
   const updateModelProviders = useUpdateModelProviders()
   const updateModelList = useUpdateModelList()
-  const handleRefreshModel = useCallback((provider: ModelProvider, configurationMethod: ConfigurationMethodEnum, CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => {
+  const handleRefreshModel = useCallback((
+    provider: ModelProvider,
+    CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+    refreshModelList?: boolean,
+  ) => {
     updateModelProviders()
 
     provider.supported_model_types.forEach((type) => {
       updateModelList(type)
     })
 
-    if (configurationMethod === ConfigurationMethodEnum.customizableModel
-        && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+    if (refreshModelList && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
       eventEmitter?.emit({
         type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
         payload: provider.provider,

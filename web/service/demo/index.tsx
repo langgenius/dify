@@ -4,6 +4,8 @@ import React from 'react'
 import useSWR, { useSWRConfig } from 'swr'
 import { createApp, fetchAppDetail, fetchAppList, getAppDailyConversations, getAppDailyEndUsers, updateAppApiStatus, updateAppModelConfig, updateAppRateLimit, updateAppSiteAccessToken, updateAppSiteConfig, updateAppSiteStatus } from '../apps'
 import Loading from '@/app/components/base/loading'
+import { AppModeEnum } from '@/types/app'
+
 const Service: FC = () => {
   const { data: appList, error: appListError } = useSWR({ url: '/apps', params: { page: 1 } }, fetchAppList)
   const { data: firstApp, error: appDetailError } = useSWR({ url: '/apps', id: '1' }, fetchAppDetail)
@@ -21,7 +23,7 @@ const Service: FC = () => {
   const handleCreateApp = async () => {
     await createApp({
       name: `new app${Math.round(Math.random() * 100)}`,
-      mode: 'chat',
+      mode: AppModeEnum.CHAT,
     })
     // reload app list
     mutate({ url: '/apps', params: { page: 1 } })
@@ -51,7 +53,7 @@ const Service: FC = () => {
         </div>
 
         <div>
-          <button onClick={handleCreateApp}>Click me to Create App</button>
+          <button type="button" onClick={handleCreateApp}>Click me to Create App</button>
         </div>
 
         <div>

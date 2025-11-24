@@ -12,7 +12,6 @@ import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
-  useWorkflow,
 } from '@/app/components/workflow/hooks'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import type {
@@ -39,27 +38,23 @@ const Add = ({
   const { handleNodeAdd } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(nodeData.type, nodeData.isInIteration || nodeData.isInLoop)
-  const { checkParallelLimit } = useWorkflow()
 
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         prevNodeId: nodeId,
         prevNodeSourceHandle: sourceHandle,
       },
     )
-  }, [nodeId, sourceHandle, handleNodeAdd])
+  }, [handleNodeAdd])
 
   const handleOpenChange = useCallback((newOpen: boolean) => {
-    if (newOpen && !checkParallelLimit(nodeId, sourceHandle))
-      return
-
     setOpen(newOpen)
-  }, [checkParallelLimit, nodeId, sourceHandle])
+  }, [])
 
   const tip = useMemo(() => {
     if (isFailBranch)

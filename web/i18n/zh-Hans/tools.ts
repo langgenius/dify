@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: '创建自定义工具',
   customToolTip: '了解更多关于 Dify 自定义工具的信息',
   type: {
-    all: '全部',
     builtIn: '工具',
     custom: '自定义',
     workflow: '工作流',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: '配置凭据后，工作区中的所有成员都可以在编排应用程序时使用此工具。',
   },
   includeToolNum: '包含 {{num}} 个 {{action}}',
-  addTool: '添加工具',
   addToolModal: {
     type: '类型',
     category: '类别',
-    add: '添加',
     added: '已添加',
-    manageInTools: '去工具列表管理',
     custom: {
       title: '没有可用的自定义工具',
       tip: '创建自定义工具',
@@ -65,7 +61,7 @@ const translation = {
     exampleOptions: {
       json: '天气 (JSON)',
       yaml: '宠物商店 (YAML)',
-      blankTemplate: '空白模版',
+      blankTemplate: '空白模板',
     },
     availableTools: {
       title: '可用工具',
@@ -203,6 +199,13 @@ const translation = {
       timeout: '超时时间',
       sseReadTimeout: 'SSE 读取超时时间',
       timeoutPlaceholder: '30',
+      authentication: '认证',
+      useDynamicClientRegistration: '使用动态客户端注册',
+      redirectUrlWarning: '请将您的 OAuth 重定向 URL 配置为：',
+      clientID: '客户端 ID',
+      clientSecret: '客户端密钥',
+      clientSecretPlaceholder: '客户端密钥',
+      configurations: '配置',
     },
     delete: '删除 MCP 服务',
     deleteConfirmTitle: '你想要删除 {{mcp}} 吗？',
@@ -242,6 +245,10 @@ const translation = {
         confirm: '启用 MCP 服务',
       },
       publishTip: '应用未发布。请先发布应用。',
+    },
+    toolItem: {
+      parameters: '参数',
+      noDescription: '暂无描述',
     },
   },
   allTools: '全部工具',

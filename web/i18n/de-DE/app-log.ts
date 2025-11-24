@@ -66,6 +66,8 @@ const translation = {
       quarterToDate: 'Quartal bis heute',
       yearToDate: 'Jahr bis heute',
       allTime: 'Gesamte Zeit',
+      last30days: 'Letzte 30 Tage',
+      custom: 'Benutzerdefiniert',
     },
     annotation: {
       all: 'Alle',
@@ -83,6 +85,7 @@ const translation = {
     workflowTitle: 'Protokolldetail',
     fileListLabel: 'Details zur Datei',
     fileListDetail: 'Detail',
+    testWithParams: 'Test mit Parametern',
   },
   promptLog: 'Prompt-Protokoll',
   agentLog: 'Agentenprotokoll',

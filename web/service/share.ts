@@ -34,6 +34,8 @@ import type {
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
+import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { getWebAppAccessToken } from './webapp-auth'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
@@ -76,18 +78,19 @@ export const stopChatMessageResponding = async (appId: string, taskId: string, i
   return getAction('post', isInstalledApp)(getUrl(`chat-messages/${taskId}/stop`, isInstalledApp, installedAppId))
 }
 
-export const sendCompletionMessage = async (body: Record<string, any>, { onData, onCompleted, onError, onMessageReplace }: {
+export const sendCompletionMessage = async (body: Record<string, any>, { onData, onCompleted, onError, onMessageReplace, getAbortController }: {
   onData: IOnData
   onCompleted: IOnCompleted
   onError: IOnError
   onMessageReplace: IOnMessageReplace
+  getAbortController?: (abortController: AbortController) => void
 }, isInstalledApp: boolean, installedAppId = '') => {
   return ssePost(getUrl('completion-messages', isInstalledApp, installedAppId), {
     body: {
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError, onMessageReplace })
+  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError, onMessageReplace, getAbortController })
 }
 
 export const sendWorkflowMessage = async (
@@ -142,6 +145,12 @@ export const sendWorkflowMessage = async (
     onTextChunk,
     onTextReplace,
   })
+}
+
+export const stopWorkflowMessage = async (_appId: string, taskId: string, isInstalledApp: boolean, installedAppId = '') => {
+  if (!taskId)
+    return
+  return getAction('post', isInstalledApp)(getUrl(`workflows/tasks/${taskId}/stop`, isInstalledApp, installedAppId))
 }
 
 export const fetchAppInfo = async () => {
@@ -286,14 +295,17 @@ export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { c
   return (getAction('post', !isPublicAPI))(url, { body, header }, { needAllResponseContent: true })
 }
 
-export const fetchAccessToken = async ({ appCode, userId, webAppAccessToken }: { appCode: string, userId?: string, webAppAccessToken?: string | null }) => {
+export const fetchAccessToken = async ({ userId, appCode }: { userId?: string, appCode: string }) => {
   const headers = new Headers()
-  headers.append('X-App-Code', appCode)
+  headers.append(WEB_APP_SHARE_CODE_HEADER_NAME, appCode)
+  const accessToken = getWebAppAccessToken()
+  if (accessToken)
+    headers.append('Authorization', `Bearer ${accessToken}`)
   const params = new URLSearchParams()
-  webAppAccessToken && params.append('web_app_access_token', webAppAccessToken)
-  userId && params.append('user_id', userId)
+  if (userId)
+    params.append('user_id', userId)
   const url = `/passport?${params.toString()}`
-  return get(url, { headers }) as Promise<{ access_token: string }>
+  return get<{ access_token: string }>(url, { headers }) as Promise<{ access_token: string }>
 }
 
 export const getUserCanAccess = (appId: string, isInstalledApp: boolean) => {

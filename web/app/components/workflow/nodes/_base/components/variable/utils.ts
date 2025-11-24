@@ -1,4 +1,4 @@
-import produce from 'immer'
+import { produce } from 'immer'
 import { isArray, uniq } from 'lodash-es'
 import type { CodeNodeType } from '../../../code/types'
 import type { EndNodeType } from '../../../end/types'
@@ -39,9 +39,13 @@ import type {
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 import type { RAGPipelineVariable } from '@/models/pipeline'
-
+import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
+import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
 import {
   AGENT_OUTPUT_STRUCT,
+  FILE_STRUCT,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
@@ -50,6 +54,7 @@ import {
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
+  getGlobalVars,
 } from '@/app/components/workflow/constants'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
@@ -58,9 +63,19 @@ import type { PromptItem } from '@/models/debug'
 import { VAR_REGEX } from '@/config'
 import type { AgentNodeType } from '../../../agent/types'
 import type { SchemaTypeDefinition } from '@/service/use-common'
+import { AppModeEnum } from '@/types/app'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
+}
+
+export const isGlobalVar = (valueSelector: ValueSelector) => {
+  if(!isSystemVar(valueSelector)) return false
+  const second = valueSelector[1]
+
+  if(['query', 'files'].includes(second))
+    return false
+  return true
 }
 
 export const isENV = (valueSelector: ValueSelector) => {
@@ -138,6 +153,10 @@ export const varTypeToStructType = (type: VarType): Type => {
         [VarType.boolean]: Type.boolean,
         [VarType.object]: Type.object,
         [VarType.array]: Type.array,
+        [VarType.arrayString]: Type.array,
+        [VarType.arrayNumber]: Type.array,
+        [VarType.arrayObject]: Type.array,
+        [VarType.arrayFile]: Type.array,
       } as any
     )[type] || Type.string
   )
@@ -282,15 +301,6 @@ const findExceptVarInObject = (
           children: filteredObj.children,
         }
       })
-
-    if (isFile && Array.isArray(childrenResult)) {
-      if (childrenResult.length === 0) {
-        childrenResult = OUTPUT_FILE_SUB_VARIABLES.map(key => ({
-          variable: key,
-          type: key === 'size' ? VarType.number : VarType.string,
-        }))
-      }
-    }
   }
   else {
     childrenResult = []
@@ -352,34 +362,29 @@ const formatItem = (
           variable: 'sys.query',
           type: VarType.string,
         })
-        res.vars.push({
-          variable: 'sys.dialogue_count',
-          type: VarType.number,
-        })
-        res.vars.push({
-          variable: 'sys.conversation_id',
-          type: VarType.string,
-        })
       }
-      res.vars.push({
-        variable: 'sys.user_id',
-        type: VarType.string,
-      })
       res.vars.push({
         variable: 'sys.files',
         type: VarType.arrayFile,
       })
-      res.vars.push({
-        variable: 'sys.app_id',
-        type: VarType.string,
-      })
-      res.vars.push({
-        variable: 'sys.workflow_id',
-        type: VarType.string,
-      })
-      res.vars.push({
-        variable: 'sys.workflow_run_id',
-        type: VarType.string,
+      break
+    }
+
+    case BlockEnum.TriggerWebhook: {
+      const {
+        variables = [],
+      } = data as WebhookTriggerNodeType
+      res.vars = variables.map((v) => {
+        const type = v.value_type || VarType.string
+        const varRes: Var = {
+          variable: v.variable,
+          type,
+          isParagraph: false,
+          isSelect: false,
+          options: v.options,
+          required: v.required,
+        }
+        return varRes
       })
 
       break
@@ -586,17 +591,15 @@ const formatItem = (
             variable: outputKey,
             type:
               output.type === 'array'
-                ? (`Array[${
-                  output.items?.type
-                    ? output.items.type.slice(0, 1).toLocaleUpperCase()
-                        + output.items.type.slice(1)
-                    : 'Unknown'
+                ? (`Array[${output.items?.type
+                  ? output.items.type.slice(0, 1).toLocaleUpperCase()
+                  + output.items.type.slice(1)
+                  : 'Unknown'
                 }]` as VarType)
-                : (`${
-                  output.type
-                    ? output.type.slice(0, 1).toLocaleUpperCase()
-                        + output.type.slice(1)
-                    : 'Unknown'
+                : (`${output.type
+                  ? output.type.slice(0, 1).toLocaleUpperCase()
+                  + output.type.slice(1)
+                  : 'Unknown'
                 }` as VarType),
           })
         },
@@ -615,6 +618,17 @@ const formatItem = (
           { schemaTypeDefinitions },
         ) || []
       res.vars = dataSourceVars
+      break
+    }
+
+    case BlockEnum.TriggerPlugin: {
+      const outputSchema = PluginTriggerNodeDefault.getOutputVars?.(
+        data as PluginTriggerNodeType,
+        allPluginInfoList,
+        [],
+        { schemaTypeDefinitions },
+      ) || []
+      res.vars = outputSchema
       break
     }
 
@@ -637,6 +651,11 @@ const formatItem = (
           description: chatVar.description,
         }
       }) as Var[]
+      break
+    }
+
+    case 'global': {
+      res.vars = data.globalVarList
       break
     }
 
@@ -690,9 +709,10 @@ const formatItem = (
       const children = (() => {
         if (isFile) {
           return OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+            const def = FILE_STRUCT.find(c => c.variable === key)
             return {
               variable: key,
-              type: key === 'size' ? VarType.number : VarType.string,
+              type: def?.type || VarType.string,
             }
           })
         }
@@ -714,9 +734,10 @@ const formatItem = (
         if (isFile) {
           return {
             children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+              const def = FILE_STRUCT.find(c => c.variable === key)
               return {
                 variable: key,
-                type: key === 'size' ? VarType.number : VarType.string,
+                type: def?.type || VarType.string,
               }
             }),
           }
@@ -778,6 +799,15 @@ export const toNodeOutputVars = (
       chatVarList: conversationVariables,
     },
   }
+  // GLOBAL_VAR_NODE data format
+  const GLOBAL_VAR_NODE = {
+    id: 'global',
+    data: {
+      title: 'SYSTEM',
+      type: 'global',
+      globalVarList: getGlobalVars(isChatMode),
+    },
+  }
   // RAG_PIPELINE_NODE data format
   const RAG_PIPELINE_NODE = {
     id: 'rag',
@@ -797,6 +827,8 @@ export const toNodeOutputVars = (
     if (b.data.type === 'env') return -1
     if (a.data.type === 'conversation') return 1
     if (b.data.type === 'conversation') return -1
+    if (a.data.type === 'global') return 1
+    if (b.data.type === 'global') return -1
     // sort nodes by x position
     return (b.position?.x || 0) - (a.position?.x || 0)
   })
@@ -807,6 +839,7 @@ export const toNodeOutputVars = (
     ),
     ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
     ...(isChatMode && conversationVariables.length > 0 ? [CHAT_VAR_NODE] : []),
+    GLOBAL_VAR_NODE,
     ...(RAG_PIPELINE_NODE.data.ragVariables.length > 0
       ? [RAG_PIPELINE_NODE]
       : []),
@@ -1030,7 +1063,8 @@ export const getVarType = ({
     if (valueSelector[1] === 'index') return VarType.number
   }
 
-  const isSystem = isSystemVar(valueSelector)
+  const isGlobal = isGlobalVar(valueSelector)
+  const isInStartNodeSysVar = isSystemVar(valueSelector) && !isGlobal
   const isEnv = isENV(valueSelector)
   const isChatVar = isConversationVar(valueSelector)
   const isSharedRagVariable
@@ -1043,7 +1077,8 @@ export const getVarType = ({
   })
 
   const targetVarNodeId = (() => {
-    if (isSystem) return startNode?.id
+    if (isInStartNodeSysVar) return startNode?.id
+    if (isGlobal) return 'global'
     if (isInNodeRagVariable) return valueSelector[1]
     return valueSelector[0]
   })()
@@ -1056,7 +1091,7 @@ export const getVarType = ({
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
 
-  if (isSystem || isEnv || isChatVar || isSharedRagVariable) {
+  if (isInStartNodeSysVar || isEnv || isChatVar || isSharedRagVariable || isGlobal) {
     return curr.find(
       (v: any) => v.variable === (valueSelector as ValueSelector).join('.'),
     )?.type
@@ -1246,7 +1281,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
     case BlockEnum.LLM: {
       const payload = data as LLMNodeType
-      const isChatModel = payload.model?.mode === 'chat'
+      const isChatModel = payload.model?.mode === AppModeEnum.CHAT
       let prompts: string[] = []
       if (isChatModel) {
         prompts
@@ -1270,10 +1305,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.IfElse: {
-      res
-        = (data as IfElseNodeType).conditions?.map((c) => {
-          return c.variable_selector || []
-        }) || []
+      res = []
       res.push(
         ...((data as IfElseNodeType).cases || [])
           .flatMap(c => c.conditions || [])
@@ -1445,9 +1477,22 @@ export const getNodeUsedVarPassToServerKey = (
       break
     }
     case BlockEnum.IfElse: {
-      const targetVar = (data as IfElseNodeType).conditions?.find(
-        c => c.variable_selector?.join('.') === valueSelector.join('.'),
-      )
+      const findConditionInCases = (cases: CaseItem[]): Condition | undefined => {
+        for (const caseItem of cases) {
+          for (const condition of caseItem.conditions || []) {
+            if (condition.variable_selector?.join('.') === valueSelector.join('.'))
+              return condition
+
+            if (condition.sub_variable_condition) {
+              const found = findConditionInCases([condition.sub_variable_condition])
+              if (found)
+                return found
+            }
+          }
+        }
+        return undefined
+      }
+      const targetVar = findConditionInCases((data as IfElseNodeType).cases || [])
       if (targetVar) res = `#${valueSelector.join('.')}#`
       break
     }
@@ -1549,7 +1594,7 @@ export const updateNodeVars = (
       }
       case BlockEnum.LLM: {
         const payload = data as LLMNodeType
-        const isChatModel = payload.model?.mode === 'chat'
+        const isChatModel = payload.model?.mode === AppModeEnum.CHAT
         if (isChatModel) {
           payload.prompt_template = (
             payload.prompt_template as PromptItem[]
@@ -1599,13 +1644,6 @@ export const updateNodeVars = (
       }
       case BlockEnum.IfElse: {
         const payload = data as IfElseNodeType
-        if (payload.conditions) {
-          payload.conditions = payload.conditions.map((c) => {
-            if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
-              c.variable_selector = newVarSelector
-            return c
-          })
-        }
         if (payload.cases) {
           payload.cases = payload.cases.map((caseItem) => {
             if (caseItem.conditions) {
