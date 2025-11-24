@@ -73,7 +73,7 @@ COPY --from=packages ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
 # Download nltk data
-RUN python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger')"
+RUN python -c "from unstructured.nlp.tokenize import download_nltk_packages; download_nltk_packages()"
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 
