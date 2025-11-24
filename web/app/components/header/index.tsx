@@ -92,7 +92,7 @@ const Header = () => {
                 alt='logo'
               />
               : <DifyLogo />}
-            {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'dify'}
+            {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
           </Link>
         </h1>
         <div className='mx-1.5 shrink-0 font-light text-divider-deep'>/</div>
