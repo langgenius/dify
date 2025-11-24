@@ -35,6 +35,7 @@ const Header = () => {
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const isFreePlan = plan.type === Plan.sandbox
+  const isBrandingEnabled = systemFeatures.branding.enabled
   const handlePlanClick = useCallback(() => {
     if (isFreePlan)
       setShowPricingModal()
@@ -82,15 +83,18 @@ const Header = () => {
   return (
     <div className='flex h-[56px] items-center'>
       <div className='flex min-w-0 flex-[1]  items-center pl-3 pr-2 min-[1280px]:pr-3'>
-        <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center px-0.5'>
-          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-            ? <img
-              src={systemFeatures.branding.workspace_logo}
-              className='block h-[22px] w-auto object-contain'
-              alt='logo'
-            />
-            : <DifyLogo />}
-        </Link>
+        <h1>
+          <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center px-0.5 text-[0]'>
+            {isBrandingEnabled && systemFeatures.branding.workspace_logo
+              ? <img
+                src={systemFeatures.branding.workspace_logo}
+                className='block h-[22px] w-auto object-contain'
+                alt='logo'
+              />
+              : <DifyLogo />}
+            {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'dify'}
+          </Link>
+        </h1>
         <div className='mx-1.5 shrink-0 font-light text-divider-deep'>/</div>
         <WorkspaceProvider>
           <WorkplaceSelector />
