@@ -186,10 +186,23 @@ class TestSegmentServiceCreateSegment:
             result = SegmentService.create_segment(args, document, dataset)
 
             # Assert
-            assert result == mock_segment
-            mock_db_session.add.assert_called()
-            mock_db_session.commit.assert_called()
+            assert mock_db_session.add.call_count == 2
+
+            created_segment = mock_db_session.add.call_args_list[0].args[0]
+            assert isinstance(created_segment, DocumentSegment)
+            assert created_segment.content == args['content']
+            assert created_segment.word_count == len(args['content'])
+
+            mock_db_session.commit.assert_called_once()
+
             mock_vector_service.assert_called_once()
+            vector_call_args = mock_vector_service.call_args[0]
+            assert vector_call_args[0] == [args['keywords']]
+            assert vector_call_args[1][0] == created_segment
+            assert vector_call_args[2] == dataset
+            assert vector_call_args[3] == document.doc_form
+
+            assert result == mock_segment
 
     def test_create_segment_with_qa_model(self, mock_db_session, mock_current_user):
         """Test creation of segment with QA model (requires answer)."""
