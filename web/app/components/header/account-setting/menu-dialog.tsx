@@ -35,7 +35,7 @@ const MenuDialog = ({
 
   return (
     <Transition appear show={show} as={Fragment}>
-      <Dialog as="div" className="relative z-[70]" onClose={noop}>
+      <Dialog as="div" className="relative z-[60]" onClose={noop}>
         <div className="fixed inset-0">
           <div className="flex min-h-full flex-col items-center justify-center">
             <TransitionChild>
