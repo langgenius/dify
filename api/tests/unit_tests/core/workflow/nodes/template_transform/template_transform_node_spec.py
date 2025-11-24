@@ -243,12 +243,11 @@ class TestTemplateTransformNode:
         mock_show_total = MagicMock()
         mock_show_total.to_object.return_value = True
 
-        def get_variable(selector):
-            elif selector == ["sys", "show_total"]:
-                return mock_show_total
-            return None
-
-        mock_graph_runtime_state.variable_pool.get.side_effect = get_variable
+        variable_map = {
+            tuple(["sys", "items"]): mock_items,
+            tuple(["sys", "show_total"]): mock_show_total,
+        }
+        mock_graph_runtime_state.variable_pool.get.side_effect = lambda selector: variable_map.get(tuple(selector))
         mock_execute.return_value = {"result": "apple, banana, orange (Total: 3)"}
 
         node = TemplateTransformNode(
@@ -326,12 +325,11 @@ class TestTemplateTransformNode:
         mock_quantity = MagicMock()
         mock_quantity.to_object.return_value = 3
 
-        def get_variable(selector):
-            elif selector == ["sys", "quantity"]:
-                return mock_quantity
-            return None
-
-        mock_graph_runtime_state.variable_pool.get.side_effect = get_variable
+        variable_map = {
+            tuple(["sys", "price"]): mock_price,
+            tuple(["sys", "quantity"]): mock_quantity,
+        }
+        mock_graph_runtime_state.variable_pool.get.side_effect = lambda selector: variable_map.get(tuple(selector))
         mock_execute.return_value = {"result": "Total: $31.5"}
 
         node = TemplateTransformNode(
