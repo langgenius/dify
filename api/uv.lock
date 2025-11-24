@@ -1716,7 +1716,7 @@ vdb = [
     { name = "pymilvus", specifier = "~=2.5.0" },
     { name = "pymochow", specifier = "==2.2.9" },
     { name = "pyobvector", specifier = "~=0.2.17" },
-    { name = "qdrant-client", specifier = "==1.9.0" },
+    { name = "qdrant-client", specifier = "==1.16.0" },
     { name = "tablestore", specifier = "==6.3.7" },
     { name = "tcvectordb", specifier = "~=1.6.4" },
     { name = "tidb-vector", specifier = "==0.0.9" },
@@ -5253,20 +5253,20 @@ wheels = [
 
 [[package]]
 name = "qdrant-client"
-version = "1.9.0"
+version = "1.16.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "grpcio" },
-    { name = "grpcio-tools" },
     { name = "httpx", extra = ["http2"] },
     { name = "numpy" },
     { name = "portalocker" },
+    { name = "protobuf" },
     { name = "pydantic" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/86/cf/db06a74694bf8f126ed4a869c70ef576f01ee691ef20799fba3d561d3565/qdrant_client-1.9.0.tar.gz", hash = "sha256:7b1792f616651a6f0a76312f945c13d088e9451726795b82ce0350f7df3b7981", size = 199999, upload-time = "2024-04-22T13:35:49.444Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/fa/16/366541897d270ee3f9c3f87da145baa8a5c9cc5190e0e53e8bbec1267cff/qdrant_client-1.16.0.tar.gz", hash = "sha256:0716aa0b7cca39745829c2e8ea0beb275fe2990e743ad803eabd6218e4b35c1b", size = 284128, upload-time = "2025-11-17T13:19:52.726Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3a/fa/5abd82cde353f1009c068cca820195efd94e403d261b787e78ea7a9c8318/qdrant_client-1.9.0-py3-none-any.whl", hash = "sha256:ee02893eab1f642481b1ac1e38eb68ec30bab0f673bef7cc05c19fa5d2cbf43e", size = 229258, upload-time = "2024-04-22T13:35:46.81Z" },
+    { url = "https://files.pythonhosted.org/packages/a5/ff/3a69bb56835c4b2e9fa780655790937011ac389b0408b9a1147eaa2cee22/qdrant_client-1.16.0-py3-none-any.whl", hash = "sha256:6b932393e84e4c0233e5b2eb96b0918e968725855adae4d9c541761f4c50cf11", size = 328579, upload-time = "2025-11-17T13:19:51.092Z" },
 ]
 
 [[package]]
