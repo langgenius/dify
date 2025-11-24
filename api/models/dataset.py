@@ -1242,7 +1242,7 @@ class DatasetMetadata(TypeBase):
         init=False,
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    updated_by: Mapped[str] = mapped_column(StringUUID, nullable=True, default=None, init=False)
+    updated_by: Mapped[str] = mapped_column(StringUUID, nullable=True, default=None)
 
 
 class DatasetMetadataBinding(TypeBase):
