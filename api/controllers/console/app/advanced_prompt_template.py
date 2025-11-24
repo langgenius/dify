@@ -1,6 +1,6 @@
 from flask_restx import Resource, fields, reqparse
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import login_required
 from services.advanced_prompt_template_service import AdvancedPromptTemplateService
@@ -16,13 +16,13 @@ parser = (
 
 @console_ns.route("/app/prompt-templates")
 class AdvancedPromptTemplateList(Resource):
-    @api.doc("get_advanced_prompt_templates")
-    @api.doc(description="Get advanced prompt templates based on app mode and model configuration")
-    @api.expect(parser)
-    @api.response(
+    @console_ns.doc("get_advanced_prompt_templates")
+    @console_ns.doc(description="Get advanced prompt templates based on app mode and model configuration")
+    @console_ns.expect(parser)
+    @console_ns.response(
         200, "Prompt templates retrieved successfully", fields.List(fields.Raw(description="Prompt template data"))
     )
-    @api.response(400, "Invalid request parameters")
+    @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
