@@ -3,12 +3,12 @@ import logging
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from controllers.console import api
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
@@ -29,8 +29,7 @@ class WebhookTriggerApi(Resource):
     @marshal_with(webhook_trigger_fields)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("node_id", type=str, required=True, help="Node ID is required")
+        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, help="Node ID is required")
         args = parser.parse_args()
 
         node_id = str(args["node_id"])
@@ -95,19 +94,19 @@ class AppTriggerEnableApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @get_app_model(mode=AppMode.WORKFLOW)
     @marshal_with(trigger_fields)
     def post(self, app_model: App):
         """Update app trigger (enable/disable)"""
-        parser = reqparse.RequestParser()
-        parser.add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
+            .add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
+        )
         args = parser.parse_args()
 
-        assert isinstance(current_user, Account)
         assert current_user.current_tenant_id is not None
-        if not current_user.has_edit_permission:
-            raise Forbidden()
 
         trigger_id = args["trigger_id"]
 
@@ -140,6 +139,6 @@ class AppTriggerEnableApi(Resource):
         return trigger
 
 
-api.add_resource(WebhookTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/webhook")
-api.add_resource(AppTriggersApi, "/apps/<uuid:app_id>/triggers")
-api.add_resource(AppTriggerEnableApi, "/apps/<uuid:app_id>/trigger-enable")
+console_ns.add_resource(WebhookTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/webhook")
+console_ns.add_resource(AppTriggersApi, "/apps/<uuid:app_id>/triggers")
+console_ns.add_resource(AppTriggerEnableApi, "/apps/<uuid:app_id>/trigger-enable")

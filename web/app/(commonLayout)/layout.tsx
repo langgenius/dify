@@ -10,6 +10,7 @@ import { ProviderContextProvider } from '@/context/provider-context'
 import { ModalContextProvider } from '@/context/modal-context'
 import GotoAnything from '@/app/components/goto-anything'
 import Zendesk from '@/app/components/base/zendesk'
+import PartnerStack from '../components/billing/partner-stack'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
 import Splash from '../components/splash'
 
@@ -26,6 +27,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
                   <Header />
                 </HeaderWrapper>
                 {children}
+                <PartnerStack />
                 <ReadmePanel />
                 <GotoAnything />
                 <Splash />
