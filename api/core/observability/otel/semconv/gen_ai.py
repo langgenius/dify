@@ -62,5 +62,3 @@ class ToolAttributes:
 
     TOOL_CALL_RESULT = "gen_ai.tool.call.result"
     """Tool invocation result."""
-
-
