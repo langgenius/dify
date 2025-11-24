@@ -201,9 +201,8 @@ class DatasetDocumentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: str):
         current_user, current_tenant_id = current_account_with_tenant()
-        dataset_id = str(dataset_id)
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
