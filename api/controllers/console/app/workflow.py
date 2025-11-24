@@ -91,12 +91,12 @@ workflow_pagination_model = console_ns.model("WorkflowPagination", workflow_pagi
 from fields.end_user_fields import simple_end_user_fields
 
 try:
-    simple_end_user_model = api.models.get("SimpleEndUser")
+    simple_end_user_model = console_ns.models.get("SimpleEndUser")
 except (KeyError, AttributeError):
     simple_end_user_model = console_ns.model("SimpleEndUser", simple_end_user_fields)
 
 try:
-    workflow_run_node_execution_model = api.models.get("WorkflowRunNodeExecution")
+    workflow_run_node_execution_model = console_ns.models.get("WorkflowRunNodeExecution")
 except (KeyError, AttributeError):
     workflow_run_node_execution_model = console_ns.model("WorkflowRunNodeExecution", workflow_run_node_execution_fields)
 

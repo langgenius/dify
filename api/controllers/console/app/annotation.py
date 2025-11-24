@@ -242,7 +242,7 @@ class AnnotationExportApi(Resource):
     @console_ns.response(
         200,
         "Annotations exported successfully",
-        console_ns.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(api)))}),
+        console_ns.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(console_ns)))}),
     )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -268,7 +268,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @console_ns.doc("update_delete_annotation")
     @console_ns.doc(description="Update or delete an annotation")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @console_ns.response(200, "Annotation updated successfully", build_annotation_model(api))
+    @console_ns.response(200, "Annotation updated successfully", build_annotation_model(console_ns))
     @console_ns.response(204, "Annotation deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.expect(parser)

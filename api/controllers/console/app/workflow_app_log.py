@@ -15,7 +15,7 @@ from models.model import AppMode
 from services.workflow_app_service import WorkflowAppService
 
 # Register model for flask_restx to avoid dict type issues in Swagger
-workflow_app_log_pagination_model = build_workflow_app_log_pagination_model(api)
+workflow_app_log_pagination_model = build_workflow_app_log_pagination_model(console_ns)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-app-logs")

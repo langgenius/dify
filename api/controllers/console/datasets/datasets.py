@@ -7,7 +7,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.apikey import (
     api_key_item_model,
     api_key_list_model,
@@ -56,7 +56,7 @@ from services.dataset_service import DatasetPermissionService, DatasetService, D
 
 
 def _get_or_create_model(model_name: str, field_def):
-    existing = api.models.get(model_name)
+    existing = console_ns.models.get(model_name)
     if existing is None:
         existing = console_ns.model(model_name, field_def)
     return existing

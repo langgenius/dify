@@ -27,7 +27,7 @@ from services.knowledge_service import ExternalDatasetTestService
 
 
 def _get_or_create_model(model_name: str, field_def):
-    existing = api.models.get(model_name)
+    existing = console_ns.models.get(model_name)
     if existing is None:
         existing = console_ns.model(model_name, field_def)
     return existing
@@ -66,7 +66,7 @@ def _build_dataset_detail_model():
 
 
 try:
-    dataset_detail_model = api.models["DatasetDetail"]
+    dataset_detail_model = console_ns.models["DatasetDetail"]
 except KeyError:
     dataset_detail_model = _build_dataset_detail_model()
 

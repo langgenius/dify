@@ -64,7 +64,7 @@ logger = logging.getLogger(__name__)
 
 
 def _get_or_create_model(model_name: str, field_def):
-    existing = api.models.get(model_name)
+    existing = console_ns.models.get(model_name)
     if existing is None:
         existing = console_ns.model(model_name, field_def)
     return existing
