@@ -17,7 +17,7 @@ from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
-from core.workflow.entities.pause_reason import PauseReasonType
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
 from core.workflow.enums import NodeType
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
@@ -1741,7 +1741,16 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
         default="",
     )
 
-    # node_id is the current node been paused at.
+    # message is not empty if and if only type_ == PauseReasonType.SCHEDULED_PAUSE
+    message: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="",
+    )
+
+    # `node_id` is the identifier of node causing the pasue, correspond to
+    # `Node.id`. Empty `node_id` means that this pause reason is not caused by any specific node
+    # (E.G. time slicing pauses.)
     node_id: Mapped[str] = mapped_column(
         String(255),
         nullable=False,
@@ -1756,3 +1765,22 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
         uselist=False,
         primaryjoin="WorkflowPauseReason.pause_id == WorkflowPause.id",
     )
+
+    @classmethod
+    def from_entity(cls, pause_reason: PauseReason) -> "WorkflowPauseReason":
+        if isinstance(pause_reason, HumanInputRequired):
+            return cls(
+                type_=PauseReasonType.HUMAN_INPUT_REQUIRED, form_id=pause_reason.form_id, node_id=pause_reason.node_id
+            )
+        elif isinstance(pause_reason, SchedulingPause):
+            return cls(type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message, node_id="")
+        else:
+            raise AssertionError(f"Unknown pause reason type: {pause_reason}")
+
+    def to_entity(self) -> PauseReason:
+        if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+            return HumanInputRequired(form_id=self.form_id, node_id=self.node_id)
+        elif self.type_ == PauseReasonType.SCHEDULED_PAUSE:
+            return SchedulingPause(message=self.message)
+        else:
+            raise AssertionError(f"Unknown pause reason type: {self.type_}")

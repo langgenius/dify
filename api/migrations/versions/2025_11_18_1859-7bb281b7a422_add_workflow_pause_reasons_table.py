@@ -21,13 +21,16 @@ depends_on = None
 def upgrade():
     op.create_table(
         "workflow_pause_reasons",
+        sa.Column("id", models.types.StringUUID(), nullable=False),
+        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+
         sa.Column("pause_id", models.types.StringUUID(), nullable=False),
         sa.Column("type_", sa.String(20), nullable=False),
         sa.Column("form_id", sa.String(length=36), nullable=False),
         sa.Column("node_id", sa.String(length=255), nullable=False),
-        sa.Column("id", models.types.StringUUID(), server_default=sa.text("uuidv7()"), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column("message", sa.String(length=255), nullable=False),
+
         sa.PrimaryKeyConstraint("id", name=op.f("workflow_pause_reasons_pkey")),
     )
     with op.batch_alter_table("workflow_pause_reasons", schema=None) as batch_op:

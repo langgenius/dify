@@ -892,5 +892,4 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         return self._pause_model.resumed_at
 
     def get_pause_reasons(self) -> Sequence[PauseReason]:
-        # TODO(QuantumGhost): rebuild PauseReason from models
-        return []
+        return [reason.to_entity() for reason in self._reason_models]

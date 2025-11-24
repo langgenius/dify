@@ -13,6 +13,8 @@ class HumanInputRequired(BaseModel):
     TYPE: Literal[PauseReasonType.HUMAN_INPUT_REQUIRED] = PauseReasonType.HUMAN_INPUT_REQUIRED
 
     form_id: str
+    # The identifier of the human input node causing the pause.
+    node_id: str
 
 
 class SchedulingPause(BaseModel):
