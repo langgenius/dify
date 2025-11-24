@@ -60,7 +60,6 @@ def upgrade():
             "provider",
         ),
     )
-
     # ### end Alembic commands ###
 
 
