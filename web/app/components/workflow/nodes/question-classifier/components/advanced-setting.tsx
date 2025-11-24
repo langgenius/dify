@@ -24,6 +24,11 @@ type Props = {
   }
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
+  // Custom prompt props
+  systemPrompt?: string
+  onSystemPromptChange?: (systemPrompt: string) => void
+  completionPrompt?: string
+  onCompletionPromptChange?: (completionPrompt: string) => void
 }
 
 const AdvancedSetting: FC<Props> = ({
@@ -38,6 +43,10 @@ const AdvancedSetting: FC<Props> = ({
   hasSetBlockStatus,
   nodesOutputVars,
   availableNodes,
+  systemPrompt,
+  onSystemPromptChange,
+  completionPrompt,
+  onCompletionPromptChange,
 }) => {
   const { t } = useTranslation()
 
@@ -67,6 +76,48 @@ const AdvancedSetting: FC<Props> = ({
         nodesOutputVars={nodesOutputVars}
         availableNodes={availableNodes}
       />
+
+      {/* Custom Prompts Section */}
+      <div className='mt-4'>
+        <div className='mb-2 text-sm font-medium uppercase text-text-tertiary'>
+          {t(`${i18nPrefix}.customPrompts`)}
+        </div>
+
+        <div className='space-y-3'>
+          {isChatModel && onSystemPromptChange && (
+            <Editor
+              title={t(`${i18nPrefix}.customSystemPrompt`)}
+              value={systemPrompt ?? ''}
+              onChange={onSystemPromptChange}
+              readOnly={readonly}
+              isChatModel={isChatModel}
+              isChatApp={isChatApp}
+              isShowContext={false}
+              hasSetBlockStatus={hasSetBlockStatus}
+              nodesOutputVars={nodesOutputVars}
+              availableNodes={availableNodes}
+              placeholder={t(`${i18nPrefix}.systemPromptPlaceholder`)}
+            />
+          )}
+
+          {!isChatModel && onCompletionPromptChange && (
+            <Editor
+              title={t(`${i18nPrefix}.customCompletionPrompt`)}
+              value={completionPrompt ?? ''}
+              onChange={onCompletionPromptChange}
+              readOnly={readonly}
+              isChatModel={isChatModel}
+              isChatApp={isChatApp}
+              isShowContext={false}
+              hasSetBlockStatus={hasSetBlockStatus}
+              nodesOutputVars={nodesOutputVars}
+              availableNodes={availableNodes}
+              placeholder={t(`${i18nPrefix}.completionPromptPlaceholder`)}
+            />
+          )}
+        </div>
+      </div>
+
       {!hideMemorySetting && (
         <MemoryConfig
           className='mt-4'

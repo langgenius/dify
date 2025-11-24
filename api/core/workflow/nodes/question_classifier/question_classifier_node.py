@@ -354,10 +354,17 @@ class QuestionClassifierNode(Node):
             )
         prompt_messages: list[LLMNodeChatModelMessage] = []
         if model_mode == ModelMode.CHAT:
-            system_prompt_messages = LLMNodeChatModelMessage(
-                role=PromptMessageRole.SYSTEM, text=QUESTION_CLASSIFIER_SYSTEM_PROMPT.format(histories=memory_str)
-            )
+            # Use custom system prompt if provided, otherwise use default
+            system_prompt_text = node_data.system_prompt or QUESTION_CLASSIFIER_SYSTEM_PROMPT
+            try:
+                system_prompt_messages = LLMNodeChatModelMessage(
+                    role=PromptMessageRole.SYSTEM, text=system_prompt_text.format(histories=memory_str)
+                )
+            except KeyError as e:
+                raise InvalidModelTypeError(f"Custom system prompt is missing required placeholder: {e}")
             prompt_messages.append(system_prompt_messages)
+
+            # Keep the example prompts for context (these are part of the default workflow)
             user_prompt_message_1 = LLMNodeChatModelMessage(
                 role=PromptMessageRole.USER, text=QUESTION_CLASSIFIER_USER_PROMPT_1
             )
@@ -374,6 +381,8 @@ class QuestionClassifierNode(Node):
                 role=PromptMessageRole.ASSISTANT, text=QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2
             )
             prompt_messages.append(assistant_prompt_message_2)
+
+            # The final user prompt that contains the actual task
             user_prompt_message_3 = LLMNodeChatModelMessage(
                 role=PromptMessageRole.USER,
                 text=QUESTION_CLASSIFIER_USER_PROMPT_3.format(
@@ -385,8 +394,10 @@ class QuestionClassifierNode(Node):
             prompt_messages.append(user_prompt_message_3)
             return prompt_messages
         elif model_mode == ModelMode.COMPLETION:
+            # Use custom completion prompt if provided, otherwise use default
+            completion_prompt_text = node_data.completion_prompt or QUESTION_CLASSIFIER_COMPLETION_PROMPT
             return LLMNodeCompletionModelPromptTemplate(
-                text=QUESTION_CLASSIFIER_COMPLETION_PROMPT.format(
+                text=completion_prompt_text.format(
                     histories=memory_str,
                     input_text=input_text,
                     categories=json.dumps(categories, ensure_ascii=False),

@@ -41,6 +41,9 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     handleVisionResolutionEnabledChange,
     filterVar,
     handleSortTopic,
+    // Custom prompt handlers
+    handleSystemPromptChange,
+    handleCompletionPromptChange,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -119,6 +122,11 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           hasSetBlockStatus={hasSetBlockStatus}
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
+          // Custom prompt props
+          systemPrompt={inputs.system_prompt}
+          onSystemPromptChange={handleSystemPromptChange}
+          completionPrompt={inputs.completion_prompt}
+          onCompletionPromptChange={handleCompletionPromptChange}
         />
       </FieldCollapse>
       <Split />

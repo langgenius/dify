@@ -718,11 +718,32 @@ class ParameterExtractorNode(Node):
                 max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
             )
         if model_mode == ModelMode.CHAT:
-            system_prompt_messages = ChatModelMessage(
-                role=PromptMessageRole.SYSTEM,
-                text=FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT.format(histories=memory_str, instruction=instruction),
-            )
-            user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
+            # Use custom system prompt if provided, otherwise use default
+            system_prompt_text = node_data.system_prompt or FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT
+            try:
+                system_prompt_messages = ChatModelMessage(
+                    role=PromptMessageRole.SYSTEM,
+                    text=system_prompt_text.format(histories=memory_str, instruction=instruction),
+                )
+            except KeyError as e:
+                raise ParameterExtractorNodeError(f"Custom system prompt is missing required placeholder: {e}")
+
+            # Use custom user prompt template if provided, otherwise use default
+            if node_data.user_prompt_template:
+                # For custom user prompt, we need to format it with content and structure
+                structure = node_data.get_parameter_json_schema()
+                try:
+                    user_prompt_text = node_data.user_prompt_template.format(
+                        content=input_text, structure=json.dumps(structure, indent=2)
+                    )
+                except KeyError as e:
+                    raise ParameterExtractorNodeError(
+                        f"Custom user prompt template is missing required placeholder: {e}"
+                    )
+                user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=user_prompt_text)
+            else:
+                user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
+
             return [system_prompt_messages, user_prompt_message]
         else:
             raise InvalidModelModeError(f"Model mode {model_mode} not support.")
@@ -745,20 +766,28 @@ class ParameterExtractorNode(Node):
                 max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
             )
         if model_mode == ModelMode.CHAT:
-            system_prompt_messages = ChatModelMessage(
-                role=PromptMessageRole.SYSTEM,
-                text=CHAT_GENERATE_JSON_PROMPT.format(histories=memory_str, instructions=instruction),
-            )
+            # Use custom chat prompt if provided, otherwise use default
+            chat_prompt_text = node_data.chat_prompt or CHAT_GENERATE_JSON_PROMPT
+            try:
+                system_prompt_messages = ChatModelMessage(
+                    role=PromptMessageRole.SYSTEM,
+                    text=chat_prompt_text.format(histories=memory_str, instructions=instruction),
+                )
+            except KeyError as e:
+                raise ParameterExtractorNodeError(f"Custom chat prompt is missing required placeholder: {e}")
             user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
             return [system_prompt_messages, user_prompt_message]
         elif model_mode == ModelMode.COMPLETION:
-            return CompletionModelPromptTemplate(
-                text=COMPLETION_GENERATE_JSON_PROMPT.format(
-                    histories=memory_str, text=input_text, instruction=instruction
+            # Use custom completion prompt if provided, otherwise use default
+            completion_prompt_text = node_data.completion_prompt or COMPLETION_GENERATE_JSON_PROMPT
+            try:
+                return CompletionModelPromptTemplate(
+                    text=completion_prompt_text.format(histories=memory_str, text=input_text, instruction=instruction)
+                    .replace("{γγγ", "")
+                    .replace("}γγγ", "")
                 )
-                .replace("{γγγ", "")
-                .replace("}γγγ", "")
-            )
+            except KeyError as e:
+                raise ParameterExtractorNodeError(f"Custom completion prompt is missing required placeholder: {e}")
         else:
             raise InvalidModelModeError(f"Model mode {model_mode} not support.")
 
