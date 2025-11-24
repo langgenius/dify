@@ -158,6 +158,14 @@ const translation = {
       viewDocsLink: 'Посмотреть документацию {{key}}',
       removeConfirmTitle: 'Удалить конфигурацию {{key}}?',
       removeConfirmContent: 'Текущая конфигурация используется, ее удаление отключит функцию трассировки.',
+      username: 'Имя пользователя',
+      password: 'Пароль',
+      experimentId: 'ID эксперимента',
+      trackingUri: 'URI отслеживания',
+      clientSecret: 'Секрет клиента OAuth',
+      databricksHost: 'URL рабочего пространства Databricks',
+      clientId: 'Идентификатор клиента OAuth',
+      personalAccessToken: 'Личный токен доступа (устаревший)',
     },
     opik: {
       title: 'Опик',
@@ -170,6 +178,14 @@ const translation = {
     aliyun: {
       title: 'Облачный монитор',
       description: 'Полностью управляемая и не требующая обслуживания платформа наблюдения, предоставляемая Alibaba Cloud, обеспечивает мониторинг, трассировку и оценку приложений Dify из коробки.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Платформа LLMOps с открытым исходным кодом для отслеживания экспериментов, наблюдаемости и оценки, для создания приложений AI/LLM с уверенностью.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks предлагает полностью управляемый MLflow с сильным управлением и безопасностью для хранения данных трассировки.',
     },
     tencent: {
       title: 'Tencent APM',
@@ -326,6 +342,8 @@ const translation = {
     selectToNavigate: 'Выберите для навигации',
     pressEscToClose: 'Нажмите ESC для закрытия',
   },
+  notPublishedYet: 'Приложение ещё не опубликовано',
+  noUserInputNode: 'Отсутствует узел ввода пользователя',
 }
 
 export default translation

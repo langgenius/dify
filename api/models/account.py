@@ -11,8 +11,7 @@ from sqlalchemy import DateTime, String, func, select
 from sqlalchemy.orm import Mapped, Session, mapped_column
 from typing_extensions import deprecated
 
-from models.base import TypeBase
-
+from .base import TypeBase
 from .engine import db
 from .types import LongText, StringUUID
 
