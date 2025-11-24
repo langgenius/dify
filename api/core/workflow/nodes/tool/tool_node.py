@@ -87,6 +87,9 @@ class ToolNode(Node):
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self._node_id, self._node_data, self.invoke_from, variable_pool
             )
+            system_variables = self.graph_runtime_state.variable_pool.system_variables
+            if tool_runtime.runtime and system_variables:
+                tool_runtime.runtime.workflow_execution_id = system_variables.workflow_execution_id
         except ToolNodeError as e:
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(

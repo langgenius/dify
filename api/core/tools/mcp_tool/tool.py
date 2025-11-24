@@ -5,6 +5,7 @@ from typing import Any
 
 from core.mcp.error import MCPAuthError, MCPConnectionError
 from core.mcp.mcp_client import MCPClient
+from core.mcp.session_manager import McpSessionRegistry
 from core.mcp.types import ImageContent, TextContent
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -46,18 +47,14 @@ class MCPTool(Tool):
     ) -> Generator[ToolInvokeMessage, None, None]:
         from core.tools.errors import ToolInvokeError
 
+        tool_parameters = self._handle_none_parameter(tool_parameters)
+        workflow_execution_id = getattr(self.runtime, "workflow_execution_id", None)
+
         try:
-            with MCPClient(
-                self.server_url,
-                self.provider_id,
-                self.tenant_id,
-                authed=True,
-                headers=self.headers,
-                timeout=self.timeout,
-                sse_read_timeout=self.sse_read_timeout,
-            ) as mcp_client:
-                tool_parameters = self._handle_none_parameter(tool_parameters)
-                result = mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+            if workflow_execution_id:
+                result = self._invoke_with_persistent_session(workflow_execution_id, tool_parameters)
+            else:
+                result = self._invoke_with_ephemeral_session(tool_parameters)
         except MCPAuthError as e:
             raise ToolInvokeError("Please auth the tool first") from e
         except MCPConnectionError as e:
@@ -70,6 +67,39 @@ class MCPTool(Tool):
                 yield from self._process_text_content(content)
             elif isinstance(content, ImageContent):
                 yield self._process_image_content(content)
+
+    def _invoke_with_ephemeral_session(self, tool_parameters: dict[str, Any]):
+        with self._build_client() as mcp_client:
+            return mcp_client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+
+    def _invoke_with_persistent_session(self, workflow_execution_id: str, tool_parameters: dict[str, Any]):
+        manager = McpSessionRegistry.get_manager(workflow_execution_id)
+        session_key = self._build_session_key()
+
+        def factory() -> MCPClient:
+            client = self._build_client()
+            return client.connect()
+
+        client = manager.acquire(session_key, factory)
+        try:
+            return client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+        except Exception:
+            manager.invalidate(session_key)
+            raise
+
+    def _build_session_key(self) -> str:
+        return f"{self.provider_id}:{self.server_url}"
+
+    def _build_client(self) -> MCPClient:
+        return MCPClient(
+            self.server_url,
+            self.provider_id,
+            self.tenant_id,
+            authed=True,
+            headers=self.headers,
+            timeout=self.timeout,
+            sse_read_timeout=self.sse_read_timeout,
+        )
 
     def _process_text_content(self, content: TextContent) -> Generator[ToolInvokeMessage, None, None]:
         """Process text content and yield appropriate messages."""

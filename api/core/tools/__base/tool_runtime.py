@@ -18,6 +18,7 @@ class ToolRuntime(BaseModel):
     credentials: dict[str, Any] = Field(default_factory=dict)
     credential_type: CredentialType = Field(default=CredentialType.API_KEY)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
+    workflow_execution_id: str | None = None
 
 
 class FakeToolRuntime(ToolRuntime):

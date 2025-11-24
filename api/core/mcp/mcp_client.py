@@ -54,10 +54,15 @@ class MCPClient:
         # Whether the client has been initialized
         self._initialized = False
 
-    def __enter__(self):
-        self._initialize()
-        self._initialized = True
+    def connect(self) -> "MCPClient":
+        """Initialize the client if it has not been initialized yet."""
+        if not self._initialized:
+            self._initialize()
+            self._initialized = True
         return self
+
+    def __enter__(self):
+        return self.connect()
 
     def __exit__(self, exc_type: type | None, exc_value: BaseException | None, traceback: TracebackType | None):
         self.cleanup()
