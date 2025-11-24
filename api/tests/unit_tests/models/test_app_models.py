@@ -90,13 +90,16 @@ class TestAppModelValidation:
     def test_app_mode_validation(self):
         """Test app mode enum values."""
         # Assert
-        assert AppMode.CHAT == "chat"
-        assert AppMode.COMPLETION == "completion"
-        assert AppMode.WORKFLOW == "workflow"
-        assert AppMode.ADVANCED_CHAT == "advanced-chat"
-        assert AppMode.AGENT_CHAT == "agent-chat"
-        assert AppMode.CHANNEL == "channel"
-        assert AppMode.RAG_PIPELINE == "rag-pipeline"
+        expected_modes = {
+            "chat",
+            "completion",
+            "workflow",
+            "advanced-chat",
+            "agent-chat",
+            "channel",
+            "rag-pipeline",
+        }
+        assert {mode.value for mode in AppMode} == expected_modes
 
     def test_app_mode_value_of(self):
         """Test AppMode.value_of method."""
