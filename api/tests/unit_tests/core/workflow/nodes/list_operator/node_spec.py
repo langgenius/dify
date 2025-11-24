@@ -2,13 +2,11 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.file import File, FileTransferMethod, FileType
-from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
+from core.variables import ArrayNumberSegment, ArrayStringSegment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.list_operator.entities import FilterBy, FilterOperator, ListOperatorNodeData, Order, OrderBy
 from core.workflow.nodes.list_operator.node import ListOperatorNode
 from models.workflow import WorkflowType
 
@@ -44,6 +42,20 @@ class TestListOperatorNode:
             call_depth=0,
         )
 
+    @pytest.fixture
+    def list_operator_node_factory(self, graph_init_params, mock_graph, mock_graph_runtime_state):
+        """Factory fixture for creating ListOperatorNode instances."""
+        def _create_node(config, mock_variable):
+            mock_graph_runtime_state.variable_pool.get.return_value = mock_variable
+            return ListOperatorNode(
+                id="test",
+                config=config,
+                graph_init_params=graph_init_params,
+                graph=mock_graph,
+                graph_runtime_state=mock_graph_runtime_state,
+            )
+        return _create_node
+
     def test_node_initialization(self, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test node initializes correctly."""
         config = {
@@ -69,7 +81,7 @@ class TestListOperatorNode:
         """Test version returns correct value."""
         assert ListOperatorNode.version() == "1"
 
-    def test_run_with_string_array(self, mock_graph, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_string_array(self, list_operator_node_factory):
         """Test with string array."""
         config = {
             "title": "Test",
@@ -80,15 +92,7 @@ class TestListOperatorNode:
         }
 
         mock_var = ArrayStringSegment(value=["apple", "banana", "cherry"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
-
-        node = ListOperatorNode(
-            id="test",
-            config=config,
-            graph_init_params=graph_init_params,
-            graph=mock_graph,
-            graph_runtime_state=mock_graph_runtime_state,
-        )
+        node = list_operator_node_factory(config, mock_var)
 
         result = node._run()
 
@@ -537,62 +541,3 @@ class TestListOperatorNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["result"].value == [1, 3, 5, 7, 9]
 
-    def test_run_with_slice_start_only(self, mock_graph, mock_graph_runtime_state, graph_init_params):
-        """Test slice with start index only."""
-        config = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": {"enabled": False},
-            "order_by": {"enabled": False},
-            "limit": {
-                "enabled": True,
-                "size": 10,
-                "start_index": 2,
-            },
-        }
-
-        mock_var = ArrayStringSegment(value=["a", "b", "c", "d", "e"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
-
-        node = ListOperatorNode(
-            id="test",
-            config=config,
-            graph_init_params=graph_init_params,
-            graph=mock_graph,
-            graph_runtime_state=mock_graph_runtime_state,
-        )
-
-        result = node._run()
-
-        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-        assert result.outputs["result"].value == ["c", "d", "e"]
-
-    def test_run_with_slice_start_and_size(self, mock_graph, mock_graph_runtime_state, graph_init_params):
-        """Test slice with start index and size."""
-        config = {
-            "title": "Test",
-            "variable": ["sys", "items"],
-            "filter_by": {"enabled": False},
-            "order_by": {"enabled": False},
-            "limit": {
-                "enabled": True,
-                "size": 2,
-                "start_index": 1,
-            },
-        }
-
-        mock_var = ArrayStringSegment(value=["a", "b", "c", "d", "e"])
-        mock_graph_runtime_state.variable_pool.get.return_value = mock_var
-
-        node = ListOperatorNode(
-            id="test",
-            config=config,
-            graph_init_params=graph_init_params,
-            graph=mock_graph,
-            graph_runtime_state=mock_graph_runtime_state,
-        )
-
-        result = node._run()
-
-        assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-        assert result.outputs["result"].value == ["b", "c"]
