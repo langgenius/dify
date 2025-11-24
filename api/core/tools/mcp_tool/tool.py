@@ -133,7 +133,7 @@ class MCPTool(Tool):
             if value is not None and not (isinstance(value, str) and value.strip() == "")
         }
 
-    def invoke_remote_mcp_tool(self, tool_parameters: dict[str, Any], _meta: dict[str, Any]) -> CallToolResult:
+    def invoke_remote_mcp_tool(self, tool_parameters: dict[str, Any], _meta: dict[str, Any] | None) -> CallToolResult:
         headers = self.headers.copy() if self.headers else {}
         tool_parameters = self._handle_none_parameter(tool_parameters)
 

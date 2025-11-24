@@ -180,7 +180,7 @@ class MCPClientWithAuthRetry(MCPClient):
         """
         return self._execute_with_retry(super().list_tools)
 
-    def invoke_tool(self, tool_name: str, tool_args: dict[str, Any], _meta: dict[str, Any]) -> CallToolResult:
+    def invoke_tool(self, tool_name: str, tool_args: dict[str, Any], _meta: dict[str, Any] | None = None) -> CallToolResult:
         """
         Invoke a tool on the MCP server with auth retry.
 
