@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 class WorkflowOptimizationAdvisor:
     """
     Service for generating intelligent optimization recommendations.
-    
+
     This service analyzes workflow execution patterns and generates
     actionable recommendations to improve performance and efficiency.
     """
@@ -41,43 +41,31 @@ class WorkflowOptimizationAdvisor:
     ) -> list[WorkflowOptimizationRecommendation]:
         """
         Analyze workflow performance and generate optimization recommendations.
-        
+
         Args:
             app_id: Application ID
             workflow_id: Workflow ID
             days: Number of days to analyze
-            
+
         Returns:
             List of generated recommendations
         """
         recommendations = []
-        
+
         # Run various analysis strategies
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_slow_nodes(app_id, workflow_id, days)
-        )
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_cache_opportunities(app_id, workflow_id, days)
-        )
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_error_patterns(app_id, workflow_id, days)
-        )
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_token_usage(app_id, workflow_id, days)
-        )
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_parallel_opportunities(app_id, workflow_id, days)
-        )
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_retry_patterns(app_id, workflow_id, days)
-        )
-        
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_slow_nodes(app_id, workflow_id, days))
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_cache_opportunities(app_id, workflow_id, days))
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_error_patterns(app_id, workflow_id, days))
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_token_usage(app_id, workflow_id, days))
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_parallel_opportunities(app_id, workflow_id, days))
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_retry_patterns(app_id, workflow_id, days))
+
         logger.info(
             "Generated %s optimization recommendations for workflow %s",
             len(recommendations),
             workflow_id,
         )
-        
+
         return recommendations
 
     @staticmethod
@@ -92,20 +80,20 @@ class WorkflowOptimizationAdvisor:
             workflow_id=workflow_id,
             days=days,
         )
-        
+
         for bottleneck in bottlenecks[:5]:  # Top 5 bottlenecks
             if bottleneck["avg_execution_time"] > 5.0:  # More than 5 seconds
                 severity = OptimizationSeverity.HIGH
                 if bottleneck["avg_execution_time"] > 30.0:
                     severity = OptimizationSeverity.CRITICAL
-                
+
                 node_type = bottleneck["node_type"]
                 node_title = bottleneck["node_title"] or bottleneck["node_id"]
-                
+
                 # Generate specific recommendations based on node type
                 steps = []
                 code_example = None
-                
+
                 if node_type == "llm":
                     steps = [
                         "Consider using a faster model variant (e.g., GPT-3.5 instead of GPT-4)",
@@ -155,12 +143,10 @@ class WorkflowOptimizationAdvisor:
                         "Enable caching if the node produces deterministic results",
                         "Add timeout limits to prevent hanging executions",
                     ]
-                
+
                 # Calculate improvement percentage
-                improvement_pct = int(
-                    (bottleneck['avg_execution_time'] - 1.0) / bottleneck['avg_execution_time'] * 100
-                )
-                
+                improvement_pct = int((bottleneck["avg_execution_time"] - 1.0) / bottleneck["avg_execution_time"] * 100)
+
                 recommendation = WorkflowPerformanceService.create_optimization_recommendation(
                     app_id=app_id,
                     workflow_id=workflow_id,
@@ -184,7 +170,7 @@ class WorkflowOptimizationAdvisor:
                     },
                 )
                 recommendations.append(recommendation)
-        
+
         return recommendations
 
     @staticmethod
@@ -196,7 +182,7 @@ class WorkflowOptimizationAdvisor:
         """Analyze and recommend caching opportunities."""
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
-        
+
         # Use JOIN to filter nodes in a single query
         stmt = (
             select(
@@ -205,16 +191,11 @@ class WorkflowOptimizationAdvisor:
                 WorkflowNodePerformance.node_title,
                 func.count(WorkflowNodePerformance.id).label("execution_count"),
                 func.avg(WorkflowNodePerformance.execution_time).label("avg_time"),
-                func.sum(
-                    func.case(
-                        (WorkflowNodePerformance.is_cached == True, 1),
-                        else_=0
-                    )
-                ).label("cache_hits"),
+                func.sum(func.case((WorkflowNodePerformance.is_cached == True, 1), else_=0)).label("cache_hits"),
             )
             .join(
                 WorkflowPerformanceMetrics,
-                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id,
             )
             .where(
                 and_(
@@ -234,15 +215,15 @@ class WorkflowOptimizationAdvisor:
                 )
             )
         )
-        
+
         results = db.session.execute(stmt).fetchall()
-        
+
         for row in results:
             cache_hit_rate = (row.cache_hits / row.execution_count * 100) if row.execution_count > 0 else 0.0
-            
+
             if cache_hit_rate < 50.0:  # Less than 50% cache hit rate
                 potential_time_saved = row.avg_time * row.execution_count * (1 - cache_hit_rate / 100) * 0.9
-                
+
                 recommendation = WorkflowPerformanceService.create_optimization_recommendation(
                     app_id=app_id,
                     workflow_id=workflow_id,
@@ -278,7 +259,7 @@ class WorkflowOptimizationAdvisor:
                     },
                 )
                 recommendations.append(recommendation)
-        
+
         return recommendations
 
     @staticmethod
@@ -290,7 +271,7 @@ class WorkflowOptimizationAdvisor:
         """Analyze and recommend fixes for error patterns."""
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
-        
+
         # Use JOIN to filter nodes in a single query
         stmt = (
             select(
@@ -298,16 +279,11 @@ class WorkflowOptimizationAdvisor:
                 WorkflowNodePerformance.node_type,
                 WorkflowNodePerformance.node_title,
                 func.count(WorkflowNodePerformance.id).label("execution_count"),
-                func.sum(
-                    func.case(
-                        (WorkflowNodePerformance.status == "failed", 1),
-                        else_=0
-                    )
-                ).label("failures"),
+                func.sum(func.case((WorkflowNodePerformance.status == "failed", 1), else_=0)).label("failures"),
             )
             .join(
                 WorkflowPerformanceMetrics,
-                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id,
             )
             .where(
                 and_(
@@ -322,19 +298,19 @@ class WorkflowOptimizationAdvisor:
             )
             .having(func.count(WorkflowNodePerformance.id) >= 3)
         )
-        
+
         results = db.session.execute(stmt).fetchall()
-        
+
         for row in results:
             failure_rate = (row.failures / row.execution_count * 100) if row.execution_count > 0 else 0.0
-            
+
             if failure_rate > 10.0:  # More than 10% failure rate
                 severity = OptimizationSeverity.MEDIUM
                 if failure_rate > 30.0:
                     severity = OptimizationSeverity.HIGH
                 if failure_rate > 50.0:
                     severity = OptimizationSeverity.CRITICAL
-                
+
                 recommendation = WorkflowPerformanceService.create_optimization_recommendation(
                     app_id=app_id,
                     workflow_id=workflow_id,
@@ -373,7 +349,7 @@ class WorkflowOptimizationAdvisor:
                     },
                 )
                 recommendations.append(recommendation)
-        
+
         return recommendations
 
     @staticmethod
@@ -385,7 +361,7 @@ class WorkflowOptimizationAdvisor:
         """Analyze and recommend token usage optimizations."""
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
-        
+
         # Use JOIN to filter nodes in a single query
         stmt = (
             select(
@@ -398,7 +374,7 @@ class WorkflowOptimizationAdvisor:
             )
             .join(
                 WorkflowPerformanceMetrics,
-                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id,
             )
             .where(
                 and_(
@@ -415,13 +391,13 @@ class WorkflowOptimizationAdvisor:
             )
             .having(func.avg(WorkflowNodePerformance.tokens_used) > 1000)  # Avg > 1000 tokens
         )
-        
+
         results = db.session.execute(stmt).fetchall()
-        
+
         for row in results:
             if row.total_tokens > 2000:  # High token usage
                 potential_savings = row.total_cost * 0.3 if row.total_cost else 0  # Estimate 30% savings
-                
+
                 recommendation = WorkflowPerformanceService.create_optimization_recommendation(
                     app_id=app_id,
                     workflow_id=workflow_id,
@@ -463,7 +439,7 @@ class WorkflowOptimizationAdvisor:
                     },
                 )
                 recommendations.append(recommendation)
-        
+
         return recommendations
 
     @staticmethod
@@ -475,16 +451,16 @@ class WorkflowOptimizationAdvisor:
         """Analyze and recommend opportunities for parallel execution."""
         # This is a simplified analysis - in a real implementation,
         # you would analyze the workflow graph structure
-        
+
         recommendations = []
         summary = WorkflowPerformanceService.get_workflow_performance_summary(
             workflow_id=workflow_id,
             days=days,
         )
-        
+
         if summary["total_runs"] < 5:
             return recommendations
-        
+
         # If average execution time is high, suggest parallelization
         if summary["avg_execution_time"] > 15.0:
             recommendation = WorkflowPerformanceService.create_optimization_recommendation(
@@ -514,7 +490,7 @@ class WorkflowOptimizationAdvisor:
                 },
             )
             recommendations.append(recommendation)
-        
+
         return recommendations
 
     @staticmethod
@@ -526,7 +502,7 @@ class WorkflowOptimizationAdvisor:
         """Analyze and recommend optimizations for retry patterns."""
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
-        
+
         # Use JOIN to filter nodes in a single query
         stmt = (
             select(
@@ -539,7 +515,7 @@ class WorkflowOptimizationAdvisor:
             )
             .join(
                 WorkflowPerformanceMetrics,
-                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id,
             )
             .where(
                 and_(
@@ -554,9 +530,9 @@ class WorkflowOptimizationAdvisor:
             )
             .having(func.avg(WorkflowNodePerformance.retry_count) > 0.5)  # Avg > 0.5 retries
         )
-        
+
         results = db.session.execute(stmt).fetchall()
-        
+
         for row in results:
             if row.avg_retries > 1.0:  # Frequent retries
                 recommendation = WorkflowPerformanceService.create_optimization_recommendation(
@@ -597,5 +573,5 @@ class WorkflowOptimizationAdvisor:
                     },
                 )
                 recommendations.append(recommendation)
-        
+
         return recommendations

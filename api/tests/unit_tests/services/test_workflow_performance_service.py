@@ -5,17 +5,18 @@ This module contains comprehensive tests for the workflow performance
 tracking and analytics functionality.
 """
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from libs.datetime_utils import naive_utc_now
 from models.workflow_performance import (
     OptimizationCategory,
     OptimizationSeverity,
-    WorkflowPerformanceMetrics,
     WorkflowNodePerformance,
     WorkflowOptimizationRecommendation,
+    WorkflowPerformanceMetrics,
 )
 from services.workflow_performance_service import WorkflowPerformanceService
 
@@ -26,7 +27,7 @@ class TestWorkflowPerformanceService:
     @pytest.fixture
     def mock_db_session(self):
         """Mock database session"""
-        with patch('services.workflow_performance_service.db') as mock_db:
+        with patch("services.workflow_performance_service.db") as mock_db:
             mock_db.session = MagicMock()
             yield mock_db
 
@@ -36,7 +37,7 @@ class TestWorkflowPerformanceService:
         app_id = "test-app-id"
         workflow_id = "test-workflow-id"
         workflow_run_id = "test-run-id"
-        
+
         # Act
         metrics = WorkflowPerformanceService.record_workflow_execution(
             app_id=app_id,
@@ -52,7 +53,7 @@ class TestWorkflowPerformanceService:
             cache_hit_rate=40.0,
             execution_status="succeeded",
         )
-        
+
         # Assert
         assert metrics.app_id == app_id
         assert metrics.workflow_id == workflow_id
@@ -74,7 +75,7 @@ class TestWorkflowPerformanceService:
         node_execution_id = "test-execution-id"
         start_time = naive_utc_now()
         end_time = start_time + timedelta(seconds=5)
-        
+
         # Act
         node_perf = WorkflowPerformanceService.record_node_execution(
             workflow_run_id=workflow_run_id,
@@ -90,7 +91,7 @@ class TestWorkflowPerformanceService:
             is_cached=False,
             status="succeeded",
         )
-        
+
         # Assert
         assert node_perf.workflow_run_id == workflow_run_id
         assert node_perf.node_id == node_id
@@ -106,7 +107,7 @@ class TestWorkflowPerformanceService:
         # Arrange
         app_id = "test-app-id"
         workflow_id = "test-workflow-id"
-        
+
         # Act
         recommendation = WorkflowPerformanceService.create_optimization_recommendation(
             app_id=app_id,
@@ -124,7 +125,7 @@ class TestWorkflowPerformanceService:
             ],
             code_example='{"model": "gpt-3.5-turbo"}',
         )
-        
+
         # Assert
         assert recommendation.app_id == app_id
         assert recommendation.workflow_id == workflow_id
@@ -136,24 +137,24 @@ class TestWorkflowPerformanceService:
         mock_db_session.session.add.assert_called_once()
         mock_db_session.session.commit.assert_called_once()
 
-    @patch('services.workflow_performance_service.db.session')
+    @patch("services.workflow_performance_service.db.session")
     def test_get_workflow_performance_summary_no_data(self, mock_session):
         """Test getting performance summary with no data"""
         # Arrange
         mock_session.execute.return_value.first.return_value = None
-        
+
         # Act
         summary = WorkflowPerformanceService.get_workflow_performance_summary(
             workflow_id="test-workflow-id",
             days=7,
         )
-        
-        # Assert
-        assert summary['total_runs'] == 0
-        assert summary['avg_execution_time'] == 0.0
-        assert summary['success_rate'] == 0.0
 
-    @patch('services.workflow_performance_service.db.session')
+        # Assert
+        assert summary["total_runs"] == 0
+        assert summary["avg_execution_time"] == 0.0
+        assert summary["success_rate"] == 0.0
+
+    @patch("services.workflow_performance_service.db.session")
     def test_get_workflow_performance_summary_with_data(self, mock_session):
         """Test getting performance summary with data"""
         # Arrange
@@ -167,27 +168,27 @@ class TestWorkflowPerformanceService:
         mock_result.total_cost = 2.5
         mock_result.successful_runs = 95
         mock_result.failed_runs = 5
-        
+
         mock_session.execute.return_value.first.return_value = mock_result
-        
+
         # Act
         summary = WorkflowPerformanceService.get_workflow_performance_summary(
             workflow_id="test-workflow-id",
             days=7,
         )
-        
-        # Assert
-        assert summary['total_runs'] == 100
-        assert summary['avg_execution_time'] == 5.5
-        assert summary['min_execution_time'] == 2.0
-        assert summary['max_execution_time'] == 15.0
-        assert summary['avg_cache_hit_rate'] == 45.0
-        assert summary['total_tokens'] == 50000
-        assert summary['total_cost'] == 2.5
-        assert summary['success_rate'] == 95.0
-        assert summary['error_rate'] == 5.0
 
-    @patch('services.workflow_performance_service.db.session')
+        # Assert
+        assert summary["total_runs"] == 100
+        assert summary["avg_execution_time"] == 5.5
+        assert summary["min_execution_time"] == 2.0
+        assert summary["max_execution_time"] == 15.0
+        assert summary["avg_cache_hit_rate"] == 45.0
+        assert summary["total_tokens"] == 50000
+        assert summary["total_cost"] == 2.5
+        assert summary["success_rate"] == 95.0
+        assert summary["error_rate"] == 5.0
+
+    @patch("services.workflow_performance_service.db.session")
     def test_identify_bottlenecks(self, mock_session):
         """Test identifying performance bottlenecks"""
         # Arrange
@@ -212,26 +213,26 @@ class TestWorkflowPerformanceService:
                 std_dev=2.0,
             ),
         ]
-        
+
         mock_session.execute.side_effect = [
             MagicMock(fetchall=lambda: mock_run_ids),
             MagicMock(fetchall=lambda: mock_bottleneck_data),
         ]
-        
+
         # Act
         bottlenecks = WorkflowPerformanceService.identify_bottlenecks(
             workflow_id="test-workflow-id",
             days=7,
         )
-        
+
         # Assert
         assert len(bottlenecks) == 2
-        assert bottlenecks[0]['node_id'] == "node-1"
-        assert bottlenecks[0]['severity'] == "critical"  # > 30 seconds
-        assert bottlenecks[1]['node_id'] == "node-2"
-        assert bottlenecks[1]['severity'] == "medium"  # < 10 seconds
+        assert bottlenecks[0]["node_id"] == "node-1"
+        assert bottlenecks[0]["severity"] == "critical"  # > 30 seconds
+        assert bottlenecks[1]["node_id"] == "node-2"
+        assert bottlenecks[1]["severity"] == "medium"  # < 10 seconds
 
-    @patch('services.workflow_performance_service.db.session')
+    @patch("services.workflow_performance_service.db.session")
     def test_get_node_performance_breakdown(self, mock_session):
         """Test getting node performance breakdown"""
         # Arrange
@@ -260,47 +261,47 @@ class TestWorkflowPerformanceService:
                 failures=0,
             ),
         ]
-        
+
         mock_session.execute.side_effect = [
             MagicMock(fetchall=lambda: mock_run_ids),
             MagicMock(fetchall=lambda: mock_node_data),
         ]
-        
+
         # Act
         breakdown = WorkflowPerformanceService.get_node_performance_breakdown(
             workflow_id="test-workflow-id",
             days=7,
         )
-        
+
         # Assert
         assert len(breakdown) == 2
-        assert breakdown[0]['node_type'] == "llm"
-        assert breakdown[0]['execution_count'] == 20
-        assert breakdown[0]['cache_hit_rate'] == 25.0  # 5/20 * 100
-        assert breakdown[0]['failure_rate'] == 5.0  # 1/20 * 100
-        assert breakdown[1]['node_type'] == "code"
-        assert breakdown[1]['cache_hit_rate'] == 50.0  # 15/30 * 100
-        assert breakdown[1]['failure_rate'] == 0.0
+        assert breakdown[0]["node_type"] == "llm"
+        assert breakdown[0]["execution_count"] == 20
+        assert breakdown[0]["cache_hit_rate"] == 25.0  # 5/20 * 100
+        assert breakdown[0]["failure_rate"] == 5.0  # 1/20 * 100
+        assert breakdown[1]["node_type"] == "code"
+        assert breakdown[1]["cache_hit_rate"] == 50.0  # 15/30 * 100
+        assert breakdown[1]["failure_rate"] == 0.0
 
-    @patch('services.workflow_performance_service.db.session')
+    @patch("services.workflow_performance_service.db.session")
     def test_dismiss_recommendation(self, mock_session):
         """Test dismissing a recommendation"""
         # Arrange
         recommendation_id = "test-rec-id"
         dismissed_by = "user-id"
         reason = "Not applicable"
-        
+
         mock_recommendation = MagicMock(spec=WorkflowOptimizationRecommendation)
         mock_recommendation.id = recommendation_id
         mock_session.get.return_value = mock_recommendation
-        
+
         # Act
         result = WorkflowPerformanceService.dismiss_recommendation(
             recommendation_id=recommendation_id,
             dismissed_by=dismissed_by,
             reason=reason,
         )
-        
+
         # Assert
         assert result.status == "dismissed"
         assert result.dismissed_by == dismissed_by
@@ -308,12 +309,12 @@ class TestWorkflowPerformanceService:
         assert result.dismissed_at is not None
         mock_session.commit.assert_called_once()
 
-    @patch('services.workflow_performance_service.db.session')
+    @patch("services.workflow_performance_service.db.session")
     def test_dismiss_recommendation_not_found(self, mock_session):
         """Test dismissing a non-existent recommendation"""
         # Arrange
         mock_session.get.return_value = None
-        
+
         # Act & Assert
         with pytest.raises(ValueError, match="not found"):
             WorkflowPerformanceService.dismiss_recommendation(
@@ -321,7 +322,7 @@ class TestWorkflowPerformanceService:
                 dismissed_by="user-id",
             )
 
-    @patch('services.workflow_performance_service.db.session')
+    @patch("services.workflow_performance_service.db.session")
     def test_get_active_recommendations(self, mock_session):
         """Test getting active recommendations"""
         # Arrange
@@ -339,15 +340,15 @@ class TestWorkflowPerformanceService:
                 created_at=naive_utc_now(),
             ),
         ]
-        
+
         mock_session.execute.return_value.scalars.return_value.all.return_value = mock_recommendations
-        
+
         # Act
         recommendations = WorkflowPerformanceService.get_active_recommendations(
             workflow_id="test-workflow-id",
             severity=OptimizationSeverity.HIGH,
         )
-        
+
         # Assert
         assert len(recommendations) == 2
         mock_session.execute.assert_called_once()
@@ -372,7 +373,7 @@ class TestWorkflowPerformanceMetrics:
             cache_hit_rate=40.0,
             execution_status="succeeded",
         )
-        
+
         # Assert
         assert metrics.app_id == "app-1"
         assert metrics.workflow_id == "workflow-1"
@@ -388,7 +389,7 @@ class TestWorkflowNodePerformance:
         # Arrange & Act
         start_time = naive_utc_now()
         end_time = start_time + timedelta(seconds=5)
-        
+
         node_perf = WorkflowNodePerformance(
             workflow_run_id="run-1",
             node_id="node-1",
@@ -401,7 +402,7 @@ class TestWorkflowNodePerformance:
             is_cached=False,
             status="succeeded",
         )
-        
+
         # Assert
         assert node_perf.workflow_run_id == "run-1"
         assert node_perf.node_type == "llm"
@@ -425,7 +426,7 @@ class TestWorkflowOptimizationRecommendation:
             recommendation_steps=["Step 1", "Step 2"],
             status="active",
         )
-        
+
         # Assert
         assert recommendation.app_id == "app-1"
         assert recommendation.title == "Test Recommendation"
