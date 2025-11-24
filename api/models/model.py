@@ -1887,31 +1887,33 @@ class MessageAgentThought(Base):
                 return {}
 
 
-class DatasetRetrieverResource(Base):
+class DatasetRetrieverResource(TypeBase):
     __tablename__ = "dataset_retriever_resources"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_retriever_resource_pkey"),
         sa.Index("dataset_retriever_resource_message_id_idx", "message_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    message_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    dataset_name = mapped_column(LongText, nullable=False)
-    document_id = mapped_column(StringUUID, nullable=True)
-    document_name = mapped_column(LongText, nullable=False)
-    data_source_type = mapped_column(LongText, nullable=True)
-    segment_id = mapped_column(StringUUID, nullable=True)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_name: Mapped[str] = mapped_column(LongText, nullable=False)
+    document_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    document_name: Mapped[str] = mapped_column(LongText, nullable=False)
+    data_source_type: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    segment_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     score: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
-    content = mapped_column(LongText, nullable=False)
+    content: Mapped[str] = mapped_column(LongText, nullable=False)
     hit_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     segment_position: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    index_node_hash = mapped_column(LongText, nullable=True)
-    retriever_from = mapped_column(LongText, nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    index_node_hash: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    retriever_from: Mapped[str] = mapped_column(LongText, nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
+    )
 
 
 class Tag(TypeBase):
