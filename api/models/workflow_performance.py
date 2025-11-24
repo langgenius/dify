@@ -100,7 +100,7 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Additional metadata
-    metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
 
@@ -152,7 +152,7 @@ class WorkflowNodePerformance(Base, DefaultFieldsMixin):
     output_size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     
     # Additional metadata
-    metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
 
@@ -222,7 +222,7 @@ class WorkflowOptimizationRecommendation(Base, DefaultFieldsMixin):
     dismissed_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     
     # Additional metadata
-    metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now)
@@ -267,7 +267,7 @@ class WorkflowCacheEntry(Base, DefaultFieldsMixin):
     total_time_saved: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, comment="Cumulative time saved")
     
     # Additional metadata
-    metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
 
 
 class WorkflowPerformanceTrend(Base, DefaultFieldsMixin):
@@ -311,6 +311,6 @@ class WorkflowPerformanceTrend(Base, DefaultFieldsMixin):
     percentile_99: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     
     # Additional metadata
-    metadata: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
