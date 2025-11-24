@@ -533,7 +533,7 @@ class AppModelConfig(Base):
         return self
 
 
-class RecommendedApp(Base): # bug
+class RecommendedApp(Base):  # bug
     __tablename__ = "recommended_apps"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="recommended_app_pkey"),
@@ -1914,7 +1914,7 @@ class DatasetRetrieverResource(Base):
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
 
 
-class Tag(Base):
+class Tag(TypeBase):
     __tablename__ = "tags"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tag_pkey"),
@@ -1924,12 +1924,14 @@ class Tag(Base):
 
     TAG_TYPE_LIST = ["knowledge", "app"]
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=True)
-    type = mapped_column(String(16), nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    type: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class TagBinding(TypeBase):
