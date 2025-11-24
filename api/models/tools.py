@@ -123,7 +123,7 @@ class EndUserAuthenticationProvider(TypeBase):
     )
 
     # id of the authentication provider
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=uuidv7, init=False)
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()), init=False)
     name: Mapped[str] = mapped_column(
         String(256),
         nullable=False,
