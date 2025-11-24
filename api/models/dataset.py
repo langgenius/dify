@@ -1004,7 +1004,7 @@ class DatasetKeywordTable(TypeBase):
                 return None
 
 
-class Embedding(Base):
+class Embedding(TypeBase):
     __tablename__ = "embeddings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="embedding_pkey"),
@@ -1012,12 +1012,16 @@ class Embedding(Base):
         sa.Index("created_at_idx", "created_at"),
     )
 
-    id = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()))
-    model_name = mapped_column(String(255), nullable=False, server_default=sa.text("'text-embedding-ada-002'"))
-    hash = mapped_column(String(64), nullable=False)
-    embedding = mapped_column(BinaryData, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    provider_name = mapped_column(String(255), nullable=False, server_default=sa.text("''"))
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()), init=False)
+    model_name: Mapped[str] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'text-embedding-ada-002'")
+    )
+    hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    embedding: Mapped[bytes] = mapped_column(BinaryData, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    provider_name: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("''"))
 
     def set_embedding(self, embedding_data: list[float]):
         self.embedding = pickle.dumps(embedding_data, protocol=pickle.HIGHEST_PROTOCOL)
