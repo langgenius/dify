@@ -1,4 +1,4 @@
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -6,10 +6,26 @@ from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
-from fields.conversation_variable_fields import paginated_conversation_variable_fields
+from fields.conversation_variable_fields import (
+    conversation_variable_fields,
+    paginated_conversation_variable_fields,
+)
 from libs.login import login_required
 from models import ConversationVariable
 from models.model import AppMode
+
+# Register models for flask_restx to avoid dict type issues in Swagger
+# Register base model first
+conversation_variable_model = console_ns.model("ConversationVariable", conversation_variable_fields)
+
+# For nested models, need to replace nested dict with registered model
+paginated_conversation_variable_fields_copy = paginated_conversation_variable_fields.copy()
+paginated_conversation_variable_fields_copy["data"] = fields.List(
+    fields.Nested(conversation_variable_model), attribute="data"
+)
+paginated_conversation_variable_model = console_ns.model(
+    "PaginatedConversationVariable", paginated_conversation_variable_fields_copy
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-variables")
@@ -22,12 +38,12 @@ class ConversationVariablesApi(Resource):
             "conversation_id", type=str, location="args", help="Conversation ID to filter variables"
         )
     )
-    @console_ns.response(200, "Conversation variables retrieved successfully", paginated_conversation_variable_fields)
+    @console_ns.response(200, "Conversation variables retrieved successfully", paginated_conversation_variable_model)
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=AppMode.ADVANCED_CHAT)
-    @marshal_with(paginated_conversation_variable_fields)
+    @marshal_with(paginated_conversation_variable_model)
     def get(self, app_model):
         parser = reqparse.RequestParser().add_argument("conversation_id", type=str, location="args")
         args = parser.parse_args()
