@@ -1741,7 +1741,10 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
         default="",
     )
 
-    # message is not empty if and if only type_ == PauseReasonType.SCHEDULED_PAUSE
+    # message records the text description of this pause reason. For example,
+    # "The workflow has been paused due to scheduling."
+    #
+    # Empty message means that this pause reason is not speified.
     message: Mapped[str] = mapped_column(
         String(255),
         nullable=False,

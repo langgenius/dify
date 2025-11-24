@@ -386,6 +386,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     pause_reason_model = WorkflowPauseReason(
                         pause_id=pause_model.id,
                         type_=reason.TYPE,
+                        message=reason.message,
                     )
                 else:
                     raise AssertionError(f"unkown reason type: {type(reason)}")
