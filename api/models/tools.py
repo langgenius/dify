@@ -138,12 +138,12 @@ class EndUserAuthenticationProvider(TypeBase):
     # encrypted credentials for the end user
     encrypted_credentials: Mapped[str] = mapped_column(LongText, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, default=datetime.now, init=False
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
     )
     updated_at: Mapped[datetime] = mapped_column(
         sa.DateTime,
         nullable=False,
-        default=datetime.now,
+        server_default=func.current_timestamp(),
         onupdate=func.current_timestamp(),
         init=False,
     )
