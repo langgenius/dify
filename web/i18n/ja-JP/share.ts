@@ -72,6 +72,7 @@ const translation = {
       moreThanMaxLengthLine: '{{rowIndex}}行目：{{varName}}が制限長（{{maxLength}}）を超過',
       atLeastOne: '1 行以上のデータが必要です',
     },
+    stopRun: '走るのをやめろ',
   },
   login: {
     backToHome: 'ホームに戻る',

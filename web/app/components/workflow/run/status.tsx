@@ -5,7 +5,6 @@ import cn from '@/utils/classnames'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
-import { useStore } from '../store'
 
 type ResultProps = {
   status: string
@@ -14,6 +13,7 @@ type ResultProps = {
   error?: string
   exceptionCounts?: number
   inputURL?: string
+  isListening?: boolean
 }
 
 const StatusPanel: FC<ResultProps> = ({
@@ -23,10 +23,10 @@ const StatusPanel: FC<ResultProps> = ({
   error,
   exceptionCounts,
   inputURL,
+  isListening = false,
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const isListening = useStore(s => s.isListening)
 
   return (
     <StatusContainer status={status}>

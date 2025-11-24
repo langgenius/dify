@@ -15,7 +15,8 @@ import { noop } from 'lodash-es'
 import { basePath } from '@/utils/var'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
-loader.config({ paths: { vs: `${basePath}/vs` } })
+if (typeof window !== 'undefined')
+  loader.config({ paths: { vs: `${window.location.origin}${basePath}/vs` } })
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 
@@ -161,6 +162,7 @@ const CodeEditor: FC<Props> = ({
           unicodeHighlight: {
             ambiguousCharacters: false,
           },
+          stickyScroll: { enabled: false },
         }}
         onMount={handleEditorDidMount}
       />

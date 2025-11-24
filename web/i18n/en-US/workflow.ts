@@ -125,6 +125,11 @@ const translation = {
     humanInputWebappTip: 'Debug preview only, user will not see this in web app.',
     humanInputEmailTip: 'Email (Delivery Method) sent to your configured recipients',
   },
+  publishLimit: {
+    startNodeTitlePrefix: 'Upgrade to',
+    startNodeTitleSuffix: 'unlock unlimited triggers per workflow',
+    startNodeDesc: 'You’ve reached the limit of 2 triggers per workflow for this plan. Upgrade to publish this workflow.',
+  },
   env: {
     envPanelTitle: 'Environment Variables',
     envDescription: 'Environment variables can be used to store private information and credentials. They are read-only and can be separated from the DSL file during export.',

@@ -5,7 +5,7 @@ from flask_restx import Resource, fields, reqparse
 from werkzeug.exceptions import InternalServerError
 
 import services
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     AudioTooLargeError,
@@ -36,16 +36,16 @@ logger = logging.getLogger(__name__)
 
 @console_ns.route("/apps/<uuid:app_id>/audio-to-text")
 class ChatMessageAudioApi(Resource):
-    @api.doc("chat_message_audio_transcript")
-    @api.doc(description="Transcript audio to text for chat messages")
-    @api.doc(params={"app_id": "App ID"})
-    @api.response(
+    @console_ns.doc("chat_message_audio_transcript")
+    @console_ns.doc(description="Transcript audio to text for chat messages")
+    @console_ns.doc(params={"app_id": "App ID"})
+    @console_ns.response(
         200,
         "Audio transcription successful",
-        api.model("AudioTranscriptResponse", {"text": fields.String(description="Transcribed text from audio")}),
+        console_ns.model("AudioTranscriptResponse", {"text": fields.String(description="Transcribed text from audio")}),
     )
-    @api.response(400, "Bad request - No audio uploaded or unsupported type")
-    @api.response(413, "Audio file too large")
+    @console_ns.response(400, "Bad request - No audio uploaded or unsupported type")
+    @console_ns.response(413, "Audio file too large")
     @setup_required
     @login_required
     @account_initialization_required
@@ -89,11 +89,11 @@ class ChatMessageAudioApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio")
 class ChatMessageTextApi(Resource):
-    @api.doc("chat_message_text_to_speech")
-    @api.doc(description="Convert text to speech for chat messages")
-    @api.doc(params={"app_id": "App ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("chat_message_text_to_speech")
+    @console_ns.doc(description="Convert text to speech for chat messages")
+    @console_ns.doc(params={"app_id": "App ID"})
+    @console_ns.expect(
+        console_ns.model(
             "TextToSpeechRequest",
             {
                 "message_id": fields.String(description="Message ID"),
@@ -103,8 +103,8 @@ class ChatMessageTextApi(Resource):
             },
         )
     )
-    @api.response(200, "Text to speech conversion successful")
-    @api.response(400, "Bad request - Invalid parameters")
+    @console_ns.response(200, "Text to speech conversion successful")
+    @console_ns.response(400, "Bad request - Invalid parameters")
     @get_app_model
     @setup_required
     @login_required
@@ -156,12 +156,16 @@ class ChatMessageTextApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/text-to-audio/voices")
 class TextModesApi(Resource):
-    @api.doc("get_text_to_speech_voices")
-    @api.doc(description="Get available TTS voices for a specific language")
-    @api.doc(params={"app_id": "App ID"})
-    @api.expect(api.parser().add_argument("language", type=str, required=True, location="args", help="Language code"))
-    @api.response(200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices")))
-    @api.response(400, "Invalid language parameter")
+    @console_ns.doc("get_text_to_speech_voices")
+    @console_ns.doc(description="Get available TTS voices for a specific language")
+    @console_ns.doc(params={"app_id": "App ID"})
+    @console_ns.expect(
+        console_ns.parser().add_argument("language", type=str, required=True, location="args", help="Language code")
+    )
+    @console_ns.response(
+        200, "TTS voices retrieved successfully", fields.List(fields.Raw(description="Available voices"))
+    )
+    @console_ns.response(400, "Invalid language parameter")
     @get_app_model
     @setup_required
     @login_required
