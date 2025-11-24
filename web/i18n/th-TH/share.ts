@@ -72,7 +72,7 @@ const translation = {
     },
     execution: 'การดำเนินการ',
     executions: '{{num}} การประหารชีวิต',
-    stopRun: 'หยุดวิ่ง',
+    stopRun: 'หยุดการทำงาน',
   },
   login: {
     backToHome: 'กลับไปที่หน้าแรก',
