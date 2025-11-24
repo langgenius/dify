@@ -17,7 +17,7 @@ from core.trigger.utils.endpoint import generate_plugin_trigger_endpoint_url, ge
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
-from .base import Base, TypeBase
+from .base import TypeBase
 from .engine import db
 from .enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from .model import Account

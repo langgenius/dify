@@ -1,7 +1,7 @@
 import base64
 import logging
-from typing import Any, cast
 import pickle
+from typing import Any, cast
 
 import numpy as np
 from sqlalchemy.exc import IntegrityError

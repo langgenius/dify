@@ -1294,7 +1294,7 @@ class Message(Base):
         )
 
 
-class MessageFeedback(Base):
+class MessageFeedback(TypeBase):
     __tablename__ = "message_feedbacks"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_feedback_pkey"),
@@ -1303,18 +1303,24 @@ class MessageFeedback(Base):
         sa.Index("message_feedback_conversation_idx", "conversation_id", "from_source", "rating"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     rating: Mapped[str] = mapped_column(String(255), nullable=False)
-    content: Mapped[str | None] = mapped_column(LongText)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
-    from_account_id: Mapped[str | None] = mapped_column(StringUUID)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    content: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    from_account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
