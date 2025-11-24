@@ -533,7 +533,7 @@ class AppModelConfig(Base):
         return self
 
 
-class RecommendedApp(Base):
+class RecommendedApp(Base): # bug
     __tablename__ = "recommended_apps"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="recommended_app_pkey"),

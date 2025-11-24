@@ -307,7 +307,7 @@ class Dataset(Base):
         return f"{dify_config.VECTOR_INDEX_NAME_PREFIX}_{normalized_dataset_id}_Node"
 
 
-class DatasetProcessRule(Base):
+class DatasetProcessRule(Base): # bug
     __tablename__ = "dataset_process_rules"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_process_rule_pkey"),
@@ -1235,7 +1235,7 @@ class DatasetMetadata(Base):
     updated_by = mapped_column(StringUUID, nullable=True)
 
 
-class DatasetMetadataBinding(Base):
+class DatasetMetadataBinding(TypeBase):
     __tablename__ = "dataset_metadata_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_metadata_binding_pkey"),
@@ -1245,13 +1245,13 @@ class DatasetMetadataBinding(Base):
         sa.Index("dataset_metadata_binding_document_idx", "document_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    metadata_id = mapped_column(StringUUID, nullable=False)
-    document_id = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    created_by = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    metadata_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp(), init=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
 
 class PipelineBuiltInTemplate(TypeBase):

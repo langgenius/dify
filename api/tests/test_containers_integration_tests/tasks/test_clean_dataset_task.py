@@ -394,14 +394,14 @@ class TestCleanDatasetTask:
         )
 
         binding = DatasetMetadataBinding(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             dataset_id=dataset.id,
             metadata_id=metadata.id,
             document_id=documents[0].id,  # Use first document as example
             created_by=account.id,
-            created_at=datetime.now(),
         )
+        binding.id = str(uuid.uuid4())
+        binding.created_at = datetime.now()
 
         from extensions.ext_database import db
 
@@ -709,14 +709,14 @@ class TestCleanDatasetTask:
 
             # Create binding for each metadata item
             binding = DatasetMetadataBinding(
-                id=str(uuid.uuid4()),
                 tenant_id=tenant.id,
                 dataset_id=dataset.id,
                 metadata_id=metadata.id,
                 document_id=documents[i % len(documents)].id,
                 created_by=account.id,
-                created_at=datetime.now(),
             )
+            binding.id = str(uuid.uuid4())
+            binding.created_at = datetime.now()
             bindings.append(binding)
 
         from extensions.ext_database import db

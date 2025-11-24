@@ -591,6 +591,7 @@ def old_metadata_migration():
         if not documents:
             break
         for document in documents:
+            document = document
             if document.doc_metadata:
                 doc_metadata = document.doc_metadata
                 for key in doc_metadata:
