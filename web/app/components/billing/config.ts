@@ -3,7 +3,7 @@ import { Plan, type PlanInfo, Priority } from '@/app/components/billing/type'
 
 const supportModelProviders = 'OpenAI/Anthropic/Llama2/Azure OpenAI/Hugging Face/Replicate'
 
-export const NUM_INFINITE = 99999999
+export const NUM_INFINITE = -1
 export const contractSales = 'contractSales'
 export const unAvailable = 'unAvailable'
 
@@ -89,5 +89,9 @@ export const defaultPlan = {
     documentsUploadQuota: 0,
     apiRateLimit: ALL_PLANS.sandbox.apiRateLimit,
     triggerEvents: ALL_PLANS.sandbox.triggerEvents,
+  },
+  reset: {
+    apiRateLimit: null,
+    triggerEvents: null,
   },
 }

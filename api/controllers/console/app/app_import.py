@@ -1,7 +1,6 @@
 from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy.orm import Session
 
-from controllers.console import api
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
@@ -35,7 +34,7 @@ parser = (
 
 @console_ns.route("/apps/imports")
 class AppImportApi(Resource):
-    @api.expect(parser)
+    @console_ns.expect(parser)
     @setup_required
     @login_required
     @account_initialization_required
