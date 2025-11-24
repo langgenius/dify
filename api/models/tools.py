@@ -119,7 +119,7 @@ class EndUserAuthenticationProvider(TypeBase):
 
     __tablename__ = "tool_enduser_authentication_providers"
     __table_args__ = (
-        sa.UniqueConstraint("end_user_id", "provider", "name"),
+        sa.UniqueConstraint("end_user_id", "provider"),
     )
 
     # id of the authentication provider
@@ -128,7 +128,6 @@ class EndUserAuthenticationProvider(TypeBase):
         String(256),
         nullable=False,
         default="API KEY 1",
-        index=True
     )
     # id of the tenant
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

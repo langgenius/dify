@@ -58,15 +58,8 @@ def upgrade():
         sa.UniqueConstraint(
             "end_user_id",
             "provider",
-            "name",
             name="unique_enduser_authentication_provider",
         ),
-    )
-    op.create_index(
-        "tool_enduser_authentication_provider_name_idx",
-        "tool_enduser_authentication_providers",
-        ["name"],
-        unique=False,
     )
     op.create_index(
         "tool_enduser_authentication_provider_end_user_id_idx",
@@ -91,10 +84,6 @@ def downgrade():
     )
     op.drop_index(
         "tool_enduser_authentication_provider_end_user_id_idx",
-        table_name="tool_enduser_authentication_providers",
-    )
-    op.drop_index(
-        "tool_enduser_authentication_provider_name_idx",
         table_name="tool_enduser_authentication_providers",
     )
     op.drop_table("tool_enduser_authentication_providers")
