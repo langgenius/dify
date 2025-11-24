@@ -75,8 +75,9 @@ class WorkflowOptimizationAdvisor:
         )
         
         logger.info(
-            f"Generated {len(recommendations)} optimization recommendations "
-            f"for workflow {workflow_id}"
+            "Generated %s optimization recommendations for workflow %s",
+            len(recommendations),
+            workflow_id,
         )
         
         return recommendations
@@ -168,7 +169,10 @@ class WorkflowOptimizationAdvisor:
                     ),
                     category=OptimizationCategory.PERFORMANCE,
                     severity=severity,
-                    estimated_improvement=f"{int((bottleneck['avg_execution_time'] - 1.0) / bottleneck['avg_execution_time'] * 100)}% faster execution",
+                    estimated_improvement=(
+                        f"{int((bottleneck['avg_execution_time'] - 1.0) / "
+                        f"bottleneck['avg_execution_time'] * 100)}% faster execution"
+                    ),
                     affected_nodes=[bottleneck["node_id"]],
                     recommendation_steps=steps,
                     code_example=code_example,

@@ -136,9 +136,10 @@ class WorkflowCacheService:
             db.session.commit()
             
             logger.info(
-                f"Cache hit for key {cache_key}: "
-                f"hit_count={cache_entry.hit_count}, "
-                f"time_saved={cache_entry.original_execution_time:.2f}s"
+                "Cache hit for key %s: hit_count=%s, time_saved=%.2fs",
+                cache_key,
+                cache_entry.hit_count,
+                cache_entry.original_execution_time,
             )
             
             return cache_entry.output_data
@@ -221,8 +222,11 @@ class WorkflowCacheService:
             )
             db.session.add(cache_entry)
             logger.info(
-                f"Created cache entry for key {cache_key}: "
-                f"node_type={node_type}, ttl={ttl_hours}h, size={output_size_bytes} bytes"
+                "Stored cache entry: key=%s, node_type=%s, ttl=%sh, size=%s bytes",
+                cache_key,
+                node_type,
+                ttl_hours,
+                output_size_bytes,
             )
         
         db.session.commit()

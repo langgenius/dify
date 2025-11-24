@@ -115,8 +115,11 @@ class WorkflowPerformanceService:
         db.session.commit()
         
         logger.info(
-            f"Recorded workflow performance metrics for run {workflow_run_id}: "
-            f"{total_execution_time:.2f}s, {node_count} nodes, {cache_hit_rate:.1f}% cache hit rate"
+            "Recorded workflow performance metrics for run %s: %.2fs, %s nodes, %.1f%% cache hit rate",
+            workflow_run_id,
+            total_execution_time,
+            node_count,
+            cache_hit_rate,
         )
         
         return metrics
@@ -500,8 +503,10 @@ class WorkflowPerformanceService:
         db.session.commit()
         
         logger.info(
-            f"Created optimization recommendation for workflow {workflow_id}: "
-            f"{title} (severity: {severity.value})"
+            "Created optimization recommendation for workflow %s: %s (severity: %s)",
+            workflow_id,
+            title,
+            severity.value,
         )
         
         return recommendation
