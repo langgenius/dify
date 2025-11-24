@@ -151,6 +151,7 @@ class EndUserAuthenticationProvider(TypeBase):
     credential_type: Mapped[CredentialType] = mapped_column(
         String(32), nullable=False, default=CredentialType.API_KEY
     )
+    # Unix timestamp in seconds since epoch (1970-01-01 UTC); -1 indicates no expiration
     expires_at: Mapped[int] = mapped_column(sa.BigInteger, nullable=False, default=-1)
 
     @property
