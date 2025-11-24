@@ -352,6 +352,10 @@ class TestSegmentServiceUpdateSegment:
 
             # Assert
             assert result == segment
+            assert segment.content == "Updated content"
+            assert segment.keywords == ["updated"]
+            assert segment.word_count == len("Updated content")
+            assert document.word_count == 100 + (len("Updated content") - 10)
             mock_db_session.add.assert_called()
             mock_db_session.commit.assert_called()
 
