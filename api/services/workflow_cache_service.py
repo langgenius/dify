@@ -12,7 +12,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
-from sqlalchemy import and_, delete, select
+from sqlalchemy import and_, delete, func, select
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db

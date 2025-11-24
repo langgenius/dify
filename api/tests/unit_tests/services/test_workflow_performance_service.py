@@ -198,7 +198,7 @@ class TestWorkflowPerformanceService:
                 node_type="llm",
                 node_title="Slow LLM",
                 execution_count=10,
-                avg_time=25.0,
+                avg_time=35.0,
                 max_time=40.0,
                 std_dev=5.0,
             ),
