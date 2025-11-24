@@ -132,9 +132,9 @@ class EndUserAuthenticationProvider(TypeBase):
     # id of the tenant
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # id of the end user
-    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
+    end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # name of the tool provider
-    provider: Mapped[str] = mapped_column(LongText, nullable=False, index=True)
+    provider: Mapped[str] = mapped_column(LongText, nullable=False)
     # encrypted credentials for the end user
     encrypted_credentials: Mapped[str] = mapped_column(LongText, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(
