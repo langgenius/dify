@@ -494,7 +494,9 @@ class TestSegmentServiceDeleteSegment:
         document = SegmentTestDataFactory.create_document_mock(word_count=100)
         dataset = SegmentTestDataFactory.create_dataset_mock()
 
-        with patch("services.dataset_service.redis_client.get") as mock_redis_get:
+        with patch("services.dataset_service.redis_client.get") as mock_redis_get, patch(
+            "services.dataset_service.delete_segment_from_index_task"
+        ) as mock_task:
             mock_redis_get.return_value = None
 
             # Act
@@ -503,6 +505,7 @@ class TestSegmentServiceDeleteSegment:
             # Assert
             mock_db_session.delete.assert_called_once_with(segment)
             mock_db_session.commit.assert_called_once()
+            mock_task.delay.assert_not_called()
 
     def test_delete_segment_indexing_in_progress(self, mock_db_session):
         """Test deletion fails when segment is currently being deleted."""
