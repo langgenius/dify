@@ -18,7 +18,15 @@ from controllers.console.wraps import (
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.workflow.enums import NodeType
 from extensions.ext_database import db
-from fields.app_fields import app_detail_fields, app_detail_fields_with_site, app_pagination_fields
+from fields.app_fields import (
+    deleted_tool_fields,
+    model_config_fields,
+    model_config_partial_fields,
+    site_fields,
+    tag_fields,
+)
+from fields.workflow_fields import workflow_partial_fields as _workflow_partial_fields_dict
+from libs.helper import AppIconUrlField, TimestampField
 from libs.login import current_account_with_tenant, login_required
 from libs.validators import validate_description_length
 from models import App, Workflow
@@ -28,6 +36,111 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+
+# Register models for flask_restx to avoid dict type issues in Swagger
+# Register base models first
+tag_model = console_ns.model("Tag", tag_fields)
+
+workflow_partial_model = console_ns.model("WorkflowPartial", _workflow_partial_fields_dict)
+
+model_config_model = console_ns.model("ModelConfig", model_config_fields)
+
+model_config_partial_model = console_ns.model("ModelConfigPartial", model_config_partial_fields)
+
+deleted_tool_model = console_ns.model("DeletedTool", deleted_tool_fields)
+
+site_model = console_ns.model("Site", site_fields)
+
+app_partial_model = console_ns.model(
+    "AppPartial",
+    {
+        "id": fields.String,
+        "name": fields.String,
+        "max_active_requests": fields.Raw(),
+        "description": fields.String(attribute="desc_or_prompt"),
+        "mode": fields.String(attribute="mode_compatible_with_agent"),
+        "icon_type": fields.String,
+        "icon": fields.String,
+        "icon_background": fields.String,
+        "icon_url": AppIconUrlField,
+        "model_config": fields.Nested(model_config_partial_model, attribute="app_model_config", allow_null=True),
+        "workflow": fields.Nested(workflow_partial_model, allow_null=True),
+        "use_icon_as_answer_icon": fields.Boolean,
+        "created_by": fields.String,
+        "created_at": TimestampField,
+        "updated_by": fields.String,
+        "updated_at": TimestampField,
+        "tags": fields.List(fields.Nested(tag_model)),
+        "access_mode": fields.String,
+        "create_user_name": fields.String,
+        "author_name": fields.String,
+        "has_draft_trigger": fields.Boolean,
+    },
+)
+
+app_detail_model = console_ns.model(
+    "AppDetail",
+    {
+        "id": fields.String,
+        "name": fields.String,
+        "description": fields.String,
+        "mode": fields.String(attribute="mode_compatible_with_agent"),
+        "icon": fields.String,
+        "icon_background": fields.String,
+        "enable_site": fields.Boolean,
+        "enable_api": fields.Boolean,
+        "model_config": fields.Nested(model_config_model, attribute="app_model_config", allow_null=True),
+        "workflow": fields.Nested(workflow_partial_model, allow_null=True),
+        "tracing": fields.Raw,
+        "use_icon_as_answer_icon": fields.Boolean,
+        "created_by": fields.String,
+        "created_at": TimestampField,
+        "updated_by": fields.String,
+        "updated_at": TimestampField,
+        "access_mode": fields.String,
+        "tags": fields.List(fields.Nested(tag_model)),
+    },
+)
+
+app_detail_with_site_model = console_ns.model(
+    "AppDetailWithSite",
+    {
+        "id": fields.String,
+        "name": fields.String,
+        "description": fields.String,
+        "mode": fields.String(attribute="mode_compatible_with_agent"),
+        "icon_type": fields.String,
+        "icon": fields.String,
+        "icon_background": fields.String,
+        "icon_url": AppIconUrlField,
+        "enable_site": fields.Boolean,
+        "enable_api": fields.Boolean,
+        "model_config": fields.Nested(model_config_model, attribute="app_model_config", allow_null=True),
+        "workflow": fields.Nested(workflow_partial_model, allow_null=True),
+        "api_base_url": fields.String,
+        "use_icon_as_answer_icon": fields.Boolean,
+        "max_active_requests": fields.Integer,
+        "created_by": fields.String,
+        "created_at": TimestampField,
+        "updated_by": fields.String,
+        "updated_at": TimestampField,
+        "deleted_tools": fields.List(fields.Nested(deleted_tool_model)),
+        "access_mode": fields.String,
+        "tags": fields.List(fields.Nested(tag_model)),
+        "site": fields.Nested(site_model),
+    },
+)
+
+app_pagination_model = console_ns.model(
+    "AppPagination",
+    {
+        "page": fields.Integer,
+        "limit": fields.Integer(attribute="per_page"),
+        "total": fields.Integer,
+        "has_more": fields.Boolean(attribute="has_next"),
+        "data": fields.List(fields.Nested(app_partial_model), attribute="items"),
+    },
+)
 
 
 @console_ns.route("/apps")
@@ -50,7 +163,7 @@ class AppListApi(Resource):
         .add_argument("tag_ids", type=str, location="args", help="Comma-separated tag IDs")
         .add_argument("is_created_by_me", type=bool, location="args", help="Filter by creator")
     )
-    @console_ns.response(200, "Success", app_pagination_fields)
+    @console_ns.response(200, "Success", app_pagination_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -137,7 +250,7 @@ class AppListApi(Resource):
         for app in app_pagination.items:
             app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
 
-        return marshal(app_pagination, app_pagination_fields), 200
+        return marshal(app_pagination, app_pagination_model), 200
 
     @console_ns.doc("create_app")
     @console_ns.doc(description="Create a new application")
@@ -154,13 +267,13 @@ class AppListApi(Resource):
             },
         )
     )
-    @console_ns.response(201, "App created successfully", app_detail_fields)
+    @console_ns.response(201, "App created successfully", app_detail_model)
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(app_detail_fields)
+    @marshal_with(app_detail_model)
     @cloud_edition_billing_resource_check("apps")
     @edit_permission_required
     def post(self):
@@ -191,13 +304,13 @@ class AppApi(Resource):
     @console_ns.doc("get_app_detail")
     @console_ns.doc(description="Get application details")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Success", app_detail_fields_with_site)
+    @console_ns.response(200, "Success", app_detail_with_site_model)
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
     @get_app_model
-    @marshal_with(app_detail_fields_with_site)
+    @marshal_with(app_detail_with_site_model)
     def get(self, app_model):
         """Get app detail"""
         app_service = AppService()
@@ -227,7 +340,7 @@ class AppApi(Resource):
             },
         )
     )
-    @console_ns.response(200, "App updated successfully", app_detail_fields_with_site)
+    @console_ns.response(200, "App updated successfully", app_detail_with_site_model)
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -235,7 +348,7 @@ class AppApi(Resource):
     @account_initialization_required
     @get_app_model
     @edit_permission_required
-    @marshal_with(app_detail_fields_with_site)
+    @marshal_with(app_detail_with_site_model)
     def put(self, app_model):
         """Update app"""
         parser = (
@@ -300,14 +413,14 @@ class AppCopyApi(Resource):
             },
         )
     )
-    @console_ns.response(201, "App copied successfully", app_detail_fields_with_site)
+    @console_ns.response(201, "App copied successfully", app_detail_with_site_model)
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model
     @edit_permission_required
-    @marshal_with(app_detail_fields_with_site)
+    @marshal_with(app_detail_with_site_model)
     def post(self, app_model):
         """Copy app"""
         # The role of the current user in the ta table must be admin, owner, or editor
@@ -396,7 +509,7 @@ class AppNameApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
-    @marshal_with(app_detail_fields)
+    @marshal_with(app_detail_model)
     @edit_permission_required
     def post(self, app_model):
         args = parser.parse_args()
@@ -428,7 +541,7 @@ class AppIconApi(Resource):
     @login_required
     @account_initialization_required
     @get_app_model
-    @marshal_with(app_detail_fields)
+    @marshal_with(app_detail_model)
     @edit_permission_required
     def post(self, app_model):
         parser = (
@@ -454,13 +567,13 @@ class AppSiteStatus(Resource):
             "AppSiteStatusRequest", {"enable_site": fields.Boolean(required=True, description="Enable or disable site")}
         )
     )
-    @console_ns.response(200, "Site status updated successfully", app_detail_fields)
+    @console_ns.response(200, "Site status updated successfully", app_detail_model)
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model
-    @marshal_with(app_detail_fields)
+    @marshal_with(app_detail_model)
     @edit_permission_required
     def post(self, app_model):
         parser = reqparse.RequestParser().add_argument("enable_site", type=bool, required=True, location="json")
@@ -482,14 +595,14 @@ class AppApiStatus(Resource):
             "AppApiStatusRequest", {"enable_api": fields.Boolean(required=True, description="Enable or disable API")}
         )
     )
-    @console_ns.response(200, "API status updated successfully", app_detail_fields)
+    @console_ns.response(200, "API status updated successfully", app_detail_model)
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
     @get_app_model
-    @marshal_with(app_detail_fields)
+    @marshal_with(app_detail_model)
     def post(self, app_model):
         parser = reqparse.RequestParser().add_argument("enable_api", type=bool, required=True, location="json")
         args = parser.parse_args()
