@@ -7,7 +7,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
@@ -119,9 +119,9 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
 
 @console_ns.route("/datasets")
 class DatasetListApi(Resource):
-    @api.doc("get_datasets")
-    @api.doc(description="Get list of datasets")
-    @api.doc(
+    @console_ns.doc("get_datasets")
+    @console_ns.doc(description="Get list of datasets")
+    @console_ns.doc(
         params={
             "page": "Page number (default: 1)",
             "limit": "Number of items per page (default: 20)",
@@ -131,7 +131,7 @@ class DatasetListApi(Resource):
             "include_all": "Include all datasets (default: false)",
         }
     )
-    @api.response(200, "Datasets retrieved successfully")
+    @console_ns.response(200, "Datasets retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -184,10 +184,10 @@ class DatasetListApi(Resource):
         response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
         return response, 200
 
-    @api.doc("create_dataset")
-    @api.doc(description="Create a new dataset")
-    @api.expect(
-        api.model(
+    @console_ns.doc("create_dataset")
+    @console_ns.doc(description="Create a new dataset")
+    @console_ns.expect(
+        console_ns.model(
             "CreateDatasetRequest",
             {
                 "name": fields.String(required=True, description="Dataset name (1-40 characters)"),
@@ -200,8 +200,8 @@ class DatasetListApi(Resource):
             },
         )
     )
-    @api.response(201, "Dataset created successfully")
-    @api.response(400, "Invalid request parameters")
+    @console_ns.response(201, "Dataset created successfully")
+    @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -279,12 +279,12 @@ class DatasetListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>")
 class DatasetApi(Resource):
-    @api.doc("get_dataset")
-    @api.doc(description="Get dataset details")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Dataset retrieved successfully", dataset_detail_fields)
-    @api.response(404, "Dataset not found")
-    @api.response(403, "Permission denied")
+    @console_ns.doc("get_dataset")
+    @console_ns.doc(description="Get dataset details")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Dataset retrieved successfully", dataset_detail_fields)
+    @console_ns.response(404, "Dataset not found")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -328,10 +328,10 @@ class DatasetApi(Resource):
 
         return data, 200
 
-    @api.doc("update_dataset")
-    @api.doc(description="Update dataset details")
-    @api.expect(
-        api.model(
+    @console_ns.doc("update_dataset")
+    @console_ns.doc(description="Update dataset details")
+    @console_ns.expect(
+        console_ns.model(
             "UpdateDatasetRequest",
             {
                 "name": fields.String(description="Dataset name"),
@@ -342,9 +342,9 @@ class DatasetApi(Resource):
             },
         )
     )
-    @api.response(200, "Dataset updated successfully", dataset_detail_fields)
-    @api.response(404, "Dataset not found")
-    @api.response(403, "Permission denied")
+    @console_ns.response(200, "Dataset updated successfully", dataset_detail_fields)
+    @console_ns.response(404, "Dataset not found")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -488,10 +488,10 @@ class DatasetApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/use-check")
 class DatasetUseCheckApi(Resource):
-    @api.doc("check_dataset_use")
-    @api.doc(description="Check if dataset is in use")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Dataset use status retrieved successfully")
+    @console_ns.doc("check_dataset_use")
+    @console_ns.doc(description="Check if dataset is in use")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Dataset use status retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -504,10 +504,10 @@ class DatasetUseCheckApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/queries")
 class DatasetQueryApi(Resource):
-    @api.doc("get_dataset_queries")
-    @api.doc(description="Get dataset query history")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Query history retrieved successfully", dataset_query_detail_fields)
+    @console_ns.doc("get_dataset_queries")
+    @console_ns.doc(description="Get dataset query history")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Query history retrieved successfully", dataset_query_detail_fields)
     @setup_required
     @login_required
     @account_initialization_required
@@ -540,9 +540,9 @@ class DatasetQueryApi(Resource):
 
 @console_ns.route("/datasets/indexing-estimate")
 class DatasetIndexingEstimateApi(Resource):
-    @api.doc("estimate_dataset_indexing")
-    @api.doc(description="Estimate dataset indexing cost")
-    @api.response(200, "Indexing estimate calculated successfully")
+    @console_ns.doc("estimate_dataset_indexing")
+    @console_ns.doc(description="Estimate dataset indexing cost")
+    @console_ns.response(200, "Indexing estimate calculated successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -647,10 +647,10 @@ class DatasetIndexingEstimateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/related-apps")
 class DatasetRelatedAppListApi(Resource):
-    @api.doc("get_dataset_related_apps")
-    @api.doc(description="Get applications related to dataset")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Related apps retrieved successfully", related_app_list)
+    @console_ns.doc("get_dataset_related_apps")
+    @console_ns.doc(description="Get applications related to dataset")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Related apps retrieved successfully", related_app_list)
     @setup_required
     @login_required
     @account_initialization_required
@@ -680,10 +680,10 @@ class DatasetRelatedAppListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/indexing-status")
 class DatasetIndexingStatusApi(Resource):
-    @api.doc("get_dataset_indexing_status")
-    @api.doc(description="Get dataset indexing status")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Indexing status retrieved successfully")
+    @console_ns.doc("get_dataset_indexing_status")
+    @console_ns.doc(description="Get dataset indexing status")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Indexing status retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -735,9 +735,9 @@ class DatasetApiKeyApi(Resource):
     token_prefix = "dataset-"
     resource_type = "dataset"
 
-    @api.doc("get_dataset_api_keys")
-    @api.doc(description="Get dataset API keys")
-    @api.response(200, "API keys retrieved successfully", api_key_list)
+    @console_ns.doc("get_dataset_api_keys")
+    @console_ns.doc(description="Get dataset API keys")
+    @console_ns.response(200, "API keys retrieved successfully", api_key_list)
     @setup_required
     @login_required
     @account_initialization_required
@@ -764,7 +764,7 @@ class DatasetApiKeyApi(Resource):
         )
 
         if current_key_count >= self.max_keys:
-            api.abort(
+            console_ns.abort(
                 400,
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
                 code="max_keys_exceeded",
@@ -784,10 +784,10 @@ class DatasetApiKeyApi(Resource):
 class DatasetApiDeleteApi(Resource):
     resource_type = "dataset"
 
-    @api.doc("delete_dataset_api_key")
-    @api.doc(description="Delete dataset API key")
-    @api.doc(params={"api_key_id": "API key ID"})
-    @api.response(204, "API key deleted successfully")
+    @console_ns.doc("delete_dataset_api_key")
+    @console_ns.doc(description="Delete dataset API key")
+    @console_ns.doc(params={"api_key_id": "API key ID"})
+    @console_ns.response(204, "API key deleted successfully")
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -806,7 +806,7 @@ class DatasetApiDeleteApi(Resource):
         )
 
         if key is None:
-            api.abort(404, message="API key not found")
+            console_ns.abort(404, message="API key not found")
 
         db.session.query(ApiToken).where(ApiToken.id == api_key_id).delete()
         db.session.commit()
@@ -829,9 +829,9 @@ class DatasetEnableApiApi(Resource):
 
 @console_ns.route("/datasets/api-base-info")
 class DatasetApiBaseUrlApi(Resource):
-    @api.doc("get_dataset_api_base_info")
-    @api.doc(description="Get dataset API base information")
-    @api.response(200, "API base info retrieved successfully")
+    @console_ns.doc("get_dataset_api_base_info")
+    @console_ns.doc(description="Get dataset API base information")
+    @console_ns.response(200, "API base info retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -841,9 +841,9 @@ class DatasetApiBaseUrlApi(Resource):
 
 @console_ns.route("/datasets/retrieval-setting")
 class DatasetRetrievalSettingApi(Resource):
-    @api.doc("get_dataset_retrieval_setting")
-    @api.doc(description="Get dataset retrieval settings")
-    @api.response(200, "Retrieval settings retrieved successfully")
+    @console_ns.doc("get_dataset_retrieval_setting")
+    @console_ns.doc(description="Get dataset retrieval settings")
+    @console_ns.response(200, "Retrieval settings retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -854,10 +854,10 @@ class DatasetRetrievalSettingApi(Resource):
 
 @console_ns.route("/datasets/retrieval-setting/<string:vector_type>")
 class DatasetRetrievalSettingMockApi(Resource):
-    @api.doc("get_dataset_retrieval_setting_mock")
-    @api.doc(description="Get mock dataset retrieval settings by vector type")
-    @api.doc(params={"vector_type": "Vector store type"})
-    @api.response(200, "Mock retrieval settings retrieved successfully")
+    @console_ns.doc("get_dataset_retrieval_setting_mock")
+    @console_ns.doc(description="Get mock dataset retrieval settings by vector type")
+    @console_ns.doc(params={"vector_type": "Vector store type"})
+    @console_ns.response(200, "Mock retrieval settings retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -867,11 +867,11 @@ class DatasetRetrievalSettingMockApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/error-docs")
 class DatasetErrorDocs(Resource):
-    @api.doc("get_dataset_error_docs")
-    @api.doc(description="Get dataset error documents")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Error documents retrieved successfully")
-    @api.response(404, "Dataset not found")
+    @console_ns.doc("get_dataset_error_docs")
+    @console_ns.doc(description="Get dataset error documents")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Error documents retrieved successfully")
+    @console_ns.response(404, "Dataset not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -887,12 +887,12 @@ class DatasetErrorDocs(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/permission-part-users")
 class DatasetPermissionUserListApi(Resource):
-    @api.doc("get_dataset_permission_users")
-    @api.doc(description="Get dataset permission user list")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Permission users retrieved successfully")
-    @api.response(404, "Dataset not found")
-    @api.response(403, "Permission denied")
+    @console_ns.doc("get_dataset_permission_users")
+    @console_ns.doc(description="Get dataset permission user list")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Permission users retrieved successfully")
+    @console_ns.response(404, "Dataset not found")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -916,11 +916,11 @@ class DatasetPermissionUserListApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/auto-disable-logs")
 class DatasetAutoDisableLogApi(Resource):
-    @api.doc("get_dataset_auto_disable_logs")
-    @api.doc(description="Get dataset auto disable logs")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.response(200, "Auto disable logs retrieved successfully")
-    @api.response(404, "Dataset not found")
+    @console_ns.doc("get_dataset_auto_disable_logs")
+    @console_ns.doc(description="Get dataset auto disable logs")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.response(200, "Auto disable logs retrieved successfully")
+    @console_ns.response(404, "Dataset not found")
     @setup_required
     @login_required
     @account_initialization_required

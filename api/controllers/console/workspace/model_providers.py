@@ -3,7 +3,7 @@ import io
 from flask import send_file
 from flask_restx import Resource, reqparse
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -25,7 +25,7 @@ parser_model = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/model-providers")
 class ModelProviderListApi(Resource):
-    @api.expect(parser_model)
+    @console_ns.expect(parser_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -64,7 +64,7 @@ parser_delete_cred = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
 class ModelProviderCredentialApi(Resource):
-    @api.expect(parser_cred)
+    @console_ns.expect(parser_cred)
     @setup_required
     @login_required
     @account_initialization_required
@@ -81,7 +81,7 @@ class ModelProviderCredentialApi(Resource):
 
         return {"credentials": credentials}
 
-    @api.expect(parser_post_cred)
+    @console_ns.expect(parser_post_cred)
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -104,7 +104,7 @@ class ModelProviderCredentialApi(Resource):
 
         return {"result": "success"}, 201
 
-    @api.expect(parser_put_cred)
+    @console_ns.expect(parser_put_cred)
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -129,7 +129,7 @@ class ModelProviderCredentialApi(Resource):
 
         return {"result": "success"}
 
-    @api.expect(parser_delete_cred)
+    @console_ns.expect(parser_delete_cred)
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -153,7 +153,7 @@ parser_switch = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
 class ModelProviderCredentialSwitchApi(Resource):
-    @api.expect(parser_switch)
+    @console_ns.expect(parser_switch)
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -178,7 +178,7 @@ parser_validate = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
 class ModelProviderValidateApi(Resource):
-    @api.expect(parser_validate)
+    @console_ns.expect(parser_validate)
     @setup_required
     @login_required
     @account_initialization_required
@@ -240,7 +240,7 @@ parser_preferred = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
 class PreferredProviderTypeUpdateApi(Resource):
-    @api.expect(parser_preferred)
+    @console_ns.expect(parser_preferred)
     @setup_required
     @login_required
     @is_admin_or_owner_required
