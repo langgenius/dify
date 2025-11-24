@@ -116,7 +116,8 @@ class WorkflowTool(Tool):
 
         # traverse `outputs` field and create variable messages
         for key, value in outputs.items():
-            yield self.create_variable_message(variable_name=key, variable_value=value)
+            if key not in {"text", "json", "files"}:
+                yield self.create_variable_message(variable_name=key, variable_value=value)
 
         self._latest_usage = self._derive_usage_from_result(data)
 

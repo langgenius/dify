@@ -117,7 +117,7 @@ const translation = {
       title: '工具出参',
       name: '名称',
       reserved: '预留',
-      reservedParameterDuplicateTip: '自定义输出变量不能与预留属性重名',
+      reservedParameterDuplicateTip: 'text、json、files 是预留变量，这些名称的变量不能出现在 output_schema 中。',
       description: '描述',
     },
     customDisclaimer: '自定义免责声明',

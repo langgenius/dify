@@ -117,7 +117,7 @@ const translation = {
       title: 'Tool Output',
       name: 'Name',
       reserved: 'Reserved',
-      reservedParameterDuplicateTip: 'Custom output variables name cannot be the same as reserved parameters',
+      reservedParameterDuplicateTip: 'text, json, and files are reserved variables. Variables with these names cannot appear in the output schema.',
       description: 'Description',
     },
     customDisclaimer: 'Custom disclaimer',

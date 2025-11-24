@@ -17,6 +17,7 @@ import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import Tooltip from '@/app/components/base/tooltip'
 import { VarType } from '@/app/components/workflow/types'
+import { RiErrorWarningLine } from '@remixicon/react'
 
 type Props = {
   isAdd?: boolean
@@ -93,7 +94,7 @@ const WorkflowToolAsModal: FC<Props> = ({
   }
 
   const isOutputParameterReserved = (name: string) => {
-    return ['text', 'files', 'json'].includes(name)
+    return reservedOutputParameters.find(p => p.name === name)
   }
 
   const onConfirm = () => {
@@ -106,9 +107,6 @@ const WorkflowToolAsModal: FC<Props> = ({
 
     if (!isNameValid(name))
       errorMessage = t('tools.createTool.nameForToolCall') + t('tools.createTool.nameForToolCallTip')
-
-    if (outputParameters.some(item => isOutputParameterReserved(item.name)))
-      errorMessage = t('tools.createTool.toolOutput.reservedParameterDuplicateTip')
 
     if (errorMessage) {
       Toast.notify({
@@ -271,9 +269,22 @@ const WorkflowToolAsModal: FC<Props> = ({
                         <tr key={index} className='border-b border-divider-regular last:border-0'>
                           <td className="max-w-[156px] p-2 pl-3">
                             <div className='text-[13px] leading-[18px]'>
-                              <div title={item.name} className='flex'>
+                              <div title={item.name} className='flex items-center'>
                                 <span className='truncate font-medium text-text-primary'>{item.name}</span>
                                 <span className='shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]'>{item.reserved ? t('tools.createTool.toolOutput.reserved') : ''}</span>
+                                {
+                                  !item.reserved && isOutputParameterReserved(item.name) ? (
+                                    <Tooltip
+                                      popupContent={
+                                        <div className='w-[180px]'>
+                                          {t('tools.createTool.toolOutput.reservedParameterDuplicateTip')}
+                                        </div>
+                                      }
+                                    >
+                                      <RiErrorWarningLine className='h-3 w-3 text-text-warning-secondary' />
+                                    </Tooltip>
+                                  ) : null
+                                }
                               </div>
                               <div className='text-text-tertiary'>{item.type}</div>
                             </div>

@@ -163,12 +163,16 @@ class WorkflowToolProviderController(ToolProviderController):
 
         # get output schema from workflow
         outputs = WorkflowToolConfigurationUtils.get_workflow_graph_output(graph)
+
+        reserved_keys = {"json", "text", "files"}
+
         properties = {}
         for output in outputs:
-            properties[output.variable] = {
-                "type": output.value_type,
-                "description": "",
-            }
+            if output.variable not in reserved_keys:
+                properties[output.variable] = {
+                    "type": output.value_type,
+                    "description": "",
+                }
         output_schema = {"type": "object", "properties": properties}
 
         return WorkflowTool(
