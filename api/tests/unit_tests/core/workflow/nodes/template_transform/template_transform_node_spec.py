@@ -30,6 +30,21 @@ class TestTemplateTransformNode:
         return MagicMock(spec=Graph)
 
     @pytest.fixture
+    def graph_init_params(self):
+        """Create a mock GraphInitParams."""
+        return GraphInitParams(
+            tenant_id="test_tenant",
+            app_id="test_app",
+            workflow_type=WorkflowType.WORKFLOW,
+            workflow_id="test_workflow",
+            graph_config={},
+            user_id="test_user",
+            user_from="test",
+            invoke_from="test",
+            call_depth=0,
+        )
+
+    @pytest.fixture
     def basic_node_data(self):
         """Create basic node data for testing."""
         return {
@@ -42,22 +57,12 @@ class TestTemplateTransformNode:
             "template": "Hello {{ name }}, you are {{ age }} years old!",
         }
 
-    def test_node_initialization(self, basic_node_data, mock_graph, mock_graph_runtime_state):
+    def test_node_initialization(self, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test that TemplateTransformNode initializes correctly."""
         node = TemplateTransformNode(
             id="test_node",
             config=basic_node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -67,51 +72,31 @@ class TestTemplateTransformNode:
         assert len(node._node_data.variables) == 2
         assert node._node_data.template == "Hello {{ name }}, you are {{ age }} years old!"
 
-    def test_get_title(self, basic_node_data, mock_graph, mock_graph_runtime_state):
+    def test_get_title(self, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _get_title method."""
         node = TemplateTransformNode(
             id="test_node",
             config=basic_node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
 
         assert node._get_title() == "Template Transform"
 
-    def test_get_description(self, basic_node_data, mock_graph, mock_graph_runtime_state):
+    def test_get_description(self, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _get_description method."""
         node = TemplateTransformNode(
             id="test_node",
             config=basic_node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
 
         assert node._get_description() == "Transform data using template"
 
-    def test_get_error_strategy(self, mock_graph, mock_graph_runtime_state):
+    def test_get_error_strategy(self, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _get_error_strategy method."""
         node_data = {
             "title": "Test",
@@ -123,17 +108,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -155,7 +130,7 @@ class TestTemplateTransformNode:
         assert TemplateTransformNode.version() == "1"
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_simple_template(self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state):
+    def test_run_simple_template(self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with simple template transformation."""
         # Setup mock variable pool
         mock_name_value = MagicMock()
@@ -163,14 +138,11 @@ class TestTemplateTransformNode:
         mock_age_value = MagicMock()
         mock_age_value.to_object.return_value = 30
 
-        def get_variable(selector):
-            if selector == ["sys", "user_name"]:
-                return mock_name_value
-            elif selector == ["sys", "user_age"]:
-                return mock_age_value
-            return None
-
-        mock_graph_runtime_state.variable_pool.get.side_effect = get_variable
+        variable_map = {
+            tuple(["sys", "user_name"]): mock_name_value,
+            tuple(["sys", "user_age"]): mock_age_value,
+        }
+        mock_graph_runtime_state.variable_pool.get.side_effect = lambda selector: variable_map.get(tuple(selector))
 
         # Setup mock executor
         mock_execute.return_value = {"result": "Hello Alice, you are 30 years old!"}
@@ -178,17 +150,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=basic_node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -201,7 +163,7 @@ class TestTemplateTransformNode:
         assert result.inputs["age"] == 30
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_with_none_values(self, mock_execute, mock_graph, mock_graph_runtime_state):
+    def test_run_with_none_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with None variable values."""
         node_data = {
             "title": "Test",
@@ -215,17 +177,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -236,7 +188,7 @@ class TestTemplateTransformNode:
         assert result.inputs["value"] is None
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_with_code_execution_error(self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state):
+    def test_run_with_code_execution_error(self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run when code execution fails."""
         mock_graph_runtime_state.variable_pool.get.return_value = MagicMock()
         mock_execute.side_effect = CodeExecutionError("Template syntax error")
@@ -244,17 +196,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=basic_node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -266,7 +208,7 @@ class TestTemplateTransformNode:
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
     @patch("core.workflow.nodes.template_transform.template_transform_node.MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH", 10)
-    def test_run_output_length_exceeds_limit(self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state):
+    def test_run_output_length_exceeds_limit(self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run when output exceeds maximum length."""
         mock_graph_runtime_state.variable_pool.get.return_value = MagicMock()
         mock_execute.return_value = {"result": "This is a very long output that exceeds the limit"}
@@ -274,17 +216,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=basic_node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -295,7 +227,7 @@ class TestTemplateTransformNode:
         assert "Output length exceeds" in result.error
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_with_complex_jinja2_template(self, mock_execute, mock_graph, mock_graph_runtime_state):
+    def test_run_with_complex_jinja2_template(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with complex Jinja2 template including loops and conditions."""
         node_data = {
             "title": "Complex Template",
@@ -312,8 +244,6 @@ class TestTemplateTransformNode:
         mock_show_total.to_object.return_value = True
 
         def get_variable(selector):
-            if selector == ["sys", "items"]:
-                return mock_items
             elif selector == ["sys", "show_total"]:
                 return mock_show_total
             return None
@@ -324,17 +254,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -365,7 +285,7 @@ class TestTemplateTransformNode:
         assert mapping["node_123.var2"] == ["sys", "input2"]
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_with_empty_variables(self, mock_execute, mock_graph, mock_graph_runtime_state):
+    def test_run_with_empty_variables(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with no variables (static template)."""
         node_data = {
             "title": "Static Template",
@@ -378,17 +298,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -400,7 +310,7 @@ class TestTemplateTransformNode:
         assert result.inputs == {}
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_with_numeric_values(self, mock_execute, mock_graph, mock_graph_runtime_state):
+    def test_run_with_numeric_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with numeric variable values."""
         node_data = {
             "title": "Numeric Template",
@@ -417,8 +327,6 @@ class TestTemplateTransformNode:
         mock_quantity.to_object.return_value = 3
 
         def get_variable(selector):
-            if selector == ["sys", "price"]:
-                return mock_price
             elif selector == ["sys", "quantity"]:
                 return mock_quantity
             return None
@@ -429,17 +337,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -450,7 +348,7 @@ class TestTemplateTransformNode:
         assert result.outputs["output"] == "Total: $31.5"
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_with_dict_values(self, mock_execute, mock_graph, mock_graph_runtime_state):
+    def test_run_with_dict_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with dictionary variable values."""
         node_data = {
             "title": "Dict Template",
@@ -467,17 +365,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
@@ -489,7 +377,7 @@ class TestTemplateTransformNode:
         assert "john@example.com" in result.outputs["output"]
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_with_list_values(self, mock_execute, mock_graph, mock_graph_runtime_state):
+    def test_run_with_list_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with list variable values."""
         node_data = {
             "title": "List Template",
@@ -506,17 +394,7 @@ class TestTemplateTransformNode:
         node = TemplateTransformNode(
             id="test_node",
             config=node_data,
-            graph_init_params=GraphInitParams(
-                tenant_id="test_tenant",
-                app_id="test_app",
-                workflow_type=WorkflowType.WORKFLOW,
-                workflow_id="test_workflow",
-                graph_config={},
-                user_id="test_user",
-                user_from="test",
-                invoke_from="test",
-                call_depth=0,
-            ),
+            graph_init_params=graph_init_params,
             graph=mock_graph,
             graph_runtime_state=mock_graph_runtime_state,
         )
