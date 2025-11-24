@@ -11,7 +11,7 @@ from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
 
-from . import api, console_ns
+from . import console_ns
 from .wraps import account_initialization_required, edit_permission_required, setup_required
 
 api_key_fields = {
@@ -164,10 +164,10 @@ class AppApiKeyListResource(BaseApiKeyListResource):
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class AppApiKeyResource(BaseApiKeyResource):
-    @api.doc("delete_app_api_key")
-    @api.doc(description="Delete an API key for an app")
-    @api.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
-    @api.response(204, "API key deleted successfully")
+    @console_ns.doc("delete_app_api_key")
+    @console_ns.doc(description="Delete an API key for an app")
+    @console_ns.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
+    @console_ns.response(204, "API key deleted successfully")
     def delete(self, resource_id, api_key_id):
         """Delete an API key for an app"""
         return super().delete(resource_id, api_key_id)
@@ -204,10 +204,10 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class DatasetApiKeyResource(BaseApiKeyResource):
-    @api.doc("delete_dataset_api_key")
-    @api.doc(description="Delete an API key for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
-    @api.response(204, "API key deleted successfully")
+    @console_ns.doc("delete_dataset_api_key")
+    @console_ns.doc(description="Delete an API key for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
+    @console_ns.response(204, "API key deleted successfully")
     def delete(self, resource_id, api_key_id):
         """Delete an API key for a dataset"""
         return super().delete(resource_id, api_key_id)

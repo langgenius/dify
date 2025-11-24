@@ -6,8 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import TypeBase
-
+from .base import TypeBase
 from .types import AdjustedJSON, LongText, StringUUID, adjusted_json_index
 
 

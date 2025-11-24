@@ -7,7 +7,7 @@ from flask import Response
 from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
 from sqlalchemy.orm import Session
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
 )
@@ -233,9 +233,9 @@ class WorkflowVariableCollectionApi(Resource):
 
         return workflow_vars
 
-    @api.doc("delete_workflow_variables")
-    @api.doc(description="Delete all draft workflow variables")
-    @api.response(204, "Workflow variables deleted successfully")
+    @console_ns.doc("delete_workflow_variables")
+    @console_ns.doc(description="Delete all draft workflow variables")
+    @console_ns.response(204, "Workflow variables deleted successfully")
     @_api_prerequisite
     def delete(self, app_model: App):
         draft_var_srv = WorkflowDraftVariableService(
@@ -282,9 +282,9 @@ class NodeVariableCollectionApi(Resource):
 
         return node_vars
 
-    @api.doc("delete_node_variables")
-    @api.doc(description="Delete all variables for a specific node")
-    @api.response(204, "Node variables deleted successfully")
+    @console_ns.doc("delete_node_variables")
+    @console_ns.doc(description="Delete all variables for a specific node")
+    @console_ns.response(204, "Node variables deleted successfully")
     @_api_prerequisite
     def delete(self, app_model: App, node_id: str):
         validate_node_id(node_id)
@@ -317,10 +317,10 @@ class VariableApi(Resource):
             raise NotFoundError(description=f"variable not found, id={variable_id}")
         return variable
 
-    @api.doc("update_variable")
-    @api.doc(description="Update a workflow variable")
-    @api.expect(
-        api.model(
+    @console_ns.doc("update_variable")
+    @console_ns.doc(description="Update a workflow variable")
+    @console_ns.expect(
+        console_ns.model(
             "UpdateVariableRequest",
             {
                 "name": fields.String(description="Variable name"),
@@ -393,10 +393,10 @@ class VariableApi(Resource):
         db.session.commit()
         return variable
 
-    @api.doc("delete_variable")
-    @api.doc(description="Delete a workflow variable")
-    @api.response(204, "Variable deleted successfully")
-    @api.response(404, "Variable not found")
+    @console_ns.doc("delete_variable")
+    @console_ns.doc(description="Delete a workflow variable")
+    @console_ns.response(204, "Variable deleted successfully")
+    @console_ns.response(404, "Variable not found")
     @_api_prerequisite
     def delete(self, app_model: App, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
@@ -496,11 +496,11 @@ class SystemVariableCollectionApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/environment-variables")
 class EnvironmentVariableCollectionApi(Resource):
-    @api.doc("get_environment_variables")
-    @api.doc(description="Get environment variables for workflow")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(200, "Environment variables retrieved successfully")
-    @api.response(404, "Draft workflow not found")
+    @console_ns.doc("get_environment_variables")
+    @console_ns.doc(description="Get environment variables for workflow")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(200, "Environment variables retrieved successfully")
+    @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
     def get(self, app_model: App):
         """

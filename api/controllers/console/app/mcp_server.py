@@ -4,7 +4,7 @@ from enum import StrEnum
 from flask_restx import Resource, fields, marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from extensions.ext_database import db
@@ -36,11 +36,11 @@ class AppMCPServerController(Resource):
         server = db.session.query(AppMCPServer).where(AppMCPServer.app_id == app_model.id).first()
         return server
 
-    @api.doc("create_app_mcp_server")
-    @api.doc(description="Create MCP server configuration for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("create_app_mcp_server")
+    @console_ns.doc(description="Create MCP server configuration for an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.model(
             "MCPServerCreateRequest",
             {
                 "description": fields.String(description="Server description"),
@@ -82,11 +82,11 @@ class AppMCPServerController(Resource):
         db.session.commit()
         return server
 
-    @api.doc("update_app_mcp_server")
-    @api.doc(description="Update MCP server configuration for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("update_app_mcp_server")
+    @console_ns.doc(description="Update MCP server configuration for an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.model(
             "MCPServerUpdateRequest",
             {
                 "id": fields.String(required=True, description="Server ID"),

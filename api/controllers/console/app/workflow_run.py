@@ -3,7 +3,7 @@ from typing import cast
 from flask_restx import Resource, fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.end_user_fields import simple_end_user_fields
@@ -193,11 +193,13 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
 class AdvancedChatAppWorkflowRunCountApi(Resource):
-    @api.doc("get_advanced_chat_workflow_runs_count")
-    @api.doc(description="Get advanced chat workflow runs count statistics")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.doc(params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"})
-    @api.doc(
+    @console_ns.doc("get_advanced_chat_workflow_runs_count")
+    @console_ns.doc(description="Get advanced chat workflow runs count statistics")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(
+        params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"}
+    )
+    @console_ns.doc(
         params={
             "time_range": (
                 "Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), "
@@ -273,11 +275,13 @@ class WorkflowRunListApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-runs/count")
 class WorkflowRunCountApi(Resource):
-    @api.doc("get_workflow_runs_count")
-    @api.doc(description="Get workflow runs count statistics")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.doc(params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"})
-    @api.doc(
+    @console_ns.doc("get_workflow_runs_count")
+    @console_ns.doc(description="Get workflow runs count statistics")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(
+        params={"status": "Filter by status (optional): running, succeeded, failed, stopped, partial-succeeded"}
+    )
+    @console_ns.doc(
         params={
             "time_range": (
                 "Filter by time range (optional): e.g., 7d (7 days), 4h (4 hours), "

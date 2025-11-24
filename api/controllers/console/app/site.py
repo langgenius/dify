@@ -2,7 +2,7 @@ from flask_restx import Resource, fields, marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
@@ -51,11 +51,11 @@ def parse_app_site_args():
 
 @console_ns.route("/apps/<uuid:app_id>/site")
 class AppSite(Resource):
-    @api.doc("update_app_site")
-    @api.doc(description="Update application site configuration")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("update_app_site")
+    @console_ns.doc(description="Update application site configuration")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.model(
             "AppSiteRequest",
             {
                 "title": fields.String(description="Site title"),

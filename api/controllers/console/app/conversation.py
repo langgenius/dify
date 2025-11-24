@@ -6,7 +6,7 @@ from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -280,11 +280,11 @@ conversation_detail_model = api.model(
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations")
 class CompletionConversationApi(Resource):
-    @api.doc("list_completion_conversations")
-    @api.doc(description="Get completion conversations with pagination and filtering")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
+    @console_ns.doc("list_completion_conversations")
+    @console_ns.doc(description="Get completion conversations with pagination and filtering")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.parser()
         .add_argument("keyword", type=str, location="args", help="Search keyword")
         .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
         .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
@@ -391,12 +391,12 @@ class CompletionConversationDetailApi(Resource):
 
         return _get_conversation(app_model, conversation_id)
 
-    @api.doc("delete_completion_conversation")
-    @api.doc(description="Delete a completion conversation")
-    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @api.response(204, "Conversation deleted successfully")
-    @api.response(403, "Insufficient permissions")
-    @api.response(404, "Conversation not found")
+    @console_ns.doc("delete_completion_conversation")
+    @console_ns.doc(description="Delete a completion conversation")
+    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @console_ns.response(204, "Conversation deleted successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -416,11 +416,11 @@ class CompletionConversationDetailApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations")
 class ChatConversationApi(Resource):
-    @api.doc("list_chat_conversations")
-    @api.doc(description="Get chat conversations with pagination, filtering and summary")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser()
+    @console_ns.doc("list_chat_conversations")
+    @console_ns.doc(description="Get chat conversations with pagination, filtering and summary")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.parser()
         .add_argument("keyword", type=str, location="args", help="Search keyword")
         .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
         .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
@@ -591,12 +591,12 @@ class ChatConversationDetailApi(Resource):
 
         return _get_conversation(app_model, conversation_id)
 
-    @api.doc("delete_chat_conversation")
-    @api.doc(description="Delete a chat conversation")
-    @api.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
-    @api.response(204, "Conversation deleted successfully")
-    @api.response(403, "Insufficient permissions")
-    @api.response(404, "Conversation not found")
+    @console_ns.doc("delete_chat_conversation")
+    @console_ns.doc(description="Delete a chat conversation")
+    @console_ns.doc(params={"app_id": "Application ID", "conversation_id": "Conversation ID"})
+    @console_ns.response(204, "Conversation deleted successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @console_ns.response(404, "Conversation not found")
     @setup_required
     @login_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])

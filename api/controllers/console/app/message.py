@@ -5,7 +5,7 @@ from flask_restx.inputs import int_range
 from sqlalchemy import exists, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
     ProviderModelCurrentlyNotSupportError,
@@ -243,11 +243,11 @@ class ChatMessageListApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/feedbacks")
 class MessageFeedbackApi(Resource):
-    @api.doc("create_message_feedback")
-    @api.doc(description="Create or update message feedback (like/dislike)")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("create_message_feedback")
+    @console_ns.doc(description="Create or update message feedback (like/dislike)")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.model(
             "MessageFeedbackRequest",
             {
                 "message_id": fields.String(required=True, description="Message ID"),
@@ -255,9 +255,9 @@ class MessageFeedbackApi(Resource):
             },
         )
     )
-    @api.response(200, "Feedback updated successfully")
-    @api.response(404, "Message not found")
-    @api.response(403, "Insufficient permissions")
+    @console_ns.response(200, "Feedback updated successfully")
+    @console_ns.response(404, "Message not found")
+    @console_ns.response(403, "Insufficient permissions")
     @get_app_model
     @setup_required
     @login_required
@@ -305,13 +305,13 @@ class MessageFeedbackApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/count")
 class MessageAnnotationCountApi(Resource):
-    @api.doc("get_annotation_count")
-    @api.doc(description="Get count of message annotations for the app")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.response(
+    @console_ns.doc("get_annotation_count")
+    @console_ns.doc(description="Get count of message annotations for the app")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.response(
         200,
         "Annotation count retrieved successfully",
-        api.model("AnnotationCountResponse", {"count": fields.Integer(description="Number of annotations")}),
+        console_ns.model("AnnotationCountResponse", {"count": fields.Integer(description="Number of annotations")}),
     )
     @get_app_model
     @setup_required
@@ -325,15 +325,17 @@ class MessageAnnotationCountApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions")
 class MessageSuggestedQuestionApi(Resource):
-    @api.doc("get_message_suggested_questions")
-    @api.doc(description="Get suggested questions for a message")
-    @api.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
-    @api.response(
+    @console_ns.doc("get_message_suggested_questions")
+    @console_ns.doc(description="Get suggested questions for a message")
+    @console_ns.doc(params={"app_id": "Application ID", "message_id": "Message ID"})
+    @console_ns.response(
         200,
         "Suggested questions retrieved successfully",
-        api.model("SuggestedQuestionsResponse", {"data": fields.List(fields.String(description="Suggested question"))}),
+        console_ns.model(
+            "SuggestedQuestionsResponse", {"data": fields.List(fields.String(description="Suggested question"))}
+        ),
     )
-    @api.response(404, "Message or conversation not found")
+    @console_ns.response(404, "Message or conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
