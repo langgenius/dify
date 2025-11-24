@@ -12,7 +12,7 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
-from sqlalchemy import and_, desc, func, select
+from sqlalchemy import and_, case, desc, func, select
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
@@ -62,7 +62,7 @@ class WorkflowPerformanceService:
         cache_hit_rate: float = 0.0,
         execution_status: str = "succeeded",
         error_message: Optional[str] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        extra_info: Optional[dict[str, Any]] = None,
     ) -> WorkflowPerformanceMetrics:
         """
         Record performance metrics for a workflow execution.
@@ -85,7 +85,7 @@ class WorkflowPerformanceService:
             cache_hit_rate: Percentage of cache hits (0-100)
             execution_status: Status of execution (succeeded, failed, partial)
             error_message: Error message if failed
-            metadata: Additional metadata
+            extra_info: Additional metadata
             
         Returns:
             Created WorkflowPerformanceMetrics instance
@@ -108,7 +108,7 @@ class WorkflowPerformanceService:
             cache_hit_rate=cache_hit_rate,
             execution_status=execution_status,
             error_message=error_message,
-            metadata=metadata or {},
+            extra_info=extra_info or {},
         )
         
         db.session.add(metrics)
@@ -142,7 +142,7 @@ class WorkflowPerformanceService:
         error_message: Optional[str] = None,
         input_size_bytes: Optional[int] = None,
         output_size_bytes: Optional[int] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        extra_info: Optional[dict[str, Any]] = None,
     ) -> WorkflowNodePerformance:
         """
         Record performance metrics for a single node execution.
@@ -166,7 +166,7 @@ class WorkflowPerformanceService:
             error_message: Error message if failed
             input_size_bytes: Size of input data
             output_size_bytes: Size of output data
-            metadata: Additional metadata
+            extra_info: Additional metadata
             
         Returns:
             Created WorkflowNodePerformance instance
@@ -190,7 +190,7 @@ class WorkflowPerformanceService:
             error_message=error_message,
             input_size_bytes=input_size_bytes,
             output_size_bytes=output_size_bytes,
-            metadata=metadata or {},
+            extra_info=extra_info or {},
         )
         
         db.session.add(node_perf)
@@ -226,13 +226,13 @@ class WorkflowPerformanceService:
                 func.sum(WorkflowPerformanceMetrics.total_tokens_used).label("total_tokens"),
                 func.sum(WorkflowPerformanceMetrics.total_tokens_cost).label("total_cost"),
                 func.sum(
-                    func.case(
+                    case(
                         (WorkflowPerformanceMetrics.execution_status == "succeeded", 1),
                         else_=0
                     )
                 ).label("successful_runs"),
                 func.sum(
-                    func.case(
+                    case(
                         (WorkflowPerformanceMetrics.execution_status == "failed", 1),
                         else_=0
                     )
@@ -320,13 +320,13 @@ class WorkflowPerformanceService:
                 func.sum(WorkflowNodePerformance.tokens_used).label("total_tokens"),
                 func.sum(WorkflowNodePerformance.tokens_cost).label("total_cost"),
                 func.sum(
-                    func.case(
+                    case(
                         (WorkflowNodePerformance.is_cached == True, 1),
                         else_=0
                     )
                 ).label("cache_hits"),
                 func.sum(
-                    func.case(
+                    case(
                         (WorkflowNodePerformance.status == "failed", 1),
                         else_=0
                     )
@@ -420,10 +420,10 @@ class WorkflowPerformanceService:
         for row in results:
             # Calculate severity based on execution time and variability
             severity = "medium"
-            if row.avg_time > 10.0:  # More than 10 seconds
-                severity = "high"
-            elif row.avg_time > 30.0:  # More than 30 seconds
+            if row.avg_time > 30.0:  # More than 30 seconds
                 severity = "critical"
+            elif row.avg_time > 10.0:  # More than 10 seconds
+                severity = "high"
             
             bottlenecks.append({
                 "node_id": row.node_id,
@@ -454,7 +454,7 @@ class WorkflowPerformanceService:
         documentation_link: Optional[str] = None,
         supporting_metrics: Optional[dict[str, Any]] = None,
         sample_workflow_runs: Optional[list[str]] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        extra_info: Optional[dict[str, Any]] = None,
     ) -> WorkflowOptimizationRecommendation:
         """
         Create an optimization recommendation for a workflow.
@@ -473,7 +473,7 @@ class WorkflowPerformanceService:
             documentation_link: Link to documentation
             supporting_metrics: Supporting performance metrics
             sample_workflow_runs: Sample workflow run IDs
-            metadata: Additional metadata
+            extra_info: Additional metadata
             
         Returns:
             Created WorkflowOptimizationRecommendation instance
@@ -493,7 +493,7 @@ class WorkflowPerformanceService:
             supporting_metrics=supporting_metrics or {},
             sample_workflow_runs=sample_workflow_runs or [],
             status="active",
-            metadata=metadata or {},
+            extra_info=extra_info or {},
         )
         
         db.session.add(recommendation)
@@ -539,7 +539,7 @@ class WorkflowPerformanceService:
             .where(and_(*filters))
             .order_by(
                 # Order by severity: critical > high > medium > low > info
-                func.case(
+                case(
                     (WorkflowOptimizationRecommendation.severity == "critical", 1),
                     (WorkflowOptimizationRecommendation.severity == "high", 2),
                     (WorkflowOptimizationRecommendation.severity == "medium", 3),
