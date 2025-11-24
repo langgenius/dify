@@ -190,14 +190,14 @@ class TestSegmentServiceCreateSegment:
 
             created_segment = mock_db_session.add.call_args_list[0].args[0]
             assert isinstance(created_segment, DocumentSegment)
-            assert created_segment.content == args['content']
-            assert created_segment.word_count == len(args['content'])
+            assert created_segment.content == args["content"]
+            assert created_segment.word_count == len(args["content"])
 
             mock_db_session.commit.assert_called_once()
 
             mock_vector_service.assert_called_once()
             vector_call_args = mock_vector_service.call_args[0]
-            assert vector_call_args[0] == [args['keywords']]
+            assert vector_call_args[0] == [args["keywords"]]
             assert vector_call_args[1][0] == created_segment
             assert vector_call_args[2] == dataset
             assert vector_call_args[3] == document.doc_form
@@ -494,9 +494,10 @@ class TestSegmentServiceDeleteSegment:
         document = SegmentTestDataFactory.create_document_mock(word_count=100)
         dataset = SegmentTestDataFactory.create_dataset_mock()
 
-        with patch("services.dataset_service.redis_client.get") as mock_redis_get, patch(
-            "services.dataset_service.delete_segment_from_index_task"
-        ) as mock_task:
+        with (
+            patch("services.dataset_service.redis_client.get") as mock_redis_get,
+            patch("services.dataset_service.delete_segment_from_index_task") as mock_task,
+        ):
             mock_redis_get.return_value = None
 
             # Act
