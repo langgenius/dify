@@ -1727,7 +1727,7 @@ class WorkflowPause(DefaultFieldsMixin, Base):
 class WorkflowPauseReason(DefaultFieldsMixin, Base):
     __tablename__ = "workflow_pause_reasons"
 
-    # `puase_id` represents the identifier of the pause,
+    # `pause_id` represents the identifier of the pause,
     # correspond to the `id` field of `WorkflowPause`.
     pause_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
 
