@@ -12,7 +12,7 @@ import logging
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
-from sqlalchemy import and_, delete, func, select
+from sqlalchemy import and_, case, delete, desc, func, select
 from sqlalchemy.orm import Session
 
 from extensions.ext_database import db
@@ -323,7 +323,7 @@ class WorkflowCacheService:
                 func.avg(WorkflowCacheEntry.original_execution_time).label("avg_execution_time"),
                 func.sum(WorkflowCacheEntry.output_size_bytes).label("total_cache_size"),
                 func.count(
-                    func.case(
+                    case(
                         (WorkflowCacheEntry.expires_at > naive_utc_now(), 1),
                         else_=None
                     )
