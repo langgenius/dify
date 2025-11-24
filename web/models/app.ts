@@ -1,5 +1,17 @@
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TencentConfig, TracingProvider, WeaveConfig } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App, AppMode, AppTemplate, SiteConfig } from '@/types/app'
+import type {
+  AliyunConfig,
+  ArizeConfig,
+  DatabricksConfig,
+  LangFuseConfig,
+  LangSmithConfig,
+  MLflowConfig,
+  OpikConfig,
+  PhoenixConfig,
+  TencentConfig,
+  TracingProvider,
+  WeaveConfig,
+} from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
+import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
 import type { Dependency } from '@/app/components/plugins/types'
 
 export enum DSLImportMode {
@@ -27,7 +39,7 @@ export type AppDetailResponse = App
 export type DSLImportResponse = {
   id: string
   status: DSLImportStatus
-  app_mode: AppMode
+  app_mode: AppModeEnum
   app_id?: string
   current_dsl_version?: string
   imported_dsl_version?: string
@@ -109,5 +121,14 @@ export type TracingStatus = {
 
 export type TracingConfig = {
   tracing_provider: TracingProvider
-  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig
+  tracing_config: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | DatabricksConfig | MLflowConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig
+}
+
+export type WebhookTriggerResponse = {
+  id: string
+  webhook_id: string
+  webhook_url: string
+  webhook_debug_url: string
+  node_id: string
+  created_at: string
 }

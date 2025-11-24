@@ -21,7 +21,7 @@ import Indicator from '../../header/indicator'
 import VarPanel from './var-panel'
 import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
-import type { App } from '@/types/app'
+import { type App, AppModeEnum } from '@/types/app'
 import ActionButton from '@/app/components/base/action-button'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
@@ -43,6 +43,7 @@ import { getProcessedFilesFromResponse } from '@/app/components/base/file-upload
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import PromptLogModal from '../../base/prompt-log-modal'
+import { WorkflowContextProvider } from '@/app/components/workflow/context'
 
 type AppStoreState = ReturnType<typeof useAppStore.getState>
 type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
@@ -377,7 +378,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
   // Only load initial messages, don't auto-load more
   useEffect(() => {
-    if (appDetail?.id && detail.id && appDetail?.mode !== 'completion' && !fetchInitiated.current) {
+    if (appDetail?.id && detail.id && appDetail?.mode !== AppModeEnum.COMPLETION && !fetchInitiated.current) {
       // Mark as initialized, but don't auto-load more messages
       fetchInitiated.current = true
       // Still call fetchData to get initial messages
@@ -586,8 +587,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [hasMore, isLoading, loadMoreMessages])
 
-  const isChatMode = appDetail?.mode !== 'completion'
-  const isAdvanced = appDetail?.mode === 'advanced-chat'
+  const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
+  const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
 
   const varList = (detail.model_config as any).user_input_form?.map((item: any) => {
     const itemContent = item[Object.keys(item)[0]]
@@ -782,15 +783,17 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         }
       </div>
       {showMessageLogModal && (
-        <MessageLogModal
-          width={width}
-          currentLogItem={currentLogItem}
-          onCancel={() => {
-            setCurrentLogItem()
-            setShowMessageLogModal(false)
-          }}
-          defaultTab={currentLogModalActiveTab}
-        />
+        <WorkflowContextProvider>
+          <MessageLogModal
+            width={width}
+            currentLogItem={currentLogItem}
+            onCancel={() => {
+              setCurrentLogItem()
+              setShowMessageLogModal(false)
+            }}
+            defaultTab={currentLogModalActiveTab}
+          />
+        </WorkflowContextProvider>
       )}
       {!isChatMode && showPromptLogModal && (
         <PromptLogModal
@@ -914,12 +917,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh, s
   const closingConversationIdRef = useRef<string | null>(null)
   const pendingConversationIdRef = useRef<string | null>(null)
   const pendingConversationCacheRef = useRef<ConversationSelection | undefined>(undefined)
-  const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
-  const isChatflow = appDetail.mode === 'advanced-chat' // Whether the app is a chatflow app
+  const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION // Whether the app is a chat app
+  const isChatflow = appDetail.mode === AppModeEnum.ADVANCED_CHAT // Whether the app is a chatflow app
 
   // Selection state
-  const isAllSelected = logs?.data.length > 0 && selectedItems.length === logs?.data.length
-  const isSomeSelected = selectedItems.length > 0 && selectedItems.length < (logs?.data.length || 0)
+  const isAllSelected = (logs?.data?.length ?? 0) > 0 && selectedItems.length === (logs?.data?.length ?? 0)
+  const isSomeSelected = selectedItems.length > 0 && selectedItems.length < (logs?.data?.length ?? 0)
 
   // Selection handling
   const handleSelectAll = () => {
@@ -1032,8 +1035,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh, s
     return <Loading />
 
   return (
-    <div className='relative grow overflow-x-auto'>
-      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+    <div className='relative mt-2 grow overflow-x-auto'>
+      <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
             <td className='w-10 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'>

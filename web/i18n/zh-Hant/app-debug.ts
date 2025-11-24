@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: '上下文',
       noData: '您可以匯入知識庫作為上下文',
-      words: '詞',
-      textBlocks: '文字塊',
       selectTitle: '選擇引用知識庫',
       selected: '個知識庫被選中',
       noDataSet: '未找到知識庫',
@@ -255,7 +253,6 @@ const translation = {
   variableTable: {
     key: '變數 Key',
     name: '欄位名稱',
-    optional: '可選',
     type: '型別',
     action: '操作',
     typeString: '文字',

@@ -14,7 +14,7 @@ const NoPluginSelected: FC<Props> = ({
   const { t } = useTranslation()
   const text = `${t(`plugin.autoUpdate.upgradeModePlaceholder.${updateMode === AUTO_UPDATE_MODE.partial ? 'partial' : 'exclude'}`)}`
   return (
-    <div className='system-xs-regular rounded-[10px] border border-[divider-subtle] bg-background-section p-3 text-center text-text-tertiary'>
+    <div className='system-xs-regular rounded-[10px] border border-components-option-card-option-border bg-background-section p-3 text-center text-text-tertiary'>
       {text}
     </div>
   )

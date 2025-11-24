@@ -72,6 +72,7 @@ const translation = {
     },
     execution: '執行',
     executions: '{{num}} 執行',
+    stopRun: '停止運行',
   },
   login: {
     backToHome: '返回首頁',

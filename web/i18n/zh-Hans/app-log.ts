@@ -22,6 +22,7 @@ const translation = {
       version: '版本',
       selectAllConversations: '全选会话',
       selectConversation: '选择会话',
+      triggered_from: '触发方式',
     },
     pagination: {
       previous: '上一页',
@@ -61,6 +62,7 @@ const translation = {
     period: {
       today: '今天',
       last7days: '过去 7 天',
+      last30days: '过去 30 天',
       last4weeks: '过去 4 周',
       last3months: '过去 3 月',
       last12months: '过去 12 月',
@@ -68,6 +70,7 @@ const translation = {
       quarterToDate: '本季度至今',
       yearToDate: '本年至今',
       allTime: '所有时间',
+      custom: '自定义',
     },
     annotation: {
       all: '全部',
@@ -109,6 +112,15 @@ const translation = {
     iterations: '迭代次数',
     iteration: '迭代',
     finalProcessing: '最终处理',
+  },
+  triggerBy: {
+    debugging: '调试',
+    appRun: '网页应用',
+    webhook: 'Webhook',
+    schedule: '定时任务',
+    plugin: '插件',
+    ragPipelineRun: 'RAG 流水线',
+    ragPipelineDebugging: 'RAG 调试',
   },
 }
 

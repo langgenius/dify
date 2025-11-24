@@ -67,6 +67,7 @@ const translation = {
     queryPlaceholder: 'Tulis konten kueri Anda...',
     resultTitle: 'Penyelesaian AI',
     browse: 'ramban',
+    stopRun: 'Hentikan eksekusi',
   },
   login: {
     backToHome: 'Kembali ke Beranda',
