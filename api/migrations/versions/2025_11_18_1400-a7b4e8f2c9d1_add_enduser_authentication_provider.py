@@ -34,17 +34,17 @@ def upgrade():
         sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
         sa.Column("end_user_id", models.types.StringUUID(), nullable=False),
         sa.Column("provider", sa.Text(), nullable=False),
-        sa.Column("encrypted_credentials", sa.Text(), server_default="", nullable=False),
+        sa.Column("encrypted_credentials", sa.Text(), default="", nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(),
-            server_default=sa.text("CURRENT_TIMESTAMP(0)"),
+            server_default=sa.func.current_timestamp(),
             nullable=False,
         ),
         sa.Column(
             "updated_at",
             sa.DateTime(),
-            server_default=sa.text("CURRENT_TIMESTAMP(0)"),
+            server_default=sa.func.current_timestamp(),
             nullable=False,
         ),
         sa.Column(
