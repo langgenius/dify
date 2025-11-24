@@ -1,6 +1,6 @@
 from flask_restx import Resource, fields
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import current_account_with_tenant, login_required
@@ -9,9 +9,9 @@ from services.agent_service import AgentService
 
 @console_ns.route("/workspaces/current/agent-providers")
 class AgentProviderListApi(Resource):
-    @api.doc("list_agent_providers")
-    @api.doc(description="Get list of available agent providers")
-    @api.response(
+    @console_ns.doc("list_agent_providers")
+    @console_ns.doc(description="Get list of available agent providers")
+    @console_ns.response(
         200,
         "Success",
         fields.List(fields.Raw(description="Agent provider information")),
@@ -31,10 +31,10 @@ class AgentProviderListApi(Resource):
 
 @console_ns.route("/workspaces/current/agent-provider/<path:provider_name>")
 class AgentProviderApi(Resource):
-    @api.doc("get_agent_provider")
-    @api.doc(description="Get specific agent provider details")
-    @api.doc(params={"provider_name": "Agent provider name"})
-    @api.response(
+    @console_ns.doc("get_agent_provider")
+    @console_ns.doc(description="Get specific agent provider details")
+    @console_ns.doc(params={"provider_name": "Agent provider name"})
+    @console_ns.response(
         200,
         "Success",
         fields.Raw(description="Agent provider details"),

@@ -76,7 +76,7 @@ const translation = {
     },
     execution: 'ИСПОЛНЕНИЕ',
     executions: '{{num}} ВЫПОЛНЕНИЯ',
-    stopRun: 'Остановись, убегая',
+    stopRun: 'Остановить выполнение',
   },
   login: {
     backToHome: 'Назад на главную',
