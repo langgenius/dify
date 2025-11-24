@@ -293,7 +293,7 @@ const ModelModal: FC<ModelModalProps> = ({
 
   return (
     <PortalToFollowElem open>
-      <PortalToFollowElemContent className='z-[75] h-full w-full'>
+      <PortalToFollowElemContent className='z-[60] h-full w-full'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
           <div className='relative w-[640px] rounded-2xl bg-components-panel-bg shadow-xl'>
             <div
