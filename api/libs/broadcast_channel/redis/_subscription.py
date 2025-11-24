@@ -63,7 +63,19 @@ class RedisSubscriptionBase(Subscription):
         pubsub = self._pubsub
         assert pubsub is not None, "PubSub should not be None while starting listening."
         while not self._closed.is_set():
-            raw_message = self._get_message()
+            try:
+                raw_message = self._get_message()
+            except Exception as e:
+                # Log the exception and exit the listener thread gracefully
+                # This handles Redis connection errors and other exceptions
+                _logger.error(
+                    "Error getting message from Redis %s subscription, topic=%s: %s",
+                    self._get_subscription_type(),
+                    self._topic,
+                    e,
+                    exc_info=True,
+                )
+                break
 
             if raw_message is None:
                 continue
@@ -98,10 +110,20 @@ class RedisSubscriptionBase(Subscription):
             self._enqueue_message(payload_bytes)
 
         _logger.debug("%s listener thread stopped for channel %s", self._get_subscription_type().title(), self._topic)
-        self._unsubscribe()
-        pubsub.close()
-        _logger.debug("%s PubSub closed for topic %s", self._get_subscription_type().title(), self._topic)
-        self._pubsub = None
+        try:
+            self._unsubscribe()
+            pubsub.close()
+            _logger.debug("%s PubSub closed for topic %s", self._get_subscription_type().title(), self._topic)
+        except Exception as e:
+            _logger.error(
+                "Error during cleanup of Redis %s subscription, topic=%s: %s",
+                self._get_subscription_type(),
+                self._topic,
+                e,
+                exc_info=True,
+            )
+        finally:
+            self._pubsub = None
 
     def _enqueue_message(self, payload: bytes) -> None:
         """Enqueue a message to the internal queue with dropping behavior."""

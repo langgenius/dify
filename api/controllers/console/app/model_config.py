@@ -4,7 +4,7 @@ from typing import cast
 from flask import request
 from flask_restx import Resource, fields
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.agent.entities import AgentToolEntity
@@ -20,11 +20,11 @@ from services.app_model_config_service import AppModelConfigService
 
 @console_ns.route("/apps/<uuid:app_id>/model-config")
 class ModelConfigResource(Resource):
-    @api.doc("update_app_model_config")
-    @api.doc(description="Update application model configuration")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("update_app_model_config")
+    @console_ns.doc(description="Update application model configuration")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.model(
             "ModelConfigRequest",
             {
                 "provider": fields.String(description="Model provider"),
@@ -42,9 +42,9 @@ class ModelConfigResource(Resource):
             },
         )
     )
-    @api.response(200, "Model configuration updated successfully")
-    @api.response(400, "Invalid configuration")
-    @api.response(404, "App not found")
+    @console_ns.response(200, "Model configuration updated successfully")
+    @console_ns.response(400, "Invalid configuration")
+    @console_ns.response(404, "App not found")
     @setup_required
     @login_required
     @edit_permission_required
