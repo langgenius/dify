@@ -6,12 +6,69 @@ import services
 from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
-from fields.dataset_fields import dataset_detail_fields
+from fields.dataset_fields import (
+    dataset_detail_fields,
+    dataset_retrieval_model_fields,
+    doc_metadata_fields,
+    external_knowledge_info_fields,
+    external_retrieval_model_fields,
+    icon_info_fields,
+    keyword_setting_fields,
+    reranking_model_fields,
+    tag_fields,
+    vector_setting_fields,
+    weighted_score_fields,
+)
 from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
+
+
+def _get_or_create_model(model_name: str, field_def):
+    existing = console_ns.models.get(model_name)
+    if existing is None:
+        existing = console_ns.model(model_name, field_def)
+    return existing
+
+
+def _build_dataset_detail_model():
+    keyword_setting_model = _get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
+    vector_setting_model = _get_or_create_model("DatasetVectorSetting", vector_setting_fields)
+
+    weighted_score_fields_copy = weighted_score_fields.copy()
+    weighted_score_fields_copy["keyword_setting"] = fields.Nested(keyword_setting_model)
+    weighted_score_fields_copy["vector_setting"] = fields.Nested(vector_setting_model)
+    weighted_score_model = _get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
+
+    reranking_model = _get_or_create_model("DatasetRerankingModel", reranking_model_fields)
+
+    dataset_retrieval_model_fields_copy = dataset_retrieval_model_fields.copy()
+    dataset_retrieval_model_fields_copy["reranking_model"] = fields.Nested(reranking_model)
+    dataset_retrieval_model_fields_copy["weights"] = fields.Nested(weighted_score_model, allow_null=True)
+    dataset_retrieval_model = _get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
+
+    tag_model = _get_or_create_model("Tag", tag_fields)
+    doc_metadata_model = _get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
+    external_knowledge_info_model = _get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
+    external_retrieval_model = _get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
+    icon_info_model = _get_or_create_model("DatasetIconInfo", icon_info_fields)
+
+    dataset_detail_fields_copy = dataset_detail_fields.copy()
+    dataset_detail_fields_copy["retrieval_model_dict"] = fields.Nested(dataset_retrieval_model)
+    dataset_detail_fields_copy["tags"] = fields.List(fields.Nested(tag_model))
+    dataset_detail_fields_copy["external_knowledge_info"] = fields.Nested(external_knowledge_info_model)
+    dataset_detail_fields_copy["external_retrieval_model"] = fields.Nested(external_retrieval_model, allow_null=True)
+    dataset_detail_fields_copy["doc_metadata"] = fields.List(fields.Nested(doc_metadata_model))
+    dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
+    return _get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
+
+
+try:
+    dataset_detail_model = console_ns.models["DatasetDetail"]
+except KeyError:
+    dataset_detail_model = _build_dataset_detail_model()
 
 
 def _validate_name(name: str) -> str:
@@ -191,7 +248,7 @@ class ExternalDatasetCreateApi(Resource):
             },
         )
     )
-    @console_ns.response(201, "External dataset created successfully", dataset_detail_fields)
+    @console_ns.response(201, "External dataset created successfully", dataset_detail_model)
     @console_ns.response(400, "Invalid parameters")
     @console_ns.response(403, "Permission denied")
     @setup_required
