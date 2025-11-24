@@ -1026,7 +1026,7 @@ class TestSegmentServiceUpdateChildChunk:
             # Assert
             assert result is not None
             assert chunk.content == content
-            assert chunk.word_count == len(content)
+            assert chunk.word_count == len(content.split())
             assert chunk.type == "customized"
             assert chunk.updated_by == mock_current_user.id
             mock_db_session.add.assert_called_once_with(chunk)
