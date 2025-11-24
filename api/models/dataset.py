@@ -1331,22 +1331,30 @@ class PipelineCustomizedTemplate(TypeBase):
         return ""
 
 
-class Pipeline(Base):  # type: ignore[name-defined]
+class Pipeline(TypeBase):
     __tablename__ = "pipelines"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="pipeline_pkey"),)
 
-    id = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    name = mapped_column(sa.String(255), nullable=False)
-    description = mapped_column(LongText, nullable=False, default=sa.text("''"))
-    workflow_id = mapped_column(StringUUID, nullable=True)
-    is_public = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    is_published = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    created_by = mapped_column(StringUUID, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    name: Mapped[str] = mapped_column(sa.String(255), nullable=False)
+    description: Mapped[str] = mapped_column(LongText, nullable=False, default=sa.text("''"))
+    workflow_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    is_public: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
+    is_published: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, server_default=sa.text("false"), default=False
+    )
+    created_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     def retrieve_dataset(self, session: Session):
