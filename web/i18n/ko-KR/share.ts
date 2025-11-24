@@ -72,7 +72,7 @@ const translation = {
     },
     execution: '실행',
     executions: '{{num}} 처형',
-    stopRun: '멈춰 달려',
+    stopRun: '실행 중지',
   },
   login: {
     backToHome: '홈으로 돌아가기',
