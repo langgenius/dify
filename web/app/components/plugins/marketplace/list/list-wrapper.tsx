@@ -32,7 +32,8 @@ const ListWrapper = ({
   const handleMoreClick = useMarketplaceContext(v => v.handleMoreClick)
 
   useEffect(() => {
-    if (!marketplaceCollectionsFromClient?.length && isSuccessCollections)
+    // Fetch plugins if there are no collections available
+    if ((!marketplaceCollectionsFromClient?.length && isSuccessCollections) || !marketplaceCollections.length)
       handleQueryPlugins()
   }, [handleQueryPlugins, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections])
 
