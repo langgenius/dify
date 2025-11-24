@@ -23,8 +23,10 @@ def fake_db_scalar(monkeypatch):
         # Backward-compatibility: if the implementation still uses db.session.get,
         # make it delegate to the same side_effect so tests remain valid on older code.
         if hasattr(db.session, "get"):
+
             def _fake_get(*_args, **_kwargs):
                 return side_effect(None)
+
             monkeypatch.setattr(db.session, "get", _fake_get)
 
         return calls
