@@ -96,7 +96,7 @@ class _InvalidGraphDefinitionError(Exception):
     pass
 
 
-class Workflow(Base):
+class Workflow(Base):  # bug
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
 
@@ -869,16 +869,20 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     @property
     def created_by_account(self):
         created_by_role = CreatorUserRole(self.created_by_role)
-        # TODO(-LAN-): Avoid using db.session.get() here.
-        return db.session.get(Account, self.created_by) if created_by_role == CreatorUserRole.ACCOUNT else None
+        if created_by_role == CreatorUserRole.ACCOUNT:
+            stmt = select(Account).where(Account.id == self.created_by)
+            return db.session.scalar(stmt)
+        return None
 
     @property
     def created_by_end_user(self):
         from .model import EndUser
 
         created_by_role = CreatorUserRole(self.created_by_role)
-        # TODO(-LAN-): Avoid using db.session.get() here.
-        return db.session.get(EndUser, self.created_by) if created_by_role == CreatorUserRole.END_USER else None
+        if created_by_role == CreatorUserRole.END_USER:
+            stmt = select(EndUser).where(EndUser.id == self.created_by)
+            return db.session.scalar(stmt)
+        return None
 
     @property
     def inputs_dict(self):
