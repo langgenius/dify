@@ -892,11 +892,11 @@ class TestDocumentServiceSaveDocumentWithDatasetId:
         mock_query.first.return_value = upload_file
         mock_db_session.query.return_value = mock_query
 
-        mock_scalars_result = MagicMock()
-        mock_scalars_result.all = MagicMock(return_value=[])
+        mock_scalars = MagicMock()
+        mock_scalars.all.return_value = []
         mock_select = MagicMock()
         mock_select.where.return_value = mock_select
-        mock_db_session.scalars = MagicMock(return_value=mock_scalars_result)
+        mock_db_session.scalars.return_value = mock_scalars
 
         with (
             patch("services.dataset_service.DatasetService.check_doc_form") as mock_check_doc_form,
