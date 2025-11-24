@@ -290,23 +290,7 @@ class WorkflowPerformanceService:
         """
         cutoff_date = naive_utc_now() - timedelta(days=days)
         
-        # Get workflow run IDs for the time period
-        run_ids_stmt = (
-            select(WorkflowPerformanceMetrics.workflow_run_id)
-            .where(
-                and_(
-                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
-                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
-                )
-            )
-        )
-        
-        run_ids = [row[0] for row in db.session.execute(run_ids_stmt).fetchall()]
-        
-        if not run_ids:
-            return []
-        
-        # Query node performance grouped by type
+        # Use JOIN to filter nodes in a single query
         stmt = (
             select(
                 WorkflowNodePerformance.node_type,
@@ -329,7 +313,16 @@ class WorkflowPerformanceService:
                     )
                 ).label("failures"),
             )
-            .where(WorkflowNodePerformance.workflow_run_id.in_(run_ids))
+            .join(
+                WorkflowPerformanceMetrics,
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+            )
+            .where(
+                and_(
+                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
+                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
+                )
+            )
             .group_by(WorkflowNodePerformance.node_type)
             .order_by(desc("avg_execution_time"))
         )
@@ -374,23 +367,7 @@ class WorkflowPerformanceService:
         """
         cutoff_date = naive_utc_now() - timedelta(days=days)
         
-        # Get workflow run IDs
-        run_ids_stmt = (
-            select(WorkflowPerformanceMetrics.workflow_run_id)
-            .where(
-                and_(
-                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
-                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
-                )
-            )
-        )
-        
-        run_ids = [row[0] for row in db.session.execute(run_ids_stmt).fetchall()]
-        
-        if not run_ids:
-            return []
-        
-        # Find nodes with high execution times
+        # Use JOIN to filter nodes in a single query
         stmt = (
             select(
                 WorkflowNodePerformance.node_id,
@@ -401,7 +378,16 @@ class WorkflowPerformanceService:
                 func.max(WorkflowNodePerformance.execution_time).label("max_time"),
                 func.stddev(WorkflowNodePerformance.execution_time).label("std_dev"),
             )
-            .where(WorkflowNodePerformance.workflow_run_id.in_(run_ids))
+            .join(
+                WorkflowPerformanceMetrics,
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+            )
+            .where(
+                and_(
+                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
+                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
+                )
+            )
             .group_by(
                 WorkflowNodePerformance.node_id,
                 WorkflowNodePerformance.node_type,

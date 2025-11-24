@@ -13,6 +13,7 @@ from datetime import timedelta
 from typing import Any, Optional
 
 from sqlalchemy import and_, case, delete, desc, func, select
+from sqlalchemy.dialects.postgresql import insert
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -191,44 +192,44 @@ class WorkflowCacheService:
         config_hash = WorkflowCacheService.generate_config_hash(node_config)
         input_hash = WorkflowCacheService.generate_input_hash(input_data)
         
-        # Check if entry already exists
-        existing_entry = db.session.execute(
-            select(WorkflowCacheEntry).where(WorkflowCacheEntry.cache_key == cache_key)
-        ).scalar_one_or_none()
+        now = naive_utc_now()
         
-        if existing_entry:
-            # Update existing entry
-            existing_entry.output_data = output_data
-            existing_entry.output_size_bytes = output_size_bytes
-            existing_entry.expires_at = expires_at
-            existing_entry.last_accessed_at = naive_utc_now()
-            existing_entry.metadata = metadata or {}
-            cache_entry = existing_entry
-            logger.info(f"Updated cache entry for key {cache_key}")
-        else:
-            # Create new entry
-            cache_entry = WorkflowCacheEntry(
-                cache_key=cache_key,
-                node_type=node_type,
-                node_config_hash=config_hash,
-                input_hash=input_hash,
-                output_data=output_data,
-                output_size_bytes=output_size_bytes,
-                expires_at=expires_at,
-                original_execution_time=execution_time,
-                total_time_saved=0.0,
-                metadata=metadata or {},
-            )
-            db.session.add(cache_entry)
-            logger.info(
-                "Stored cache entry: key=%s, node_type=%s, ttl=%sh, size=%s bytes",
-                cache_key,
-                node_type,
-                ttl_hours,
-                output_size_bytes,
-            )
+        # Use PostgreSQL's INSERT ... ON CONFLICT for atomic upsert
+        stmt = insert(WorkflowCacheEntry).values(
+            cache_key=cache_key,
+            node_type=node_type,
+            node_config_hash=config_hash,
+            input_hash=input_hash,
+            output_data=output_data,
+            output_size_bytes=output_size_bytes,
+            expires_at=expires_at,
+            original_execution_time=execution_time,
+            total_time_saved=0.0,
+            extra_info=metadata or {},
+            last_accessed_at=now,
+        ).on_conflict_do_update(
+            index_elements=['cache_key'],
+            set_={
+                'output_data': output_data,
+                'output_size_bytes': output_size_bytes,
+                'expires_at': expires_at,
+                'last_accessed_at': now,
+                'extra_info': metadata or {},
+                'updated_at': now,
+            }
+        ).returning(WorkflowCacheEntry)
         
+        result = db.session.execute(stmt)
+        cache_entry = result.scalar_one()
         db.session.commit()
+        
+        logger.info(
+            "Stored cache entry: key=%s, node_type=%s, ttl=%sh, size=%s bytes",
+            cache_key,
+            node_type,
+            ttl_hours,
+            output_size_bytes,
+        )
         
         return cache_entry
 

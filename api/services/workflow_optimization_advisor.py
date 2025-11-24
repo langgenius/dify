@@ -197,23 +197,7 @@ class WorkflowOptimizationAdvisor:
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
         
-        # Get workflow run IDs
-        run_ids_stmt = (
-            select(WorkflowPerformanceMetrics.workflow_run_id)
-            .where(
-                and_(
-                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
-                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
-                )
-            )
-        )
-        
-        run_ids = [row[0] for row in db.session.execute(run_ids_stmt).fetchall()]
-        
-        if not run_ids:
-            return recommendations
-        
-        # Find nodes with low cache hit rates but high execution times
+        # Use JOIN to filter nodes in a single query
         stmt = (
             select(
                 WorkflowNodePerformance.node_id,
@@ -228,7 +212,16 @@ class WorkflowOptimizationAdvisor:
                     )
                 ).label("cache_hits"),
             )
-            .where(WorkflowNodePerformance.workflow_run_id.in_(run_ids))
+            .join(
+                WorkflowPerformanceMetrics,
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+            )
+            .where(
+                and_(
+                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
+                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
+                )
+            )
             .group_by(
                 WorkflowNodePerformance.node_id,
                 WorkflowNodePerformance.node_type,
@@ -298,23 +291,7 @@ class WorkflowOptimizationAdvisor:
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
         
-        # Get workflow run IDs
-        run_ids_stmt = (
-            select(WorkflowPerformanceMetrics.workflow_run_id)
-            .where(
-                and_(
-                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
-                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
-                )
-            )
-        )
-        
-        run_ids = [row[0] for row in db.session.execute(run_ids_stmt).fetchall()]
-        
-        if not run_ids:
-            return recommendations
-        
-        # Find nodes with high failure rates
+        # Use JOIN to filter nodes in a single query
         stmt = (
             select(
                 WorkflowNodePerformance.node_id,
@@ -328,7 +305,16 @@ class WorkflowOptimizationAdvisor:
                     )
                 ).label("failures"),
             )
-            .where(WorkflowNodePerformance.workflow_run_id.in_(run_ids))
+            .join(
+                WorkflowPerformanceMetrics,
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+            )
+            .where(
+                and_(
+                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
+                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
+                )
+            )
             .group_by(
                 WorkflowNodePerformance.node_id,
                 WorkflowNodePerformance.node_type,
@@ -396,45 +382,35 @@ class WorkflowOptimizationAdvisor:
         workflow_id: str,
         days: int,
     ) -> list[WorkflowOptimizationRecommendation]:
-        """Analyze and recommend optimizations for token usage and costs."""
+        """Analyze and recommend token usage optimizations."""
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
         
-        # Get workflow run IDs
-        run_ids_stmt = (
-            select(WorkflowPerformanceMetrics.workflow_run_id)
+        # Use JOIN to filter nodes in a single query
+        stmt = (
+            select(
+                WorkflowNodePerformance.node_id,
+                WorkflowNodePerformance.node_type,
+                WorkflowNodePerformance.node_title,
+                func.sum(WorkflowNodePerformance.tokens_used).label("total_tokens"),
+                func.sum(WorkflowNodePerformance.tokens_cost).label("total_cost"),
+                func.count(WorkflowNodePerformance.id).label("execution_count"),
+            )
+            .join(
+                WorkflowPerformanceMetrics,
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+            )
             .where(
                 and_(
                     WorkflowPerformanceMetrics.workflow_id == workflow_id,
                     WorkflowPerformanceMetrics.created_at >= cutoff_date,
-                )
-            )
-        )
-        
-        run_ids = [row[0] for row in db.session.execute(run_ids_stmt).fetchall()]
-        
-        if not run_ids:
-            return recommendations
-        
-        # Find LLM nodes with high token usage
-        stmt = (
-            select(
-                WorkflowNodePerformance.node_id,
-                WorkflowNodePerformance.node_title,
-                func.count(WorkflowNodePerformance.id).label("execution_count"),
-                func.sum(WorkflowNodePerformance.tokens_used).label("total_tokens"),
-                func.avg(WorkflowNodePerformance.tokens_used).label("avg_tokens"),
-                func.sum(WorkflowNodePerformance.tokens_cost).label("total_cost"),
-            )
-            .where(
-                and_(
-                    WorkflowNodePerformance.workflow_run_id.in_(run_ids),
                     WorkflowNodePerformance.node_type == "llm",
                     WorkflowNodePerformance.tokens_used.isnot(None),
                 )
             )
             .group_by(
                 WorkflowNodePerformance.node_id,
+                WorkflowNodePerformance.node_type,
                 WorkflowNodePerformance.node_title,
             )
             .having(func.avg(WorkflowNodePerformance.tokens_used) > 1000)  # Avg > 1000 tokens
@@ -443,7 +419,7 @@ class WorkflowOptimizationAdvisor:
         results = db.session.execute(stmt).fetchall()
         
         for row in results:
-            if row.avg_tokens > 2000:  # High token usage
+            if row.total_tokens > 2000:  # High token usage
                 potential_savings = row.total_cost * 0.3 if row.total_cost else 0  # Estimate 30% savings
                 
                 recommendation = WorkflowPerformanceService.create_optimization_recommendation(
@@ -452,7 +428,7 @@ class WorkflowOptimizationAdvisor:
                     title=f"Optimize token usage in LLM node: {row.node_title or row.node_id}",
                     description=(
                         f"The '{row.node_title or row.node_id}' LLM node uses an average of "
-                        f"{row.avg_tokens:.0f} tokens per execution, which is quite high. "
+                        f"{row.total_tokens / row.execution_count:.0f} tokens per execution, which is quite high. "
                         f"Total cost over {days} days: ${row.total_cost:.2f}. "
                         f"Optimizing prompts and responses could significantly reduce costs."
                     ),
@@ -471,15 +447,15 @@ class WorkflowOptimizationAdvisor:
                     code_example="""
 # Optimize LLM configuration for cost
 {
-  "model": "gpt-3.5-turbo",  // More cost-effective
-  "max_tokens": 500,  // Limit response length
+  "model": "gpt-3.5-turbo",  # More cost-effective
+  "max_tokens": 500,  # Limit response length
   "temperature": 0.7,
-  "presence_penalty": 0.1,  // Reduce repetition
+  "presence_penalty": 0.1,  # Reduce repetition
   "frequency_penalty": 0.1
 }
 """,
                     supporting_metrics={
-                        "avg_tokens_per_execution": float(row.avg_tokens),
+                        "avg_tokens_per_execution": float(row.total_tokens / row.execution_count),
                         "total_tokens": int(row.total_tokens or 0),
                         "total_cost": float(row.total_cost or 0.0),
                         "execution_count": row.execution_count,
@@ -551,33 +527,26 @@ class WorkflowOptimizationAdvisor:
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
         
-        # Get workflow run IDs
-        run_ids_stmt = (
-            select(WorkflowPerformanceMetrics.workflow_run_id)
-            .where(
-                and_(
-                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
-                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
-                )
-            )
-        )
-        
-        run_ids = [row[0] for row in db.session.execute(run_ids_stmt).fetchall()]
-        
-        if not run_ids:
-            return recommendations
-        
-        # Find nodes with high retry counts
+        # Use JOIN to filter nodes in a single query
         stmt = (
             select(
                 WorkflowNodePerformance.node_id,
                 WorkflowNodePerformance.node_type,
                 WorkflowNodePerformance.node_title,
                 func.count(WorkflowNodePerformance.id).label("execution_count"),
-                func.avg(WorkflowNodePerformance.retry_count).label("avg_retries"),
                 func.sum(WorkflowNodePerformance.retry_count).label("total_retries"),
+                func.avg(WorkflowNodePerformance.retry_count).label("avg_retries"),
             )
-            .where(WorkflowNodePerformance.workflow_run_id.in_(run_ids))
+            .join(
+                WorkflowPerformanceMetrics,
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+            )
+            .where(
+                and_(
+                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
+                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
+                )
+            )
             .group_by(
                 WorkflowNodePerformance.node_id,
                 WorkflowNodePerformance.node_type,
