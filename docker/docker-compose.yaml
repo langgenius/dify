@@ -931,6 +931,8 @@ services:
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
       - ./volumes/plugin_daemon:/app/storage
+    networks:
+      - default
     depends_on:
       db_postgres:
         condition: service_healthy
@@ -1029,6 +1031,8 @@ services:
       NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
       NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
       CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
+    networks:
+      - default
     depends_on:
       - api
       - web
