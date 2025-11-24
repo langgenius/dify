@@ -15,11 +15,11 @@ import {
   RiLoginCircleLine,
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
-import { useTheme } from 'next-themes'
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { gte } from 'semver'
+import useTheme from '@/hooks/use-theme'
 import Badge from '../../base/badge'
 import { Github } from '../../base/icons/src/public/common'
 import CornerMark from '../card/base/corner-mark'
@@ -41,7 +41,7 @@ const PluginItem: FC<Props> = ({
   plugin,
 }) => {
   const { t } = useTranslation()
-  const { theme, resolvedTheme } = useTheme()
+  const { theme } = useTheme()
   const { categoriesMap } = useCategories(t, true)
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
@@ -84,8 +84,7 @@ const PluginItem: FC<Props> = ({
   const title = getValueFromI18nObject(label)
   const descriptionText = getValueFromI18nObject(description)
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
-  const currentTheme = theme === 'system' ? resolvedTheme : theme
-  const iconFileName = currentTheme === 'dark' && icon_dark ? icon_dark : icon
+  const iconFileName = theme === 'dark' && icon_dark ? icon_dark : icon
   const iconSrc = iconFileName
     ? (iconFileName.startsWith('http') ? iconFileName : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${iconFileName}`)
     : ''

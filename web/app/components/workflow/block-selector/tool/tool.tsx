@@ -14,7 +14,7 @@ import ActionItem from './action-item'
 import BlockIcon from '../../block-icon'
 import { useTranslation } from 'react-i18next'
 import { useHover } from 'ahooks'
-import { useTheme } from 'next-themes'
+import useTheme from '@/hooks/use-theme'
 import McpToolNotSupportTooltip from '../../nodes/_base/components/mcp-tool-not-support-tooltip'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { basePath } from '@/utils/var'
@@ -62,8 +62,7 @@ const Tool: FC<Props> = ({
   const isHovering = useHover(ref)
   const isMCPTool = payload.type === CollectionType.mcp
   const isShowCanNotChooseMCPTip = !canChooseMCPTool && isMCPTool
-  const { theme, resolvedTheme } = useTheme()
-  const currentTheme = theme === 'system' ? resolvedTheme : theme
+  const { theme } = useTheme()
   const normalizedIcon = useMemo<ToolWithProvider['icon']>(() => {
     return normalizeProviderIcon(payload.icon) ?? payload.icon
   }, [payload.icon])
@@ -73,10 +72,10 @@ const Tool: FC<Props> = ({
     return normalizeProviderIcon(payload.icon_dark) ?? payload.icon_dark
   }, [payload.icon_dark])
   const providerIcon = useMemo<ToolWithProvider['icon']>(() => {
-    if (currentTheme === 'dark' && normalizedIconDark)
+    if (theme === 'dark' && normalizedIconDark)
       return normalizedIconDark
     return normalizedIcon
-  }, [currentTheme, normalizedIcon, normalizedIconDark])
+  }, [theme, normalizedIcon, normalizedIconDark])
   const getIsDisabled = useCallback((tool: ToolType) => {
     if (!selectedTools || !selectedTools.length) return false
     return selectedTools.some(selectedTool => (selectedTool.provider_name === payload.name || selectedTool.provider_name === payload.id) && selectedTool.tool_name === tool.name)

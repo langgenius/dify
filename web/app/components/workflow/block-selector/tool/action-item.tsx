@@ -10,7 +10,7 @@ import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
-import { useTheme } from 'next-themes'
+import useTheme from '@/hooks/use-theme'
 import { basePath } from '@/utils/var'
 
 const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
@@ -39,8 +39,7 @@ const ToolItem: FC<Props> = ({
   const { t } = useTranslation()
 
   const language = useGetLanguage()
-  const { theme, resolvedTheme } = useTheme()
-  const currentTheme = theme === 'system' ? resolvedTheme : theme
+  const { theme } = useTheme()
   const normalizedIcon = useMemo<ToolWithProvider['icon']>(() => {
     return normalizeProviderIcon(provider.icon) ?? provider.icon
   }, [provider.icon])
@@ -50,10 +49,10 @@ const ToolItem: FC<Props> = ({
     return normalizeProviderIcon(provider.icon_dark) ?? provider.icon_dark
   }, [provider.icon_dark])
   const providerIcon = useMemo(() => {
-    if (currentTheme === 'dark' && normalizedIconDark)
+    if (theme === 'dark' && normalizedIconDark)
       return normalizedIconDark
     return normalizedIcon
-  }, [currentTheme, normalizedIcon, normalizedIconDark])
+  }, [theme, normalizedIcon, normalizedIconDark])
 
   return (
     <Tooltip

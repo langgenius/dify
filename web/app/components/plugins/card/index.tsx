@@ -6,7 +6,7 @@ import { getLanguage } from '@/i18n-config/language'
 import cn from '@/utils/classnames'
 import { RiAlertFill } from '@remixicon/react'
 import React from 'react'
-import { useTheme } from 'next-themes'
+import useTheme from '@/hooks/use-theme'
 import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
 import Icon from '../card/base/card-icon'
@@ -52,9 +52,8 @@ const Card = ({
   const { t } = useMixedTranslation(localeFromProps)
   const { categoriesMap } = useCategories(t, true)
   const { category, type, name, org, label, brief, icon, icon_dark, verified, badges = [] } = payload
-  const { theme, resolvedTheme } = useTheme()
-  const currentTheme = theme === 'system' ? resolvedTheme : theme
-  const iconSrc = currentTheme === 'dark' && icon_dark ? icon_dark : icon
+  const { theme } = useTheme()
+  const iconSrc = theme === 'dark' && icon_dark ? icon_dark : icon
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
   const isPartner = badges.includes('partner')

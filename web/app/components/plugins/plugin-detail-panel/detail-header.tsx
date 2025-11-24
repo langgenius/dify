@@ -29,9 +29,9 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { useTheme } from 'next-themes'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import useTheme from '@/hooks/use-theme'
 import { AutoUpdateLine } from '../../base/icons/src/vender/system'
 import DeprecationNotice from '../base/deprecation-notice'
 import Icon from '../card/base/card-icon'
@@ -63,7 +63,7 @@ const DetailHeader = ({
   const { t } = useTranslation()
   const { userProfile: { timezone } } = useAppContext()
 
-  const { theme, resolvedTheme } = useTheme()
+  const { theme } = useTheme()
   const locale = useGetLanguage()
   const { locale: currentLocale } = useI18N()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
@@ -109,8 +109,7 @@ const DetailHeader = ({
     return false
   }, [isFromMarketplace, latest_version, version])
 
-  const currentTheme = theme === 'system' ? resolvedTheme : theme
-  const iconFileName = currentTheme === 'dark' && icon_dark ? icon_dark : icon
+  const iconFileName = theme === 'dark' && icon_dark ? icon_dark : icon
   const iconSrc = iconFileName
     ? (iconFileName.startsWith('http') ? iconFileName : `${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${iconFileName}`)
     : ''

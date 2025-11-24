@@ -15,7 +15,7 @@ import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type { ToolNodeType } from '../nodes/tool/types'
 import type { DataSourceNodeType } from '../nodes/data-source/types'
 import type { TriggerWithProvider } from '../block-selector/types'
-import { useTheme } from 'next-themes'
+import useTheme from '@/hooks/use-theme'
 
 const isTriggerPluginNode = (data: Node['data']): data is PluginTriggerNodeType => data.type === BlockEnum.TriggerPlugin
 
@@ -58,8 +58,7 @@ export const useToolIcon = (data?: Node['data']) => {
   const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   const { data: triggerPlugins } = useAllTriggerPlugins()
-  const { theme, resolvedTheme } = useTheme()
-  const currentTheme = theme === 'system' ? resolvedTheme : theme
+  const { theme } = useTheme()
 
   const toolIcon = useMemo(() => {
     if (!data)
@@ -73,7 +72,7 @@ export const useToolIcon = (data?: Node['data']) => {
           data.provider_name,
         ],
         triggerPlugins,
-        currentTheme,
+        theme,
       )
       if (icon)
         return icon
@@ -118,13 +117,13 @@ export const useToolIcon = (data?: Node['data']) => {
           return data.provider_name === toolWithProvider.name
         })
         if (matched) {
-          const icon = resolveIconByTheme(currentTheme, matched.icon, matched.icon_dark)
+          const icon = resolveIconByTheme(theme, matched.icon, matched.icon_dark)
           if (icon)
             return icon
         }
       }
 
-      const fallbackIcon = resolveIconByTheme(currentTheme, data.provider_icon, data.provider_icon_dark)
+      const fallbackIcon = resolveIconByTheme(theme, data.provider_icon, data.provider_icon_dark)
       if (fallbackIcon)
         return fallbackIcon
 
@@ -133,12 +132,12 @@ export const useToolIcon = (data?: Node['data']) => {
 
     if (isDataSourceNode(data)) {
       const matchedDataSource = dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)
-      const icon = resolveIconByTheme(currentTheme, matchedDataSource?.icon, matchedDataSource?.icon_dark)
+      const icon = resolveIconByTheme(theme, matchedDataSource?.icon, matchedDataSource?.icon_dark)
       return icon || ''
     }
 
     return ''
-  }, [data, dataSourceList, buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, currentTheme])
+  }, [data, dataSourceList, buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, theme])
 
   return toolIcon
 }
@@ -150,8 +149,7 @@ export const useGetToolIcon = () => {
   const { data: mcpTools } = useAllMCPTools()
   const { data: triggerPlugins } = useAllTriggerPlugins()
   const workflowStore = useWorkflowStore()
-  const { theme, resolvedTheme } = useTheme()
-  const currentTheme = theme === 'system' ? resolvedTheme : theme
+  const { theme } = useTheme()
 
   const getToolIcon = useCallback((data: Node['data']) => {
     const {
@@ -170,7 +168,7 @@ export const useGetToolIcon = () => {
           data.provider_name,
         ],
         triggerPlugins,
-        currentTheme,
+        theme,
       )
     }
 
@@ -210,13 +208,13 @@ export const useGetToolIcon = () => {
           return data.provider_name === toolWithProvider.name
         })
         if (matched) {
-          const icon = resolveIconByTheme(currentTheme, matched.icon, matched.icon_dark)
+          const icon = resolveIconByTheme(theme, matched.icon, matched.icon_dark)
           if (icon)
             return icon
         }
       }
 
-      const fallbackIcon = resolveIconByTheme(currentTheme, data.provider_icon, data.provider_icon_dark)
+      const fallbackIcon = resolveIconByTheme(theme, data.provider_icon, data.provider_icon_dark)
       if (fallbackIcon)
         return fallbackIcon
 
@@ -225,11 +223,11 @@ export const useGetToolIcon = () => {
 
     if (isDataSourceNode(data)) {
       const matchedDataSource = dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)
-      return resolveIconByTheme(currentTheme, matchedDataSource?.icon, matchedDataSource?.icon_dark)
+      return resolveIconByTheme(theme, matchedDataSource?.icon, matchedDataSource?.icon_dark)
     }
 
     return undefined
-  }, [workflowStore, triggerPlugins, buildInTools, customTools, workflowTools, mcpTools, currentTheme])
+  }, [workflowStore, triggerPlugins, buildInTools, customTools, workflowTools, mcpTools, theme])
 
   return getToolIcon
 }
