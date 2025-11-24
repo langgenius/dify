@@ -160,7 +160,7 @@ class TriggerOAuthTenantClient(TypeBase):
         return cast(Mapping[str, Any], json.loads(self.encrypted_oauth_params or "{}"))
 
 
-class WorkflowTriggerLog(Base):
+class WorkflowTriggerLog(TypeBase):
     """
     Workflow Trigger Log
 
@@ -202,7 +202,7 @@ class WorkflowTriggerLog(Base):
         sa.Index("workflow_trigger_log_workflow_id_idx", "workflow_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -214,24 +214,21 @@ class WorkflowTriggerLog(Base):
     inputs: Mapped[str] = mapped_column(LongText, nullable=False)  # Just inputs for easy viewing
     outputs: Mapped[str | None] = mapped_column(LongText, nullable=True)
 
-    status: Mapped[str] = mapped_column(
-        EnumText(WorkflowTriggerStatus, length=50), nullable=False, default=WorkflowTriggerStatus.PENDING
-    )
+    status: Mapped[str] = mapped_column(EnumText(WorkflowTriggerStatus, length=50), nullable=False)
     error: Mapped[str | None] = mapped_column(LongText, nullable=True)
 
     queue_name: Mapped[str] = mapped_column(String(100), nullable=False)
     celery_task_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    retry_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
-
-    elapsed_time: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
-    total_tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False)
     created_by: Mapped[str] = mapped_column(String(255), nullable=False)
-
-    triggered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    retry_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
+    elapsed_time: Mapped[float | None] = mapped_column(sa.Float, nullable=True, default=None)
+    total_tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
+    triggered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=None)
 
     @property
     def created_by_account(self):
