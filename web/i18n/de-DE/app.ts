@@ -149,7 +149,7 @@ const translation = {
       password: 'Passwort',
       databricksHost: 'Databricks-Workspace-URL',
       clientSecret: 'OAuth-Client-Geheimnis',
-      personalAccessToken: 'Persönlicher Zugriffsschlüssel (Legacy)',
+      personalAccessToken: 'Persönliches Zugriffstoken (veraltet)',
       experimentId: 'Experiment-ID',
       username: 'Benutzername',
       trackingUri: 'Tracking-URI',
