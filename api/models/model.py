@@ -17,7 +17,6 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.file import helpers as file_helpers
 from core.tools.signature import sign_tool_file
