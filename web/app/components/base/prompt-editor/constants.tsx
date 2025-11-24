@@ -37,10 +37,15 @@ export const getInputVars = (text: string): ValueSelector[] => {
   if (!text || typeof text !== 'string')
     return []
 
-  const allVars = text.match(/{{#([^#]*)#}}/g)
-  if (allVars && allVars?.length > 0) {
+  const matches: string[] = []
+  const regex = /{{#([^#]*)#}}/g
+  let match
+  while ((match = regex.exec(text)) !== null)
+    matches.push(match[0])
+
+  if (matches && matches?.length > 0) {
     // {{#context#}}, {{#query#}} is not input vars
-    const inputVars = allVars
+    const inputVars = matches
       .filter(item => item.includes('.'))
       .map((item) => {
         const valueSelector = item.replace('{{#', '').replace('#}}', '').split('.')

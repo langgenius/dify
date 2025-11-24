@@ -105,7 +105,7 @@ export function getLoopStartNode(loopId: string): Node {
 
 export const genNewNodeTitleFromOld = (oldTitle: string) => {
   const regex = /^(.+?)\s*\((\d+)\)\s*$/
-  const match = oldTitle.match(regex)
+  const match = regex.exec(oldTitle)
 
   if (match) {
     const title = match[1]

@@ -157,7 +157,8 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
           const trimmedLine = line.trim()
 
           // Track current object path
-          const keyMatch = trimmedLine.match(/^(\w+)\s*:\s*{/)
+          const keyRegex = /^(\w+)\s*:\s*{/
+          const keyMatch = keyRegex.exec(trimmedLine)
           if (keyMatch) {
             currentPath.push(keyMatch[1])
             braceDepth++
@@ -170,7 +171,8 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
           }
 
           // Check if this line matches our target key
-          const leafKeyMatch = trimmedLine.match(/^(\w+)\s*:/)
+          const leafKeyRegex = /^(\w+)\s*:/
+          const leafKeyMatch = leafKeyRegex.exec(trimmedLine)
           if (leafKeyMatch) {
             const fullPath = [...currentPath, leafKeyMatch[1]]
             const fullPathString = fullPath.join('.')
@@ -191,7 +193,8 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
         const trimmedKeyLine = keyLine.trim()
 
         // If key line ends with ":" (not ":", "{ " or complete value), it's likely multiline
-        if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !trimmedKeyLine.match(/:\s*['"`]/)) {
+        const valueRegex = /:\s*['"`]/
+        if (trimmedKeyLine.endsWith(':') && !trimmedKeyLine.includes('{') && !valueRegex.test(trimmedKeyLine)) {
           // Find the value lines that belong to this key
           let currentLine = targetLineIndex + 1
           let foundValue = false
@@ -207,7 +210,8 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
             }
 
             // Check if this line starts a new key (indicates end of current value)
-            if (trimmed.match(/^\w+\s*:/))
+            const keyStartRegex = /^\w+\s*:/
+            if (keyStartRegex.test(trimmed))
               break
 
             // Check if this line is part of the value

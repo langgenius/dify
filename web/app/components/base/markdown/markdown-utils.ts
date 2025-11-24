@@ -11,7 +11,10 @@ export const preprocessLaTeX = (content: string) => {
     return content
 
   const codeBlockRegex = /```[\s\S]*?```/g
-  const codeBlocks = content.match(codeBlockRegex) || []
+  const codeBlocks: string[] = []
+  let match
+  while ((match = codeBlockRegex.exec(content)) !== null)
+    codeBlocks.push(match[0])
   const escapeReplacement = (str: string) => str.replace(/\$/g, '_TMP_REPLACE_DOLLAR_')
   let processedContent = content.replace(codeBlockRegex, 'CODE_BLOCK_PLACEHOLDER')
 

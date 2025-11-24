@@ -28,7 +28,8 @@ const VoiceParamConfig = ({
 }: VoiceParamConfigProps) => {
   const { t } = useTranslation()
   const pathname = usePathname()
-  const matched = pathname.match(/\/app\/([^/]+)/)
+  const appIdRegex = /\/app\/([^/]+)/
+  const matched = appIdRegex.exec(pathname)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const text2speech = useFeatures(state => state.features.text2speech)
   const featuresStore = useFeaturesStore()

@@ -10,7 +10,7 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
     [CodeLanguage.python3]: /def\s+main\s*\((.*?)\)/,
     [CodeLanguage.javascript]: /function\s+main\s*\((.*?)\)/,
   }
-  const match = code.match(patterns[language])
+  const match = patterns[language].exec(code)
   const params: string[] = []
 
   if (match?.[1]) {

@@ -102,11 +102,17 @@ export const getVars = (value: string) => {
   if (!value)
     return []
 
-  const keys = value.match(varRegex)?.filter((item) => {
+  const matches: string[] = []
+  let match
+  varRegex.lastIndex = 0
+  while ((match = varRegex.exec(value)) !== null)
+    matches.push(match[0])
+
+  const keys = matches.filter((item) => {
     return ![CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT].includes(item)
   }).map((item) => {
     return item.replace('{{', '').replace('}}', '')
-  }).filter(key => key.length <= MAX_VAR_KEY_LENGTH) || []
+  }).filter(key => key.length <= MAX_VAR_KEY_LENGTH)
   const keyObj: Record<string, boolean> = {}
   // remove duplicate keys
   const res: string[] = []

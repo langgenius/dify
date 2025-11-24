@@ -54,7 +54,8 @@ export type DuplicateAppModalProps = {
 
 const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
 const extractFileId = (url: string) => {
-  const match = url.match(/files\/(.+?)\/file-preview/)
+  const regex = /files\/(.+?)\/file-preview/
+  const match = regex.exec(url)
   return match ? match[1] : null
 }
 const getIcon = (data?: ToolWithProvider) => {
