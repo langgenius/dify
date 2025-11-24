@@ -185,7 +185,7 @@ class AnnotationApi(Resource):
             },
         )
     )
-    @console_ns.response(201, "Annotation created successfully", build_annotation_model(api))
+    @console_ns.response(201, "Annotation created successfully", build_annotation_model(console_ns))
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
