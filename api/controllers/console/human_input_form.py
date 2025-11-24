@@ -131,7 +131,7 @@ class ConsoleWorkflowEventsApi(Resource):
         """
         Get workflow execution events stream after resume.
 
-        GET /console/api/workflow/<task_id>/events
+        GET /console/api/workflow/<workflow_run_id>/events
 
         Returns Server-Sent Events stream.
         """

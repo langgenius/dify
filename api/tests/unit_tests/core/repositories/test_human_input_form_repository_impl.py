@@ -10,9 +10,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.repositories.human_input_reposotiry import (
-    HumanInputFormReadRepository,
     HumanInputFormRecord,
     HumanInputFormRepositoryImpl,
+    HumanInputFormSubmissionRepository,
     _WorkspaceMemberInfo,
 )
 from core.workflow.nodes.human_input.entities import (
@@ -22,6 +22,7 @@ from core.workflow.nodes.human_input.entities import (
     TimeoutUnit,
     UserAction,
 )
+from core.workflow.repositories.human_input_form_repository import FormNotFoundError
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
@@ -197,7 +198,16 @@ class _FakeScalarResult:
         self._obj = obj
 
     def first(self):
+        if isinstance(self._obj, list):
+            return self._obj[0] if self._obj else None
         return self._obj
+
+    def all(self):
+        if isinstance(self._obj, list):
+            return list(self._obj)
+        if self._obj is None:
+            return []
+        return [self._obj]
 
 
 class _FakeSession:
@@ -205,15 +215,25 @@ class _FakeSession:
         self,
         *,
         scalars_result=None,
+        scalars_results: list[object] | None = None,
         forms: dict[str, _DummyForm] | None = None,
         recipients: dict[str, _DummyRecipient] | None = None,
     ):
-        self._scalars_result = scalars_result
+        if scalars_results is not None:
+            self._scalars_queue = list(scalars_results)
+        elif scalars_result is not None:
+            self._scalars_queue = [scalars_result]
+        else:
+            self._scalars_queue = []
         self.forms = forms or {}
         self.recipients = recipients or {}
 
     def scalars(self, _query):
-        return _FakeScalarResult(self._scalars_result)
+        if self._scalars_queue:
+            result = self._scalars_queue.pop(0)
+        else:
+            result = None
+        return _FakeScalarResult(result)
 
     def get(self, model_cls, obj_id):  # type: ignore[no-untyped-def]
         if getattr(model_cls, "__name__", None) == "HumanInputForm":
@@ -255,7 +275,86 @@ def _session_factory(session: _FakeSession):
     return _factory
 
 
-class TestHumanInputFormReadRepository:
+class TestHumanInputFormRepositoryImplPublicMethods:
+    def test_get_form_returns_entity_and_recipients(self):
+        form = _DummyForm(
+            id="form-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            tenant_id="tenant-id",
+            form_definition=_make_form_definition(),
+            rendered_content="<p>hello</p>",
+            expiration_time=naive_utc_now(),
+        )
+        recipient = _DummyRecipient(
+            id="recipient-1",
+            form_id=form.id,
+            recipient_type=RecipientType.WEBAPP,
+            access_token="token-123",
+        )
+        session = _FakeSession(scalars_results=[form, [recipient]])
+        repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant-id")
+
+        entity = repo.get_form(form.workflow_run_id, form.node_id)
+
+        assert entity is not None
+        assert entity.id == form.id
+        assert entity.web_app_token == "token-123"
+        assert len(entity.recipients) == 1
+        assert entity.recipients[0].token == "token-123"
+
+    def test_get_form_returns_none_when_missing(self):
+        session = _FakeSession(scalars_results=[None])
+        repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant-id")
+
+        assert repo.get_form("run-1", "node-1") is None
+
+    def test_get_form_submission_returns_none_when_pending(self):
+        form = _DummyForm(
+            id="form-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            tenant_id="tenant-id",
+            form_definition=_make_form_definition(),
+            rendered_content="<p>hello</p>",
+            expiration_time=naive_utc_now(),
+        )
+        session = _FakeSession(forms={form.id: form})
+        repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant-id")
+
+        assert repo.get_form_submission(form.id) is None
+
+    def test_get_form_submission_returns_submission_when_completed(self):
+        form = _DummyForm(
+            id="form-1",
+            workflow_run_id="run-1",
+            node_id="node-1",
+            tenant_id="tenant-id",
+            form_definition=_make_form_definition(),
+            rendered_content="<p>hello</p>",
+            expiration_time=naive_utc_now(),
+            selected_action_id="approve",
+            submitted_data='{"field": "value"}',
+            submitted_at=naive_utc_now(),
+        )
+        session = _FakeSession(forms={form.id: form})
+        repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant-id")
+
+        submission = repo.get_form_submission(form.id)
+
+        assert submission is not None
+        assert submission.selected_action_id == "approve"
+        assert submission.form_data() == {"field": "value"}
+
+    def test_get_form_submission_raises_when_form_missing(self):
+        session = _FakeSession(forms={})
+        repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant-id")
+
+        with pytest.raises(FormNotFoundError):
+            repo.get_form_submission("form-unknown")
+
+
+class TestHumanInputFormSubmissionRepository:
     def test_get_by_token_returns_record(self):
         form = _DummyForm(
             id="form-1",
@@ -274,7 +373,7 @@ class TestHumanInputFormReadRepository:
             form=form,
         )
         session = _FakeSession(scalars_result=recipient)
-        repo = HumanInputFormReadRepository(_session_factory(session))
+        repo = HumanInputFormSubmissionRepository(_session_factory(session))
 
         record = repo.get_by_token("token-123")
 
@@ -301,7 +400,7 @@ class TestHumanInputFormReadRepository:
             form=form,
         )
         session = _FakeSession(scalars_result=recipient)
-        repo = HumanInputFormReadRepository(_session_factory(session))
+        repo = HumanInputFormSubmissionRepository(_session_factory(session))
 
         record = repo.get_by_form_id_and_recipient_type(form_id=form.id, recipient_type=RecipientType.WEBAPP)
 
@@ -332,7 +431,7 @@ class TestHumanInputFormReadRepository:
             forms={form.id: form},
             recipients={recipient.id: recipient},
         )
-        repo = HumanInputFormReadRepository(_session_factory(session))
+        repo = HumanInputFormSubmissionRepository(_session_factory(session))
 
         record: HumanInputFormRecord = repo.mark_submitted(
             form_id=form.id,

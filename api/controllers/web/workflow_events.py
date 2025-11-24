@@ -56,5 +56,4 @@ class WorkflowEventsApi(WebApiResource):
 
 
 # Register the APIs
-api.add_resource(WorkflowResumeWaitApi, "/workflow/<string:task_id>/resume-wait")
 api.add_resource(WorkflowEventsApi, "/workflow/<string:task_id>/events")

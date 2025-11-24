@@ -4,11 +4,14 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.repositories.human_input_reposotiry import HumanInputFormReadRepository, HumanInputFormRecord
-from core.workflow.nodes.human_input.entities import FormDefinition, TimeoutUnit, UserAction
+from core.repositories.human_input_reposotiry import (
+    HumanInputFormRecord,
+    HumanInputFormSubmissionRepository,
+)
+from core.workflow.nodes.human_input.entities import FormDefinition, FormInput, FormInputType, TimeoutUnit, UserAction
 from models.account import Account
 from models.human_input import RecipientType
-from services.human_input_service import FormSubmittedError, HumanInputService
+from services.human_input_service import FormSubmittedError, HumanInputService, InvalidFormDataError
 
 
 @pytest.fixture
@@ -129,7 +132,7 @@ def test_enqueue_resume_chatflow_fallback(mocker, mock_session_factory):
 
 def test_get_form_definition_by_id_uses_repository(sample_form_record, mock_session_factory):
     session_factory, _ = mock_session_factory
-    repo = MagicMock(spec=HumanInputFormReadRepository)
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_form_id_and_recipient_type.return_value = sample_form_record
 
     service = HumanInputService(session_factory, form_repository=repo)
@@ -146,7 +149,7 @@ def test_get_form_definition_by_id_uses_repository(sample_form_record, mock_sess
 def test_get_form_definition_by_id_raises_on_submitted(sample_form_record, mock_session_factory):
     session_factory, _ = mock_session_factory
     submitted_record = dataclasses.replace(sample_form_record, submitted_at=datetime(2024, 1, 1))
-    repo = MagicMock(spec=HumanInputFormReadRepository)
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_form_id_and_recipient_type.return_value = submitted_record
 
     service = HumanInputService(session_factory, form_repository=repo)
@@ -157,7 +160,7 @@ def test_get_form_definition_by_id_raises_on_submitted(sample_form_record, mock_
 
 def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, mock_session_factory, mocker):
     session_factory, _ = mock_session_factory
-    repo = MagicMock(spec=HumanInputFormReadRepository)
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_token.return_value = sample_form_record
     repo.mark_submitted.return_value = sample_form_record
     service = HumanInputService(session_factory, form_repository=repo)
@@ -166,7 +169,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, m
     service.submit_form_by_token(
         recipient_type=RecipientType.WEBAPP,
         form_token="token",
-        selected_action_id="approve",
+        selected_action_id="submit",
         form_data={"field": "value"},
         submission_end_user_id="end-user-id",
     )
@@ -176,7 +179,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, m
     call_kwargs = repo.mark_submitted.call_args.kwargs
     assert call_kwargs["form_id"] == sample_form_record.form_id
     assert call_kwargs["recipient_id"] == sample_form_record.recipient_id
-    assert call_kwargs["selected_action_id"] == "approve"
+    assert call_kwargs["selected_action_id"] == "submit"
     assert call_kwargs["form_data"] == {"field": "value"}
     assert call_kwargs["submission_end_user_id"] == "end-user-id"
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
@@ -184,7 +187,7 @@ def test_submit_form_by_token_calls_repository_and_enqueue(sample_form_record, m
 
 def test_submit_form_by_id_passes_account(sample_form_record, mock_session_factory, mocker):
     session_factory, _ = mock_session_factory
-    repo = MagicMock(spec=HumanInputFormReadRepository)
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
     repo.get_by_form_id_and_recipient_type.return_value = sample_form_record
     repo.mark_submitted.return_value = sample_form_record
     service = HumanInputService(session_factory, form_repository=repo)
@@ -194,7 +197,7 @@ def test_submit_form_by_id_passes_account(sample_form_record, mock_session_facto
 
     service.submit_form_by_id(
         form_id="form-id",
-        selected_action_id="approve",
+        selected_action_id="submit",
         form_data={"x": 1},
         user=account,
     )
@@ -203,3 +206,49 @@ def test_submit_form_by_id_passes_account(sample_form_record, mock_session_facto
     repo.mark_submitted.assert_called_once()
     assert repo.mark_submitted.call_args.kwargs["submission_user_id"] == "account-id"
     enqueue_spy.assert_called_once_with(sample_form_record.workflow_run_id)
+
+
+def test_submit_form_by_token_invalid_action(sample_form_record, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+    repo.get_by_token.return_value = dataclasses.replace(sample_form_record)
+    service = HumanInputService(session_factory, form_repository=repo)
+
+    with pytest.raises(InvalidFormDataError) as exc_info:
+        service.submit_form_by_token(
+            recipient_type=RecipientType.WEBAPP,
+            form_token="token",
+            selected_action_id="invalid",
+            form_data={},
+        )
+
+    assert "Invalid action" in str(exc_info.value)
+    repo.mark_submitted.assert_not_called()
+
+
+def test_submit_form_by_token_missing_inputs(sample_form_record, mock_session_factory):
+    session_factory, _ = mock_session_factory
+    repo = MagicMock(spec=HumanInputFormSubmissionRepository)
+
+    definition_with_input = FormDefinition(
+        form_content="hello",
+        inputs=[FormInput(type=FormInputType.TEXT_INPUT, output_variable_name="content")],
+        user_actions=sample_form_record.definition.user_actions,
+        rendered_content="<p>hello</p>",
+        timeout=1,
+        timeout_unit=TimeoutUnit.HOUR,
+    )
+    form_with_input = dataclasses.replace(sample_form_record, definition=definition_with_input)
+    repo.get_by_token.return_value = form_with_input
+    service = HumanInputService(session_factory, form_repository=repo)
+
+    with pytest.raises(InvalidFormDataError) as exc_info:
+        service.submit_form_by_token(
+            recipient_type=RecipientType.WEBAPP,
+            form_token="token",
+            selected_action_id="submit",
+            form_data={},
+        )
+
+    assert "Missing required inputs" in str(exc_info.value)
+    repo.mark_submitted.assert_not_called()

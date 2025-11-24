@@ -87,7 +87,7 @@ class HumanInputDelivery(DefaultFieldsMixin, Base):
         nullable=False,
     )
     delivery_config_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
-    channel_payload: Mapped[None] = mapped_column(sa.Text, nullable=True)
+    channel_payload: Mapped[str] = mapped_column(sa.Text, nullable=False)
 
     form: Mapped[HumanInputForm] = relationship(
         "HumanInputForm",

@@ -1,5 +1,6 @@
 import time
 from collections.abc import Iterable
+from unittest.mock import MagicMock
 
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
@@ -17,7 +18,7 @@ from core.workflow.graph_events import (
 from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAction
 from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.nodes.llm.entities import (
     ContextConfig,
@@ -28,6 +29,11 @@ from core.workflow.nodes.llm.entities import (
 )
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.nodes.start.start_node import StartNode
+from core.workflow.repositories.human_input_form_repository import (
+    FormSubmission,
+    HumanInputFormEntity,
+    HumanInputFormRepository,
+)
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
@@ -36,7 +42,11 @@ from .test_mock_nodes import MockLLMNode
 from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 
-def _build_branching_graph(mock_config: MockConfig) -> tuple[Graph, GraphRuntimeState]:
+def _build_branching_graph(
+    mock_config: MockConfig,
+    form_repository: HumanInputFormRepository,
+    graph_runtime_state: GraphRuntimeState | None = None,
+) -> tuple[Graph, GraphRuntimeState]:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
     graph_init_params = GraphInitParams(
         tenant_id="tenant",
@@ -49,12 +59,18 @@ def _build_branching_graph(mock_config: MockConfig) -> tuple[Graph, GraphRuntime
         call_depth=0,
     )
 
-    variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="user", app_id="app", workflow_id="workflow"),
-        user_inputs={},
-        conversation_variables=[],
-    )
-    graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+    if graph_runtime_state is None:
+        variable_pool = VariablePool(
+            system_variables=SystemVariable(
+                user_id="user",
+                app_id="app",
+                workflow_id="workflow",
+                workflow_execution_id="test-execution-id",
+            ),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
     start_config = {"id": "start", "data": StartNodeData(title="Start", variables=[]).model_dump()}
     start_node = StartNode(
@@ -93,15 +109,21 @@ def _build_branching_graph(mock_config: MockConfig) -> tuple[Graph, GraphRuntime
 
     human_data = HumanInputNodeData(
         title="Human Input",
-        required_variables=["human.input_ready"],
-        pause_reason="Awaiting human input",
+        form_content="Human input required",
+        inputs=[],
+        user_actions=[
+            UserAction(id="primary", title="Primary"),
+            UserAction(id="secondary", title="Secondary"),
+        ],
     )
+
     human_config = {"id": "human", "data": human_data.model_dump()}
     human_node = HumanInputNode(
         id=human_config["id"],
         config=human_config,
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
+        form_repository=form_repository,
     )
 
     llm_primary = _create_llm_node("llm_primary", "Primary LLM", "Primary stream output")
@@ -219,8 +241,17 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
     for scenario in branch_scenarios:
         runner = TableTestRunner()
 
+        mock_create_repo = MagicMock(spec=HumanInputFormRepository)
+        mock_create_repo.get_form_submission.return_value = None
+        mock_create_repo.get_form.return_value = None
+        mock_form_entity = MagicMock(spec=HumanInputFormEntity)
+        mock_form_entity.id = "test_form_id"
+        mock_form_entity.web_app_token = "test_web_app_token"
+        mock_form_entity.recipients = []
+        mock_create_repo.create_form.return_value = mock_form_entity
+
         def initial_graph_factory() -> tuple[Graph, GraphRuntimeState]:
-            return _build_branching_graph(mock_config)
+            return _build_branching_graph(mock_config, mock_create_repo)
 
         initial_case = WorkflowTestCase(
             description="HumanInput pause before branching decision",
@@ -241,15 +272,6 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
 
         assert initial_result.success, initial_result.event_mismatch_details
         assert not any(isinstance(event, NodeRunStreamChunkEvent) for event in initial_result.events)
-
-        graph_runtime_state = initial_result.graph_runtime_state
-        graph = initial_result.graph
-        assert graph_runtime_state is not None
-        assert graph is not None
-
-        graph_runtime_state.variable_pool.add(("human", "input_ready"), True)
-        graph_runtime_state.variable_pool.add(("human", "edge_source_handle"), scenario["handle"])
-        graph_runtime_state.graph_execution.pause_reason = None
 
         pre_chunk_count = sum(len(chunks) for _, chunks in scenario["expected_pre_chunks"])
         post_chunk_count = sum(len(chunks) for _, chunks in scenario["expected_post_chunks"])
@@ -273,11 +295,18 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
             ]
         )
 
-        def resume_graph_factory(
-            graph_snapshot: Graph = graph,
-            state_snapshot: GraphRuntimeState = graph_runtime_state,
-        ) -> tuple[Graph, GraphRuntimeState]:
-            return graph_snapshot, state_snapshot
+        mock_get_repo = MagicMock(spec=HumanInputFormRepository)
+        mock_form_submission = MagicMock(spec=FormSubmission)
+        mock_form_submission.selected_action_id = scenario["handle"]
+        mock_form_submission.form_data.return_value = {}
+        mock_get_repo.get_form_submission.return_value = mock_form_submission
+        mock_get_repo.get_form.return_value = mock_form_entity
+
+        def resume_graph_factory() -> tuple[Graph, GraphRuntimeState]:
+            assert initial_result.graph_runtime_state is not None
+            serialized_runtime_state = initial_result.graph_runtime_state.dumps()
+            resume_runtime_state = GraphRuntimeState.from_snapshot(serialized_runtime_state)
+            return _build_branching_graph(mock_config, mock_get_repo, resume_runtime_state)
 
         resume_case = WorkflowTestCase(
             description=f"HumanInput resumes via {scenario['handle']} branch",

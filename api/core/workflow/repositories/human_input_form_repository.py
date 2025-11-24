@@ -93,13 +93,18 @@ class HumanInputFormRepository(Protocol):
     application domains or deployment scenarios.
     """
 
+    def get_form(self, workflow_execution_id: str, node_id: str) -> HumanInputFormEntity | None:
+        """Get the form created for a given human input node in a workflow execution. Returns
+        `None` if the form has not been created yet."""
+        ...
+
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         """
         Create a human input form from form definition.
         """
         ...
 
-    def get_form_submission(self, workflow_execution_id: str, node_id: str) -> FormSubmission | None:
+    def get_form_submission(self, form_id: str) -> FormSubmission | None:
         """Retrieve the submission for a specific human input node.
 
         Returns `FormSubmission` if the form has been submitted, or `None` if not.

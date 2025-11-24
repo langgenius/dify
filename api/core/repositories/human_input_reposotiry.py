@@ -22,6 +22,7 @@ from core.workflow.repositories.human_input_form_repository import (
     FormNotFoundError,
     FormSubmission,
     HumanInputFormEntity,
+    HumanInputFormRecipientEntity,
 )
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
@@ -42,9 +43,6 @@ class _DeliveryAndRecipients:
     delivery: HumanInputDelivery
     recipients: Sequence[HumanInputFormRecipient]
 
-    def webapp_recipient(self) -> HumanInputFormRecipient | None:
-        return next((i for i in self.recipients if i.recipient_type == RecipientType.WEBAPP), None)
-
 
 @dataclasses.dataclass(frozen=True)
 class _WorkspaceMemberInfo:
@@ -52,10 +50,31 @@ class _WorkspaceMemberInfo:
     email: str
 
 
+class _HumanInputFormRecipientEntityImpl(HumanInputFormRecipientEntity):
+    def __init__(self, recipient_model: HumanInputFormRecipient):
+        self._recipient_model = recipient_model
+
+    @property
+    def id(self) -> str:
+        return self._recipient_model.id
+
+    @property
+    def token(self) -> str:
+        if self._recipient_model.access_token is None:
+            raise AssertionError(
+                f"access_token should not be None for recipient {self._recipient_model.id}"
+            )
+        return self._recipient_model.access_token
+
+
 class _HumanInputFormEntityImpl(HumanInputFormEntity):
-    def __init__(self, form_model: HumanInputForm, web_app_recipient: HumanInputFormRecipient | None):
+    def __init__(self, form_model: HumanInputForm, recipient_models: Sequence[HumanInputFormRecipient]):
         self._form_model = form_model
-        self._web_app_recipient = web_app_recipient
+        self._recipients = [_HumanInputFormRecipientEntityImpl(recipient) for recipient in recipient_models]
+        self._web_app_recipient = next(
+            (recipient for recipient in recipient_models if recipient.recipient_type == RecipientType.WEBAPP),
+            None,
+        )
 
     @property
     def id(self) -> str:
@@ -66,6 +85,10 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
         if self._web_app_recipient is None:
             return None
         return self._web_app_recipient.access_token
+
+    @property
+    def recipients(self) -> list[HumanInputFormRecipientEntity]:
+        return list(self._recipients)
 
 
 class _FormSubmissionImpl(FormSubmission):
@@ -293,7 +316,7 @@ class HumanInputFormRepositoryImpl:
                 expiration_time=form_config.expiration_time(naive_utc_now()),
             )
             session.add(form_model)
-            web_app_recipient: HumanInputFormRecipient | None = None
+            recipient_models: list[HumanInputFormRecipient] = []
             for delivery in form_config.delivery_methods:
                 delivery_and_recipients = self._delivery_method_to_model(
                     session=session,
@@ -302,21 +325,33 @@ class HumanInputFormRepositoryImpl:
                 )
                 session.add(delivery_and_recipients.delivery)
                 session.add_all(delivery_and_recipients.recipients)
-                if web_app_recipient is None:
-                    web_app_recipient = delivery_and_recipients.webapp_recipient()
+                recipient_models.extend(delivery_and_recipients.recipients)
             session.flush()
 
-        return _HumanInputFormEntityImpl(form_model=form_model, web_app_recipient=web_app_recipient)
+        return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
 
-    def get_form_submission(self, workflow_execution_id: str, node_id: str) -> FormSubmission | None:
-        query = select(HumanInputForm).where(
+    def get_form(self, workflow_execution_id: str, node_id: str) -> HumanInputFormEntity | None:
+        form_query = select(HumanInputForm).where(
             HumanInputForm.workflow_run_id == workflow_execution_id,
             HumanInputForm.node_id == node_id,
+            HumanInputForm.tenant_id == self._tenant_id,
         )
         with self._session_factory(expire_on_commit=False) as session:
-            form_model: HumanInputForm | None = session.scalars(query).first()
+            form_model: HumanInputForm | None = session.scalars(form_query).first()
             if form_model is None:
-                raise FormNotFoundError(f"form not found for node, {workflow_execution_id=}, {node_id=}")
+                return None
+
+            recipient_query = select(HumanInputFormRecipient).where(
+                HumanInputFormRecipient.form_id == form_model.id
+            )
+            recipient_models = session.scalars(recipient_query).all()
+        return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
+
+    def get_form_submission(self, form_id: str) -> FormSubmission | None:
+        with self._session_factory(expire_on_commit=False) as session:
+            form_model: HumanInputForm | None = session.get(HumanInputForm, form_id)
+            if form_model is None or form_model.tenant_id != self._tenant_id:
+                raise FormNotFoundError(f"form not found, form_id={form_id}")
 
             if form_model.submitted_at is None:
                 return None
@@ -324,8 +359,8 @@ class HumanInputFormRepositoryImpl:
         return _FormSubmissionImpl(form_model=form_model)
 
 
-class HumanInputFormReadRepository:
-    """Read/write repository for fetching and submitting human input forms."""
+class HumanInputFormSubmissionRepository:
+    """Repository for fetching and submitting human input forms."""
 
     def __init__(self, session_factory: sessionmaker | Engine):
         if isinstance(session_factory, Engine):

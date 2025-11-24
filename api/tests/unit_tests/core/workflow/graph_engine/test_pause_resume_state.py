@@ -1,11 +1,8 @@
 import time
-from collections.abc import Generator, Mapping
 from typing import Any
+from unittest.mock import MagicMock
 
-import core.workflow.nodes.human_input.entities  # noqa: F401
 from core.workflow.entities import GraphInitParams
-from core.workflow.entities.pause_reason import SchedulingPause
-from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.command_channels.in_memory_channel import InMemoryChannel
 from core.workflow.graph_engine.graph_engine import GraphEngine
@@ -15,72 +12,66 @@ from core.workflow.graph_events import (
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.node_events import NodeEventBase, NodeRunResult, PauseRequestedEvent
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
-from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
+from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAction
+from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.nodes.start.start_node import StartNode
+from core.workflow.repositories.human_input_form_repository import (
+    FormSubmission,
+    HumanInputFormEntity,
+    HumanInputFormRepository,
+)
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
 
-class _PausingNodeData(BaseNodeData):
-    pass
-
-
-class _PausingNode(Node):
-    node_type = NodeType.TOOL
-
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self._node_data = _PausingNodeData.model_validate(data)
-
-    def _get_error_strategy(self):
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
-
-    @staticmethod
-    def _pause_generator(event: PauseRequestedEvent) -> Generator[NodeEventBase, None, None]:
-        yield event
-
-    def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:
-        resumed_flag = self.graph_runtime_state.variable_pool.get((self.id, "resumed"))
-        if resumed_flag is None:
-            # mark as resumed and request pause
-            self.graph_runtime_state.variable_pool.add((self.id, "resumed"), True)
-            return self._pause_generator(PauseRequestedEvent(reason=SchedulingPause(message="test pause")))
-
-        return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs={"value": "completed"},
-        )
-
-
 def _build_runtime_state() -> GraphRuntimeState:
     variable_pool = VariablePool(
-        system_variables=SystemVariable(user_id="user", app_id="app", workflow_id="workflow"),
+        system_variables=SystemVariable(
+            user_id="user",
+            app_id="app",
+            workflow_id="workflow",
+            workflow_execution_id="test-execution-id",
+        ),
         user_inputs={},
         conversation_variables=[],
     )
     return GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
 
-def _build_pausing_graph(runtime_state: GraphRuntimeState) -> Graph:
+def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepository:
+    submission = MagicMock(spec=FormSubmission)
+    submission.selected_action_id = action_id
+    submission.form_data.return_value = {}
+    repo = MagicMock(spec=HumanInputFormRepository)
+    repo.get_form_submission.return_value = submission
+    form_entity = MagicMock(spec=HumanInputFormEntity)
+    form_entity.id = "test-form-id"
+    form_entity.web_app_token = "test-form-token"
+    form_entity.recipients = []
+    repo.get_form.return_value = form_entity
+    return repo
+
+
+def _mock_form_repository_without_submission() -> HumanInputFormRepository:
+    repo = MagicMock(spec=HumanInputFormRepository)
+    repo.get_form_submission.return_value = None
+    form_entity = MagicMock(spec=HumanInputFormEntity)
+    form_entity.id = "test-form-id"
+    form_entity.web_app_token = "test-form-token"
+    form_entity.recipients = []
+    repo.create_form.return_value = form_entity
+    repo.get_form.return_value = None
+    return repo
+
+
+def _build_human_input_graph(
+    runtime_state: GraphRuntimeState,
+    form_repository: HumanInputFormRepository,
+) -> Graph:
     graph_config: dict[str, object] = {"nodes": [], "edges": []}
     params = GraphInitParams(
         tenant_id="tenant",
@@ -102,19 +93,27 @@ def _build_pausing_graph(runtime_state: GraphRuntimeState) -> Graph:
     )
     start_node.init_node_data(start_data.model_dump())
 
-    pause_data = _PausingNodeData(title="pausing")
-    pause_node = _PausingNode(
-        id="pausing",
-        config={"id": "pausing", "data": pause_data.model_dump()},
+    human_data = HumanInputNodeData(
+        title="human",
+        form_content="Awaiting human input",
+        inputs=[],
+        user_actions=[
+            UserAction(id="continue", title="Continue"),
+        ],
+    )
+    human_node = HumanInputNode(
+        id="human",
+        config={"id": "human", "data": human_data.model_dump()},
         graph_init_params=params,
         graph_runtime_state=runtime_state,
+        form_repository=form_repository,
     )
-    pause_node.init_node_data(pause_data.model_dump())
+    human_node.init_node_data(human_data.model_dump())
 
     end_data = EndNodeData(
         title="end",
         outputs=[
-            VariableSelector(variable="result", value_selector=["pausing", "value"]),
+            VariableSelector(variable="result", value_selector=["human", "action_id"]),
         ],
         desc=None,
     )
@@ -126,7 +125,13 @@ def _build_pausing_graph(runtime_state: GraphRuntimeState) -> Graph:
     )
     end_node.init_node_data(end_data.model_dump())
 
-    return Graph.new().add_root(start_node).add_node(pause_node).add_node(end_node).build()
+    return (
+        Graph.new()
+        .add_root(start_node)
+        .add_node(human_node)
+        .add_node(end_node, from_node_id="human", source_handle="continue")
+        .build()
+    )
 
 
 def _run_graph(graph: Graph, runtime_state: GraphRuntimeState) -> list[GraphEngineEvent]:
@@ -152,22 +157,24 @@ def _segment_value(variable_pool: VariablePool, selector: tuple[str, str]) -> An
 def test_engine_resume_restores_state_and_completion():
     # Baseline run without pausing
     baseline_state = _build_runtime_state()
-    baseline_graph = _build_pausing_graph(baseline_state)
-    baseline_state.variable_pool.add(("pausing", "resumed"), True)
+    baseline_repo = _mock_form_repository_with_submission(action_id="continue")
+    baseline_graph = _build_human_input_graph(baseline_state, baseline_repo)
     baseline_events = _run_graph(baseline_graph, baseline_state)
     assert isinstance(baseline_events[-1], GraphRunSucceededEvent)
     baseline_success_nodes = _node_successes(baseline_events)
 
     # Run with pause
     paused_state = _build_runtime_state()
-    paused_graph = _build_pausing_graph(paused_state)
+    pause_repo = _mock_form_repository_without_submission()
+    paused_graph = _build_human_input_graph(paused_state, pause_repo)
     paused_events = _run_graph(paused_graph, paused_state)
     assert isinstance(paused_events[-1], GraphRunPausedEvent)
     snapshot = paused_state.dumps()
 
     # Resume from snapshot
     resumed_state = GraphRuntimeState.from_snapshot(snapshot)
-    resumed_graph = _build_pausing_graph(resumed_state)
+    resume_repo = _mock_form_repository_with_submission(action_id="continue")
+    resumed_graph = _build_human_input_graph(resumed_state, resume_repo)
     resumed_events = _run_graph(resumed_graph, resumed_state)
     assert isinstance(resumed_events[-1], GraphRunSucceededEvent)
 
@@ -175,11 +182,8 @@ def test_engine_resume_restores_state_and_completion():
     assert combined_success_nodes == baseline_success_nodes
 
     assert baseline_state.outputs == resumed_state.outputs
-    assert _segment_value(baseline_state.variable_pool, ("pausing", "resumed")) == _segment_value(
-        resumed_state.variable_pool, ("pausing", "resumed")
-    )
-    assert _segment_value(baseline_state.variable_pool, ("pausing", "value")) == _segment_value(
-        resumed_state.variable_pool, ("pausing", "value")
+    assert _segment_value(baseline_state.variable_pool, ("human", "action_id")) == _segment_value(
+        resumed_state.variable_pool, ("human", "action_id")
     )
     assert baseline_state.graph_execution.completed
     assert resumed_state.graph_execution.completed

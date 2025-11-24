@@ -5,7 +5,10 @@ from typing import Any
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.repositories.human_input_reposotiry import HumanInputFormReadRepository, HumanInputFormRecord
+from core.repositories.human_input_reposotiry import (
+    HumanInputFormRecord,
+    HumanInputFormSubmissionRepository,
+)
 from core.workflow.nodes.human_input.entities import FormDefinition
 from libs.exception import BaseHTTPException
 from models.account import Account
@@ -65,6 +68,14 @@ class FormNotFoundError(HumanInputError, BaseHTTPException):
     code = 404
 
 
+class InvalidFormDataError(HumanInputError, BaseHTTPException):
+    error_code = "invalid_form_data"
+    code = 400
+
+    def __init__(self, description: str):
+        super().__init__(description=description)
+
+
 class WebAppDeliveryNotEnabledError(HumanInputError, BaseException):
     pass
 
@@ -76,12 +87,12 @@ class HumanInputService:
     def __init__(
         self,
         session_factory: sessionmaker[Session] | Engine,
-        form_repository: HumanInputFormReadRepository | None = None,
+        form_repository: HumanInputFormSubmissionRepository | None = None,
     ):
         if isinstance(session_factory, Engine):
             session_factory = sessionmaker(bind=session_factory)
         self._session_factory = session_factory
-        self._form_repository = form_repository or HumanInputFormReadRepository(session_factory)
+        self._form_repository = form_repository or HumanInputFormSubmissionRepository(session_factory)
 
     def get_form_by_token(self, form_token: str) -> Form | None:
         record = self._form_repository.get_by_token(form_token)
@@ -124,6 +135,7 @@ class HumanInputService:
             raise WebAppDeliveryNotEnabledError()
 
         self._ensure_not_submitted(form)
+        self._validate_submission(form=form, selected_action_id=selected_action_id, form_data=form_data)
 
         result = self._form_repository.mark_submitted(
             form_id=form.id,
@@ -149,6 +161,7 @@ class HumanInputService:
             raise WebAppDeliveryNotEnabledError()
 
         self._ensure_not_submitted(form)
+        self._validate_submission(form=form, selected_action_id=selected_action_id, form_data=form_data)
 
         result = self._form_repository.mark_submitted(
             form_id=form.id,
@@ -164,6 +177,23 @@ class HumanInputService:
     def _ensure_not_submitted(self, form: Form) -> None:
         if form.submitted:
             raise FormSubmittedError(form.id)
+
+    def _validate_submission(self, form: Form, selected_action_id: str, form_data: Mapping[str, Any]) -> None:
+        definition = form.get_definition()
+
+        available_actions = {action.id for action in definition.user_actions}
+        if selected_action_id not in available_actions:
+            raise InvalidFormDataError(f"Invalid action: {selected_action_id}")
+
+        provided_inputs = set(form_data.keys())
+        missing_inputs = [
+            form_input.output_variable_name
+            for form_input in definition.inputs
+            if form_input.output_variable_name not in provided_inputs
+        ]
+
+        if missing_inputs:
+            raise InvalidFormDataError(f"Missing required inputs: {', '.join(missing_inputs)}")
 
     def _enqueue_resume(self, workflow_run_id: str) -> None:
         with self._session_factory(expire_on_commit=False) as session:

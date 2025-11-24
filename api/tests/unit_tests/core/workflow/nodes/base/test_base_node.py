@@ -7,6 +7,7 @@ from core.workflow.nodes.base.node import Node
 # Ensures that all node classes are imported.
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 
+# Ensure `NODE_TYPE_CLASSES_MAPPING` is used and not automatically removed.
 _ = NODE_TYPE_CLASSES_MAPPING
 
 
@@ -45,7 +46,9 @@ def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined
         assert isinstance(cls.node_type, NodeType)
         assert isinstance(node_version, str)
         node_type_and_version = (node_type, node_version)
-        assert node_type_and_version not in type_version_set
+        assert node_type_and_version not in type_version_set, (
+            f"Duplicate node type and version for class: {cls=} {node_type_and_version=}"
+        )
         type_version_set.add(node_type_and_version)
 
 

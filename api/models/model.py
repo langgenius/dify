@@ -24,11 +24,11 @@ from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 
 from .account import Account, Tenant
-from .base import Base, TypeBase
+from .base import Base, DefaultFieldsMixin, TypeBase
 from .engine import db
 from .enums import CreatorUserRole
 from .provider_ids import GenericProviderID
-from .types import LongText, StringUUID
+from .types import EnumText, LongText, StringUUID
 
 if TYPE_CHECKING:
     from .workflow import Workflow
@@ -2065,3 +2065,19 @@ class TraceAppConfig(TypeBase):
             "created_at": str(self.created_at) if self.created_at else None,
             "updated_at": str(self.updated_at) if self.updated_at else None,
         }
+
+
+class MessageExtraContentType(StrEnum):
+    human_input_result = auto()
+
+
+class MessageExtraContent(DefaultFieldsMixin):
+    __tablename__ = "message_extra_contents"
+    __table_args__ = (
+        sa.PrimaryKeyConstraint("id", name="message_extra_content_pkey"),
+        sa.Index("message_extra_content_message_id_idx", "message_id"),
+    )
+
+    message_id = mapped_column(StringUUID, nullable=False, index=True)
+    type: Mapped[MessageExtraContentType] = mapped_column(EnumText(MessageExtraContentType, length=30), nullable=False)
+    content = mapped_column(sa.Text, nullable=False)
