@@ -10,7 +10,6 @@ This test suite covers:
 
 import json
 from datetime import UTC, datetime
-from unittest.mock import MagicMock, patch
 from uuid import uuid4
 
 import pytest
