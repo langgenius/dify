@@ -5,7 +5,7 @@ import pytest
 from models.account import Account
 from models.dataset import ChildChunk, Dataset, Document, DocumentSegment
 from services.dataset_service import SegmentService
-from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 
 
@@ -186,10 +186,23 @@ class TestSegmentServiceCreateSegment:
             result = SegmentService.create_segment(args, document, dataset)
 
             # Assert
-            assert result == mock_segment
-            mock_db_session.add.assert_called()
-            mock_db_session.commit.assert_called()
+            assert mock_db_session.add.call_count == 2
+
+            created_segment = mock_db_session.add.call_args_list[0].args[0]
+            assert isinstance(created_segment, DocumentSegment)
+            assert created_segment.content == args["content"]
+            assert created_segment.word_count == len(args["content"])
+
+            mock_db_session.commit.assert_called_once()
+
             mock_vector_service.assert_called_once()
+            vector_call_args = mock_vector_service.call_args[0]
+            assert vector_call_args[0] == [args["keywords"]]
+            assert vector_call_args[1][0] == created_segment
+            assert vector_call_args[2] == dataset
+            assert vector_call_args[3] == document.doc_form
+
+            assert result == mock_segment
 
     def test_create_segment_with_qa_model(self, mock_db_session, mock_current_user):
         """Test creation of segment with QA model (requires answer)."""
@@ -339,6 +352,10 @@ class TestSegmentServiceUpdateSegment:
 
             # Assert
             assert result == segment
+            assert segment.content == "Updated content"
+            assert segment.keywords == ["updated"]
+            assert segment.word_count == len("Updated content")
+            assert document.word_count == 100 + (len("Updated content") - 10)
             mock_db_session.add.assert_called()
             mock_db_session.commit.assert_called()
 
@@ -424,6 +441,12 @@ class TestSegmentServiceUpdateSegment:
 
             # Assert
             assert result == segment
+            assert segment.content == "Updated question"
+            assert segment.answer == "Updated answer"
+            assert segment.keywords == ["qa"]
+            new_word_count = len("Updated question") + len("Updated answer")
+            assert segment.word_count == new_word_count
+            assert document.word_count == 100 + (new_word_count - 10)
             mock_db_session.commit.assert_called()
 
 
@@ -471,7 +494,10 @@ class TestSegmentServiceDeleteSegment:
         document = SegmentTestDataFactory.create_document_mock(word_count=100)
         dataset = SegmentTestDataFactory.create_dataset_mock()
 
-        with patch("services.dataset_service.redis_client.get") as mock_redis_get:
+        with (
+            patch("services.dataset_service.redis_client.get") as mock_redis_get,
+            patch("services.dataset_service.delete_segment_from_index_task") as mock_task,
+        ):
             mock_redis_get.return_value = None
 
             # Act
@@ -480,6 +506,7 @@ class TestSegmentServiceDeleteSegment:
             # Assert
             mock_db_session.delete.assert_called_once_with(segment)
             mock_db_session.commit.assert_called_once()
+            mock_task.delay.assert_not_called()
 
     def test_delete_segment_indexing_in_progress(self, mock_db_session):
         """Test deletion fails when segment is currently being deleted."""
@@ -1064,4 +1091,3 @@ class TestSegmentServiceDeleteChildChunk:
                 SegmentService.delete_child_chunk(chunk, dataset)
 
             mock_db_session.rollback.assert_called_once()
-
