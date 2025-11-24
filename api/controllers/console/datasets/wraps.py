@@ -1,6 +1,5 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar, overload
 from typing import ParamSpec, TypeVar
 
 from controllers.console.datasets.error import PipelineNotFoundError
