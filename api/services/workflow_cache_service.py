@@ -140,7 +140,7 @@ class WorkflowCacheService:
 
             return cache_entry.output_data
 
-        logger.debug(f"Cache miss for key {cache_key}")
+        logger.debug("Cache miss for key %s", cache_key)
         return None
 
     @staticmethod
@@ -200,7 +200,7 @@ class WorkflowCacheService:
             existing_entry.last_accessed_at = naive_utc_now()
             existing_entry.metadata = metadata or {}
             cache_entry = existing_entry
-            logger.info(f"Updated cache entry for key {cache_key}")
+            logger.info("Updated cache entry for key %s", cache_key)
         else:
             # Create new entry
             cache_entry = WorkflowCacheEntry(
@@ -266,7 +266,7 @@ class WorkflowCacheService:
         db.session.commit()
 
         count = result.rowcount
-        logger.info(f"Invalidated {count} cache entries")
+        logger.info("Invalidated %s cache entries", count)
 
         return count
 
@@ -284,7 +284,7 @@ class WorkflowCacheService:
         db.session.commit()
 
         count = result.rowcount
-        logger.info(f"Cleaned up {count} expired cache entries")
+        logger.info("Cleaned up %s expired cache entries", count)
 
         return count
 

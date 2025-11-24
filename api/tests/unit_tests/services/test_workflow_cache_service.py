@@ -4,9 +4,10 @@ Unit tests for Workflow Cache Service
 This module contains comprehensive tests for the workflow caching functionality.
 """
 
-import pytest
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from libs.datetime_utils import naive_utc_now
 from models.workflow_performance import WorkflowCacheEntry
