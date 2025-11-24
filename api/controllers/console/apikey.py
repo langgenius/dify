@@ -11,7 +11,7 @@ from libs.login import current_account_with_tenant, login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
 
-from . import api, console_ns
+from . import console_ns
 from .wraps import account_initialization_required, edit_permission_required, setup_required
 
 api_key_fields = {
@@ -133,20 +133,20 @@ class BaseApiKeyResource(Resource):
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys")
 class AppApiKeyListResource(BaseApiKeyListResource):
-    @api.doc("get_app_api_keys")
-    @api.doc(description="Get all API keys for an app")
-    @api.doc(params={"resource_id": "App ID"})
-    @api.response(200, "Success", api_key_list)
-    def get(self, resource_id: str) -> dict:
+    @console_ns.doc("get_app_api_keys")
+    @console_ns.doc(description="Get all API keys for an app")
+    @console_ns.doc(params={"resource_id": "App ID"})
+    @console_ns.response(200, "Success", api_key_list)
+    def get(self, resource_id):  # type: ignore
         """Get all API keys for an app"""
         return super().get(resource_id)
 
-    @api.doc("create_app_api_key")
-    @api.doc(description="Create a new API key for an app")
-    @api.doc(params={"resource_id": "App ID"})
-    @api.response(201, "API key created successfully", api_key_fields)
-    @api.response(400, "Maximum keys exceeded")
-    def post(self, resource_id: str) -> tuple[ApiToken, int]:
+    @console_ns.doc("create_app_api_key")
+    @console_ns.doc(description="Create a new API key for an app")
+    @console_ns.doc(params={"resource_id": "App ID"})
+    @console_ns.response(201, "API key created successfully", api_key_fields)
+    @console_ns.response(400, "Maximum keys exceeded")
+    def post(self, resource_id):  # type: ignore
         """Create a new API key for an app"""
         return super().post(resource_id)
 
@@ -158,11 +158,11 @@ class AppApiKeyListResource(BaseApiKeyListResource):
 
 @console_ns.route("/apps/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class AppApiKeyResource(BaseApiKeyResource):
-    @api.doc("delete_app_api_key")
-    @api.doc(description="Delete an API key for an app")
-    @api.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
-    @api.response(204, "API key deleted successfully")
-    def delete(self, resource_id: str, api_key_id: str) -> tuple[dict[str, str], int]:
+    @console_ns.doc("delete_app_api_key")
+    @console_ns.doc(description="Delete an API key for an app")
+    @console_ns.doc(params={"resource_id": "App ID", "api_key_id": "API key ID"})
+    @console_ns.response(204, "API key deleted successfully")
+    def delete(self, resource_id, api_key_id):
         """Delete an API key for an app"""
         return super().delete(resource_id, api_key_id)
 
@@ -173,20 +173,20 @@ class AppApiKeyResource(BaseApiKeyResource):
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys")
 class DatasetApiKeyListResource(BaseApiKeyListResource):
-    @api.doc("get_dataset_api_keys")
-    @api.doc(description="Get all API keys for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID"})
-    @api.response(200, "Success", api_key_list)
-    def get(self, resource_id: str) -> dict:
+    @console_ns.doc("get_dataset_api_keys")
+    @console_ns.doc(description="Get all API keys for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID"})
+    @console_ns.response(200, "Success", api_key_list)
+    def get(self, resource_id):  # type: ignore
         """Get all API keys for a dataset"""
         return super().get(resource_id)
 
-    @api.doc("create_dataset_api_key")
-    @api.doc(description="Create a new API key for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID"})
-    @api.response(201, "API key created successfully", api_key_fields)
-    @api.response(400, "Maximum keys exceeded")
-    def post(self, resource_id: str) -> tuple[ApiToken, int]:
+    @console_ns.doc("create_dataset_api_key")
+    @console_ns.doc(description="Create a new API key for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID"})
+    @console_ns.response(201, "API key created successfully", api_key_fields)
+    @console_ns.response(400, "Maximum keys exceeded")
+    def post(self, resource_id):  # type: ignore
         """Create a new API key for a dataset"""
         return super().post(resource_id)
 
@@ -198,11 +198,11 @@ class DatasetApiKeyListResource(BaseApiKeyListResource):
 
 @console_ns.route("/datasets/<uuid:resource_id>/api-keys/<uuid:api_key_id>")
 class DatasetApiKeyResource(BaseApiKeyResource):
-    @api.doc("delete_dataset_api_key")
-    @api.doc(description="Delete an API key for a dataset")
-    @api.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
-    @api.response(204, "API key deleted successfully")
-    def delete(self, resource_id: str, api_key_id: str) -> tuple[dict[str, str], int]:
+    @console_ns.doc("delete_dataset_api_key")
+    @console_ns.doc(description="Delete an API key for a dataset")
+    @console_ns.doc(params={"resource_id": "Dataset ID", "api_key_id": "API key ID"})
+    @console_ns.response(204, "API key deleted successfully")
+    def delete(self, resource_id, api_key_id):
         """Delete an API key for a dataset"""
         return super().delete(resource_id, api_key_id)
 

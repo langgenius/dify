@@ -2,7 +2,7 @@ from flask_restx import Resource, marshal_with, reqparse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
@@ -14,15 +14,15 @@ from models.model import AppMode
 
 @console_ns.route("/apps/<uuid:app_id>/conversation-variables")
 class ConversationVariablesApi(Resource):
-    @api.doc("get_conversation_variables")
-    @api.doc(description="Get conversation variables for an application")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser().add_argument(
+    @console_ns.doc("get_conversation_variables")
+    @console_ns.doc(description="Get conversation variables for an application")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.parser().add_argument(
             "conversation_id", type=str, location="args", help="Conversation ID to filter variables"
         )
     )
-    @api.response(200, "Conversation variables retrieved successfully", paginated_conversation_variable_fields)
+    @console_ns.response(200, "Conversation variables retrieved successfully", paginated_conversation_variable_fields)
     @setup_required
     @login_required
     @account_initialization_required
