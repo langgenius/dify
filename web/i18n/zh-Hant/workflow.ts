@@ -1042,7 +1042,7 @@ const translation = {
       },
       trigger: {
         cached: '查看快取的變數',
-        stop: '停止跑步',
+        stop: '停止運行',
         clear: '清晰',
         running: '快取運行狀態',
         normal: '變數檢查',

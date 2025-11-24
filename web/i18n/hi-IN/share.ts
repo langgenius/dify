@@ -76,7 +76,7 @@ const translation = {
     },
     execution: 'अनु执行',
     executions: '{{num}} फाँसी',
-    stopRun: 'रोकें या दौड़ना बंद करें',
+    stopRun: 'निष्पादन रोकें',
   },
   login: {
     backToHome: 'होम पर वापस',
