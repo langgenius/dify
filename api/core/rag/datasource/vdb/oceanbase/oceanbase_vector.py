@@ -271,7 +271,7 @@ class OceanBaseVector(BaseVector):
             self._hnsw_ef_search = ef_search
         topk = kwargs.get("top_k", 10)
         try:
-            score_threshold = float(kwargs.get("score_threshold") or 0.0)
+            score_threshold = float(val) if (val := kwargs.get("score_threshold")) is not None else 0.0
         except (ValueError, TypeError) as e:
             raise ValueError(f"Invalid score_threshold parameter: {e}") from e
         try:
