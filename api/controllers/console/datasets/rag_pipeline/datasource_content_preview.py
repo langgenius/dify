@@ -4,7 +4,7 @@ from flask_restx import (  # type: ignore
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import account_initialization_required, setup_required
 from libs.login import current_user, login_required
@@ -26,7 +26,7 @@ console_ns.schema_model(Parser.__name__, Parser.model_json_schema(ref_template=D
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/preview")
 class DataSourceContentPreviewApi(Resource):
-    @api.expect(console_ns.models[Parser.__name__], validate=True)
+    @console_ns.expect(console_ns.models[Parser.__name__], validate=True)
     @setup_required
     @login_required
     @account_initialization_required
@@ -38,7 +38,7 @@ class DataSourceContentPreviewApi(Resource):
         if not isinstance(current_user, Account):
             raise Forbidden()
 
-        args = Parser.model_validate(api.payload)
+        args = Parser.model_validate(console_ns.payload)
 
         inputs = args.inputs
         datasource_type = args.datasource_type
