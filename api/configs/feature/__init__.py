@@ -77,10 +77,6 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
     )
-    APP_DAILY_RATE_LIMIT: NonNegativeInt = Field(
-        description="Maximum number of requests per app per day",
-        default=5000,
-    )
 
 
 class CodeExecutionSandboxConfig(BaseSettings):
@@ -1096,7 +1092,7 @@ class CeleryScheduleTasksConfig(BaseSettings):
     )
     TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS: int = Field(
         description="Proactive credential refresh threshold in seconds",
-        default=180,
+        default=60 * 60,
     )
     TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
         description="Proactive subscription refresh threshold in seconds",

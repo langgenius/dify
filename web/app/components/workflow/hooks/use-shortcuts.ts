@@ -44,17 +44,17 @@ export const useShortcuts = (): void => {
     fitView,
   } = useReactFlow()
 
-  // Zoom out to a minimum of 0.5 for shortcut
+  // Zoom out to a minimum of 0.25 for shortcut
   const constrainedZoomOut = () => {
     const currentZoom = getZoom()
-    const newZoom = Math.max(currentZoom - 0.1, 0.5)
+    const newZoom = Math.max(currentZoom - 0.1, 0.25)
     zoomTo(newZoom)
   }
 
-  // Zoom in to a maximum of 1 for shortcut
+  // Zoom in to a maximum of 2 for shortcut
   const constrainedZoomIn = () => {
     const currentZoom = getZoom()
-    const newZoom = Math.min(currentZoom + 0.1, 1)
+    const newZoom = Math.min(currentZoom + 0.1, 2)
     zoomTo(newZoom)
   }
 

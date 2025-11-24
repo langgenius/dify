@@ -11,7 +11,7 @@ from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     ProviderModelCurrentlyNotSupportError,
     ProviderNotInitializeError,
@@ -104,10 +104,10 @@ class DocumentResource(Resource):
 
 @console_ns.route("/datasets/process-rule")
 class GetProcessRuleApi(Resource):
-    @api.doc("get_process_rule")
-    @api.doc(description="Get dataset document processing rules")
-    @api.doc(params={"document_id": "Document ID (optional)"})
-    @api.response(200, "Process rules retrieved successfully")
+    @console_ns.doc("get_process_rule")
+    @console_ns.doc(description="Get dataset document processing rules")
+    @console_ns.doc(params={"document_id": "Document ID (optional)"})
+    @console_ns.response(200, "Process rules retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -152,9 +152,9 @@ class GetProcessRuleApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents")
 class DatasetDocumentListApi(Resource):
-    @api.doc("get_dataset_documents")
-    @api.doc(description="Get documents in a dataset")
-    @api.doc(
+    @console_ns.doc("get_dataset_documents")
+    @console_ns.doc(description="Get documents in a dataset")
+    @console_ns.doc(
         params={
             "dataset_id": "Dataset ID",
             "page": "Page number (default: 1)",
@@ -162,9 +162,10 @@ class DatasetDocumentListApi(Resource):
             "keyword": "Search keyword",
             "sort": "Sort order (default: -created_at)",
             "fetch": "Fetch full details (default: false)",
+            "status": "Filter documents by display status",
         }
     )
-    @api.response(200, "Documents retrieved successfully")
+    @console_ns.response(200, "Documents retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -175,6 +176,7 @@ class DatasetDocumentListApi(Resource):
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
         sort = request.args.get("sort", default="-created_at", type=str)
+        status = request.args.get("status", default=None, type=str)
         # "yes", "true", "t", "y", "1" convert to True, while others convert to False.
         try:
             fetch_val = request.args.get("fetch", default="false")
@@ -202,6 +204,9 @@ class DatasetDocumentListApi(Resource):
             raise Forbidden(str(e))
 
         query = select(Document).filter_by(dataset_id=str(dataset_id), tenant_id=current_tenant_id)
+
+        if status:
+            query = DocumentService.apply_display_status_filter(query, status)
 
         if search:
             search = f"%{search}%"
@@ -352,10 +357,10 @@ class DatasetDocumentListApi(Resource):
 
 @console_ns.route("/datasets/init")
 class DatasetInitApi(Resource):
-    @api.doc("init_dataset")
-    @api.doc(description="Initialize dataset with documents")
-    @api.expect(
-        api.model(
+    @console_ns.doc("init_dataset")
+    @console_ns.doc(description="Initialize dataset with documents")
+    @console_ns.expect(
+        console_ns.model(
             "DatasetInitRequest",
             {
                 "upload_file_id": fields.String(required=True, description="Upload file ID"),
@@ -365,8 +370,8 @@ class DatasetInitApi(Resource):
             },
         )
     )
-    @api.response(201, "Dataset initialized successfully", dataset_and_document_fields)
-    @api.response(400, "Invalid request parameters")
+    @console_ns.response(201, "Dataset initialized successfully", dataset_and_document_fields)
+    @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -445,12 +450,12 @@ class DatasetInitApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate")
 class DocumentIndexingEstimateApi(DocumentResource):
-    @api.doc("estimate_document_indexing")
-    @api.doc(description="Estimate document indexing cost")
-    @api.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
-    @api.response(200, "Indexing estimate calculated successfully")
-    @api.response(404, "Document not found")
-    @api.response(400, "Document already finished")
+    @console_ns.doc("estimate_document_indexing")
+    @console_ns.doc(description="Estimate document indexing cost")
+    @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @console_ns.response(200, "Indexing estimate calculated successfully")
+    @console_ns.response(404, "Document not found")
+    @console_ns.response(400, "Document already finished")
     @setup_required
     @login_required
     @account_initialization_required
@@ -660,11 +665,11 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status")
 class DocumentIndexingStatusApi(DocumentResource):
-    @api.doc("get_document_indexing_status")
-    @api.doc(description="Get document indexing status")
-    @api.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
-    @api.response(200, "Indexing status retrieved successfully")
-    @api.response(404, "Document not found")
+    @console_ns.doc("get_document_indexing_status")
+    @console_ns.doc(description="Get document indexing status")
+    @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @console_ns.response(200, "Indexing status retrieved successfully")
+    @console_ns.response(404, "Document not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -710,17 +715,17 @@ class DocumentIndexingStatusApi(DocumentResource):
 class DocumentApi(DocumentResource):
     METADATA_CHOICES = {"all", "only", "without"}
 
-    @api.doc("get_document")
-    @api.doc(description="Get document details")
-    @api.doc(
+    @console_ns.doc("get_document")
+    @console_ns.doc(description="Get document details")
+    @console_ns.doc(
         params={
             "dataset_id": "Dataset ID",
             "document_id": "Document ID",
             "metadata": "Metadata inclusion (all/only/without)",
         }
     )
-    @api.response(200, "Document retrieved successfully")
-    @api.response(404, "Document not found")
+    @console_ns.response(200, "Document retrieved successfully")
+    @console_ns.response(404, "Document not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -831,14 +836,14 @@ class DocumentApi(DocumentResource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/<string:action>")
 class DocumentProcessingApi(DocumentResource):
-    @api.doc("update_document_processing")
-    @api.doc(description="Update document processing status (pause/resume)")
-    @api.doc(
+    @console_ns.doc("update_document_processing")
+    @console_ns.doc(description="Update document processing status (pause/resume)")
+    @console_ns.doc(
         params={"dataset_id": "Dataset ID", "document_id": "Document ID", "action": "Action to perform (pause/resume)"}
     )
-    @api.response(200, "Processing status updated successfully")
-    @api.response(404, "Document not found")
-    @api.response(400, "Invalid action")
+    @console_ns.response(200, "Processing status updated successfully")
+    @console_ns.response(404, "Document not found")
+    @console_ns.response(400, "Invalid action")
     @setup_required
     @login_required
     @account_initialization_required
@@ -876,11 +881,11 @@ class DocumentProcessingApi(DocumentResource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/metadata")
 class DocumentMetadataApi(DocumentResource):
-    @api.doc("update_document_metadata")
-    @api.doc(description="Update document metadata")
-    @api.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("update_document_metadata")
+    @console_ns.doc(description="Update document metadata")
+    @console_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
+    @console_ns.expect(
+        console_ns.model(
             "UpdateDocumentMetadataRequest",
             {
                 "doc_type": fields.String(description="Document type"),
@@ -888,9 +893,9 @@ class DocumentMetadataApi(DocumentResource):
             },
         )
     )
-    @api.response(200, "Document metadata updated successfully")
-    @api.response(404, "Document not found")
-    @api.response(403, "Permission denied")
+    @console_ns.response(200, "Document metadata updated successfully")
+    @console_ns.response(404, "Document not found")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
