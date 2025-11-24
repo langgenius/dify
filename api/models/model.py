@@ -1467,22 +1467,28 @@ class AppAnnotationSetting(TypeBase):
         return collection_binding_detail
 
 
-class OperationLog(Base):
+class OperationLog(TypeBase):
     __tablename__ = "operation_logs"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="operation_log_pkey"),
         sa.Index("operation_log_account_action_idx", "tenant_id", "account_id", "action"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    account_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     action: Mapped[str] = mapped_column(String(255), nullable=False)
-    content = mapped_column(sa.JSON)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    content: Mapped[Any] = mapped_column(sa.JSON)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     created_ip: Mapped[str] = mapped_column(String(255), nullable=False)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
 

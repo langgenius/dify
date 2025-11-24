@@ -96,7 +96,7 @@ class _InvalidGraphDefinitionError(Exception):
     pass
 
 
-class Workflow(Base): # bug
+class Workflow(Base):  # bug
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
 
