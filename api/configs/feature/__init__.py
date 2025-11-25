@@ -73,6 +73,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum allowed execution time for the application in seconds",
         default=1200,
     )
+    APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
+        description="Default number of concurrent active requests per app (0 for unlimited)",
+        default=0,
+    )
     APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
@@ -356,6 +360,26 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
+    IMAGE_FILE_BATCH_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a image batch upload operation",
+        default=10,
+    )
+
+    SINGLE_CHUNK_ATTACHMENT_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a single chunk attachment",
+        default=10,
+    )
+
+    ATTACHMENT_IMAGE_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed image file size for attachments in megabytes",
+        default=2,
+    )
+
+    ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT: NonNegativeInt = Field(
+        description="Timeout for downloading image attachments in seconds",
+        default=60,
+    )
+
     inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
         description=(
             "Comma-separated list of file extensions that are blocked from upload. "
@@ -549,7 +573,10 @@ class LoggingConfig(BaseSettings):
 
     LOG_FORMAT: str = Field(
         description="Format string for log messages",
-        default="%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s",
+        default=(
+            "%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] "
+            "[%(filename)s:%(lineno)d] %(trace_id)s - %(message)s"
+        ),
     )
 
     LOG_DATEFORMAT: str | None = Field(

@@ -79,6 +79,18 @@ class WeaviateVector(BaseVector):
         self._client = self._init_client(config)
         self._attributes = attributes
 
+    def __del__(self):
+        """
+        Destructor to properly close the Weaviate client connection.
+        Prevents connection leaks and resource warnings.
+        """
+        if hasattr(self, "_client") and self._client is not None:
+            try:
+                self._client.close()
+            except Exception as e:
+                # Ignore errors during cleanup as object is being destroyed
+                logger.warning("Error closing Weaviate client %s", e, exc_info=True)
+
     def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
         """
         Initializes and returns a connected Weaviate client.
@@ -167,13 +179,18 @@ class WeaviateVector(BaseVector):
 
             try:
                 if not self._client.collections.exists(self._collection_name):
+                    tokenization = (
+                        wc.Tokenization(dify_config.WEAVIATE_TOKENIZATION)
+                        if dify_config.WEAVIATE_TOKENIZATION
+                        else wc.Tokenization.WORD
+                    )
                     self._client.collections.create(
                         name=self._collection_name,
                         properties=[
                             wc.Property(
                                 name=Field.TEXT_KEY.value,
                                 data_type=wc.DataType.TEXT,
-                                tokenization=wc.Tokenization.WORD,
+                                tokenization=tokenization,
                             ),
                             wc.Property(name="document_id", data_type=wc.DataType.TEXT),
                             wc.Property(name="doc_id", data_type=wc.DataType.TEXT),

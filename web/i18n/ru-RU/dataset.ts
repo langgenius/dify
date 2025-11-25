@@ -36,8 +36,6 @@ const translation = {
       recommend: 'Рекомендуется',
     },
     invertedIndex: {
-      title: 'Инвертированный индекс',
-      description: 'Инвертированный индекс - это структура, используемая для эффективного поиска. Организованный по терминам, каждый термин указывает на документы или веб-страницы, содержащие его.',
     },
     change: 'Изменить',
     changeRetrievalMethod: 'Изменить метод поиска',
@@ -235,6 +233,20 @@ const translation = {
     enabled: 'На службе',
     title: 'Сервисный API',
     disabled: 'Отключено',
+  },
+  docAllEnabled_one: 'Документ {{count}} включен',
+  docAllEnabled_other: 'Все документы {{count}} включены',
+  partialEnabled_one: 'Всего {{count}} документов, доступно {{num}}',
+  partialEnabled_other: 'Всего {{count}} документов, доступно {{num}}',
+  cornerLabel: {
+    unavailable: 'Недоступно',
+    pipeline: 'Трубопровод',
+  },
+  multimodal: 'Мультимодальный',
+  imageUploader: {
+    button: 'Перетащите файл или папку, или',
+    browse: 'Просматривать',
+    tip: '{{supportTypes}} (макс. {{batchCount}}, {{size}} МБ каждый)',
   },
 }
 

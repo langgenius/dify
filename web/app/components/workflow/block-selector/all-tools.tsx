@@ -231,7 +231,7 @@ const AllTools = ({
         <div
           ref={wrapElemRef}
           className='flex-1 overflow-y-auto'
-          onScroll={pluginRef.current?.handleScroll}
+          onScroll={() => pluginRef.current?.handleScroll()}
         >
           <div className={cn(shouldShowEmptyState && 'hidden')}>
             {isShowRAGRecommendations && onTagsChange && (
@@ -284,6 +284,7 @@ const AllTools = ({
                 wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
                 list={notInstalledPlugins}
                 searchText={searchText}
+                category={PluginCategoryEnum.tool}
                 toolContentClassName={toolContentClassName}
                 tags={tags}
                 hideFindMoreFooter
@@ -315,7 +316,7 @@ const AllTools = ({
         {shouldShowMarketplaceFooter && (
           <Link
             className={marketplaceFooterClassName}
-            href={getMarketplaceUrl('')}
+            href={getMarketplaceUrl('', { category: PluginCategoryEnum.tool })}
             target='_blank'
           >
             <span>{t('plugin.findMoreInMarketplace')}</span>

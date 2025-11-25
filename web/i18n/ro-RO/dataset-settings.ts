@@ -26,6 +26,7 @@ const translation = {
       description: ' despre metoda de recuperare.',
       longDescription: ' despre metoda de recuperare, o puteți schimba în orice moment în setările cunoștințelor.',
       method: 'Metoda de recuperare',
+      multiModalTip: 'Când modelul de încorporare suportă multi-modal, vă rugăm să selectați un model de reordonare multi-modal pentru o performanță mai bună.',
     },
     save: 'Salvare',
     permissionsInvitedMembers: 'Membri parțiali ai echipei',

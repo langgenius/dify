@@ -30,7 +30,7 @@ import { noop } from 'lodash-es'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 
-type ProviderContextState = {
+export type ProviderContextState = {
   modelProviders: ModelProvider[]
   refreshModelProviders: () => void
   textGenerationModelList: Model[]
@@ -66,7 +66,8 @@ type ProviderContextState = {
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
 }
-const ProviderContext = createContext<ProviderContextState>({
+
+export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
   refreshModelProviders: noop,
   textGenerationModelList: [],
@@ -96,7 +97,9 @@ const ProviderContext = createContext<ProviderContextState>({
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
-})
+}
+
+const ProviderContext = createContext<ProviderContextState>(baseProviderContextValue)
 
 export const useProviderContext = () => useContext(ProviderContext)
 

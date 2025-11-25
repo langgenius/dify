@@ -32,7 +32,7 @@ def test_abort_command():
     # Create mock nodes with required attributes - using shared runtime state
     start_node = StartNode(
         id="start",
-        config={"id": "start"},
+        config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
             tenant_id="test_tenant",
             app_id="test_app",
@@ -45,7 +45,6 @@ def test_abort_command():
         ),
         graph_runtime_state=shared_runtime_state,
     )
-    start_node.init_node_data({"title": "start", "variables": []})
     mock_graph.nodes["start"] = start_node
 
     # Mock graph methods
@@ -142,7 +141,7 @@ def test_pause_command():
 
     start_node = StartNode(
         id="start",
-        config={"id": "start"},
+        config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
             tenant_id="test_tenant",
             app_id="test_app",
@@ -155,7 +154,6 @@ def test_pause_command():
         ),
         graph_runtime_state=shared_runtime_state,
     )
-    start_node.init_node_data({"title": "start", "variables": []})
     mock_graph.nodes["start"] = start_node
 
     mock_graph.get_outgoing_edges = MagicMock(return_value=[])
@@ -178,8 +176,7 @@ def test_pause_command():
     assert any(isinstance(e, GraphRunStartedEvent) for e in events)
     pause_events = [e for e in events if isinstance(e, GraphRunPausedEvent)]
     assert len(pause_events) == 1
-    assert pause_events[0].reason == SchedulingPause(message="User requested pause")
+    assert pause_events[0].reasons == [SchedulingPause(message="User requested pause")]
 
     graph_execution = engine.graph_runtime_state.graph_execution
-    assert graph_execution.paused
-    assert graph_execution.pause_reason == SchedulingPause(message="User requested pause")
+    assert graph_execution.pause_reasons == [SchedulingPause(message="User requested pause")]

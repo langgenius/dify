@@ -7,6 +7,7 @@ const translation = {
     bundles: 'Paquets',
     all: 'Tout',
     datasources: 'Sources des données',
+    triggers: 'Déclencheurs',
   },
   categorySingle: {
     extension: 'Extension',
@@ -15,6 +16,7 @@ const translation = {
     agent: 'Stratégie d’agent',
     bundle: 'Paquet',
     datasource: 'Source des données',
+    trigger: 'Déclencheur',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       install: 'Installer',
       remove: 'Enlever',
       detail: 'Détails',
+      back: 'Retour',
     },
     toolSelector: {
       uninstalledLink: 'Gérer dans les plugins',
@@ -225,6 +228,11 @@ const translation = {
     installedError: '{{errorLength}} les plugins n’ont pas pu être installés',
     clearAll: 'Effacer tout',
     installing: 'Installation des plugins {{installingLength}}, 0 fait.',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   search: 'Rechercher',
   installAction: 'Installer',
@@ -338,6 +346,12 @@ const translation = {
     partialUPdate:
       'Seuls les {{num}} plugins suivants se mettront à jour automatiquement',
     nextUpdateTime: 'Prochaine mise à jour automatique : {{time}}',
+  },
+  readmeInfo: {
+    title: 'Lisez-moi',
+    needHelpCheckReadme: 'Besoin d\'aide ? Consultez le README.',
+    noReadmeAvailable: 'Aucun README disponible',
+    failedToFetch: 'Échec de la récupération du README',
   },
 }
 

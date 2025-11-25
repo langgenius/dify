@@ -7,6 +7,7 @@ const translation = {
     tools: 'ابزار',
     extensions: 'پسوند',
     datasources: 'منابع داده',
+    triggers: 'محرک‌ها',
   },
   categorySingle: {
     tool: 'ابزار',
@@ -15,6 +16,7 @@ const translation = {
     model: 'مدل',
     bundle: 'بسته',
     datasource: 'منبع داده',
+    trigger: 'محرک',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       detail: 'جزئیات',
       viewDetail: 'نمایش جزئیات',
       install: 'نصب',
+      back: 'بازگشت',
     },
     toolSelector: {
       descriptionPlaceholder:
@@ -220,6 +223,11 @@ const translation = {
       'نصب پلاگین های {{installingLength}}، {{successLength}} موفقیت آمیز است.',
     installingWithError:
       'نصب پلاگین های {{installingLength}}، {{successLength}} با موفقیت مواجه شد، {{errorLength}} ناموفق بود',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   searchTools: 'ابزارهای جستجو...',
   findMoreInMarketplace: 'اطلاعات بیشتر در Marketplace',
@@ -331,6 +339,12 @@ const translation = {
     nextUpdateTime: 'به‌روزرسانی خودکار بعدی: {{time}}',
     partialUPdate:
       'تنها {{num}} پلاگین زیر به‌طور خودکار به‌روزرسانی خواهد شد.',
+  },
+  readmeInfo: {
+    title: 'خواندنی',
+    needHelpCheckReadme: 'نیاز به کمک دارید؟ فایل README را بررسی کنید.',
+    noReadmeAvailable: 'بدون پرونده README موجود',
+    failedToFetch: 'بارگیری فایل README با شکست مواجه شد',
   },
 }
 

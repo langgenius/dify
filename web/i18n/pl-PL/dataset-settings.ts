@@ -31,6 +31,7 @@ const translation = {
       longDescription:
         ' dotyczące metody doboru, możesz to zmienić w dowolnym momencie w ustawieniach wiedzy.',
       method: 'Metoda pozyskiwania',
+      multiModalTip: 'Gdy model osadzania obsługuje wielomodalność, proszę wybrać model wielomodalny do ponownego rankingu w celu uzyskania lepszej wydajności.',
     },
     save: 'Zapisz',
     permissionsInvitedMembers: 'Częściowi członkowie zespołu',

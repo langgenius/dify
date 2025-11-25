@@ -28,6 +28,7 @@ const translation = {
       description: ' sobre el método de recuperación.',
       longDescription: ' sobre el método de recuperación, puedes cambiar esto en cualquier momento en la configuración del conjunto de datos.',
       method: 'Método de recuperación',
+      multiModalTip: 'Cuando el modelo de incrustación soporte multimodal, seleccione un modelo de reordenamiento multimodal para un mejor rendimiento.',
     },
     save: 'Guardar',
     retrievalSettings: 'Configuración de recuperación',

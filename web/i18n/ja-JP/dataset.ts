@@ -24,10 +24,10 @@ const translation = {
   externalAPIPanelDocumentation: '外部ナレッジベース連携 API の作成方法',
   localDocs: 'ローカルドキュメント',
   documentCount: ' ドキュメント',
-  docAllEnabled_one: '{{count}}ドキュメントが有効',
-  docAllEnabled_other: 'すべての{{count}}ドキュメントが有効',
-  partialEnabled_one: '合計{{count}}ドキュメント、{{num}}利用可能',
-  partialEnabled_other: '合計{{count}}ドキュメント、{{num}}利用可能',
+  docAllEnabled_one: '{{count}} 件のドキュメントが有効',
+  docAllEnabled_other: 'すべての {{count}} 件のドキュメントが有効',
+  partialEnabled_one: '合計 {{count}} 件のドキュメント、{{num}} 件が利用可能',
+  partialEnabled_other: '合計 {{count}} 件のドキュメント、{{num}} 件が利用可能',
   wordCount: ' k 単語',
   appCount: ' リンクされたアプリ',
   createDataset: 'ナレッジベースを作成',
@@ -91,7 +91,7 @@ const translation = {
   intro6: '独立したサービスとして',
   unavailable: '利用不可',
   datasets: 'ナレッジベース',
-  datasetsApi: 'API ACCESS',
+  datasetsApi: 'API アクセス',
   externalKnowledgeForm: {
     connect: '連携',
     cancel: 'キャンセル',
@@ -159,9 +159,9 @@ const translation = {
     semantic: 'セマンティクス',
     keyword: 'キーワード',
   },
-  nTo1RetrievalLegacy: '製品計画によると、N-to-1 Retrieval は 9 月に正式に廃止される予定です。それまでは通常通り使用できます。',
+  nTo1RetrievalLegacy: 'N-to-1 Retrieval は 9 月に正式に廃止される予定です。より良い結果のために最新のマルチパス検索の利用を推奨します。',
   nTo1RetrievalLegacyLink: '詳細はこちら',
-  nTo1RetrievalLegacyLinkText: ' N-to-1 retrieval は 9 月に正式に廃止されます。',
+  nTo1RetrievalLegacyLinkText: ' N-to-1 Retrieval は 9 月に正式に廃止されます。',
   batchAction: {
     selected: '選択済み',
     enable: '有効にする',
@@ -173,7 +173,7 @@ const translation = {
   preprocessDocument: '{{num}}件のドキュメントを前処理',
   allKnowledge: 'ナレッジベース全体',
   allKnowledgeDescription: 'このワークスペースにナレッジベース全体を表示する場合に選択します。ワークスペースのオーナーのみがすべてのナレッジベースを管理できます。',
-  embeddingModelNotAvailable: 'Embedding モデル不可用。',
+  embeddingModelNotAvailable: 'Embedding モデルを利用できません。',
   metadata: {
     metadata: 'メタデータ',
     addMetadata: 'メタデータを追加',
@@ -235,6 +235,16 @@ const translation = {
       apiKey: 'APIキー',
       apiReference: 'APIリファレンス',
     },
+  },
+  cornerLabel: {
+    unavailable: '利用不可',
+    pipeline: 'パイプライン',
+  },
+  multimodal: 'マルチモーダル',
+  imageUploader: {
+    button: 'ファイルまたはフォルダをドラッグアンドドロップ、または',
+    browse: '閲覧',
+    tip: '{{supportTypes}}（最大 {{batchCount}}、各 {{size}}MB）',
   },
 }
 

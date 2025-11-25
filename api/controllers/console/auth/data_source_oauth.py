@@ -5,12 +5,11 @@ from flask import current_app, redirect, request
 from flask_restx import Resource, fields
 
 from configs import dify_config
-from controllers.console import console_ns
-from controllers.console.wraps import is_admin_or_owner_required
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
-from ..wraps import account_initialization_required, setup_required
+from .. import console_ns
+from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 
 logger = logging.getLogger(__name__)
 

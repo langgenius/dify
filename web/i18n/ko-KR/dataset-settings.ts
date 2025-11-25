@@ -26,6 +26,7 @@ const translation = {
       description: ' 검색 방법에 대한 자세한 정보',
       longDescription: ' 검색 방법에 대한 자세한 내용은 언제든지 지식 설정에서 변경할 수 있습니다.',
       method: '검색 방법',
+      multiModalTip: '임베딩 모델이 멀티모달을 지원할 경우, 더 나은 성능을 위해 멀티모달 재순위 모델을 선택하세요.',
     },
     save: '저장',
     permissionsInvitedMembers: '부분 팀 구성원',

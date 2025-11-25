@@ -36,8 +36,6 @@ const translation = {
       recommend: 'Recomendar',
     },
     invertedIndex: {
-      title: 'Índice Invertido',
-      description: 'El Índice Invertido es una estructura utilizada para la recuperación eficiente. Organizado por términos, cada término apunta a documentos o páginas web que lo contienen.',
     },
     change: 'Cambiar',
     changeRetrievalMethod: 'Cambiar método de recuperación',
@@ -235,6 +233,20 @@ const translation = {
     enabled: 'En servicio',
     title: 'API de servicios',
     disabled: 'Discapacitado',
+  },
+  docAllEnabled_one: 'Documento {{count}} activado',
+  docAllEnabled_other: 'Todos los documentos {{count}} habilitados',
+  partialEnabled_one: 'Total de {{count}} documentos, {{num}} disponibles',
+  partialEnabled_other: 'Total de {{count}} documentos, {{num}} disponibles',
+  cornerLabel: {
+    unavailable: 'No disponible',
+    pipeline: 'Tubería',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Arrastra y suelta el archivo o la carpeta, o',
+    browse: 'Examinar',
+    tip: '{{supportTypes}} (Máx. {{batchCount}}, {{size}} MB cada uno)',
   },
 }
 

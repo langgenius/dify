@@ -25,6 +25,9 @@ import Split from '../_base/components/split'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import type { Var } from '@/app/components/workflow/types'
+import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   id,
@@ -32,6 +35,9 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
 }) => {
   const { t } = useTranslation()
   const { nodesReadOnly } = useNodesReadOnly()
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
+
   const {
     handleChunkStructureChange,
     handleIndexMethodChange,
@@ -52,9 +58,9 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     if (!data.chunk_structure) return false
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:
-        return variable.schemaType === 'general_structure'
+        return variable.schemaType === 'general_structure' || variable.schemaType === 'multimodal_general_structure'
       case ChunkStructureEnum.parent_child:
-        return variable.schemaType === 'parent_child_structure'
+        return variable.schemaType === 'parent_child_structure' || variable.schemaType === 'multimodal_parent_child_structure'
       case ChunkStructureEnum.question_answer:
         return variable.schemaType === 'qa_structure'
       default:
@@ -67,10 +73,10 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     let placeholder = ''
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:
-        placeholder = 'general_structure'
+        placeholder = '(multimodal_)general_structure'
         break
       case ChunkStructureEnum.parent_child:
-        placeholder = 'parent_child_structure'
+        placeholder = '(multimodal_)parent_child_structure'
         break
       case ChunkStructureEnum.question_answer:
         placeholder = 'qa_structure'
@@ -80,6 +86,23 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     }
     return placeholder.charAt(0).toUpperCase() + placeholder.slice(1)
   }, [data.chunk_structure])
+
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel: {
+        provider: data.embedding_model_provider ?? '',
+        model: data.embedding_model ?? '',
+      },
+      rerankingEnable: !!data.retrieval_model?.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: data.retrieval_model?.reranking_model?.reranking_provider_name ?? '',
+        rerankingModelName: data.retrieval_model?.reranking_model?.reranking_model_name ?? '',
+      },
+      indexMethod: data.indexing_technique,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [data.embedding_model_provider, data.embedding_model, data.retrieval_model?.reranking_enable, data.retrieval_model?.reranking_model, data.indexing_technique, embeddingModelList, rerankModelList])
 
   return (
     <div>
@@ -161,6 +184,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                   onScoreThresholdChange={handleScoreThresholdChange}
                   isScoreThresholdEnabled={data.retrieval_model.score_threshold_enabled}
                   onScoreThresholdEnabledChange={handleScoreThresholdEnabledChange}
+                  showMultiModalTip={showMultiModalTip}
                   readonly={nodesReadOnly}
                 />
               </div>

@@ -83,6 +83,7 @@ class AppRunner:
         context: str | None = None,
         memory: TokenBufferMemory | None = None,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         """
         Organize prompt messages
@@ -111,6 +112,7 @@ class AppRunner:
                 memory=memory,
                 model_config=model_config,
                 image_detail_config=image_detail_config,
+                context_files=context_files,
             )
         else:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))

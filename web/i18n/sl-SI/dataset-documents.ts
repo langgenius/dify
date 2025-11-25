@@ -81,7 +81,10 @@ const translation = {
       ok: 'V redu',
     },
     learnMore: 'Izvedi več',
-    sort: {},
+    sort: {
+      uploadTime: 'Čas nalaganja',
+      hitCount: 'Število priklicev',
+    },
   },
   metadata: {
     title: 'Metapodatki',
@@ -398,6 +401,7 @@ const translation = {
     childChunkAdded: 'Dodan je 1 kos otroka',
     keywordDuplicate: 'Ključna beseda že obstaja',
     keywordEmpty: 'Ključna beseda ne more biti prazna',
+    allFilesUploaded: 'Vse datoteke je treba naložiti, preden shranite',
   },
 }
 

@@ -18,6 +18,7 @@ from models.dataset import (
     DatasetQuery,
     Document,
     DocumentSegment,
+    SegmentAttachmentBinding,
 )
 from models.model import UploadFile
 
@@ -58,14 +59,20 @@ def clean_dataset_task(
         )
         documents = db.session.scalars(select(Document).where(Document.dataset_id == dataset_id)).all()
         segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.dataset_id == dataset_id)).all()
+        # Use JOIN to fetch attachments with bindings in a single query
+        attachments_with_bindings = db.session.execute(
+            select(SegmentAttachmentBinding, UploadFile)
+            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+            .where(SegmentAttachmentBinding.tenant_id == tenant_id, SegmentAttachmentBinding.dataset_id == dataset_id)
+        ).all()
 
         # Enhanced validation: Check if doc_form is None, empty string, or contains only whitespace
         # This ensures all invalid doc_form values are properly handled
         if doc_form is None or (isinstance(doc_form, str) and not doc_form.strip()):
             # Use default paragraph index type for empty/invalid datasets to enable vector database cleanup
-            from core.rag.index_processor.constant.index_type import IndexType
+            from core.rag.index_processor.constant.index_type import IndexStructureType
 
-            doc_form = IndexType.PARAGRAPH_INDEX
+            doc_form = IndexStructureType.PARAGRAPH_INDEX
             logger.info(
                 click.style(f"Invalid doc_form detected, using default index type for cleanup: {doc_form}", fg="yellow")
             )
@@ -90,6 +97,7 @@ def clean_dataset_task(
 
             for document in documents:
                 db.session.delete(document)
+                # delete document file
 
             for segment in segments:
                 image_upload_file_ids = get_image_upload_file_ids(segment.content)
@@ -107,6 +115,19 @@ def clean_dataset_task(
                         )
                     db.session.delete(image_file)
                 db.session.delete(segment)
+        # delete segment attachments
+        if attachments_with_bindings:
+            for binding, attachment_file in attachments_with_bindings:
+                try:
+                    storage.delete(attachment_file.key)
+                except Exception:
+                    logger.exception(
+                        "Delete attachment_file failed when storage deleted, \
+                                        attachment_file_id: %s",
+                        binding.attachment_id,
+                    )
+                db.session.delete(attachment_file)
+                db.session.delete(binding)
 
         db.session.query(DatasetProcessRule).where(DatasetProcessRule.dataset_id == dataset_id).delete()
         db.session.query(DatasetQuery).where(DatasetQuery.dataset_id == dataset_id).delete()

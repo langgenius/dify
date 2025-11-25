@@ -131,7 +131,7 @@ const Preparation = () => {
       clearWebsiteCrawlData()
     else if (dataSource.nodeData.provider_type === DatasourceType.onlineDrive)
       clearOnlineDriveData()
-  }, [])
+  }, [clearOnlineDocumentData, clearOnlineDriveData, clearWebsiteCrawlData])
 
   const handleSwitchDataSource = useCallback((dataSource: Datasource) => {
     const {
@@ -142,13 +142,13 @@ const Preparation = () => {
     setCurrentCredentialId('')
     currentNodeIdRef.current = dataSource.nodeId
     setDatasource(dataSource)
-  }, [dataSourceStore])
+  }, [clearDataSourceData, dataSourceStore])
 
   const handleCredentialChange = useCallback((credentialId: string) => {
     const { setCurrentCredentialId } = dataSourceStore.getState()
     clearDataSourceData(datasource!)
     setCurrentCredentialId(credentialId)
-  }, [dataSourceStore, datasource])
+  }, [clearDataSourceData, dataSourceStore, datasource])
   return (
     <>
       <StepIndicator steps={steps} currentStep={currentStep} />
@@ -164,7 +164,7 @@ const Preparation = () => {
                 {datasourceType === DatasourceType.localFile && (
                   <LocalFile
                     allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                    notSupportBatchUpload // only support single file upload in test run
+                    supportBatchUpload={false} // only support single file upload in test run
                   />
                 )}
                 {datasourceType === DatasourceType.onlineDocument && (
@@ -173,6 +173,7 @@ const Preparation = () => {
                     nodeData={datasource!.nodeData}
                     isInPipeline
                     onCredentialChange={handleCredentialChange}
+                    supportBatchUpload={false}
                   />
                 )}
                 {datasourceType === DatasourceType.websiteCrawl && (
@@ -181,6 +182,7 @@ const Preparation = () => {
                     nodeData={datasource!.nodeData}
                     isInPipeline
                     onCredentialChange={handleCredentialChange}
+                    supportBatchUpload={false}
                   />
                 )}
                 {datasourceType === DatasourceType.onlineDrive && (
@@ -189,6 +191,7 @@ const Preparation = () => {
                     nodeData={datasource!.nodeData}
                     isInPipeline
                     onCredentialChange={handleCredentialChange}
+                    supportBatchUpload={false}
                   />
                 )}
               </div>

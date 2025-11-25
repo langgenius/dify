@@ -1,4 +1,6 @@
-from flask_restx import Resource, fields, marshal_with, reqparse
+from flask import request
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel, Field
 
 from constants.languages import languages
 from controllers.console import console_ns
@@ -35,20 +37,26 @@ recommended_app_list_fields = {
 }
 
 
-parser_apps = reqparse.RequestParser().add_argument("language", type=str, location="args")
+class RecommendedAppsQuery(BaseModel):
+    language: str | None = Field(default=None)
+
+
+console_ns.schema_model(
+    RecommendedAppsQuery.__name__,
+    RecommendedAppsQuery.model_json_schema(ref_template="#/definitions/{model}"),
+)
 
 
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
-    @console_ns.expect(parser_apps)
+    @console_ns.expect(console_ns.models[RecommendedAppsQuery.__name__])
     @login_required
     @account_initialization_required
     @marshal_with(recommended_app_list_fields)
     def get(self):
         # language args
-        args = parser_apps.parse_args()
-
-        language = args.get("language")
+        args = RecommendedAppsQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        language = args.language
         if language and language in languages:
             language_prefix = language
         elif current_user and current_user.interface_language:

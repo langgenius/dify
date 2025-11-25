@@ -375,6 +375,7 @@ const translation = {
     answerEmpty: '答案不能为空',
     contentPlaceholder: '在这里添加内容',
     contentEmpty: '内容不能为空',
+    allFilesUploaded: '所有文件必须上传完成才能保存',
     newTextSegment: '新文本分段',
     newQaSegment: '新问答分段',
     addChunk: '新增分段',

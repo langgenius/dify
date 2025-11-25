@@ -26,6 +26,7 @@ type Props = {
   onJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
+  supportBatchUpload: boolean
 }
 
 enum Step {
@@ -41,6 +42,7 @@ const JinaReader: FC<Props> = ({
   onJobIdChange,
   crawlOptions,
   onCrawlOptionsChange,
+  supportBatchUpload,
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
@@ -157,7 +159,7 @@ const JinaReader: FC<Props> = ({
           total: 1,
           data: [{
             title,
-            content,
+            markdown: content,
             description,
             source_url: url,
           }],
@@ -176,7 +178,7 @@ const JinaReader: FC<Props> = ({
         }
         else {
           setCrawlResult(data)
-          onCheckedCrawlResultChange(data.data || []) // default select the crawl result
+          onCheckedCrawlResultChange(supportBatchUpload ? (data.data || []) : (data.data?.slice(0, 1) || [])) // default select the crawl result
           setCrawlErrorMessage('')
         }
       }
@@ -188,7 +190,7 @@ const JinaReader: FC<Props> = ({
     finally {
       setStep(Step.finished)
     }
-  }, [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, t, waitForCrawlFinished])
+  }, [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, supportBatchUpload, t, waitForCrawlFinished])
 
   return (
     <div>
@@ -227,6 +229,7 @@ const JinaReader: FC<Props> = ({
                 onSelectedChange={onCheckedCrawlResultChange}
                 onPreview={onPreview}
                 usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
+                isMultipleChoice={supportBatchUpload}
               />
             }
           </div>

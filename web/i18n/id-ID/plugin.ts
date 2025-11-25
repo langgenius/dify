@@ -10,6 +10,7 @@ const translation = {
     agents: 'Strategi Agen',
     tools: 'Perkakas',
     datasources: 'Sumber Data',
+    triggers: 'Pemicu',
   },
   categorySingle: {
     bundle: 'Bundel',
@@ -18,6 +19,7 @@ const translation = {
     model: 'Pola',
     extension: 'Ekstensi',
     datasource: 'Sumber Data',
+    trigger: 'Pemicu',
   },
   list: {
     source: {
@@ -48,6 +50,7 @@ const translation = {
       viewDetail: 'Lihat Detail',
       install: 'Pasang',
       checkUpdate: 'Periksa Pembaruan',
+      back: 'Kembali',
     },
     toolSelector: {
       descriptionLabel: 'Deskripsi alat',
@@ -77,6 +80,8 @@ const translation = {
         ownershipTransferred: 'kepemilikan dialihkan',
       },
       noReason: 'Plugin ini tidak digunakan lagi dan tidak akan diperbarui lagi.',
+      fullMessage: 'Plugin ini telah dihentikan karena {{deprecatedReason}}, dan tidak akan diperbarui lagi. Silakan gunakan <CustomLink href=\'https://example.com/\'>{{-alternativePluginId}}</CustomLink> sebagai gantinya.',
+      onlyReason: 'Plugin ini telah dihentikan penggunaannya karena {{deprecatedReason}} dan tidak akan diperbarui lagi.',
     },
     endpoints: 'Endpoint',
     endpointDisableTip: 'Nonaktifkan Titik Akhir',
@@ -92,6 +97,11 @@ const translation = {
     endpointsTip: 'Plugin ini menyediakan fungsionalitas khusus melalui titik akhir, dan Anda dapat mengonfigurasi beberapa set titik akhir untuk ruang kerja saat ini.',
     endpointModalTitle: 'Menyiapkan titik akhir',
     endpointsEmpty: 'Klik tombol \' \' untuk menambahkan titik akhir',
+    actionNum: '{{num}} {{action}} TERMASUK',
+    strategyNum: '{{num}} {{strategy}} TERMASUK',
+    endpointDisableContent: 'Apakah Anda ingin menonaktifkan {{name}}?',
+    endpointDeleteContent: 'Apakah Anda ingin menghapus {{name}}?',
+    modelNum: '{{num}} MODEL TERMASUK',
   },
   debugInfo: {
     title: 'Debugging',
@@ -150,6 +160,10 @@ const translation = {
     updateTimeTitle: 'Waktu pembaruan',
     specifyPluginsToUpdate: 'Tentukan plugin untuk diperbarui',
     automaticUpdates: 'Pembaruan otomatis',
+    excludeUpdate: 'Plugin {{num}} berikut ini tidak akan diperbarui secara otomatis',
+    partialUPdate: 'Hanya plugin {{num}} berikut yang akan diperbarui secara otomatis',
+    nextUpdateTime: 'Pembaruan otomatis berikutnya: {{time}}',
+    changeTimezone: 'Untuk mengubah zona waktu, pergi ke <setTimezone>Pengaturan</setTimezone>',
   },
   pluginInfoModal: {
     repository: 'Repositori',
@@ -163,6 +177,7 @@ const translation = {
     checkForUpdates: 'Periksa pembaruan',
     deleteContentLeft: 'Apakah Anda ingin menghapus',
     delete: 'Hapus plugin',
+    usedInApps: 'Plugin ini digunakan di {{num}} aplikasi.',
   },
   installModal: {
     labels: {
@@ -189,6 +204,9 @@ const translation = {
     dropPluginToInstall: 'Jatuhkan paket plugin di sini untuk menginstal',
     installComplete: 'Instalasi selesai',
     installPlugin: 'Instal Plugin',
+    uploadingPackage: 'Mengunggah {{packageName}}...',
+    readyToInstallPackages: 'Akan memasang plugin {{num}} berikut',
+    fromTrustSource: 'Pastikan Anda hanya menginstal plugin dari <trustSource>sumber yang tepercaya</trustSource>.',
   },
   installFromGitHub: {
     installFailed: 'Instalasi gagal',
@@ -210,6 +228,7 @@ const translation = {
     successfulTitle: 'Instal berhasil',
     description: 'Tentang menginstal plugin berikut',
     title: 'Instal Plugin',
+    usedInApps: 'Digunakan di {{num}} aplikasi',
   },
   error: {
     fetchReleasesError: 'Tidak dapat mengambil rilis. Silakan coba lagi nanti.',
@@ -233,9 +252,20 @@ const translation = {
     and: 'dan',
     difyMarketplace: 'Dify Marketplace',
     verifiedTip: 'Diverifikasi oleh Dify',
+    pluginsResult: 'hasil {{num}}',
   },
   task: {
     clearAll: 'Hapus semua',
+    installing: 'Memasang plugin {{installingLength}}, 0 selesai.',
+    installingWithSuccess: 'Memasang plugin {{installingLength}}, {{successLength}} berhasil.',
+    installingWithError: 'Memasang {{installingLength}} plugin, {{successLength}} berhasil, {{errorLength}} gagal',
+    installError: 'Gagal menginstal plugin {{errorLength}}, klik untuk melihat',
+    installedError: 'Gagal menginstal {{errorLength}} plugin',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   auth: {
     customCredentialUnavailable: 'Kredensial kustom saat ini tidak tersedia',
@@ -281,6 +311,15 @@ const translation = {
   installAction: 'Pasang',
   publishPlugins: 'Menerbitkan plugin',
   requestAPlugin: 'Minta plugin',
+  endpointsEnabled: '{{num}} set endpoint diaktifkan',
+  install: '{{num}} menginstal',
+  difyVersionNotCompatible: 'Versi Dify saat ini tidak kompatibel dengan plugin ini, harap perbarui ke versi minimum yang dibutuhkan: {{minimalDifyVersion}}',
+  readmeInfo: {
+    title: 'BACA SAYA',
+    needHelpCheckReadme: 'Butuh bantuan? Periksa README.',
+    noReadmeAvailable: 'Tidak ada README yang tersedia',
+    failedToFetch: 'Gagal mengambil README',
+  },
 }
 
 export default translation

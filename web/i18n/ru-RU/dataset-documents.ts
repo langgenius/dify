@@ -81,7 +81,10 @@ const translation = {
       ok: 'ОК',
     },
     learnMore: 'Подробнее',
-    sort: {},
+    sort: {
+      uploadTime: 'Время загрузки',
+      hitCount: 'Количество извлечений',
+    },
   },
   metadata: {
     title: 'Метаданные',
@@ -398,6 +401,7 @@ const translation = {
     newChildChunk: 'Новый дочерний чанк',
     keywordEmpty: 'Ключевое слово не может быть пустым',
     keywordDuplicate: 'Ключевое слово уже существует',
+    allFilesUploaded: 'Все файлы должны быть загружены перед сохранением',
   },
 }
 

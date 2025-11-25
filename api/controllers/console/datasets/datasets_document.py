@@ -6,31 +6,14 @@ from typing import Literal, cast
 
 import sqlalchemy as sa
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal, marshal_with
+from pydantic import BaseModel
 from sqlalchemy import asc, desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.error import (
-    ProviderModelCurrentlyNotSupportError,
-    ProviderNotInitializeError,
-    ProviderQuotaExceededError,
-)
-from controllers.console.datasets.error import (
-    ArchivedDocumentImmutableError,
-    DocumentAlreadyFinishedError,
-    DocumentIndexingError,
-    IndexingEstimateError,
-    InvalidActionError,
-    InvalidMetadataError,
-)
-from controllers.console.wraps import (
-    account_initialization_required,
-    cloud_edition_billing_rate_limit_check,
-    cloud_edition_billing_resource_check,
-    setup_required,
-)
 from core.errors.error import (
     LLMBadRequestError,
     ModelCurrentlyNotSupportError,
@@ -55,10 +38,30 @@ from fields.document_fields import (
 )
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_account_with_tenant, login_required
-from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
+from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
-from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
+from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
+
+from ..app.error import (
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from ..datasets.error import (
+    ArchivedDocumentImmutableError,
+    DocumentAlreadyFinishedError,
+    DocumentIndexingError,
+    IndexingEstimateError,
+    InvalidActionError,
+    InvalidMetadataError,
+)
+from ..wraps import (
+    account_initialization_required,
+    cloud_edition_billing_rate_limit_check,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +94,24 @@ dataset_and_document_fields_copy = dataset_and_document_fields.copy()
 dataset_and_document_fields_copy["dataset"] = fields.Nested(dataset_model)
 dataset_and_document_fields_copy["documents"] = fields.List(fields.Nested(document_model))
 dataset_and_document_model = _get_or_create_model("DatasetAndDocument", dataset_and_document_fields_copy)
+
+
+class DocumentRetryPayload(BaseModel):
+    document_ids: list[str]
+
+
+class DocumentRenamePayload(BaseModel):
+    name: str
+
+
+register_schema_models(
+    console_ns,
+    KnowledgeConfig,
+    ProcessRule,
+    RetrievalModel,
+    DocumentRetryPayload,
+    DocumentRenamePayload,
+)
 
 
 class DocumentResource(Resource):
@@ -201,8 +222,9 @@ class DatasetDocumentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id: str):
+    def get(self, dataset_id):
         current_user, current_tenant_id = current_account_with_tenant()
+        dataset_id = str(dataset_id)
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
@@ -310,6 +332,7 @@ class DatasetDocumentListApi(Resource):
     @marshal_with(dataset_and_document_model)
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
@@ -328,23 +351,7 @@ class DatasetDocumentListApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
-            )
-            .add_argument("data_source", type=dict, required=False, location="json")
-            .add_argument("process_rule", type=dict, required=False, location="json")
-            .add_argument("duplicate", type=bool, default=True, nullable=False, location="json")
-            .add_argument("original_document_id", type=str, required=False, location="json")
-            .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-            .add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
-            .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-            .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
-            .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
-        )
-        args = parser.parse_args()
-        knowledge_config = KnowledgeConfig.model_validate(args)
+        knowledge_config = KnowledgeConfig.model_validate(console_ns.payload or {})
 
         if not dataset.indexing_technique and not knowledge_config.indexing_technique:
             raise ValueError("indexing_technique is required.")
@@ -390,17 +397,7 @@ class DatasetDocumentListApi(Resource):
 class DatasetInitApi(Resource):
     @console_ns.doc("init_dataset")
     @console_ns.doc(description="Initialize dataset with documents")
-    @console_ns.expect(
-        console_ns.model(
-            "DatasetInitRequest",
-            {
-                "upload_file_id": fields.String(required=True, description="Upload file ID"),
-                "indexing_technique": fields.String(description="Indexing technique"),
-                "process_rule": fields.Raw(description="Processing rules"),
-                "data_source": fields.Raw(description="Data source configuration"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(201, "Dataset initialized successfully", dataset_and_document_model)
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -415,27 +412,7 @@ class DatasetInitApi(Resource):
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "indexing_technique",
-                type=str,
-                choices=Dataset.INDEXING_TECHNIQUE_LIST,
-                required=True,
-                nullable=False,
-                location="json",
-            )
-            .add_argument("data_source", type=dict, required=True, nullable=True, location="json")
-            .add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
-            .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-            .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
-            .add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
-            .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-            .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
-        )
-        args = parser.parse_args()
-
-        knowledge_config = KnowledgeConfig.model_validate(args)
+        knowledge_config = KnowledgeConfig.model_validate(console_ns.payload or {})
         if knowledge_config.indexing_technique == "high_quality":
             if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
@@ -443,10 +420,14 @@ class DatasetInitApi(Resource):
                 model_manager = ModelManager()
                 model_manager.get_model_instance(
                     tenant_id=current_tenant_id,
-                    provider=args["embedding_model_provider"],
+                    provider=knowledge_config.embedding_model_provider,
                     model_type=ModelType.TEXT_EMBEDDING,
-                    model=args["embedding_model"],
+                    model=knowledge_config.embedding_model,
                 )
+                is_multimodal = DatasetService.check_is_multimodal_model(
+                    current_tenant_id, knowledge_config.embedding_model_provider, knowledge_config.embedding_model
+                )
+                knowledge_config.is_multimodal = is_multimodal
             except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
@@ -1076,19 +1057,16 @@ class DocumentRetryApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
+    @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
     def post(self, dataset_id):
         """retry document."""
-
-        parser = reqparse.RequestParser().add_argument(
-            "document_ids", type=list, required=True, nullable=False, location="json"
-        )
-        args = parser.parse_args()
+        payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         retry_documents = []
         if not dataset:
             raise NotFound("Dataset not found.")
-        for document_id in args["document_ids"]:
+        for document_id in payload.document_ids:
             try:
                 document_id = str(document_id)
 
@@ -1121,6 +1099,7 @@ class DocumentRenameApi(DocumentResource):
     @login_required
     @account_initialization_required
     @marshal_with(document_fields)
+    @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
     def post(self, dataset_id, document_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         current_user, _ = current_account_with_tenant()
@@ -1130,11 +1109,10 @@ class DocumentRenameApi(DocumentResource):
         if not dataset:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_operator_permission(current_user, dataset)
-        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        payload = DocumentRenamePayload.model_validate(console_ns.payload or {})
 
         try:
-            document = DocumentService.rename_document(dataset_id, document_id, args["name"])
+            document = DocumentService.rename_document(dataset_id, document_id, payload.name)
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError("Cannot delete document during indexing.")
 

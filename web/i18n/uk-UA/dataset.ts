@@ -37,8 +37,6 @@ const translation = {
       recommend: 'Рекомендовано',
     },
     invertedIndex: {
-      title: 'Інвертований індекс',
-      description: 'Інвертований індекс – це структура, яка використовується для ефективного пошуку. Організований за термінами, кожен термін вказує на документи або веб-сторінки, що його містять.',
     },
     change: 'Змінити',
     changeRetrievalMethod: 'Змінити метод пошуку',
@@ -236,6 +234,20 @@ const translation = {
     disabled: 'Вимкнено',
     enabled: 'У службі',
     title: 'Сервісний API',
+  },
+  docAllEnabled_one: '{{count}} документ увімкнено',
+  docAllEnabled_other: 'Усі документи {{count}} увімкнено',
+  partialEnabled_one: 'Всього {{count}} документів, доступно {{num}}',
+  partialEnabled_other: 'Всього {{count}} документів, доступно {{num}}',
+  cornerLabel: {
+    unavailable: 'Немає у наявності',
+    pipeline: 'Трубопровід',
+  },
+  multimodal: 'Мультимодальний',
+  imageUploader: {
+    button: 'Перетягніть файл або папку, або',
+    browse: 'Перегляд',
+    tip: '{{supportTypes}} (Макс {{batchCount}}, по {{size}} МБ кожен)',
   },
 }
 

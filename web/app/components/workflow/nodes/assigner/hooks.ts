@@ -1,7 +1,5 @@
 import { useCallback } from 'react'
-import {
-  useNodes,
-} from 'reactflow'
+import { useNodes } from 'reactflow'
 import { uniqBy } from 'lodash-es'
 import {
   useIsChatMode,

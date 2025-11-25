@@ -199,9 +199,9 @@ class FileLifecycleManager:
                             # Temporarily create basic metadata information
                         except ValueError:
                             continue
-            except:
+            except Exception:
                 # If cannot scan version files, only return current version
-                pass
+                logger.exception("Failed to scan version files for %s", filename)
 
             return sorted(versions, key=lambda x: x.version or 0, reverse=True)
 
