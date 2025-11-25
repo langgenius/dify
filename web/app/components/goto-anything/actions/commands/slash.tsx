@@ -11,6 +11,7 @@ import { forumCommand } from './forum'
 import { docsCommand } from './docs'
 import { communityCommand } from './community'
 import { accountCommand } from './account'
+import { zenCommand } from './zen'
 import i18n from '@/i18n-config/i18next-config'
 
 export const slashAction: ActionItem = {
@@ -38,6 +39,7 @@ export const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(docsCommand, {})
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
+  slashCommandRegistry.register(zenCommand, {})
 }
 
 export const unregisterSlashCommands = () => {
@@ -48,6 +50,7 @@ export const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('docs')
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
+  slashCommandRegistry.unregister('zen')
 }
 
 export const SlashCommandProvider = () => {

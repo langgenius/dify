@@ -113,6 +113,8 @@ class AsyncWorkflowService:
                 trigger_data.trigger_metadata.model_dump_json() if trigger_data.trigger_metadata else "{}"
             ),
             trigger_type=trigger_data.trigger_type,
+            workflow_run_id=None,
+            outputs=None,
             trigger_data=trigger_data.model_dump_json(),
             inputs=json.dumps(dict(trigger_data.inputs)),
             status=WorkflowTriggerStatus.PENDING,
@@ -120,6 +122,10 @@ class AsyncWorkflowService:
             retry_count=0,
             created_by_role=created_by_role,
             created_by=created_by,
+            celery_task_id=None,
+            error=None,
+            elapsed_time=None,
+            total_tokens=None,
         )
 
         trigger_log = trigger_log_repo.create(trigger_log)

@@ -49,7 +49,7 @@ const translation = {
     completionResult: '生成結果',
     queryPlaceholder: '入力してください',
     run: '実行',
-    execution: '処理中',
+    execution: '実行',
     executions: '{{num}}回実行',
     copy: 'コピー',
     resultTitle: 'AI 生成結果',

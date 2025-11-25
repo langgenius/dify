@@ -302,6 +302,8 @@ const translation = {
       accountDesc: 'Đi đến trang tài khoản',
       docDesc: 'Mở tài liệu trợ giúp',
       communityDesc: 'Mở cộng đồng Discord',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noWorkflowNodesFound: 'Không tìm thấy nút quy trình làm việc',

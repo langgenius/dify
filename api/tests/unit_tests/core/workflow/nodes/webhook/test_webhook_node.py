@@ -47,7 +47,6 @@ def create_webhook_node(webhook_data: WebhookData, variable_pool: VariablePool) 
         ),
     )
 
-    node.init_node_data(node_config["data"])
     return node
 
 

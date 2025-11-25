@@ -20,6 +20,7 @@ const translation = {
       version: 'VERSION',
       tokens: 'TOKEN',
       startTime: 'STARTZEIT',
+      triggered_from: 'AUSGELÖST DURCH',
     },
     pagination: {
       previous: 'Vorherige',
@@ -96,6 +97,15 @@ const translation = {
     iterations: 'Iterationen',
     iteration: 'Iteration',
     finalProcessing: 'Endverarbeitung',
+  },
+  triggerBy: {
+    debugging: 'Fehlerbehebung',
+    appRun: 'Webanwendung',
+    webhook: 'Webhook',
+    schedule: 'Zeitplan',
+    plugin: 'Plugin',
+    ragPipelineRun: 'RAG-Pipeline',
+    ragPipelineDebugging: 'RAG-Debugging',
   },
 }
 

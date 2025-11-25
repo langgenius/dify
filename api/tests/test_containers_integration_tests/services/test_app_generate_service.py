@@ -82,6 +82,7 @@ class TestAppGenerateService:
             # Setup dify_config mock returns
             mock_dify_config.BILLING_ENABLED = False
             mock_dify_config.APP_MAX_ACTIVE_REQUESTS = 100
+            mock_dify_config.APP_DEFAULT_ACTIVE_REQUESTS = 100
             mock_dify_config.APP_DAILY_RATE_LIMIT = 1000
 
             mock_global_dify_config.BILLING_ENABLED = False
