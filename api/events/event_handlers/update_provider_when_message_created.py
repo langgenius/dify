@@ -256,7 +256,7 @@ def _execute_provider_updates(updates_to_perform: list[_ProviderUpdateOperation]
                 now = datetime_utils.naive_utc_now()
                 last_update = _get_last_update_timestamp(cache_key)
 
-                if last_update is None or (now - last_update).total_seconds() > LAST_USED_UPDATE_WINDOW_SECONDS:
+                if last_update is None or (now - last_update).total_seconds() > LAST_USED_UPDATE_WINDOW_SECONDS:  # type: ignore
                     update_values["last_used"] = values.last_used
                     _set_last_update_timestamp(cache_key, now)
 

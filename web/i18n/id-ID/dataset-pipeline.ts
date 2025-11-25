@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Alur Pengetahuan Diterbitkan',
+      tip: '<CustomLink>Buka Dokumen</CustomLink> untuk menambahkan atau mengelola dokumen.',
     },
     error: {
       message: 'Gagal Menerbitkan Alur Pengetahuan',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Struktur',
     structureTooltip: 'Struktur Potongan menentukan bagaimana dokumen dibagi dan diindeks—menawarkan mode Umum, Induk-Anak, dan Tanya Jawab—dan unik untuk setiap basis pengetahuan.',
+    createdBy: 'Oleh {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     title: 'Tambahkan Dokumen',
     backToDataSource: 'Sumber Data',
     characters: 'Karakter',
+    selectOnlineDocumentTip: 'Proses hingga {{count}} halaman',
+    selectOnlineDriveTip: 'Proses hingga {{count}} file, maksimum {{fileSize}} MB masing-masing',
   },
   documentSettings: {
     title: 'Pengaturan Dokumen',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} halaman',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Semua File',
       allBuckets: 'Semua Bucket Penyimpanan Cloud',
       searchPlaceholder: 'Cari file...',
+      searchResult: 'Temukan {{searchResultsLength}} item di folder "{{folderName}}"',
     },
     resetKeywords: 'Mengatur ulang kata kunci',
     notSupportedFileType: 'Jenis file ini tidak didukung',
     emptySearchResult: 'Tidak ada barang yang ditemukan',
     emptyFolder: 'Folder ini kosong',
+    notConnected: '{{name}} tidak terhubung',
+    notConnectedTip: 'Untuk menyinkronkan dengan {{name}}, koneksi ke {{name}} harus dibuat terlebih dahulu.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Konfirmasi',
@@ -149,6 +160,7 @@ const translation = {
   knowledgeNameAndIcon: 'Nama & ikon pengetahuan',
   knowledgeDescriptionPlaceholder: 'Jelaskan apa yang ada di Basis Pengetahuan ini. Deskripsi terperinci memungkinkan AI mengakses konten kumpulan data dengan lebih akurat. Jika kosong, Dify akan menggunakan strategi hit default. (Opsional)',
   editPipelineInfo: 'Mengedit info alur',
+  configurationTip: 'Konfigurasikan {{pluginName}}',
 }
 
 export default translation

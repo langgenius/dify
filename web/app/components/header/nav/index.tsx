@@ -52,7 +52,12 @@ const Nav = ({
     `}>
       <Link href={link + (linkLastSearchParams && `?${linkLastSearchParams}`)}>
         <div
-          onClick={() => setAppDetail()}
+          onClick={(e) => {
+            // Don't clear state if opening in new tab/window
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0)
+              return
+            setAppDetail()
+          }}
           className={classNames(
             'flex h-7 cursor-pointer items-center rounded-[10px] px-2.5',
             isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text',

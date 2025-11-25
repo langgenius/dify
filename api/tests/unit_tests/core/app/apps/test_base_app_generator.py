@@ -265,3 +265,82 @@ def test_validate_inputs_with_default_value():
     )
 
     assert result == [{"id": "file1", "name": "doc1.pdf"}, {"id": "file2", "name": "doc2.pdf"}]
+
+
+def test_validate_inputs_optional_file_with_empty_string():
+    """Test that optional FILE variable with empty string returns None"""
+    base_app_generator = BaseAppGenerator()
+
+    var_file = VariableEntity(
+        variable="test_file",
+        label="test_file",
+        type=VariableEntityType.FILE,
+        required=False,
+    )
+
+    result = base_app_generator._validate_inputs(
+        variable_entity=var_file,
+        value="",
+    )
+
+    assert result is None
+
+
+def test_validate_inputs_optional_file_list_with_empty_list():
+    """Test that optional FILE_LIST variable with empty list returns None"""
+    base_app_generator = BaseAppGenerator()
+
+    var_file_list = VariableEntity(
+        variable="test_file_list",
+        label="test_file_list",
+        type=VariableEntityType.FILE_LIST,
+        required=False,
+    )
+
+    result = base_app_generator._validate_inputs(
+        variable_entity=var_file_list,
+        value=[],
+    )
+
+    assert result is None
+
+
+def test_validate_inputs_required_file_with_empty_string_fails():
+    """Test that required FILE variable with empty string still fails validation"""
+    base_app_generator = BaseAppGenerator()
+
+    var_file = VariableEntity(
+        variable="test_file",
+        label="test_file",
+        type=VariableEntityType.FILE,
+        required=True,
+    )
+
+    with pytest.raises(ValueError) as exc_info:
+        base_app_generator._validate_inputs(
+            variable_entity=var_file,
+            value="",
+        )
+
+    assert "must be a file" in str(exc_info.value)
+
+
+def test_validate_inputs_optional_file_with_empty_string_ignores_default():
+    """Test that optional FILE variable with empty string returns None, not the default"""
+    base_app_generator = BaseAppGenerator()
+
+    var_file = VariableEntity(
+        variable="test_file",
+        label="test_file",
+        type=VariableEntityType.FILE,
+        required=False,
+        default={"id": "file123", "name": "default.pdf"},
+    )
+
+    # When value is empty string (from frontend), should return None, not default
+    result = base_app_generator._validate_inputs(
+        variable_entity=var_file,
+        value="",
+    )
+
+    assert result is None

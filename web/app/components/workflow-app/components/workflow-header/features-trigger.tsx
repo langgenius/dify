@@ -3,7 +3,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
-import { useEdges, useNodes } from 'reactflow'
+import { useEdges } from 'reactflow'
 import { RiApps2AddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -22,7 +22,6 @@ import AppPublisher from '@/app/components/app/app-publisher'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import type {
   CommonEdgeType,
-  CommonNodeType,
   Node,
 } from '@/app/components/workflow/types'
 import {
@@ -40,8 +39,10 @@ import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
 import { useIsChatMode } from '@/app/components/workflow/hooks'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
@@ -58,9 +59,10 @@ const FeaturesTrigger = () => {
   const toolPublished = useStore(s => s.toolPublished)
   const lastPublishedHasUserInput = useStore(s => s.lastPublishedHasUserInput)
 
-  const nodes = useNodes<CommonNodeType>()
+  const nodes = useNodes()
   const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const endNode = nodes.find(node => node.data.type === BlockEnum.End)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
 
@@ -81,6 +83,7 @@ const FeaturesTrigger = () => {
 
     return data
   }, [fileSettings?.image?.enabled, startVariables])
+  const endVariables = useMemo(() => (endNode as Node<EndNodeType>)?.data?.outputs || [], [endNode])
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -201,6 +204,7 @@ const FeaturesTrigger = () => {
           disabled: nodesReadOnly || !hasWorkflowNodes,
           toolPublished,
           inputs: variables,
+          outputs: endVariables,
           onRefreshData: handleToolConfigureUpdate,
           onPublish,
           onToggle: onPublisherToggle,

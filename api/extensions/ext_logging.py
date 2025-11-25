@@ -7,6 +7,7 @@ from logging.handlers import RotatingFileHandler
 import flask
 
 from configs import dify_config
+from core.helper.trace_id_helper import get_trace_id_from_otel_context
 from dify_app import DifyApp
 
 
@@ -76,7 +77,9 @@ class RequestIdFilter(logging.Filter):
     # the logging format. Note that we're checking if we're in a request
     # context, as we may want to log things before Flask is fully loaded.
     def filter(self, record):
+        trace_id = get_trace_id_from_otel_context() or ""
         record.req_id = get_request_id() if flask.has_request_context() else ""
+        record.trace_id = trace_id
         return True
 
 
@@ -84,6 +87,8 @@ class RequestIdFormatter(logging.Formatter):
     def format(self, record):
         if not hasattr(record, "req_id"):
             record.req_id = ""
+        if not hasattr(record, "trace_id"):
+            record.trace_id = ""
         return super().format(record)
 
 

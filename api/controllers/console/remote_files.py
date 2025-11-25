@@ -1,7 +1,8 @@
 import urllib.parse
 
 import httpx
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with
+from pydantic import BaseModel, Field
 
 import services
 from controllers.common import helpers
@@ -36,17 +37,23 @@ class RemoteFileInfoApi(Resource):
         }
 
 
-parser_upload = reqparse.RequestParser().add_argument("url", type=str, required=True, help="URL is required")
+class RemoteFileUploadPayload(BaseModel):
+    url: str = Field(..., description="URL to fetch")
+
+
+console_ns.schema_model(
+    RemoteFileUploadPayload.__name__,
+    RemoteFileUploadPayload.model_json_schema(ref_template="#/definitions/{model}"),
+)
 
 
 @console_ns.route("/remote-files/upload")
 class RemoteFileUploadApi(Resource):
-    @console_ns.expect(parser_upload)
+    @console_ns.expect(console_ns.models[RemoteFileUploadPayload.__name__])
     @marshal_with(file_fields_with_signed_url)
     def post(self):
-        args = parser_upload.parse_args()
-
-        url = args["url"]
+        args = RemoteFileUploadPayload.model_validate(console_ns.payload)
+        url = args.url
 
         try:
             resp = ssrf_proxy.head(url=url)
