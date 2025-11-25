@@ -97,6 +97,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { isEqual } from 'lodash-es'
 
 const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
   ssr: false,
@@ -168,6 +169,19 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setControlPromptEditorRerenderKey,
     setSyncWorkflowDraftHash,
   } = workflowStore.getState()
+  const [nodesOnlyChangeWithData, doSetNodesOnlyChangeWithData] = useState<any[]>([])
+  const setNodesOnlyChangeWithData = useCallback((nodes: any[]) => {
+    const nodesData = nodes.map(node => ({
+      id: node.id,
+      data: node.data,
+    }))
+    const oldData = nodesOnlyChangeWithData.map(node => ({
+      id: node.id,
+      data: node.data,
+    }))
+    if (!isEqual(oldData, nodesData))
+      doSetNodesOnlyChangeWithData(nodes)
+  }, [nodesOnlyChangeWithData])
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -384,6 +398,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
+        onNodesChange={setNodesOnlyChangeWithData}
         onNodeMouseEnter={handleNodeEnter}
         onNodeMouseLeave={handleNodeLeave}
         onNodeClick={handleNodeClick}
