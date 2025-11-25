@@ -12,7 +12,6 @@ import { setZendeskConversationFields } from '@/app/components/base/zendesk/util
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 import { useGlobalPublicStore } from './global-public-context'
-import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 
 export type AppContextValue = {
   userProfile: UserProfileResponse
@@ -165,7 +164,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   useEffect(() => {
     // Report user info to Amplitude when loaded
     if (userProfile?.id) {
-      setUserId(userProfile.id)
+      setUserId(userProfile.email)
       setUserProperties({
         email: userProfile.email,
         name: userProfile.name,
