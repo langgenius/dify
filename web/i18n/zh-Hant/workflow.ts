@@ -39,7 +39,6 @@ const translation = {
     maxTreeDepth: '每個分支最大限制 {{depth}} 個節點',
     needAdd: '必須新增{{node}}節點',
     needOutputNode: '必須新增輸出節點',
-    needEndNode: '必須新增結束節點',
     needAnswerNode: '必須新增直接回覆節點',
     workflowProcess: '工作流',
     notRunning: '尚未運行',
