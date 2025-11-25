@@ -70,6 +70,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
+        self._workflow_log_saved = False  # Flag to prevent duplicate log saving
 
     def run(self):
         """
@@ -203,7 +204,12 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
     def _save_workflow_app_log(self) -> None:
         """
         Save workflow app log when workflow execution completes.
+
+        This method is idempotent - it will only save the log once even if called multiple times.
         """
+        # Idempotency check: only save once
+        if self._workflow_log_saved:
+            return
 
         invoke_from = self.application_generate_entity.invoke_from
         workflow_run_id = self.application_generate_entity.workflow_execution_id
@@ -235,5 +241,6 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 session.add(workflow_app_log)
                 session.commit()
                 
+            self._workflow_log_saved = True
         except Exception:
             logger.exception("Failed to save workflow app log, workflow_run_id: %s", workflow_run_id)
