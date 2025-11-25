@@ -718,10 +718,9 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
-      NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: ${NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX:-false}
 
-  # The postgres database.
-  db:
+  # The PostgreSQL database.
+  db_postgres:
     image: postgres:15-alpine
     restart: always
     environment:
@@ -972,10 +971,67 @@ services:
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
 
+  # OceanBase vector database
+  oceanbase:
+    image: oceanbase/oceanbase-ce:4.3.5-lts
+    container_name: oceanbase
+    profiles:
+      - oceanbase
+    restart: always
+    volumes:
+      - ./volumes/oceanbase/data:/root/ob
+      - ./volumes/oceanbase/conf:/root/.obd/cluster
+      - ./volumes/oceanbase/init.d:/root/boot/init.d
+    environment:
+      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+      OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
+      OB_SERVER_IP: 127.0.0.1
+      MODE: mini
+      LANG: en_US.UTF-8
+    ports:
+      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'obclient -h127.0.0.1 -P2881 -uroot@test -p${OCEANBASE_VECTOR_PASSWORD:-difyai123456} -e "SELECT 1;"',
+        ]
+      interval: 10s
+      retries: 30
+      start_period: 30s
+      timeout: 10s
+
+  # seekdb vector database
+  seekdb:
+    image: oceanbase/seekdb:latest
+    container_name: seekdb
+    profiles:
+      - seekdb
+    restart: always
+    volumes:
+      - ./volumes/seekdb:/var/lib/oceanbase
+    environment:
+      ROOT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      MEMORY_LIMIT: ${SEEKDB_MEMORY_LIMIT:-2G}
+      REPORTER: dify-ai-seekdb
+    ports:
+      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'mysql -h127.0.0.1 -P2881 -uroot -p${OCEANBASE_VECTOR_PASSWORD:-difyai123456} -e "SELECT 1;"',
+        ]
+      interval: 5s
+      retries: 60
+      timeout: 5s
+
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
   qdrant:
-    image: langgenius/qdrant:v1.7.3
+    image: langgenius/qdrant:v1.8.3
     profiles:
       - qdrant
     restart: always
@@ -1106,38 +1162,6 @@ services:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
-
-  # OceanBase vector database
-  oceanbase:
-    image: oceanbase/oceanbase-ce:4.3.5-lts
-    container_name: oceanbase
-    profiles:
-      - oceanbase
-    restart: always
-    volumes:
-      - ./volumes/oceanbase/data:/root/ob
-      - ./volumes/oceanbase/conf:/root/.obd/cluster
-      - ./volumes/oceanbase/init.d:/root/boot/init.d
-    environment:
-      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
-      OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
-      OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
-      OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
-      OB_SERVER_IP: 127.0.0.1
-      MODE: mini
-      LANG: en_US.UTF-8
-    ports:
-      - "${OCEANBASE_VECTOR_PORT:-2881}:2881"
-    healthcheck:
-      test:
-        [
-          "CMD-SHELL",
-          'obclient -h127.0.0.1 -P2881 -uroot@test -p$${OB_TENANT_PASSWORD} -e "SELECT 1;"',
-        ]
-      interval: 10s
-      retries: 30
-      start_period: 30s
-      timeout: 10s
 
   # Oracle vector database
   oracle:
