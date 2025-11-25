@@ -6,6 +6,8 @@ const translation = {
     documentsUploadQuota: 'Kuota Unggah Dokumen',
     teamMembers: 'Anggota Tim',
     annotationQuota: 'Kuota Anotasi',
+    perMonth: 'per bulan',
+    triggerEvents: 'Pemicu Acara',
   },
   upgradeBtn: {
     encourage: 'Tingkatkan Sekarang',
@@ -44,7 +46,6 @@ const translation = {
     annotatedResponse: {
       tooltip: 'Pengeditan manual dan anotasi respons memberikan kemampuan menjawab pertanyaan berkualitas tinggi yang dapat disesuaikan untuk aplikasi. (Hanya berlaku di aplikasi Chat)',
     },
-    title: 'Harga yang mendukung perjalanan AI Anda',
     mostPopular: 'Populer',
     free: 'Bebas',
     freeTrialTipSuffix: 'Tidak perlu kartu kredit',
@@ -89,6 +90,19 @@ const translation = {
     startBuilding: 'Mulai Membangun',
     taxTip: 'Semua harga langganan (bulanan/tahunan) belum termasuk pajak yang berlaku (misalnya, PPN, pajak penjualan).',
     taxTipSecond: 'Jika wilayah Anda tidak memiliki persyaratan pajak yang berlaku, tidak akan ada pajak yang muncul saat checkout, dan Anda tidak akan dikenakan biaya tambahan apa pun selama masa langganan.',
+    triggerEvents: {
+      unlimited: 'Peristiwa Pemicu Tak Terbatas',
+      tooltip: 'Jumlah peristiwa yang secara otomatis memulai alur kerja melalui pemicu Plugin, Jadwal, atau Webhook.',
+    },
+    workflowExecution: {
+      priority: 'Eksekusi Alur Kerja Prioritas',
+      standard: 'Eksekusi Alur Kerja Standar',
+      faster: 'Eksekusi Alur Kerja yang Lebih Cepat',
+      tooltip: 'Prioritas dan kecepatan antrian eksekusi alur kerja.',
+    },
+    startNodes: {
+      unlimited: 'Pemicu/alur kerja tanpa batas',
+    },
   },
   plans: {
     sandbox: {
@@ -108,9 +122,6 @@ const translation = {
     },
     community: {
       features: {
-        0: 'Semua fitur inti dirilis di bawah repositori publik',
-        1: 'Ruang Kerja Tunggal',
-        2: 'Sesuai dengan Lisensi Sumber Terbuka Dify',
       },
       price: 'Bebas',
       for: 'Untuk Pengguna Individu, Tim Kecil, atau Proyek Non-Komersial',
@@ -121,10 +132,6 @@ const translation = {
     },
     premium: {
       features: {
-        2: 'Kustomisasi Logo & Branding WebApp',
-        3: 'Dukungan Email & Obrolan Prioritas',
-        0: 'Keandalan yang dikelola sendiri oleh berbagai penyedia cloud',
-        1: 'Ruang Kerja Tunggal',
       },
       name: 'Premi',
       price: 'Scalable',
@@ -137,15 +144,6 @@ const translation = {
     },
     enterprise: {
       features: {
-        5: 'SLA yang Dinegosiasikan oleh Mitra Dify',
-        3: 'Beberapa Ruang Kerja & Manajemen Perusahaan',
-        4: 'SSO',
-        2: 'Fitur Eksklusif Enterprise',
-        7: 'Pembaruan dan Pemeliharaan oleh Dify Secara Resmi',
-        1: 'Otorisasi Lisensi Komersial',
-        8: 'Dukungan Teknis Profesional',
-        0: 'Solusi Penerapan yang Dapat Diskalakan Tingkat Perusahaan',
-        6: 'Keamanan & Kontrol Tingkat Lanjut',
       },
       includesTitle: 'Semuanya mulai dari Premium, ditambah:',
       btnText: 'Hubungi Sales',
@@ -176,6 +174,13 @@ const translation = {
   buyPermissionDeniedTip: 'Hubungi administrator perusahaan Anda untuk berlangganan',
   viewBilling: 'Mengelola penagihan dan langganan',
   teamMembers: 'Anggota Tim',
+  triggerLimitModal: {
+    upgrade: 'Tingkatkan',
+    dismiss: 'Tutup',
+    usageTitle: 'PERISTIWA PEMICU',
+    title: 'Tingkatkan untuk membuka lebih banyak peristiwa pemicu',
+    description: 'Anda telah mencapai batas pemicu acara alur kerja untuk paket ini.',
+  },
 }
 
 export default translation

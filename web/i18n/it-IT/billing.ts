@@ -9,7 +9,6 @@ const translation = {
   buyPermissionDeniedTip:
     'Contatta l\'amministratore della tua azienda per abbonarti',
   plansCommon: {
-    title: 'Scegli un piano adatto a te',
     yearlyTip: 'Ottieni 2 mesi gratis abbonandoti annualmente!',
     mostPopular: 'Più Popolare',
     planRange: {
@@ -88,7 +87,7 @@ const translation = {
     freeTrialTipPrefix: 'Iscriviti e ricevi un',
     teamMember_one: '{{count,number}} membro del team',
     documents: '{{count,number}} Documenti di Conoscenza',
-    apiRateLimitUnit: '{{count,number}}/mese',
+    apiRateLimitUnit: '{{count,number}}',
     documentsRequestQuota: '{{count,number}}/min Limite di richiesta di conoscenza',
     teamMember_other: '{{count,number}} membri del team',
     freeTrialTip: 'prova gratuita di 200 chiamate OpenAI.',
@@ -104,6 +103,19 @@ const translation = {
     startBuilding: 'Inizia a costruire',
     taxTip: 'Tutti i prezzi degli abbonamenti (mensili/annuali) non includono le tasse applicabili (ad esempio, IVA, imposta sulle vendite).',
     taxTipSecond: 'Se nella tua regione non ci sono requisiti fiscali applicabili, nessuna tassa apparirà al momento del pagamento e non ti verranno addebitate spese aggiuntive per l\'intera durata dell\'abbonamento.',
+    triggerEvents: {
+      unlimited: 'Eventi di attivazione illimitati',
+      tooltip: 'Il numero di eventi che avviano automaticamente i flussi di lavoro tramite trigger Plugin, Pianificazione o Webhook.',
+    },
+    workflowExecution: {
+      priority: 'Esecuzione del flusso di lavoro prioritario',
+      faster: 'Esecuzione del flusso di lavoro più rapida',
+      standard: 'Esecuzione del flusso di lavoro standard',
+      tooltip: 'Priorità e velocità della coda di esecuzione del flusso di lavoro.',
+    },
+    startNodes: {
+      unlimited: 'Eventi di attivazione/workflow illimitati',
+    },
   },
   plans: {
     sandbox: {
@@ -115,7 +127,7 @@ const translation = {
       name: 'Professional',
       description:
         'Per individui e piccoli team per sbloccare più potenza a prezzi accessibili.',
-      for: 'Per sviluppatori indipendenti / piccoli team',
+      for: 'Per sviluppatori indipendenti/piccoli team',
     },
     team: {
       name: 'Team',
@@ -129,15 +141,6 @@ const translation = {
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
       features: {
-        4: 'SSO',
-        8: 'Supporto tecnico professionale',
-        6: 'Sicurezza e controlli avanzati',
-        1: 'Autorizzazione Licenza Commerciale',
-        2: 'Funzionalità esclusive per le aziende',
-        3: 'Spazi di lavoro multipli e gestione aziendale',
-        0: 'Soluzioni di distribuzione scalabili di livello aziendale',
-        5: 'SLA negoziati dai partner Dify',
-        7: 'Aggiornamenti e manutenzione da parte di Dify ufficialmente',
       },
       price: 'Personalizzato',
       for: 'Per team di grandi dimensioni',
@@ -146,9 +149,6 @@ const translation = {
     },
     community: {
       features: {
-        0: 'Tutte le funzionalità principali rilasciate nel repository pubblico',
-        2: 'Conforme alla licenza Open Source Dify',
-        1: 'Area di lavoro singola',
       },
       name: 'Comunità',
       btnText: 'Inizia con la comunità',
@@ -159,10 +159,6 @@ const translation = {
     },
     premium: {
       features: {
-        3: 'Supporto prioritario via e-mail e chat',
-        1: 'Area di lavoro singola',
-        0: 'Affidabilità autogestita da vari fornitori di servizi cloud',
-        2: 'Personalizzazione del logo e del marchio WebApp',
       },
       name: 'Premium',
       priceTip: 'Basato su Cloud Marketplace',
@@ -197,8 +193,17 @@ const translation = {
     teamMembers: 'Membri del team',
     documentsUploadQuota: 'Quota di Caricamento Documenti',
     vectorSpaceTooltip: 'I documenti con la modalità di indicizzazione ad alta qualità consumeranno risorse di Knowledge Data Storage. Quando il Knowledge Data Storage raggiunge il limite, nuovi documenti non verranno caricati.',
+    perMonth: 'al mese',
+    triggerEvents: 'Eventi di attivazione',
   },
   teamMembers: 'Membri del team',
+  triggerLimitModal: {
+    upgrade: 'Aggiornamento',
+    dismiss: 'Ignora',
+    usageTitle: 'EVENTI DI ATTIVAZIONE',
+    title: 'Aggiorna per sbloccare più eventi di attivazione',
+    description: 'Hai raggiunto il limite degli eventi di attivazione del flusso di lavoro per questo piano.',
+  },
 }
 
 export default translation

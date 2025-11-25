@@ -19,7 +19,6 @@ const translation = {
   intro5: 'se puede crear',
   intro6: ' como un complemento independiente de ChatGPT para publicar',
   unavailable: 'No disponible',
-  unavailableTip: 'El modelo de incrustación no está disponible, es necesario configurar el modelo de incrustación predeterminado',
   datasets: 'CONOCIMIENTO',
   datasetsApi: 'ACCESO A LA API',
   retrieval: {
@@ -37,8 +36,6 @@ const translation = {
       recommend: 'Recomendar',
     },
     invertedIndex: {
-      title: 'Índice Invertido',
-      description: 'El Índice Invertido es una estructura utilizada para la recuperación eficiente. Organizado por términos, cada término apunta a documentos o páginas web que lo contienen.',
     },
     change: 'Cambiar',
     changeRetrievalMethod: 'Cambiar método de recuperación',

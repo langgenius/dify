@@ -112,6 +112,7 @@ class VariableEntity(BaseModel):
     type: VariableEntityType
     required: bool = False
     hide: bool = False
+    default: Any = None
     max_length: int | None = None
     default: Union[str, int, float] | None = None
     options: Sequence[str] = Field(default_factory=list)
