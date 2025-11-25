@@ -130,7 +130,7 @@ const AllStartBlocks = ({
         <div
           ref={wrapElemRef}
           className='flex-1 overflow-y-auto'
-          onScroll={pluginRef.current?.handleScroll}
+          onScroll={() => pluginRef.current?.handleScroll()}
         >
           <div className={cn(shouldShowEmptyState && 'hidden')}>
             {shouldShowFeatured && (
