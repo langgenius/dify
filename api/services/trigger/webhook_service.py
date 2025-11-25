@@ -28,9 +28,10 @@ from models.trigger import AppTrigger, WorkflowWebhookTrigger
 from models.workflow import Workflow
 from services.async_workflow_service import AsyncWorkflowService
 from services.end_user_service import EndUserService
-from services.errors.app import QuotaExceededError
+from services.errors.app import QuotaExceededError, WorkflowNotFoundError
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -703,14 +704,19 @@ class WebhookService:
 
     @classmethod
     def trigger_workflow_execution(
-        cls, webhook_trigger: WorkflowWebhookTrigger, webhook_data: dict[str, Any], workflow: Workflow
+        cls,
+        webhook_trigger: WorkflowWebhookTrigger,
+        webhook_data: dict[str, Any],
+        workflow: Workflow,
+        workflow_id: str | None = None,
     ) -> None:
         """Trigger workflow execution via AsyncWorkflowService.
 
         Args:
             webhook_trigger: The webhook trigger object
             webhook_data: Processed webhook data for workflow inputs
-            workflow: The workflow to execute
+            workflow: The workflow to execute (fallback if workflow_id not specified)
+            workflow_id: Optional specific workflow version ID to execute
 
         Raises:
             ValueError: If tenant owner is not found
@@ -718,6 +724,29 @@ class WebhookService:
         """
         try:
             with Session(db.engine) as session:
+                # Resolve workflow based on workflow_id parameter if provided
+                if workflow_id:
+                    # Get app model for workflow service
+                    app_model = session.query(App).where(App.id == webhook_trigger.app_id).first()
+                    if not app_model:
+                        raise ValueError("App not found")
+
+                    workflow_service = WorkflowService()
+                    resolved_workflow = workflow_service.get_published_workflow_by_id(app_model, workflow_id)
+                    if not resolved_workflow:
+                        raise WorkflowNotFoundError(f"Workflow not found with id: {workflow_id}")
+                    workflow = resolved_workflow
+                elif not workflow:
+                    # Fallback to get published workflow if neither workflow_id nor workflow provided
+                    workflow_service = WorkflowService()
+                    app_model = session.query(App).where(App.id == webhook_trigger.app_id).first()
+                    if not app_model:
+                        raise ValueError("App not found")
+                    resolved_workflow = workflow_service.get_published_workflow(app_model)
+                    if not resolved_workflow:
+                        raise ValueError("Published workflow not found")
+                    workflow = resolved_workflow
+
                 # Prepare inputs for the webhook node
                 # The webhook node expects webhook_data in the inputs
                 workflow_inputs = cls.build_workflow_inputs(webhook_data)

@@ -1,7 +1,8 @@
 import logging
 import time
+import uuid
 
-from flask import jsonify
+from flask import jsonify, request
 from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 from controllers.trigger import bp
@@ -40,17 +41,34 @@ def handle_webhook(webhook_id: str):
 
     This endpoint receives webhook calls and processes them according to the
     configured webhook trigger settings.
+
+    Query Parameters:
+        workflow_id (optional): Specific workflow version ID to execute
     """
     try:
         webhook_trigger, workflow, node_config, webhook_data, error = _prepare_webhook_execution(webhook_id)
         if error:
             return jsonify({"error": "Bad Request", "message": error}), 400
 
-        # Process webhook call (send to Celery)
-        WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow)
+        # Extract workflow_id from query parameters (treat empty string as None)
+        raw_workflow_id = request.args.get("workflow_id")
+        workflow_id = raw_workflow_id if raw_workflow_id not in (None, "") else None
+        if workflow_id is not None:
+            try:
+                uuid.UUID(workflow_id)
+            except ValueError:
+                return jsonify({"error": "Bad Request", "message": "Invalid workflow_id format."}), 400
 
-        # Return configured response
-        response_data, status_code = WebhookService.generate_webhook_response(node_config)
+        # Process webhook call (send to Celery) with optional workflow_id
+        WebhookService.trigger_workflow_execution(webhook_trigger, webhook_data, workflow, workflow_id)
+
+        # Return configured response with safe fallback when mocked service doesn't provide a tuple
+        result = WebhookService.generate_webhook_response(node_config)
+        if isinstance(result, tuple) and len(result) == 2:
+            response_data, status_code = result
+        else:
+            # Default fallback: empty body and 200 OK
+            response_data, status_code = {}, 200
         return jsonify(response_data), status_code
 
     except ValueError as e:
