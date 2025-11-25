@@ -32,6 +32,10 @@ const translation = {
             confirm: '削除',
             cancel: 'キャンセル',
             confirmInputWarning: '確認するために正しい名前を入力してください。',
+            success: 'サブスクリプション {{name}} は正常に削除されました',
+            error: '購読 {{name}} の削除に失敗しました',
+            confirmInputPlaceholder: '確認するには「{{name}}」と入力してください。',
+            confirmInputTip: '確認のため「{{name}}」を入力してください。',
           },
         },
         status: {
@@ -70,6 +74,7 @@ const translation = {
     noSubscriptionSelected: 'サブスクリプションが選択されていません',
     selectPlaceholder: 'サブスクリプションを選択',
     createFailed: 'サブスクリプションの作成に失敗しました',
+    maxCount: '最大 {{num}} 件の購読',
   },
   modal: {
     steps: {
@@ -138,6 +143,7 @@ const translation = {
         status: {
         },
         request: 'リクエスト',
+        loading: '{{pluginName}}からのリクエストを待っています...',
       },
     },
     form: {

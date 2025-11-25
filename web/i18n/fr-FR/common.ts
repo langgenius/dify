@@ -65,10 +65,17 @@ const translation = {
     confirmAction: 'Veuillez confirmer votre action.',
     deleteConfirmTitle: 'Supprimer ?',
     yes: 'Oui',
+    noSearchResults: 'Aucun {{content}} n\'a été trouvé',
+    resetKeywords: 'Réinitialiser les mots-clés',
+    selectCount: '{{count}} Sélectionné',
+    searchCount: 'Trouver {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Maintenant',
   },
   placeholder: {
     input: 'Veuillez entrer',
     select: 'Veuillez sélectionner',
+    search: 'Rechercher...',
   },
   voice: {
     language: {
@@ -768,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '(facultatif)',
+  },
+  noData: 'Aucune donnée',
+  dynamicSelect: {
+    error: 'Échec du chargement des options',
+    noData: 'Aucune option disponible',
+    loading: 'Chargement des options...',
+    selected: '{{count}} sélectionné',
   },
 }
 

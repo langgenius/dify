@@ -233,6 +233,10 @@ const translation = {
     title: '서비스 API',
     disabled: '장애인',
   },
+  docAllEnabled_one: '{{count}} 문서 활성화됨',
+  docAllEnabled_other: '모든 {{count}} 문서 사용 가능',
+  partialEnabled_one: '총 {{count}}개의 문서 중 {{num}}개 사용 가능',
+  partialEnabled_other: '총 {{count}}개의 문서 중 {{num}}개 사용 가능',
 }
 
 export default translation

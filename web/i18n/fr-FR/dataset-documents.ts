@@ -81,7 +81,10 @@ const translation = {
     },
     addUrl: 'Ajouter une URL',
     learnMore: 'Pour en savoir plus',
-    sort: {},
+    sort: {
+      uploadTime: 'Heure de téléchargement',
+      hitCount: 'Nombre de récupérations',
+    },
   },
   metadata: {
     title: 'Métadonnées',
@@ -347,7 +350,6 @@ const translation = {
     keywords: 'Mots Clés',
     addKeyWord: 'Ajouter un mot-clé',
     keywordError: 'La longueur maximale du mot-clé est de 20',
-    characters: 'personnages',
     hitCount: 'Nombre de récupérations',
     vectorHash: 'Vector hash: ',
     questionPlaceholder: 'ajoutez la question ici',

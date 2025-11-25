@@ -121,6 +121,7 @@ const translation = {
     loadMore: '加载更多',
     noHistory: '没有历史版本',
     tagBound: '使用此标签的应用数量',
+    listening: '听',
   },
   publishLimit: {
     startNodeTitlePrefix: '升级以',
@@ -1095,7 +1096,6 @@ const translation = {
       varName: '变量名',
       varType: '类型',
       varNamePlaceholder: '输入变量名...',
-      headerName: '变量名',
       required: '必填',
       addParameter: '添加',
       addHeader: '添加',
@@ -1118,6 +1118,7 @@ const translation = {
         webhookUrlRequired: '需要提供Webhook URL',
         invalidParameterType: '参数"{{name}}"的参数类型"{{type}}"无效',
       },
+      debugUrlPrivateAddressWarning: '此 URL 似乎是内部地址，可能导致 webhook 请求失败。您可以将 TRIGGER_URL 更改为公共地址。',
     },
     triggerPlugin: {
       authorized: '已授权',
@@ -1156,6 +1157,12 @@ const translation = {
       subscriptionNamePlaceholder: '输入订阅名称...',
       subscriptionNameRequired: '订阅名称是必需的',
       subscriptionRequired: '需要配置订阅',
+      notAuthorized: '未授权',
+      selectSubscription: '选择订阅',
+      availableSubscriptions: '可用订阅',
+      addSubscription: '添加新订阅',
+      removeSubscription: '取消订阅',
+      subscriptionRemoved: '订阅已成功取消',
     },
   },
   tracing: {

@@ -98,6 +98,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Sự kiện Kích hoạt Không giới hạn',
       tooltip: 'Số lượng sự kiện tự động kích hoạt quy trình làm việc thông qua Plugin, Lịch trình hoặc Webhook.',
+      sandbox: '{{count,number}} Kích hoạt Sự kiện',
+      professional: '{{count,number}} Sự kiện kích hoạt/tháng',
     },
     workflowExecution: {
       faster: 'Thực hiện quy trình làm việc nhanh hơn',
@@ -107,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Kích hoạt/quy trình làm việc không giới hạn',
+      limited: 'Tối đa {{count}} kích hoạt/quy trình',
+    },
+    title: {
+      plans: 'kế hoạch',
+      description: 'Chọn gói phù hợp nhất với nhu cầu của đội bạn.',
     },
   },
   plans: {
@@ -129,16 +136,14 @@ const translation = {
       name: 'Doanh nghiệp',
       description: 'Nhận toàn bộ khả năng và hỗ trợ cho các hệ thống quan trọng cho nhiệm vụ quy mô lớn.',
       includesTitle: 'Tất cả trong kế hoạch Nhóm, cộng thêm:',
-      features: {
-      },
+      features: ['Giải pháp triển khai mở rộng cấp doanh nghiệp', 'Giấy phép thương mại', 'Tính năng Doanh nghiệp Độc quyền', 'Nhiều Không Gian Làm Việc & Quản Lý Doanh Nghiệp', 'Đăng nhập một lần', 'Các SLA đã được đàm phán bởi các Đối tác Dify', 'Bảo mật & Kiểm soát Nâng cao', 'Cập nhật và Bảo trì bởi Dify chính thức', 'Hỗ trợ Kỹ thuật Chuyên nghiệp'],
       price: 'Tùy chỉnh',
       for: 'Dành cho các đội lớn',
       priceTip: 'Chỉ thanh toán hàng năm',
       btnText: 'Liên hệ với Bộ phận Bán hàng',
     },
     community: {
-      features: {
-      },
+      features: ['Tất cả các Tính năng Cốt lõi được Phát hành Dưới Kho Lưu trữ Công khai', 'Không gian làm việc đơn', 'Tuân thủ Giấy phép Mã nguồn mở Dify'],
       description: 'Dành cho người dùng cá nhân, nhóm nhỏ hoặc các dự án phi thương mại',
       name: 'Cộng đồng',
       btnText: 'Bắt đầu với Cộng đồng',
@@ -147,8 +152,7 @@ const translation = {
       includesTitle: 'Tính năng miễn phí:',
     },
     premium: {
-      features: {
-      },
+      features: ['Độ tin cậy tự quản lý bởi các nhà cung cấp đám mây khác nhau', 'Không gian làm việc đơn', 'Tùy chỉnh Logo & Thương hiệu WebApp', 'Hỗ trợ Email & Trò chuyện Ưu tiên'],
       comingSoon: 'Hỗ trợ Microsoft Azure & Google Cloud Sẽ Đến Sớm',
       priceTip: 'Dựa trên Thị trường Đám mây',
       btnText: 'Nhận Premium trong',
@@ -184,6 +188,7 @@ const translation = {
     buildApps: 'Xây dựng ứng dụng',
     triggerEvents: 'Các sự kiện kích hoạt',
     perMonth: 'mỗi tháng',
+    resetsIn: 'Đặt lại sau {{count,number}} ngày',
   },
   teamMembers: 'Các thành viên trong nhóm',
   triggerLimitModal: {

@@ -234,6 +234,9 @@ const translation = {
       parameters: 'Parameter',
       noDescription: 'Tanpa deskripsi',
     },
+    toolsCount: 'alat {{count}}',
+    deleteConfirmTitle: 'Apakah Anda ingin menghapus {{mcp}}?',
+    toolsNum: 'alat {{count}} termasuk',
   },
   title: 'Perkakas',
   createCustomTool: 'Buat Alat Kustom',
@@ -248,6 +251,7 @@ const translation = {
   builtInPromptTitle: 'Cepat',
   toolNameUsageTip: 'Nama panggilan alat untuk penalaran dan permintaan agen',
   allTools: 'Semua alat',
+  includeToolNum: '{{num}} {{action}} termasuk',
 }
 
 export default translation
