@@ -153,6 +153,8 @@ class MCPTool(Tool):
         from extensions.ext_database import db
         from services.tools.mcp_tools_manage_service import MCPToolManageService
 
+        workflow_execution_id = getattr(self.runtime, "workflow_execution_id", None)
+
         # Step 1: Load provider entity and credentials in a short-lived session
         # This minimizes database connection hold time
         with Session(db.engine, expire_on_commit=False) as session:
