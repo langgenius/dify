@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Ngữ cảnh',
       noData: 'Bạn có thể nhập dữ liệu làm ngữ cảnh',
-      words: 'Từ',
-      textBlocks: 'Khối văn bản',
       selectTitle: 'Chọn kiến thức tham khảo',
       selected: 'Kiến thức đã chọn',
       noDataSet: 'Không tìm thấy kiến thức',
@@ -329,6 +327,7 @@ const translation = {
     'content': 'Nội dung',
     'multi-files': 'Danh sách tập tin',
     'maxNumberOfUploads': 'Số lượt tải lên tối đa',
+    'maxNumberTip': 'Tài liệu < {{docLimit}}, hình ảnh < {{imgLimit}}, âm thanh < {{audioLimit}}, video < {{videoLimit}}',
     'json': 'Mã JSON',
     'checkbox': 'Hộp kiểm',
     'optional': 'tùy chọn',

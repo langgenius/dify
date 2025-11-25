@@ -114,6 +114,11 @@ const translation = {
         },
       },
       launch: 'Abschießen',
+      enableTooltip: {
+        description: 'Um diese Funktion zu aktivieren, fügen Sie bitte einen Benutzer-Eingabe-Knoten zum Canvas hinzu. (Kann sich bereits im Entwurf befinden, wird nach der Veröffentlichung wirksam)',
+        learnMore: 'Mehr erfahren',
+      },
+      title: 'Webanwendung',
     },
     apiInfo: {
       title: 'Backend-Service-API',
@@ -124,6 +129,17 @@ const translation = {
     status: {
       running: 'In Betrieb',
       disable: 'Deaktivieren',
+    },
+    triggerInfo: {
+      title: 'Auslöser',
+      explanation: 'Verwaltung von Workflow-Triggern',
+      triggersAdded: '{{count}} Auslöser hinzugefügt',
+      noTriggerAdded: 'Kein Auslöser hinzugefügt',
+      triggerStatusDescription: 'Der Status des Trigger-Knotens wird hier angezeigt. (Kann bereits im Entwurf vorhanden sein, tritt nach der Veröffentlichung in Kraft)',
+      learnAboutTriggers: 'Erfahren Sie mehr über Auslöser',
+    },
+    disableTooltip: {
+      triggerMode: 'Die Funktion {{feature}} wird im Trigger-Knoten-Modus nicht unterstützt.',
     },
   },
   analysis: {

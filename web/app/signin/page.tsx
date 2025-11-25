@@ -2,10 +2,17 @@
 import { useSearchParams } from 'next/navigation'
 import OneMoreStep from './one-more-step'
 import NormalForm from './normal-form'
+import { useEffect } from 'react'
+import usePSInfo from '../components/billing/partner-stack/use-ps-info'
 
 const SignIn = () => {
   const searchParams = useSearchParams()
   const step = searchParams.get('step')
+  const { saveOrUpdate } = usePSInfo()
+
+  useEffect(() => {
+    saveOrUpdate()
+  }, [])
 
   if (step === 'next')
     return <OneMoreStep />
