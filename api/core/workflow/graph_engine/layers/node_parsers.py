@@ -22,7 +22,6 @@ class DefaultNodeOTelParser:
     """Fallback parser used when no node-specific parser is registered."""
 
     def parse(self, *, node: Node, span: "Span", error: Exception | None) -> None:
-
         span.set_attribute("node.id", node.id)
         if getattr(node, "_node_execution_id", None):
             span.set_attribute("node.execution_id", node._node_execution_id)
@@ -60,4 +59,3 @@ class ToolNodeOTelParser:
             span.set_attribute("tool.credential.id", tool_data.credential_id)
         if tool_data.tool_configurations:
             span.set_attribute("tool.config", json.dumps(tool_data.tool_configurations, ensure_ascii=False))
-

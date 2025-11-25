@@ -162,4 +162,3 @@ class ObservabilityLayer(GraphEngineLayer):
                 len(self._node_contexts),
             )
             self._node_contexts.clear()
-
