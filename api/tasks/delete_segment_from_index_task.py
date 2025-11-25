@@ -7,6 +7,7 @@ from celery import shared_task
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, SegmentAttachmentBinding
+from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
 
@@ -51,10 +52,18 @@ def delete_segment_from_index_task(
         )
         if dataset.is_multimodal:
             # delete segment attachment binding
-            db.session.query(SegmentAttachmentBinding).filter(
+            segment_attachment_bindings = db.session.query(SegmentAttachmentBinding).filter(
                 SegmentAttachmentBinding.segment_id.in_(segment_ids)
-            ).delete()
-            db.session.commit()
+            ).all()
+            if segment_attachment_bindings:
+                attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
+                index_processor.clean(
+                    dataset=dataset, node_ids=attachment_ids, with_keywords=False)
+                for binding in segment_attachment_bindings:
+                    db.session.delete(binding)
+                # delete upload file
+                db.session.query(UploadFile).filter(UploadFile.id.in_(attachment_ids)).delete(synchronize_session=False)
+                db.session.commit()
 
         end_at = time.perf_counter()
         logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))

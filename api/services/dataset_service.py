@@ -424,13 +424,13 @@ class DatasetService:
         if not dataset:
             raise ValueError("Dataset not found")
             #  check if dataset name is exists
-
-        if DatasetService._has_dataset_same_name(
-            tenant_id=dataset.tenant_id,
-            dataset_id=dataset_id,
-            name=data.get("name", dataset.name),
-        ):
-            raise ValueError("Dataset name already exists")
+        if data.get("name") and data.get("name") != dataset.name:
+            if DatasetService._has_dataset_same_name(
+                tenant_id=dataset.tenant_id,
+                dataset_id=dataset_id,
+                name=data.get("name", dataset.name),
+            ):
+                raise ValueError("Dataset name already exists")
 
         # Verify user has permission to update this dataset
         DatasetService.check_dataset_permission(dataset, user)
@@ -866,6 +866,10 @@ class DatasetService:
                     model_type=ModelType.TEXT_EMBEDDING,
                     model=knowledge_configuration.embedding_model or "",
                 )
+                is_multimodal = DatasetService.check_is_multimodal_model(
+                    current_user.current_tenant_id, knowledge_configuration.embedding_model_provider, knowledge_configuration.embedding_model
+                )
+                dataset.is_multimodal = is_multimodal
                 dataset.embedding_model = embedding_model.model
                 dataset.embedding_model_provider = embedding_model.provider
                 dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
@@ -902,6 +906,10 @@ class DatasetService:
                         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
                             embedding_model.provider, embedding_model.model
                         )
+                        is_multimodal = DatasetService.check_is_multimodal_model(
+                            current_user.current_tenant_id, knowledge_configuration.embedding_model_provider, knowledge_configuration.embedding_model
+                        )
+                        dataset.is_multimodal = is_multimodal
                         dataset.collection_binding_id = dataset_collection_binding.id
                         dataset.indexing_technique = knowledge_configuration.indexing_technique
                     except LLMBadRequestError:
@@ -959,6 +967,10 @@ class DatasetService:
                                         )
                                     )
                                     dataset.collection_binding_id = dataset_collection_binding.id
+                                    is_multimodal = DatasetService.check_is_multimodal_model(
+                                        current_user.current_tenant_id, knowledge_configuration.embedding_model_provider, knowledge_configuration.embedding_model
+                                    )
+                                    dataset.is_multimodal = is_multimodal
                     except LLMBadRequestError:
                         raise ValueError(
                             "No Embedding Model available. Please configure a valid provider "

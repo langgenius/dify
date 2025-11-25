@@ -40,7 +40,7 @@ class BaseIndexProcessor(ABC):
         self,
         dataset: Dataset,
         documents: list[Document],
-        multimodel_documents: list[Document] | None = None,
+        multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
     ):
@@ -114,10 +114,10 @@ class BaseIndexProcessor(ABC):
         """
         multi_model_documents = []
         text = document.page_content
-        
+
         # Collect all upload_file_ids including duplicates to preserve occurrence count
         upload_file_id_list = []
-        
+
         # For data before v0.10.0
         pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
         matches = re.finditer(pattern, text)
@@ -139,22 +139,22 @@ class BaseIndexProcessor(ABC):
         for match in matches:
             upload_file_id = match.group(1)
             upload_file_id_list.append(upload_file_id)
-        
+
         if not upload_file_id_list:
             return multi_model_documents
-        
+
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
         upload_files = db.session.query(UploadFile).filter(UploadFile.id.in_(unique_upload_file_ids)).all()
-        
+
         # Create a mapping from ID to UploadFile for quick lookup
         upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
-        
+
         # Create a Document for each occurrence (including duplicates)
         for upload_file_id in upload_file_id_list:
             upload_file = upload_file_map.get(upload_file_id)
             if upload_file:
-                multi_model_documents.append(Document(
+                multi_model_documents.append(AttachmentDocument(
                     page_content=upload_file.name,
                     metadata={
                             "doc_id": upload_file.id,

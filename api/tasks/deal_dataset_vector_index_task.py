@@ -6,9 +6,10 @@ import click
 from celery import shared_task
 from sqlalchemy import select
 
+from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import ChildDocument, Document
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 from models.dataset import Document as DatasetDocument
@@ -32,7 +33,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
 
         if not dataset:
             raise Exception("Dataset not found")
-        index_type = dataset.doc_form or IndexType.PARAGRAPH_INDEX
+        index_type = dataset.doc_form or IndexStructureType.PARAGRAPH_INDEX
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         if action == "remove":
             index_processor.clean(dataset, None, with_keywords=False)
@@ -119,6 +120,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                         )
                         if segments:
                             documents = []
+                            multimodal_documents = []
                             for segment in segments:
                                 document = Document(
                                     page_content=segment.content,
@@ -145,9 +147,21 @@ def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "a
                                             )
                                             child_documents.append(child_document)
                                         document.children = child_documents
+                                if dataset.is_multimodal:
+                                    for attachment in segment.attachments:
+                                        multimodal_documents.append(AttachmentDocument(
+                                            page_content=attachment["name"],
+                                            metadata={
+                                                "doc_id": attachment["id"],
+                                                "doc_hash": "",
+                                                "document_id": segment.document_id,
+                                                "dataset_id": segment.dataset_id,
+                                                "doc_type": DocType.IMAGE,
+                                            },
+                                        ))
                                 documents.append(document)
                             # save vector index
-                            index_processor.load(dataset, documents, with_keywords=False)
+                            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, with_keywords=False)
                         db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document.id).update(
                             {"indexing_status": "completed"}, synchronize_session=False
                         )

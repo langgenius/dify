@@ -20,7 +20,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import Document, QAStructureChunk
+from core.rag.models.document import Document, QAStructureChunk, AttachmentDocument
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
@@ -132,15 +132,15 @@ class QAIndexProcessor(BaseIndexProcessor):
         self,
         dataset: Dataset,
         documents: list[Document],
-        multimodel_documents: list[Document] | None = None,
+        multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
     ):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
-            if multimodel_documents and dataset.is_multimodal:
-                vector.create_multimodel(multimodel_documents)
+            if multimodal_documents and dataset.is_multimodal:
+                vector.create_multimodal(multimodal_documents)
 
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):
         vector = Vector(dataset)

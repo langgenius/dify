@@ -551,7 +551,8 @@ class IndexingRunner:
         indexing_start_at = time.perf_counter()
         tokens = 0
         create_keyword_thread = None
-        if dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX and dataset.indexing_technique == "economy":
+        if (dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
+            and dataset.indexing_technique == "economy"):
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
@@ -635,11 +636,11 @@ class IndexingRunner:
                 db.session.commit()
 
     def _process_chunk(
-        self, flask_app: Flask, 
-        index_processor: BaseIndexProcessor, 
-        chunk_documents: list[Document], 
-        dataset: Dataset, 
-        dataset_document: DatasetDocument, 
+        self, flask_app: Flask,
+        index_processor: BaseIndexProcessor,
+        chunk_documents: list[Document],
+        dataset: Dataset,
+        dataset_document: DatasetDocument,
         embedding_model_instance: ModelInstance | None
     ):
         with flask_app.app_context():
@@ -651,13 +652,16 @@ class IndexingRunner:
                 page_content_list = [document.page_content for document in chunk_documents]
                 tokens += sum(embedding_model_instance.get_text_embedding_num_tokens(page_content_list))
 
-            multimodel_documents = []
+            multimodal_documents = []
             for document in chunk_documents:
-                if document.attachments:
-                    multimodel_documents.extend(document.attachments)
+                if document.attachments and dataset.is_multimodal:
+                    multimodal_documents.extend(document.attachments)
 
             # load index
-            index_processor.load(dataset, chunk_documents, multimodel_documents=multimodel_documents, with_keywords=False)
+            index_processor.load(dataset,
+                                 chunk_documents,
+                                 multimodal_documents=multimodal_documents,
+                                 with_keywords=False)
 
             document_ids = [document.metadata["doc_id"] for document in chunk_documents]
             db.session.query(DocumentSegment).where(
@@ -754,7 +758,7 @@ class IndexingRunner:
         )
 
         # add document segments
-        doc_store.add_documents(docs=documents, 
+        doc_store.add_documents(docs=documents,
         save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX)
 
         # update document status to indexing

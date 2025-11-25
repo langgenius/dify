@@ -8,7 +8,7 @@ from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import Document
+from core.rag.models.document import AttachmentDocument, Document
 from extensions.ext_database import db
 from models import UploadFile
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment, SegmentAttachmentBinding
@@ -24,7 +24,7 @@ class VectorService:
         cls, keywords_list: list[list[str]] | None, segments: list[DocumentSegment], dataset: Dataset, doc_form: str
     ):
         documents: list[Document] = []
-        multimodel_documents: list[Document] = []
+        multimodal_documents: list[AttachmentDocument] = []
 
         for segment in segments:
             if doc_form == IndexStructureType.PARENT_CHILD_INDEX:
@@ -80,7 +80,7 @@ class VectorService:
                 documents.append(rag_document)
             if dataset.is_multimodal:
                 for attachment in segment.attachments:
-                    multimodel_document: Document = Document(
+                    multimodal_document: AttachmentDocument = AttachmentDocument(
                         page_content=attachment["name"],
                         metadata={
                             "doc_id": attachment["id"],
@@ -90,15 +90,15 @@ class VectorService:
                             "doc_type": DocType.IMAGE,
                         },
                     )
-                    multimodel_documents.append(multimodel_document)
+                    multimodal_documents.append(multimodal_document)
         index_processor: BaseIndexProcessor = IndexProcessorFactory(doc_form).init_index_processor()
 
         if len(documents) > 0:
             index_processor.load(
-                dataset, documents, multimodel_documents=None, with_keywords=True, keywords_list=keywords_list
+                dataset, documents, None, with_keywords=True, keywords_list=keywords_list
             )
-        if len(multimodel_documents) > 0:
-            index_processor.load(dataset, multimodel_documents, with_keywords=False)
+        if len(multimodal_documents) > 0:
+            index_processor.load(dataset, [], multimodal_documents, with_keywords=False)
 
     @classmethod
     def update_segment_vector(cls, keywords: list[str] | None, segment: DocumentSegment, dataset: Dataset):

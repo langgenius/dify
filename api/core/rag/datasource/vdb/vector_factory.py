@@ -208,7 +208,7 @@ class Vector:
                 self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
             logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
-    def create_multimodel(self, file_documents: list | None = None, **kwargs):
+    def create_multimodal(self, file_documents: list | None = None, **kwargs):
         if file_documents:
             start = time.time()
             logger.info("start embedding %s files %s", len(file_documents), start)

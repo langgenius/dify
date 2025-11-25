@@ -4,9 +4,10 @@ import time
 import click
 from celery import shared_task
 
+from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import ChildDocument, Document
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -55,6 +56,7 @@ def add_document_to_index_task(dataset_document_id: str):
         )
 
         documents = []
+        multimodal_documents = []
         for segment in segments:
             document = Document(
                 page_content=segment.content,
@@ -81,11 +83,23 @@ def add_document_to_index_task(dataset_document_id: str):
                         )
                         child_documents.append(child_document)
                     document.children = child_documents
+            if dataset.is_multimodal:
+                for attachment in segment.attachments:
+                    multimodal_documents.append(AttachmentDocument(
+                        page_content=attachment["name"],
+                        metadata={
+                            "doc_id": attachment["id"],
+                            "doc_hash": "",
+                            "document_id": segment.document_id,
+                            "dataset_id": segment.dataset_id,
+                            "doc_type": DocType.IMAGE,
+                        },
+                    ))
             documents.append(document)
 
         index_type = dataset.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
-        index_processor.load(dataset, documents)
+        index_processor.load(dataset, documents, multimodal_documents=multimodal_documents)
 
         # delete auto disable log
         db.session.query(DatasetAutoDisableLog).where(DatasetAutoDisableLog.document_id == dataset_document.id).delete()

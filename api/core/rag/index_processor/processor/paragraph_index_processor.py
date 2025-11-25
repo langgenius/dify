@@ -85,15 +85,15 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         self,
         dataset: Dataset,
         documents: list[Document],
-        multimodel_documents: list[Document] | None = None,
+        multimodal_documents: list[AttachmentDocument] | None = None,
         with_keywords: bool = True,
         **kwargs,
     ):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
-            if multimodel_documents and dataset.is_multimodal:
-                vector.create_multimodel(multimodel_documents)
+            if multimodal_documents and dataset.is_multimodal:
+                vector.create_multimodal(multimodal_documents)
             with_keywords = False
         if with_keywords:
             keywords_list = kwargs.get("keywords_list")
@@ -201,7 +201,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 vector = Vector(dataset)
                 vector.create(documents)
                 if all_multimodal_documents:
-                    vector.create_multimodel(all_multimodal_documents)
+                    vector.create_multimodal(all_multimodal_documents)
             elif dataset.indexing_technique == "economy":
                 keyword = Keyword(dataset)
                 keyword.add_texts(documents)
