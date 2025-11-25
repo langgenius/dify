@@ -7,6 +7,7 @@ const translation = {
     extensions: 'Extensii',
     models: 'Modele',
     datasources: 'Surse de date',
+    triggers: 'Declanșatori',
   },
   categorySingle: {
     tool: 'Unealtă',
@@ -15,6 +16,7 @@ const translation = {
     agent: 'Strategia agentului',
     model: 'Model',
     datasource: 'Sursa datelor',
+    trigger: 'Declanșator',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       install: 'Instala',
       detail: 'Detalii',
       info: 'Informații despre plugin',
+      back: 'Înapoi',
     },
     toolSelector: {
       unsupportedContent: 'Versiunea de plugin instalată nu oferă această acțiune.',
@@ -305,6 +308,12 @@ const translation = {
     partialUPdate: 'Numai următoarele {{num}} pluginuri se vor actualiza automat',
     updateTime: 'Timp de actualizare',
     nextUpdateTime: 'Următoarea actualizare automată: {{time}}',
+  },
+  readmeInfo: {
+    title: 'Citiți-mă',
+    needHelpCheckReadme: 'Ai nevoie de ajutor? Verifică fișierul README.',
+    noReadmeAvailable: 'Nu există fișier README disponibil',
+    failedToFetch: 'Nu s-a putut prelua README',
   },
 }
 

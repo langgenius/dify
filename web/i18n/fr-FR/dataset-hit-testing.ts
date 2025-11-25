@@ -2,7 +2,6 @@ const translation = {
   title: 'Test de Récupération',
   desc: 'Testez l\'effet d\'impact de la Connaissance basée sur le texte de la requête donnée.',
   dateTimeFormat: 'JJ/MM/AAAA hh:mm A',
-  recents: 'Récents',
   table: {
     header: {
       source: 'Source',
