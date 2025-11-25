@@ -21,9 +21,12 @@ logger = logging.getLogger(__name__)
 
 
 parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, help="Node ID is required")
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/triggers/webhook")
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
+
     @console_ns.expect(parser)
     @setup_required
     @login_required
@@ -98,6 +101,8 @@ parser_enable = (
     .add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
     .add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
 )
+
+
 @console_ns.route("/apps/<uuid:app_id>/triggers-enable")
 class AppTriggerEnableApi(Resource):
     @console_ns.expect(parser_enable)
