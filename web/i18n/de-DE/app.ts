@@ -304,6 +304,8 @@ const translation = {
       feedbackDesc: 'Offene Diskussionen zum Feedback der Gemeinschaft',
       communityDesc: 'Offene Discord-Community',
       docDesc: 'Öffnen Sie die Hilfedokumentation',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'Keine Plugins gefunden',

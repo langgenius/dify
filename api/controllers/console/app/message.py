@@ -369,6 +369,58 @@ class MessageSuggestedQuestionApi(Resource):
         return {"data": questions}
 
 
+# Shared parser for feedback export (used for both documentation and runtime parsing)
+feedback_export_parser = (
+    console_ns.parser()
+    .add_argument("from_source", type=str, choices=["user", "admin"], location="args", help="Filter by feedback source")
+    .add_argument("rating", type=str, choices=["like", "dislike"], location="args", help="Filter by rating")
+    .add_argument("has_comment", type=bool, location="args", help="Only include feedback with comments")
+    .add_argument("start_date", type=str, location="args", help="Start date (YYYY-MM-DD)")
+    .add_argument("end_date", type=str, location="args", help="End date (YYYY-MM-DD)")
+    .add_argument("format", type=str, choices=["csv", "json"], default="csv", location="args", help="Export format")
+)
+
+
+@console_ns.route("/apps/<uuid:app_id>/feedbacks/export")
+class MessageFeedbackExportApi(Resource):
+    @console_ns.doc("export_feedbacks")
+    @console_ns.doc(description="Export user feedback data for Google Sheets")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(feedback_export_parser)
+    @console_ns.response(200, "Feedback data exported successfully")
+    @console_ns.response(400, "Invalid parameters")
+    @console_ns.response(500, "Internal server error")
+    @get_app_model
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, app_model):
+        args = feedback_export_parser.parse_args()
+
+        # Import the service function
+        from services.feedback_service import FeedbackService
+
+        try:
+            export_data = FeedbackService.export_feedbacks(
+                app_id=app_model.id,
+                from_source=args.get("from_source"),
+                rating=args.get("rating"),
+                has_comment=args.get("has_comment"),
+                start_date=args.get("start_date"),
+                end_date=args.get("end_date"),
+                format_type=args.get("format", "csv"),
+            )
+
+            return export_data
+
+        except ValueError as e:
+            logger.exception("Parameter validation error in feedback export")
+            return {"error": f"Parameter validation error: {str(e)}"}, 400
+        except Exception as e:
+            logger.exception("Error exporting feedback data")
+            raise InternalServerError(str(e))
+
+
 @console_ns.route("/apps/<uuid:app_id>/messages/<uuid:message_id>")
 class MessageApi(Resource):
     @console_ns.doc("get_message")

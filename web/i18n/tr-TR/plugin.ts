@@ -7,6 +7,7 @@ const translation = {
     tools: 'Araçları',
     extensions: 'Uzantı -ları',
     datasources: 'Veri Kaynakları',
+    triggers: 'Tetikleyiciler',
   },
   categorySingle: {
     tool: 'Alet',
@@ -15,6 +16,7 @@ const translation = {
     agent: 'Temsilci Stratejisi',
     model: 'Model',
     datasource: 'Veri Kaynağı',
+    trigger: 'Tetik',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       info: 'Eklenti Bilgileri',
       viewDetail: 'ayrıntılara bakın',
       update: 'Güncelleştirmek',
+      back: 'Geri',
     },
     toolSelector: {
       uninstalledContent: 'Bu eklenti yerel/GitHub deposundan yüklenir. Lütfen kurulumdan sonra kullanın.',
@@ -305,6 +308,12 @@ const translation = {
     excludeUpdate: 'Aşağıdaki {{num}} eklenti otomatik olarak güncellenmeyecek',
     changeTimezone: 'Zaman dilimini değiştirmek için <setTimezone>Ayarlar</setTimezone> sekmesine gidin',
     partialUPdate: 'Sadece aşağıdaki {{num}} eklenti otomatik olarak güncellenecek',
+  },
+  readmeInfo: {
+    title: 'OKUMA MESELESİ',
+    needHelpCheckReadme: 'Yardıma mı ihtiyacınız var? README dosyasına bakın.',
+    noReadmeAvailable: 'README mevcut değil',
+    failedToFetch: 'README alınamadı',
   },
 }
 

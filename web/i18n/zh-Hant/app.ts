@@ -301,6 +301,8 @@ const translation = {
       accountDesc: '導航到帳戶頁面',
       feedbackDesc: '開放社區反饋討論',
       docDesc: '開啟幫助文件',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: '未找到應用',

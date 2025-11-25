@@ -82,7 +82,10 @@ const translation = {
     },
     addUrl: 'Dodaj adres URL',
     learnMore: 'Dowiedz się więcej',
-    sort: {},
+    sort: {
+      uploadTime: 'Czas przesyłania',
+      hitCount: 'Liczba wyszukiwań',
+    },
   },
   metadata: {
     title: 'Metadane',

@@ -16,6 +16,7 @@ const translation = {
       input: 'Masukan',
       status: 'KEADAAN',
       runtime: 'WAKTU BERJALAN',
+      triggered_from: 'DIPICU OLEH',
     },
     pagination: {
       previous: 'Sebelumnya',
@@ -24,6 +25,7 @@ const translation = {
     empty: {
       element: {
         title: 'Apakah ada yang ada di sana?',
+        content: 'Amati dan anotasi interaksi antara pengguna akhir dan aplikasi AI di sini untuk terus meningkatkan akurasi AI. Anda dapat mencoba <shareLink>berbagi</shareLink> atau <testLink>menguji</testLink> Aplikasi Web sendiri, kemudian kembali ke halaman ini.',
       },
       noChat: 'Belum ada percakapan',
       noOutput: 'Tidak ada keluaran',
@@ -48,6 +50,7 @@ const translation = {
     second: 's',
     promptTemplateBeforeChat: 'Templat Prompt Sebelum Obrolan · Sebagai Pesan Sistem',
     uploadImages: 'Gambar yang Diunggah',
+    annotationTip: 'Peningkatan Ditandai oleh {{user}}',
   },
   filter: {
     period: {
@@ -66,6 +69,7 @@ const translation = {
     annotation: {
       all: 'Semua',
       not_annotated: 'Tidak Beranotasi',
+      annotated: 'Peningkatan yang Diberi Catatan ({{count}} item)',
     },
     ascending: 'Naik',
     descending: 'Turun',
@@ -94,6 +98,15 @@ const translation = {
   promptLog: 'Prompt Log',
   workflowSubtitle: 'Log mencatat pengoperasian Automate.',
   workflowTitle: 'Log Alur Kerja',
+  triggerBy: {
+    debugging: 'Men-debug',
+    appRun: 'Aplikasi Web',
+    webhook: 'Webhook',
+    schedule: 'Jadwal',
+    plugin: 'Plugin',
+    ragPipelineRun: 'Rangkaian RAG',
+    ragPipelineDebugging: 'Debugging RAG',
+  },
 }
 
 export default translation
