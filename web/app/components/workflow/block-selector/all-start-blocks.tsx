@@ -94,6 +94,7 @@ const AllStartBlocks = ({
     && enable_marketplace
     && !hasFilter
   const shouldShowTriggerListTitle = hasStartBlocksContent || hasPluginContent
+  const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
   const handleStartBlocksContentChange = useCallback((hasContent: boolean) => {
     setHasStartBlocksContent(hasContent)
@@ -203,7 +204,7 @@ const AllStartBlocks = ({
           )}
         </div>
 
-        {!shouldShowEmptyState && (
+        {shouldShowMarketplaceFooter && !shouldShowEmptyState && (
           // Footer - Same as Tools tab marketplace footer
           <Link
             className={marketplaceFooterClassName}
