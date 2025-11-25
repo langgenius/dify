@@ -103,7 +103,7 @@ parser_enable = (
 )
 
 
-@console_ns.route("/apps/<uuid:app_id>/triggers-enable")
+@console_ns.route("/apps/<uuid:app_id>/trigger-enable")
 class AppTriggerEnableApi(Resource):
     @console_ns.expect(parser_enable)
     @setup_required
