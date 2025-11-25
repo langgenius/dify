@@ -139,7 +139,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
-            if multimodel_documents:
+            if multimodel_documents and dataset.is_multimodal:
                 vector.create_multimodel(multimodel_documents)
 
     def clean(self, dataset: Dataset, node_ids: list[str] | None, with_keywords: bool = True, **kwargs):

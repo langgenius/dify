@@ -95,7 +95,7 @@ class VectorService:
 
         if len(documents) > 0:
             index_processor.load(
-                dataset, documents, multimodel_documents, with_keywords=True, keywords_list=keywords_list
+                dataset, documents, multimodel_documents=None, with_keywords=True, keywords_list=keywords_list
             )
         if len(multimodel_documents) > 0:
             index_processor.load(dataset, multimodel_documents, with_keywords=False)

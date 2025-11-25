@@ -92,7 +92,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
-            if multimodel_documents:
+            if multimodel_documents and dataset.is_multimodal:
                 vector.create_multimodel(multimodel_documents)
             with_keywords = False
         if with_keywords:
