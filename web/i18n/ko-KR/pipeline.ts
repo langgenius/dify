@@ -28,10 +28,12 @@ const translation = {
       loading: '가공... 기다리세요',
       viewDetails: '세부 정보보기',
       error: '실행 중 오류가 발생했습니다.',
+      footerTip: '테스트 실행 모드에서, 최대 {{count}}개의 청크를 미리보기',
     },
   },
   ragToolSuggestions: {
     title: 'RAG에 대한 제안',
+    noRecommendationPlugins: '추천 플러그인이 없습니다. 더 많은 플러그인은 <CustomLink>마켓플레이스</CustomLink>에서 찾아보세요.',
   },
 }
 

@@ -580,13 +580,14 @@ class RagPipelineDslService:
                 raise ValueError("Current tenant is not set")
 
             # Create new app
-            pipeline = Pipeline()
+            pipeline = Pipeline(
+                tenant_id=account.current_tenant_id,
+                name=pipeline_data.get("name", ""),
+                description=pipeline_data.get("description", ""),
+                created_by=account.id,
+                updated_by=account.id,
+            )
             pipeline.id = str(uuid4())
-            pipeline.tenant_id = account.current_tenant_id
-            pipeline.name = pipeline_data.get("name", "")
-            pipeline.description = pipeline_data.get("description", "")
-            pipeline.created_by = account.id
-            pipeline.updated_by = account.id
 
             self._session.add(pipeline)
             self._session.commit()

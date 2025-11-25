@@ -19,6 +19,7 @@ const translation = {
       tokens: 'JETOANE',
       user: 'UTILIZATOR FINAL SAU CONT',
       version: 'VERSIUNE',
+      triggered_from: 'DECLANȘAT DE',
     },
     pagination: {
       previous: 'Anterior',
@@ -97,6 +98,15 @@ const translation = {
     finalProcessing: 'Procesare finală',
   },
   dateFormat: 'ZZ/LL/AAAA',
+  triggerBy: {
+    debugging: 'Depanare',
+    appRun: 'Aplicație web',
+    webhook: 'Webhook',
+    schedule: 'Program',
+    plugin: 'Plugin',
+    ragPipelineRun: 'Flux RAG',
+    ragPipelineDebugging: 'Depanare RAG',
+  },
 }
 
 export default translation
