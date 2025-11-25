@@ -26,10 +26,9 @@ jobs:
       - name: Check for file changes in i18n/en-US
         id: check_files
         run: |
-          DEFAULT_BRANCH="${{ github.event.repository.default_branch || 'main' }}"
-          git fetch origin "$DEFAULT_BRANCH"
-          base_ref="origin/$DEFAULT_BRANCH"
-          changed_files=$(git diff --name-only "$base_ref"...HEAD -- 'i18n/en-US/*.ts')
+          git fetch origin "${{ github.event.before }}" || true
+          git fetch origin "${{ github.sha }}" || true
+          changed_files=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'i18n/en-US/*.ts')
           echo "Changed files: $changed_files"
           if [ -n "$changed_files" ]; then
             echo "FILES_CHANGED=true" >> $GITHUB_ENV
