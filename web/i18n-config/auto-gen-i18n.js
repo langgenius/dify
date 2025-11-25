@@ -30,6 +30,33 @@ function parseArgs(argv) {
     languages: [],
     isDryRun: false,
     help: false,
+    errors: [],
+  }
+
+  const collectValues = (startIndex) => {
+    const values = []
+    let cursor = startIndex + 1
+    while (cursor < argv.length && !argv[cursor].startsWith('--')) {
+      const value = argv[cursor].trim()
+      if (value) values.push(value)
+      cursor++
+    }
+    return { values, nextIndex: cursor - 1 }
+  }
+
+  const validateList = (values, flag) => {
+    if (!values.length) {
+      args.errors.push(`${flag} requires at least one value. Example: ${flag} app billing`)
+      return false
+    }
+
+    const invalid = values.find(value => value.includes(','))
+    if (invalid) {
+      args.errors.push(`${flag} expects space-separated values. Example: ${flag} app billing`)
+      return false
+    }
+
+    return true
   }
 
   for (let index = 2; index < argv.length; index++) {
@@ -45,21 +72,29 @@ function parseArgs(argv) {
       break
     }
 
-    if (arg.startsWith('--file')) {
-      const value = arg.includes('=') ? arg.split('=')[1] : argv[index + 1]
-      if (!arg.includes('=') && argv[index + 1])
-        index++
-      if (value)
-        args.files.push(value)
+    if (arg.startsWith('--file=')) {
+      args.errors.push('--file expects space-separated values. Example: --file app billing')
       continue
     }
 
-    if (arg.startsWith('--lang')) {
-      const value = arg.includes('=') ? arg.split('=')[1] : argv[index + 1]
-      if (!arg.includes('=') && argv[index + 1])
-        index++
-      if (value)
-        args.languages.push(...value.split(',').map(item => item.trim()).filter(Boolean))
+    if (arg === '--file') {
+      const { values, nextIndex } = collectValues(index)
+      if (validateList(values, '--file'))
+        args.files.push(...values)
+      index = nextIndex
+      continue
+    }
+
+    if (arg.startsWith('--lang=')) {
+      args.errors.push('--lang expects space-separated values. Example: --lang zh-Hans ja-JP')
+      continue
+    }
+
+    if (arg === '--lang') {
+      const { values, nextIndex } = collectValues(index)
+      if (validateList(values, '--lang'))
+        args.languages.push(...values)
+      index = nextIndex
       continue
     }
   }
@@ -71,14 +106,14 @@ function printHelp() {
   console.log(`Usage: pnpm run auto-gen-i18n [options]
 
 Options:
-  --file <name>     仅处理指定文件，可重复多次或使用逗号分隔
-  --lang <locale>   仅处理指定语言，可重复多次或使用逗号分隔（默认所有已支持语言，排除 en-US）
-  --dry-run         仅预览，不写回文件
-  -h, --help        查看帮助
+  --file <name...>  Process only specific files; provide space-separated names and repeat --file if needed
+  --lang <locale>   Process only specific locales; provide space-separated locales and repeat --lang if needed (default: all supported except en-US)
+  --dry-run         Preview changes without writing files
+  -h, --help        Show help
 
-示例:
-  pnpm run auto-gen-i18n --file app --file common --lang zh-Hans,ja-JP
-  pnpm run auto-gen-i18n --dry-run
+Examples:
+  pnpm run auto-gen-i18n -- --file app common --lang zh-Hans ja-JP
+  pnpm run auto-gen-i18n -- --dry-run
 `)
 }
 
@@ -294,6 +329,13 @@ function delay(ms) {
 async function main() {
   if (args.help) {
     printHelp()
+    return
+  }
+
+  if (args.errors.length) {
+    args.errors.forEach(message => console.error(`❌ ${message}`))
+    printHelp()
+    process.exit(1)
     return
   }
 
