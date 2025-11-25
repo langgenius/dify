@@ -17,7 +17,6 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -32,6 +31,7 @@ from libs.login import current_user, login_required
 from models import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -121,7 +121,13 @@ class CompletionMessageStopApi(Resource):
     def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.DEBUGGER,
+            user_id=current_user.id,
+            app_mode=AppMode.value_of(app_model.mode),
+        )
 
         return {"result": "success"}, 200
 
@@ -220,6 +226,12 @@ class ChatMessageStopApi(Resource):
     def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.DEBUGGER,
+            user_id=current_user.id,
+            app_mode=AppMode.value_of(app_model.mode),
+        )
 
         return {"result": "success"}, 200
