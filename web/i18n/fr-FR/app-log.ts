@@ -19,6 +19,7 @@ const translation = {
       tokens: 'JETONS',
       user: 'UTILISATEUR FINAL OU COMPTE',
       version: 'VERSION',
+      triggered_from: 'DÉCLENCHÉ PAR',
     },
     pagination: {
       previous: 'Précédent',
@@ -97,6 +98,15 @@ const translation = {
     finalProcessing: 'Traitement final',
   },
   dateFormat: 'JJ/MM/YYYY',
+  triggerBy: {
+    debugging: 'Débogage',
+    appRun: 'Application Web',
+    webhook: 'Webhook',
+    schedule: 'Programme',
+    plugin: 'Plugin',
+    ragPipelineRun: 'Pipeline RAG',
+    ragPipelineDebugging: 'Débogage RAG',
+  },
 }
 
 export default translation

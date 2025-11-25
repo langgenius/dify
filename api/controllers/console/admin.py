@@ -3,7 +3,8 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound, Unauthorized
@@ -17,6 +18,30 @@ from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
 from libs.token import extract_access_token
 from models.model import App, InstalledApp, RecommendedApp
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class InsertExploreAppPayload(BaseModel):
+    app_id: str = Field(...)
+    desc: str | None = None
+    copyright: str | None = None
+    privacy_policy: str | None = None
+    custom_disclaimer: str | None = None
+    language: str = Field(...)
+    category: str = Field(...)
+    position: int = Field(...)
+
+    @field_validator("language")
+    @classmethod
+    def validate_language(cls, value: str) -> str:
+        return supported_language(value)
+
+
+console_ns.schema_model(
+    InsertExploreAppPayload.__name__,
+    InsertExploreAppPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 def admin_required(view: Callable[P, R]):
@@ -40,59 +65,34 @@ def admin_required(view: Callable[P, R]):
 class InsertExploreAppListApi(Resource):
     @console_ns.doc("insert_explore_app")
     @console_ns.doc(description="Insert or update an app in the explore list")
-    @console_ns.expect(
-        console_ns.model(
-            "InsertExploreAppRequest",
-            {
-                "app_id": fields.String(required=True, description="Application ID"),
-                "desc": fields.String(description="App description"),
-                "copyright": fields.String(description="Copyright information"),
-                "privacy_policy": fields.String(description="Privacy policy"),
-                "custom_disclaimer": fields.String(description="Custom disclaimer"),
-                "language": fields.String(required=True, description="Language code"),
-                "category": fields.String(required=True, description="App category"),
-                "position": fields.Integer(required=True, description="Display position"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[InsertExploreAppPayload.__name__])
     @console_ns.response(200, "App updated successfully")
     @console_ns.response(201, "App inserted successfully")
     @console_ns.response(404, "App not found")
     @only_edition_cloud
     @admin_required
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("app_id", type=str, required=True, nullable=False, location="json")
-            .add_argument("desc", type=str, location="json")
-            .add_argument("copyright", type=str, location="json")
-            .add_argument("privacy_policy", type=str, location="json")
-            .add_argument("custom_disclaimer", type=str, location="json")
-            .add_argument("language", type=supported_language, required=True, nullable=False, location="json")
-            .add_argument("category", type=str, required=True, nullable=False, location="json")
-            .add_argument("position", type=int, required=True, nullable=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = InsertExploreAppPayload.model_validate(console_ns.payload)
 
-        app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()
+        app = db.session.execute(select(App).where(App.id == payload.app_id)).scalar_one_or_none()
         if not app:
-            raise NotFound(f"App '{args['app_id']}' is not found")
+            raise NotFound(f"App '{payload.app_id}' is not found")
 
         site = app.site
         if not site:
-            desc = args["desc"] or ""
-            copy_right = args["copyright"] or ""
-            privacy_policy = args["privacy_policy"] or ""
-            custom_disclaimer = args["custom_disclaimer"] or ""
+            desc = payload.desc or ""
+            copy_right = payload.copyright or ""
+            privacy_policy = payload.privacy_policy or ""
+            custom_disclaimer = payload.custom_disclaimer or ""
         else:
-            desc = site.description or args["desc"] or ""
-            copy_right = site.copyright or args["copyright"] or ""
-            privacy_policy = site.privacy_policy or args["privacy_policy"] or ""
-            custom_disclaimer = site.custom_disclaimer or args["custom_disclaimer"] or ""
+            desc = site.description or payload.desc or ""
+            copy_right = site.copyright or payload.copyright or ""
+            privacy_policy = site.privacy_policy or payload.privacy_policy or ""
+            custom_disclaimer = site.custom_disclaimer or payload.custom_disclaimer or ""
 
         with Session(db.engine) as session:
             recommended_app = session.execute(
-                select(RecommendedApp).where(RecommendedApp.app_id == args["app_id"])
+                select(RecommendedApp).where(RecommendedApp.app_id == payload.app_id)
             ).scalar_one_or_none()
 
             if not recommended_app:
@@ -102,9 +102,9 @@ class InsertExploreAppListApi(Resource):
                     copyright=copy_right,
                     privacy_policy=privacy_policy,
                     custom_disclaimer=custom_disclaimer,
-                    language=args["language"],
-                    category=args["category"],
-                    position=args["position"],
+                    language=payload.language,
+                    category=payload.category,
+                    position=payload.position,
                 )
 
                 db.session.add(recommended_app)
@@ -118,9 +118,9 @@ class InsertExploreAppListApi(Resource):
                 recommended_app.copyright = copy_right
                 recommended_app.privacy_policy = privacy_policy
                 recommended_app.custom_disclaimer = custom_disclaimer
-                recommended_app.language = args["language"]
-                recommended_app.category = args["category"]
-                recommended_app.position = args["position"]
+                recommended_app.language = payload.language
+                recommended_app.category = payload.category
+                recommended_app.position = payload.position
 
                 app.is_public = True
 

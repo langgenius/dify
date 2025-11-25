@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo } from 'react'
-import { useNodes } from 'reactflow'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { ragPipelineNodesAction } from '@/app/components/goto-anything/actions/rag-pipeline-nodes'

@@ -4,7 +4,7 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEdges, useNodes, useStoreApi } from 'reactflow'
+import { useEdges, useStoreApi } from 'reactflow'
 import type {
   CommonEdgeType,
   CommonNodeType,
@@ -56,6 +56,7 @@ import {
 } from '@/service/use-tools'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppModeEnum } from '@/types/app'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 
 export type ChecklistItem = {
   id: string
@@ -407,7 +408,7 @@ export const useChecklistBeforePublish = () => {
 
 export const useWorkflowRunValidation = () => {
   const { t } = useTranslation()
-  const nodes = useNodes<CommonNodeType>()
+  const nodes = useNodes()
   const edges = useEdges<CommonEdgeType>()
   const needWarningNodes = useChecklist(nodes, edges)
   const { notify } = useToastContext()

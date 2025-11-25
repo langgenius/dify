@@ -13,7 +13,7 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.nodes.base.entities import VariableSelector
+from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
 from core.workflow.nodes.human_input import HumanInputNode
@@ -62,7 +62,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    start_node.init_node_data(start_config["data"])
 
     def _create_llm_node(node_id: str, title: str, prompt_text: str) -> MockLLMNode:
         llm_data = LLMNodeData(
@@ -87,7 +86,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        llm_node.init_node_data(llm_config["data"])
         return llm_node
 
     llm_first = _create_llm_node("llm_initial", "Initial LLM", "Initial prompt")
@@ -104,15 +102,18 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    human_node.init_node_data(human_config["data"])
 
     llm_second = _create_llm_node("llm_resume", "Follow-up LLM", "Follow-up prompt")
 
     end_data = EndNodeData(
         title="End",
         outputs=[
-            VariableSelector(variable="initial_text", value_selector=["llm_initial", "text"]),
-            VariableSelector(variable="resume_text", value_selector=["llm_resume", "text"]),
+            OutputVariableEntity(
+                variable="initial_text", value_type=OutputVariableType.STRING, value_selector=["llm_initial", "text"]
+            ),
+            OutputVariableEntity(
+                variable="resume_text", value_type=OutputVariableType.STRING, value_selector=["llm_resume", "text"]
+            ),
         ],
         desc=None,
     )
@@ -123,7 +124,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    end_node.init_node_data(end_config["data"])
 
     graph = (
         Graph.new()

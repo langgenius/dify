@@ -302,6 +302,8 @@ const translation = {
       docDesc: 'Odprite pomoč dokumentacijo',
       feedbackDesc: 'Razprave o povratnih informacijah odprte skupnosti',
       communityDesc: 'Odpri Discord skupnost',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'Vtičnikov ni mogoče najti',

@@ -116,7 +116,7 @@ describe('useTabSearchParams', () => {
         setActiveTab('settings')
       })
 
-      expect(mockPush).toHaveBeenCalledWith('/test-path?category=settings')
+      expect(mockPush).toHaveBeenCalledWith('/test-path?category=settings', { scroll: false })
       expect(mockReplace).not.toHaveBeenCalled()
     })
 
@@ -137,7 +137,7 @@ describe('useTabSearchParams', () => {
         setActiveTab('settings')
       })
 
-      expect(mockReplace).toHaveBeenCalledWith('/test-path?category=settings')
+      expect(mockReplace).toHaveBeenCalledWith('/test-path?category=settings', { scroll: false })
       expect(mockPush).not.toHaveBeenCalled()
     })
 
@@ -157,6 +157,7 @@ describe('useTabSearchParams', () => {
 
       expect(mockPush).toHaveBeenCalledWith(
         '/test-path?category=settings%20%26%20config',
+        { scroll: false },
       )
     })
 
@@ -211,7 +212,7 @@ describe('useTabSearchParams', () => {
         setActiveTab('profile')
       })
 
-      expect(mockPush).toHaveBeenCalledWith('/test-path?tab=profile')
+      expect(mockPush).toHaveBeenCalledWith('/test-path?tab=profile', { scroll: false })
     })
   })
 
@@ -294,7 +295,7 @@ describe('useTabSearchParams', () => {
 
       const [activeTab] = result.current
       expect(activeTab).toBe('')
-      expect(mockPush).toHaveBeenCalledWith('/test-path?category=')
+      expect(mockPush).toHaveBeenCalledWith('/test-path?category=', { scroll: false })
     })
 
     /**
@@ -345,7 +346,7 @@ describe('useTabSearchParams', () => {
         setActiveTab('settings')
       })
 
-      expect(mockPush).toHaveBeenCalledWith('/fallback-path?category=settings')
+      expect(mockPush).toHaveBeenCalledWith('/fallback-path?category=settings', { scroll: false })
 
       // Restore mock
       ;(usePathname as jest.Mock).mockReturnValue(mockPathname)
@@ -400,7 +401,7 @@ describe('useTabSearchParams', () => {
       })
 
       expect(result.current[0]).toBe('settings')
-      expect(mockPush).toHaveBeenCalledWith('/test-path?category=settings')
+      expect(mockPush).toHaveBeenCalledWith('/test-path?category=settings', { scroll: false })
 
       // Change to profile tab
       act(() => {
@@ -409,7 +410,7 @@ describe('useTabSearchParams', () => {
       })
 
       expect(result.current[0]).toBe('profile')
-      expect(mockPush).toHaveBeenCalledWith('/test-path?category=profile')
+      expect(mockPush).toHaveBeenCalledWith('/test-path?category=profile', { scroll: false })
 
       // Verify push was called twice
       expect(mockPush).toHaveBeenCalledTimes(2)
@@ -431,7 +432,7 @@ describe('useTabSearchParams', () => {
         setActiveTab('advanced')
       })
 
-      expect(mockPush).toHaveBeenCalledWith('/app/123/settings?category=advanced')
+      expect(mockPush).toHaveBeenCalledWith('/app/123/settings?category=advanced', { scroll: false })
 
       // Restore mock
       ;(usePathname as jest.Mock).mockReturnValue(mockPathname)

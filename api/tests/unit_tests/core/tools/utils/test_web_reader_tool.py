@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from core.tools.utils.web_reader_tool import (
@@ -103,7 +105,10 @@ def test_get_url_html_flow_with_chardet_and_readability(monkeypatch: pytest.Monk
 
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
     monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
-    monkeypatch.setattr(mod.chardet, "detect", lambda b: {"encoding": "utf-8"})
+
+    mock_best = SimpleNamespace(encoding="utf-8")
+    mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
+    monkeypatch.setattr(mod.charset_normalizer, "from_bytes", lambda _: mock_from_bytes)
 
     # readability → a dict that maps to Article, then FULL_TEMPLATE
     def fake_simple_json_from_html_string(html, use_readability=True):
@@ -134,7 +139,9 @@ def test_get_url_html_flow_empty_article_text_returns_empty(monkeypatch: pytest.
 
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
     monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
-    monkeypatch.setattr(mod.chardet, "detect", lambda b: {"encoding": "utf-8"})
+    mock_best = SimpleNamespace(encoding="utf-8")
+    mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
+    monkeypatch.setattr(mod.charset_normalizer, "from_bytes", lambda _: mock_from_bytes)
     # readability returns empty plain_text
     monkeypatch.setattr(mod, "simple_json_from_html_string", lambda html, use_readability=True: {"plain_text": []})
 
@@ -162,7 +169,9 @@ def test_get_url_403_cloudscraper_fallback(monkeypatch: pytest.MonkeyPatch, stub
 
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
     monkeypatch.setattr(mod.cloudscraper, "create_scraper", lambda: FakeScraper())
-    monkeypatch.setattr(mod.chardet, "detect", lambda b: {"encoding": "utf-8"})
+    mock_best = SimpleNamespace(encoding="utf-8")
+    mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
+    monkeypatch.setattr(mod.charset_normalizer, "from_bytes", lambda _: mock_from_bytes)
     monkeypatch.setattr(
         mod,
         "simple_json_from_html_string",
@@ -234,7 +243,10 @@ def test_get_url_html_encoding_fallback_when_decode_fails(monkeypatch: pytest.Mo
 
     monkeypatch.setattr(mod.ssrf_proxy, "head", fake_head)
     monkeypatch.setattr(mod.ssrf_proxy, "get", fake_get)
-    monkeypatch.setattr(mod.chardet, "detect", lambda b: {"encoding": "utf-8"})
+
+    mock_best = SimpleNamespace(encoding="utf-8")
+    mock_from_bytes = SimpleNamespace(best=lambda: mock_best)
+    monkeypatch.setattr(mod.charset_normalizer, "from_bytes", lambda _: mock_from_bytes)
     monkeypatch.setattr(
         mod,
         "simple_json_from_html_string",

@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: 'Ne vous inquiétez pas — cela n\'affectera pas votre abonnement actuel, mais vous n\'obtiendrez pas la remise éducative lors de son renouvellement à moins que vous ne vérifiiez à nouveau votre statut.',
+      title: 'Votre statut éducatif expirera le {{date}}',
     },
     stillInEducation: {
       title: 'Encore dans l\'éducation ?',

@@ -1,7 +1,9 @@
 """Document loader helpers."""
 
 import concurrent.futures
-from typing import NamedTuple, cast
+from typing import NamedTuple
+
+import charset_normalizer
 
 
 class FileEncoding(NamedTuple):
@@ -27,14 +29,14 @@ def detect_file_encodings(file_path: str, timeout: int = 5, sample_size: int = 1
         sample_size: The number of bytes to read for encoding detection. Default is 1MB.
                     For large files, reading only a sample is sufficient and prevents timeout.
     """
-    import chardet
 
-    def read_and_detect(file_path: str):
-        with open(file_path, "rb") as f:
-            # Read only a sample of the file for encoding detection
-            # This prevents timeout on large files while still providing accurate encoding detection
-            rawdata = f.read(sample_size)
-        return cast(list[dict], chardet.detect_all(rawdata))
+    def read_and_detect(filename: str):
+        rst = charset_normalizer.from_path(filename)
+        best = rst.best()
+        if best is None:
+            return []
+        file_encoding = FileEncoding(encoding=best.encoding, confidence=best.coherence, language=best.language)
+        return [file_encoding]
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
         future = executor.submit(read_and_detect, file_path)

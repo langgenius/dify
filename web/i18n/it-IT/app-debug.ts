@@ -354,6 +354,7 @@ const translation = {
     'single-file': 'File singolo',
     'uploadFileTypes': 'Caricare i tipi di file',
     'maxNumberOfUploads': 'Numero massimo di caricamenti',
+    'maxNumberTip': 'Documento < {{docLimit}}, immagine < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'multi-files': 'Elenco file',
     'both': 'Ambedue',
     'localUpload': 'Caricamento locale',

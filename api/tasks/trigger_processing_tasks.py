@@ -218,6 +218,8 @@ def _record_trigger_failure_log(
         finished_at=now,
         elapsed_time=0.0,
         total_tokens=0,
+        outputs=None,
+        celery_task_id=None,
     )
     session.add(trigger_log)
     session.commit()

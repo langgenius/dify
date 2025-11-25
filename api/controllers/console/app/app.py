@@ -1,9 +1,12 @@
 import uuid
+from typing import Literal
 
-from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask import request
+from flask_restx import Resource, fields, marshal, marshal_with
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import BadRequest, abort
+from werkzeug.exceptions import BadRequest
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -36,6 +39,137 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class AppListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
+    limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
+    mode: Literal["completion", "chat", "advanced-chat", "workflow", "agent-chat", "channel", "all"] = Field(
+        default="all", description="App mode filter"
+    )
+    name: str | None = Field(default=None, description="Filter by app name")
+    tag_ids: list[str] | None = Field(default=None, description="Comma-separated tag IDs")
+    is_created_by_me: bool | None = Field(default=None, description="Filter by creator")
+
+    @field_validator("tag_ids", mode="before")
+    @classmethod
+    def validate_tag_ids(cls, value: str | list[str] | None) -> list[str] | None:
+        if not value:
+            return None
+
+        if isinstance(value, str):
+            items = [item.strip() for item in value.split(",") if item.strip()]
+        elif isinstance(value, list):
+            items = [str(item).strip() for item in value if item and str(item).strip()]
+        else:
+            raise TypeError("Unsupported tag_ids type.")
+
+        if not items:
+            return None
+
+        try:
+            return [str(uuid.UUID(item)) for item in items]
+        except ValueError as exc:
+            raise ValueError("Invalid UUID format in tag_ids.") from exc
+
+
+class CreateAppPayload(BaseModel):
+    name: str = Field(..., min_length=1, description="App name")
+    description: str | None = Field(default=None, description="App description (max 400 chars)")
+    mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
+    icon_type: str | None = Field(default=None, description="Icon type")
+    icon: str | None = Field(default=None, description="Icon")
+    icon_background: str | None = Field(default=None, description="Icon background color")
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return validate_description_length(value)
+
+
+class UpdateAppPayload(BaseModel):
+    name: str = Field(..., min_length=1, description="App name")
+    description: str | None = Field(default=None, description="App description (max 400 chars)")
+    icon_type: str | None = Field(default=None, description="Icon type")
+    icon: str | None = Field(default=None, description="Icon")
+    icon_background: str | None = Field(default=None, description="Icon background color")
+    use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
+    max_active_requests: int | None = Field(default=None, description="Maximum active requests")
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return validate_description_length(value)
+
+
+class CopyAppPayload(BaseModel):
+    name: str | None = Field(default=None, description="Name for the copied app")
+    description: str | None = Field(default=None, description="Description for the copied app")
+    icon_type: str | None = Field(default=None, description="Icon type")
+    icon: str | None = Field(default=None, description="Icon")
+    icon_background: str | None = Field(default=None, description="Icon background color")
+
+    @field_validator("description")
+    @classmethod
+    def validate_description(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return validate_description_length(value)
+
+
+class AppExportQuery(BaseModel):
+    include_secret: bool = Field(default=False, description="Include secrets in export")
+    workflow_id: str | None = Field(default=None, description="Specific workflow ID to export")
+
+
+class AppNamePayload(BaseModel):
+    name: str = Field(..., min_length=1, description="Name to check")
+
+
+class AppIconPayload(BaseModel):
+    icon: str | None = Field(default=None, description="Icon data")
+    icon_background: str | None = Field(default=None, description="Icon background color")
+
+
+class AppSiteStatusPayload(BaseModel):
+    enable_site: bool = Field(..., description="Enable or disable site")
+
+
+class AppApiStatusPayload(BaseModel):
+    enable_api: bool = Field(..., description="Enable or disable API")
+
+
+class AppTracePayload(BaseModel):
+    enabled: bool = Field(..., description="Enable or disable tracing")
+    tracing_provider: str | None = Field(default=None, description="Tracing provider")
+
+    @field_validator("tracing_provider")
+    @classmethod
+    def validate_tracing_provider(cls, value: str | None, info) -> str | None:
+        if info.data.get("enabled") and not value:
+            raise ValueError("tracing_provider is required when enabled is True")
+        return value
+
+
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(AppListQuery)
+reg(CreateAppPayload)
+reg(UpdateAppPayload)
+reg(CopyAppPayload)
+reg(AppExportQuery)
+reg(AppNamePayload)
+reg(AppIconPayload)
+reg(AppSiteStatusPayload)
+reg(AppApiStatusPayload)
+reg(AppTracePayload)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register base models first
@@ -147,22 +281,7 @@ app_pagination_model = console_ns.model(
 class AppListApi(Resource):
     @console_ns.doc("list_apps")
     @console_ns.doc(description="Get list of applications with pagination and filtering")
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("page", type=int, location="args", help="Page number (1-99999)", default=1)
-        .add_argument("limit", type=int, location="args", help="Page size (1-100)", default=20)
-        .add_argument(
-            "mode",
-            type=str,
-            location="args",
-            choices=["completion", "chat", "advanced-chat", "workflow", "agent-chat", "channel", "all"],
-            default="all",
-            help="App mode filter",
-        )
-        .add_argument("name", type=str, location="args", help="Filter by app name")
-        .add_argument("tag_ids", type=str, location="args", help="Comma-separated tag IDs")
-        .add_argument("is_created_by_me", type=bool, location="args", help="Filter by creator")
-    )
+    @console_ns.expect(console_ns.models[AppListQuery.__name__])
     @console_ns.response(200, "Success", app_pagination_model)
     @setup_required
     @login_required
@@ -172,42 +291,12 @@ class AppListApi(Resource):
         """Get app list"""
         current_user, current_tenant_id = current_account_with_tenant()
 
-        def uuid_list(value):
-            try:
-                return [str(uuid.UUID(v)) for v in value.split(",")]
-            except ValueError:
-                abort(400, message="Invalid UUID format in tag_ids.")
-
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-            .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-            .add_argument(
-                "mode",
-                type=str,
-                choices=[
-                    "completion",
-                    "chat",
-                    "advanced-chat",
-                    "workflow",
-                    "agent-chat",
-                    "channel",
-                    "all",
-                ],
-                default="all",
-                location="args",
-                required=False,
-            )
-            .add_argument("name", type=str, location="args", required=False)
-            .add_argument("tag_ids", type=uuid_list, location="args", required=False)
-            .add_argument("is_created_by_me", type=inputs.boolean, location="args", required=False)
-        )
-
-        args = parser.parse_args()
+        args = AppListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args_dict = args.model_dump()
 
         # get app list
         app_service = AppService()
-        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, args)
+        app_pagination = app_service.get_paginate_apps(current_user.id, current_tenant_id, args_dict)
         if not app_pagination:
             return {"data": [], "total": 0, "page": 1, "limit": 20, "has_more": False}
 
@@ -242,10 +331,13 @@ class AppListApi(Resource):
                 NodeType.TRIGGER_PLUGIN,
             }
             for workflow in draft_workflows:
-                for _, node_data in workflow.walk_nodes():
-                    if node_data.get("type") in trigger_node_types:
-                        draft_trigger_app_ids.add(str(workflow.app_id))
-                        break
+                try:
+                    for _, node_data in workflow.walk_nodes():
+                        if node_data.get("type") in trigger_node_types:
+                            draft_trigger_app_ids.add(str(workflow.app_id))
+                            break
+                except Exception:
+                    continue
 
         for app in app_pagination.items:
             app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
@@ -254,19 +346,7 @@ class AppListApi(Resource):
 
     @console_ns.doc("create_app")
     @console_ns.doc(description="Create a new application")
-    @console_ns.expect(
-        console_ns.model(
-            "CreateAppRequest",
-            {
-                "name": fields.String(required=True, description="App name"),
-                "description": fields.String(description="App description (max 400 chars)"),
-                "mode": fields.String(required=True, enum=ALLOW_CREATE_APP_MODES, description="App mode"),
-                "icon_type": fields.String(description="Icon type"),
-                "icon": fields.String(description="Icon"),
-                "icon_background": fields.String(description="Icon background color"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[CreateAppPayload.__name__])
     @console_ns.response(201, "App created successfully", app_detail_model)
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
@@ -279,22 +359,10 @@ class AppListApi(Resource):
     def post(self):
         """Create app"""
         current_user, current_tenant_id = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("name", type=str, required=True, location="json")
-            .add_argument("description", type=validate_description_length, location="json")
-            .add_argument("mode", type=str, choices=ALLOW_CREATE_APP_MODES, location="json")
-            .add_argument("icon_type", type=str, location="json")
-            .add_argument("icon", type=str, location="json")
-            .add_argument("icon_background", type=str, location="json")
-        )
-        args = parser.parse_args()
-
-        if "mode" not in args or args["mode"] is None:
-            raise BadRequest("mode is required")
+        args = CreateAppPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app = app_service.create_app(current_tenant_id, args, current_user)
+        app = app_service.create_app(current_tenant_id, args.model_dump(), current_user)
 
         return app, 201
 
@@ -326,20 +394,7 @@ class AppApi(Resource):
     @console_ns.doc("update_app")
     @console_ns.doc(description="Update application details")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "UpdateAppRequest",
-            {
-                "name": fields.String(required=True, description="App name"),
-                "description": fields.String(description="App description (max 400 chars)"),
-                "icon_type": fields.String(description="Icon type"),
-                "icon": fields.String(description="Icon"),
-                "icon_background": fields.String(description="Icon background color"),
-                "use_icon_as_answer_icon": fields.Boolean(description="Use icon as answer icon"),
-                "max_active_requests": fields.Integer(description="Maximum active requests"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[UpdateAppPayload.__name__])
     @console_ns.response(200, "App updated successfully", app_detail_with_site_model)
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "Invalid request parameters")
@@ -351,28 +406,18 @@ class AppApi(Resource):
     @marshal_with(app_detail_with_site_model)
     def put(self, app_model):
         """Update app"""
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("name", type=str, required=True, nullable=False, location="json")
-            .add_argument("description", type=validate_description_length, location="json")
-            .add_argument("icon_type", type=str, location="json")
-            .add_argument("icon", type=str, location="json")
-            .add_argument("icon_background", type=str, location="json")
-            .add_argument("use_icon_as_answer_icon", type=bool, location="json")
-            .add_argument("max_active_requests", type=int, location="json")
-        )
-        args = parser.parse_args()
+        args = UpdateAppPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
 
         args_dict: AppService.ArgsDict = {
-            "name": args["name"],
-            "description": args.get("description", ""),
-            "icon_type": args.get("icon_type", ""),
-            "icon": args.get("icon", ""),
-            "icon_background": args.get("icon_background", ""),
-            "use_icon_as_answer_icon": args.get("use_icon_as_answer_icon", False),
-            "max_active_requests": args.get("max_active_requests", 0),
+            "name": args.name,
+            "description": args.description or "",
+            "icon_type": args.icon_type or "",
+            "icon": args.icon or "",
+            "icon_background": args.icon_background or "",
+            "use_icon_as_answer_icon": args.use_icon_as_answer_icon or False,
+            "max_active_requests": args.max_active_requests or 0,
         }
         app_model = app_service.update_app(app_model, args_dict)
 
@@ -401,18 +446,7 @@ class AppCopyApi(Resource):
     @console_ns.doc("copy_app")
     @console_ns.doc(description="Create a copy of an existing application")
     @console_ns.doc(params={"app_id": "Application ID to copy"})
-    @console_ns.expect(
-        console_ns.model(
-            "CopyAppRequest",
-            {
-                "name": fields.String(description="Name for the copied app"),
-                "description": fields.String(description="Description for the copied app"),
-                "icon_type": fields.String(description="Icon type"),
-                "icon": fields.String(description="Icon"),
-                "icon_background": fields.String(description="Icon background color"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[CopyAppPayload.__name__])
     @console_ns.response(201, "App copied successfully", app_detail_with_site_model)
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -426,15 +460,7 @@ class AppCopyApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         current_user, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("name", type=str, location="json")
-            .add_argument("description", type=validate_description_length, location="json")
-            .add_argument("icon_type", type=str, location="json")
-            .add_argument("icon", type=str, location="json")
-            .add_argument("icon_background", type=str, location="json")
-        )
-        args = parser.parse_args()
+        args = CopyAppPayload.model_validate(console_ns.payload or {})
 
         with Session(db.engine) as session:
             import_service = AppDslService(session)
@@ -443,11 +469,11 @@ class AppCopyApi(Resource):
                 account=current_user,
                 import_mode=ImportMode.YAML_CONTENT,
                 yaml_content=yaml_content,
-                name=args.get("name"),
-                description=args.get("description"),
-                icon_type=args.get("icon_type"),
-                icon=args.get("icon"),
-                icon_background=args.get("icon_background"),
+                name=args.name,
+                description=args.description,
+                icon_type=args.icon_type,
+                icon=args.icon,
+                icon_background=args.icon_background,
             )
             session.commit()
 
@@ -462,11 +488,7 @@ class AppExportApi(Resource):
     @console_ns.doc("export_app")
     @console_ns.doc(description="Export application configuration as DSL")
     @console_ns.doc(params={"app_id": "Application ID to export"})
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("include_secret", type=bool, location="args", default=False, help="Include secrets in export")
-        .add_argument("workflow_id", type=str, location="args", help="Specific workflow ID to export")
-    )
+    @console_ns.expect(console_ns.models[AppExportQuery.__name__])
     @console_ns.response(
         200,
         "App exported successfully",
@@ -480,22 +502,15 @@ class AppExportApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         """Export app"""
-        # Add include_secret params
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("include_secret", type=inputs.boolean, default=False, location="args")
-            .add_argument("workflow_id", type=str, location="args")
-        )
-        args = parser.parse_args()
+        args = AppExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         return {
             "data": AppDslService.export_dsl(
-                app_model=app_model, include_secret=args["include_secret"], workflow_id=args.get("workflow_id")
+                app_model=app_model,
+                include_secret=args.include_secret,
+                workflow_id=args.workflow_id,
             )
         }
-
-
-parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json", help="Name to check")
 
 
 @console_ns.route("/apps/<uuid:app_id>/name")
@@ -503,7 +518,7 @@ class AppNameApi(Resource):
     @console_ns.doc("check_app_name")
     @console_ns.doc(description="Check if app name is available")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[AppNamePayload.__name__])
     @console_ns.response(200, "Name availability checked")
     @setup_required
     @login_required
@@ -512,10 +527,10 @@ class AppNameApi(Resource):
     @marshal_with(app_detail_model)
     @edit_permission_required
     def post(self, app_model):
-        args = parser.parse_args()
+        args = AppNamePayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_name(app_model, args["name"])
+        app_model = app_service.update_app_name(app_model, args.name)
 
         return app_model
 
@@ -525,16 +540,7 @@ class AppIconApi(Resource):
     @console_ns.doc("update_app_icon")
     @console_ns.doc(description="Update application icon")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AppIconRequest",
-            {
-                "icon": fields.String(required=True, description="Icon data"),
-                "icon_type": fields.String(description="Icon type"),
-                "icon_background": fields.String(description="Icon background color"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[AppIconPayload.__name__])
     @console_ns.response(200, "Icon updated successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -544,15 +550,10 @@ class AppIconApi(Resource):
     @marshal_with(app_detail_model)
     @edit_permission_required
     def post(self, app_model):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("icon", type=str, location="json")
-            .add_argument("icon_background", type=str, location="json")
-        )
-        args = parser.parse_args()
+        args = AppIconPayload.model_validate(console_ns.payload or {})
 
         app_service = AppService()
-        app_model = app_service.update_app_icon(app_model, args.get("icon") or "", args.get("icon_background") or "")
+        app_model = app_service.update_app_icon(app_model, args.icon or "", args.icon_background or "")
 
         return app_model
 
@@ -562,11 +563,7 @@ class AppSiteStatus(Resource):
     @console_ns.doc("update_app_site_status")
     @console_ns.doc(description="Enable or disable app site")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AppSiteStatusRequest", {"enable_site": fields.Boolean(required=True, description="Enable or disable site")}
-        )
-    )
+    @console_ns.expect(console_ns.models[AppSiteStatusPayload.__name__])
     @console_ns.response(200, "Site status updated successfully", app_detail_model)
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -576,11 +573,10 @@ class AppSiteStatus(Resource):
     @marshal_with(app_detail_model)
     @edit_permission_required
     def post(self, app_model):
-        parser = reqparse.RequestParser().add_argument("enable_site", type=bool, required=True, location="json")
-        args = parser.parse_args()
+        args = AppSiteStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_site_status(app_model, args["enable_site"])
+        app_model = app_service.update_app_site_status(app_model, args.enable_site)
 
         return app_model
 
@@ -590,11 +586,7 @@ class AppApiStatus(Resource):
     @console_ns.doc("update_app_api_status")
     @console_ns.doc(description="Enable or disable app API")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AppApiStatusRequest", {"enable_api": fields.Boolean(required=True, description="Enable or disable API")}
-        )
-    )
+    @console_ns.expect(console_ns.models[AppApiStatusPayload.__name__])
     @console_ns.response(200, "API status updated successfully", app_detail_model)
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -604,11 +596,10 @@ class AppApiStatus(Resource):
     @get_app_model
     @marshal_with(app_detail_model)
     def post(self, app_model):
-        parser = reqparse.RequestParser().add_argument("enable_api", type=bool, required=True, location="json")
-        args = parser.parse_args()
+        args = AppApiStatusPayload.model_validate(console_ns.payload)
 
         app_service = AppService()
-        app_model = app_service.update_app_api_status(app_model, args["enable_api"])
+        app_model = app_service.update_app_api_status(app_model, args.enable_api)
 
         return app_model
 
@@ -631,15 +622,7 @@ class AppTraceApi(Resource):
     @console_ns.doc("update_app_trace")
     @console_ns.doc(description="Update app tracing configuration")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AppTraceRequest",
-            {
-                "enabled": fields.Boolean(required=True, description="Enable or disable tracing"),
-                "tracing_provider": fields.String(required=True, description="Tracing provider"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[AppTracePayload.__name__])
     @console_ns.response(200, "Trace configuration updated successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -648,17 +631,12 @@ class AppTraceApi(Resource):
     @edit_permission_required
     def post(self, app_id):
         # add app trace
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("enabled", type=bool, required=True, location="json")
-            .add_argument("tracing_provider", type=str, required=True, location="json")
-        )
-        args = parser.parse_args()
+        args = AppTracePayload.model_validate(console_ns.payload)
 
         OpsTraceManager.update_app_tracing_config(
             app_id=app_id,
-            enabled=args["enabled"],
-            tracing_provider=args["tracing_provider"],
+            enabled=args.enabled,
+            tracing_provider=args.tracing_provider,
         )
 
         return {"result": "success"}

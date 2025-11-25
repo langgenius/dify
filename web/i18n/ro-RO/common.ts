@@ -65,10 +65,17 @@ const translation = {
     deleteConfirmTitle: 'Ștergere?',
     no: 'Nu',
     confirmAction: 'Vă rugăm să confirmați acțiunea dumneavoastră.',
+    noSearchResults: 'Nu au fost găsite {{content}}',
+    resetKeywords: 'Resetează cuvintele cheie',
+    selectCount: '{{count}} Selectat',
+    searchCount: 'Găsește {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Acum',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
     select: 'Vă rugăm să selectați',
+    search: 'Caută...',
   },
   voice: {
     language: {
@@ -768,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '(opțional)',
+  },
+  noData: 'Fără date',
+  dynamicSelect: {
+    error: 'Încărcarea opțiunilor a eșuat',
+    noData: 'Nicio opțiune disponibilă',
+    loading: 'Se încarcă opțiuni...',
+    selected: '{{count}} selectat',
   },
 }
 
