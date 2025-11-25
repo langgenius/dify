@@ -41,9 +41,6 @@ const translation = {
       recommend: 'सिफारिश',
     },
     invertedIndex: {
-      title: 'उल्टा सूचकांक',
-      description:
-        'उल्टा सूचकांक एक ऐसी संरचना है जो कुशल पुनर्प्राप्ति के लिए उपयोग की जाती है। यह शब्दों द्वारा व्यवस्थित होती है, प्रत्येक शब्द उन दस्तावेज़ों या वेब पेजों की ओर इंगित करता है जिनमें वह होता है।',
     },
     change: 'बदलें',
     changeRetrievalMethod: 'पुनर्प्राप्ति विधि बदलें',
@@ -242,6 +239,10 @@ const translation = {
     disabled: 'अक्षम',
     title: 'सेवा एपीआई',
   },
+  docAllEnabled_one: '{{count}} दस्तावेज़ सक्षम किया गया',
+  docAllEnabled_other: 'सभी {{count}} दस्तावेज़ सक्षम हैं',
+  partialEnabled_one: 'कुल {{count}} दस्तावेज़, {{num}} उपलब्ध',
+  partialEnabled_other: 'कुल {{count}} दस्तावेज़, {{num}} उपलब्ध',
 }
 
 export default translation
