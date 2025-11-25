@@ -70,8 +70,9 @@ const translation = {
       moreThanMaxLengthLine: 'Satır {{rowIndex}}: {{varName}} değeri {{maxLength}} karakterden fazla olamaz',
       atLeastOne: 'Lütfen yüklenen dosyada en az bir satır girin.',
     },
-    execution: 'İFRAZAT',
-    executions: '{{num}} İDAM',
+    execution: 'Çalıştır',
+    executions: '{{num}} çalıştırma',
+    stopRun: 'Çalışmayı durdur',
   },
   login: {
     backToHome: 'Ana Sayfaya Dön',

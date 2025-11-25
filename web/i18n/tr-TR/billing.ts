@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Faturalandırma ve abonelikleri yönet',
   buyPermissionDeniedTip: 'Abone olmak için lütfen işletme yöneticinize başvurun',
   plansCommon: {
-    title: 'Size uygun bir plan seçin',
     yearlyTip: 'Yıllık abonelikle 2 ay ücretsiz!',
     mostPopular: 'En Popüler',
     planRange: {
@@ -78,7 +77,7 @@ const translation = {
     freeTrialTipPrefix: 'Kaydolun ve bir',
     priceTip: 'iş alanı başına/',
     documentsRequestQuota: '{{count,number}}/dakika Bilgi İsteği Oran Limiti',
-    apiRateLimitUnit: '{{count,number}}/ay',
+    apiRateLimitUnit: '{{count,number}}',
     documents: '{{count,number}} Bilgi Belgesi',
     comparePlanAndFeatures: 'Planları ve özellikleri karşılaştır',
     self: 'Kendi Barındırılan',
@@ -96,6 +95,19 @@ const translation = {
     startBuilding: 'İnşa Etmeye Başlayın',
     taxTip: 'Tüm abonelik fiyatları (aylık/yıllık) geçerli vergiler (ör. KDV, satış vergisi) hariçtir.',
     taxTipSecond: 'Bölgenizde geçerli vergi gereksinimleri yoksa, ödeme sayfanızda herhangi bir vergi görünmeyecek ve tüm abonelik süresi boyunca ek bir ücret tahsil edilmeyecektir.',
+    triggerEvents: {
+      unlimited: 'Sınırsız Tetikleme Olayları',
+      tooltip: 'Eklenti, Zamanlama veya Webhook tetikleyicileri aracılığıyla iş akışlarını otomatik olarak başlatan etkinliklerin sayısı.',
+    },
+    workflowExecution: {
+      faster: 'Daha Hızlı İş Akışı Yürütme',
+      tooltip: 'İş akışı yürütme kuyruğu önceliği ve hızı.',
+      priority: 'Öncelikli İş Akışı Yürütme',
+      standard: 'Standart İş Akışı Yürütme',
+    },
+    startNodes: {
+      unlimited: 'Sınırsız Tetikleyiciler/iş akışı',
+    },
   },
   plans: {
     sandbox: {
@@ -118,15 +130,6 @@ const translation = {
       description: 'Büyük ölçekli kritik sistemler için tam yetenekler ve destek.',
       includesTitle: 'Takım plandaki her şey, artı:',
       features: {
-        4: 'SSO',
-        2: 'Özel Kurumsal Özellikler',
-        1: 'Ticari Lisans Yetkilendirmesi',
-        3: 'Çoklu Çalışma Alanları ve Kurumsal Yönetim',
-        8: 'Profesyonel Teknik Destek',
-        6: 'Gelişmiş Güvenlik ve Kontroller',
-        7: 'Resmi olarak Dify tarafından Güncellemeler ve Bakım',
-        0: 'Kurumsal Düzeyde Ölçeklenebilir Dağıtım Çözümleri',
-        5: 'Dify Partners tarafından müzakere edilen SLA\'lar',
       },
       priceTip: 'Yıllık Faturalama Sadece',
       for: 'Büyük boyutlu Takımlar için',
@@ -135,9 +138,6 @@ const translation = {
     },
     community: {
       features: {
-        1: 'Tek Çalışma Alanı',
-        2: 'Dify Açık Kaynak Lisansı ile uyumludur',
-        0: 'Genel depo altında yayınlanan tüm temel özellikler',
       },
       price: 'Ücretsiz',
       includesTitle: 'Ücretsiz Özellikler:',
@@ -148,10 +148,6 @@ const translation = {
     },
     premium: {
       features: {
-        1: 'Tek Çalışma Alanı',
-        3: 'Öncelikli E-posta ve Sohbet Desteği',
-        2: 'WebApp Logosu ve Marka Özelleştirmesi',
-        0: 'Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendini Yöneten Güvenilirlik',
       },
       name: 'Premium',
       includesTitle: 'Topluluktan her şey, artı:',
@@ -186,8 +182,17 @@ const translation = {
     buildApps: 'Uygulama Geliştir',
     annotationQuota: 'Notlandırma Kotası',
     documentsUploadQuota: 'Belgeler Yükleme Kotası',
+    triggerEvents: 'Tetikleyici Olaylar',
+    perMonth: 'ayda',
   },
   teamMembers: 'Ekip Üyeleri',
+  triggerLimitModal: {
+    upgrade: 'Güncelle',
+    title: 'Daha fazla tetikleyici olayı açmak için yükseltin',
+    dismiss: 'Kapat',
+    description: 'Bu plan için iş akışı etkinliği tetikleyici sınırına ulaştınız.',
+    usageTitle: 'TETİKLEYİCİ OLAYLAR',
+  },
 }
 
 export default translation

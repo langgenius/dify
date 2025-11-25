@@ -53,8 +53,8 @@ const translation = {
     completionResult: 'Completion result',
     queryPlaceholder: 'Write your query content...',
     run: 'Execute',
-    execution: 'EXECUTION',
-    executions: '{{num}} EXECUTIONS',
+    execution: 'Run',
+    executions: '{{num}} runs',
     copy: 'Copy',
     resultTitle: 'AI Completion',
     noData: 'AI will give you what you want here.',
@@ -63,6 +63,7 @@ const translation = {
     csvStructureTitle: 'The CSV file must conform to the following structure:',
     downloadTemplate: 'Download the template here',
     field: 'Field',
+    stopRun: 'Stop Run',
     batchFailed: {
       info: '{{num}} failed executions',
       retry: 'Retry',

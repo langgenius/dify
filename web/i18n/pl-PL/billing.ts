@@ -9,7 +9,6 @@ const translation = {
   buyPermissionDeniedTip:
     'Skontaktuj się z administratorem swojej firmy, aby zasubskrybować',
   plansCommon: {
-    title: 'Wybierz plan odpowiedni dla siebie',
     yearlyTip: 'Otrzymaj 2 miesiące za darmo, subskrybując rocznie!',
     mostPopular: 'Najpopularniejszy',
     planRange: {
@@ -91,7 +90,7 @@ const translation = {
     freeTrialTipPrefix: 'Zarejestruj się i zdobądź',
     teamMember_other: '{{count,number}} członków zespołu',
     teamWorkspace: '{{count,number}} Zespół Workspace',
-    apiRateLimitUnit: '{{count,number}}/miesiąc',
+    apiRateLimitUnit: '{{count,number}}',
     cloud: 'Usługa chmurowa',
     teamMember_one: '{{count,number}} Członek zespołu',
     priceTip: 'na przestrzeń roboczą/',
@@ -103,6 +102,19 @@ const translation = {
     startBuilding: 'Zacznij budować',
     taxTip: 'Wszystkie ceny subskrypcji (miesięczne/roczne) nie obejmują obowiązujących podatków (np. VAT, podatek od sprzedaży).',
     taxTipSecond: 'Jeśli w Twoim regionie nie ma obowiązujących przepisów podatkowych, podatek nie pojawi się podczas realizacji zamówienia i nie zostaną naliczone żadne dodatkowe opłaty przez cały okres subskrypcji.',
+    triggerEvents: {
+      unlimited: 'Nieograniczone zdarzenia wyzwalające',
+      tooltip: 'Liczba zdarzeń, które automatycznie uruchamiają przepływy pracy za pomocą wtyczki, harmonogramu lub wyzwalaczy Webhook.',
+    },
+    workflowExecution: {
+      standard: 'Standardowe wykonywanie przepływu pracy',
+      tooltip: 'Priorytet i szybkość wykonywania kolejki przepływu pracy.',
+      priority: 'Wykonywanie przepływu pracy według priorytetu',
+      faster: 'Szybsze wykonywanie przepływu pracy',
+    },
+    startNodes: {
+      unlimited: 'Nieograniczone wyzwalacze/przepływ pracy',
+    },
   },
   plans: {
     sandbox: {
@@ -128,15 +140,6 @@ const translation = {
         'Uzyskaj pełne możliwości i wsparcie dla systemów o kluczowym znaczeniu dla misji.',
       includesTitle: 'Wszystko w planie Zespołowym, plus:',
       features: {
-        4: 'Usługi rejestracji jednokrotnej',
-        3: 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem',
-        8: 'Profesjonalne wsparcie techniczne',
-        7: 'Aktualizacje i konserwacja przez Dify oficjalnie',
-        5: 'Umowy SLA wynegocjowane przez Dify Partners',
-        0: 'Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej',
-        2: 'Wyjątkowe funkcje dla przedsiębiorstw',
-        1: 'Autoryzacja licencji komercyjnej',
-        6: 'Zaawansowane zabezpieczenia i kontrola',
       },
       priceTip: 'Tylko roczne fakturowanie',
       btnText: 'Skontaktuj się z działem sprzedaży',
@@ -145,9 +148,6 @@ const translation = {
     },
     community: {
       features: {
-        1: 'Pojedyncza przestrzeń robocza',
-        2: 'Zgodny z licencją Dify Open Source',
-        0: 'Wszystkie podstawowe funkcje udostępnione w repozytorium publicznym',
       },
       includesTitle: 'Darmowe funkcje:',
       name: 'Społeczność',
@@ -158,10 +158,6 @@ const translation = {
     },
     premium: {
       features: {
-        2: 'Personalizacja logo i brandingu aplikacji internetowej',
-        1: 'Pojedyncza przestrzeń robocza',
-        0: 'Niezawodność samodzielnego zarządzania przez różnych dostawców usług w chmurze',
-        3: 'Priorytetowa pomoc techniczna przez e-mail i czat',
       },
       description: 'Dla średnich organizacji i zespołów',
       for: 'Dla średnich organizacji i zespołów',
@@ -196,8 +192,17 @@ const translation = {
     buildApps: 'Twórz aplikacje',
     annotationQuota: 'Kwota aneksji',
     vectorSpaceTooltip: 'Dokumenty z trybem indeksowania o wysokiej jakości będą zużywać zasoby magazynu danych wiedzy. Gdy magazyn danych wiedzy osiągnie limit, nowe dokumenty nie będą przesyłane.',
+    perMonth: 'miesięcznie',
+    triggerEvents: 'Wydarzenia wyzwalające',
   },
   teamMembers: 'Członkowie zespołu',
+  triggerLimitModal: {
+    upgrade: 'Uaktualnij',
+    usageTitle: 'WYDARZENIA WYZWALAJĄCE',
+    description: 'Osiągnąłeś limit wyzwalaczy zdarzeń przepływu pracy dla tego planu.',
+    title: 'Uaktualnij, aby odblokować więcej zdarzeń wyzwalających',
+    dismiss: 'Odrzuć',
+  },
 }
 
 export default translation
