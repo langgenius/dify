@@ -1,7 +1,6 @@
 import logging
 import time
 from collections.abc import Callable, Generator
-from contextlib import contextmanager
 from typing import Union
 
 from sqlalchemy.orm import Session
@@ -10,7 +9,7 @@ from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
-from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.app.entities.app_invoke_entities import WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     MessageQueueMessage,
@@ -57,9 +56,8 @@ from core.workflow.runtime import GraphRuntimeState
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models import Account
-from models.enums import CreatorUserRole
 from models.model import EndUser
-from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -85,13 +83,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
         if isinstance(user, EndUser):
-            self._user_id = user.id
             user_session_id = user.session_id
-            self._created_by_role = CreatorUserRole.END_USER
         else:
-            self._user_id = user.id
             user_session_id = user.id
-            self._created_by_role = CreatorUserRole.ACCOUNT
 
         self._application_generate_entity = application_generate_entity
         self._workflow_features_dict = workflow.features_dict
@@ -224,17 +218,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 break
         if tts_publisher:
             yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
-
-    @contextmanager
-    def _database_session(self):
-        """Context manager for database sessions."""
-        with Session(db.engine, expire_on_commit=False) as session:
-            try:
-                yield session
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
 
     def _ensure_workflow_initialized(self):
         """Fluent validation for workflow state."""
@@ -414,9 +397,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             graph_runtime_state=validated_state,
         )
 
-        with self._database_session() as session:
-            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
-
         yield workflow_finish_resp
 
     def _handle_workflow_partial_success_event(
@@ -437,9 +417,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             graph_runtime_state=validated_state,
             exceptions_count=event.exceptions_count,
         )
-
-        with self._database_session() as session:
-            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
 
         yield workflow_finish_resp
 
@@ -471,9 +448,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             error=error,
             exceptions_count=exceptions_count,
         )
-
-        with self._database_session() as session:
-            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
 
         yield workflow_finish_resp
 
@@ -628,34 +602,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         if tts_publisher:
             tts_publisher.publish(None)
-
-    def _save_workflow_app_log(self, *, session: Session, workflow_run_id: str | None):
-        invoke_from = self._application_generate_entity.invoke_from
-        if invoke_from == InvokeFrom.SERVICE_API:
-            created_from = WorkflowAppLogCreatedFrom.SERVICE_API
-        elif invoke_from == InvokeFrom.EXPLORE:
-            created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
-        elif invoke_from == InvokeFrom.WEB_APP:
-            created_from = WorkflowAppLogCreatedFrom.WEB_APP
-        else:
-            # not save log for debugging
-            return
-
-        if not workflow_run_id:
-            return
-
-        workflow_app_log = WorkflowAppLog(
-            tenant_id=self._application_generate_entity.app_config.tenant_id,
-            app_id=self._application_generate_entity.app_config.app_id,
-            workflow_id=self._workflow.id,
-            workflow_run_id=workflow_run_id,
-            created_from=created_from.value,
-            created_by_role=self._created_by_role,
-            created_by=self._user_id,
-        )
-
-        session.add(workflow_app_log)
-        session.commit()
 
     def _text_chunk_to_stream_response(
         self, text: str, from_variable_selector: list[str] | None = None

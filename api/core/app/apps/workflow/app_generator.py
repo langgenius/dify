@@ -36,7 +36,7 @@ from extensions.ext_database import db
 from factories import file_factory
 from libs.flask_utils import preserve_flask_contexts
 from models import Account, App, EndUser, Workflow, WorkflowNodeExecutionTriggeredFrom
-from models.enums import WorkflowRunTriggeredFrom
+from models.enums import CreatorUserRole, WorkflowRunTriggeredFrom
 from services.workflow_draft_variable_service import DraftVarLoader, WorkflowDraftVariableService
 
 SKIP_PREPARE_USER_INPUTS_KEY = "_skip_prepare_user_inputs"
@@ -497,9 +497,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     # For external API calls, use end user's session ID
                     end_user = session.scalar(select(EndUser).where(EndUser.id == application_generate_entity.user_id))
                     system_user_id = end_user.session_id if end_user else ""
+                    created_by_role = CreatorUserRole.END_USER
                 else:
                     # For internal calls, use the original user ID
                     system_user_id = application_generate_entity.user_id
+                    created_by_role = CreatorUserRole.ACCOUNT
 
             runner = WorkflowAppRunner(
                 application_generate_entity=application_generate_entity,
@@ -507,6 +509,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 variable_loader=variable_loader,
                 workflow=workflow,
                 system_user_id=system_user_id,
+                user_id=application_generate_entity.user_id,
+                created_by_role=created_by_role,
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 root_node_id=root_node_id,

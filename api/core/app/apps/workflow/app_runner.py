@@ -1,7 +1,10 @@
 import logging
 import time
 from collections.abc import Sequence
+from contextlib import contextmanager
 from typing import cast
+
+from sqlalchemy.orm import Session
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
@@ -11,16 +14,24 @@ from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.workflow.graph_events import (
+    GraphEngineEvent,
+    GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
+    GraphRunSucceededEvent,
+)
+from core.workflow.graph_events.graph import GraphRunAbortedEvent
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from models.enums import UserFrom
-from models.workflow import Workflow
+from models.enums import CreatorUserRole, UserFrom
+from models.workflow import Workflow, WorkflowAppLog, WorkflowAppLogCreatedFrom
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +49,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         variable_loader: VariableLoader,
         workflow: Workflow,
         system_user_id: str,
+        user_id: str,
+        created_by_role: CreatorUserRole,
         root_node_id: str | None = None,
         workflow_execution_repository: WorkflowExecutionRepository,
         workflow_node_execution_repository: WorkflowNodeExecutionRepository,
@@ -52,6 +65,8 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self.application_generate_entity = application_generate_entity
         self._workflow = workflow
         self._sys_user_id = system_user_id
+        self._user_id = user_id
+        self._created_by_role = created_by_role
         self._root_node_id = root_node_id
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
@@ -151,3 +166,74 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         for event in generator:
             self._handle_event(workflow_entry, event)
+
+    def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent) -> None:
+        """
+        Handle event and save workflow app log when workflow execution completes.
+        Overrides parent method to add log saving functionality.
+
+        :param workflow_entry: workflow entry
+        :param event: event
+        """
+        # Call parent's event handling
+        super()._handle_event(workflow_entry, event)
+
+        # Save workflow app log when workflow execution completes
+        if isinstance(
+            event,
+            (
+                GraphRunSucceededEvent,
+                GraphRunPartialSucceededEvent,
+                GraphRunFailedEvent,
+                GraphRunAbortedEvent,
+            ),
+        ):
+            self._save_workflow_app_log()
+
+    @contextmanager
+    def _database_session(self):
+        with Session(db.engine, expire_on_commit=False) as session:
+            try:
+                yield session
+                session.commit()
+            except Exception:
+                session.rollback()
+                raise
+
+    def _save_workflow_app_log(self) -> None:
+        """
+        Save workflow app log when workflow execution completes.
+        """
+
+        invoke_from = self.application_generate_entity.invoke_from
+        workflow_run_id = self.application_generate_entity.workflow_execution_id
+
+        if invoke_from == InvokeFrom.SERVICE_API:
+            created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+        elif invoke_from == InvokeFrom.EXPLORE:
+            created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
+        elif invoke_from == InvokeFrom.WEB_APP:
+            created_from = WorkflowAppLogCreatedFrom.WEB_APP
+        else:
+            # not save log for debugging
+            return
+
+        if not workflow_run_id:
+            return
+
+        try:
+            with self._database_session() as session:
+                workflow_app_log = WorkflowAppLog(
+                    tenant_id=self.application_generate_entity.app_config.tenant_id,
+                    app_id=self.application_generate_entity.app_config.app_id,
+                    workflow_id=self._workflow.id,
+                    workflow_run_id=workflow_run_id,
+                    created_from=created_from.value,
+                    created_by_role=self._created_by_role,
+                    created_by=self._user_id,
+                )
+                session.add(workflow_app_log)
+                session.commit()
+                
+        except Exception:
+            logger.exception("Failed to save workflow app log, workflow_run_id: %s", workflow_run_id)
