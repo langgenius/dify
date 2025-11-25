@@ -8,7 +8,6 @@ const translation = {
   viewBilling: '管理賬單及訂閱',
   buyPermissionDeniedTip: '請聯絡企業管理員訂閱',
   plansCommon: {
-    title: '選擇適合您的套餐',
     yearlyTip: '訂閱年度計劃可免費獲得 2 個月！',
     mostPopular: '最受歡迎',
     planRange: {
@@ -74,7 +73,7 @@ const translation = {
     receiptInfo: '只有團隊所有者和團隊管理員才能訂閱和檢視賬單資訊',
     annotationQuota: '註釋配額',
     self: '自我主持',
-    apiRateLimitUnit: '{{count,number}}/月',
+    apiRateLimitUnit: '{{count,number}} 次',
     freeTrialTipPrefix: '註冊並獲得一個',
     annualBilling: '年度計費',
     freeTrialTipSuffix: '無需信用卡',
@@ -96,6 +95,19 @@ const translation = {
     startBuilding: '開始建造',
     taxTip: '所有訂閱價格（月費/年費）不包含適用的稅費（例如增值稅、銷售稅）。',
     taxTipSecond: '如果您的地區沒有適用的稅務要求，結帳時將不會顯示任何稅款，且在整個訂閱期間您也不會被收取任何額外費用。',
+    triggerEvents: {
+      unlimited: '無限觸發事件',
+      tooltip: '透過插件、排程或 Webhook 觸發器自動啟動工作流程的事件數量。',
+    },
+    workflowExecution: {
+      standard: '標準工作流程執行',
+      priority: '優先工作流程執行',
+      faster: '更快速的工作流程執行',
+      tooltip: '工作流程執行隊列的優先順序與速度。',
+    },
+    startNodes: {
+      unlimited: '無限觸發器/工作流程',
+    },
   },
   plans: {
     sandbox: {
@@ -118,15 +130,6 @@ const translation = {
       description: '獲得大規模關鍵任務系統的完整功能和支援。',
       includesTitle: 'Team 計劃中的一切，加上：',
       features: {
-        8: '專業技術支持',
-        6: '進階安全與控制',
-        2: '獨家企業功能',
-        5: 'Dify 合作夥伴協商的 SLA',
-        4: '單一登入',
-        7: 'Dify 官方更新和維護',
-        3: '多個工作區和企業管理',
-        0: '企業級可擴展部署解決方案',
-        1: '商業許可證授權',
       },
       price: '自訂',
       btnText: '聯繫銷售',
@@ -135,9 +138,6 @@ const translation = {
     },
     community: {
       features: {
-        1: '單一工作區',
-        2: '符合 Dify 開源許可證',
-        0: '所有核心功能在公共存儲庫下發布',
       },
       includesTitle: '免費功能：',
       btnText: '開始使用社區',
@@ -148,10 +148,6 @@ const translation = {
     },
     premium: {
       features: {
-        0: '各種雲端供應商的自我管理可靠性',
-        1: '單一工作區',
-        3: '優先電子郵件和聊天支持',
-        2: 'WebApp 標誌和品牌定制',
       },
       for: '適用於中型組織和團隊',
       comingSoon: '微軟 Azure 與 Google Cloud 支持即將推出',
@@ -186,8 +182,17 @@ const translation = {
     vectorSpace: '知識數據儲存',
     buildApps: '建構應用程式',
     teamMembers: '團隊成員',
+    perMonth: '每月',
+    triggerEvents: '觸發事件',
   },
   teamMembers: '團隊成員',
+  triggerLimitModal: {
+    dismiss: '關閉',
+    description: '您已達到此方案的工作流程事件觸發上限。',
+    usageTitle: '觸發事件',
+    title: '升級以解鎖更多觸發事件',
+    upgrade: '升級',
+  },
 }
 
 export default translation

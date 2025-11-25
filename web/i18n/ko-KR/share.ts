@@ -71,7 +71,8 @@ const translation = {
       atLeastOne: '업로드된 파일에는 적어도 한 줄의 입력이 필요합니다.',
     },
     execution: '실행',
-    executions: '{{num}} 처형',
+    executions: '{{num}}회 실행',
+    stopRun: '실행 중지',
   },
   login: {
     backToHome: '홈으로 돌아가기',

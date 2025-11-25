@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'راه اندازی',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API سرویس بک‌اند',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'در حال سرویس‌دهی',
       disable: 'غیرفعال',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'ویژگی {{feature}} در حالت گره تریگر پشتیبانی نمی‌شود.',
     },
   },
   analysis: {

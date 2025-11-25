@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import type { NodeProps } from 'reactflow'
-import InfoPanel from '../_base/components/info-panel'
 import { NodeSourceHandle } from '../_base/components/node-handle'
 import type { QuestionClassifierNodeType } from './types'
 import {
@@ -10,8 +10,56 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
+import Tooltip from '@/app/components/base/tooltip'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
+
+const MAX_CLASS_TEXT_LENGTH = 50
+
+type TruncatedClassItemProps = {
+  topic: { id: string; name: string }
+  index: number
+  nodeId: string
+  t: TFunction
+}
+
+const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId, t }) => {
+  const truncatedText = topic.name.length > MAX_CLASS_TEXT_LENGTH
+    ? `${topic.name.slice(0, MAX_CLASS_TEXT_LENGTH)}...`
+    : topic.name
+
+  const shouldShowTooltip = topic.name.length > MAX_CLASS_TEXT_LENGTH
+
+  const content = (
+    <div className='system-xs-regular truncate text-text-tertiary'>
+      <ReadonlyInputWithSelectVar
+        value={truncatedText}
+        nodeId={nodeId}
+        className='truncate'
+      />
+    </div>
+  )
+
+  return (
+    <div className='flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-[5px] py-[3px]'>
+      <div className='system-2xs-semibold-uppercase uppercase text-text-secondary'>
+        {`${t(`${i18nPrefix}.class`)} ${index + 1}`}
+      </div>
+      {shouldShowTooltip
+        ? (<Tooltip
+          popupContent={
+            <div className='max-w-[300px] break-words'>
+              <ReadonlyInputWithSelectVar value={topic.name} nodeId={nodeId}/>
+            </div>
+          }
+        >
+          {content}
+        </Tooltip>
+        )
+        : content}
+    </div>
+  )
+}
 
 const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const { t } = useTranslation()
@@ -41,27 +89,26 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
       {
         !!topics.length && (
           <div className='mt-2 space-y-0.5'>
-            {topics.map((topic, index) => (
-              <div
-                key={index}
-                className='relative'
-              >
-                <InfoPanel
-                  title={`${t(`${i18nPrefix}.class`)} ${index + 1}`}
-                  content={
-                    <ReadonlyInputWithSelectVar
-                      value={topic.name}
-                      nodeId={id}
-                    />
-                  }
-                />
-                <NodeSourceHandle
-                  {...props}
-                  handleId={topic.id}
-                  handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'
-                />
-              </div>
-            ))}
+            <div className='space-y-0.5'>
+              {topics.map((topic, index) => (
+                <div
+                  key={topic.id}
+                  className='relative'
+                >
+                  <TruncatedClassItem
+                    topic={topic}
+                    index={index}
+                    nodeId={id}
+                    t={t}
+                  />
+                  <NodeSourceHandle
+                    {...props}
+                    handleId={topic.id}
+                    handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         )
       }

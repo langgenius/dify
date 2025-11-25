@@ -78,8 +78,6 @@ const translation = {
       description: 'Jalankan pencarian teks lengkap dan pencarian vektor secara bersamaan, peringkatkan ulang untuk memilih kecocokan terbaik untuk kueri pengguna. Pengguna dapat memilih untuk mengatur bobot atau mengonfigurasi ke model Rerank.',
     },
     invertedIndex: {
-      title: 'Indeks Terbalik',
-      description: 'Indeks Terbalik adalah struktur yang digunakan untuk pengambilan yang efisien. Diatur berdasarkan istilah, setiap istilah menunjuk ke dokumen atau halaman web yang berisinya.',
     },
     change: 'Ubah',
     changeRetrievalMethod: 'Ubah metode pengambilan',
@@ -210,7 +208,6 @@ const translation = {
   allExternalTip: 'Saat hanya menggunakan pengetahuan eksternal, pengguna dapat memilih apakah akan mengaktifkan model Rerank. Jika tidak diaktifkan, potongan yang diambil akan diurutkan berdasarkan skor. Ketika strategi pengambilan dari basis pengetahuan yang berbeda tidak konsisten, itu akan menjadi tidak akurat.',
   datasetUsedByApp: 'Pengetahuan tersebut digunakan oleh beberapa aplikasi. Aplikasi tidak akan lagi dapat menggunakan Pengetahuan ini, dan semua konfigurasi prompt serta log akan dihapus secara permanen.',
   mixtureInternalAndExternalTip: 'Model Rerank diperlukan untuk campuran pengetahuan internal dan eksternal.',
-  unavailableTip: 'Model penyematan tidak tersedia, model penyematan default perlu dikonfigurasi',
   nTo1RetrievalLegacy: 'Pengambilan N-to-1 akan secara resmi tidak digunakan lagi mulai September. Disarankan untuk menggunakan pengambilan Multi-jalur terbaru untuk mendapatkan hasil yang lebih baik.',
   inconsistentEmbeddingModelTip: 'Model Rerank diperlukan jika model Penyematan dari basis pengetahuan yang dipilih tidak konsisten.',
   allKnowledgeDescription: 'Pilih untuk menampilkan semua pengetahuan di ruang kerja ini. Hanya Pemilik Ruang Kerja yang dapat mengelola semua pengetahuan.',

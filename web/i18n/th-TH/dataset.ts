@@ -74,7 +74,6 @@ const translation = {
   intro5: 'สามารถสร้างได้',
   intro6: 'เป็นปลั๊กอินดัชนี ChatGPT แบบสแตนด์อโลนเพื่อเผยแพร่',
   unavailable: 'ไม่',
-  unavailableTip: 'โมเดลการฝังไม่พร้อมใช้งาน จําเป็นต้องกําหนดค่าโมเดลการฝังเริ่มต้น',
   datasets: 'ความรู้',
   datasetsApi: 'การเข้าถึง API',
   externalKnowledgeForm: {
@@ -108,8 +107,6 @@ const translation = {
       recommend: 'แนะนำ',
     },
     invertedIndex: {
-      title: 'ดัชนีกลับด้าน',
-      description: 'Inverted Index เป็นโครงสร้างที่ใช้สําหรับการดึงข้อมูลอย่างมีประสิทธิภาพ จัดเรียงตามคําศัพท์ แต่ละคําชี้ไปที่เอกสารหรือหน้าเว็บที่มีคําดังกล่าว',
     },
     change: 'เปลี่ยน',
     changeRetrievalMethod: 'วิธีการเรียกดูการเปลี่ยนแปลง',
