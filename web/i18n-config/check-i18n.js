@@ -7,6 +7,64 @@ const targetLanguage = 'en-US'
 const data = require('./languages.json')
 const languages = data.languages.filter(language => language.supported).map(language => language.value)
 
+function parseArgs(argv) {
+  const args = {
+    files: [],
+    languages: [],
+    autoRemove: false,
+    help: false,
+  }
+
+  for (let index = 2; index < argv.length; index++) {
+    const arg = argv[index]
+
+    if (arg === '--auto-remove') {
+      args.autoRemove = true
+      continue
+    }
+
+    if (arg === '--help' || arg === '-h') {
+      args.help = true
+      break
+    }
+
+    if (arg.startsWith('--file')) {
+      const value = arg.includes('=') ? arg.split('=')[1] : argv[index + 1]
+      if (!arg.includes('=') && argv[index + 1])
+        index++
+      if (value)
+        args.files.push(value)
+      continue
+    }
+
+    if (arg.startsWith('--lang')) {
+      const value = arg.includes('=') ? arg.split('=')[1] : argv[index + 1]
+      if (!arg.includes('=') && argv[index + 1])
+        index++
+      if (value)
+        args.languages.push(...value.split(',').map(item => item.trim()).filter(Boolean))
+      continue
+    }
+  }
+
+  return args
+}
+
+function printHelp() {
+  console.log(`Usage: pnpm run check-i18n [options]
+
+Options:
+  --file <name>     仅检查指定文件，可重复或用逗号分隔
+  --lang <locale>   仅检查指定语言，可重复或用逗号分隔
+  --auto-remove     自动删除多余键
+  -h, --help        查看帮助
+
+示例:
+  pnpm run check-i18n --file app --lang zh-Hans,ja-JP
+  pnpm run check-i18n --auto-remove
+`)
+}
+
 async function getKeysFromLanguage(language) {
   return new Promise((resolve, reject) => {
     const folderPath = path.resolve(__dirname, '../i18n', language)
@@ -273,27 +331,30 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
 }
 
 // Add command line argument support
-const targetFile = process.argv.find(arg => arg.startsWith('--file='))?.split('=')[1]
-const targetLang = process.argv.find(arg => arg.startsWith('--lang='))?.split('=')[1]
-const autoRemove = process.argv.includes('--auto-remove')
+const args = parseArgs(process.argv)
+const targetFiles = Array.from(new Set(args.files))
+const targetLangs = Array.from(new Set(args.languages))
+const autoRemove = args.autoRemove
 
 async function main() {
   const compareKeysCount = async () => {
+    let hasDiff = false
     const allTargetKeys = await getKeysFromLanguage(targetLanguage)
 
     // Filter target keys by file if specified
-    const targetKeys = targetFile
-      ? allTargetKeys.filter(key => key.startsWith(`${targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())}.`))
+    const camelTargetFiles = targetFiles.map(file => file.replace(/[-_](.)/g, (_, c) => c.toUpperCase()))
+    const targetKeys = targetFiles.length
+      ? allTargetKeys.filter(key => camelTargetFiles.some(file => key.startsWith(`${file}.`)))
       : allTargetKeys
 
     // Filter languages by target language if specified
-    const languagesToProcess = targetLang ? [targetLang] : languages
+    const languagesToProcess = targetLangs.length ? targetLangs : languages
 
     const allLanguagesKeys = await Promise.all(languagesToProcess.map(language => getKeysFromLanguage(language)))
 
     // Filter language keys by file if specified
-    const languagesKeys = targetFile
-      ? allLanguagesKeys.map(keys => keys.filter(key => key.startsWith(`${targetFile.replace(/[-_](.)/g, (_, c) => c.toUpperCase())}.`)))
+    const languagesKeys = targetFiles.length
+      ? allLanguagesKeys.map(keys => keys.filter(key => camelTargetFiles.some(file => key.startsWith(`${file}.`))))
       : allLanguagesKeys
 
     const keysCount = languagesKeys.map(keys => keys.length)
@@ -316,6 +377,8 @@ async function main() {
       const extraKeys = languageKeys.filter(key => !targetKeys.includes(key))
 
       console.log(`Missing keys in ${language}:`, missingKeys)
+      if (missingKeys.length > 0)
+        hasDiff = true
 
       // Show extra keys only when there are extra keys (negative difference)
       if (extraKeys.length > 0) {
@@ -330,7 +393,7 @@ async function main() {
           const files = fs.readdirSync(i18nFolder)
             .filter(file => /\.ts$/.test(file))
             .map(file => file.replace(/\.ts$/, ''))
-            .filter(f => !targetFile || f === targetFile) // Filter by target file if specified
+            .filter(f => targetFiles.length === 0 || targetFiles.includes(f))
 
           let totalRemoved = 0
           for (const fileName of files) {
@@ -340,21 +403,52 @@ async function main() {
 
           console.log(`✅ Auto-removal completed for ${language}. Modified ${totalRemoved} files.`)
         }
+        else {
+          hasDiff = true
+        }
       }
     }
+
+    return hasDiff
   }
 
   console.log('🚀 Starting check-i18n script...')
-  if (targetFile)
-    console.log(`📁 Checking file: ${targetFile}`)
+  if (targetFiles.length)
+    console.log(`📁 Checking files: ${targetFiles.join(', ')}`)
 
-  if (targetLang)
-    console.log(`🌍 Checking language: ${targetLang}`)
+  if (targetLangs.length)
+    console.log(`🌍 Checking languages: ${targetLangs.join(', ')}`)
 
   if (autoRemove)
     console.log('🤖 Auto-remove mode: ENABLED')
 
-  compareKeysCount()
+  const hasDiff = await compareKeysCount()
+  if (hasDiff) {
+    console.error('\n❌ i18n keys are not aligned. Fix issues above.')
+    process.exitCode = 1
+  }
+  else {
+    console.log('\n✅ All i18n files are in sync')
+  }
 }
 
-main()
+async function bootstrap() {
+  if (args.help) {
+    printHelp()
+    return
+  }
+
+  const unknownLangs = targetLangs.filter(lang => !languages.includes(lang))
+  if (unknownLangs.length) {
+    console.error(`❌ Unsupported languages: ${unknownLangs.join(', ')}`)
+    process.exit(1)
+    return
+  }
+
+  await main()
+}
+
+bootstrap().catch((error) => {
+  console.error('❌ Unexpected error:', error.message)
+  process.exit(1)
+})

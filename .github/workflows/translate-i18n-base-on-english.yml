@@ -20,22 +20,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for file changes in i18n/en-US
         id: check_files
         run: |
-          recent_commit_sha=$(git rev-parse HEAD)
-          second_recent_commit_sha=$(git rev-parse HEAD~1)
-          changed_files=$(git diff --name-only $recent_commit_sha $second_recent_commit_sha -- 'i18n/en-US/*.ts')
+          DEFAULT_BRANCH="${{ github.event.repository.default_branch || 'main' }}"
+          git fetch origin "$DEFAULT_BRANCH"
+          base_ref="origin/$DEFAULT_BRANCH"
+          changed_files=$(git diff --name-only "$base_ref"...HEAD -- 'i18n/en-US/*.ts')
           echo "Changed files: $changed_files"
           if [ -n "$changed_files" ]; then
             echo "FILES_CHANGED=true" >> $GITHUB_ENV
             file_args=""
             for file in $changed_files; do
               filename=$(basename "$file" .ts)
-              file_args="$file_args --file=$filename"
+              file_args="$file_args --file $filename"
             done
             echo "FILE_ARGS=$file_args" >> $GITHUB_ENV
             echo "File arguments: $file_args"
