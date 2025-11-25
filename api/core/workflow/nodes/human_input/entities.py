@@ -8,9 +8,9 @@ import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Annotated, Literal, Optional
+from typing import Annotated, Literal, Optional, Self
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.nodes.base import BaseNodeData
@@ -152,12 +152,13 @@ class FormInputPlaceholder(BaseModel):
     # TODO: How should we express JSON values?
     value: str = ""
 
-    @field_validator("selector")
-    @classmethod
-    def _validate_selector(cls, selector: Sequence[str]) -> Sequence[str]:
-        if len(selector) < SELECTORS_LENGTH:
-            raise ValueError(f"the length of selector should be at least {SELECTORS_LENGTH}, selector={selector}")
-        return selector
+    @model_validator(mode="after")
+    def _validate_selector(self) -> Self:
+        if self.type == PlaceholderType.CONSTANT:
+            return self
+        if len(self.selector) < SELECTORS_LENGTH:
+            raise ValueError(f"the length of selector should be at least {SELECTORS_LENGTH}, selector={self.selector}")
+        return self
 
 
 class FormInput(BaseModel):

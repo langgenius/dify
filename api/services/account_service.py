@@ -162,6 +162,7 @@ class AccountService:
     def get_account_jwt_token(account: Account) -> str:
         exp_dt = datetime.now(UTC) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
         exp = int(exp_dt.timestamp())
+        breakpoint()
         payload = {
             "user_id": account.id,
             "exp": exp,

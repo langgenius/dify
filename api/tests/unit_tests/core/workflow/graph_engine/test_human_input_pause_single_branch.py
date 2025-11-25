@@ -193,6 +193,7 @@ def test_human_input_llm_streaming_order_across_pause() -> None:
     mock_form_entity.id = "test_form_id"
     mock_form_entity.web_app_token = "test_web_app_token"
     mock_form_entity.recipients = []
+    mock_form_entity.rendered_content = "rendered"
     mock_create_repo.create_form.return_value = mock_form_entity
 
     def graph_factory() -> tuple[Graph, GraphRuntimeState]:

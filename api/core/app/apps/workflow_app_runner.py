@@ -22,6 +22,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
@@ -32,6 +33,7 @@ from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunPartialSucceededEvent,
+    GraphRunPausedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunAgentLogEvent,
@@ -362,6 +364,16 @@ class WorkflowBasedAppRunner:
             self._publish_event(QueueWorkflowFailedEvent(error=event.error, exceptions_count=event.exceptions_count))
         elif isinstance(event, GraphRunAbortedEvent):
             self._publish_event(QueueWorkflowFailedEvent(error=event.reason or "Unknown error", exceptions_count=0))
+        elif isinstance(event, GraphRunPausedEvent):
+            runtime_state = workflow_entry.graph_engine.graph_runtime_state
+            paused_nodes = runtime_state.get_paused_nodes()
+            self._publish_event(
+                QueueWorkflowPausedEvent(
+                    reasons=event.reasons,
+                    outputs=event.outputs,
+                    paused_nodes=paused_nodes,
+                )
+            )
         elif isinstance(event, NodeRunRetryEvent):
             node_run_result = event.node_run_result
             inputs = node_run_result.inputs

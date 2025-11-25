@@ -90,6 +90,10 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
     def recipients(self) -> list[HumanInputFormRecipientEntity]:
         return list(self._recipients)
 
+    @property
+    def rendered_content(self) -> str:
+        return self._form_model.rendered_content
+
 
 class _FormSubmissionImpl(FormSubmission):
     def __init__(self, form_model: HumanInputForm):

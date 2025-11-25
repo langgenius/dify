@@ -131,7 +131,7 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    trace_manager: Optional["TraceQueueManager"] = None
+    trace_manager: Optional["TraceQueueManager"] = Field(default=None, exclude=True, repr=False)
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -155,6 +155,7 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     """
 
     conversation_id: str | None = None
+    is_new_conversation: bool = False
     parent_message_id: str | None = Field(
         default=None,
         description=(

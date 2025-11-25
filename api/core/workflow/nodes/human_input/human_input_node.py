@@ -3,6 +3,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
 from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
+from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
 from core.workflow.node_events.base import NodeEventBase
@@ -129,6 +130,18 @@ class HumanInputNode(Node[HumanInputNodeData]):
         pause_requested_event = PauseRequestedEvent(reason=required_event)
         return pause_requested_event
 
+    def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
+        node_data = self._node_data
+        return HumanInputRequired(
+            form_id=form_entity.id,
+            form_content=form_entity.rendered_content,
+            inputs=node_data.inputs,
+            actions=node_data.user_actions,
+            node_id=self.id,
+            node_title=node_data.title,
+            web_app_form_token=form_entity.web_app_token,
+        )
+
     def _create_form(self) -> Generator[NodeEventBase, None, None] | NodeRunResult:
         try:
             params = FormCreateParams(
@@ -146,7 +159,6 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 self.id,
                 form_entity.id,
             )
-            yield self._human
             yield self._form_to_pause_event(form_entity)
         except Exception as e:
             logger.exception("Human Input node failed to execute, node_id=%s", self.id)

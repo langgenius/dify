@@ -354,6 +354,11 @@ class GraphRuntimeState:
 
         self._paused_nodes.add(node_id)
 
+    def get_paused_nodes(self) -> list[str]:
+        """Retrieve the list of paused nodes without mutating internal state."""
+
+        return list(self._paused_nodes)
+
     def consume_paused_nodes(self) -> list[str]:
         """Retrieve and clear the list of paused nodes awaiting resume."""
 

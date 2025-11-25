@@ -1,7 +1,7 @@
 import contextlib
 import logging
 import uuid
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from enum import StrEnum
 from typing import Annotated, Any, TypeAlias, Union
 
@@ -157,15 +157,7 @@ class _ChatflowRunner:
             if not exec_params.streaming:
                 return response
 
-            topic = chat_generator.get_response_topic(AppMode.ADVANCED_CHAT, workflow_run_id)
-            for event in response:
-                try:
-                    payload = json.dumps(event)
-                except TypeError:
-                    logging.exception("error while encoding event")
-                    continue
-
-                topic.publish(payload.encode())
+            _publish_streaming_response(response, workflow_run_id)
 
     def _resolve_user(self) -> Account | EndUser:
         user_params = self._exec_params.user
@@ -192,6 +184,36 @@ def _resolve_user_for_run(session: Session, workflow_run: WorkflowRun) -> Accoun
         return user
 
     return session.get(EndUser, workflow_run.created_by)
+
+
+def _coerce_uuid(value: Any) -> uuid.UUID | None:
+    if isinstance(value, uuid.UUID):
+        return value
+    if value is None:
+        return None
+
+    try:
+        return uuid.UUID(str(value))
+    except (ValueError, TypeError):
+        logger.warning("Invalid workflow_run_id value: %s", value)
+        return None
+
+
+def _publish_streaming_response(response_stream: Iterable[Any], workflow_run_id: Any) -> None:
+    workflow_run_uuid = _coerce_uuid(workflow_run_id)
+    if workflow_run_uuid is None:
+        logger.warning("Unable to publish streaming response without valid workflow_run_id: %s", workflow_run_id)
+        return
+
+    topic = AdvancedChatAppGenerator.get_response_topic(AppMode.ADVANCED_CHAT, workflow_run_uuid)
+    for event in response_stream:
+        try:
+            payload = json.dumps(event)
+        except TypeError:
+            logger.exception("error while encoding event")
+            continue
+
+        topic.publish(payload.encode())
 
 
 @shared_task(queue="chatflow_execute")
@@ -300,7 +322,7 @@ def resume_chatflow_execution(payload: dict[str, Any]) -> None:
     generator = AdvancedChatAppGenerator()
 
     try:
-        generator.resume(
+        response = generator.resume(
             app_model=app_model,
             workflow=workflow,
             user=user,
@@ -315,3 +337,13 @@ def resume_chatflow_execution(payload: dict[str, Any]) -> None:
     except Exception:
         logger.exception("Failed to resume chatflow execution for workflow run %s", workflow_run_id)
         raise
+
+    if generate_entity.stream:
+        publish_uuid = _coerce_uuid(generate_entity.workflow_run_id) or _coerce_uuid(workflow_run_id)
+        if publish_uuid is None:
+            logger.warning(
+                "Unable to publish streaming response for workflow run %s due to missing workflow_run_id",
+                workflow_run_id,
+            )
+        else:
+            _publish_streaming_response(response, publish_uuid)

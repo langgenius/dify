@@ -163,6 +163,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         query = application_generate_entity.query or "New conversation"
         conversation_name = (query[:20] + "…") if len(query) > 20 else query
 
+        created_new_conversation = conversation is None
         try:
             if not conversation:
                 conversation = Conversation(
@@ -239,6 +240,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 db.session.add_all(message_files)
 
             db.session.commit()
+
+            application_generate_entity.conversation_id = conversation.id
+            application_generate_entity.is_new_conversation = created_new_conversation
             return conversation, message
         except Exception:
             db.session.rollback()

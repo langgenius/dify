@@ -32,6 +32,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
     WorkflowQueueMessage,
@@ -440,6 +441,19 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
         yield workflow_finish_resp
 
+    def _handle_workflow_paused_event(
+        self,
+        event: QueueWorkflowPausedEvent,
+        **kwargs,
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle workflow paused events."""
+        self._ensure_workflow_initialized()
+        responses = self._workflow_response_converter.workflow_pause_to_stream_response(
+            event=event,
+            task_id=self._application_generate_entity.task_id,
+        )
+        yield from response
+
     def _handle_workflow_failed_and_stop_events(
         self,
         event: Union[QueueWorkflowFailedEvent, QueueStopEvent],
@@ -506,6 +520,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
             QueueWorkflowPartialSuccessEvent: self._handle_workflow_partial_success_event,
+            QueueWorkflowPausedEvent: self._handle_workflow_paused_event,
             # Node events
             QueueNodeRetryEvent: self._handle_node_retry_event,
             QueueNodeStartedEvent: self._handle_node_started_event,
@@ -601,6 +616,9 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
                 case QueueWorkflowFailedEvent():
                     yield from self._handle_workflow_failed_and_stop_events(event)
+                    break
+                case QueueWorkflowPausedEvent():
+                    yield from self._handle_workflow_paused_event(event)
                     break
 
                 case QueueStopEvent():

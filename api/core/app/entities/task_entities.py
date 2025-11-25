@@ -8,6 +8,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities import AgentNodeStrategyInit
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.nodes.human_input.entities import FormInput, UserAction
 
 
 class AnnotationReplyAccount(BaseModel):
@@ -83,6 +84,7 @@ class StreamEvent(StrEnum):
     TEXT_CHUNK = "text_chunk"
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
+    HUMAN_INPUT_REQUIRED = "human_input_required"
 
 
 class StreamResponse(BaseModel):
@@ -237,6 +239,45 @@ class WorkflowFinishStreamResponse(StreamResponse):
         files: Sequence[Mapping[str, Any]] | None = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
+    workflow_run_id: str
+    data: Data
+
+
+class WorkflowPauseStreamResponse(StreamResponse):
+    """
+    WorkflowPauseStreamResponse entity
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        workflow_run_id: str
+        paused_nodes: Sequence[str] = Field(default_factory=list)
+        outputs: Mapping[str, Any] = Field(default_factory=dict)
+        reasons: Sequence[Mapping[str, Any]] = Field(default_factory=list)
+
+    event: StreamEvent = StreamEvent.WORKFLOW_PAUSED
+    workflow_run_id: str
+    data: Data
+
+
+class HumanInputRequiredResponse(StreamResponse):
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        form_id: str
+        node_id: str
+        node_title: str
+        form_content: str
+        inputs: Sequence[FormInput] = Field(default_factory=list)
+        actions: Sequence[UserAction] = Field(default_factory=list)
+        web_app_form_token: str | None = None
+
+    event: StreamEvent = StreamEvent.HUMAN_INPUT_REQUIRED
     workflow_run_id: str
     data: Data
 

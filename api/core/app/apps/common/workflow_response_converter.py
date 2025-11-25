@@ -19,9 +19,11 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueWorkflowPausedEvent,
 )
 from core.app.entities.task_entities import (
     AgentLogStreamResponse,
+    HumanInputRequiredResponse,
     IterationNodeCompletedStreamResponse,
     IterationNodeNextStreamResponse,
     IterationNodeStartStreamResponse,
@@ -31,7 +33,9 @@ from core.app.entities.task_entities import (
     NodeFinishStreamResponse,
     NodeRetryStreamResponse,
     NodeStartStreamResponse,
+    StreamResponse,
     WorkflowFinishStreamResponse,
+    WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
 from core.file import FILE_MODEL_IDENTITY, File
@@ -40,6 +44,7 @@ from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.tool_manager import ToolManager
 from core.trigger.trigger_manager import TriggerManager
 from core.variables.segments import ArrayFileSegment, FileSegment, Segment
+from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -265,10 +270,56 @@ class WorkflowResponseConverter:
             ),
         )
 
+    def workflow_pause_to_stream_response(
+        self,
+        *,
+        event: QueueWorkflowPausedEvent,
+        task_id: str,
+    ) -> list[StreamResponse]:
+        run_id = self._ensure_workflow_run_id()
+        encoded_outputs = self._encode_outputs(event.outputs) or {}
+        pause_reasons = [reason.model_dump(mode="json") for reason in event.reasons]
+
+        responses: list[StreamResponse] = []
+
+        for reason in event.reasons:
+            if isinstance(reason, HumanInputRequired):
+                responses.append(
+                    HumanInputRequiredResponse(
+                        task_id=task_id,
+                        workflow_run_id=run_id,
+                        data=HumanInputRequiredResponse.Data(
+                            form_id=reason.form_id,
+                            node_id=reason.node_id,
+                            node_title=reason.node_title,
+                            form_content=reason.form_content,
+                            inputs=reason.inputs,
+                            actions=reason.actions,
+                            web_app_form_token=reason.web_app_form_token,
+                        ),
+                    )
+                )
+
+        responses.append(
+            WorkflowPauseStreamResponse(
+                task_id=task_id,
+                workflow_run_id=run_id,
+                data=WorkflowPauseStreamResponse.Data(
+                    workflow_run_id=run_id,
+                    paused_nodes=list(event.paused_nodes),
+                    outputs=encoded_outputs,
+                    reasons=pause_reasons,
+                ),
+            )
+        )
+
+        return responses
+
     @classmethod
     def workflow_run_result_to_finish_response(
         cls,
         *,
+        task_id: str,
         workflow_run: WorkflowRun,
         creator_user: Account | EndUser,
     ) -> WorkflowFinishStreamResponse:
@@ -294,7 +345,7 @@ class WorkflowResponseConverter:
             }
 
         return WorkflowFinishStreamResponse(
-            task_id=task_id,  # TODO
+            task_id=task_id,
             workflow_run_id=run_id,
             data=WorkflowFinishStreamResponse.Data(
                 id=run_id,

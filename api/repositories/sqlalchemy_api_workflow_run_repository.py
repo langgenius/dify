@@ -350,9 +350,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
 
             # Check if workflow is in RUNNING status
-            if workflow_run.status != WorkflowExecutionStatus.RUNNING:
+            # TODO(QuantumGhost): It seems that the persistence of `WorkflowRun.status`
+            # happens before the execution of GraphLayer
+            if workflow_run.status not in {WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED}:
                 raise _WorkflowRunError(
-                    f"Only WorkflowRun with RUNNING status can be paused, "
+                    f"Only WorkflowRun with RUNNING or PAUSED status can be paused, "
                     f"workflow_run_id={workflow_run_id}, current_status={workflow_run.status}"
                 )
             #

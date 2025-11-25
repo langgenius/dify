@@ -34,6 +34,7 @@ class _InMemoryFormRecipient(HumanInputFormRecipientEntity):
 @dataclass
 class _InMemoryFormEntity(HumanInputFormEntity):
     form_id: str
+    rendered: str
     token: str | None = None
 
     @property
@@ -47,6 +48,10 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     @property
     def recipients(self) -> list[HumanInputFormRecipientEntity]:
         return []
+
+    @property
+    def rendered_content(self) -> str:
+        return self.rendered
 
 
 class _InMemoryFormSubmission(FormSubmission):
@@ -76,7 +81,7 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         self.created_params.append(params)
         self._form_counter += 1
         form_id = f"form-{self._form_counter}"
-        entity = _InMemoryFormEntity(form_id=form_id, token=f"token-{form_id}")
+        entity = _InMemoryFormEntity(form_id=form_id, rendered=params.rendered_content, token=f"token-{form_id}")
         self.created_forms.append(entity)
         self._forms_by_key[(params.workflow_execution_id, params.node_id)] = entity
         return entity

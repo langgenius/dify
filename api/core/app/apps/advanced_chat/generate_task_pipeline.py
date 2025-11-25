@@ -42,6 +42,7 @@ from core.app.entities.queue_entities import (
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
     QueueWorkflowPartialSuccessEvent,
+    QueueWorkflowPausedEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
     WorkflowQueueMessage,
@@ -525,6 +526,19 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         )
 
         yield workflow_finish_resp
+
+    def _handle_workflow_paused_event(
+        self,
+        event: QueueWorkflowPausedEvent,
+        **kwargs,
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle workflow paused events."""
+        responses = self._workflow_response_converter.workflow_pause_to_stream_response(
+            event=event,
+            task_id=self._application_generate_entity.task_id,
+        )
+        for response in responses:
+            yield response
         self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_failed_event(
@@ -659,6 +673,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueWorkflowStartedEvent: self._handle_workflow_started_event,
             QueueWorkflowSucceededEvent: self._handle_workflow_succeeded_event,
             QueueWorkflowPartialSuccessEvent: self._handle_workflow_partial_success_event,
+            QueueWorkflowPausedEvent: self._handle_workflow_paused_event,
             QueueWorkflowFailedEvent: self._handle_workflow_failed_event,
             # Node events
             QueueNodeRetryEvent: self._handle_node_retry_event,
@@ -746,6 +761,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
                 case QueueWorkflowFailedEvent():
                     yield from self._handle_workflow_failed_event(event, trace_manager=trace_manager)
+                    break
+                case QueueWorkflowPausedEvent():
+                    yield from self._handle_workflow_paused_event(event)
                     break
 
                 case QueueStopEvent():

@@ -2,6 +2,7 @@
 Console/Studio Human Input Form APIs.
 """
 
+import json
 import logging
 from collections.abc import Generator
 
@@ -157,32 +158,18 @@ class ConsoleWorkflowEventsApi(Resource):
 
         if workflow_run.finished_at is not None:
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
+                task_id=workflow_run.id,
                 workflow_run=workflow_run,
                 creator_user=user,
             )
 
-            # TODO: should we just return here? or yield a WorkflowFinishStreamResponse?
+            payload = response.model_dump(mode="json")
+            payload["event"] = response.event.value
+
             def generate_events() -> Generator[str, None, None]:
-                """Generate SSE events for workflow execution."""
-                try:
-                    # TODO: Implement actual event streaming
-                    # This would connect to the workflow execution engine
-                    # and stream real-time events
+                yield f"data: {json.dumps(payload)}\n\n"
 
-                    # For demo purposes, send a basic event
-                    yield f"data: {{'event': 'workflow_resumed', 'task_id': '{task_id}'}}\n\n"
-
-                    # In real implementation, this would:
-                    # 1. Connect to workflow execution engine
-                    # 2. Stream real-time execution events
-                    # 3. Handle client disconnection
-                    # 4. Clean up resources on completion
-
-                except Exception as e:
-                    logger.exception("Error streaming events for task %s", task_id)
-                    yield f"data: {{'error': 'Stream error: {str(e)}'}}\n\n"
         else:
-            # TODO: SSE from Redis PubSub
             msg_generator = MessageGenerator()
             if app.mode == AppMode.ADVANCED_CHAT:
                 generator = AdvancedChatAppGenerator()

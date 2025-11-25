@@ -52,6 +52,7 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
     form_entity.id = "test-form-id"
     form_entity.web_app_token = "test-form-token"
     form_entity.recipients = []
+    form_entity.rendered_content = "rendered"
     repo.get_form.return_value = form_entity
     return repo
 
@@ -63,6 +64,7 @@ def _mock_form_repository_without_submission() -> HumanInputFormRepository:
     form_entity.id = "test-form-id"
     form_entity.web_app_token = "test-form-token"
     form_entity.recipients = []
+    form_entity.rendered_content = "rendered"
     repo.create_form.return_value = form_entity
     repo.get_form.return_value = None
     return repo

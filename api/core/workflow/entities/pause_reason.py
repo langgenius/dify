@@ -3,7 +3,7 @@ from typing import Annotated, Literal, TypeAlias
 
 from pydantic import BaseModel, Field
 
-from core.workflow.nodes.human_input.entities import FormInput
+from core.workflow.nodes.human_input.entities import FormInput, UserAction
 
 
 class PauseReasonType(StrEnum):
@@ -16,6 +16,9 @@ class HumanInputRequired(BaseModel):
     form_id: str
     form_content: str
     inputs: list[FormInput] = Field(default_factory=list)
+    actions: list[UserAction] = Field(default_factory=list)
+    node_id: str
+    node_title: str
     web_app_form_token: str | None = None
 
 

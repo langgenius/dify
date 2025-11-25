@@ -1,3 +1,4 @@
+import json
 from typing import Literal, cast
 
 from flask import request
@@ -409,7 +410,19 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         # Check if workflow is suspended
         is_paused = workflow_run.status == WorkflowExecutionStatus.PAUSED
         if not is_paused:
-            return {"is_suspended": False, "paused_at": None, "paused_nodes": [], "pending_human_inputs": []}, 200
+            return {
+                "is_suspended": False,
+                "paused_at": None,
+                "paused_nodes": [],
+                "pending_human_inputs": [],
+                "pause_reasons": [],
+            }, 200
+
+        pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
+        pause_reasons: list[dict[str, object]] = []
+        if pause_entity:
+            for reason in pause_entity.get_pause_reasons():
+                pause_reasons.append(reason.model_dump(mode="json"))
 
         # Get pending Human Input forms for this workflow run
         service = HumanInputFormService(db.session())
@@ -421,6 +434,7 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
             "paused_at": workflow_run.created_at.isoformat() + "Z" if workflow_run.created_at else None,
             "paused_nodes": [],
             "pending_human_inputs": [],
+            "pause_reasons": pause_reasons,
         }
 
         # Add pending human input forms

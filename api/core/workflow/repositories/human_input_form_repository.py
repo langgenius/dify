@@ -52,6 +52,12 @@ class HumanInputFormEntity(abc.ABC):
     @abc.abstractmethod
     def recipients(self) -> list["HumanInputFormRecipientEntity"]: ...
 
+    @property
+    @abc.abstractmethod
+    def rendered_content(self) -> str:
+        """Rendered markdown content associated with the form."""
+        ...
+
 
 class HumanInputFormRecipientEntity(abc.ABC):
     @property

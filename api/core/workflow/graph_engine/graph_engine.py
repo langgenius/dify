@@ -306,13 +306,13 @@ class GraphEngine:
         for layer in self._layers:
             try:
                 layer.initialize(read_only_state, self._command_channel)
-            except Exception as e:
-                logger.warning("Failed to initialize layer %s: %s", layer.__class__.__name__, e)
+            except Exception:
+                logger.exception("Failed to initialize layer %s", layer.__class__.__name__)
 
             try:
                 layer.on_graph_start()
-            except Exception as e:
-                logger.warning("Layer %s failed on_graph_start: %s", layer.__class__.__name__, e)
+            except Exception:
+                logger.exception("Layer %s failed on_graph_start", layer.__class__.__name__)
 
     def _start_execution(self, *, resume: bool = False) -> None:
         """Start execution subsystems."""
@@ -353,8 +353,8 @@ class GraphEngine:
         for layer in self._layers:
             try:
                 layer.on_graph_end(self._graph_execution.error)
-            except Exception as e:
-                logger.warning("Layer %s failed on_graph_end: %s", layer.__class__.__name__, e)
+            except Exception:
+                logger.exception("Layer %s failed on_graph_end", layer.__class__.__name__)
 
     # Public property accessors for attributes that need external access
     @property
