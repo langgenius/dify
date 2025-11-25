@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: 'Non preoccuparti — ciò non influenzerà il tuo abbonamento attuale, ma non otterrai lo sconto per l\'istruzione al momento del rinnovo a meno che tu non verifichi nuovamente il tuo stato.',
+      title: 'Il tuo stato educativo scadrà il {{date}}',
     },
     stillInEducation: {
       title: 'Ancora in formazione?',
