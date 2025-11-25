@@ -1,7 +1,7 @@
 """add enduser authentication provider
 
 Revision ID: a7b4e8f2c9d1
-Revises: 132392a2635f
+Revises: fecff1c3da27
 Create Date: 2025-11-18 14:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision = "a7b4e8f2c9d1"
-down_revision = "132392a2635f"
+down_revision = "fecff1c3da27"
 branch_labels = None
 depends_on = None
 

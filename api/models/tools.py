@@ -124,17 +124,17 @@ class EndUserAuthenticationProvider(TypeBase):
 
     # id of the authentication provider
     id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuid4()), init=False)
-    name: Mapped[str] = mapped_column(
-        String(256),
-        nullable=False,
-        default="API KEY 1",
-    )
     # id of the tenant
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # id of the end user
     end_user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # name of the tool provider
     provider: Mapped[str] = mapped_column(LongText, nullable=False)
+    name: Mapped[str] = mapped_column(
+        String(256),
+        nullable=False,
+        default="API KEY 1",
+    )
     # encrypted credentials for the end user
     encrypted_credentials: Mapped[str] = mapped_column(LongText, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(
