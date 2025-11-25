@@ -164,7 +164,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   useEffect(() => {
     // Report user info to Amplitude when loaded
     if (userProfile?.id) {
-      setUserId(userProfile.id)
+      setUserId(userProfile.email)
       setUserProperties({
         email: userProfile.email,
         name: userProfile.name,

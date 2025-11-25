@@ -3,13 +3,16 @@
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import * as amplitude from '@amplitude/analytics-browser'
+import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
 
 export type IAmplitudeProps = {
   apiKey?: string
+  sessionReplaySampleRate?: number
 }
 
 const AmplitudeProvider: FC<IAmplitudeProps> = ({
   apiKey = '702e89332ab88a7f14e665f417244e9d',
+  sessionReplaySampleRate = 1,
 }) => {
   useEffect(() => {
     // // Only enable in non-CE edition
@@ -30,10 +33,12 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
       logLevel: amplitude.Types.LogLevel.Warn,
     })
 
-    // Log initialization success in development
-    if (process.env.NODE_ENV === 'development')
-      console.log('[Amplitude] Initialized successfully, API Key:', apiKey)
-  }, [apiKey])
+    // Add Session Replay plugin
+    const sessionReplay = sessionReplayPlugin({
+      sampleRate: sessionReplaySampleRate,
+    })
+    amplitude.add(sessionReplay)
+  }, [apiKey, sessionReplaySampleRate])
 
   // This is a client component that renders nothing
   return null
