@@ -20,6 +20,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { SimpleSelect } from '@/app/components/base/select'
 import Authorize from './authorize'
 import Authorized from './authorized'
 import AddApiKeyButton from './authorize/add-api-key-button'
@@ -63,7 +64,6 @@ const PluginAuth = ({
   const shouldShowGuide = !!showConnectGuide
   const [showCredentialPanel, setShowCredentialPanel] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
-  const [showEndUserTypeMenu, setShowEndUserTypeMenu] = useState(false)
   const configuredDisabled = !!endUserCredentialEnabled
   const availableEndUserTypes = useMemo(() => {
     const list: { value: string; label: string; icon: ReactNode }[] = []
@@ -89,10 +89,8 @@ const PluginAuth = ({
   }, [availableEndUserTypes, endUserCredentialType])
 
   useEffect(() => {
-    if (!endUserCredentialEnabled) {
-      setShowEndUserTypeMenu(false)
+    if (!endUserCredentialEnabled)
       return
-    }
     if (!availableEndUserTypes.length)
       return
     const isValid = availableEndUserTypes.some(item => item.value === endUserCredentialType)
@@ -102,7 +100,6 @@ const PluginAuth = ({
 
   const handleSelectEndUserType = useCallback((value: string) => {
     onEndUserCredentialTypeChange?.(value)
-    setShowEndUserTypeMenu(false)
   }, [onEndUserCredentialTypeChange])
   const containerClassName = useMemo(() => {
     if (showConnectGuide)
@@ -142,15 +139,18 @@ const PluginAuth = ({
   }, [credentials, t])
 
   const endUserSwitch = (
-    <div className='px-3 py-3'>
-      <div className='flex gap-3'>
-        <div className='mt-1'>
-          <RiUserStarLine className='h-5 w-5 text-text-tertiary' />
-        </div>
-        <div className='flex-1 space-y-2'>
-          <div className='flex items-center justify-between'>
-            <div className='system-sm-semibold text-text-secondary'>
-              {t('plugin.auth.endUserCredentials.title')}
+    <div className='px-4 py-3'>
+      <div className='flex items-start gap-3'>
+        <RiUserStarLine className='mt-0.5 h-5 w-5 text-text-tertiary' />
+        <div className='flex-1 space-y-3'>
+          <div className='flex items-center justify-between gap-3'>
+            <div className='space-y-1'>
+              <div className='system-sm-semibold text-text-primary'>
+                {t('plugin.auth.endUserCredentials.title')}
+              </div>
+              <div className='system-xs-regular text-text-tertiary'>
+                {t('plugin.auth.endUserCredentials.desc')}
+              </div>
             </div>
             <Switch
               size='md'
@@ -159,56 +159,49 @@ const PluginAuth = ({
               disabled={disabled}
             />
           </div>
-          <div className='system-xs-regular text-text-tertiary'>
-            {t('plugin.auth.endUserCredentials.desc')}
-          </div>
           {
             endUserCredentialEnabled && availableEndUserTypes.length > 0 && (
-              <div className='flex items-center justify-between gap-3 pt-1'>
-                <div className='system-sm-semibold text-text-secondary'>
+              <div className='flex items-center justify-between gap-3'>
+                <div className='system-sm-semibold text-text-primary'>
                   {t('plugin.auth.endUserCredentials.typeLabel')}
                 </div>
-                <PortalToFollowElem
-                  open={showEndUserTypeMenu}
-                  onOpenChange={setShowEndUserTypeMenu}
-                  placement='bottom-end'
-                  offset={6}
-                >
-                  <PortalToFollowElemTrigger asChild>
+                <SimpleSelect
+                  wrapperClassName='w-[190px]'
+                  items={availableEndUserTypes.map(item => ({
+                    value: item.value,
+                    name: item.label,
+                    icon: item.icon,
+                  }))}
+                  defaultValue={endUserCredentialType || availableEndUserTypes[0]?.value}
+                  disabled={disabled}
+                  onSelect={item => handleSelectEndUserType(item.value as string)}
+                  renderTrigger={(value, open) => (
                     <button
                       type='button'
-                      className='flex h-9 min-w-[170px] items-center justify-between rounded-xl border border-components-button-secondary-border bg-components-button-secondary-bg px-3 text-left text-text-primary shadow-xs hover:bg-components-button-secondary-bg-hover'
-                      onClick={() => setShowEndUserTypeMenu(v => !v)}
+                      className='border-components-input-border flex h-9 w-full items-center justify-between rounded-lg border bg-components-input-bg-normal px-3 text-left text-text-primary shadow-xs hover:bg-components-input-bg-hover'
                     >
-                      <span className='system-sm-semibold'>
-                        {endUserCredentialLabel}
-                      </span>
-                      <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />
+                      <span className='system-sm-semibold'>{value?.name || endUserCredentialLabel}</span>
+                      <RiArrowDownSLine
+                        className={cn(
+                          'h-4 w-4 text-text-tertiary transition-transform',
+                          open && 'rotate-180',
+                        )}
+                      />
                     </button>
-                  </PortalToFollowElemTrigger>
-                  <PortalToFollowElemContent className='z-[120]'>
-                    <div className='w-[220px] rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg'>
-                      <div className='flex flex-col'>
-                        {availableEndUserTypes.map(item => (
-                          <button
-                            key={item.value}
-                            type='button'
-                            className='flex items-center justify-between px-4 py-3 text-left hover:bg-components-panel-on-panel-item-bg'
-                            onClick={() => handleSelectEndUserType(item.value)}
-                          >
-                            <div className='flex items-center gap-2'>
-                              {item.icon}
-                              <span className='system-sm-semibold text-text-primary'>{item.label}</span>
-                            </div>
-                            {endUserCredentialType === item.value && (
-                              <RiCheckLine className='h-4 w-4 text-primary-600' />
-                            )}
-                          </button>
-                        ))}
+                  )}
+                  renderOption={({ item, selected }) => (
+                    <div className='flex items-center justify-between'>
+                      <div className='flex items-center gap-2'>
+                        {item.icon}
+                        <span className='system-sm-semibold text-text-primary'>{item.name}</span>
                       </div>
+                      {selected && <RiCheckLine className='h-4 w-4 text-text-accent' />}
                     </div>
-                  </PortalToFollowElemContent>
-                </PortalToFollowElem>
+                  )}
+                  optionWrapClassName='p-1'
+                  optionClassName='px-3 py-2 rounded-lg'
+                  hideChecked
+                />
               </div>
             )
           }
@@ -323,19 +316,21 @@ const PluginAuth = ({
                   {
                     credentials.length === 0 && (
                       <div className={cn(
-                        'mt-4 rounded-2xl border border-components-panel-border bg-components-panel-on-panel-item-bg px-4 py-4',
+                        'mt-4 flex items-start gap-1.5 rounded-xl bg-background-section px-4 py-8',
                         configuredDisabled && 'pointer-events-none opacity-50',
                       )}>
-                        <Authorize
-                          pluginPayload={pluginPayload}
-                          canOAuth={canOAuth}
-                          canApiKey={canApiKey}
-                          disabled={disabled || configuredDisabled}
-                          onUpdate={invalidPluginCredentialInfo}
-                          notAllowCustomCredential={notAllowCustomCredential}
-                          theme='secondary'
-                          showDivider={!!(canOAuth && canApiKey)}
-                        />
+                        <div className='flex w-full justify-center'>
+                          <Authorize
+                            pluginPayload={pluginPayload}
+                            canOAuth={canOAuth}
+                            canApiKey={canApiKey}
+                            disabled={disabled || configuredDisabled}
+                            onUpdate={invalidPluginCredentialInfo}
+                            notAllowCustomCredential={notAllowCustomCredential}
+                            theme='secondary'
+                            showDivider={!!(canOAuth && canApiKey)}
+                          />
+                        </div>
                       </div>
                     )
                   }
