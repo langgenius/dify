@@ -8,6 +8,7 @@ const translation = {
   viewBilling: '管理賬單及訂閱',
   buyPermissionDeniedTip: '請聯絡企業管理員訂閱',
   plansCommon: {
+    title: '選擇適合您的套餐',
     yearlyTip: '訂閱年度計劃可免費獲得 2 個月！',
     mostPopular: '最受歡迎',
     planRange: {
@@ -130,6 +131,15 @@ const translation = {
       description: '獲得大規模關鍵任務系統的完整功能和支援。',
       includesTitle: 'Team 計劃中的一切，加上：',
       features: {
+        8: '專業技術支持',
+        6: '進階安全與控制',
+        2: '獨家企業功能',
+        5: 'Dify 合作夥伴協商的 SLA',
+        4: '單一登入',
+        7: 'Dify 官方更新和維護',
+        3: '多個工作區和企業管理',
+        0: '企業級可擴展部署解決方案',
+        1: '商業許可證授權',
       },
       price: '自訂',
       btnText: '聯繫銷售',
@@ -138,6 +148,9 @@ const translation = {
     },
     community: {
       features: {
+        1: '單一工作區',
+        2: '符合 Dify 開源許可證',
+        0: '所有核心功能在公共存儲庫下發布',
       },
       includesTitle: '免費功能：',
       btnText: '開始使用社區',
@@ -148,6 +161,10 @@ const translation = {
     },
     premium: {
       features: {
+        0: '各種雲端供應商的自我管理可靠性',
+        1: '單一工作區',
+        3: '優先電子郵件和聊天支持',
+        2: 'WebApp 標誌和品牌定制',
       },
       for: '適用於中型組織和團隊',
       comingSoon: '微軟 Azure 與 Google Cloud 支持即將推出',

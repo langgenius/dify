@@ -8,6 +8,7 @@ const translation = {
   viewBilling: 'Faturalandırma ve abonelikleri yönet',
   buyPermissionDeniedTip: 'Abone olmak için lütfen işletme yöneticinize başvurun',
   plansCommon: {
+    title: 'Size uygun bir plan seçin',
     yearlyTip: 'Yıllık abonelikle 2 ay ücretsiz!',
     mostPopular: 'En Popüler',
     planRange: {
@@ -130,6 +131,15 @@ const translation = {
       description: 'Büyük ölçekli kritik sistemler için tam yetenekler ve destek.',
       includesTitle: 'Takım plandaki her şey, artı:',
       features: {
+        4: 'SSO',
+        2: 'Özel Kurumsal Özellikler',
+        1: 'Ticari Lisans Yetkilendirmesi',
+        3: 'Çoklu Çalışma Alanları ve Kurumsal Yönetim',
+        8: 'Profesyonel Teknik Destek',
+        6: 'Gelişmiş Güvenlik ve Kontroller',
+        7: 'Resmi olarak Dify tarafından Güncellemeler ve Bakım',
+        0: 'Kurumsal Düzeyde Ölçeklenebilir Dağıtım Çözümleri',
+        5: 'Dify Partners tarafından müzakere edilen SLA\'lar',
       },
       priceTip: 'Yıllık Faturalama Sadece',
       for: 'Büyük boyutlu Takımlar için',
@@ -138,6 +148,9 @@ const translation = {
     },
     community: {
       features: {
+        1: 'Tek Çalışma Alanı',
+        2: 'Dify Açık Kaynak Lisansı ile uyumludur',
+        0: 'Genel depo altında yayınlanan tüm temel özellikler',
       },
       price: 'Ücretsiz',
       includesTitle: 'Ücretsiz Özellikler:',
@@ -148,6 +161,10 @@ const translation = {
     },
     premium: {
       features: {
+        1: 'Tek Çalışma Alanı',
+        3: 'Öncelikli E-posta ve Sohbet Desteği',
+        2: 'WebApp Logosu ve Marka Özelleştirmesi',
+        0: 'Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendini Yöneten Güvenilirlik',
       },
       name: 'Premium',
       includesTitle: 'Topluluktan her şey, artı:',

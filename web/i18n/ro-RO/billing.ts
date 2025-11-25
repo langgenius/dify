@@ -8,6 +8,7 @@ const translation = {
   viewBilling: 'Gestionează facturarea și abonamentele',
   buyPermissionDeniedTip: 'Vă rugăm să contactați administratorul dvs. de întreprindere pentru a vă abona',
   plansCommon: {
+    title: 'Alegeți un plan potrivit pentru dvs.',
     yearlyTip: 'Obțineți 2 luni gratuite prin abonarea anuală!',
     mostPopular: 'Cel mai popular',
     planRange: {
@@ -130,6 +131,15 @@ const translation = {
       description: 'Obțineți capacități și asistență complete pentru sisteme critice la scară largă.',
       includesTitle: 'Tot ce este în planul Echipă, plus:',
       features: {
+        1: 'Autorizare licență comercială',
+        3: 'Mai multe spații de lucru și managementul întreprinderii',
+        2: 'Funcții exclusive pentru întreprinderi',
+        7: 'Actualizări și întreținere de către Dify oficial',
+        0: 'Soluții de implementare scalabile la nivel de întreprindere',
+        4: 'SSO',
+        8: 'Asistență tehnică profesională',
+        5: 'SLA-uri negociate de partenerii Dify',
+        6: 'Securitate și controale avansate',
       },
       for: 'Pentru echipe de mari dimensiuni',
       price: 'Personalizat',
@@ -138,6 +148,9 @@ const translation = {
     },
     community: {
       features: {
+        2: 'Respectă licența Dify Open Source',
+        0: 'Toate caracteristicile de bază lansate în depozitul public',
+        1: 'Spațiu de lucru unic',
       },
       description: 'Pentru utilizatori individuali, echipe mici sau proiecte necomerciale',
       btnText: 'Începe cu Comunitatea',
@@ -148,6 +161,10 @@ const translation = {
     },
     premium: {
       features: {
+        1: 'Spațiu de lucru unic',
+        3: 'Asistență prioritară prin e-mail și chat',
+        2: 'Personalizarea logo-ului și brandingului WebApp',
+        0: 'Fiabilitate autogestionată de diverși furnizori de cloud',
       },
       btnText: 'Obține Premium în',
       description: 'Pentru organizații și echipe de dimensiuni medii',

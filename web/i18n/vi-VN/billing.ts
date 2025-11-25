@@ -8,6 +8,7 @@ const translation = {
   viewBilling: 'Quản lý thanh toán và đăng ký',
   buyPermissionDeniedTip: 'Vui lòng liên hệ với quản trị viên doanh nghiệp của bạn để đăng ký',
   plansCommon: {
+    title: 'Chọn một kế hoạch phù hợp với bạn',
     yearlyTip: 'Nhận 2 tháng miễn phí khi đăng ký hàng năm!',
     mostPopular: 'Phổ biến nhất',
     planRange: {
@@ -130,6 +131,15 @@ const translation = {
       description: 'Nhận toàn bộ khả năng và hỗ trợ cho các hệ thống quan trọng cho nhiệm vụ quy mô lớn.',
       includesTitle: 'Tất cả trong kế hoạch Nhóm, cộng thêm:',
       features: {
+        4: 'SSO',
+        8: 'Hỗ trợ kỹ thuật chuyên nghiệp',
+        1: 'Ủy quyền giấy phép thương mại',
+        6: 'Bảo mật & Kiểm soát nâng cao',
+        3: 'Nhiều không gian làm việc & quản lý doanh nghiệp',
+        5: 'SLA được đàm phán bởi Dify Partners',
+        0: 'Giải pháp triển khai có thể mở rộng cấp doanh nghiệp',
+        7: 'Cập nhật và bảo trì bởi Dify chính thức',
+        2: 'Các tính năng dành riêng cho doanh nghiệp',
       },
       price: 'Tùy chỉnh',
       for: 'Dành cho các đội lớn',
@@ -138,6 +148,9 @@ const translation = {
     },
     community: {
       features: {
+        0: 'Tất cả các tính năng cốt lõi được phát hành trong kho lưu trữ công cộng',
+        2: 'Tuân thủ Giấy phép nguồn mở Dify',
+        1: 'Không gian làm việc đơn',
       },
       description: 'Dành cho người dùng cá nhân, nhóm nhỏ hoặc các dự án phi thương mại',
       name: 'Cộng đồng',
@@ -148,6 +161,10 @@ const translation = {
     },
     premium: {
       features: {
+        1: 'Không gian làm việc đơn',
+        3: 'Hỗ trợ email & trò chuyện ưu tiên',
+        0: 'Độ tin cậy tự quản lý của các nhà cung cấp đám mây khác nhau',
+        2: 'Logo WebApp & Tùy chỉnh thương hiệu',
       },
       comingSoon: 'Hỗ trợ Microsoft Azure & Google Cloud Sẽ Đến Sớm',
       priceTip: 'Dựa trên Thị trường Đám mây',
