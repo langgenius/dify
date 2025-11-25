@@ -47,7 +47,7 @@ class Moderation(Extensible, ABC):
         :param config: the form config data
         :return:
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
@@ -60,7 +60,7 @@ class Moderation(Extensible, ABC):
         :param query: query string (required in chat app)
         :return:
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @abstractmethod
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
@@ -72,7 +72,7 @@ class Moderation(Extensible, ABC):
         :param text: LLM output content
         :return:
         """
-        raise NotImplementedError
+        raise NotImplementedError()
 
     @classmethod
     def _validate_inputs_and_outputs_config(cls, config: dict, is_preset_response_required: bool):

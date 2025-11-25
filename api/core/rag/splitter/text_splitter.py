@@ -160,7 +160,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
 
     async def atransform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Asynchronously transform a sequence of documents by splitting them."""
-        raise NotImplementedError
+        raise NotImplementedError()
 
 
 # @dataclass(frozen=True, kw_only=True, slots=True)
