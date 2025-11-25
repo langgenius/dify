@@ -533,7 +533,7 @@ class AppModelConfig(Base):
         return self
 
 
-class RecommendedApp(Base):
+class RecommendedApp(Base):  # bug
     __tablename__ = "recommended_apps"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="recommended_app_pkey"),
@@ -1294,7 +1294,7 @@ class Message(Base):
         )
 
 
-class MessageFeedback(Base):
+class MessageFeedback(TypeBase):
     __tablename__ = "message_feedbacks"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_feedback_pkey"),
@@ -1303,18 +1303,24 @@ class MessageFeedback(Base):
         sa.Index("message_feedback_conversation_idx", "conversation_id", "from_source", "rating"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     rating: Mapped[str] = mapped_column(String(255), nullable=False)
-    content: Mapped[str | None] = mapped_column(LongText)
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
-    from_account_id: Mapped[str | None] = mapped_column(StringUUID)
-    created_at: Mapped[datetime] = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    content: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    from_account_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     updated_at: Mapped[datetime] = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
     @property
@@ -1467,22 +1473,28 @@ class AppAnnotationSetting(TypeBase):
         return collection_binding_detail
 
 
-class OperationLog(Base):
+class OperationLog(TypeBase):
     __tablename__ = "operation_logs"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="operation_log_pkey"),
         sa.Index("operation_log_account_action_idx", "tenant_id", "account_id", "action"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=False)
-    account_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    account_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     action: Mapped[str] = mapped_column(String(255), nullable=False)
-    content = mapped_column(sa.JSON)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    content: Mapped[Any] = mapped_column(sa.JSON)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
     created_ip: Mapped[str] = mapped_column(String(255), nullable=False)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
     )
 
 
@@ -1627,7 +1639,7 @@ class Site(Base):
         return dify_config.APP_WEB_URL or request.url_root.rstrip("/")
 
 
-class ApiToken(Base):
+class ApiToken(Base):  # bug: this uses setattr so idk the field.
     __tablename__ = "api_tokens"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="api_token_pkey"),
@@ -1887,34 +1899,36 @@ class MessageAgentThought(Base):
                 return {}
 
 
-class DatasetRetrieverResource(Base):
+class DatasetRetrieverResource(TypeBase):
     __tablename__ = "dataset_retriever_resources"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_retriever_resource_pkey"),
         sa.Index("dataset_retriever_resource_message_id_idx", "message_id"),
     )
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    message_id = mapped_column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False)
-    dataset_id = mapped_column(StringUUID, nullable=False)
-    dataset_name = mapped_column(LongText, nullable=False)
-    document_id = mapped_column(StringUUID, nullable=True)
-    document_name = mapped_column(LongText, nullable=False)
-    data_source_type = mapped_column(LongText, nullable=True)
-    segment_id = mapped_column(StringUUID, nullable=True)
+    dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    dataset_name: Mapped[str] = mapped_column(LongText, nullable=False)
+    document_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    document_name: Mapped[str] = mapped_column(LongText, nullable=False)
+    data_source_type: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    segment_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     score: Mapped[float | None] = mapped_column(sa.Float, nullable=True)
-    content = mapped_column(LongText, nullable=False)
+    content: Mapped[str] = mapped_column(LongText, nullable=False)
     hit_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     word_count: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     segment_position: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
-    index_node_hash = mapped_column(LongText, nullable=True)
-    retriever_from = mapped_column(LongText, nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=sa.func.current_timestamp())
+    index_node_hash: Mapped[str | None] = mapped_column(LongText, nullable=True)
+    retriever_from: Mapped[str] = mapped_column(LongText, nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=sa.func.current_timestamp(), init=False
+    )
 
 
-class Tag(Base):
+class Tag(TypeBase):
     __tablename__ = "tags"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="tag_pkey"),
@@ -1924,12 +1938,14 @@ class Tag(Base):
 
     TAG_TYPE_LIST = ["knowledge", "app"]
 
-    id = mapped_column(StringUUID, default=lambda: str(uuid4()))
-    tenant_id = mapped_column(StringUUID, nullable=True)
-    type = mapped_column(String(16), nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    tenant_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    type: Mapped[str] = mapped_column(String(16), nullable=False)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
 
 class TagBinding(TypeBase):

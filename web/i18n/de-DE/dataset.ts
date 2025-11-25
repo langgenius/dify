@@ -36,8 +36,6 @@ const translation = {
       recommend: 'Empfehlen',
     },
     invertedIndex: {
-      title: 'Invertierter Index',
-      description: 'Ein invertierter Index ist eine Struktur, die für effiziente Abfragen verwendet wird. Organisiert nach Begriffen, zeigt jeder Begriff auf Dokumente oder Webseiten, die ihn enthalten.',
     },
     change: 'Ändern',
     changeRetrievalMethod: 'Abfragemethode ändern',

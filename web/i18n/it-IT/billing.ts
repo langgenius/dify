@@ -9,7 +9,6 @@ const translation = {
   buyPermissionDeniedTip:
     'Contatta l\'amministratore della tua azienda per abbonarti',
   plansCommon: {
-    title: 'Scegli un piano adatto a te',
     yearlyTip: 'Ottieni 2 mesi gratis abbonandoti annualmente!',
     mostPopular: 'Più Popolare',
     planRange: {
@@ -115,7 +114,7 @@ const translation = {
       tooltip: 'Priorità e velocità della coda di esecuzione del flusso di lavoro.',
     },
     startNodes: {
-      unlimited: 'Trigger/workflow illimitati',
+      unlimited: 'Eventi di attivazione/workflow illimitati',
     },
   },
   plans: {
@@ -142,15 +141,6 @@ const translation = {
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
       features: {
-        4: 'SSO',
-        8: 'Supporto tecnico professionale',
-        6: 'Sicurezza e controlli avanzati',
-        1: 'Autorizzazione Licenza Commerciale',
-        2: 'Funzionalità esclusive per le aziende',
-        3: 'Spazi di lavoro multipli e gestione aziendale',
-        0: 'Soluzioni di distribuzione scalabili di livello aziendale',
-        5: 'SLA negoziati dai partner Dify',
-        7: 'Aggiornamenti e manutenzione da parte di Dify ufficialmente',
       },
       price: 'Personalizzato',
       for: 'Per team di grandi dimensioni',
@@ -159,9 +149,6 @@ const translation = {
     },
     community: {
       features: {
-        0: 'Tutte le funzionalità principali rilasciate nel repository pubblico',
-        2: 'Conforme alla licenza Open Source Dify',
-        1: 'Area di lavoro singola',
       },
       name: 'Comunità',
       btnText: 'Inizia con la comunità',
@@ -172,10 +159,6 @@ const translation = {
     },
     premium: {
       features: {
-        3: 'Supporto prioritario via e-mail e chat',
-        1: 'Area di lavoro singola',
-        0: 'Affidabilità autogestita da vari fornitori di servizi cloud',
-        2: 'Personalizzazione del logo e del marchio WebApp',
       },
       name: 'Premium',
       priceTip: 'Basato su Cloud Marketplace',
@@ -211,15 +194,15 @@ const translation = {
     documentsUploadQuota: 'Quota di Caricamento Documenti',
     vectorSpaceTooltip: 'I documenti con la modalità di indicizzazione ad alta qualità consumeranno risorse di Knowledge Data Storage. Quando il Knowledge Data Storage raggiunge il limite, nuovi documenti non verranno caricati.',
     perMonth: 'al mese',
-    triggerEvents: 'Eventi scatenanti',
+    triggerEvents: 'Eventi di attivazione',
   },
   teamMembers: 'Membri del team',
   triggerLimitModal: {
     upgrade: 'Aggiornamento',
     dismiss: 'Ignora',
-    usageTitle: 'EVENTI SCATENANTI',
-    title: 'Aggiorna per sbloccare più eventi trigger',
-    description: 'Hai raggiunto il limite dei trigger degli eventi del flusso di lavoro per questo piano.',
+    usageTitle: 'EVENTI DI ATTIVAZIONE',
+    title: 'Aggiorna per sbloccare più eventi di attivazione',
+    description: 'Hai raggiunto il limite degli eventi di attivazione del flusso di lavoro per questo piano.',
   },
 }
 

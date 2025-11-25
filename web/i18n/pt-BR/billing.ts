@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Ver informações de cobrança',
   buyPermissionDeniedTip: 'Por favor, entre em contato com o administrador da sua empresa para assinar',
   plansCommon: {
-    title: 'Escolha o plano que melhor atende você',
     yearlyTip: 'Receba 2 meses grátis assinando anualmente!',
     mostPopular: 'Mais Popular',
     planRange: {
@@ -107,7 +106,7 @@ const translation = {
       standard: 'Execução Padrão de Fluxo de Trabalho',
     },
     startNodes: {
-      unlimited: 'Gatilhos/workflow ilimitados',
+      unlimited: 'Eventos de Gatilho/fluxo de trabalho ilimitados',
     },
   },
   plans: {
@@ -131,15 +130,6 @@ const translation = {
       description: 'Obtenha capacidades completas e suporte para sistemas críticos em larga escala.',
       includesTitle: 'Tudo no plano Equipe, além de:',
       features: {
-        7: 'Atualizações e manutenção por Dify oficialmente',
-        6: 'Segurança e controles avançados',
-        0: 'Soluções de implantação escaláveis de nível empresarial',
-        2: 'Recursos exclusivos da empresa',
-        5: 'SLAs negociados pela Dify Partners',
-        1: 'Autorização de Licença Comercial',
-        8: 'Suporte Técnico Profissional',
-        4: 'SSO',
-        3: 'Vários espaços de trabalho e gerenciamento corporativo',
       },
       btnText: 'Contate Vendas',
       priceTip: 'Faturamento Anual Apenas',
@@ -148,9 +138,6 @@ const translation = {
     },
     community: {
       features: {
-        1: 'Espaço de trabalho individual',
-        0: 'Todos os principais recursos lançados no repositório público',
-        2: 'Está em conformidade com a licença de código aberto Dify',
       },
       name: 'Comunidade',
       description: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
@@ -161,10 +148,6 @@ const translation = {
     },
     premium: {
       features: {
-        0: 'Confiabilidade autogerenciada por vários provedores de nuvem',
-        1: 'Espaço de trabalho individual',
-        2: 'Personalização do logotipo e da marca do WebApp',
-        3: 'Suporte prioritário por e-mail e bate-papo',
       },
       includesTitle: 'Tudo da Comunidade, além de:',
       for: 'Para organizações e equipes de médio porte',
@@ -200,15 +183,15 @@ const translation = {
     vectorSpaceTooltip: 'Documentos com o modo de indexação de Alta Qualidade consumirã recursos de Armazenamento de Dados de Conhecimento. Quando o Armazenamento de Dados de Conhecimento atingir o limite, novos documentos não serão carregados.',
     buildApps: 'Desenvolver Apps',
     perMonth: 'por mês',
-    triggerEvents: 'Eventos Desencadeadores',
+    triggerEvents: 'Eventos de Gatilho',
   },
   teamMembers: 'Membros da equipe',
   triggerLimitModal: {
     dismiss: 'Dispensar',
-    usageTitle: 'EVENTOS DESENCADEADORES',
+    usageTitle: 'EVENTOS DE GATILHO',
     title: 'Atualize para desbloquear mais eventos de gatilho',
     upgrade: 'Atualizar',
-    description: 'Você atingiu o limite de gatilhos de eventos de fluxo de trabalho para este plano.',
+    description: 'Você atingiu o limite de eventos de gatilho de fluxo de trabalho para este plano.',
   },
 }
 

@@ -198,15 +198,16 @@ class RagPipelineTransformService:
         graph = workflow_data.get("graph", {})
 
         # Create new app
-        pipeline = Pipeline()
+        pipeline = Pipeline(
+            tenant_id=current_user.current_tenant_id,
+            name=pipeline_data.get("name", ""),
+            description=pipeline_data.get("description", ""),
+            created_by=current_user.id,
+            updated_by=current_user.id,
+            is_published=True,
+            is_public=True,
+        )
         pipeline.id = str(uuid4())
-        pipeline.tenant_id = current_user.current_tenant_id
-        pipeline.name = pipeline_data.get("name", "")
-        pipeline.description = pipeline_data.get("description", "")
-        pipeline.created_by = current_user.id
-        pipeline.updated_by = current_user.id
-        pipeline.is_published = True
-        pipeline.is_public = True
 
         db.session.add(pipeline)
         db.session.flush()

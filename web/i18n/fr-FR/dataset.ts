@@ -36,8 +36,6 @@ const translation = {
       recommend: 'Recommander',
     },
     invertedIndex: {
-      title: 'Index inversé',
-      description: 'L\'Index inversé est une structure utilisée pour une récupération efficace. Organisé par termes, chaque terme pointe vers des documents ou des pages web le contenant.',
     },
     change: 'Changer',
     changeRetrievalMethod: 'Changer la méthode de récupération',

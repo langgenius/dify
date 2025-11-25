@@ -78,8 +78,6 @@ const translation = {
       description: 'Jalankan pencarian teks lengkap dan pencarian vektor secara bersamaan, peringkatkan ulang untuk memilih kecocokan terbaik untuk kueri pengguna. Pengguna dapat memilih untuk mengatur bobot atau mengonfigurasi ke model Rerank.',
     },
     invertedIndex: {
-      title: 'Indeks Terbalik',
-      description: 'Indeks Terbalik adalah struktur yang digunakan untuk pengambilan yang efisien. Diatur berdasarkan istilah, setiap istilah menunjuk ke dokumen atau halaman web yang berisinya.',
     },
     change: 'Ubah',
     changeRetrievalMethod: 'Ubah metode pengambilan',
