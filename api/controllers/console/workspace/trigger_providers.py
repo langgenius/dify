@@ -248,24 +248,11 @@ class TriggerSubscriptionBuilderLogsApi(Resource):
             raise
 
 
-parser_build_api = (
-    reqparse.RequestParser()
-    # The name of the subscription builder
-    .add_argument("name", type=str, required=False, nullable=True, location="json")
-    # The parameters of the subscription builder
-    .add_argument("parameters", type=dict, required=False, nullable=True, location="json")
-    # The properties of the subscription builder
-    .add_argument("properties", type=dict, required=False, nullable=True, location="json")
-    # The credentials of the subscription builder
-    .add_argument("credentials", type=dict, required=False, nullable=True, location="json")
-)
-
-
 @console_ns.route(
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/build/<path:subscription_builder_id>",
 )
 class TriggerSubscriptionBuilderBuildApi(Resource):
-    @console_ns.expect(parser_build_api)
+    @console_ns.expect(parser_update_api)
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -274,7 +261,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
         """Build a subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
-        args = parser_build_api.parse_args()
+        args = parser_update_api.parse_args()
         try:
             # Use atomic update_and_build to prevent race conditions
             TriggerSubscriptionBuilderService.update_and_build_builder(
