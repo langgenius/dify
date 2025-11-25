@@ -46,7 +46,6 @@ const translation = {
     annotatedResponse: {
       tooltip: 'Pengeditan manual dan anotasi respons memberikan kemampuan menjawab pertanyaan berkualitas tinggi yang dapat disesuaikan untuk aplikasi. (Hanya berlaku di aplikasi Chat)',
     },
-    title: 'Harga yang mendukung perjalanan AI Anda',
     mostPopular: 'Populer',
     free: 'Bebas',
     freeTrialTipSuffix: 'Tidak perlu kartu kredit',
@@ -123,9 +122,6 @@ const translation = {
     },
     community: {
       features: {
-        0: 'Semua fitur inti dirilis di bawah repositori publik',
-        1: 'Ruang Kerja Tunggal',
-        2: 'Sesuai dengan Lisensi Sumber Terbuka Dify',
       },
       price: 'Bebas',
       for: 'Untuk Pengguna Individu, Tim Kecil, atau Proyek Non-Komersial',
@@ -136,10 +132,6 @@ const translation = {
     },
     premium: {
       features: {
-        2: 'Kustomisasi Logo & Branding WebApp',
-        3: 'Dukungan Email & Obrolan Prioritas',
-        0: 'Keandalan yang dikelola sendiri oleh berbagai penyedia cloud',
-        1: 'Ruang Kerja Tunggal',
       },
       name: 'Premi',
       price: 'Scalable',
@@ -152,15 +144,6 @@ const translation = {
     },
     enterprise: {
       features: {
-        5: 'SLA yang Dinegosiasikan oleh Mitra Dify',
-        3: 'Beberapa Ruang Kerja & Manajemen Perusahaan',
-        4: 'SSO',
-        2: 'Fitur Eksklusif Enterprise',
-        7: 'Pembaruan dan Pemeliharaan oleh Dify Secara Resmi',
-        1: 'Otorisasi Lisensi Komersial',
-        8: 'Dukungan Teknis Profesional',
-        0: 'Solusi Penerapan yang Dapat Diskalakan Tingkat Perusahaan',
-        6: 'Keamanan & Kontrol Tingkat Lanjut',
       },
       includesTitle: 'Semuanya mulai dari Premium, ditambah:',
       btnText: 'Hubungi Sales',
