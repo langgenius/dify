@@ -12,8 +12,6 @@ This test suite covers:
 import json
 from uuid import uuid4
 
-import pytest
-
 from core.tools.entities.tool_entities import ApiProviderSchemaType
 from models.tools import (
     ApiToolProvider,
