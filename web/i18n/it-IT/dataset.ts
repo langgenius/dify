@@ -41,6 +41,9 @@ const translation = {
       recommend: 'Consigliato',
     },
     invertedIndex: {
+      title: 'Indice Invertito',
+      description:
+        'L\'Indice Invertito è una struttura utilizzata per il recupero efficiente. Organizzato per termini, ogni termine punta ai documenti o alle pagine web che lo contengono.',
     },
     change: 'Cambia',
     changeRetrievalMethod: 'Cambia metodo di recupero',

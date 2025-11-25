@@ -36,6 +36,8 @@ const translation = {
       recommend: 'Đề xuất',
     },
     invertedIndex: {
+      title: 'Chỉ mục Ngược',
+      description: 'Chỉ mục Ngược là một cấu trúc được sử dụng cho việc truy xuất hiệu quả. Nó được tổ chức theo thuật ngữ, mỗi thuật ngữ trỏ đến tài liệu hoặc trang web chứa nó.',
     },
     change: 'Thay đổi',
     changeRetrievalMethod: 'Thay đổi phương pháp truy xuất',

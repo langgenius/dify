@@ -36,6 +36,8 @@ const translation = {
       recommend: 'Recomandat',
     },
     invertedIndex: {
+      title: 'Index Inversat',
+      description: 'Indexul inversat este o structură utilizată pentru recuperare eficientă. Organizat după termeni, fiecare termen indică documentele sau paginile web care îl conțin.',
     },
     change: 'Schimbă',
     changeRetrievalMethod: 'Schimbă metoda de recuperare',

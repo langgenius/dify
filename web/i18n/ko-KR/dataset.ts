@@ -35,6 +35,8 @@ const translation = {
       recommend: '추천',
     },
     invertedIndex: {
+      title: '역 인덱스',
+      description: '효율적인 검색에 사용되는 구조입니다. 각 용어는 문서나 웹 페이지에 포함된 것을 가리키며, 용어마다 체계적으로 정리되어 있습니다.',
     },
     change: '변경',
     changeRetrievalMethod: '검색 방법 변경',
