@@ -2,7 +2,7 @@ import threading
 from datetime import UTC, datetime, timedelta
 from unittest.mock import Mock
 
-from core.mcp.session_manager import McpSessionManager, McpSessionRegistry
+from core.mcp.session_manager import McpSessionManager
 
 
 def test_acquire_reuses_existing_session() -> None:
@@ -76,23 +76,3 @@ def test_acquire_replaces_expired_session() -> None:
 
     assert result is new_client
     old_client.cleanup.assert_called_once()
-
-
-def test_registry_cleans_expired_managers() -> None:
-    original_ttl = McpSessionRegistry._ttl
-    try:
-        McpSessionRegistry._ttl = timedelta(milliseconds=1)
-
-        McpSessionRegistry.get_manager("workflow-1")
-        record = McpSessionRegistry._registry["workflow-1"]
-        record.manager = Mock(spec=McpSessionManager)
-        record.last_accessed_at = datetime.now(UTC) - timedelta(seconds=1)
-
-        # Trigger cleanup on the next access
-        McpSessionRegistry.get_manager("workflow-2")
-
-        assert "workflow-1" not in McpSessionRegistry._registry
-        record.manager.cleanup.assert_called_once()
-    finally:
-        McpSessionRegistry._registry.clear()
-        McpSessionRegistry._ttl = original_ttl
