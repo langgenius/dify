@@ -247,9 +247,9 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
               <a
                 href={docLink('/guides/extension/api-based-extension/README')}
                 target='_blank' rel='noopener noreferrer'
-                className='group flex items-center text-xs font-normal text-text-tertiary hover:text-primary-600'
+                className='group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent'
               >
-                <BookOpen01 className='mr-1 h-3 w-3 text-text-tertiary group-hover:text-primary-600' />
+                <BookOpen01 className='mr-1 h-3 w-3 text-text-tertiary group-hover:text-text-accent' />
                 {t('common.apiBasedExtension.link')}
               </a>
             </div>
