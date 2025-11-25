@@ -187,7 +187,7 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
           continue
 
         const translationResult = await translateText(item, toLanguage)
-        targetArray[i] = translationResult.value
+        targetArray[i] = translationResult.value ?? ''
         if (translationResult.skipped)
           skippedKeys.push(`${pathKey}: ${item}`)
         else
@@ -232,6 +232,18 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
       const result = await translateMissingKeyDeeply(sourceValue, targetChild, toLanguage)
       skippedKeys.push(...result.skipped.map(k => `${key}.${k}`))
       translatedKeys.push(...result.translated.map(k => `${key}.${k}`))
+    }
+    else {
+      // Overwrite when type is different or value is missing to keep structure in sync
+      const shouldUpdate = typeof targetValue !== typeof sourceValue || targetValue === undefined || targetValue === null
+      if (shouldUpdate) {
+        const translationResult = await translateText(sourceValue, toLanguage)
+        targetObject[key] = translationResult.value ?? ''
+        if (translationResult.skipped)
+          skippedKeys.push(`${key}: ${sourceValue}`)
+        else
+          translatedKeys.push(key)
+      }
     }
   }
 
