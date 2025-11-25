@@ -108,8 +108,6 @@ const translation = {
       recommend: 'Priporočamo',
     },
     invertedIndex: {
-      title: 'Inverzni indeks',
-      description: 'Inverzni indeks je struktura, ki se uporablja za učinkovito pridobivanje. Organizirano po izrazih, vsak izraz kaže na dokumente ali spletne strani, ki ga vsebujejo.',
     },
     change: 'Spremeni',
     changeRetrievalMethod: 'Spremeni metodo pridobivanja',

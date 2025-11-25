@@ -36,8 +36,6 @@ const translation = {
       recommend: '推薦',
     },
     invertedIndex: {
-      title: '倒排索引',
-      description: '倒排索引是一種用於高效檢索的結構。按術語組織，每個術語指向包含它的文件或網頁',
     },
     change: '更改',
     changeRetrievalMethod: '更改檢索方法',

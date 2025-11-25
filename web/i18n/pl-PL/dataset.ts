@@ -40,9 +40,6 @@ const translation = {
       recommend: 'Polecany',
     },
     invertedIndex: {
-      title: 'Indeks odwrócony',
-      description:
-        'Indeks odwrócony to struktura używana do efektywnego odzyskiwania informacji. Zorganizowane według terminów, każdy termin wskazuje na dokumenty lub strony internetowe zawierające go.',
     },
     change: 'Zmień',
     changeRetrievalMethod: 'Zmień metodę odzyskiwania',
