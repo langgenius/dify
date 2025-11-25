@@ -70,8 +70,8 @@ const translation = {
       moreThanMaxLengthLine: 'Dòng {{rowIndex}}: {{varName}} không thể chứa quá {{maxLength}} ký tự',
       atLeastOne: 'Vui lòng nhập ít nhất một dòng vào tệp đã tải lên.',
     },
-    executions: '{{num}} ÁN TỬ HÌNH',
-    execution: 'THI HÀNH',
+    execution: 'Chạy',
+    executions: '{{num}} lần chạy',
     stopRun: 'Dừng thực thi',
   },
   login: {

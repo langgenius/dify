@@ -28,10 +28,12 @@ const translation = {
       viewDetails: '查看詳情',
       error: '執行期間發生錯誤',
       loading: '處理中...請稍候',
+      footerTip: '在測試運行模式下，可預覽最多 {{count}} 個區塊',
     },
   },
   ragToolSuggestions: {
     title: 'RAG 的建議',
+    noRecommendationPlugins: '沒有推薦的插件，請在 <CustomLink>市場</CustomLink> 中尋找更多',
   },
 }
 

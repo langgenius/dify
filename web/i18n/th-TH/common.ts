@@ -65,6 +65,12 @@ const translation = {
     deleteConfirmTitle: 'ลบหรือไม่?',
     confirmAction: 'กรุณายืนยันการกระทำของคุณ',
     yes: 'ใช่',
+    noSearchResults: 'ไม่พบ {{content}}',
+    resetKeywords: 'รีเซ็ตคำสำคัญ',
+    selectCount: '{{count}} ที่เลือก',
+    searchCount: 'ค้นหา {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'ตอนนี้',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -73,6 +79,7 @@ const translation = {
   placeholder: {
     input: 'กรุณากรอก',
     select: 'กรุณาเลือก',
+    search: 'ค้นหา...',
   },
   voice: {
     language: {
@@ -763,6 +770,13 @@ const translation = {
   },
   label: {
     optional: '(ไม่บังคับ)',
+  },
+  noData: 'ไม่มีข้อมูล',
+  dynamicSelect: {
+    error: 'การโหลดตัวเลือกล้มเหลว',
+    noData: 'ไม่มีตัวเลือก available',
+    loading: 'กำลังโหลดตัวเลือก...',
+    selected: '{{count}} ที่ถูกเลือก',
   },
 }
 

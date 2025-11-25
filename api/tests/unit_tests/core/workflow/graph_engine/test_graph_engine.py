@@ -744,7 +744,7 @@ def test_graph_run_emits_partial_success_when_node_failure_recovered():
     )
 
     llm_node = graph.nodes["llm"]
-    base_node_data = llm_node.get_base_node_data()
+    base_node_data = llm_node.node_data
     base_node_data.error_strategy = ErrorStrategy.DEFAULT_VALUE
     base_node_data.default_value = [DefaultValue(key="text", value="fallback response", type=DefaultValueType.STRING)]
 

@@ -67,6 +67,10 @@ const Operation: FC<OperationProps> = ({
     agent_thoughts,
   } = item
   const [localFeedback, setLocalFeedback] = useState(config?.supportAnnotation ? adminFeedback : feedback)
+  const [adminLocalFeedback, setAdminLocalFeedback] = useState(adminFeedback)
+
+  // Separate feedback types for display
+  const userFeedback = feedback
 
   const content = useMemo(() => {
     if (agent_thoughts?.length)
@@ -81,6 +85,10 @@ const Operation: FC<OperationProps> = ({
 
     await onFeedback?.(id, { rating, content })
     setLocalFeedback({ rating })
+
+    // Update admin feedback state separately if annotation is supported
+    if (config?.supportAnnotation)
+      setAdminLocalFeedback(rating ? { rating } : undefined)
   }
 
   const handleThumbsDown = () => {
@@ -180,18 +188,53 @@ const Operation: FC<OperationProps> = ({
             )}
           </div>
         )}
-        {!isOpeningStatement && config?.supportFeedback && localFeedback?.rating && onFeedback && (
+        {!isOpeningStatement && config?.supportFeedback && onFeedback && (
           <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
-            {localFeedback?.rating === 'like' && (
-              <ActionButton state={ActionButtonState.Active} onClick={() => handleFeedback(null)}>
-                <RiThumbUpLine className='h-4 w-4' />
-              </ActionButton>
+            {/* User Feedback Display */}
+            {userFeedback?.rating && (
+              <div className='flex items-center'>
+                <span className='mr-1 text-xs text-text-tertiary'>User</span>
+                {userFeedback.rating === 'like' ? (
+                  <ActionButton state={ActionButtonState.Active} title={userFeedback.content ? `User liked this response: ${userFeedback.content}` : 'User liked this response'}>
+                    <RiThumbUpLine className='h-3 w-3' />
+                  </ActionButton>
+                ) : (
+                  <ActionButton state={ActionButtonState.Destructive} title={userFeedback.content ? `User disliked this response: ${userFeedback.content}` : 'User disliked this response'}>
+                    <RiThumbDownLine className='h-3 w-3' />
+                  </ActionButton>
+                )}
+              </div>
             )}
-            {localFeedback?.rating === 'dislike' && (
-              <ActionButton state={ActionButtonState.Destructive} onClick={() => handleFeedback(null)}>
-                <RiThumbDownLine className='h-4 w-4' />
-              </ActionButton>
+
+            {/* Admin Feedback Controls */}
+            {config?.supportAnnotation && (
+              <div className='flex items-center'>
+                {userFeedback?.rating && <div className='mx-1 h-3 w-[0.5px] bg-components-actionbar-border' />}
+                {!adminLocalFeedback?.rating ? (
+                  <>
+                    <ActionButton onClick={() => handleFeedback('like')}>
+                      <RiThumbUpLine className='h-4 w-4' />
+                    </ActionButton>
+                    <ActionButton onClick={handleThumbsDown}>
+                      <RiThumbDownLine className='h-4 w-4' />
+                    </ActionButton>
+                  </>
+                ) : (
+                  <>
+                    {adminLocalFeedback.rating === 'like' ? (
+                      <ActionButton state={ActionButtonState.Active} onClick={() => handleFeedback(null)}>
+                        <RiThumbUpLine className='h-4 w-4' />
+                      </ActionButton>
+                    ) : (
+                      <ActionButton state={ActionButtonState.Destructive} onClick={() => handleFeedback(null)}>
+                        <RiThumbDownLine className='h-4 w-4' />
+                      </ActionButton>
+                    )}
+                  </>
+                )}
+              </div>
             )}
+
           </div>
         )}
       </div>

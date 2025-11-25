@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Upravljanje s plačili in naročninami',
   buyPermissionDeniedTip: 'Za naročnino kontaktirajte svojega skrbnika podjetja',
   plansCommon: {
-    title: 'Izberite načrt, ki vam ustreza',
     yearlyTip: 'Z letno naročnino pridobite 2 meseca brezplačno!',
     mostPopular: 'Najbolj priljubljeno',
     planRange: {
@@ -99,6 +98,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Neomejeni sprožilni dogodki',
       tooltip: 'Število dogodkov, ki samodejno sprožijo delovne tokove prek vtičnika, urnika ali sprožilcev spletnih klicev.',
+      sandbox: '{{count,number}} Sprožilni dogodki',
+      professional: '{{count,number}} Sprožilni dogodki/mesec',
     },
     workflowExecution: {
       standard: 'Izvajanje standardnega delovnega procesa',
@@ -108,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Neomejeni sprožilci/poteki dela',
+      limited: 'Do {{count}} sprožilcev/poteka dela',
+    },
+    title: {
+      plans: 'plani',
+      description: 'Izberite načrt, ki najbolj ustreza potrebam vaše ekipe.',
     },
   },
   plans: {
@@ -130,28 +136,14 @@ const translation = {
       name: 'Podjetje',
       description: 'Pridobite vse zmogljivosti in podporo za velike sisteme kritične za misijo.',
       includesTitle: 'Vse v načrtu Ekipa, plus:',
-      features: {
-        4: 'SSO',
-        6: 'Napredna varnost in nadzor',
-        8: 'Strokovna tehnična podpora',
-        2: 'Ekskluzivne funkcije za podjetja',
-        1: 'Dovoljenje za komercialno licenco',
-        3: 'Več delovnih prostorov in upravljanje podjetja',
-        7: 'Posodobitve in vzdrževanje s strani Dify Official',
-        5: 'Dogovorjene pogodbe o ravni storitev s strani Dify Partners',
-        0: 'Prilagodljive rešitve za uvajanje na ravni podjetij',
-      },
+      features: ['Razširljive rešitve za uvajanje na ravni podjetja', 'Pooblastilo za komercialno licenco', 'Ekskluzivne funkcije za podjetja', 'Več delovnih prostorov in upravljanje podjetja', 'SSO', 'Pogajani SLA-ji s strani partnerjev Dify', 'Napredna varnost in nadzor', 'Posodobitve in vzdrževanje uradno s strani Dify', 'Strokovna tehnična podpora'],
       priceTip: 'Letno zaračunavanje samo',
       price: 'Po meri',
       btnText: 'Kontaktirajte prodajo',
       for: 'Za velike ekipe',
     },
     community: {
-      features: {
-        2: 'Skladen z odprtokodno licenco Dify',
-        1: 'En delovni prostor',
-        0: 'Vse osnovne funkcije, izdane v javnem repozitoriju',
-      },
+      features: ['Vse osnovne funkcije so izdane v javni repozitorij', 'Enotno delovno okolje', 'V skladu z Dify licenco odprte kode'],
       includesTitle: 'Brezplačne funkcije:',
       price: 'Brezplačno',
       name: 'Skupnost',
@@ -160,12 +152,7 @@ const translation = {
       btnText: 'Začnite s skupnostjo',
     },
     premium: {
-      features: {
-        3: 'Prednostna podpora po e-pošti in klepetu',
-        0: 'Samostojna zanesljivost različnih ponudnikov storitev v oblaku',
-        2: 'Prilagajanje logotipa in blagovne znamke WebApp',
-        1: 'En delovni prostor',
-      },
+      features: ['Samo-upravljana zanesljivost različnih ponudnikov oblaka', 'Enotno delovno okolje', 'Prilagoditev logotipa in blagovne znamke spletne aplikacije', 'Prioritetna e-pošta in klepet v živo'],
       name: 'Premium',
       priceTip: 'Na podlagi oblaka Marketplace',
       price: 'Škalable',
@@ -201,6 +188,7 @@ const translation = {
     buildApps: 'Gradite aplikacije',
     perMonth: 'na mesec',
     triggerEvents: 'Sprožilni dogodki',
+    resetsIn: 'Ponastavitve čez {{count,number}} dni',
   },
   teamMembers: 'Člani ekipe',
   triggerLimitModal: {
