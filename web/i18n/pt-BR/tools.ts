@@ -98,6 +98,13 @@ const translation = {
     nameForToolCallTip: 'Suporta apenas números, letras e sublinhados.',
     descriptionPlaceholder: 'Breve descrição da finalidade da ferramenta, por exemplo, obter a temperatura para um local específico.',
     nameForToolCallPlaceHolder: 'Usado para reconhecimento de máquina, como getCurrentWeather, list_pets',
+    toolOutput: {
+      title: 'Saída da ferramenta',
+      name: 'Nome',
+      reserved: 'Reservado',
+      reservedParameterDuplicateTip: 'texto, json e arquivos são variáveis reservadas. Variáveis com esses nomes não podem aparecer no esquema de saída.',
+      description: 'Descrição',
+    },
   },
   test: {
     title: 'Testar',

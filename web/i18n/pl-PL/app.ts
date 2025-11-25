@@ -303,6 +303,8 @@ const translation = {
       docDesc: 'Otwórz dokumentację pomocy',
       accountDesc: 'Przejdź do strony konta',
       feedbackDesc: 'Otwarte dyskusje na temat opinii społeczności',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: 'Nie znaleziono aplikacji',

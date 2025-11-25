@@ -123,6 +123,13 @@ const translation = {
     confirmTip: 'इस उपकरण का उपयोग करने वाले ऐप्स प्रभावित होंगे',
     deleteToolConfirmTitle: 'इस उपकरण को हटाएं?',
     deleteToolConfirmContent: 'इस उपकरण को हटाने से वापस नहीं आ सकता है। उपयोगकर्ता अब तक आपके उपकरण पर अन्तराल नहीं कर सकेंगे।',
+    toolOutput: {
+      title: 'उपकरण आउटपुट',
+      name: 'नाम',
+      reserved: 'आरक्षित',
+      reservedParameterDuplicateTip: 'text, json, और फाइलें आरक्षित वेरिएबल हैं। इन नामों वाले वेरिएबल आउटपुट स्कीमा में दिखाई नहीं दे सकते।',
+      description: 'विवरण',
+    },
   },
   test: {
     title: 'परीक्षण',

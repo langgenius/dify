@@ -114,7 +114,11 @@ const translation = {
         },
       },
       launch: 'Lansa',
-      enableTooltip: {},
+      enableTooltip: {
+        description: 'Pentru a activa această funcție, vă rugăm să adăugați un nod de introducere a utilizatorului pe canvas. (Poate exista deja în schiță, are efect după publicare)',
+        learnMore: 'Aflați mai multe',
+      },
+      title: 'Aplicație web',
     },
     apiInfo: {
       title: 'API serviciu backend',
@@ -126,7 +130,14 @@ const translation = {
       running: 'În service',
       disable: 'Dezactivat',
     },
-    triggerInfo: {},
+    triggerInfo: {
+      title: 'Declanșatoare',
+      explanation: 'Gestionarea declanșatoarelor de flux de lucru',
+      triggersAdded: '{{count}} Declanșatoare adăugate',
+      noTriggerAdded: 'Niciun declanșator adăugat',
+      triggerStatusDescription: 'Starea nodului declanșator apare aici. (Poate exista deja în draft, devine efectivă după publicare)',
+      learnAboutTriggers: 'Află despre Declanșatoare',
+    },
     disableTooltip: {
       triggerMode: 'Funcționalitatea {{feature}} nu este suportată în modul Nod Trigger.',
     },

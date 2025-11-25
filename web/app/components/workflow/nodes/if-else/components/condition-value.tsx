@@ -3,7 +3,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { ComparisonOperator } from '../types'
 import {
   comparisonOperatorNotRequireValue,
@@ -46,7 +46,7 @@ const ConditionValue = ({
     if (Array.isArray(value)) // transfer method
       return value[0]
 
-    if(value === true || value === false)
+    if (value === true || value === false)
       return value ? 'True' : 'False'
 
     return value.replace(/{{#([^#]*)#}}/g, (a, b) => {

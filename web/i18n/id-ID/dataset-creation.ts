@@ -35,6 +35,8 @@ const translation = {
       validation: {
         count: 'Beberapa file tidak didukung',
         typeError: 'Jenis file tidak didukung',
+        size: 'Berkas terlalu besar. Maksimal {{size}}MB',
+        filesNumber: 'Anda telah mencapai batas unggah batch sebanyak {{filesNumber}}.',
       },
       buttonSingleFile: 'Seret dan lepas file, atau',
       title: 'Unggah file',
@@ -43,6 +45,7 @@ const translation = {
       button: 'Seret dan lepas file atau folder, atau',
       change: 'Ubah',
       failed: 'Upload gagal',
+      tip: 'Mendukung {{supportTypes}}. Maksimal {{batchCount}} dalam satu batch dan {{size}} MB masing-masing. Total maksimal {{totalCount}} file.',
     },
     modal: {
       title: 'Buat Pengetahuan kosong',
@@ -92,6 +95,7 @@ const translation = {
       firecrawlDoc: 'Dokumen Firecrawl',
       configureWatercrawl: 'Konfigurasikan Watercrawl',
       running: 'Menjalankan',
+      scrapTimeInfo: 'Telah mengumpulkan {{total}} halaman secara total dalam {{time}} detik',
     },
     pagePreview: 'Pratinjau Halaman',
     notionSyncTitle: 'Notion tidak terhubung',
@@ -183,6 +187,8 @@ const translation = {
     general: 'Umum',
     indexSettingTip: 'Untuk mengubah metode indeks & model penyematan, silakan pergi ke',
     qaTip: 'Saat menggunakan data Tanya Jawab terstruktur, Anda dapat membuat dokumen yang memasangkan pertanyaan dengan jawaban. Dokumen-dokumen ini diindeks berdasarkan bagian pertanyaan, memungkinkan sistem untuk mengambil jawaban yang relevan berdasarkan kesamaan kueri.',
+    maxLengthCheck: 'Panjang potongan maksimum sebaiknya kurang dari {{limit}}',
+    previewChunkCount: '{{count}} Potongan perkiraan',
   },
   stepThree: {
     modelTitle: 'Apakah Anda yakin untuk berhenti menyematkan?',
