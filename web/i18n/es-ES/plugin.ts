@@ -7,6 +7,7 @@ const translation = {
     agents: 'Estrategias de los agentes',
     models: 'Modelos',
     datasources: 'Fuentes de datos',
+    triggers: 'Desencadenantes',
   },
   categorySingle: {
     bundle: 'Haz',
@@ -15,6 +16,7 @@ const translation = {
     model: 'Modelo',
     agent: 'Estrategia del agente',
     datasource: 'Fuente de datos',
+    trigger: 'Disparador',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       remove: 'Eliminar',
       info: 'Información del plugin',
       update: 'Actualizar',
+      back: 'Atrás',
     },
     toolSelector: {
       toolLabel: 'Herramienta',
@@ -227,6 +230,11 @@ const translation = {
       'Los complementos {{errorLength}} no se pudieron instalar, haga clic para ver',
     installingWithError:
       'Instalando plugins {{installingLength}}, {{successLength}} éxito, {{errorLength}} fallido',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   fromMarketplace: 'De Marketplace',
   endpointsEnabled: '{{num}} conjuntos de puntos finales habilitados',
@@ -339,6 +347,12 @@ const translation = {
     changeTimezone:
       'Para cambiar la zona horaria, ve a <setTimezone>Configuración</setTimezone>.',
     automaticUpdates: 'Actualizaciones automáticas',
+  },
+  readmeInfo: {
+    title: 'LEEME',
+    needHelpCheckReadme: '¿Necesitas ayuda? Revisa el README.',
+    noReadmeAvailable: 'No hay archivo README disponible',
+    failedToFetch: 'No se pudo obtener el README',
   },
 }
 

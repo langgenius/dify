@@ -6,12 +6,23 @@ BASE_CORS_HEADERS: tuple[str, ...] = ("Content-Type", HEADER_NAME_APP_CODE, HEAD
 SERVICE_API_HEADERS: tuple[str, ...] = (*BASE_CORS_HEADERS, "Authorization")
 AUTHENTICATED_HEADERS: tuple[str, ...] = (*SERVICE_API_HEADERS, HEADER_NAME_CSRF_TOKEN)
 FILES_HEADERS: tuple[str, ...] = (*BASE_CORS_HEADERS, HEADER_NAME_CSRF_TOKEN)
+EXPOSED_HEADERS: tuple[str, ...] = ("X-Version", "X-Env", "X-Trace-Id")
+
+
+def _apply_cors_once(bp, /, **cors_kwargs):
+    """Make CORS idempotent so blueprints can be reused across multiple app instances."""
+
+    if getattr(bp, "_dify_cors_applied", False):
+        return
+
+    from flask_cors import CORS
+
+    CORS(bp, **cors_kwargs)
+    bp._dify_cors_applied = True
 
 
 def init_app(app: DifyApp):
     # register blueprint routers
-
-    from flask_cors import CORS
 
     from controllers.console import bp as console_app_bp
     from controllers.files import bp as files_bp
@@ -21,37 +32,39 @@ def init_app(app: DifyApp):
     from controllers.trigger import bp as trigger_bp
     from controllers.web import bp as web_bp
 
-    CORS(
+    _apply_cors_once(
         service_api_bp,
         allow_headers=list(SERVICE_API_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
+        expose_headers=list(EXPOSED_HEADERS),
     )
     app.register_blueprint(service_api_bp)
 
-    CORS(
+    _apply_cors_once(
         web_bp,
         resources={r"/*": {"origins": dify_config.WEB_API_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
         allow_headers=list(AUTHENTICATED_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
-        expose_headers=["X-Version", "X-Env"],
+        expose_headers=list(EXPOSED_HEADERS),
     )
     app.register_blueprint(web_bp)
 
-    CORS(
+    _apply_cors_once(
         console_app_bp,
         resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
         allow_headers=list(AUTHENTICATED_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
-        expose_headers=["X-Version", "X-Env"],
+        expose_headers=list(EXPOSED_HEADERS),
     )
     app.register_blueprint(console_app_bp)
 
-    CORS(
+    _apply_cors_once(
         files_bp,
         allow_headers=list(FILES_HEADERS),
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
+        expose_headers=list(EXPOSED_HEADERS),
     )
     app.register_blueprint(files_bp)
 
@@ -59,9 +72,10 @@ def init_app(app: DifyApp):
     app.register_blueprint(mcp_bp)
 
     # Register trigger blueprint with CORS for webhook calls
-    CORS(
+    _apply_cors_once(
         trigger_bp,
         allow_headers=["Content-Type", "Authorization", "X-App-Code"],
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH", "HEAD"],
+        expose_headers=list(EXPOSED_HEADERS),
     )
     app.register_blueprint(trigger_bp)

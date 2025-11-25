@@ -3,6 +3,7 @@ from typing import Any
 
 from core.app.app_config.entities import VariableEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.workflow.nodes.base.entities import OutputVariableEntity
 
 
 class WorkflowToolConfigurationUtils:
@@ -23,6 +24,31 @@ class WorkflowToolConfigurationUtils:
             return []
 
         return [VariableEntity.model_validate(variable) for variable in start_node.get("data", {}).get("variables", [])]
+
+    @classmethod
+    def get_workflow_graph_output(cls, graph: Mapping[str, Any]) -> Sequence[OutputVariableEntity]:
+        """
+        get workflow graph output
+        """
+        nodes = graph.get("nodes", [])
+        outputs_by_variable: dict[str, OutputVariableEntity] = {}
+        variable_order: list[str] = []
+
+        for node in nodes:
+            if node.get("data", {}).get("type") != "end":
+                continue
+
+            for output in node.get("data", {}).get("outputs", []):
+                entity = OutputVariableEntity.model_validate(output)
+                variable = entity.variable
+
+                if variable not in variable_order:
+                    variable_order.append(variable)
+
+                # Later end nodes override duplicated variable definitions.
+                outputs_by_variable[variable] = entity
+
+        return [outputs_by_variable[variable] for variable in variable_order]
 
     @classmethod
     def check_is_synced(

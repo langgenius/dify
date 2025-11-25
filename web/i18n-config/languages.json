@@ -146,6 +146,13 @@
       "prompt_name": "Indonesian",
       "example": "Halo, Dify!",
       "supported": true
+    },
+    {
+      "value": "ar-TN",
+      "name": "العربية (تونس)",
+      "prompt_name": "Tunisian Arabic",
+      "example": "مرحبا، Dify!",
+      "supported": true
     }
   ]
 }

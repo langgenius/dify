@@ -65,10 +65,17 @@ const translation = {
     no: 'Nie',
     deleteConfirmTitle: 'Usunąć?',
     confirmAction: 'Proszę potwierdzić swoją akcję.',
+    noSearchResults: 'Nie znaleziono {{content}}',
+    resetKeywords: 'Resetuj słowa kluczowe',
+    selectCount: '{{count}} Wybrane',
+    searchCount: 'Znajdź {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Teraz',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
     select: 'Proszę wybrać',
+    search: 'Szukaj...',
   },
   voice: {
     language: {
@@ -92,6 +99,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turecki',
       faIR: 'Perski',
+      slSI: 'Słoweński',
+      arTN: 'Arabski tunezyjski',
     },
   },
   unit: {
@@ -745,6 +754,7 @@ const translation = {
     fileExtensionNotSupport: 'Rozszerzenie pliku nie jest obsługiwane',
     uploadFromComputer: 'Przesyłanie lokalne',
     fileExtensionBlocked: 'Ten typ pliku jest zablokowany ze względów bezpieczeństwa',
+    uploadDisabled: 'Przesyłanie plików jest wyłączone',
   },
   license: {
     expiring_plural: 'Wygasa za {{count}} dni',
@@ -786,6 +796,13 @@ const translation = {
   },
   label: {
     optional: '(Opcjonalnie)',
+  },
+  noData: 'Brak danych',
+  dynamicSelect: {
+    error: 'Nie udało się załadować opcji',
+    noData: 'Brak dostępnych opcji',
+    loading: 'Ładowanie opcji...',
+    selected: '{{count}} wybrano',
   },
 }
 

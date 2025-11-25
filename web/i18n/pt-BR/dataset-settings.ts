@@ -26,6 +26,7 @@ const translation = {
       description: ' sobre o método de recuperação.',
       longDescription: ' sobre o método de recuperação, você pode alterar isso a qualquer momento nas configurações do conhecimento.',
       method: 'Método de Recuperação',
+      multiModalTip: 'Quando o modelo de incorporação suportar multimodal, por favor selecione um modelo de reclassificação multimodal para melhor desempenho.',
     },
     save: 'Salvar',
     permissionsInvitedMembers: 'Membros parciais da equipe',

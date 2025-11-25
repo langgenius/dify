@@ -34,6 +34,7 @@ x-shared-env: &shared-api-worker-env
   FILES_ACCESS_TIMEOUT: ${FILES_ACCESS_TIMEOUT:-300}
   ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
   REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-30}
+  APP_DEFAULT_ACTIVE_REQUESTS: ${APP_DEFAULT_ACTIVE_REQUESTS:-0}
   APP_MAX_ACTIVE_REQUESTS: ${APP_MAX_ACTIVE_REQUESTS:-0}
   APP_MAX_EXECUTION_TIME: ${APP_MAX_EXECUTION_TIME:-1200}
   DIFY_BIND_ADDRESS: ${DIFY_BIND_ADDRESS:-0.0.0.0}
@@ -164,6 +165,7 @@ x-shared-env: &shared-api-worker-env
   WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
   WEAVIATE_GRPC_ENDPOINT: ${WEAVIATE_GRPC_ENDPOINT:-grpc://weaviate:50051}
+  WEAVIATE_TOKENIZATION: ${WEAVIATE_TOKENIZATION:-word}
   OCEANBASE_VECTOR_HOST: ${OCEANBASE_VECTOR_HOST:-oceanbase}
   OCEANBASE_VECTOR_PORT: ${OCEANBASE_VECTOR_PORT:-2881}
   OCEANBASE_VECTOR_USER: ${OCEANBASE_VECTOR_USER:-root@test}
@@ -359,9 +361,26 @@ x-shared-env: &shared-api-worker-env
   CLICKZETTA_ANALYZER_TYPE: ${CLICKZETTA_ANALYZER_TYPE:-chinese}
   CLICKZETTA_ANALYZER_MODE: ${CLICKZETTA_ANALYZER_MODE:-smart}
   CLICKZETTA_VECTOR_DISTANCE_FUNCTION: ${CLICKZETTA_VECTOR_DISTANCE_FUNCTION:-cosine_distance}
+  IRIS_HOST: ${IRIS_HOST:-iris}
+  IRIS_SUPER_SERVER_PORT: ${IRIS_SUPER_SERVER_PORT:-1972}
+  IRIS_WEB_SERVER_PORT: ${IRIS_WEB_SERVER_PORT:-52773}
+  IRIS_USER: ${IRIS_USER:-_SYSTEM}
+  IRIS_PASSWORD: ${IRIS_PASSWORD:-Dify@1234}
+  IRIS_DATABASE: ${IRIS_DATABASE:-USER}
+  IRIS_SCHEMA: ${IRIS_SCHEMA:-dify}
+  IRIS_CONNECTION_URL: ${IRIS_CONNECTION_URL:-}
+  IRIS_MIN_CONNECTION: ${IRIS_MIN_CONNECTION:-1}
+  IRIS_MAX_CONNECTION: ${IRIS_MAX_CONNECTION:-3}
+  IRIS_TEXT_INDEX: ${IRIS_TEXT_INDEX:-true}
+  IRIS_TEXT_INDEX_LANGUAGE: ${IRIS_TEXT_INDEX_LANGUAGE:-en}
+  IRIS_TIMEZONE: ${IRIS_TIMEZONE:-UTC}
   UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
   UPLOAD_FILE_EXTENSION_BLACKLIST: ${UPLOAD_FILE_EXTENSION_BLACKLIST:-}
+  SINGLE_CHUNK_ATTACHMENT_LIMIT: ${SINGLE_CHUNK_ATTACHMENT_LIMIT:-10}
+  IMAGE_FILE_BATCH_LIMIT: ${IMAGE_FILE_BATCH_LIMIT:-10}
+  ATTACHMENT_IMAGE_FILE_SIZE_LIMIT: ${ATTACHMENT_IMAGE_FILE_SIZE_LIMIT:-2}
+  ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT: ${ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT:-60}
   ETL_TYPE: ${ETL_TYPE:-dify}
   UNSTRUCTURED_API_URL: ${UNSTRUCTURED_API_URL:-}
   UNSTRUCTURED_API_KEY: ${UNSTRUCTURED_API_KEY:-}
@@ -453,13 +472,7 @@ x-shared-env: &shared-api-worker-env
   TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
   ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
   MAX_TREE_DEPTH: ${MAX_TREE_DEPTH:-50}
-  POSTGRES_USER: ${POSTGRES_USER:-${DB_USERNAME}}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD}}
-  POSTGRES_DB: ${POSTGRES_DB:-${DB_DATABASE}}
   PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
-  MYSQL_USERNAME: ${MYSQL_USERNAME:-${DB_USERNAME}}
-  MYSQL_PASSWORD: ${MYSQL_PASSWORD:-${DB_PASSWORD}}
-  MYSQL_DATABASE: ${MYSQL_DATABASE:-${DB_DATABASE}}
   MYSQL_HOST_VOLUME: ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}
   SANDBOX_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
   SANDBOX_GIN_MODE: ${SANDBOX_GIN_MODE:-release}
@@ -478,6 +491,10 @@ x-shared-env: &shared-api-worker-env
   WEAVIATE_AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
   WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
   WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+  WEAVIATE_DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-false}
+  WEAVIATE_ENABLE_TOKENIZER_GSE: ${WEAVIATE_ENABLE_TOKENIZER_GSE:-false}
+  WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA:-false}
+  WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR:-false}
   CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
   CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
   CHROMA_IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
@@ -511,7 +528,7 @@ x-shared-env: &shared-api-worker-env
   NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
   NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
   NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
-  NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
+  NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.2 TLSv1.3}
   NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
   NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-100M}
   NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
@@ -614,7 +631,7 @@ x-shared-env: &shared-api-worker-env
   QUEUE_MONITOR_THRESHOLD: ${QUEUE_MONITOR_THRESHOLD:-200}
   QUEUE_MONITOR_ALERT_EMAILS: ${QUEUE_MONITOR_ALERT_EMAILS:-}
   QUEUE_MONITOR_INTERVAL: ${QUEUE_MONITOR_INTERVAL:-30}
-  SWAGGER_UI_ENABLED: ${SWAGGER_UI_ENABLED:-true}
+  SWAGGER_UI_ENABLED: ${SWAGGER_UI_ENABLED:-false}
   SWAGGER_UI_PATH: ${SWAGGER_UI_PATH:-/swagger-ui.html}
   DSL_EXPORT_ENCRYPT_DATASET_ID: ${DSL_EXPORT_ENCRYPT_DATASET_ID:-true}
   DATASET_MAX_SEGMENTS_PER_REQUEST: ${DATASET_MAX_SEGMENTS_PER_REQUEST:-0}
@@ -631,11 +648,37 @@ x-shared-env: &shared-api-worker-env
   WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE: ${WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE:-100}
   WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: ${WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK:-0}
   TENANT_ISOLATED_TASK_CONCURRENCY: ${TENANT_ISOLATED_TASK_CONCURRENCY:-1}
+  ANNOTATION_IMPORT_FILE_SIZE_LIMIT: ${ANNOTATION_IMPORT_FILE_SIZE_LIMIT:-2}
+  ANNOTATION_IMPORT_MAX_RECORDS: ${ANNOTATION_IMPORT_MAX_RECORDS:-10000}
+  ANNOTATION_IMPORT_MIN_RECORDS: ${ANNOTATION_IMPORT_MIN_RECORDS:-1}
+  ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE: ${ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE:-5}
+  ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR: ${ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR:-20}
+  ANNOTATION_IMPORT_MAX_CONCURRENT: ${ANNOTATION_IMPORT_MAX_CONCURRENT:-5}
+  AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
 
 services:
+  # Init container to fix permissions
+  init_permissions:
+    image: busybox:latest
+    command:
+      - sh
+      - -c
+      - |
+        FLAG_FILE="/app/api/storage/.init_permissions"
+        if [ -f "$${FLAG_FILE}" ]; then
+          echo "Permissions already initialized. Exiting."
+          exit 0
+        fi
+        echo "Initializing permissions for /app/api/storage"
+        chown -R 1001:1001 /app/api/storage && touch "$${FLAG_FILE}"
+        echo "Permissions initialized. Exiting."
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+    restart: "no"
+
   # API service
   api:
-    image: langgenius/dify-api:1.10.0
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -650,6 +693,8 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
+      init_permissions:
+        condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
         required: false
@@ -674,7 +719,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.10.0
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -687,6 +732,8 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
+      init_permissions:
+        condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
         required: false
@@ -711,7 +758,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.10.0
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -719,6 +766,8 @@ services:
       # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
       MODE: beat
     depends_on:
+      init_permissions:
+        condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
         required: false
@@ -739,11 +788,12 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.10.0
+    image: langgenius/dify-web:1.11.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
+      AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
       NEXT_PUBLIC_COOKIE_DOMAIN: ${NEXT_PUBLIC_COOKIE_DOMAIN:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
@@ -764,7 +814,7 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
-      
+
   # The PostgreSQL database.
   db_postgres:
     image: postgres:15-alpine
@@ -772,9 +822,9 @@ services:
       - postgresql
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
-      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${DB_DATABASE:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     command: >
       postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
@@ -794,7 +844,7 @@ services:
           "-h",
           "db_postgres",
           "-U",
-          "${PGUSER:-postgres}",
+          "${DB_USERNAME:-postgres}",
           "-d",
           "${DB_DATABASE:-dify}",
         ]
@@ -809,8 +859,8 @@ services:
       - mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${DB_DATABASE:-dify}
     command: >
       --max_connections=1000
       --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
@@ -826,7 +876,7 @@ services:
           "ping",
           "-u",
           "root",
-          "-p${MYSQL_PASSWORD:-difyai123456}",
+          "-p${DB_PASSWORD:-difyai123456}",
         ]
       interval: 1s
       timeout: 3s
@@ -876,7 +926,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.4.1-local
+    image: langgenius/dify-plugin-daemon:0.5.1-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -1021,7 +1071,7 @@ services:
       # and modify the env vars below in .env if HTTPS_ENABLED is true.
       NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
       NGINX_SSL_CERT_KEY_FILENAME: ${NGINX_SSL_CERT_KEY_FILENAME:-dify.key}
-      NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.1 TLSv1.2 TLSv1.3}
+      NGINX_SSL_PROTOCOLS: ${NGINX_SSL_PROTOCOLS:-TLSv1.2 TLSv1.3}
       NGINX_WORKER_PROCESSES: ${NGINX_WORKER_PROCESSES:-auto}
       NGINX_CLIENT_MAX_BODY_SIZE: ${NGINX_CLIENT_MAX_BODY_SIZE:-100M}
       NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
@@ -1058,6 +1108,10 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+      DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-false}
+      ENABLE_TOKENIZER_GSE: ${WEAVIATE_ENABLE_TOKENIZER_GSE:-false}
+      ENABLE_TOKENIZER_KAGOME_JA: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA:-false}
+      ENABLE_TOKENIZER_KAGOME_KR: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR:-false}
 
   # OceanBase vector database
   oceanbase:
@@ -1092,7 +1146,7 @@ services:
       timeout: 10s
 
   # seekdb vector database
-  seekdb: 
+  seekdb:
     image: oceanbase/seekdb:latest
     container_name: seekdb
     profiles:
@@ -1119,7 +1173,7 @@ services:
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
   qdrant:
-    image: langgenius/qdrant:v1.7.3
+    image: langgenius/qdrant:v1.8.3
     profiles:
       - qdrant
     restart: always
@@ -1251,6 +1305,26 @@ services:
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
 
+  # InterSystems IRIS vector database
+  iris:
+    image: containers.intersystems.com/intersystems/iris-community:2025.3
+    profiles:
+      - iris
+    container_name: iris
+    restart: always
+    init: true
+    ports:
+      - "${IRIS_SUPER_SERVER_PORT:-1972}:1972"
+      - "${IRIS_WEB_SERVER_PORT:-52773}:52773"
+    volumes:
+      - ./volumes/iris:/opt/iris
+      - ./iris/iris-init.script:/iris-init.script
+      - ./iris/docker-entrypoint.sh:/custom-entrypoint.sh
+    entrypoint: ["/custom-entrypoint.sh"]
+    tty: true
+    environment:
+      TZ: ${IRIS_TIMEZONE:-UTC}
+
   # Oracle vector database
   oracle:
     image: container-registry.oracle.com/database/free:latest
@@ -1309,7 +1383,7 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.5.15
+    image: milvusdb/milvus:v2.6.3
     profiles:
       - milvus
     command: ["milvus", "run", "standalone"]

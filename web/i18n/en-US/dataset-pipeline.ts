@@ -145,9 +145,6 @@ const translation = {
     emptySearchResult: 'No items were found',
     resetKeywords: 'Reset keywords',
   },
-  credentialSelector: {
-    name: '{{credentialName}}\'s {{pluginName}}',
-  },
   configurationTip: 'Configure {{pluginName}}',
   conversion: {
     title: 'Convert to Knowledge Pipeline',

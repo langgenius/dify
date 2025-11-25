@@ -1,10 +1,11 @@
 import logging
 from collections.abc import Callable
 from functools import wraps
-from typing import NoReturn, ParamSpec, TypeVar
+from typing import Any, NoReturn, ParamSpec, TypeVar
 
-from flask import Response
-from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask import Response, request
+from flask_restx import Resource, fields, marshal, marshal_with
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
@@ -29,6 +30,27 @@ from services.workflow_draft_variable_service import WorkflowDraftVariableList, 
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class WorkflowDraftVariableListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, le=100_000, description="Page number")
+    limit: int = Field(default=20, ge=1, le=100, description="Items per page")
+
+
+class WorkflowDraftVariableUpdatePayload(BaseModel):
+    name: str | None = Field(default=None, description="Variable name")
+    value: Any | None = Field(default=None, description="Variable value")
+
+
+console_ns.schema_model(
+    WorkflowDraftVariableListQuery.__name__,
+    WorkflowDraftVariableListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    WorkflowDraftVariableUpdatePayload.__name__,
+    WorkflowDraftVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 def _convert_values_to_json_serializable_object(value: Segment):
@@ -55,22 +77,6 @@ def _serialize_var_value(variable: WorkflowDraftVariable):
         for file in files:
             file.remote_url = file.generate_url()
     return _convert_values_to_json_serializable_object(value)
-
-
-def _create_pagination_parser():
-    parser = (
-        reqparse.RequestParser()
-        .add_argument(
-            "page",
-            type=inputs.int_range(1, 100_000),
-            required=False,
-            default=1,
-            location="args",
-            help="the page of data requested",
-        )
-        .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-    )
-    return parser
 
 
 def _serialize_variable_type(workflow_draft_var: WorkflowDraftVariable) -> str:
@@ -201,7 +207,7 @@ def _api_prerequisite(f: Callable[P, R]):
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/variables")
 class WorkflowVariableCollectionApi(Resource):
-    @console_ns.expect(_create_pagination_parser())
+    @console_ns.expect(console_ns.models[WorkflowDraftVariableListQuery.__name__])
     @console_ns.doc("get_workflow_variables")
     @console_ns.doc(description="Get draft workflow variables")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -215,8 +221,7 @@ class WorkflowVariableCollectionApi(Resource):
         """
         Get draft workflow
         """
-        parser = _create_pagination_parser()
-        args = parser.parse_args()
+        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
@@ -323,15 +328,7 @@ class VariableApi(Resource):
 
     @console_ns.doc("update_variable")
     @console_ns.doc(description="Update a workflow variable")
-    @console_ns.expect(
-        console_ns.model(
-            "UpdateVariableRequest",
-            {
-                "name": fields.String(description="Variable name"),
-                "value": fields.Raw(description="Variable value"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[WorkflowDraftVariableUpdatePayload.__name__])
     @console_ns.response(200, "Variable updated successfully", workflow_draft_variable_model)
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
@@ -358,16 +355,10 @@ class VariableApi(Resource):
         #         "upload_file_id": "1602650a-4fe4-423c-85a2-af76c083e3c4"
         #     }
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
-            .add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
-        )
-
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        args = parser.parse_args(strict=True)
+        args_model = WorkflowDraftVariableUpdatePayload.model_validate(console_ns.payload or {})
 
         variable = draft_var_srv.get_variable(variable_id=variable_id)
         if variable is None:
@@ -375,8 +366,8 @@ class VariableApi(Resource):
         if variable.app_id != app_model.id:
             raise NotFoundError(description=f"variable not found, id={variable_id}")
 
-        new_name = args.get(self._PATCH_NAME_FIELD, None)
-        raw_value = args.get(self._PATCH_VALUE_FIELD, None)
+        new_name = args_model.name
+        raw_value = args_model.value
         if new_name is None and raw_value is None:
             return variable
 

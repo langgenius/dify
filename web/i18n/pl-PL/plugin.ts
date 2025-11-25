@@ -7,6 +7,7 @@ const translation = {
     tools: 'Narzędzia',
     models: 'Modele',
     datasources: 'Źródła danych',
+    triggers: 'Czynniki wywołujące',
   },
   categorySingle: {
     model: 'Model',
@@ -15,6 +16,7 @@ const translation = {
     agent: 'Strategia agenta',
     tool: 'Narzędzie',
     datasource: 'Źródło danych',
+    trigger: 'Spust',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       install: 'Instalować',
       viewDetail: 'Pokaż szczegóły',
       info: 'Informacje o wtyczce',
+      back: 'Wstecz',
     },
     toolSelector: {
       unsupportedContent2: 'Kliknij, aby zmienić wersję.',
@@ -205,6 +208,11 @@ const translation = {
     installingWithSuccess: 'Instalacja wtyczek {{installingLength}}, {{successLength}} powodzenie.',
     clearAll: 'Wyczyść wszystko',
     installingWithError: 'Instalacja wtyczek {{installingLength}}, {{successLength}} powodzenie, {{errorLength}} niepowodzenie',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   search: 'Szukać',
   installFrom: 'ZAINSTALUJ Z',
@@ -305,6 +313,12 @@ const translation = {
     excludeUpdate: 'Następujące {{num}} wtyczki nie będą aktualizować się automatycznie',
     changeTimezone: 'Aby zmienić strefę czasową, przejdź do <setTimezone>Ustawienia</setTimezone>',
     partialUPdate: 'Tylko następujące {{num}} wtyczki będą się automatycznie aktualizować',
+  },
+  readmeInfo: {
+    title: 'PRZECZYTAJMNIE',
+    needHelpCheckReadme: 'Potrzebujesz pomocy? Sprawdź plik README.',
+    noReadmeAvailable: 'Brak dostępnego pliku README',
+    failedToFetch: 'Nie udało się pobrać pliku README',
   },
 }
 

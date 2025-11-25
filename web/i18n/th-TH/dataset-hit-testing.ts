@@ -6,8 +6,8 @@ const translation = {
   table: {
     header: {
       source: 'ที่มา',
-      text: 'ข้อความ',
       time: 'เวลา',
+      queryContent: 'เนื้อหาคำถาม',
     },
   },
   input: {
@@ -29,6 +29,12 @@ const translation = {
   chunkDetail: 'รายละเอียดก้อน',
   records: 'เรก คอร์ด',
   hitChunks: 'กด {{num}} ก้อนลูก',
+  imageUploader: {
+    tip: 'อัปโหลดหรือลากภาพลง (สูงสุด {{batchCount}} รูป, {{size}}MB ต่อรูป)',
+    tooltip: 'อัปโหลดรูปภาพ (สูงสุด {{batchCount}} รูป, {{size}}MB ต่อรูป)',
+    dropZoneTip: 'ลากไฟล์มาที่นี่เพื่ออัปโหลด',
+    singleChunkAttachmentLimitTooltip: 'จำนวนของไฟล์แนบแบบชิ้นเดียวไม่สามารถเกิน {{limit}}',
+  },
 }
 
 export default translation

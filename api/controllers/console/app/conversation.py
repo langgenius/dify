@@ -1,7 +1,9 @@
+from typing import Literal
+
 import sqlalchemy as sa
-from flask import abort
-from flask_restx import Resource, fields, marshal_with, reqparse
-from flask_restx.inputs import int_range
+from flask import abort, request
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
@@ -14,12 +16,52 @@ from extensions.ext_database import db
 from fields.conversation_fields import MessageTextField
 from fields.raws import FilesContainedField
 from libs.datetime_utils import naive_utc_now, parse_time_range
-from libs.helper import DatetimeString, TimestampField
+from libs.helper import TimestampField
 from libs.login import current_account_with_tenant, login_required
 from models import Conversation, EndUser, Message, MessageAnnotation
 from models.model import AppMode
 from services.conversation_service import ConversationService
 from services.errors.conversation import ConversationNotExistsError
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class BaseConversationQuery(BaseModel):
+    keyword: str | None = Field(default=None, description="Search keyword")
+    start: str | None = Field(default=None, description="Start date (YYYY-MM-DD HH:MM)")
+    end: str | None = Field(default=None, description="End date (YYYY-MM-DD HH:MM)")
+    annotation_status: Literal["annotated", "not_annotated", "all"] = Field(
+        default="all", description="Annotation status filter"
+    )
+    page: int = Field(default=1, ge=1, le=99999, description="Page number")
+    limit: int = Field(default=20, ge=1, le=100, description="Page size (1-100)")
+
+    @field_validator("start", "end", mode="before")
+    @classmethod
+    def blank_to_none(cls, value: str | None) -> str | None:
+        if value == "":
+            return None
+        return value
+
+
+class CompletionConversationQuery(BaseConversationQuery):
+    pass
+
+
+class ChatConversationQuery(BaseConversationQuery):
+    sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
+        default="-updated_at", description="Sort field and direction"
+    )
+
+
+console_ns.schema_model(
+    CompletionConversationQuery.__name__,
+    CompletionConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    ChatConversationQuery.__name__,
+    ChatConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -283,22 +325,7 @@ class CompletionConversationApi(Resource):
     @console_ns.doc("list_completion_conversations")
     @console_ns.doc(description="Get completion conversations with pagination and filtering")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("keyword", type=str, location="args", help="Search keyword")
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-        .add_argument(
-            "annotation_status",
-            type=str,
-            location="args",
-            choices=["annotated", "not_annotated", "all"],
-            default="all",
-            help="Annotation status filter",
-        )
-        .add_argument("page", type=int, location="args", default=1, help="Page number")
-        .add_argument("limit", type=int, location="args", default=20, help="Page size (1-100)")
-    )
+    @console_ns.expect(console_ns.models[CompletionConversationQuery.__name__])
     @console_ns.response(200, "Success", conversation_pagination_model)
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -309,32 +336,17 @@ class CompletionConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("keyword", type=str, location="args")
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument(
-                "annotation_status",
-                type=str,
-                choices=["annotated", "not_annotated", "all"],
-                default="all",
-                location="args",
-            )
-            .add_argument("page", type=int_range(1, 99999), default=1, location="args")
-            .add_argument("limit", type=int_range(1, 100), default=20, location="args")
-        )
-        args = parser.parse_args()
+        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
         )
 
-        if args["keyword"]:
+        if args.keyword:
             query = query.join(Message, Message.conversation_id == Conversation.id).where(
                 or_(
-                    Message.query.ilike(f"%{args['keyword']}%"),
-                    Message.answer.ilike(f"%{args['keyword']}%"),
+                    Message.query.ilike(f"%{args.keyword}%"),
+                    Message.answer.ilike(f"%{args.keyword}%"),
                 )
             )
 
@@ -342,7 +354,7 @@ class CompletionConversationApi(Resource):
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -354,11 +366,11 @@ class CompletionConversationApi(Resource):
             query = query.where(Conversation.created_at < end_datetime_utc)
 
         # FIXME, the type ignore in this file
-        if args["annotation_status"] == "annotated":
+        if args.annotation_status == "annotated":
             query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
-        elif args["annotation_status"] == "not_annotated":
+        elif args.annotation_status == "not_annotated":
             query = (
                 query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
                 .group_by(Conversation.id)
@@ -367,7 +379,7 @@ class CompletionConversationApi(Resource):
 
         query = query.order_by(Conversation.created_at.desc())
 
-        conversations = db.paginate(query, page=args["page"], per_page=args["limit"], error_out=False)
+        conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
 
         return conversations
 
@@ -419,31 +431,7 @@ class ChatConversationApi(Resource):
     @console_ns.doc("list_chat_conversations")
     @console_ns.doc(description="Get chat conversations with pagination, filtering and summary")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("keyword", type=str, location="args", help="Search keyword")
-        .add_argument("start", type=str, location="args", help="Start date (YYYY-MM-DD HH:MM)")
-        .add_argument("end", type=str, location="args", help="End date (YYYY-MM-DD HH:MM)")
-        .add_argument(
-            "annotation_status",
-            type=str,
-            location="args",
-            choices=["annotated", "not_annotated", "all"],
-            default="all",
-            help="Annotation status filter",
-        )
-        .add_argument("message_count_gte", type=int, location="args", help="Minimum message count")
-        .add_argument("page", type=int, location="args", default=1, help="Page number")
-        .add_argument("limit", type=int, location="args", default=20, help="Page size (1-100)")
-        .add_argument(
-            "sort_by",
-            type=str,
-            location="args",
-            choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-            default="-updated_at",
-            help="Sort field and direction",
-        )
-    )
+    @console_ns.expect(console_ns.models[ChatConversationQuery.__name__])
     @console_ns.response(200, "Success", conversation_with_summary_pagination_model)
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -454,31 +442,7 @@ class ChatConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("keyword", type=str, location="args")
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument(
-                "annotation_status",
-                type=str,
-                choices=["annotated", "not_annotated", "all"],
-                default="all",
-                location="args",
-            )
-            .add_argument("message_count_gte", type=int_range(1, 99999), required=False, location="args")
-            .add_argument("page", type=int_range(1, 99999), required=False, default=1, location="args")
-            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-            .add_argument(
-                "sort_by",
-                type=str,
-                choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-                required=False,
-                default="-updated_at",
-                location="args",
-            )
-        )
-        args = parser.parse_args()
+        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         subquery = (
             db.session.query(
@@ -490,8 +454,8 @@ class ChatConversationApi(Resource):
 
         query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
 
-        if args["keyword"]:
-            keyword_filter = f"%{args['keyword']}%"
+        if args.keyword:
+            keyword_filter = f"%{args.keyword}%"
             query = (
                 query.join(
                     Message,
@@ -514,12 +478,12 @@ class ChatConversationApi(Resource):
         assert account.timezone is not None
 
         try:
-            start_datetime_utc, end_datetime_utc = parse_time_range(args["start"], args["end"], account.timezone)
+            start_datetime_utc, end_datetime_utc = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
         if start_datetime_utc:
-            match args["sort_by"]:
+            match args.sort_by:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at >= start_datetime_utc)
                 case "created_at" | "-created_at" | _:
@@ -527,35 +491,27 @@ class ChatConversationApi(Resource):
 
         if end_datetime_utc:
             end_datetime_utc = end_datetime_utc.replace(second=59)
-            match args["sort_by"]:
+            match args.sort_by:
                 case "updated_at" | "-updated_at":
                     query = query.where(Conversation.updated_at <= end_datetime_utc)
                 case "created_at" | "-created_at" | _:
                     query = query.where(Conversation.created_at <= end_datetime_utc)
 
-        if args["annotation_status"] == "annotated":
+        if args.annotation_status == "annotated":
             query = query.options(joinedload(Conversation.message_annotations)).join(  # type: ignore
                 MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id
             )
-        elif args["annotation_status"] == "not_annotated":
+        elif args.annotation_status == "not_annotated":
             query = (
                 query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
                 .group_by(Conversation.id)
                 .having(func.count(MessageAnnotation.id) == 0)
             )
 
-        if args["message_count_gte"] and args["message_count_gte"] >= 1:
-            query = (
-                query.options(joinedload(Conversation.messages))  # type: ignore
-                .join(Message, Message.conversation_id == Conversation.id)
-                .group_by(Conversation.id)
-                .having(func.count(Message.id) >= args["message_count_gte"])
-            )
-
         if app_model.mode == AppMode.ADVANCED_CHAT:
             query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER)
 
-        match args["sort_by"]:
+        match args.sort_by:
             case "created_at":
                 query = query.order_by(Conversation.created_at.asc())
             case "-created_at":
@@ -567,7 +523,7 @@ class ChatConversationApi(Resource):
             case _:
                 query = query.order_by(Conversation.created_at.desc())
 
-        conversations = db.paginate(query, page=args["page"], per_page=args["limit"], error_out=False)
+        conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
 
         return conversations
 
