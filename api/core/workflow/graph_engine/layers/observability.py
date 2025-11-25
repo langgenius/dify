@@ -9,16 +9,21 @@ associates with the node span.
 
 import logging
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, final
+from typing import final
 
+from opentelemetry import context as context_api
+from opentelemetry.trace import Span, SpanKind, get_tracer, set_span_in_context
 from typing_extensions import override
 
 from configs import dify_config
+from core.workflow.enums import NodeType
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
+from core.workflow.graph_engine.layers.node_parsers import (
+    DefaultNodeOTelParser,
+    NodeOTelParser,
+    ToolNodeOTelParser,
+)
 from core.workflow.nodes.base.node import Node
-
-if TYPE_CHECKING:
-    from opentelemetry.trace import Span
 
 logger = logging.getLogger(__name__)
 
@@ -43,23 +48,36 @@ class ObservabilityLayer(GraphEngineLayer):
     def __init__(self) -> None:
         super().__init__()
         self._node_contexts: dict[str, _NodeSpanContext] = {}
+        self._parsers: dict[NodeType, NodeOTelParser] = {}
+        self._default_parser: NodeOTelParser = DefaultNodeOTelParser()
+        self._is_disabled: bool = False
         self._tracer = None
+        self._build_parser_registry()
+        self._init_tracer()
 
-    def _get_tracer(self):
-        """Get or create the OpenTelemetry tracer."""
+    def _init_tracer(self) -> None:
+        """Initialize OpenTelemetry tracer in constructor."""
         if not dify_config.ENABLE_OTEL:
-            return None
+            self._is_disabled = True
+            return
 
-        if self._tracer is None:
-            try:
-                from opentelemetry.trace import get_tracer
+        try:
+            self._tracer = get_tracer(__name__)
+        except Exception as e:
+            logger.warning("Failed to get OpenTelemetry tracer: %s", e)
+            self._is_disabled = True
 
-                self._tracer = get_tracer(__name__)
-            except Exception as e:
-                logger.warning("Failed to get OpenTelemetry tracer: %s", e)
-                return None
+    def _build_parser_registry(self) -> None:
+        """Initialize parser registry for node types."""
+        self._parsers = {
+            NodeType.TOOL: ToolNodeOTelParser(),
+        }
 
-        return self._tracer
+    def _get_parser(self, node: Node) -> NodeOTelParser:
+        node_type = getattr(node, "node_type", None)
+        if isinstance(node_type, NodeType):
+            return self._parsers.get(node_type, self._default_parser)
+        return self._default_parser
 
     @override
     def on_graph_start(self) -> None:
@@ -73,22 +91,15 @@ class ObservabilityLayer(GraphEngineLayer):
 
         Creates a span and establishes OTel context for automatic instrumentation.
         """
-        if not dify_config.ENABLE_OTEL:
+        if self._is_disabled:
             return
 
         try:
-            tracer = self._get_tracer()
-            if not tracer:
-                return
-
             if not node._node_execution_id:
                 return
 
-            from opentelemetry import context as context_api
-            from opentelemetry.trace import SpanKind, set_span_in_context
-
             parent_context = context_api.get_current()
-            span = tracer.start_span(
+            span = self._tracer.start_span(
                 f"node.{node.node_type.value}",
                 kind=SpanKind.INTERNAL,
                 context=parent_context,
@@ -109,7 +120,7 @@ class ObservabilityLayer(GraphEngineLayer):
 
         Sets complete attributes, records exceptions, and ends the span.
         """
-        if not dify_config.ENABLE_OTEL:
+        if self._is_disabled:
             return
 
         try:
@@ -121,22 +132,9 @@ class ObservabilityLayer(GraphEngineLayer):
                 return
             span = node_context.span
 
-            from opentelemetry.trace.status import Status, StatusCode
-            from opentelemetry import context as context_api
-
+            parser = self._get_parser(node)
             try:
-                span.set_attribute("node.type", node.node_type.value)
-                span.set_attribute("node.id", node.id)
-                span.set_attribute("node.execution_id", node._node_execution_id)
-                if hasattr(node, "title") and node.title:
-                    span.set_attribute("node.title", node.title)
-
-                if error:
-                    span.record_exception(error)
-                    span.set_status(Status(StatusCode.ERROR, str(error)))
-                else:
-                    span.set_status(Status(StatusCode.OK))
-
+                parser.parse(node=node, span=span, error=error)
                 span.end()
             finally:
                 token = node_context.token
@@ -153,6 +151,7 @@ class ObservabilityLayer(GraphEngineLayer):
     @override
     def on_event(self, event) -> None:
         """Not used in this layer."""
+        pass
 
     @override
     def on_graph_end(self, error: Exception | None) -> None:
@@ -162,12 +161,5 @@ class ObservabilityLayer(GraphEngineLayer):
                 "ObservabilityLayer: %d node spans were not properly ended",
                 len(self._node_contexts),
             )
-            from opentelemetry import context as context_api
-
-            for node_context in self._node_contexts.values():
-                try:
-                    context_api.detach(node_context.token)
-                except Exception:
-                    pass
             self._node_contexts.clear()
 
