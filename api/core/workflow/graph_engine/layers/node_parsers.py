@@ -28,8 +28,6 @@ class DefaultNodeOTelParser:
             span.set_attribute("node.execution_id", node._node_execution_id)
         if hasattr(node, "node_type") and node.node_type:
             span.set_attribute("node.type", node.node_type.value)
-        if hasattr(node, "title") and node.title:
-            span.set_attribute("node.title", node.title)
 
         if error:
             span.record_exception(error)

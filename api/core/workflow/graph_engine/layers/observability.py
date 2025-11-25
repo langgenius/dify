@@ -100,7 +100,7 @@ class ObservabilityLayer(GraphEngineLayer):
 
             parent_context = context_api.get_current()
             span = self._tracer.start_span(
-                f"node.{node.node_type.value}",
+                f"{node.title}",
                 kind=SpanKind.INTERNAL,
                 context=parent_context,
             )
