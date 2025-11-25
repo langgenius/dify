@@ -33,7 +33,7 @@ const translation = {
             cancel: 'キャンセル',
             confirmInputWarning: '確認するために正しい名前を入力してください。',
             success: 'サブスクリプション {{name}} は正常に削除されました',
-            error: '購読 {{name}} の削除に失敗しました',
+            error: 'サブスクリプション {{name}} の削除に失敗しました',
             confirmInputPlaceholder: '確認するには「{{name}}」と入力してください。',
             confirmInputTip: '確認のため「{{name}}」を入力してください。',
           },
@@ -74,7 +74,7 @@ const translation = {
     noSubscriptionSelected: 'サブスクリプションが選択されていません',
     selectPlaceholder: 'サブスクリプションを選択',
     createFailed: 'サブスクリプションの作成に失敗しました',
-    maxCount: '最大 {{num}} 件の購読',
+    maxCount: '最大 {{num}} 件のサブスクリプション',
   },
   modal: {
     steps: {
@@ -156,7 +156,7 @@ const translation = {
         label: 'コールバック URL',
         description: 'この URL で Webhook イベントを受信します',
         placeholder: '生成中...',
-        privateAddressWarning: 'このURLは内部アドレスのようで、Webhookリクエストが失敗する可能性があります。',
+        privateAddressWarning: 'このURLは内部アドレスのようです。Webhookリクエストが失敗する可能性があります。TRIGGER_URL を公開アドレスに変更できます。',
         tooltip: 'トリガープロバイダーからのコールバックリクエストを受信できる、公開アクセス可能なエンドポイントを提供してください。',
       },
     },
@@ -169,7 +169,7 @@ const translation = {
   },
   events: {
     title: '利用可能なイベント',
-    description: 'このトリガープラグインが購読できるイベント',
+    description: 'このトリガープラグインがサブスクライブできるイベント',
     empty: '利用可能なイベントがありません',
     event: 'イベント',
     events: 'イベント',

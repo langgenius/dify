@@ -76,7 +76,7 @@ const translation = {
     resetKeywords: 'キーワードをリセット',
     selectCount: '{{count}}件選択済み',
     searchCount: '{{count}}件の{{content}}が見つかりました',
-    noSearchCount: '{{content}}が見つかりません',
+    noSearchCount: '0件の{{content}}',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',

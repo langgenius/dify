@@ -11,6 +11,7 @@ const translation = {
     publishUpdate: '发布更新',
     run: '测试运行',
     running: '运行中',
+    listening: '监听中',
     chooseStartNodeToRun: '选择启动节点进行运行',
     runAllTriggers: '运行所有触发器',
     inRunMode: '在运行模式中',
@@ -121,7 +122,6 @@ const translation = {
     loadMore: '加载更多',
     noHistory: '没有历史版本',
     tagBound: '使用此标签的应用数量',
-    listening: '听',
   },
   publishLimit: {
     startNodeTitlePrefix: '升级以',
