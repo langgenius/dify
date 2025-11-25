@@ -111,8 +111,6 @@ def llm_node(
         graph_runtime_state=graph_runtime_state,
         llm_file_saver=mock_file_saver,
     )
-    # Initialize node data
-    node.init_node_data(node_config["data"])
     return node
 
 
@@ -498,8 +496,6 @@ def llm_node_for_multimodal(llm_node_data, graph_init_params, graph_runtime_stat
         graph_runtime_state=graph_runtime_state,
         llm_file_saver=mock_file_saver,
     )
-    # Initialize node data
-    node.init_node_data(node_config["data"])
     return node, mock_file_saver
 
 

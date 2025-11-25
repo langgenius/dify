@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import List from './list'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import EmptyElement from './empty-element'
@@ -28,14 +29,28 @@ export type QueryParam = {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
+  const router = useRouter()
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
   const [queryParams, setQueryParams] = useState<QueryParam>({
     period: '2',
     annotation_status: 'all',
     sort_by: '-created_at',
   })
-  const [currPage, setCurrPage] = React.useState<number>(0)
+  const getPageFromParams = useCallback(() => {
+    const pageParam = Number.parseInt(searchParams.get('page') || '1', 10)
+    if (Number.isNaN(pageParam) || pageParam < 1)
+      return 0
+    return pageParam - 1
+  }, [searchParams])
+  const [currPage, setCurrPage] = React.useState<number>(() => getPageFromParams())
   const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+
+  useEffect(() => {
+    const pageFromParams = getPageFromParams()
+    setCurrPage(prev => (prev === pageFromParams ? prev : pageFromParams))
+  }, [getPageFromParams])
 
   // Get the app type first
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
@@ -70,6 +85,18 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
 
+  const handlePageChange = useCallback((page: number) => {
+    setCurrPage(page)
+    const params = new URLSearchParams(searchParams.toString())
+    const nextPageValue = page + 1
+    if (nextPageValue === 1)
+      params.delete('page')
+    else
+      params.set('page', String(nextPageValue))
+    const queryString = params.toString()
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
+  }, [pathname, router, searchParams])
+
   return (
     <div className='flex h-full grow flex-col'>
       <p className='system-sm-regular shrink-0 text-text-tertiary'>{t('appLog.description')}</p>
@@ -85,7 +112,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {(total && total > APP_PAGE_LIMIT)
           ? <Pagination
             current={currPage}
-            onChange={setCurrPage}
+            onChange={handlePageChange}
             total={total}
             limit={limit}
             onLimitChange={setLimit}

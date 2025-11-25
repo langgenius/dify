@@ -118,10 +118,8 @@ class TestWebhookServiceUnit:
             "/webhook", method="POST", headers={"Content-Type": "application/json"}, data="invalid json"
         ):
             webhook_trigger = MagicMock()
-            webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
-
-            assert webhook_data["method"] == "POST"
-            assert webhook_data["body"] == {}  # Should default to empty dict
+            with pytest.raises(ValueError, match="Invalid JSON body"):
+                WebhookService.extract_webhook_data(webhook_trigger)
 
     def test_generate_webhook_response_default(self):
         """Test webhook response generation with default values."""
@@ -434,6 +432,27 @@ class TestWebhookServiceUnit:
             assert result["query_params"]["enabled"] is True  # Converted to bool
             assert result["body"]["message"] == "hello"  # Already string
             assert result["body"]["age"] == 25  # Already number
+
+    def test_extract_and_validate_webhook_data_invalid_json_error(self):
+        """Invalid JSON should bubble up as a ValueError with details."""
+        app = Flask(__name__)
+
+        with app.test_request_context(
+            "/webhook",
+            method="POST",
+            headers={"Content-Type": "application/json"},
+            data='{"invalid": }',
+        ):
+            webhook_trigger = MagicMock()
+            node_config = {
+                "data": {
+                    "method": "post",
+                    "content_type": "application/json",
+                }
+            }
+
+            with pytest.raises(ValueError, match="Invalid JSON body"):
+                WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
 
     def test_extract_and_validate_webhook_data_validation_error(self):
         """Test unified data extraction with validation error."""

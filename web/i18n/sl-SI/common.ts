@@ -65,6 +65,12 @@ const translation = {
     confirmAction: 'Prosimo, potrdite svoje dejanje.',
     deleteConfirmTitle: 'Izbrisati?',
     yes: 'Da',
+    noSearchResults: 'Ni bilo najdenih {{content}}',
+    resetKeywords: 'Ponastavi ključne besede',
+    selectCount: '{{count}} Izbrano',
+    searchCount: 'Najdi {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Zdaj',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -73,6 +79,7 @@ const translation = {
   placeholder: {
     input: 'Vnesite prosim',
     select: 'Izberite prosim',
+    search: 'Išči...',
   },
   voice: {
     language: {
@@ -849,6 +856,13 @@ const translation = {
   },
   label: {
     optional: '(neobvezno)',
+  },
+  noData: 'Ni podatkov',
+  dynamicSelect: {
+    error: 'Nalaganje možnosti ni uspelo',
+    noData: 'Ni na voljo nobenih možnosti',
+    loading: 'Nalaganje možnosti...',
+    selected: '{{count}} izbrano',
   },
 }
 

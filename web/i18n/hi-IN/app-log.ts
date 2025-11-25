@@ -19,6 +19,7 @@ const translation = {
       tokens: 'टोकन',
       user: 'अंतिम उपयोगकर्ता या खाता',
       version: 'संस्करण',
+      triggered_from: 'के द्वारा ट्रिगर',
     },
     pagination: {
       previous: 'पिछला',
@@ -99,6 +100,15 @@ const translation = {
     iteration: 'चलना',
   },
   dateFormat: 'MM/DD/YYYY',
+  triggerBy: {
+    debugging: 'डिबगिंग',
+    appRun: 'वेबएप',
+    webhook: 'वेबहूक',
+    schedule: 'अनुसूची',
+    plugin: 'प्लगइन',
+    ragPipelineRun: 'RAG पाइपलाइन',
+    ragPipelineDebugging: 'RAG डीबगिंग',
+  },
 }
 
 export default translation

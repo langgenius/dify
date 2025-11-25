@@ -396,6 +396,7 @@ const translation = {
     'both': 'Оба',
     'localUpload': 'Локальная загрузка',
     'maxNumberOfUploads': 'Максимальное количество загрузок',
+    'maxNumberTip': 'Документ < {{docLimit}}, изображение < {{imgLimit}}, аудио < {{audioLimit}}, видео < {{videoLimit}}',
     'uploadFileTypes': 'Типы файлов загрузки',
     'single-file': 'Друг за другом',
     'multi-files': 'Список файлов',
