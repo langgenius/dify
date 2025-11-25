@@ -325,6 +325,22 @@ const BasePanel: FC<BasePanelProps> = ({
       },
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
+  const handleEndUserCredentialChange = useCallback((enabled: boolean) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        use_end_user_credentials: enabled,
+      },
+    })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
+  const handleEndUserCredentialTypeChange = useCallback((type: string) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        end_user_credential_type: type,
+      },
+    })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
 
   const { setShowAccountSettingModal } = useModalContext()
 
@@ -516,6 +532,11 @@ const BasePanel: FC<BasePanelProps> = ({
             needsToolAuth && (
               <PluginAuth
                 className='px-4 pb-2'
+                showConnectGuide
+                endUserCredentialEnabled={data.use_end_user_credentials}
+                endUserCredentialType={data.end_user_credential_type}
+                onEndUserCredentialChange={handleEndUserCredentialChange}
+                onEndUserCredentialTypeChange={handleEndUserCredentialTypeChange}
                 pluginPayload={{
                   provider: currToolCollection?.name || '',
                   providerType: currToolCollection?.type || '',

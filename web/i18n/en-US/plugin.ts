@@ -308,6 +308,19 @@ const translation = {
     unavailable: 'Unavailable',
     connectedWorkspace: 'Connected Workspace',
     emptyAuth: 'Please configure authentication',
+    connectCredentials: 'Connect credentials to continue',
+    configuredCredentials: {
+      title: 'Configured Credentials',
+      desc: 'Set up by you or your team in advance',
+      empty: 'No workspace credentials configured yet',
+    },
+    endUserCredentials: {
+      title: 'End-user Credentials',
+      desc: 'Credentials are provided by the end user at runtime',
+      typeLabel: 'Credential Type',
+      optionOAuth: 'OAuth',
+      optionApiKey: 'API Key',
+    },
   },
   readmeInfo: {
     title: 'README',

@@ -103,6 +103,8 @@ export type CommonNodeType<T = {}> = {
   retry_config?: WorkflowRetryConfig
   default_value?: DefaultValueForm[]
   credential_id?: string
+  use_end_user_credentials?: boolean
+  end_user_credential_type?: string
   subscription_id?: string
   provider_id?: string
   _dimmed?: boolean
