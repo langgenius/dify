@@ -96,7 +96,9 @@ class MCPClient:
         response = self._session.list_tools()
         return response.tools
 
-    def invoke_tool(self, tool_name: str, tool_args: dict[str, Any], _meta: dict[str, Any] | None = None) -> CallToolResult:
+    def invoke_tool(
+        self, tool_name: str, tool_args: dict[str, Any], _meta: dict[str, Any] | None = None
+    ) -> CallToolResult:
         """Call a tool"""
         if not self._session:
             raise ValueError("Session not initialized.")
