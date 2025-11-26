@@ -557,7 +557,7 @@ class ProviderManager:
 
     @staticmethod
     def get_provider_model_available_credentials(
-        tenant_id: str, provider_name: str, model_name: str, model_type: str
+        tenant_id: str, provider_name: str, model_name: str, model_type: ModelType
     ) -> list[CredentialConfiguration]:
         """
         Get provider custom model all credentials.

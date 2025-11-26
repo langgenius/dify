@@ -20,7 +20,7 @@ class ModelType(StrEnum):
     TTS = auto()
 
     @classmethod
-    def value_of(cls, origin_model_type: str) -> "ModelType":
+    def value_of(cls, origin_model_type: ModelType) -> "ModelType":
         """
         Get model type from origin model type.
 

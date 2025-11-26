@@ -123,7 +123,7 @@ class TestModelProviderService:
         tenant_id: str,
         provider_name: str,
         model_name: str = "gpt-3.5-turbo",
-        model_type: str = "llm",
+        model_type: ModelType = ModelType.LLM,
     ):
         """
         Helper method to create a test provider model for testing.
@@ -163,7 +163,7 @@ class TestModelProviderService:
         tenant_id: str,
         provider_name: str,
         model_name: str = "gpt-3.5-turbo",
-        model_type: str = "llm",
+        model_type: ModelType = ModelType.LLM,
     ):
         """
         Helper method to create a test provider model setting for testing.
