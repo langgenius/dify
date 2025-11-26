@@ -1,3 +1,11 @@
+"""
+Unit tests for HitTestingService.
+
+This module contains comprehensive unit tests for the HitTestingService class,
+which handles retrieval testing operations for datasets, including internal
+dataset retrieval and external knowledge base retrieval.
+"""
+
 from unittest.mock import MagicMock, Mock, patch
 
 import pytest
@@ -10,7 +18,12 @@ from services.hit_testing_service import HitTestingService
 
 
 class HitTestingTestDataFactory:
-    """Factory class for creating test data and mock objects for hit testing service tests."""
+    """
+    Factory class for creating test data and mock objects for hit testing service tests.
+
+    This factory provides static methods to create mock objects for datasets, users,
+    documents, and retrieval records used in HitTestingService unit tests.
+    """
 
     @staticmethod
     def create_dataset_mock(
@@ -20,7 +33,19 @@ class HitTestingTestDataFactory:
         retrieval_model: dict | None = None,
         **kwargs,
     ) -> Mock:
-        """Create a mock dataset with specified attributes."""
+        """
+        Create a mock dataset with specified attributes.
+
+        Args:
+            dataset_id: Unique identifier for the dataset
+            tenant_id: Tenant identifier
+            provider: Dataset provider (vendor, external, etc.)
+            retrieval_model: Optional retrieval model configuration
+            **kwargs: Additional attributes to set on the mock
+
+        Returns:
+            Mock object configured as a Dataset instance
+        """
         dataset = Mock(spec=Dataset)
         dataset.id = dataset_id
         dataset.tenant_id = tenant_id
@@ -36,7 +61,17 @@ class HitTestingTestDataFactory:
         tenant_id: str = "tenant-123",
         **kwargs,
     ) -> Mock:
-        """Create a mock user with specified attributes."""
+        """
+        Create a mock user (Account) with specified attributes.
+
+        Args:
+            user_id: Unique identifier for the user
+            tenant_id: Tenant identifier
+            **kwargs: Additional attributes to set on the mock
+
+        Returns:
+            Mock object configured as an Account instance
+        """
         user = Mock(spec=Account)
         user.id = user_id
         user.current_tenant_id = tenant_id
@@ -51,7 +86,17 @@ class HitTestingTestDataFactory:
         metadata: dict | None = None,
         **kwargs,
     ) -> Mock:
-        """Create a mock Document from core.rag.models.document."""
+        """
+        Create a mock Document from core.rag.models.document.
+
+        Args:
+            content: Document content/text
+            metadata: Optional metadata dictionary
+            **kwargs: Additional attributes to set on the mock
+
+        Returns:
+            Mock object configured as a Document instance
+        """
         document = Mock(spec=Document)
         document.page_content = content
         document.metadata = metadata or {}
@@ -65,7 +110,17 @@ class HitTestingTestDataFactory:
         score: float = 0.95,
         **kwargs,
     ) -> Mock:
-        """Create a mock retrieval record."""
+        """
+        Create a mock retrieval record.
+
+        Args:
+            content: Record content
+            score: Retrieval score
+            **kwargs: Additional fields for the record
+
+        Returns:
+            Mock object with model_dump method returning record data
+        """
         record = Mock()
         record.model_dump.return_value = {
             "content": content,
@@ -76,16 +131,31 @@ class HitTestingTestDataFactory:
 
 
 class TestHitTestingServiceRetrieve:
-    """Tests for HitTestingService.retrieve method (hit_testing)."""
+    """
+    Tests for HitTestingService.retrieve method (hit_testing).
+
+    This test class covers the main retrieval testing functionality, including
+    various retrieval model configurations, metadata filtering, and query logging.
+    """
 
     @pytest.fixture
     def mock_db_session(self):
-        """Mock database session."""
+        """
+        Mock database session.
+
+        Provides a mocked database session for testing database operations
+        like adding and committing DatasetQuery records.
+        """
         with patch("services.hit_testing_service.db.session") as mock_db:
             yield mock_db
 
     def test_retrieve_success_with_default_retrieval_model(self, mock_db_session):
-        """Test successful retrieval with default retrieval model."""
+        """
+        Test successful retrieval with default retrieval model.
+
+        Verifies that the retrieve method works correctly when no custom
+        retrieval model is provided, using the default retrieval configuration.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(retrieval_model=None)
         account = HitTestingTestDataFactory.create_user_mock()
@@ -123,7 +193,12 @@ class TestHitTestingServiceRetrieve:
             mock_db_session.commit.assert_called_once()
 
     def test_retrieve_success_with_custom_retrieval_model(self, mock_db_session):
-        """Test successful retrieval with custom retrieval model."""
+        """
+        Test successful retrieval with custom retrieval model.
+
+        Verifies that custom retrieval model parameters (search method, reranking,
+        score threshold, etc.) are properly passed to RetrievalService.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock()
         account = HitTestingTestDataFactory.create_user_mock()
@@ -164,7 +239,12 @@ class TestHitTestingServiceRetrieve:
             assert call_kwargs["reranking_model"] == retrieval_model["reranking_model"]
 
     def test_retrieve_with_metadata_filtering(self, mock_db_session):
-        """Test retrieval with metadata filtering conditions."""
+        """
+        Test retrieval with metadata filtering conditions.
+
+        Verifies that metadata filtering conditions are properly processed
+        and document ID filters are applied to the retrieval query.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock()
         account = HitTestingTestDataFactory.create_user_mock()
@@ -208,7 +288,12 @@ class TestHitTestingServiceRetrieve:
             assert call_kwargs["document_ids_filter"] == ["doc-1", "doc-2"]
 
     def test_retrieve_with_metadata_filtering_no_documents(self, mock_db_session):
-        """Test retrieval with metadata filtering that returns no documents."""
+        """
+        Test retrieval with metadata filtering that returns no documents.
+
+        Verifies that when metadata filtering results in no matching documents,
+        an empty result is returned without calling RetrievalService.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock()
         account = HitTestingTestDataFactory.create_user_mock()
@@ -240,7 +325,12 @@ class TestHitTestingServiceRetrieve:
             assert result["records"] == []
 
     def test_retrieve_with_dataset_retrieval_model(self, mock_db_session):
-        """Test retrieval using dataset's retrieval model when not provided."""
+        """
+        Test retrieval using dataset's retrieval model when not provided.
+
+        Verifies that when no retrieval model is provided, the dataset's
+        retrieval model is used as a fallback.
+        """
         # Arrange
         dataset_retrieval_model = {
             "search_method": RetrievalMethod.HYBRID_SEARCH,
@@ -275,16 +365,31 @@ class TestHitTestingServiceRetrieve:
 
 
 class TestHitTestingServiceExternalRetrieve:
-    """Tests for HitTestingService.external_retrieve method."""
+    """
+    Tests for HitTestingService.external_retrieve method.
+
+    This test class covers external knowledge base retrieval functionality,
+    including query escaping, response formatting, and provider validation.
+    """
 
     @pytest.fixture
     def mock_db_session(self):
-        """Mock database session."""
+        """
+        Mock database session.
+
+        Provides a mocked database session for testing database operations
+        like adding and committing DatasetQuery records.
+        """
         with patch("services.hit_testing_service.db.session") as mock_db:
             yield mock_db
 
     def test_external_retrieve_success(self, mock_db_session):
-        """Test successful external retrieval."""
+        """
+        Test successful external retrieval.
+
+        Verifies that external knowledge base retrieval works correctly,
+        including query escaping, document formatting, and query logging.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
@@ -322,7 +427,12 @@ class TestHitTestingServiceExternalRetrieve:
             mock_db_session.commit.assert_called_once()
 
     def test_external_retrieve_non_external_provider(self, mock_db_session):
-        """Test external retrieval with non-external provider (should return empty)."""
+        """
+        Test external retrieval with non-external provider (should return empty).
+
+        Verifies that when the dataset provider is not "external", the method
+        returns an empty result without performing retrieval or database operations.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="vendor")
         account = HitTestingTestDataFactory.create_user_mock()
@@ -341,7 +451,12 @@ class TestHitTestingServiceExternalRetrieve:
         mock_db_session.add.assert_not_called()
 
     def test_external_retrieve_with_metadata_filtering(self, mock_db_session):
-        """Test external retrieval with metadata filtering conditions."""
+        """
+        Test external retrieval with metadata filtering conditions.
+
+        Verifies that metadata filtering conditions are properly passed
+        to the external retrieval service.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
@@ -370,7 +485,12 @@ class TestHitTestingServiceExternalRetrieve:
             assert call_kwargs["metadata_filtering_conditions"] == metadata_filtering_conditions
 
     def test_external_retrieve_empty_documents(self, mock_db_session):
-        """Test external retrieval with empty document list."""
+        """
+        Test external retrieval with empty document list.
+
+        Verifies that when external retrieval returns no documents,
+        an empty result is properly formatted and returned.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         account = HitTestingTestDataFactory.create_user_mock()
@@ -396,10 +516,20 @@ class TestHitTestingServiceExternalRetrieve:
 
 
 class TestHitTestingServiceCompactRetrieveResponse:
-    """Tests for HitTestingService.compact_retrieve_response method."""
+    """
+    Tests for HitTestingService.compact_retrieve_response method.
+
+    This test class covers response formatting for internal dataset retrieval,
+    ensuring documents are properly formatted into retrieval records.
+    """
 
     def test_compact_retrieve_response_success(self):
-        """Test successful response formatting."""
+        """
+        Test successful response formatting.
+
+        Verifies that documents are properly formatted into retrieval records
+        with correct structure and data.
+        """
         # Arrange
         query = "test query"
         documents = [
@@ -426,7 +556,12 @@ class TestHitTestingServiceCompactRetrieveResponse:
             mock_format.assert_called_once_with(documents)
 
     def test_compact_retrieve_response_empty_documents(self):
-        """Test response formatting with empty document list."""
+        """
+        Test response formatting with empty document list.
+
+        Verifies that an empty document list results in an empty records array
+        while maintaining the correct response structure.
+        """
         # Arrange
         query = "test query"
         documents = []
@@ -443,10 +578,20 @@ class TestHitTestingServiceCompactRetrieveResponse:
 
 
 class TestHitTestingServiceCompactExternalRetrieveResponse:
-    """Tests for HitTestingService.compact_external_retrieve_response method."""
+    """
+    Tests for HitTestingService.compact_external_retrieve_response method.
+
+    This test class covers response formatting for external knowledge base
+    retrieval, ensuring proper field extraction and provider validation.
+    """
 
     def test_compact_external_retrieve_response_external_provider(self):
-        """Test external response formatting for external provider."""
+        """
+        Test external response formatting for external provider.
+
+        Verifies that external documents are properly formatted with all
+        required fields (content, title, score, metadata).
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         query = "test query"
@@ -467,7 +612,12 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         assert result["records"][0]["metadata"] == {"key": "value"}
 
     def test_compact_external_retrieve_response_non_external_provider(self):
-        """Test external response formatting for non-external provider."""
+        """
+        Test external response formatting for non-external provider.
+
+        Verifies that non-external providers return an empty records array
+        regardless of input documents.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="vendor")
         query = "test query"
@@ -481,7 +631,12 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
         assert result["records"] == []
 
     def test_compact_external_retrieve_response_missing_fields(self):
-        """Test external response formatting with missing optional fields."""
+        """
+        Test external response formatting with missing optional fields.
+
+        Verifies that missing optional fields (title, score, metadata) are
+        handled gracefully by setting them to None.
+        """
         # Arrange
         dataset = HitTestingTestDataFactory.create_dataset_mock(provider="external")
         query = "test query"
@@ -503,10 +658,19 @@ class TestHitTestingServiceCompactExternalRetrieveResponse:
 
 
 class TestHitTestingServiceHitTestingArgsCheck:
-    """Tests for HitTestingService.hit_testing_args_check method."""
+    """
+    Tests for HitTestingService.hit_testing_args_check method.
+
+    This test class covers query argument validation, ensuring queries
+    meet the required criteria (non-empty, max 250 characters).
+    """
 
     def test_hit_testing_args_check_success(self):
-        """Test successful argument validation."""
+        """
+        Test successful argument validation.
+
+        Verifies that valid queries pass validation without raising errors.
+        """
         # Arrange
         args = {"query": "valid query"}
 
@@ -514,7 +678,11 @@ class TestHitTestingServiceHitTestingArgsCheck:
         HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_empty_query(self):
-        """Test validation fails with empty query."""
+        """
+        Test validation fails with empty query.
+
+        Verifies that empty queries raise a ValueError with appropriate message.
+        """
         # Arrange
         args = {"query": ""}
 
@@ -523,7 +691,11 @@ class TestHitTestingServiceHitTestingArgsCheck:
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_none_query(self):
-        """Test validation fails with None query."""
+        """
+        Test validation fails with None query.
+
+        Verifies that None queries raise a ValueError with appropriate message.
+        """
         # Arrange
         args = {"query": None}
 
@@ -532,7 +704,11 @@ class TestHitTestingServiceHitTestingArgsCheck:
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_too_long_query(self):
-        """Test validation fails with query exceeding 250 characters."""
+        """
+        Test validation fails with query exceeding 250 characters.
+
+        Verifies that queries longer than 250 characters raise a ValueError.
+        """
         # Arrange
         args = {"query": "a" * 251}
 
@@ -541,7 +717,12 @@ class TestHitTestingServiceHitTestingArgsCheck:
             HitTestingService.hit_testing_args_check(args)
 
     def test_hit_testing_args_check_exactly_250_characters(self):
-        """Test validation succeeds with exactly 250 characters."""
+        """
+        Test validation succeeds with exactly 250 characters.
+
+        Verifies that queries with exactly 250 characters (the maximum)
+        pass validation successfully.
+        """
         # Arrange
         args = {"query": "a" * 250}
 
@@ -550,10 +731,20 @@ class TestHitTestingServiceHitTestingArgsCheck:
 
 
 class TestHitTestingServiceEscapeQueryForSearch:
-    """Tests for HitTestingService.escape_query_for_search method."""
+    """
+    Tests for HitTestingService.escape_query_for_search method.
+
+    This test class covers query escaping functionality for external search,
+    ensuring special characters are properly escaped.
+    """
 
     def test_escape_query_for_search_with_quotes(self):
-        """Test escaping quotes in query."""
+        """
+        Test escaping quotes in query.
+
+        Verifies that double quotes in queries are properly escaped with
+        backslashes for external search compatibility.
+        """
         # Arrange
         query = 'test query with "quotes"'
 
@@ -564,7 +755,11 @@ class TestHitTestingServiceEscapeQueryForSearch:
         assert result == 'test query with \\"quotes\\"'
 
     def test_escape_query_for_search_without_quotes(self):
-        """Test query without quotes (no change)."""
+        """
+        Test query without quotes (no change).
+
+        Verifies that queries without quotes remain unchanged after escaping.
+        """
         # Arrange
         query = "test query without quotes"
 
@@ -575,7 +770,12 @@ class TestHitTestingServiceEscapeQueryForSearch:
         assert result == query
 
     def test_escape_query_for_search_multiple_quotes(self):
-        """Test escaping multiple quotes in query."""
+        """
+        Test escaping multiple quotes in query.
+
+        Verifies that all occurrences of double quotes in a query are
+        properly escaped, not just the first one.
+        """
         # Arrange
         query = 'test "query" with "multiple" quotes'
 
@@ -586,7 +786,12 @@ class TestHitTestingServiceEscapeQueryForSearch:
         assert result == 'test \\"query\\" with \\"multiple\\" quotes'
 
     def test_escape_query_for_search_empty_string(self):
-        """Test escaping empty string."""
+        """
+        Test escaping empty string.
+
+        Verifies that empty strings are handled correctly and remain empty
+        after the escaping operation.
+        """
         # Arrange
         query = ""
 
