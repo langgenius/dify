@@ -19,7 +19,6 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Any, cast
-
 from unittest.mock import MagicMock, Mock, patch
 
 import httpx
@@ -135,8 +134,9 @@ class TestExternalDatasetServiceGetExternalKnowledgeApis:
         Patch ``db.paginate`` so we do not touch the real database layer.
         """
 
-        with patch("services.external_knowledge_service.db.paginate") as mock_paginate, patch(
-            "services.external_knowledge_service.select"
+        with (
+            patch("services.external_knowledge_service.db.paginate") as mock_paginate,
+            patch("services.external_knowledge_service.select"),
         ):
             yield mock_paginate
 
@@ -918,6 +918,3 @@ class TestExternalDatasetServiceFetchExternalKnowledgeRetrieval:
             )
 
         assert result == []
-
-
-
