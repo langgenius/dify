@@ -16,7 +16,7 @@ _HANDLER_INSTANCES: dict[type[SpanHandler], SpanHandler] = {SpanHandler: SpanHan
 def _is_instrument_flag_enabled() -> bool:
     """
     Check if external instrumentation is enabled via environment variable.
-    
+
     Third-party non-invasive instrumentation agents set this flag to coordinate
     with Dify's manual OpenTelemetry instrumentation.
     """

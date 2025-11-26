@@ -22,6 +22,7 @@ from core.app.entities.queue_entities import (
 from core.app.features.annotation_reply.annotation_reply import AnnotationReplyFeature
 from core.moderation.base import ModerationError
 from core.moderation.input_moderation import InputModeration
+from core.observability.otel import WorkflowAppRunnerHandler, trace_span
 from core.variables.variables import VariableUnion
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
@@ -33,7 +34,6 @@ from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
-from core.observability.otel import trace_span, WorkflowAppRunnerHandler
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import Workflow

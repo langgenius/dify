@@ -45,7 +45,7 @@ class AppGenerateHandler(SpanHandler):
                 GenAIAttributes.USER_ID: user_id,
                 DifySpanAttributes.USER_TYPE: "Account" if isinstance(user, Account) else "EndUser",
                 DifySpanAttributes.STREAMING: streaming,
-                DifySpanAttributes.WORKFLOW_ID: workflow_id
+                DifySpanAttributes.WORKFLOW_ID: workflow_id,
             }
 
             span_name = self._build_span_name(wrapped)
