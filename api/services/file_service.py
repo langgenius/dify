@@ -3,8 +3,8 @@ import os
 import uuid
 from typing import Literal, Union
 
-from sqlalchemy import Engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -29,7 +29,7 @@ PREVIEW_WORDS_LIMIT = 3000
 
 
 class FileService:
-    _session_maker: sessionmaker
+    _session_maker: sessionmaker[Session]
 
     def __init__(self, session_factory: sessionmaker | Engine | None = None):
         if isinstance(session_factory, Engine):
@@ -236,8 +236,8 @@ class FileService:
         return content.decode("utf-8")
 
     def delete_file(self, file_id: str):
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+        with self._session_maker() as session, session.begin():
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id))
 
             if not upload_file:
                 return
