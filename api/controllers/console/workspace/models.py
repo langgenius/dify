@@ -229,7 +229,7 @@ class ModelProviderModelApi(Resource):
             service.switch_active_custom_model_credential(
                 tenant_id=tenant_id,
                 provider=provider,
-                model_type=str(args.model_type),
+                model_type=args.model_type,
                 model=args.model,
                 credential_id=args.credential_id,
             )
@@ -242,18 +242,18 @@ class ModelProviderModelApi(Resource):
                 tenant_id=tenant_id,
                 provider=provider,
                 model=args.model,
-                model_type=str(args.model_type),
+                model_type=args.model_type,
                 configs=args.load_balancing.configs,
                 config_from=args.config_from or "",
             )
 
             if args.load_balancing.enabled:
                 model_load_balancing_service.enable_model_load_balancing(
-                    tenant_id=tenant_id, provider=provider, model=args.model, model_type=str(args.model_type)
+                    tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
                 )
             else:
                 model_load_balancing_service.disable_model_load_balancing(
-                    tenant_id=tenant_id, provider=provider, model=args.model, model_type=str(args.model_type)
+                    tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
                 )
 
         return {"result": "success"}, 200
@@ -291,7 +291,7 @@ class ModelProviderModelCredentialApi(Resource):
         current_credential = model_provider_service.get_model_credential(
             tenant_id=tenant_id,
             provider=provider,
-            model_type=str(args.model_type),
+            model_type=args.model_type,
             model=args.model,
             credential_id=args.credential_id,
         )
@@ -301,7 +301,7 @@ class ModelProviderModelCredentialApi(Resource):
             tenant_id=tenant_id,
             provider=provider,
             model=args.model,
-            model_type=str(args.model_type),
+            model_type=args.model_type,
             config_from=args.config_from or "",
         )
 
@@ -310,7 +310,7 @@ class ModelProviderModelCredentialApi(Resource):
                 tenant_id=tenant_id, provider_name=provider
             )
         else:
-            model_type = ModelType.value_of(str(args.model_type)).to_origin_model_type()
+            model_type = ModelType.value_of(args.model_type).to_origin_model_type()
             available_credentials = model_provider_service.provider_manager.get_provider_model_available_credentials(
                 tenant_id=tenant_id, provider_name=provider, model_type=model_type, model_name=args.model
             )
@@ -346,7 +346,7 @@ class ModelProviderModelCredentialApi(Resource):
                 tenant_id=tenant_id,
                 provider=provider,
                 model=args.model,
-                model_type=str(args.model_type),
+                model_type=args.model_type,
                 credentials=args.credentials,
                 credential_name=args.name,
             )
@@ -376,7 +376,7 @@ class ModelProviderModelCredentialApi(Resource):
             model_provider_service.update_model_credential(
                 tenant_id=current_tenant_id,
                 provider=provider,
-                model_type=str(args.model_type),
+                model_type=args.model_type,
                 model=args.model,
                 credentials=args.credentials,
                 credential_id=args.credential_id,
@@ -400,7 +400,7 @@ class ModelProviderModelCredentialApi(Resource):
         model_provider_service.remove_model_credential(
             tenant_id=current_tenant_id,
             provider=provider,
-            model_type=str(args.model_type),
+            model_type=args.model_type,
             model=args.model,
             credential_id=args.credential_id,
         )

@@ -296,7 +296,7 @@ class ModelLoadBalancingService:
         return inherit_config
 
     def update_load_balancing_configs(
-        self, tenant_id: str, provider: str, model: str, model_type: str, configs: list[dict], config_from: str
+        self, tenant_id: str, provider: str, model: str, model_type: ModelType, configs: list[dict], config_from: str
     ):
         """
         Update load balancing configurations.
