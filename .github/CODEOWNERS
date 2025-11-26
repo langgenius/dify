@@ -6,26 +6,8 @@
 
 * @crazywoola @laipz8200 @Yeuoly
 
-# Backend
+# Backend (default owner, more specific rules below will override)
 api/ @QuantumGhost
-
-# Backend - Workflow (general rule, more specific rules below will override)
-api/core/workflow/ @QuantumGhost
-api/services/workflow_service.py @QuantumGhost
-api/services/workflow_app_service.py @QuantumGhost
-api/services/workflow_run_service.py @QuantumGhost
-api/services/workflow_draft_variable_service.py @QuantumGhost
-api/services/workflow/ @QuantumGhost
-api/controllers/console/app/workflow_app_log.py @QuantumGhost
-api/controllers/console/app/workflow_draft_variable.py @QuantumGhost
-api/controllers/console/app/workflow_run.py @QuantumGhost
-api/controllers/console/explore/workflow.py @QuantumGhost
-api/controllers/service_api/app/workflow.py @QuantumGhost
-api/controllers/web/workflow.py @QuantumGhost
-api/models/workflow.py @QuantumGhost
-api/tasks/workflow_draft_var_tasks.py @QuantumGhost
-api/tasks/workflow_execution_tasks.py @QuantumGhost
-api/tasks/workflow_node_execution_tasks.py @QuantumGhost
 
 # Backend - Workflow - Engine (Core graph execution engine)
 api/core/workflow/graph_engine/ @laipz8200 @QuantumGhost
