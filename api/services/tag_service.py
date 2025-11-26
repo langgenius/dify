@@ -79,12 +79,12 @@ class TagService:
         if TagService.get_tag_by_tag_name(args["type"], current_user.current_tenant_id, args["name"]):
             raise ValueError("Tag name already exists")
         tag = Tag(
-            id=str(uuid.uuid4()),
             name=args["name"],
             type=args["type"],
             created_by=current_user.id,
             tenant_id=current_user.current_tenant_id,
         )
+        tag.id = str(uuid.uuid4())
         db.session.add(tag)
         db.session.commit()
         return tag
