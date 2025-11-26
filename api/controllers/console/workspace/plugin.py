@@ -821,7 +821,7 @@ class PluginReadmeApi(Resource):
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = ParserReadme.model_validate(request.args)
+        args = ParserReadme.model_validate(request.args.to_dict())
         return jsonable_encoder(
             {"readme": PluginService.fetch_plugin_readme(tenant_id, args.plugin_unique_identifier, args.language)}
         )
