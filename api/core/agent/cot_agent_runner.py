@@ -202,7 +202,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     except TypeError:
                         final_answer = f"{scratchpad.action.action_input}"
                 else:
-                    function_call_state = True
                     # action is tool call, invoke tool
                     tool_invoke_response, tool_invoke_meta = self._handle_invoke_action(
                         action=scratchpad.action,
@@ -212,6 +211,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     )
                     scratchpad.observation = tool_invoke_response
                     scratchpad.agent_response = tool_invoke_response
+
+                    # detect direct return
+                    direct_flag = (tool_invoke_meta.extra or {}).get("return_direct", False)
 
                     self.save_agent_thought(
                         agent_thought_id=agent_thought_id,
@@ -228,6 +230,12 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     self.queue_manager.publish(
                         QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
                     )
+
+                    if direct_flag:
+                        final_answer = str(tool_invoke_response or "")
+                        # keep function_call_state as False to end iterations
+                    else:
+                        function_call_state = True
 
                 # update prompt tool message
                 for prompt_tool in self._prompt_messages_tools:
