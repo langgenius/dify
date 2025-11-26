@@ -4,19 +4,19 @@
 class DifySpanAttributes:
     """Attribute names for Dify-specific spans."""
 
-    APP_ID = "dify.app.id"
+    APP_ID = "dify.app_id"
     """Application identifier."""
 
-    TENANT_ID = "dify.tenant.id"
+    TENANT_ID = "dify.tenant_id"
     """Tenant identifier."""
 
-    USER_TYPE = "dify.user.type"
+    USER_TYPE = "dify.user_type"
     """User type, e.g. Account, EndUser."""
 
     STREAMING = "dify.streaming"
     """Whether streaming response is enabled."""
 
-    WORKFLOW_ID = "dify.workflow.id"
+    WORKFLOW_ID = "dify.workflow_id"
     """Workflow identifier."""
 
     INVOKE_FROM = "dify.invoke_from"

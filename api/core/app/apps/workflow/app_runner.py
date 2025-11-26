@@ -7,6 +7,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
+from core.observability.otel import trace_span, WorkflowAppRunnerHandler
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
@@ -56,6 +57,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
 
+    @trace_span(WorkflowAppRunnerHandler)
     def run(self):
         """
         Run application

@@ -33,6 +33,7 @@ from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
+from core.observability.otel import trace_span, WorkflowAppRunnerHandler
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models import Workflow
@@ -80,6 +81,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
 
+    @trace_span(WorkflowAppRunnerHandler)
     def run(self):
         app_config = self.application_generate_entity.app_config
         app_config = cast(AdvancedChatAppConfig, app_config)
