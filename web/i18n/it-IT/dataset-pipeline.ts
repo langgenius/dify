@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Pipeline di conoscenza pubblicata',
+      tip: '<CustomLink>Vai a Documenti</CustomLink> per aggiungere o gestire i documenti.',
     },
     error: {
       message: 'Impossibile pubblicare la pipeline delle conoscenze',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Struttura',
     structureTooltip: 'La struttura a blocchi determina il modo in cui i documenti vengono suddivisi e indicizzati, offrendo le modalità Generale, Padre-Figlio e Domande e risposte, ed è univoca per ogni knowledge base.',
+    createdBy: 'Da {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'personaggi',
     title: 'Aggiungi documenti',
     backToDataSource: 'Origine dati',
+    selectOnlineDocumentTip: 'Elabora fino a {{count}} pagine',
+    selectOnlineDriveTip: 'Elabora fino a {{count}} file, massimo {{fileSize}} MB ciascuno',
   },
   documentSettings: {
     title: 'Impostazioni documento',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} pagine',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Tutti i file',
       searchPlaceholder: 'Cerca file...',
       allBuckets: 'Tutti i bucket di archiviazione cloud',
+      searchResult: 'Trova {{searchResultsLength}} elementi nella cartella "{{folderName}}"',
     },
     emptyFolder: 'Questa cartella è vuota',
     resetKeywords: 'Reimposta le parole chiave',
     emptySearchResult: 'Nessun oggetto trovato',
     notSupportedFileType: 'Questo tipo di file non è supportato',
+    notConnected: '{{name}} non è connesso',
+    notConnectedTip: 'Per sincronizzarsi con {{name}}, è necessario prima stabilire la connessione a {{name}}.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
+  },
   conversion: {
     confirm: {
       content: 'Questa azione è permanente. Non sarà possibile ripristinare il metodo precedente. Si prega di confermare per convertire.',
@@ -149,6 +160,7 @@ const translation = {
   pipelineNameAndIcon: 'Nome e icona della pipeline',
   knowledgeNameAndIconPlaceholder: 'Inserisci il nome della Knowledge Base',
   knowledgeDescriptionPlaceholder: 'Descrivi cosa c\'è in questa Knowledge Base. Una descrizione dettagliata consente all\'intelligenza artificiale di accedere al contenuto del set di dati in modo più accurato. Se vuoto, Dify utilizzerà la strategia di hit predefinita. (Facoltativo)',
+  configurationTip: 'Configura {{pluginName}}',
 }
 
 export default translation

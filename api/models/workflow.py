@@ -29,6 +29,7 @@ from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
 from core.workflow.enums import NodeType
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
@@ -96,7 +97,7 @@ class _InvalidGraphDefinitionError(Exception):
     pass
 
 
-class Workflow(Base):
+class Workflow(Base):  # bug
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
 
@@ -1728,3 +1729,68 @@ class WorkflowPause(DefaultFieldsMixin, Base):
         primaryjoin="WorkflowPause.workflow_run_id == WorkflowRun.id",
         back_populates="pause",
     )
+
+
+class WorkflowPauseReason(DefaultFieldsMixin, Base):
+    __tablename__ = "workflow_pause_reasons"
+
+    # `pause_id` represents the identifier of the pause,
+    # correspond to the `id` field of `WorkflowPause`.
+    pause_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
+
+    type_: Mapped[PauseReasonType] = mapped_column(EnumText(PauseReasonType), nullable=False)
+
+    # form_id is not empty if and if only type_ == PauseReasonType.HUMAN_INPUT_REQUIRED
+    #
+    form_id: Mapped[str] = mapped_column(
+        String(36),
+        nullable=False,
+        default="",
+    )
+
+    # message records the text description of this pause reason. For example,
+    # "The workflow has been paused due to scheduling."
+    #
+    # Empty message means that this pause reason is not speified.
+    message: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="",
+    )
+
+    # `node_id` is the identifier of node causing the pasue, correspond to
+    # `Node.id`. Empty `node_id` means that this pause reason is not caused by any specific node
+    # (E.G. time slicing pauses.)
+    node_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="",
+    )
+
+    # Relationship to WorkflowPause
+    pause: Mapped[WorkflowPause] = orm.relationship(
+        foreign_keys=[pause_id],
+        # require explicit preloading.
+        lazy="raise",
+        uselist=False,
+        primaryjoin="WorkflowPauseReason.pause_id == WorkflowPause.id",
+    )
+
+    @classmethod
+    def from_entity(cls, pause_reason: PauseReason) -> "WorkflowPauseReason":
+        if isinstance(pause_reason, HumanInputRequired):
+            return cls(
+                type_=PauseReasonType.HUMAN_INPUT_REQUIRED, form_id=pause_reason.form_id, node_id=pause_reason.node_id
+            )
+        elif isinstance(pause_reason, SchedulingPause):
+            return cls(type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message, node_id="")
+        else:
+            raise AssertionError(f"Unknown pause reason type: {pause_reason}")
+
+    def to_entity(self) -> PauseReason:
+        if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+            return HumanInputRequired(form_id=self.form_id, node_id=self.node_id)
+        elif self.type_ == PauseReasonType.SCHEDULED_PAUSE:
+            return SchedulingPause(message=self.message)
+        else:
+            raise AssertionError(f"Unknown pause reason type: {self.type_}")

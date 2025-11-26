@@ -141,6 +141,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         form=parameter.form,
                         llm_description=parameter.description,
                         required=variable.required,
+                        default=variable.default,
                         options=options,
                         placeholder=I18nObject(en_US="", zh_Hans=""),
                     )

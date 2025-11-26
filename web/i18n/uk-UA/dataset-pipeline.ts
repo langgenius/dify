@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Опубліковано портфель знань',
+      tip: '<CustomLink>Перейдіть до Документів</CustomLink>, щоб додати або керувати документами.',
     },
     error: {
       message: 'Не вдалося опублікувати конвеєр знань',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Структура',
     structureTooltip: 'Структура фрагментів визначає, як документи розділяються та індексуються (пропонуючи режими «Загальні», «Батьки-дочірні елементи» та «Запитання й відповіді»), і є унікальною для кожної бази знань.',
+    createdBy: 'Автор: {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'Символів',
     backToDataSource: 'Джерело даних',
     title: 'Додати документи',
+    selectOnlineDocumentTip: 'Обробити до {{count}} сторінок',
+    selectOnlineDriveTip: 'Обробляйте до {{count}} файлів, максимум {{fileSize}} МБ кожен',
   },
   documentSettings: {
     title: 'Параметри документа',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} сторінок',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Всі файли',
       searchPlaceholder: 'Пошук файлів...',
       allBuckets: 'Усі сегменти хмарного сховища',
+      searchResult: 'Знайдено {{searchResultsLength}} елементів у папці "{{folderName}}"',
     },
     emptyFolder: 'Ця папка порожня',
     emptySearchResult: 'Предметів не знайдено',
     resetKeywords: 'Скидання ключових слів',
     notSupportedFileType: 'Цей тип файлу не підтримується',
+    notConnected: '{{name}} не підключено',
+    notConnectedTip: 'Щоб синхронізувати з {{name}}, спершу потрібно встановити з’єднання з {{name}}.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Підтвердження',
@@ -149,6 +160,7 @@ const translation = {
   pipelineNameAndIcon: 'Назва та піктограма воронки продажів',
   editPipelineInfo: 'Як редагувати інформацію про воронку продажів',
   knowledgeDescriptionPlaceholder: 'Опишіть, що є в цій Базі знань. Детальний опис дозволяє штучному інтелекту більш точно отримати доступ до вмісту набору даних. Якщо значення порожнє, Dify використовуватиме стратегію удару за замовчуванням. (Необов\'язково)',
+  configurationTip: 'Налаштувати {{pluginName}}',
 }
 
 export default translation

@@ -56,6 +56,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: '걱정하지 마세요 — 이번 사항은 현재 구독에 영향을 주지 않지만, 다시 상태를 확인하지 않으면 갱신 시 교육 할인 혜택을 받지 못합니다.',
+      title: '귀하의 학력 상태는 {{date}}에 만료됩니다',
     },
     stillInEducation: {
       title: '아직 학업 중이신가요?',
