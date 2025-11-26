@@ -19,6 +19,7 @@ const translation = {
       tokens: '토큰',
       user: '엔드 유저 또는 계정',
       version: '버전',
+      triggered_from: '트리거 기준',
     },
     pagination: {
       previous: '이전',
@@ -66,6 +67,8 @@ const translation = {
       quarterToDate: '분기 초부터 오늘까지',
       yearToDate: '연 초부터 오늘까지',
       allTime: '모든 기간',
+      last30days: '최근 30일',
+      custom: '사용자 정의',
     },
     annotation: {
       all: '모두',
@@ -96,6 +99,15 @@ const translation = {
     finalProcessing: '최종 처리',
   },
   dateFormat: 'MM/DD/YYYY',
+  triggerBy: {
+    debugging: '디버깅',
+    appRun: '웹앱',
+    webhook: '웹훅',
+    schedule: '일정',
+    plugin: '플러그인',
+    ragPipelineRun: 'RAG 파이프라인',
+    ragPipelineDebugging: 'RAG 디버깅',
+  },
 }
 
 export default translation

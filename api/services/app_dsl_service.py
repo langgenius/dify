@@ -26,6 +26,7 @@ from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
 from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
 from core.workflow.nodes.tool.entities import ToolNodeData
+from core.workflow.nodes.trigger_schedule.trigger_schedule_node import TriggerScheduleNode
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_redis import redis_client
 from factories import variable_factory
@@ -43,7 +44,7 @@ IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 CHECK_DEPENDENCIES_REDIS_KEY_PREFIX = "app_check_dependencies:"
 IMPORT_INFO_REDIS_EXPIRY = 10 * 60  # 10 minutes
 DSL_MAX_SIZE = 10 * 1024 * 1024  # 10MB
-CURRENT_DSL_VERSION = "0.4.0"
+CURRENT_DSL_VERSION = "0.5.0"
 
 
 class ImportMode(StrEnum):
@@ -549,7 +550,7 @@ class AppDslService:
             "app": {
                 "name": app_model.name,
                 "mode": app_model.mode,
-                "icon": "🤖" if app_model.icon_type == "image" else app_model.icon,
+                "icon": app_model.icon if app_model.icon_type == "image" else "🤖",
                 "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
                 "description": app_model.description,
                 "use_icon_as_answer_icon": app_model.use_icon_as_answer_icon,
@@ -599,6 +600,16 @@ class AppDslService:
             if not include_secret and data_type == NodeType.AGENT:
                 for tool in node_data.get("agent_parameters", {}).get("tools", {}).get("value", []):
                     tool.pop("credential_id", None)
+            if data_type == NodeType.TRIGGER_SCHEDULE.value:
+                # override the config with the default config
+                node_data["config"] = TriggerScheduleNode.get_default_config()["config"]
+            if data_type == NodeType.TRIGGER_WEBHOOK.value:
+                # clear the webhook_url
+                node_data["webhook_url"] = ""
+                node_data["webhook_debug_url"] = ""
+            if data_type == NodeType.TRIGGER_PLUGIN.value:
+                # clear the subscription_id
+                node_data["subscription_id"] = ""
 
         export_data["workflow"] = workflow_dict
         dependencies = cls._extract_dependencies_from_workflow(workflow)

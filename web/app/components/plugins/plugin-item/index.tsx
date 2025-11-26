@@ -1,35 +1,35 @@
 'use client'
-import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
-import { useTheme } from 'next-themes'
+import Tooltip from '@/app/components/base/tooltip'
+import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
+import { API_PREFIX } from '@/config'
+import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import cn from '@/utils/classnames'
+import { getMarketplaceUrl } from '@/utils/var'
 import {
   RiArrowRightUpLine,
   RiBugLine,
   RiErrorWarningLine,
   RiHardDrive3Line,
   RiLoginCircleLine,
-  RiVerifiedBadgeLine,
 } from '@remixicon/react'
+import { useTheme } from 'next-themes'
+import type { FC } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginPageContext } from '../plugin-page/context'
-import { Github } from '../../base/icons/src/public/common'
+import { gte } from 'semver'
+import Verified from '../base/badges/verified'
 import Badge from '../../base/badge'
-import { type PluginDetail, PluginSource, PluginType } from '../types'
+import { Github } from '../../base/icons/src/public/common'
 import CornerMark from '../card/base/corner-mark'
 import Description from '../card/base/description'
 import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
+import { useCategories } from '../hooks'
+import { usePluginPageContext } from '../plugin-page/context'
+import { PluginCategoryEnum, type PluginDetail, PluginSource } from '../types'
 import Action from './action'
-import cn from '@/utils/classnames'
-import { API_PREFIX } from '@/config'
-import { useSingleCategories } from '../hooks'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
-import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
-import { useAppContext } from '@/context/app-context'
-import { gte } from 'semver'
-import Tooltip from '@/app/components/base/tooltip'
-import { getMarketplaceUrl } from '@/utils/var'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
   className?: string
@@ -42,7 +42,7 @@ const PluginItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const { categoriesMap } = useSingleCategories()
+  const { categoriesMap } = useCategories(t, true)
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
   const { refreshPluginList } = useRefreshPluginList()
@@ -112,7 +112,7 @@ const PluginItem: FC<Props> = ({
           <div className='ml-3 w-0 grow'>
             <div className='flex h-5 items-center'>
               <Title title={title} />
-              {verified && <RiVerifiedBadgeLine className='ml-0.5 h-4 w-4 shrink-0 text-text-accent' />}
+              {verified && <Verified className='ml-0.5 h-4 w-4' text={t('plugin.marketplace.verifiedTip')} />}
               {!isDifyVersionCompatible && <Tooltip popupContent={
                 t('plugin.difyVersionNotCompatible', { minimalDifyVersion: declarationMeta.minimum_dify_version })
               }><RiErrorWarningLine color='red' className='ml-0.5 h-4 w-4 shrink-0 text-text-accent' /></Tooltip>}
@@ -150,7 +150,7 @@ const PluginItem: FC<Props> = ({
             packageName={name}
             packageNameClassName='w-auto max-w-[150px]'
           />
-          {category === PluginType.extension && (
+          {category === PluginCategoryEnum.extension && (
             <>
               <div className='system-xs-regular mx-2 text-text-quaternary'>·</div>
               <div className='system-xs-regular flex items-center gap-x-1 overflow-hidden text-text-tertiary'>

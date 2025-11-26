@@ -7,7 +7,7 @@ from libs.password import valid_password
 from models.model import DifySetup, db
 from services.account_service import RegisterService, TenantService
 
-from . import api, console_ns
+from . import console_ns
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
 from .wraps import only_edition_self_hosted
@@ -15,12 +15,12 @@ from .wraps import only_edition_self_hosted
 
 @console_ns.route("/setup")
 class SetupApi(Resource):
-    @api.doc("get_setup_status")
-    @api.doc(description="Get system setup status")
-    @api.response(
+    @console_ns.doc("get_setup_status")
+    @console_ns.doc(description="Get system setup status")
+    @console_ns.response(
         200,
         "Success",
-        api.model(
+        console_ns.model(
             "SetupStatusResponse",
             {
                 "step": fields.String(description="Setup step status", enum=["not_started", "finished"]),
@@ -40,20 +40,23 @@ class SetupApi(Resource):
             return {"step": "not_started"}
         return {"step": "finished"}
 
-    @api.doc("setup_system")
-    @api.doc(description="Initialize system setup with admin account")
-    @api.expect(
-        api.model(
+    @console_ns.doc("setup_system")
+    @console_ns.doc(description="Initialize system setup with admin account")
+    @console_ns.expect(
+        console_ns.model(
             "SetupRequest",
             {
                 "email": fields.String(required=True, description="Admin email address"),
                 "name": fields.String(required=True, description="Admin name (max 30 characters)"),
                 "password": fields.String(required=True, description="Admin password"),
+                "language": fields.String(required=False, description="Admin language"),
             },
         )
     )
-    @api.response(201, "Success", api.model("SetupResponse", {"result": fields.String(description="Setup result")}))
-    @api.response(400, "Already setup or validation failed")
+    @console_ns.response(
+        201, "Success", console_ns.model("SetupResponse", {"result": fields.String(description="Setup result")})
+    )
+    @console_ns.response(400, "Already setup or validation failed")
     @only_edition_self_hosted
     def post(self):
         """Initialize system setup with admin account"""

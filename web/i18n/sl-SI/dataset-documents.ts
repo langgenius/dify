@@ -81,6 +81,10 @@ const translation = {
       ok: 'V redu',
     },
     learnMore: 'Izvedi več',
+    sort: {
+      uploadTime: 'Čas nalaganja',
+      hitCount: 'Število priklicev',
+    },
   },
   metadata: {
     title: 'Metapodatki',

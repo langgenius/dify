@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: '上下文',
       noData: '您可以匯入知識庫作為上下文',
-      words: '詞',
-      textBlocks: '文字塊',
       selectTitle: '選擇引用知識庫',
       selected: '個知識庫被選中',
       noDataSet: '未找到知識庫',
@@ -294,7 +292,6 @@ const translation = {
     'required': '必填',
     'hide': '隱藏',
     'errorMsg': {
-      varNameRequired: '變數名稱必填',
       labelNameRequired: '顯示名稱必填',
       varNameCanBeRepeat: '變數名稱不能重複',
       atLeastOneOption: '至少需要一個選項',
@@ -330,6 +327,7 @@ const translation = {
     'localUpload': '本地上傳',
     'single-file': '單個檔',
     'maxNumberOfUploads': '最大上傳次數',
+    'maxNumberTip': '文件 < {{docLimit}}, 圖片 < {{imgLimit}}, 音訊 < {{audioLimit}}, 影片 < {{videoLimit}}',
     'checkbox': '核取方塊',
     'optional': '可選的',
     'jsonSchema': 'JSON Schema',

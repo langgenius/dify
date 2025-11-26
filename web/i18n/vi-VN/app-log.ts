@@ -19,6 +19,7 @@ const translation = {
       tokens: 'TOKEN',
       user: 'NGƯỜI DÙNG CUỐI HOẶC TÀI KHOẢN',
       version: 'PHIÊN BẢN',
+      triggered_from: 'KÍCH HOẠT BỞI',
     },
     pagination: {
       previous: 'Trước',
@@ -65,6 +66,8 @@ const translation = {
       quarterToDate: 'Quý hiện tại',
       yearToDate: 'Năm hiện tại',
       allTime: 'Tất cả thời gian',
+      custom: 'Tùy chỉnh',
+      last30days: '30 Ngày Qua',
     },
     annotation: {
       all: 'Tất cả',
@@ -95,6 +98,15 @@ const translation = {
   },
   agentLog: 'Nhật ký đại lý',
   dateFormat: 'MM/DD/YYYY',
+  triggerBy: {
+    debugging: 'Gỡ lỗi',
+    appRun: 'Ứng dụng web',
+    webhook: 'Webhook',
+    schedule: 'Lịch trình',
+    plugin: 'Tiện ích mở rộng',
+    ragPipelineRun: 'Chuỗi Xử lý RAG',
+    ragPipelineDebugging: 'Gỡ lỗi RAG',
+  },
 }
 
 export default translation

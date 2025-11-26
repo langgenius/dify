@@ -16,9 +16,9 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import type { DataSourceDefaultValue, ToolDefaultValue } from '../block-selector/types'
+import type { PluginDefaultValue } from '../block-selector/types'
 import type { Edge, Node, OnNodeAdd } from '../types'
-import { BlockEnum } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 import { useWorkflowStore } from '../store'
 import {
   CUSTOM_EDGE,
@@ -59,9 +59,19 @@ import {
   useWorkflowHistory,
 } from './use-workflow-history'
 import { useNodesMetaData } from './use-nodes-meta-data'
+import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+
+// Entry node deletion restriction has been removed to allow empty workflows
+
+// Entry node (Start/Trigger) wrapper offsets for alignment
+// Must match the values in use-helpline.ts
+const ENTRY_NODE_WRAPPER_OFFSET = {
+  x: 0,
+  y: 21, // Adjusted based on visual testing feedback
+} as const
 
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
@@ -85,6 +95,7 @@ export const useNodesInteractions = () => {
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const { saveStateToHistory, undo, redo } = useWorkflowHistory()
+  const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(
     (_, node) => {
@@ -138,21 +149,51 @@ export const useNodesInteractions = () => {
       const newNodes = produce(nodes, (draft) => {
         const currentNode = draft.find(n => n.id === node.id)!
 
-        if (showVerticalHelpLineNodesLength > 0)
-          currentNode.position.x = showVerticalHelpLineNodes[0].position.x
-        else if (restrictPosition.x !== undefined)
-          currentNode.position.x = restrictPosition.x
-        else if (restrictLoopPosition.x !== undefined)
-          currentNode.position.x = restrictLoopPosition.x
-        else currentNode.position.x = node.position.x
+        // Check if current dragging node is an entry node
+        const isCurrentEntryNode = isTriggerNode(node.data.type as any) || node.data.type === BlockEnum.Start
 
-        if (showHorizontalHelpLineNodesLength > 0)
-          currentNode.position.y = showHorizontalHelpLineNodes[0].position.y
-        else if (restrictPosition.y !== undefined)
+        // X-axis alignment with offset consideration
+        if (showVerticalHelpLineNodesLength > 0) {
+          const targetNode = showVerticalHelpLineNodes[0]
+          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+
+          // Calculate the wrapper position needed to align the inner nodes
+          // Target inner position = target.position + target.offset
+          // Current inner position should equal target inner position
+          // So: current.position + current.offset = target.position + target.offset
+          // Therefore: current.position = target.position + target.offset - current.offset
+          const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.x : 0
+          const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.x : 0
+          currentNode.position.x = targetNode.position.x + targetOffset - currentOffset
+        }
+        else if (restrictPosition.x !== undefined) {
+          currentNode.position.x = restrictPosition.x
+        }
+        else if (restrictLoopPosition.x !== undefined) {
+          currentNode.position.x = restrictLoopPosition.x
+        }
+        else {
+          currentNode.position.x = node.position.x
+        }
+
+        // Y-axis alignment with offset consideration
+        if (showHorizontalHelpLineNodesLength > 0) {
+          const targetNode = showHorizontalHelpLineNodes[0]
+          const isTargetEntryNode = isTriggerNode(targetNode.data.type as any) || targetNode.data.type === BlockEnum.Start
+
+          const targetOffset = isTargetEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
+          const currentOffset = isCurrentEntryNode ? ENTRY_NODE_WRAPPER_OFFSET.y : 0
+          currentNode.position.y = targetNode.position.y + targetOffset - currentOffset
+        }
+        else if (restrictPosition.y !== undefined) {
           currentNode.position.y = restrictPosition.y
-        else if (restrictLoopPosition.y !== undefined)
+        }
+        else if (restrictLoopPosition.y !== undefined) {
           currentNode.position.y = restrictLoopPosition.y
-        else currentNode.position.y = node.position.y
+        }
+        else {
+          currentNode.position.y = node.position.y
+        }
       })
       setNodes(newNodes)
     },
@@ -357,6 +398,7 @@ export const useNodesInteractions = () => {
       if (node.type === CUSTOM_ITERATION_START_NODE) return
       if (node.type === CUSTOM_LOOP_START_NODE) return
       if (node.data.type === BlockEnum.DataSourceEmpty) return
+      if (node.data._pluginInstallLocked) return
       handleNodeSelect(node.id)
     },
     [handleNodeSelect],
@@ -735,7 +777,7 @@ export const useNodesInteractions = () => {
         nodeType,
         sourceHandle = 'source',
         targetHandle = 'target',
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       { prevNodeId, prevNodeSourceHandle, nextNodeId, nextNodeTargetHandle },
     ) => {
@@ -756,7 +798,7 @@ export const useNodesInteractions = () => {
               nodesWithSameType.length > 0
                 ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
                 : defaultValue.title,
-            ...toolDefaultValue,
+            ...pluginDefaultValue,
             selected: true,
             _showAddVariablePopup:
               (nodeType === BlockEnum.VariableAssigner
@@ -1286,7 +1328,7 @@ export const useNodesInteractions = () => {
       currentNodeId: string,
       nodeType: BlockEnum,
       sourceHandle: string,
-      toolDefaultValue?: ToolDefaultValue | DataSourceDefaultValue,
+      pluginDefaultValue?: PluginDefaultValue,
     ) => {
       if (getNodesReadOnly()) return
 
@@ -1310,7 +1352,7 @@ export const useNodesInteractions = () => {
             nodesWithSameType.length > 0
               ? `${defaultValue.title} ${nodesWithSameType.length + 1}`
               : defaultValue.title,
-          ...toolDefaultValue,
+          ...pluginDefaultValue,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
           selected: currentNode.data.selected,
@@ -1361,7 +1403,14 @@ export const useNodesInteractions = () => {
         return filtered
       })
       setEdges(newEdges)
-      handleSyncWorkflowDraft()
+      if (nodeType === BlockEnum.TriggerWebhook) {
+        handleSyncWorkflowDraft(true, true, {
+          onSuccess: () => autoGenerateWebhookUrl(newCurrentNode.id),
+        })
+      }
+      else {
+        handleSyncWorkflowDraft()
+      }
 
       saveStateToHistory(WorkflowHistoryEvent.NodeChange, {
         nodeId: currentNodeId,
@@ -1373,6 +1422,7 @@ export const useNodesInteractions = () => {
       handleSyncWorkflowDraft,
       saveStateToHistory,
       nodesMetaDataMap,
+      autoGenerateWebhookUrl,
     ],
   )
 
@@ -1656,7 +1706,7 @@ export const useNodesInteractions = () => {
 
     const nodes = getNodes()
     const bundledNodes = nodes.filter(
-      node => node.data._isBundled && node.data.type !== BlockEnum.Start,
+      node => node.data._isBundled,
     )
 
     if (bundledNodes.length) {
@@ -1669,7 +1719,7 @@ export const useNodesInteractions = () => {
     if (edgeSelected) return
 
     const selectedNode = nodes.find(
-      node => node.data.selected && node.data.type !== BlockEnum.Start,
+      node => node.data.selected,
     )
 
     if (selectedNode) handleNodeDelete(selectedNode.id)
