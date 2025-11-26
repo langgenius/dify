@@ -94,13 +94,11 @@ DatasetCollectionBindingService, including:
 """
 
 from unittest.mock import Mock, patch
-from uuid import uuid4
 
 import pytest
 
 from models.dataset import Dataset, DatasetCollectionBinding
 from services.dataset_service import DatasetCollectionBindingService
-
 
 # ============================================================================
 # Test Data Factory
@@ -932,4 +930,3 @@ class TestDatasetCollectionBindingServiceGetBindingByIdAndType:
 # - Tests are maintainable (clear mock setup)
 #
 # ============================================================================
-
