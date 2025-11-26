@@ -173,7 +173,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setNodes: setNodesInStore,
   } = workflowStore.getState()
   const currentNodes = useNodes()
-  const setNodesOnlyChangeWithData = useCallback((nodes: any[]) => {
+  const setNodesOnlyChangeWithData = useCallback((nodes: Node[]) => {
     const nodesData = nodes.map(node => ({
       id: node.id,
       data: node.data,
