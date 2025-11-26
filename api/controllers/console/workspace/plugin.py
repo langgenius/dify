@@ -247,7 +247,7 @@ class PluginListLatestVersionsApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        args = ParserLatest.model_validate_json(console_ns.payload)
+        args = ParserLatest.model_validate(console_ns.payload)
 
         try:
             versions = PluginService.list_latest_versions(args.plugin_ids)
