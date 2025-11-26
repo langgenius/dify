@@ -284,7 +284,7 @@ class ModelProviderModelCredentialApi(Resource):
     def get(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserGetCredentials.model_validate(console_ns.payload)
+        args = ParserGetCredentials.model_validate(request.args.to_dict())
 
         model_provider_service = ModelProviderService()
         current_credential = model_provider_service.get_model_credential(
