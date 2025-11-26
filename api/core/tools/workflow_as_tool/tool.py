@@ -114,10 +114,24 @@ class WorkflowTool(Tool):
             for file in files:
                 yield self.create_file_message(file)  # type: ignore
 
+        return_direct_flag = isinstance(outputs, dict) and outputs.pop("return_direct", None) is True
+
         self._latest_usage = self._derive_usage_from_result(data)
 
-        yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
+        direct_text = None
+        if return_direct_flag:
+            string_values = [v for v in outputs.values() if isinstance(v, str)]
+            if string_values:
+                direct_text = "\n".join(string_values)
+
+        if direct_text is not None:
+            yield self.create_text_message(direct_text)
+        else:
+            yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
+
         yield self.create_json_message(outputs, suppress_output=True)
+        if return_direct_flag:
+            yield self.create_variable_message("return_direct", True)
 
     @property
     def latest_usage(self) -> LLMUsage:
