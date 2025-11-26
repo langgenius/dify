@@ -5,7 +5,7 @@ from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -46,7 +46,7 @@ parser_list = (
 
 @console_ns.route("/workspaces/current/plugin/list")
 class PluginListApi(Resource):
-    @api.expect(parser_list)
+    @console_ns.expect(parser_list)
     @setup_required
     @login_required
     @account_initialization_required
@@ -66,7 +66,7 @@ parser_latest = reqparse.RequestParser().add_argument("plugin_ids", type=list, r
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
 class PluginListLatestVersionsApi(Resource):
-    @api.expect(parser_latest)
+    @console_ns.expect(parser_latest)
     @setup_required
     @login_required
     @account_initialization_required
@@ -86,7 +86,7 @@ parser_ids = reqparse.RequestParser().add_argument("plugin_ids", type=list, requ
 
 @console_ns.route("/workspaces/current/plugin/list/installations/ids")
 class PluginListInstallationsFromIdsApi(Resource):
-    @api.expect(parser_ids)
+    @console_ns.expect(parser_ids)
     @setup_required
     @login_required
     @account_initialization_required
@@ -112,7 +112,7 @@ parser_icon = (
 
 @console_ns.route("/workspaces/current/plugin/icon")
 class PluginIconApi(Resource):
-    @api.expect(parser_icon)
+    @console_ns.expect(parser_icon)
     @setup_required
     def get(self):
         args = parser_icon.parse_args()
@@ -181,7 +181,7 @@ parser_github = (
 
 @console_ns.route("/workspaces/current/plugin/upload/github")
 class PluginUploadFromGithubApi(Resource):
-    @api.expect(parser_github)
+    @console_ns.expect(parser_github)
     @setup_required
     @login_required
     @account_initialization_required
@@ -230,7 +230,7 @@ parser_pkg = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/plugin/install/pkg")
 class PluginInstallFromPkgApi(Resource):
-    @api.expect(parser_pkg)
+    @console_ns.expect(parser_pkg)
     @setup_required
     @login_required
     @account_initialization_required
@@ -263,7 +263,7 @@ parser_githubapi = (
 
 @console_ns.route("/workspaces/current/plugin/install/github")
 class PluginInstallFromGithubApi(Resource):
-    @api.expect(parser_githubapi)
+    @console_ns.expect(parser_githubapi)
     @setup_required
     @login_required
     @account_initialization_required
@@ -294,7 +294,7 @@ parser_marketplace = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/plugin/install/marketplace")
 class PluginInstallFromMarketplaceApi(Resource):
-    @api.expect(parser_marketplace)
+    @console_ns.expect(parser_marketplace)
     @setup_required
     @login_required
     @account_initialization_required
@@ -324,7 +324,7 @@ parser_pkgapi = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/plugin/marketplace/pkg")
 class PluginFetchMarketplacePkgApi(Resource):
-    @api.expect(parser_pkgapi)
+    @console_ns.expect(parser_pkgapi)
     @setup_required
     @login_required
     @account_initialization_required
@@ -353,7 +353,7 @@ parser_fetch = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/plugin/fetch-manifest")
 class PluginFetchManifestApi(Resource):
-    @api.expect(parser_fetch)
+    @console_ns.expect(parser_fetch)
     @setup_required
     @login_required
     @account_initialization_required
@@ -384,7 +384,7 @@ parser_tasks = (
 
 @console_ns.route("/workspaces/current/plugin/tasks")
 class PluginFetchInstallTasksApi(Resource):
-    @api.expect(parser_tasks)
+    @console_ns.expect(parser_tasks)
     @setup_required
     @login_required
     @account_initialization_required
@@ -471,7 +471,7 @@ parser_marketplace_api = (
 
 @console_ns.route("/workspaces/current/plugin/upgrade/marketplace")
 class PluginUpgradeFromMarketplaceApi(Resource):
-    @api.expect(parser_marketplace_api)
+    @console_ns.expect(parser_marketplace_api)
     @setup_required
     @login_required
     @account_initialization_required
@@ -503,7 +503,7 @@ parser_github_post = (
 
 @console_ns.route("/workspaces/current/plugin/upgrade/github")
 class PluginUpgradeFromGithubApi(Resource):
-    @api.expect(parser_github_post)
+    @console_ns.expect(parser_github_post)
     @setup_required
     @login_required
     @account_initialization_required
@@ -535,7 +535,7 @@ parser_uninstall = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/workspaces/current/plugin/uninstall")
 class PluginUninstallApi(Resource):
-    @api.expect(parser_uninstall)
+    @console_ns.expect(parser_uninstall)
     @setup_required
     @login_required
     @account_initialization_required
@@ -560,7 +560,7 @@ parser_change_post = (
 
 @console_ns.route("/workspaces/current/plugin/permission/change")
 class PluginChangePermissionApi(Resource):
-    @api.expect(parser_change_post)
+    @console_ns.expect(parser_change_post)
     @setup_required
     @login_required
     @account_initialization_required
@@ -618,7 +618,7 @@ parser_dynamic = (
 
 @console_ns.route("/workspaces/current/plugin/parameters/dynamic-options")
 class PluginFetchDynamicSelectOptionsApi(Resource):
-    @api.expect(parser_dynamic)
+    @console_ns.expect(parser_dynamic)
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -655,7 +655,7 @@ parser_change = (
 
 @console_ns.route("/workspaces/current/plugin/preferences/change")
 class PluginChangePreferencesApi(Resource):
-    @api.expect(parser_change)
+    @console_ns.expect(parser_change)
     @setup_required
     @login_required
     @account_initialization_required
@@ -749,7 +749,7 @@ parser_exclude = reqparse.RequestParser().add_argument("plugin_id", type=str, re
 
 @console_ns.route("/workspaces/current/plugin/preferences/autoupgrade/exclude")
 class PluginAutoUpgradeExcludePluginApi(Resource):
-    @api.expect(parser_exclude)
+    @console_ns.expect(parser_exclude)
     @setup_required
     @login_required
     @account_initialization_required
