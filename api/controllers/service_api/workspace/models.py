@@ -1,3 +1,4 @@
+from core.model_runtime.entities.model_entities import ModelType
 from flask_login import current_user
 from flask_restx import Resource
 
@@ -19,7 +20,7 @@ class ModelProviderAvailableModelApi(Resource):
         }
     )
     @validate_dataset_token
-    def get(self, _, model_type: str):
+    def get(self, _, model_type: ModelType):
         """Get available models by model type.
 
         Returns a list of available models for the specified model type.
