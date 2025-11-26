@@ -476,7 +476,7 @@ class PluginFetchManifestApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserPluginIdentifierQuery.model_validate(console_ns.payload)
+        args = ParserPluginIdentifierQuery.model_validate(request.args)
 
         try:
             return jsonable_encoder(
