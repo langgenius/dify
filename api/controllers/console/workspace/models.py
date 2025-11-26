@@ -537,7 +537,7 @@ class ModelProviderModelParameterRuleApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider: str):
-        args = ParserParameter.model_validate(console_ns.payload)
+        args = ParserParameter.model_validate(request.args.to_dict())
         _, tenant_id = current_account_with_tenant()
 
         model_provider_service = ModelProviderService()
