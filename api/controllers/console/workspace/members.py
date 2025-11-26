@@ -2,7 +2,7 @@ from urllib import parse
 
 from flask import abort, request
 from flask_restx import Resource, marshal_with
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 import services
 from configs import dify_config
