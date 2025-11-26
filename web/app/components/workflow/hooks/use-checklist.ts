@@ -76,7 +76,6 @@ const START_NODE_TYPES: BlockEnum[] = [
 ]
 
 export const useChecklist = (nodes: Node[], edges: Edge[]) => {
-  console.log('check')
   const { t } = useTranslation()
   const language = useGetLanguage()
   const { nodesMap: nodesExtraData } = useNodesMetaData()

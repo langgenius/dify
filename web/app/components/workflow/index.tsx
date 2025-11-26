@@ -18,6 +18,7 @@ import ReactFlow, {
   ReactFlowProvider,
   SelectionMode,
   useEdgesState,
+  useNodes,
   useNodesState,
   useOnViewportChange,
   useReactFlow,
@@ -168,8 +169,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setShowConfirm,
     setControlPromptEditorRerenderKey,
     setSyncWorkflowDraftHash,
+    setNodes: setNodesInStore,
   } = workflowStore.getState()
   const [nodesOnlyChangeWithData, doSetNodesOnlyChangeWithData] = useState<any[]>([])
+  const currentNodes = useNodes()
   const setNodesOnlyChangeWithData = useCallback((nodes: any[]) => {
     const nodesData = nodes.map(node => ({
       id: node.id,
@@ -179,9 +182,16 @@ export const Workflow: FC<WorkflowProps> = memo(({
       id: node.id,
       data: node.data,
     }))
-    if (!isEqual(oldData, nodesData))
+    if (!isEqual(oldData, nodesData)) {
       doSetNodesOnlyChangeWithData(nodes)
-  }, [nodesOnlyChangeWithData])
+      setNodesInStore(nodes)
+      // console.log('updates')
+    }
+  }, [nodesOnlyChangeWithData, doSetNodesOnlyChangeWithData])
+  useEffect(() => {
+    // console.log('changes')
+    setNodesOnlyChangeWithData(currentNodes)
+  }, [currentNodes, setNodesOnlyChangeWithData])
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -398,7 +408,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onNodeDragStart={handleNodeDragStart}
         onNodeDrag={handleNodeDrag}
         onNodeDragStop={handleNodeDragStop}
-        onNodesChange={setNodesOnlyChangeWithData}
         onNodeMouseEnter={handleNodeEnter}
         onNodeMouseLeave={handleNodeLeave}
         onNodeClick={handleNodeClick}
