@@ -26,22 +26,26 @@ This PR adds comprehensive unit tests for the `WorkflowService` class to improve
 The test suite covers all major `WorkflowService` methods:
 
 1. **Workflow Lifecycle Management**
+
    - Creating and updating draft workflows
    - Publishing drafts to versioned snapshots
    - Optimistic locking with unique hash validation
 
-2. **Validation & Safety**
+1. **Validation & Safety**
+
    - Graph structure validation (preventing start/trigger node conflicts)
    - Feature configuration validation for different app modes
    - Trigger node limits for sandbox plans
    - Prevention of deleting workflows in use
 
-3. **Version Management**
+1. **Version Management**
+
    - Retrieving draft and published workflows
    - Paginated version listing with "has more" indicator
    - Workflow metadata updates
 
-4. **Workflow Operations**
+1. **Workflow Operations**
+
    - Default node configuration retrieval
    - Converting chat/completion apps to workflows
    - Workflow deletion with comprehensive safety checks
@@ -66,7 +70,7 @@ Not applicable - this PR adds backend unit tests only.
 - [x] I've updated the documentation accordingly.
 - [x] I ran `dev/reformat`(backend) and `cd web && npx lint-staged`(frontend) to appease the lint gods
 
----
+______________________________________________________________________
 
 ### Test Results
 
@@ -75,6 +79,7 @@ Not applicable - this PR adds backend unit tests only.
 ```
 
 All tests pass successfully with proper coverage of:
+
 - Workflow existence checks (2 tests)
 - Draft workflow operations (3 tests)
 - Published workflow operations (4 tests)
