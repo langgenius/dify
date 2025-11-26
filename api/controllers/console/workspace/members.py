@@ -37,7 +37,7 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 class MemberInvitePayload(BaseModel):
     emails: list[str] = Field(default_factory=list)
-    role: str
+    role: TenantAccountRole
     language: str | None = None
 
 
@@ -130,6 +130,7 @@ class MemberInviteEmailApi(Resource):
             try:
                 if not inviter.current_tenant:
                     raise ValueError("No current tenant")
+                assert interface_language is not None
                 token = RegisterService.invite_new_member(
                     inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter
                 )

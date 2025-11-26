@@ -1,3 +1,4 @@
+from typing import Literal
 import io
 
 from flask import request, send_file
@@ -140,7 +141,7 @@ class ParserDynamicOptions(BaseModel):
     action: str
     parameter: str
     credential_id: str | None = None
-    provider_type: str
+    provider_type: Literal["tool", "trigger"]
 
 
 class PluginPermissionSettingsPayload(BaseModel):
