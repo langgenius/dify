@@ -81,7 +81,7 @@ from services.errors.dataset import DatasetNameDuplicateError
 class DatasetServiceTestDataFactory:
     """
     Factory class for creating test data and mock objects.
-    
+
     This factory provides reusable methods to create mock objects for testing.
     Using a factory pattern ensures consistency across tests and reduces code duplication.
     All methods return properly configured Mock objects that simulate real model instances.
@@ -96,13 +96,13 @@ class DatasetServiceTestDataFactory:
     ) -> Mock:
         """
         Create a mock account with specified attributes.
-        
+
         Args:
             account_id: Unique identifier for the account
             tenant_id: Tenant ID the account belongs to
             role: User role (NORMAL, ADMIN, etc.)
             **kwargs: Additional attributes to set on the mock
-            
+
         Returns:
             Mock: A properly configured Account mock object
         """
@@ -126,7 +126,7 @@ class DatasetServiceTestDataFactory:
     ) -> Mock:
         """
         Create a mock dataset with specified attributes.
-        
+
         Args:
             dataset_id: Unique identifier for the dataset
             name: Display name of the dataset
@@ -135,7 +135,7 @@ class DatasetServiceTestDataFactory:
             provider: Dataset provider type ('vendor' for internal, 'external' for external)
             indexing_technique: Indexing method ('high_quality', 'economy', or None)
             **kwargs: Additional attributes (embedding_model, retrieval_model, etc.)
-            
+
         Returns:
             Mock: A properly configured Dataset mock object
         """
@@ -162,14 +162,14 @@ class DatasetServiceTestDataFactory:
     def create_embedding_model_mock(model: str = "text-embedding-ada-002", provider: str = "openai") -> Mock:
         """
         Create a mock embedding model for high-quality indexing.
-        
+
         Embedding models are used to convert text into vector representations
         for semantic search capabilities.
-        
+
         Args:
             model: Model name (e.g., 'text-embedding-ada-002')
             provider: Model provider (e.g., 'openai', 'cohere')
-            
+
         Returns:
             Mock: Embedding model mock with model and provider attributes
         """
@@ -182,10 +182,10 @@ class DatasetServiceTestDataFactory:
     def create_retrieval_model_mock() -> Mock:
         """
         Create a mock retrieval model configuration.
-        
+
         Retrieval models define how documents are searched and ranked,
         including search method, top-k results, and score thresholds.
-        
+
         Returns:
             Mock: RetrievalModel mock with model_dump() method
         """
@@ -202,13 +202,13 @@ class DatasetServiceTestDataFactory:
     def create_collection_binding_mock(binding_id: str = "binding-456") -> Mock:
         """
         Create a mock collection binding for vector database.
-        
+
         Collection bindings link datasets to their vector storage locations
         in the vector database (e.g., Qdrant, Weaviate).
-        
+
         Args:
             binding_id: Unique identifier for the collection binding
-            
+
         Returns:
             Mock: Collection binding mock object
         """
@@ -224,15 +224,15 @@ class DatasetServiceTestDataFactory:
     ) -> Mock:
         """
         Create a mock external knowledge binding.
-        
+
         External knowledge bindings connect datasets to external knowledge sources
         (e.g., third-party APIs, external databases) for retrieval.
-        
+
         Args:
             dataset_id: Dataset ID this binding belongs to
             external_knowledge_id: External knowledge source identifier
             external_knowledge_api_id: External API configuration identifier
-            
+
         Returns:
             Mock: ExternalKnowledgeBindings mock object
         """
@@ -251,16 +251,16 @@ class DatasetServiceTestDataFactory:
     ) -> Mock:
         """
         Create a mock document for testing document operations.
-        
+
         Documents are the individual files/content items within a dataset
         that go through indexing, parsing, and chunking processes.
-        
+
         Args:
             document_id: Unique identifier for the document
             dataset_id: Parent dataset ID
             indexing_status: Current status ('waiting', 'indexing', 'completed', 'error')
             **kwargs: Additional attributes (is_paused, enabled, archived, etc.)
-            
+
         Returns:
             Mock: Document mock object
         """
@@ -291,7 +291,7 @@ class TestDatasetServiceCreateDataset:
     def mock_dataset_service_dependencies(self):
         """
         Common mock setup for dataset service dependencies.
-        
+
         This fixture patches all external dependencies that DatasetService.create_empty_dataset
         interacts with, including:
         - db.session: Database operations (query, add, commit)
@@ -299,7 +299,7 @@ class TestDatasetServiceCreateDataset:
         - check_embedding_model_setting: Validates embedding model configuration
         - check_reranking_model_setting: Validates reranking model configuration
         - ExternalDatasetService: Handles external knowledge API operations
-        
+
         Yields:
             dict: Dictionary of mocked dependencies for use in tests
         """
@@ -321,12 +321,12 @@ class TestDatasetServiceCreateDataset:
     def test_create_internal_dataset_basic_success(self, mock_dataset_service_dependencies):
         """
         Test successful creation of basic internal dataset.
-        
+
         Verifies that a dataset can be created with minimal configuration:
         - No indexing technique specified (None)
         - Default permission (only_me)
         - Vendor provider (internal dataset)
-        
+
         This is the simplest dataset creation scenario.
         """
         # Arrange: Set up test data and mocks
@@ -563,7 +563,7 @@ class TestDatasetServiceUpdateDataset:
             mock_current_user.id = "user-123"
             # Make isinstance check pass
             mock_current_user.__class__ = Account
-            
+
             yield {
                 "model_manager": mock_model_manager,
                 "get_binding": mock_binding_service.get_dataset_collection_binding,
@@ -610,7 +610,9 @@ class TestDatasetServiceUpdateDataset:
 
         # Assert
         mock_dataset_service_dependencies["check_permission"].assert_called_once_with(dataset, user)
-        mock_dataset_service_dependencies["db_session"].query.return_value.filter_by.return_value.update.assert_called_once()
+        mock_dataset_service_dependencies[
+            "db_session"
+        ].query.return_value.filter_by.return_value.update.assert_called_once()
         mock_dataset_service_dependencies["db_session"].commit.assert_called_once()
         assert result == dataset
 
@@ -661,12 +663,13 @@ class TestDatasetServiceUpdateDataset:
         result = DatasetService.update_dataset("dataset-123", update_data, user)
 
         # Assert
-        mock_dataset_service_dependencies["db_session"].query.return_value.filter_by.return_value.update.assert_called_once()
+        mock_dataset_service_dependencies[
+            "db_session"
+        ].query.return_value.filter_by.return_value.update.assert_called_once()
         # Verify embedding model fields are cleared
-        call_args = (
-            mock_dataset_service_dependencies["db_session"]
-            .query.return_value.filter_by.return_value.update.call_args[0][0]
-        )
+        call_args = mock_dataset_service_dependencies[
+            "db_session"
+        ].query.return_value.filter_by.return_value.update.call_args[0][0]
         assert call_args["embedding_model"] is None
         assert call_args["embedding_model_provider"] is None
         assert call_args["collection_binding_id"] is None
@@ -684,9 +687,9 @@ class TestDatasetServiceUpdateDataset:
 
         # Mock embedding model
         embedding_model = DatasetServiceTestDataFactory.create_embedding_model_mock()
-        mock_internal_provider_dependencies["model_manager"].return_value.get_model_instance.return_value = (
-            embedding_model
-        )
+        mock_internal_provider_dependencies[
+            "model_manager"
+        ].return_value.get_model_instance.return_value = embedding_model
 
         # Mock collection binding
         binding = DatasetServiceTestDataFactory.create_collection_binding_mock()
@@ -747,7 +750,7 @@ class TestDatasetServiceDeleteDataset:
     - Dataset deletion with partial None values
     - Permission checks
     - Event handling for cascade operations
-    
+
     Dataset deletion is a critical operation that triggers cascade cleanup:
     - Documents and segments are removed from vector database
     - File storage is cleaned up
@@ -759,13 +762,13 @@ class TestDatasetServiceDeleteDataset:
     def mock_dataset_service_dependencies(self):
         """
         Common mock setup for dataset deletion dependencies.
-        
+
         Patches:
         - get_dataset: Retrieves the dataset to delete
         - check_dataset_permission: Verifies user has delete permission
         - db.session: Database operations (delete, commit)
         - dataset_was_deleted: Signal/event for cascade cleanup operations
-        
+
         The dataset_was_deleted signal is crucial - it triggers cleanup handlers
         that remove vector embeddings, files, and related data.
         """
@@ -806,15 +809,15 @@ class TestDatasetServiceDeleteDataset:
     def test_delete_empty_dataset_success(self, mock_dataset_service_dependencies):
         """
         Test successful deletion of an empty dataset (no documents, doc_form is None).
-        
+
         Empty datasets are created but never had documents uploaded. They have:
         - doc_form = None (no document format configured)
         - indexing_technique = None (no indexing method set)
-        
+
         This test ensures empty datasets can be deleted without errors.
         The event handler should gracefully skip cleanup operations when
         there's no actual data to clean up.
-        
+
         This test provides regression protection for issue #27073 where
         deleting empty datasets caused internal server errors.
         """
@@ -886,7 +889,7 @@ class TestDatasetServiceDocumentIndexing:
     - Retry document indexing
     - Sync website document indexing
     - Document indexing task triggering
-    
+
     Document indexing is an async process with multiple stages:
     1. waiting: Document queued for processing
     2. parsing: Extracting text from file
@@ -895,7 +898,7 @@ class TestDatasetServiceDocumentIndexing:
     5. indexing: Creating embeddings and storing in vector DB
     6. completed: Successfully indexed
     7. error: Failed at some stage
-    
+
     Users can pause/resume indexing or retry failed documents.
     """
 
@@ -903,12 +906,12 @@ class TestDatasetServiceDocumentIndexing:
     def mock_document_service_dependencies(self):
         """
         Common mock setup for document service dependencies.
-        
+
         Patches:
         - redis_client: Caches indexing state and prevents concurrent operations
         - db.session: Database operations for document status updates
         - current_user: User context for tracking who paused/resumed
-        
+
         Redis is used to:
         - Store pause flags (document_{id}_is_paused)
         - Prevent duplicate retry operations (document_{id}_is_retried)
@@ -929,13 +932,13 @@ class TestDatasetServiceDocumentIndexing:
     def test_pause_document_success(self, mock_document_service_dependencies):
         """
         Test successful pause of document indexing.
-        
+
         Pausing allows users to temporarily stop indexing without canceling it.
         This is useful when:
         - System resources are needed elsewhere
         - User wants to modify document settings before continuing
         - Indexing is taking too long and needs to be deferred
-        
+
         When paused:
         - is_paused flag is set to True
         - paused_by and paused_at are recorded
@@ -1030,19 +1033,19 @@ class TestDatasetServiceRetrievalConfiguration:
     - Search method configuration
     - Top-k and score threshold settings
     - Reranking model configuration
-    
+
     Retrieval configuration controls how documents are searched and ranked:
-    
+
     Search Methods:
     - semantic_search: Uses vector similarity (cosine distance)
     - full_text_search: Uses keyword matching (BM25)
     - hybrid_search: Combines both methods with weighted scores
-    
+
     Parameters:
     - top_k: Number of results to return (default: 2-10)
     - score_threshold: Minimum similarity score (0.0-1.0)
     - reranking_enable: Whether to use reranking model for better results
-    
+
     Reranking:
     After initial retrieval, a reranking model (e.g., Cohere rerank) can
     reorder results for better relevance. This is more accurate but slower.
@@ -1052,7 +1055,7 @@ class TestDatasetServiceRetrievalConfiguration:
     def mock_dataset_service_dependencies(self):
         """
         Common mock setup for retrieval configuration tests.
-        
+
         Patches:
         - get_dataset: Retrieves dataset with retrieval configuration
         - db.session: Database operations for configuration updates
@@ -1130,11 +1133,12 @@ class TestDatasetServiceRetrievalConfiguration:
             result = DatasetService.update_dataset("dataset-123", update_data, user)
 
             # Assert
-            mock_dataset_service_dependencies["db_session"].query.return_value.filter_by.return_value.update.assert_called_once()
-            call_args = (
-                mock_dataset_service_dependencies["db_session"]
-                .query.return_value.filter_by.return_value.update.call_args[0][0]
-            )
+            mock_dataset_service_dependencies[
+                "db_session"
+            ].query.return_value.filter_by.return_value.update.assert_called_once()
+            call_args = mock_dataset_service_dependencies[
+                "db_session"
+            ].query.return_value.filter_by.return_value.update.call_args[0][0]
             assert call_args["retrieval_model"] == new_retrieval_config
             assert result == dataset
 
@@ -1192,7 +1196,5 @@ class TestDatasetServiceRetrievalConfiguration:
 
             # Assert
             assert result.retrieval_model == retrieval_model.model_dump()
-            mock_check_reranking.assert_called_once_with(
-                tenant_id, "cohere", "rerank-english-v2.0"
-            )
+            mock_check_reranking.assert_called_once_with(tenant_id, "cohere", "rerank-english-v2.0")
             mock_db.commit.assert_called_once()
