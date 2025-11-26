@@ -179,7 +179,7 @@ class CodeExecutor:
 
         try:
             return cls._execute_python_runner_locally(preload, runner)
-        except Exception as fallback_error:  # noqa: BLE001 - propagate meaningful error via CodeExecutionError
+        except Exception as fallback_error:
             raise CodeExecutionError(str(fallback_error)) from fallback_error
 
     @staticmethod
@@ -187,10 +187,10 @@ class CodeExecutor:
         namespace: dict[str, Any] = {}
 
         if preload:
-            exec(preload, namespace, namespace)
+            exec(preload, namespace, namespace)  # noqa: S102
 
         stdout_buffer = io.StringIO()
         with contextlib.redirect_stdout(stdout_buffer):
-            exec(runner, namespace, namespace)
+            exec(runner, namespace, namespace)  # noqa: S102
 
         return stdout_buffer.getvalue()
