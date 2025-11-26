@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from libs.datetime_utils import naive_utc_now
 
 from core.workflow.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
@@ -75,7 +75,7 @@ def test_retry_does_not_emit_additional_start_event() -> None:
 
     execution_id = "exec-1"
     node_type = NodeType.CODE
-    start_time = datetime.utcnow()
+    start_time = naive_utc_now()
 
     start_event = NodeRunStartedEvent(
         id=execution_id,
