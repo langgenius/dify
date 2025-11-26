@@ -2,9 +2,9 @@ import {
   useStore,
 } from '@/app/components/workflow/store'
 
-const useNodes = () => {
-  const nodes = useStore(s => s.nodes)
-  return nodes
-}
+const useWorkflowNodes = () => useStore(s => s.nodes)
 
-export default useNodes
+
+
+
+export default useWorkflowNodes
