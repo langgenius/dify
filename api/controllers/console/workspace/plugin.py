@@ -58,7 +58,7 @@ class PluginListApi(Resource):
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = ParserList.model_validate_json(console_ns.payload)
+        args = ParserList.model_validate(request.args.to_dict())
         try:
             plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
         except PluginDaemonClientSideError as e:
