@@ -131,10 +131,6 @@ api/migrations/ @snakevash @laipz8200
 # Frontend
 web/ @iamjoel
 
-# Frontend - RAG Pipeline - Engine
-web/app/components/rag-pipeline/components/rag-pipeline-main.tsx @iamjoel @zxhlyh
-web/app/components/rag-pipeline/store/ @iamjoel @zxhlyh
-
 # Frontend - App - Orchestration
 web/app/components/workflow/ @iamjoel @zxhlyh
 web/app/components/workflow-app/ @iamjoel @zxhlyh
@@ -178,8 +174,10 @@ web/app/components/datasets/create/ @iamjoel @WTW0313
 web/app/components/datasets/create-from-pipeline/ @iamjoel @WTW0313
 web/app/components/datasets/external-knowledge-base/ @iamjoel @WTW0313
 
-# Frontend - RAG - Orchestration
+# Frontend - RAG - Orchestration (general rule first, specific rules below override)
 web/app/components/rag-pipeline/ @iamjoel @WTW0313
+web/app/components/rag-pipeline/components/rag-pipeline-main.tsx @iamjoel @zxhlyh
+web/app/components/rag-pipeline/store/ @iamjoel @zxhlyh
 
 # Frontend - RAG - Documents List
 web/app/components/datasets/documents/list.tsx @iamjoel @WTW0313
