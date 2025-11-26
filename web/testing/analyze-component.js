@@ -25,13 +25,21 @@ class ComponentAnalyzer {
       path: filePath,
       type: this.detectType(filePath, code),
       hasProps: code.includes('Props') || code.includes('interface'),
-      hasState: code.includes('useState'),
+      hasState: code.includes('useState') || code.includes('useReducer'),
       hasEffects: code.includes('useEffect'),
       hasCallbacks: code.includes('useCallback'),
       hasMemo: code.includes('useMemo'),
       hasEvents: /on[A-Z]\w+/.test(code),
       hasRouter: code.includes('useRouter') || code.includes('usePathname'),
-      hasAPI: code.includes('service/') || code.includes('fetch('),
+      hasAPI: code.includes('service/') || code.includes('fetch(') || code.includes('useSWR'),
+      hasForwardRef: code.includes('forwardRef'),
+      hasComponentMemo: /React\.memo|memo\(/.test(code),
+      hasSuspense: code.includes('Suspense') || /\blazy\(/.test(code),
+      hasPortal: code.includes('createPortal'),
+      hasImperativeHandle: code.includes('useImperativeHandle'),
+      hasSWR: code.includes('useSWR'),
+      hasReactQuery: code.includes('useQuery') || code.includes('useMutation'),
+      hasAhooks: code.includes("from 'ahooks'"),
       complexity,
       lineCount,
       usageCount,
@@ -46,6 +54,11 @@ class ComponentAnalyzer {
     if (/\/page\.(t|j)sx?$/.test(normalizedPath)) return 'page'
     if (/\/layout\.(t|j)sx?$/.test(normalizedPath)) return 'layout'
     if (/\/providers?\//.test(normalizedPath)) return 'provider'
+    // Dify-specific types
+    if (normalizedPath.includes('/components/base/')) return 'base-component'
+    if (normalizedPath.includes('/context/')) return 'context'
+    if (normalizedPath.includes('/store/')) return 'store'
+    if (normalizedPath.includes('/service/')) return 'service'
     if (/use[A-Z]\w+/.test(code)) return 'component'
     return 'component'
   }
@@ -67,18 +80,25 @@ class ComponentAnalyzer {
 
     // ===== React Hooks (State Management Complexity) =====
     const stateHooks = count(/useState/g)
+    const reducerHooks = count(/useReducer/g)
     const effectHooks = count(/useEffect/g)
     const callbackHooks = count(/useCallback/g)
     const memoHooks = count(/useMemo/g)
     const refHooks = count(/useRef/g)
+    const imperativeHandleHooks = count(/useImperativeHandle/g)
+
+    const builtinHooks = stateHooks + reducerHooks + effectHooks
+      + callbackHooks + memoHooks + refHooks + imperativeHandleHooks
     const totalHooks = count(/use[A-Z]\w+/g)
-    const customHooks = Math.max(0, totalHooks - (stateHooks + effectHooks + callbackHooks + memoHooks + refHooks))
+    const customHooks = Math.max(0, totalHooks - builtinHooks)
 
     score += stateHooks * 5 // Each state +5 (need to test state changes)
+    score += reducerHooks * 6 // Each reducer +6 (complex state management)
     score += effectHooks * 6 // Each effect +6 (need to test deps & cleanup)
     score += callbackHooks * 2 // Each callback +2
     score += memoHooks * 2 // Each memo +2
     score += refHooks * 1 // Each ref +1
+    score += imperativeHandleHooks * 4 // Each imperative handle +4 (exposes methods)
     score += customHooks * 3 // Each custom hook +3
 
     // ===== Control Flow Complexity (Cyclomatic Complexity) =====
@@ -99,12 +119,13 @@ class ComponentAnalyzer {
     score += count(/while\s*\(/g) * 3 // while loop
 
     // ===== Props and Events Complexity =====
-    const propsMatches = this.countMatches(code, /(\w+)\s*:\s*\w+/g)
-    const propsCount = Math.min(propsMatches, 20) // Max 20 props
+    // Count unique props from interface/type definitions only (avoid duplicates)
+    const propsCount = this.countUniqueProps(code)
     score += Math.floor(propsCount / 2) // Every 2 props +1
 
-    const eventHandlers = count(/on[A-Z]\w+/g)
-    score += eventHandlers * 2 // Each event handler +2
+    // Count unique event handler names (avoid duplicates from type defs, params, usage)
+    const uniqueEventHandlers = this.countUniqueEventHandlers(code)
+    score += uniqueEventHandlers * 2 // Each unique event handler +2
 
     // ===== API Call Complexity =====
     score += count(/fetch\(/g) * 4 // fetch
@@ -115,14 +136,17 @@ class ComponentAnalyzer {
     score += count(/await\s+/g) * 2 // async/await
 
     // ===== Third-party Library Integration =====
-    const integrations = [
+    // Only count complex UI libraries that require integration testing
+    // Data fetching libs (swr, react-query, ahooks) don't add complexity
+    // because they are already well-tested; we only need to mock them
+    const complexUILibs = [
       { pattern: /reactflow|ReactFlow/, weight: 15 },
       { pattern: /@monaco-editor/, weight: 12 },
       { pattern: /echarts/, weight: 8 },
       { pattern: /lexical/, weight: 10 },
     ]
 
-    integrations.forEach(({ pattern, weight }) => {
+    complexUILibs.forEach(({ pattern, weight }) => {
       if (pattern.test(code)) score += weight
     })
 
@@ -139,6 +163,13 @@ class ComponentAnalyzer {
     score += count(/useContext/g) * 3
     score += count(/useStore|useAppStore/g) * 4
     score += count(/zustand|redux/g) * 3
+
+    // ===== React Advanced Features =====
+    score += count(/React\.memo|memo\(/g) * 2 // Component memoization
+    score += count(/forwardRef/g) * 3 // Ref forwarding
+    score += count(/Suspense/g) * 4 // Suspense boundaries
+    score += count(/\blazy\(/g) * 3 // Lazy loading
+    score += count(/createPortal/g) * 3 // Portal rendering
 
     return Math.min(score, 100) // Max 100 points
   }
@@ -353,6 +384,46 @@ class ComponentAnalyzer {
     return matches ? matches.length : 0
   }
 
+  /**
+   * Count unique props from interface/type definitions
+   * Only counts props defined in type/interface blocks, not usage
+   */
+  countUniqueProps(code) {
+    const uniqueProps = new Set()
+
+    // Match interface or type definition blocks
+    const typeBlockPattern = /(?:interface|type)\s+\w*Props[^{]*\{([^}]+)\}/g
+    let match
+
+    while ((match = typeBlockPattern.exec(code)) !== null) {
+      const blockContent = match[1]
+      // Match prop names (word followed by optional ? and :)
+      const propPattern = /(\w+)\s*\??:/g
+      let propMatch
+      while ((propMatch = propPattern.exec(blockContent)) !== null) {
+        uniqueProps.add(propMatch[1])
+      }
+    }
+
+    return Math.min(uniqueProps.size, 20) // Max 20 props
+  }
+
+  /**
+   * Count unique event handler names (on[A-Z]...)
+   * Avoids counting the same handler multiple times across type defs, params, and usage
+   */
+  countUniqueEventHandlers(code) {
+    const uniqueHandlers = new Set()
+    const pattern = /on[A-Z]\w+/g
+    let match
+
+    while ((match = pattern.exec(code)) !== null) {
+      uniqueHandlers.add(match[0])
+    }
+
+    return uniqueHandlers.size
+  }
+
   static escapeRegExp(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   }
@@ -413,7 +484,7 @@ class ComponentAnalyzer {
 // ============================================================================
 
 class TestPromptBuilder {
-  build(analysis, _sourceCode) {
+  build(analysis) {
     const testPath = analysis.path.replace(/\.tsx?$/, '.spec.tsx')
 
     return `
@@ -435,13 +506,19 @@ Test Priority: ${analysis.priority.score} ${analysis.priority.level}
 
 Features Detected:
   ${analysis.hasProps ? '✓' : '✗'} Props/TypeScript interfaces
-  ${analysis.hasState ? '✓' : '✗'} Local state (useState)
+  ${analysis.hasState ? '✓' : '✗'} Local state (useState/useReducer)
   ${analysis.hasEffects ? '✓' : '✗'} Side effects (useEffect)
   ${analysis.hasCallbacks ? '✓' : '✗'} Callbacks (useCallback)
   ${analysis.hasMemo ? '✓' : '✗'} Memoization (useMemo)
   ${analysis.hasEvents ? '✓' : '✗'} Event handlers
   ${analysis.hasRouter ? '✓' : '✗'} Next.js routing
   ${analysis.hasAPI ? '✓' : '✗'} API calls
+  ${analysis.hasSWR ? '✓' : '✗'} SWR data fetching
+  ${analysis.hasReactQuery ? '✓' : '✗'} React Query
+  ${analysis.hasAhooks ? '✓' : '✗'} ahooks
+  ${analysis.hasForwardRef ? '✓' : '✗'} Ref forwarding (forwardRef)
+  ${analysis.hasComponentMemo ? '✓' : '✗'} Component memoization (React.memo)
+  ${analysis.hasImperativeHandle ? '✓' : '✗'} Imperative handle
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 📝 TASK:
@@ -472,9 +549,11 @@ Create the test file at: ${testPath}
   }
 
   getComplexityLevel(score) {
-    if (score < 10) return '🟢 Simple'
-    if (score < 30) return '🟡 Medium'
-    return '🔴 Complex'
+    // Aligned with testing.md guidelines
+    if (score <= 10) return '🟢 Simple'
+    if (score <= 30) return '🟡 Medium'
+    if (score <= 50) return '🟠 Complex'
+    return '🔴 Very Complex'
   }
 
   buildFocusPoints(analysis) {
@@ -487,6 +566,11 @@ Create the test file at: ${testPath}
     if (analysis.hasEvents) points.push('- Testing user interactions and event handlers')
     if (analysis.hasRouter) points.push('- Mocking Next.js router hooks')
     if (analysis.hasAPI) points.push('- Mocking API calls')
+    if (analysis.hasForwardRef) points.push('- Testing ref forwarding behavior')
+    if (analysis.hasComponentMemo) points.push('- Testing component memoization')
+    if (analysis.hasSuspense) points.push('- Testing Suspense boundaries and lazy loading')
+    if (analysis.hasPortal) points.push('- Testing Portal rendering')
+    if (analysis.hasImperativeHandle) points.push('- Testing imperative handle methods')
     points.push('- Testing edge cases and error handling')
     points.push('- Testing all prop variations')
 
@@ -557,23 +641,61 @@ Create the test file at: ${testPath}
     }
 
     // ===== Performance Optimization =====
-    if (analysis.hasCallbacks || analysis.hasMemo) {
+    if (analysis.hasCallbacks || analysis.hasMemo || analysis.hasComponentMemo) {
       const features = []
       if (analysis.hasCallbacks) features.push('useCallback')
       if (analysis.hasMemo) features.push('useMemo')
+      if (analysis.hasComponentMemo) features.push('React.memo')
 
       guidelines.push(`🚀 Performance optimization (${features.join(', ')}):`)
       guidelines.push('   - Verify callbacks maintain referential equality')
       guidelines.push('   - Test memoization dependencies')
       guidelines.push('   - Ensure expensive computations are cached')
+      if (analysis.hasComponentMemo) {
+        guidelines.push('   - Test component re-render behavior with prop changes')
+      }
+    }
+
+    // ===== Ref Forwarding =====
+    if (analysis.hasForwardRef || analysis.hasImperativeHandle) {
+      guidelines.push('🔗 Ref forwarding detected:')
+      guidelines.push('   - Test ref attachment to DOM elements')
+      if (analysis.hasImperativeHandle) {
+        guidelines.push('   - Test all exposed imperative methods')
+        guidelines.push('   - Verify method behavior with different ref types')
+      }
+    }
+
+    // ===== Suspense and Lazy Loading =====
+    if (analysis.hasSuspense) {
+      guidelines.push('⏳ Suspense/Lazy loading detected:')
+      guidelines.push('   - Test fallback UI during loading')
+      guidelines.push('   - Test component behavior after lazy load completes')
+      guidelines.push('   - Test error boundaries with failed loads')
+    }
+
+    // ===== Portal =====
+    if (analysis.hasPortal) {
+      guidelines.push('🚪 Portal rendering detected:')
+      guidelines.push('   - Test content renders in portal target')
+      guidelines.push('   - Test portal cleanup on unmount')
+      guidelines.push('   - Verify event bubbling through portal')
     }
 
     // ===== API Calls =====
     if (analysis.hasAPI) {
       guidelines.push('🌐 API calls detected:')
-      guidelines.push('   - Mock all API calls using jest.mock')
-      guidelines.push('   - Test retry logic if applicable')
-      guidelines.push('   - Verify error handling and user feedback')
+      guidelines.push('   - Mock API calls/hooks (useSWR, useQuery, fetch, etc.)')
+      guidelines.push('   - Test loading, success, and error states')
+      guidelines.push('   - Focus on component behavior, not the data fetching lib')
+    }
+
+    // ===== ahooks =====
+    if (analysis.hasAhooks) {
+      guidelines.push('🪝 ahooks detected (mock only, no need to test the lib):')
+      guidelines.push('   - Mock ahooks utilities (useBoolean, useRequest, etc.)')
+      guidelines.push('   - Focus on testing how your component uses the hooks')
+      guidelines.push('   - Use fake timers if debounce/throttle is involved')
     }
 
     // ===== Routing =====
@@ -714,10 +836,38 @@ function extractCopyContent(prompt) {
 // Main Function
 // ============================================================================
 
+function showHelp() {
+  console.log(`
+📋 Component Analyzer - Generate test prompts for AI assistants
+
+Usage:
+  node analyze-component.js <component-path> [options]
+  pnpm analyze-component <component-path> [options]
+
+Options:
+  --help      Show this help message
+  --json      Output analysis result as JSON (for programmatic use)
+  --review    Generate a review prompt for existing test file
+
+Examples:
+  # Analyze a component and generate test prompt
+  pnpm analyze-component app/components/base/button/index.tsx
+
+  # Output as JSON
+  pnpm analyze-component app/components/base/button/index.tsx --json
+
+  # Review existing test
+  pnpm analyze-component app/components/base/button/index.tsx --review
+
+For complete testing guidelines, see: web/testing/testing.md
+`)
+}
+
 function main() {
   const rawArgs = process.argv.slice(2)
 
   let isReviewMode = false
+  let isJsonMode = false
   const args = []
 
   rawArgs.forEach(arg => {
@@ -725,31 +875,51 @@ function main() {
       isReviewMode = true
       return
     }
+    if (arg === '--json') {
+      isJsonMode = true
+      return
+    }
+    if (arg === '--help' || arg === '-h') {
+      showHelp()
+      process.exit(0)
+    }
     args.push(arg)
   })
 
   if (args.length === 0) {
-    console.error(`
-❌ Error: Component path is required
-
-This tool analyzes your component and generates a prompt for AI assistants.
-Copy the output and use it with:
-  - Cursor (Cmd+L for Chat, Cmd+I for Composer)
-  - GitHub Copilot Chat (Cmd+I)
-  - Claude, ChatGPT, or any other AI coding tool
-
-For complete testing guidelines, see: web/testing/testing.md
-    `)
+    showHelp()
     process.exit(1)
   }
 
-  const componentPath = args[0]
-  const absolutePath = path.resolve(process.cwd(), componentPath)
+  let componentPath = args[0]
+  let absolutePath = path.resolve(process.cwd(), componentPath)
 
-  // Check if file exists
+  // Check if path exists
   if (!fs.existsSync(absolutePath)) {
-    console.error(`❌ Error: File not found: ${componentPath}`)
+    console.error(`❌ Error: Path not found: ${componentPath}`)
     process.exit(1)
+  }
+
+  // If directory, try to find index file
+  if (fs.statSync(absolutePath).isDirectory()) {
+    const indexFiles = ['index.tsx', 'index.ts', 'index.jsx', 'index.js']
+    let found = false
+
+    for (const indexFile of indexFiles) {
+      const indexPath = path.join(absolutePath, indexFile)
+      if (fs.existsSync(indexPath)) {
+        absolutePath = indexPath
+        componentPath = path.join(componentPath, indexFile)
+        found = true
+        break
+      }
+    }
+
+    if (!found) {
+      console.error(`❌ Error: Directory does not contain index file: ${componentPath}`)
+      console.error(`   Expected one of: ${indexFiles.join(', ')}`)
+      process.exit(1)
+    }
   }
 
   // Read source code
@@ -760,7 +930,8 @@ For complete testing guidelines, see: web/testing/testing.md
   const analysis = analyzer.analyze(sourceCode, componentPath, absolutePath)
 
   // Check if component is too complex - suggest refactoring instead of testing
-  if (!isReviewMode && (analysis.complexity > 50 || analysis.lineCount > 300)) {
+  // Skip this check in JSON mode to always output analysis result
+  if (!isReviewMode && !isJsonMode && (analysis.complexity > 50 || analysis.lineCount > 300)) {
     console.log(`
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║                     ⚠️  COMPONENT TOO COMPLEX TO TEST                       ║
@@ -812,7 +983,7 @@ This component is too complex to test effectively. Please consider:
 
   // Build prompt for AI assistant
   const builder = new TestPromptBuilder()
-  const generationPrompt = builder.build(analysis, sourceCode)
+  const generationPrompt = builder.build(analysis)
 
   let prompt = generationPrompt
 
@@ -838,6 +1009,12 @@ This component is too complex to test effectively. Please consider:
       testCode,
       originalPromptSection,
     })
+  }
+
+  // JSON output mode
+  if (isJsonMode) {
+    console.log(JSON.stringify(analysis, null, 2))
+    return
   }
 
   // Output

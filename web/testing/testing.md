@@ -32,7 +32,11 @@ pnpm test -- path/to/file.spec.tsx
 - **Configuration**: `jest.config.ts` loads the Testing Library presets, sets the `@happy-dom/jest-environment`, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
 - **Global setup**: `jest.setup.ts` already imports `@testing-library/jest-dom` and runs `cleanup()` after every test. Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Manual mocks**: Place reusable mocks inside `web/__mocks__/`. Use `jest.mock('module-name')` to point to these helpers rather than redefining mocks in every spec.
-- **Script utilities**: `web/testing/analyze-component.js` reports component complexity; `pnpm analyze-component <path>` should be part of the planning step for non-trivial components.
+- **Script utilities**: `web/testing/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
+  - `pnpm analyze-component <path>` - Analyze and generate test prompt
+  - `pnpm analyze-component <path> --json` - Output analysis as JSON
+  - `pnpm analyze-component <path> --review` - Generate test review prompt
+  - `pnpm analyze-component --help` - Show help
 - **Integration suites**: Files in `web/__tests__/` exercise cross-component flows. Prefer adding new end-to-end style specs there rather than mixing them into component directories.
 
 ## Test Authoring Principles
@@ -88,6 +92,7 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
    - Testing components that use real `setTimeout`/`setInterval` (not mocked)
    - Testing time-based behavior (delays, animations)
    - If you mock all time-dependent functions, fake timers are unnecessary
+5. **Prefer importing over mocking project components**: When tests need other components from the project, import them directly instead of mocking them. Only mock external dependencies, APIs, or complex context providers that are difficult to set up.
 
 **Why this matters**: Mocks that don't match actual behavior can lead to:
 
