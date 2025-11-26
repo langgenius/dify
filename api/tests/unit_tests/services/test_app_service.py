@@ -639,7 +639,7 @@ model_config:
     def test_duplicate_workflow_app_success(self, mock_duplication_dependencies):
         """Test successful duplication of workflow app."""
         # Arrange
-        from services.app_dsl_service import AppDslService, ImportMode, Import, ImportStatus
+        from services.app_dsl_service import AppDslService, Import, ImportMode, ImportStatus
         
         original_app = AppServiceTestDataFactory.create_app_mock(
             app_id="workflow-123",
@@ -699,7 +699,7 @@ workflow:
     def test_duplicate_app_with_custom_metadata(self, mock_duplication_dependencies):
         """Test app duplication with custom name, description, and icon."""
         # Arrange
-        from services.app_dsl_service import AppDslService, ImportMode, Import, ImportStatus
+        from services.app_dsl_service import AppDslService, Import, ImportMode, ImportStatus
         
         original_app = AppServiceTestDataFactory.create_app_mock()
         account = AppServiceTestDataFactory.create_account_mock()
