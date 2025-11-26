@@ -234,6 +234,10 @@ const translation = {
     enabled: 'În serviciu',
     title: 'API de servicii',
   },
+  docAllEnabled_one: 'Document {{count}} activat',
+  docAllEnabled_other: 'Toate documentele {{count}} activate',
+  partialEnabled_one: 'Total de {{count}} documente, {{num}} disponibile',
+  partialEnabled_other: 'Total de {{count}} documente, {{num}} disponibile',
 }
 
 export default translation

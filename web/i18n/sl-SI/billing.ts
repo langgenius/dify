@@ -98,6 +98,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Neomejeni sprožilni dogodki',
       tooltip: 'Število dogodkov, ki samodejno sprožijo delovne tokove prek vtičnika, urnika ali sprožilcev spletnih klicev.',
+      sandbox: '{{count,number}} Sprožilni dogodki',
+      professional: '{{count,number}} Sprožilni dogodki/mesec',
     },
     workflowExecution: {
       standard: 'Izvajanje standardnega delovnega procesa',
@@ -107,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Neomejeni sprožilci/poteki dela',
+      limited: 'Do {{count}} sprožilcev/poteka dela',
+    },
+    title: {
+      plans: 'plani',
+      description: 'Izberite načrt, ki najbolj ustreza potrebam vaše ekipe.',
     },
   },
   plans: {
@@ -129,16 +136,14 @@ const translation = {
       name: 'Podjetje',
       description: 'Pridobite vse zmogljivosti in podporo za velike sisteme kritične za misijo.',
       includesTitle: 'Vse v načrtu Ekipa, plus:',
-      features: {
-      },
+      features: ['Razširljive rešitve za uvajanje na ravni podjetja', 'Pooblastilo za komercialno licenco', 'Ekskluzivne funkcije za podjetja', 'Več delovnih prostorov in upravljanje podjetja', 'SSO', 'Pogajani SLA-ji s strani partnerjev Dify', 'Napredna varnost in nadzor', 'Posodobitve in vzdrževanje uradno s strani Dify', 'Strokovna tehnična podpora'],
       priceTip: 'Letno zaračunavanje samo',
       price: 'Po meri',
       btnText: 'Kontaktirajte prodajo',
       for: 'Za velike ekipe',
     },
     community: {
-      features: {
-      },
+      features: ['Vse osnovne funkcije so izdane v javni repozitorij', 'Enotno delovno okolje', 'V skladu z Dify licenco odprte kode'],
       includesTitle: 'Brezplačne funkcije:',
       price: 'Brezplačno',
       name: 'Skupnost',
@@ -147,8 +152,7 @@ const translation = {
       btnText: 'Začnite s skupnostjo',
     },
     premium: {
-      features: {
-      },
+      features: ['Samo-upravljana zanesljivost različnih ponudnikov oblaka', 'Enotno delovno okolje', 'Prilagoditev logotipa in blagovne znamke spletne aplikacije', 'Prioritetna e-pošta in klepet v živo'],
       name: 'Premium',
       priceTip: 'Na podlagi oblaka Marketplace',
       price: 'Škalable',
@@ -184,6 +188,7 @@ const translation = {
     buildApps: 'Gradite aplikacije',
     perMonth: 'na mesec',
     triggerEvents: 'Sprožilni dogodki',
+    resetsIn: 'Ponastavitve čez {{count,number}} dni',
   },
   teamMembers: 'Člani ekipe',
   triggerLimitModal: {

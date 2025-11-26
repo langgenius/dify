@@ -98,6 +98,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Sınırsız Tetikleme Olayları',
       tooltip: 'Eklenti, Zamanlama veya Webhook tetikleyicileri aracılığıyla iş akışlarını otomatik olarak başlatan etkinliklerin sayısı.',
+      sandbox: '{{count,number}} Tetikleyici Olaylar',
+      professional: '{{count,number}} Tetikleme Etkinlikleri/ay',
     },
     workflowExecution: {
       faster: 'Daha Hızlı İş Akışı Yürütme',
@@ -107,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Sınırsız Tetikleyiciler/iş akışı',
+      limited: 'Maksimum {{count}} Tetikleyici/iş akışı',
+    },
+    title: {
+      plans: 'planlar',
+      description: 'Ekibinizin ihtiyaçlarına en uygun planı seçin.',
     },
   },
   plans: {
@@ -129,16 +136,14 @@ const translation = {
       name: 'Kurumsal',
       description: 'Büyük ölçekli kritik sistemler için tam yetenekler ve destek.',
       includesTitle: 'Takım plandaki her şey, artı:',
-      features: {
-      },
+      features: ['Kurumsal Düzeyde Ölçeklenebilir Dağıtım Çözümleri', 'Ticari Lisans Yetkilendirmesi', 'Özel Kurumsal Özellikler', 'Birden Fazla Çalışma Alanı ve Kurumsal Yönetim', 'SSO', 'Dify Ortakları tarafından Müzakere Edilen SLA\'lar', 'Gelişmiş Güvenlik ve Kontroller', 'Dify Resmi Tarafından Güncellemeler ve Bakım', 'Profesyonel Teknik Destek'],
       priceTip: 'Yıllık Faturalama Sadece',
       for: 'Büyük boyutlu Takımlar için',
       btnText: 'Satış ile İletişime Geç',
       price: 'Özel',
     },
     community: {
-      features: {
-      },
+      features: ['Tüm Temel Özellikler Açık Depoda Yayınlandı', 'Tek Çalışma Alanı', 'Dify Açık Kaynak Lisansına uygundur'],
       price: 'Ücretsiz',
       includesTitle: 'Ücretsiz Özellikler:',
       name: 'Topluluk',
@@ -147,8 +152,7 @@ const translation = {
       description: 'Bireysel Kullanıcılar, Küçük Ekipler veya Ticari Olmayan Projeler İçin',
     },
     premium: {
-      features: {
-      },
+      features: ['Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendine Yönetilen Güvenilirlik', 'Tek Çalışma Alanı', 'Web Uygulama Logo ve Marka Özelleştirmesi', 'Öncelikli E-posta ve Sohbet Desteği'],
       name: 'Premium',
       includesTitle: 'Topluluktan her şey, artı:',
       for: 'Orta Büyüklükteki Organizasyonlar ve Ekipler için',
@@ -184,6 +188,7 @@ const translation = {
     documentsUploadQuota: 'Belgeler Yükleme Kotası',
     triggerEvents: 'Tetikleyici Olaylar',
     perMonth: 'ayda',
+    resetsIn: '{{count,number}} gün içinde sıfırlanır',
   },
   teamMembers: 'Ekip Üyeleri',
   triggerLimitModal: {

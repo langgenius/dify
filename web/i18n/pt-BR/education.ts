@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: 'Não se preocupe — isso não afetará sua assinatura atual, mas você não receberá o desconto educacional quando ela for renovada, a menos que você verifique seu status novamente.',
+      title: 'Seu status educacional expirará em {{date}}',
     },
     stillInEducation: {
       title: 'Ainda na educação?',

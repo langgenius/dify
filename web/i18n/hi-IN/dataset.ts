@@ -239,6 +239,10 @@ const translation = {
     disabled: 'अक्षम',
     title: 'सेवा एपीआई',
   },
+  docAllEnabled_one: '{{count}} दस्तावेज़ सक्षम किया गया',
+  docAllEnabled_other: 'सभी {{count}} दस्तावेज़ सक्षम हैं',
+  partialEnabled_one: 'कुल {{count}} दस्तावेज़, {{num}} उपलब्ध',
+  partialEnabled_other: 'कुल {{count}} दस्तावेज़, {{num}} उपलब्ध',
 }
 
 export default translation

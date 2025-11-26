@@ -1,6 +1,7 @@
 import { isValidCronExpression, parseCronExpression } from './cron-parser'
 import { getNextExecutionTime, getNextExecutionTimes } from './execution-time-calculator'
 import type { ScheduleTriggerNodeType } from '../types'
+import { BlockEnum } from '../../../types'
 
 // Comprehensive integration tests for cron-parser and execution-time-calculator compatibility
 describe('cron-parser + execution-time-calculator integration', () => {
@@ -14,13 +15,13 @@ describe('cron-parser + execution-time-calculator integration', () => {
   })
 
   const createCronData = (overrides: Partial<ScheduleTriggerNodeType> = {}): ScheduleTriggerNodeType => ({
-    id: 'test-cron',
-    type: 'schedule-trigger',
+    type: BlockEnum.TriggerSchedule,
+    title: 'test-schedule',
     mode: 'cron',
     frequency: 'daily',
     timezone: 'UTC',
     ...overrides,
-  })
+  } as ScheduleTriggerNodeType)
 
   describe('backward compatibility validation', () => {
     it('maintains exact behavior for legacy cron expressions', () => {

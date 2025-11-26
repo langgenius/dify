@@ -18,6 +18,7 @@ import ReactFlow, {
   ReactFlowProvider,
   SelectionMode,
   useEdgesState,
+  useNodes,
   useNodesState,
   useOnViewportChange,
   useReactFlow,
@@ -99,6 +100,7 @@ import {
   useAllWorkflowTools,
   useFetchToolsData,
 } from '@/service/use-tools'
+import { isEqual } from 'lodash-es'
 
 const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
   ssr: false,
@@ -233,7 +235,24 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setShowConfirm,
     setControlPromptEditorRerenderKey,
     setSyncWorkflowDraftHash,
+    setNodes: setNodesInStore,
   } = workflowStore.getState()
+  const currentNodes = useNodes()
+  const setNodesOnlyChangeWithData = useCallback((nodes: Node[]) => {
+    const nodesData = nodes.map(node => ({
+      id: node.id,
+      data: node.data,
+    }))
+    const oldData = workflowStore.getState().nodes.map(node => ({
+      id: node.id,
+      data: node.data,
+    }))
+    if (!isEqual(oldData, nodesData))
+      setNodesInStore(nodes)
+  }, [setNodesInStore, workflowStore])
+  useEffect(() => {
+    setNodesOnlyChangeWithData(currentNodes as Node[])
+  }, [currentNodes, setNodesOnlyChangeWithData])
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
