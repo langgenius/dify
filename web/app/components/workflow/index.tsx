@@ -169,7 +169,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setShowConfirm,
     setControlPromptEditorRerenderKey,
     setSyncWorkflowDraftHash,
-    nodes: nodesInStore,
     setNodes: setNodesInStore,
   } = workflowStore.getState()
   const currentNodes = useNodes()
@@ -186,7 +185,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setNodesInStore(nodes)
   }, [setNodesInStore, workflowStore])
   useEffect(() => {
-    setNodesOnlyChangeWithData(currentNodes)
+    setNodesOnlyChangeWithData(currentNodes as Node[])
   }, [currentNodes, setNodesOnlyChangeWithData])
   const {
     handleSyncWorkflowDraft,
