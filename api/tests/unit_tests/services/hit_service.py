@@ -800,4 +800,3 @@ class TestHitTestingServiceEscapeQueryForSearch:
 
         # Assert
         assert result == ""
-
