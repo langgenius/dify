@@ -299,7 +299,7 @@ class PluginAssetApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        args = ParserAsset.model_validate(request.args)
+        args = ParserAsset.model_validate(request.args.to_dict())
 
         _, tenant_id = current_account_with_tenant()
         try:
