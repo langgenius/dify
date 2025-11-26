@@ -10,9 +10,7 @@ This test suite covers:
 """
 
 import json
-from datetime import datetime
-from unittest.mock import MagicMock, Mock, patch
-from uuid import uuid4
+from unittest.mock import MagicMock, patch
 
 import pytest
 
