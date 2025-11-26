@@ -775,7 +775,7 @@ class TestDatasetServiceDeleteDataset:
         with (
             patch("services.dataset_service.DatasetService.get_dataset") as mock_get_dataset,
             patch("services.dataset_service.DatasetService.check_dataset_permission") as mock_check_perm,
-            patch("extensions.ext_database.db.session") as mock_db,
+            patch("services.dataset_service.db.session") as mock_db,
             patch("services.dataset_service.dataset_was_deleted") as mock_dataset_was_deleted,
         ):
             yield {
