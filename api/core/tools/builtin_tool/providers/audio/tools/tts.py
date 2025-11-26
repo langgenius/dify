@@ -61,7 +61,7 @@ class TTSTool(BuiltinTool):
             raise ValueError("Runtime is required")
         model_provider_service = ModelProviderService()
         tid: str = self.runtime.tenant_id or ""
-        models = model_provider_service.get_models_by_model_type(tenant_id=tid, model_type=ModelType.TTS)
+        models = model_provider_service.get_models_by_model_type(tenant_id=tid, model_type="tts")
         items = []
         for provider_model in models:
             provider = provider_model.provider

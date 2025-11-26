@@ -125,7 +125,7 @@ class ModelProviderListApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
 
-        payload = request.args.to_dict(flat=True)
+        payload = request.args.to_dict(flat=True)  # type: ignore
         args = ParserModelList.model_validate(payload)
 
         model_provider_service = ModelProviderService()
@@ -144,7 +144,7 @@ class ModelProviderCredentialApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
         # if credential_id is not provided, return current used credential
-        payload = request.args.to_dict(flat=True)
+        payload = request.args.to_dict(flat=True)  # type: ignore
         args = ParserCredentialId.model_validate(payload)
 
         model_provider_service = ModelProviderService()

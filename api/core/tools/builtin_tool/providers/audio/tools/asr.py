@@ -45,7 +45,7 @@ class ASRTool(BuiltinTool):
     def get_available_models(self) -> list[tuple[str, str]]:
         model_provider_service = ModelProviderService()
         models = model_provider_service.get_models_by_model_type(
-            tenant_id=self.runtime.tenant_id, model_type=ModelType.SPEECH2TEXT
+            tenant_id=self.runtime.tenant_id, model_type="speech2text"
         )
         items = []
         for provider_model in models:

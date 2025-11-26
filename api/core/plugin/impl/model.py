@@ -1,4 +1,3 @@
-from core.model_runtime.entities.model_entities import ModelType
 import binascii
 from collections.abc import Generator, Sequence
 from typing import IO
@@ -41,7 +40,7 @@ class PluginModelClient(BasePluginClient):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: ModelType,
+        model_type: str,
         model: str,
         credentials: dict,
     ) -> AIModelEntity | None:
@@ -109,7 +108,7 @@ class PluginModelClient(BasePluginClient):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: ModelType,
+        model_type: str,
         model: str,
         credentials: dict,
     ) -> bool:
@@ -197,7 +196,7 @@ class PluginModelClient(BasePluginClient):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: ModelType,
+        model_type: str,
         model: str,
         credentials: dict,
         prompt_messages: list[PromptMessage],

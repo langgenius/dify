@@ -1352,7 +1352,7 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls, tenant: Tenant, email: str, language: str | None, role: str = "normal", inviter: Account | None = None
+        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None
     ) -> str:
         if not inviter:
             raise ValueError("Inviter is required")

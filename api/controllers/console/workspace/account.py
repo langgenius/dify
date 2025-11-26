@@ -1,11 +1,10 @@
-from pydantic import model_validator
-from typing import Literal
 from datetime import datetime
+from typing import Literal
 
 import pytz
 from flask import request
 from flask_restx import Resource, fields, marshal_with
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -83,6 +82,7 @@ class AccountInterfaceLanguagePayload(BaseModel):
 
 class AccountInterfaceThemePayload(BaseModel):
     interface_theme: Literal["light", "dark"]
+
 
 class AccountTimezonePayload(BaseModel):
     timezone: str

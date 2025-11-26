@@ -139,7 +139,7 @@ class WorkspaceListApi(Resource):
     @setup_required
     @admin_required
     def get(self):
-        payload = request.args.to_dict(flat=True)
+        payload = request.args.to_dict(flat=True)  # type: ignore
         args = WorkspaceListQuery.model_validate(payload)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())

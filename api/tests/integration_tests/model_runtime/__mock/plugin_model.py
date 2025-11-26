@@ -90,7 +90,7 @@ class MockModelClass(PluginModelClient):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: ModelType,
+        model_type: str,
         model: str,
         credentials: dict,
     ) -> AIModelEntity | None:

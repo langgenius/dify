@@ -310,7 +310,7 @@ class ModelProviderModelCredentialApi(Resource):
                 tenant_id=tenant_id, provider_name=provider
             )
         else:
-            model_type = ModelType.value_of(args.model_type).to_origin_model_type()
+            model_type = args.model_type
             available_credentials = model_provider_service.provider_manager.get_provider_model_available_credentials(
                 tenant_id=tenant_id, provider_name=provider, model_type=model_type, model_name=args.model
             )
