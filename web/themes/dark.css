@@ -407,7 +407,7 @@ html[data-theme="dark"] {
   --color-background-section: rgb(24 24 27 / 0.4);
   --color-background-interaction-from-bg-1: rgb(24 24 27 / 0.4);
   --color-background-interaction-from-bg-2: rgb(24 24 27 / 0.14);
-  --color-background-section-burn: rgb(24 24 27 / 0.6);
+  --color-background-section-burn: #27272b;
   --color-background-default-dodge: #3a3a40;
   --color-background-overlay: rgb(24 24 27 / 0.8);
   --color-background-default-dimmed: #27272b;
