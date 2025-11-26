@@ -133,6 +133,7 @@ class ModelProviderListApi(Resource):
 
         return jsonable_encoder({"data": provider_list})
 
+
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
 class ModelProviderCredentialApi(Resource):
     @console_ns.expect(console_ns.models[ParserCredentialId.__name__])
