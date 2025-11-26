@@ -279,7 +279,9 @@ class MCPToolProvider(TypeBase):
         sa.UniqueConstraint("tenant_id", "server_identifier", name="unique_mcp_provider_server_identifier"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # name of the mcp provider
     name: Mapped[str] = mapped_column(String(40), nullable=False)
     # server identifier of the mcp provider
@@ -360,7 +362,9 @@ class ToolModelInvoke(TypeBase):
     __tablename__ = "tool_model_invokes"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="tool_model_invoke_pkey"),)
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # who invoke this tool
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
@@ -413,7 +417,9 @@ class ToolConversationVariables(TypeBase):
         sa.Index("conversation_id_idx", "conversation_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # tenant id
@@ -450,7 +456,9 @@ class ToolFile(TypeBase):
         sa.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID)
     # tenant id
@@ -481,7 +489,9 @@ class DeprecatedPublishedAppTool(TypeBase):
         sa.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # id of the app
     app_id: Mapped[str] = mapped_column(StringUUID, ForeignKey("apps.id"), nullable=False)
 
