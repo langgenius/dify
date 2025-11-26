@@ -9,21 +9,7 @@
 # Backend
 api/ @QuantumGhost
 
-# Backend - Workflow - Engine (Core graph execution engine)
-api/core/workflow/graph_engine/ @laipz8200 @QuantumGhost
-api/core/workflow/runtime/ @laipz8200 @QuantumGhost
-api/core/workflow/graph/ @laipz8200 @QuantumGhost
-api/core/workflow/graph_events/ @laipz8200 @QuantumGhost
-api/core/workflow/node_events/ @laipz8200 @QuantumGhost
-api/core/model_runtime/ @laipz8200 @QuantumGhost
-
-# Backend - Workflow - Nodes (Agent, Iteration, Loop, LLM)
-api/core/workflow/nodes/agent/ @Novice
-api/core/workflow/nodes/iteration/ @Novice
-api/core/workflow/nodes/loop/ @Novice
-api/core/workflow/nodes/llm/ @Novice
-
-# Backend - Workflow - Other (Workflow nodes, services, interfaces)
+# Backend - Workflow (general rule, more specific rules below will override)
 api/core/workflow/ @QuantumGhost
 api/services/workflow_service.py @QuantumGhost
 api/services/workflow_app_service.py @QuantumGhost
@@ -40,6 +26,20 @@ api/models/workflow.py @QuantumGhost
 api/tasks/workflow_draft_var_tasks.py @QuantumGhost
 api/tasks/workflow_execution_tasks.py @QuantumGhost
 api/tasks/workflow_node_execution_tasks.py @QuantumGhost
+
+# Backend - Workflow - Engine (Core graph execution engine)
+api/core/workflow/graph_engine/ @laipz8200 @QuantumGhost
+api/core/workflow/runtime/ @laipz8200 @QuantumGhost
+api/core/workflow/graph/ @laipz8200 @QuantumGhost
+api/core/workflow/graph_events/ @laipz8200 @QuantumGhost
+api/core/workflow/node_events/ @laipz8200 @QuantumGhost
+api/core/model_runtime/ @laipz8200 @QuantumGhost
+
+# Backend - Workflow - Nodes (Agent, Iteration, Loop, LLM)
+api/core/workflow/nodes/agent/ @Novice
+api/core/workflow/nodes/iteration/ @Novice
+api/core/workflow/nodes/loop/ @Novice
+api/core/workflow/nodes/llm/ @Novice
 
 # Backend - RAG (Retrieval Augmented Generation)
 api/core/rag/ @JohnJyong
