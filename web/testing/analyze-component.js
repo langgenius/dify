@@ -755,7 +755,6 @@ Create the test file at: ${testPath}
 
 class TestReviewPromptBuilder {
   build({ analysis, testPath, testCode, originalPromptSection }) {
-    const trimmedTestCode = testCode.trim()
     const formattedOriginalPrompt = originalPromptSection
       ? originalPromptSection
           .split('\n')

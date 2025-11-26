@@ -1,6 +1,6 @@
 # Copilot Instructions
 
-GitHub Copilot must follow the unified frontend testing requirements documented in `web/testing/TESTING.md`.
+GitHub Copilot must follow the unified frontend testing requirements documented in `web/testing/testing.md`.
 
 Key reminders:
 
@@ -9,5 +9,5 @@ Key reminders:
 - Target >95% line and branch coverage and 100% function/statement coverage.
 - Apply the project's mocking conventions for i18n, toast notifications, and Next.js utilities.
 
-Any suggestions from Copilot that conflict with `web/testing/TESTING.md` should be revised before acceptance.
+Any suggestions from Copilot that conflict with `web/testing/testing.md` should be revised before acceptance.
 

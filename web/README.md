@@ -103,6 +103,12 @@ We use [Jest](https://jestjs.io/) and [React Testing Library](https://testing-li
 
 **📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 
+Run test:
+
+```bash
+pnpm run test
+```
+
 ### Example Code
 
 If you are not familiar with writing tests, refer to:
