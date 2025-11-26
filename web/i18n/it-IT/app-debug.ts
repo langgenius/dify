@@ -116,8 +116,6 @@ const translation = {
     dataSet: {
       title: 'Contesto',
       noData: 'Puoi importare Conoscenza come contesto',
-      words: 'Parole',
-      textBlocks: 'Blocchi di testo',
       selectTitle: 'Seleziona Conoscenza di riferimento',
       selected: 'Conoscenza selezionata',
       noDataSet: 'Nessuna Conoscenza trovata',
@@ -356,6 +354,7 @@ const translation = {
     'single-file': 'File singolo',
     'uploadFileTypes': 'Caricare i tipi di file',
     'maxNumberOfUploads': 'Numero massimo di caricamenti',
+    'maxNumberTip': 'Documento < {{docLimit}}, immagine < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'multi-files': 'Elenco file',
     'both': 'Ambedue',
     'localUpload': 'Caricamento locale',

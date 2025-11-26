@@ -128,7 +128,7 @@ class TenantApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(tenant_fields)
-    def get(self):
+    def post(self):
         if request.path == "/info":
             logger.warning("Deprecated URL /info was used.")
 
@@ -150,15 +150,18 @@ class TenantApi(Resource):
         return WorkspaceService.get_tenant_info(tenant), 200
 
 
+parser_switch = reqparse.RequestParser().add_argument("tenant_id", type=str, required=True, location="json")
+
+
 @console_ns.route("/workspaces/switch")
 class SwitchWorkspaceApi(Resource):
+    @console_ns.expect(parser_switch)
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument("tenant_id", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = parser_switch.parse_args()
 
         # check if tenant_id is valid, 403 if not
         try:
@@ -242,16 +245,19 @@ class WebappLogoWorkspaceApi(Resource):
         return {"id": upload_file.id}, 201
 
 
+parser_info = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
+
+
 @console_ns.route("/workspaces/info")
 class WorkspaceInfoApi(Resource):
+    @console_ns.expect(parser_info)
     @setup_required
     @login_required
     @account_initialization_required
     # Change workspace name
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument("name", type=str, required=True, location="json")
-        args = parser.parse_args()
+        args = parser_info.parse_args()
 
         if not current_tenant_id:
             raise ValueError("No current tenant")

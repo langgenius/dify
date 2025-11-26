@@ -30,6 +30,7 @@ const translation = {
   overview: {
     title: 'Overview',
     appInfo: {
+      title: 'Web App',
       explanation: 'Ready-to-use AI web app',
       accessibleAddress: 'Public URL',
       preview: 'Preview',
@@ -37,6 +38,10 @@ const translation = {
       regenerate: 'Regenerate',
       regenerateNotice: 'Do you want to regenerate the public URL?',
       preUseReminder: 'Please enable web app before continuing.',
+      enableTooltip: {
+        description: 'To enable this feature, please add a User Input node to the canvas. (May already exist in draft, takes effect after publishing)',
+        learnMore: 'Learn more',
+      },
       settings: {
         entry: 'Settings',
         title: 'Web App Settings',
@@ -121,9 +126,20 @@ const translation = {
       accessibleAddress: 'Service API Endpoint',
       doc: 'API Reference',
     },
+    triggerInfo: {
+      title: 'Triggers',
+      explanation: 'Workflow trigger management',
+      triggersAdded: '{{count}} Triggers added',
+      noTriggerAdded: 'No trigger added',
+      triggerStatusDescription: 'Trigger node status appears here. (May already exist in draft, takes effect after publishing)',
+      learnAboutTriggers: 'Learn about Triggers',
+    },
     status: {
       running: 'In Service',
       disable: 'Disabled',
+    },
+    disableTooltip: {
+      triggerMode: 'The {{feature}} feature is not supported in Trigger Node mode.',
     },
   },
   analysis: {

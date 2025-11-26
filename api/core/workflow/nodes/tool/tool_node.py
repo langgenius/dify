@@ -164,10 +164,7 @@ class ToolNode(Node):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error="An error occurred in the plugin, "
-                    f"please contact the author of {node_data.provider_name} for help, "
-                    f"error type: {e.get_error_type()}, "
-                    f"error details: {e.get_error_message()}",
+                    error=e.to_user_friendly_error(plugin_name=node_data.provider_name),
                     error_type=type(e).__name__,
                 )
             )
@@ -332,7 +329,15 @@ class ToolNode(Node):
                     json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                stream_text = f"Link: {message.message.text}\n"
+
+                # Check if this LINK message is a file link
+                file_obj = (message.meta or {}).get("file")
+                if isinstance(file_obj, File):
+                    files.append(file_obj)
+                    stream_text = f"File: {message.message.text}\n"
+                else:
+                    stream_text = f"Link: {message.message.text}\n"
+
                 text += stream_text
                 yield StreamChunkEvent(
                     selector=[node_id, "text"],

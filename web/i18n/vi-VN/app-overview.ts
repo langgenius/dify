@@ -114,6 +114,11 @@ const translation = {
         },
       },
       launch: 'Phóng',
+      enableTooltip: {
+        description: 'Để kích hoạt tính năng này, vui lòng thêm một nút Nhập Người Dùng vào bảng điều khiển. (Có thể đã tồn tại trong bản nháp, có hiệu lực sau khi xuất bản)',
+        learnMore: 'Tìm hiểu thêm',
+      },
+      title: 'Ứng dụng web',
     },
     apiInfo: {
       title: 'API dịch vụ backend',
@@ -124,6 +129,17 @@ const translation = {
     status: {
       running: 'Đang hoạt động',
       disable: 'Đã tắt',
+    },
+    triggerInfo: {
+      title: 'Nguyên nhân kích hoạt',
+      explanation: 'Quản lý kích hoạt quy trình làm việc',
+      triggersAdded: '{{count}} Kích hoạt đã được thêm',
+      noTriggerAdded: 'Chưa thêm trình kích hoạt',
+      triggerStatusDescription: 'Trạng thái nút kích hoạt sẽ hiển thị ở đây. (Có thể đã tồn tại trong bản nháp, có hiệu lực sau khi xuất bản)',
+      learnAboutTriggers: 'Tìm hiểu về Các trình kích hoạt',
+    },
+    disableTooltip: {
+      triggerMode: 'Tính năng {{feature}} không được hỗ trợ trong chế độ Nút Kích hoạt.',
     },
   },
   analysis: {

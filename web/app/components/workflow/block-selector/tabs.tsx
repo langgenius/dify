@@ -1,6 +1,7 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
-import { memo } from 'react'
-import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
+import { memo, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import type {
   BlockEnum,
   NodeDefault,
@@ -9,9 +10,15 @@ import type {
 } from '../types'
 import { TabsEnum } from './types'
 import Blocks from './blocks'
+import AllStartBlocks from './all-start-blocks'
 import AllTools from './all-tools'
 import DataSources from './data-sources'
 import cn from '@/utils/classnames'
+import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useWorkflowStore } from '../store'
+import { basePath } from '@/utils/var'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type TabsProps = {
   activeTab: TabsEnum
@@ -26,10 +33,13 @@ export type TabsProps = {
   tabs: Array<{
     key: TabsEnum
     name: string
+    disabled?: boolean
   }>
   filterElem: React.ReactNode
   noBlocks?: boolean
   noTools?: boolean
+  forceShowStartContent?: boolean // Force show Start content even when noBlocks=true
+  allowStartNodeSelection?: boolean // Allow user input option even when trigger node already exists (e.g. change-node flow or when no Start node yet).
 }
 const Tabs: FC<TabsProps> = ({
   activeTab,
@@ -45,11 +55,75 @@ const Tabs: FC<TabsProps> = ({
   filterElem,
   noBlocks,
   noTools,
+  forceShowStartContent = false,
+  allowStartNodeSelection = false,
 }) => {
+  const { t } = useTranslation()
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
   const { data: mcpTools } = useAllMCPTools()
+  const invalidateBuiltInTools = useInvalidateAllBuiltInTools()
+  const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const workflowStore = useWorkflowStore()
+  const inRAGPipeline = dataSources.length > 0
+  const {
+    plugins: featuredPlugins = [],
+    isLoading: isFeaturedLoading,
+  } = useFeaturedToolsRecommendations(enable_marketplace && !inRAGPipeline)
+
+  const normalizeToolList = useMemo(() => {
+    return (list?: ToolWithProvider[]) => {
+      if (!list)
+        return list
+      if (!basePath)
+        return list
+      let changed = false
+      const normalized = list.map((provider) => {
+        if (typeof provider.icon === 'string') {
+          const icon = provider.icon
+          const shouldPrefix = Boolean(basePath)
+            && icon.startsWith('/')
+            && !icon.startsWith(`${basePath}/`)
+
+          if (shouldPrefix) {
+            changed = true
+            return {
+              ...provider,
+              icon: `${basePath}${icon}`,
+            }
+          }
+        }
+        return provider
+      })
+      return changed ? normalized : list
+    }
+  }, [basePath])
+
+  useEffect(() => {
+    workflowStore.setState((state) => {
+      const updates: Partial<typeof state> = {}
+      const normalizedBuiltIn = normalizeToolList(buildInTools)
+      const normalizedCustom = normalizeToolList(customTools)
+      const normalizedWorkflow = normalizeToolList(workflowTools)
+      const normalizedMCP = normalizeToolList(mcpTools)
+
+      if (normalizedBuiltIn !== undefined && state.buildInTools !== normalizedBuiltIn)
+        updates.buildInTools = normalizedBuiltIn
+      if (normalizedCustom !== undefined && state.customTools !== normalizedCustom)
+        updates.customTools = normalizedCustom
+      if (normalizedWorkflow !== undefined && state.workflowTools !== normalizedWorkflow)
+        updates.workflowTools = normalizedWorkflow
+      if (normalizedMCP !== undefined && state.mcpTools !== normalizedMCP)
+        updates.mcpTools = normalizedMCP
+      if (!Object.keys(updates).length)
+        return state
+      return {
+        ...state,
+        ...updates,
+      }
+    })
+  }, [workflowStore, normalizeToolList, buildInTools, customTools, workflowTools, mcpTools])
 
   return (
     <div onClick={e => e.stopPropagation()}>
@@ -57,25 +131,64 @@ const Tabs: FC<TabsProps> = ({
         !noBlocks && (
           <div className='relative flex bg-background-section-burn pl-1 pt-1'>
             {
-              tabs.map(tab => (
-                <div
-                  key={tab.key}
-                  className={cn(
-                    'system-sm-medium relative mr-0.5 flex h-8 cursor-pointer  items-center rounded-t-lg px-3 ',
-                    activeTab === tab.key
-                      ? 'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
-                      : 'text-text-tertiary',
-                  )}
-                  onClick={() => onActiveTabChange(tab.key)}
-                >
-                  {tab.name}
-                </div>
-              ))
+              tabs.map((tab) => {
+                const commonProps = {
+                  'className': cn(
+                    'system-sm-medium relative mr-0.5 flex h-8 items-center rounded-t-lg px-3',
+                    tab.disabled
+                      ? 'cursor-not-allowed text-text-disabled opacity-60'
+                      : activeTab === tab.key
+                        ? 'sm-no-bottom cursor-default bg-components-panel-bg text-text-accent'
+                        : 'cursor-pointer text-text-tertiary',
+                  ),
+                  'aria-disabled': tab.disabled,
+                  'onClick': () => {
+                    if (tab.disabled || activeTab === tab.key)
+                      return
+                    onActiveTabChange(tab.key)
+                  },
+                } as const
+                if (tab.disabled) {
+                  return (
+                    <Tooltip
+                      key={tab.key}
+                      position='top'
+                      popupClassName='max-w-[200px]'
+                      popupContent={t('workflow.tabs.startDisabledTip')}
+                    >
+                      <div {...commonProps}>
+                        {tab.name}
+                      </div>
+                    </Tooltip>
+                  )
+                }
+                return (
+                  <div
+                    key={tab.key}
+                    {...commonProps}
+                  >
+                    {tab.name}
+                  </div>
+                )
+              })
             }
           </div>
         )
       }
       {filterElem}
+      {
+        activeTab === TabsEnum.Start && (!noBlocks || forceShowStartContent) && (
+          <div className='border-t border-divider-subtle'>
+            <AllStartBlocks
+              allowUserInputSelection={allowStartNodeSelection}
+              searchText={searchText}
+              onSelect={onSelect}
+              availableBlocksTypes={availableBlocksTypes}
+              tags={tags}
+            />
+          </div>
+        )
+      }
       {
         activeTab === TabsEnum.Blocks && !noBlocks && (
           <div className='border-t border-divider-subtle'>
@@ -112,7 +225,13 @@ const Tabs: FC<TabsProps> = ({
             mcpTools={mcpTools || []}
             canChooseMCPTool
             onTagsChange={onTagsChange}
-            isInRAGPipeline={dataSources.length > 0}
+            isInRAGPipeline={inRAGPipeline}
+            featuredPlugins={featuredPlugins}
+            featuredLoading={isFeaturedLoading}
+            showFeatured={enable_marketplace && !inRAGPipeline}
+            onFeaturedInstallSuccess={async () => {
+              invalidateBuiltInTools()
+            }}
           />
         )
       }

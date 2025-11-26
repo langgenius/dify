@@ -137,7 +137,7 @@ export const fetchFilePreview: Fetcher<{ content: string }, { fileID: string }> 
 }
 
 export const fetchCurrentWorkspace: Fetcher<ICurrentWorkspace, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<ICurrentWorkspace>(url, { params })
+  return post<ICurrentWorkspace>(url, { body: params })
 }
 
 export const updateCurrentWorkspace: Fetcher<ICurrentWorkspace, { url: string; body: Record<string, any> }> = ({ url, body }) => {
