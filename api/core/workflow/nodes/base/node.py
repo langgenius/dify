@@ -60,18 +60,85 @@ class Node(Generic[NodeDataT]):
     _node_data_type: ClassVar[type[BaseNodeData]] = BaseNodeData
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
+        """
+        Automatically extract and validate the node data type from the generic parameter.
+
+        When a subclass is defined as `class MyNode(Node[MyNodeData])`, this method:
+        1. Inspects `__orig_bases__` to find the `Node[T]` parameterization
+        2. Extracts `T` (e.g., `MyNodeData`) from the generic argument
+        3. Validates that `T` is a proper `BaseNodeData` subclass
+        4. Stores it in `_node_data_type` for automatic hydration in `__init__`
+
+        This eliminates the need for subclasses to manually implement `init_node_data()`
+        and other boilerplate accessor methods.
+
+        How it works:
+        ::
+
+            class CodeNode(Node[CodeNodeData]):
+                          │         │
+                          │         └─────────────────────────────────┐
+                          │                                           │
+                          ▼                                           ▼
+            ┌─────────────────────────────┐     ┌─────────────────────────────────┐
+            │  __orig_bases__ = (         │     │  CodeNodeData(BaseNodeData)     │
+            │    Node[CodeNodeData],      │     │    title: str                   │
+            │  )                          │     │    desc: str | None             │
+            └──────────────┬──────────────┘     │    ...                          │
+                           │                    └─────────────────────────────────┘
+                           ▼                                      ▲
+            ┌─────────────────────────────┐                       │
+            │  get_origin(base) -> Node   │                       │
+            │  get_args(base) -> (        │                       │
+            │    CodeNodeData,            │ ──────────────────────┘
+            │  )                          │
+            └──────────────┬──────────────┘
+                           │
+                           ▼
+            ┌─────────────────────────────┐
+            │  Validate:                  │
+            │  - Is it a type?            │
+            │  - Is it a BaseNodeData     │
+            │    subclass?                │
+            └──────────────┬──────────────┘
+                           │
+                           ▼
+            ┌─────────────────────────────┐
+            │  cls._node_data_type =      │
+            │    CodeNodeData             │
+            └─────────────────────────────┘
+
+        Later, in __init__:
+        ::
+
+            config["data"] ──► _hydrate_node_data() ──► _node_data_type.model_validate()
+                                                                │
+                                                                ▼
+                                                        CodeNodeData instance
+                                                        (stored in self._node_data)
+
+        Example:
+            class CodeNode(Node[CodeNodeData]):  # CodeNodeData is auto-extracted
+                node_type = NodeType.CODE
+                # No need to implement init_node_data, _get_title, etc.
+        """
         super().__init_subclass__(**kwargs)
 
         node_data_type: type[BaseNodeData] | None = None
+
+        # __orig_bases__ contains the original generic bases before type erasure.
+        # For `class CodeNode(Node[CodeNodeData])`, this would be `(Node[CodeNodeData],)`.
         for base in getattr(cls, "__orig_bases__", ()):  # type: ignore[attr-defined]
-            origin = get_origin(base)
+            origin = get_origin(base)  # Returns `Node` for `Node[CodeNodeData]`
             if origin is Node:
-                args = get_args(base)
+                args = get_args(base)  # Returns `(CodeNodeData,)` for `Node[CodeNodeData]`
                 if len(args) != 1:
                     raise TypeError(f"{cls.__name__} must specify exactly one node data generic argument")
+
                 candidate = args[0]
                 if not isinstance(candidate, type) or not issubclass(candidate, BaseNodeData):
                     raise TypeError(f"{cls.__name__} must parameterize Node with a BaseNodeData subtype")
+
                 node_data_type = candidate
                 break
 
