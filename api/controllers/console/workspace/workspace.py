@@ -139,10 +139,7 @@ class WorkspaceListApi(Resource):
     @setup_required
     @admin_required
     def get(self):
-        payload = console_ns.payload or request.args.to_dict()
-        # preserve ints when passed via query string
-        if isinstance(payload, dict):
-            payload = {**payload}
+        payload = request.args.to_dict()
         args = WorkspaceListQuery.model_validate(payload)
 
         stmt = select(Tenant).order_by(Tenant.created_at.desc())
