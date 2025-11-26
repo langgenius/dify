@@ -54,7 +54,10 @@ class TestTemplateTransformNodeData:
                 {"variable": "items", "value_selector": ["sys", "item_list"]},
                 {"variable": "total", "value_selector": ["sys", "total_count"]},
             ],
-            "template": "{% for item in items %}{{ item }}{% if not loop.last %}, {% endif %}{% endfor %}. Total: {{ total }}",
+            "template": (
+                "{% for item in items %}{{ item }}{% if not loop.last %}, {% endif %}{% endfor %}. "
+                "Total: {{ total }}"
+            ),
         }
 
         node_data = TemplateTransformNodeData.model_validate(data)

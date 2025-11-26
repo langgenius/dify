@@ -139,8 +139,8 @@ class TestTemplateTransformNode:
         mock_age_value.to_object.return_value = 30
 
         variable_map = {
-            tuple(["sys", "user_name"]): mock_name_value,
-            tuple(["sys", "user_age"]): mock_age_value,
+            ("sys", "user_name"): mock_name_value,
+            ("sys", "user_age"): mock_age_value,
         }
         mock_graph_runtime_state.variable_pool.get.side_effect = lambda selector: variable_map.get(tuple(selector))
 
@@ -235,7 +235,10 @@ class TestTemplateTransformNode:
                 {"variable": "items", "value_selector": ["sys", "items"]},
                 {"variable": "show_total", "value_selector": ["sys", "show_total"]},
             ],
-            "template": "{% for item in items %}{{ item }}{% if not loop.last %}, {% endif %}{% endfor %}{% if show_total %} (Total: {{ items|length }}){% endif %}",
+            "template": (
+                "{% for item in items %}{{ item }}{% if not loop.last %}, {% endif %}{% endfor %}"
+                "{% if show_total %} (Total: {{ items|length }}){% endif %}"
+            ),
         }
 
         mock_items = MagicMock()
@@ -244,8 +247,8 @@ class TestTemplateTransformNode:
         mock_show_total.to_object.return_value = True
 
         variable_map = {
-            tuple(["sys", "items"]): mock_items,
-            tuple(["sys", "show_total"]): mock_show_total,
+            ("sys", "items"): mock_items,
+            ("sys", "show_total"): mock_show_total,
         }
         mock_graph_runtime_state.variable_pool.get.side_effect = lambda selector: variable_map.get(tuple(selector))
         mock_execute.return_value = {"result": "apple, banana, orange (Total: 3)"}
@@ -326,8 +329,8 @@ class TestTemplateTransformNode:
         mock_quantity.to_object.return_value = 3
 
         variable_map = {
-            tuple(["sys", "price"]): mock_price,
-            tuple(["sys", "quantity"]): mock_quantity,
+            ("sys", "price"): mock_price,
+            ("sys", "quantity"): mock_quantity,
         }
         mock_graph_runtime_state.variable_pool.get.side_effect = lambda selector: variable_map.get(tuple(selector))
         mock_execute.return_value = {"result": "Total: $31.5"}
