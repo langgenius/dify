@@ -86,13 +86,13 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 **Rules**:
 
 1. **Match actual conditional rendering**: If the real component returns `null` or doesn't render under certain conditions, the mock must do the same. Always check the actual component implementation before creating mocks.
-2. **Use shared state variables when needed**: When mocking components that depend on shared context or state (e.g., `PortalToFollowElem` with `PortalToFollowElemContent`), use module-level variables to track state and reset them in `beforeEach`.
-3. **Always reset shared mock state in beforeEach**: Module-level variables used in mocks must be reset in `beforeEach` to ensure test isolation, even if you set default values elsewhere.
-4. **Use fake timers only when needed**: Only use `jest.useFakeTimers()` if:
+1. **Use shared state variables when needed**: When mocking components that depend on shared context or state (e.g., `PortalToFollowElem` with `PortalToFollowElemContent`), use module-level variables to track state and reset them in `beforeEach`.
+1. **Always reset shared mock state in beforeEach**: Module-level variables used in mocks must be reset in `beforeEach` to ensure test isolation, even if you set default values elsewhere.
+1. **Use fake timers only when needed**: Only use `jest.useFakeTimers()` if:
    - Testing components that use real `setTimeout`/`setInterval` (not mocked)
    - Testing time-based behavior (delays, animations)
    - If you mock all time-dependent functions, fake timers are unnecessary
-5. **Prefer importing over mocking project components**: When tests need other components from the project, import them directly instead of mocking them. Only mock external dependencies, APIs, or complex context providers that are difficult to set up.
+1. **Prefer importing over mocking project components**: When tests need other components from the project, import them directly instead of mocking them. Only mock external dependencies, APIs, or complex context providers that are difficult to set up.
 
 **Why this matters**: Mocks that don't match actual behavior can lead to:
 
@@ -126,6 +126,7 @@ Apply the following test scenarios based on component features:
 ### 1. Rendering Tests (REQUIRED - All Components)
 
 **Key Points**:
+
 - Verify component renders properly
 - Check key elements exist
 - Use semantic queries (getByRole, getByLabelText)
@@ -156,6 +157,7 @@ Simulate the interactions that matter to users—primary clicks, change events, 
 ### 6. API Calls and Async Operations
 
 **Must Test**:
+
 - ✅ Mock all API calls using `jest.mock`
 - ✅ Test retry logic (if applicable)
 - ✅ Verify error handling and user feedback
@@ -176,12 +178,13 @@ Mock the specific Next.js navigation hooks your component consumes (`useRouter`,
 ### 8. Edge Cases (REQUIRED - All Components)
 
 **Must Test**:
+
 - ✅ null/undefined/empty values
 - ✅ Boundary conditions
 - ✅ Error states
 - ✅ Loading states
 - ✅ Unexpected inputs
-  
+
 ### 9. Test Data Builders (Anti-hardcoding)
 
 For complex inputs/entities, use Builders with solid defaults and chainable overrides.
@@ -257,6 +260,7 @@ describe('ComponentName', () => {
 ### General
 
 1. **i18n**: Always return key
+
    ```typescript
    jest.mock('react-i18next', () => ({
      useTranslation: () => ({
@@ -265,8 +269,9 @@ describe('ComponentName', () => {
    }))
    ```
 
-2. **Forms**: Test validation logic thoroughly
-3. **Example - Correct mock with conditional rendering**:
+1. **Forms**: Test validation logic thoroughly
+
+1. **Example - Correct mock with conditional rendering**:
 
 ```typescript
 // ✅ CORRECT: Matches actual component behavior
@@ -295,6 +300,7 @@ describe('Component', () => {
 ### Workflow Components (`workflow/`)
 
 **Must Test**:
+
 - ⚙️ **Node configuration**: Test all node configuration options
 - ✔️ **Data validation**: Verify input/output validation rules
 - 🔄 **Variable passing**: Test data flow between nodes
@@ -305,6 +311,7 @@ describe('Component', () => {
 ### Dataset Components (`dataset/`)
 
 **Must Test**:
+
 - 📤 **File upload**: Test file upload and validation
 - 📄 **File types**: Verify supported format handling
 - 📃 **Pagination**: Test data loading and pagination
@@ -315,6 +322,7 @@ describe('Component', () => {
 ### Configuration Components (`app/configuration`, `config/`)
 
 **Must Test**:
+
 - ✅ **Form validation**: Test all validation rules thoroughly
 - 💾 **Save/reset functionality**: Test data persistence
 - 🔒 **Required vs optional fields**: Verify field validation
@@ -351,8 +359,8 @@ describe('Component', () => {
 ## Coverage Goals
 
 ### ⚠️ MANDATORY: Complete Coverage in Single Generation
-  
-  Aim for 100% coverage:
+
+Aim for 100% coverage:
 
 - ✅ 100% function coverage (every exported function/method tested)
 - ✅ 100% statement coverage (every line executed)
@@ -378,14 +386,15 @@ screen.debug(screen.getByRole('button'))
 ### Finding Elements
 
 Priority order (recommended top to bottom):
+
 1. `getByRole` - Most recommended, follows accessibility standards
-2. `getByLabelText` - Form fields
-3. `getByPlaceholderText` - Only when no label
-4. `getByText` - Non-interactive elements
-5. `getByDisplayValue` - Current form value
-6. `getByAltText` - Images
-7. `getByTitle` - Last choice
-8. `getByTestId` - Only as last resort
+1. `getByLabelText` - Form fields
+1. `getByPlaceholderText` - Only when no label
+1. `getByText` - Non-interactive elements
+1. `getByDisplayValue` - Current form value
+1. `getByAltText` - Images
+1. `getByTitle` - Last choice
+1. `getByTestId` - Only as last resort
 
 ### Async Debugging
 
@@ -407,6 +416,7 @@ const element = await screen.findByText('Async Content')
 ## Reference Examples
 
 Test examples in the project:
+
 - [classnames.spec.ts](../utils/classnames.spec.ts) - Utility function tests
 - [index.spec.tsx](../app/components/base/button/index.spec.tsx) - Component tests
 

@@ -10,4 +10,3 @@ Key reminders:
 - Apply the project's mocking conventions for i18n, toast notifications, and Next.js utilities.
 
 Any suggestions from Copilot that conflict with `web/testing/testing.md` should be revised before acceptance.
-
