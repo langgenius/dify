@@ -240,11 +240,6 @@ class FileService:
             upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
 
             if not upload_file:
-                raise NotFound("File not found")
-            try:
-                storage.delete(upload_file.key)
-                session.delete(upload_file)
-                session.commit()
-            except Exception:
-                session.rollback()
-                raise
+                return
+            storage.delete(upload_file.key)
+            session.delete(upload_file)
