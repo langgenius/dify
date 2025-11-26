@@ -80,11 +80,11 @@ api/tasks/deal_dataset_index_update_task.py @JohnJyong
 api/tasks/deal_dataset_vector_index_task.py @JohnJyong
 
 # Backend - Plugins
-api/core/plugin/ @Mairuis @Yeuoly
-api/services/plugin/ @Mairuis @Yeuoly
-api/controllers/console/workspace/plugin.py @Mairuis @Yeuoly
-api/controllers/inner_api/plugin/ @Mairuis @Yeuoly
-api/tasks/process_tenant_plugin_autoupgrade_check_task.py @Mairuis @Yeuoly
+api/core/plugin/ @Mairuis @Yeuoly @Stream29
+api/services/plugin/ @Mairuis @Yeuoly @Stream29
+api/controllers/console/workspace/plugin.py @Mairuis @Yeuoly @Stream29
+api/controllers/inner_api/plugin/ @Mairuis @Yeuoly @Stream29
+api/tasks/process_tenant_plugin_autoupgrade_check_task.py @Mairuis @Yeuoly @Stream29
 
 # Backend - Billing
 api/services/billing_service.py @hj24 @zyssyz123
