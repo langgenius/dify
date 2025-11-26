@@ -19,6 +19,7 @@ from models.enums import UserFrom
 
 
 class _TestNodeData(BaseNodeData):
+    type: NodeType | str | None = None
     execution_type: NodeExecutionType | str | None = None
 
 
