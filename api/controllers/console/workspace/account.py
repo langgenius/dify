@@ -89,9 +89,7 @@ class AccountTimezonePayload(BaseModel):
     @field_validator("timezone")
     @classmethod
     def validate_timezone(cls, value: str) -> str:
-        if value not in pytz.all_timezones:
-            raise ValueError("Invalid timezone string.")
-        return value
+        return timezone(value)
 
 
 class AccountPasswordPayload(BaseModel):
@@ -297,11 +295,6 @@ class AccountNameApi(Resource):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountNamePayload.model_validate(payload)
-
-        # Validate account name length
-        if len(args.name) < 3 or len(args.name) > 30:
-            raise ValueError("Account name must be between 3 and 30 characters.")
-
         updated_account = AccountService.update_account(current_user, name=args.name)
 
         return updated_account
