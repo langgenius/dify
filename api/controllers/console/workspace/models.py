@@ -156,7 +156,7 @@ class DefaultModelApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserGetDefault.model_validate(request.args)
+        args = ParserGetDefault.model_validate(request.args.to_dict())
 
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
