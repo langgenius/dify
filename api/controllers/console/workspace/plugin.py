@@ -496,7 +496,7 @@ class PluginFetchInstallTasksApi(Resource):
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserTasks.model_validate(request.args)
+        args = ParserTasks.model_validate(request.args.to_dict())
 
         try:
             return jsonable_encoder({"tasks": PluginService.fetch_install_tasks(tenant_id, args.page, args.page_size)})
