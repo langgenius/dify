@@ -2,7 +2,7 @@ import logging
 
 from flask import request
 from flask_restx import Resource, marshal_with
-from pydantic.main import BaseModel
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
