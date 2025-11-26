@@ -16,6 +16,7 @@ class ToolEntity(BaseModel):
     tool_configurations: dict[str, Any]
     credential_id: str | None = None
     plugin_unique_identifier: str | None = None  # redundancy
+    auth_type: Literal["workspace", "end_user"] = "workspace"  # OAuth authentication level
 
     @field_validator("tool_configurations", mode="before")
     @classmethod
