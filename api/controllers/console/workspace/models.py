@@ -503,7 +503,7 @@ class ModelProviderModelValidateApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         _, tenant_id = current_account_with_tenant()
-
+        args = ParserValidate.model_validate(console_ns.payload)
         args = ParserValidate.model_validate_json(console_ns.payload)
 
         model_provider_service = ModelProviderService()
