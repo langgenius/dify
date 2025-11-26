@@ -6,6 +6,7 @@ from typing import Any
 
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPConnectionError
+from core.mcp.session_manager import McpSessionRegistry
 from core.mcp.types import AudioContent, CallToolResult, ImageContent, TextContent
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -164,8 +165,6 @@ class MCPTool(Tool):
         try:
             if workflow_execution_id:
                 # Workflow path: reuse MCP session scoped by workflow_execution_id
-                from core.mcp.session_manager import McpSessionRegistry
-
                 manager = McpSessionRegistry.get_manager(workflow_execution_id)
                 session_key = self._build_session_key()
 

@@ -90,25 +90,59 @@ class McpSessionManager:
         return datetime.now(UTC) - record.last_used_at > self._idle_timeout
 
 
+@dataclass
+class ManagerRecord:
+    """Metadata wrapper for a session manager in the registry."""
+
+    manager: McpSessionManager
+    last_accessed_at: datetime
+
+
 class McpSessionRegistry:
     """Global registry mapping workflow execution IDs to their session managers."""
 
     _lock = threading.Lock()
-    _registry: dict[str, McpSessionManager] = {}
+    _registry: dict[str, ManagerRecord] = {}
+    # Registry entries are opportunistically cleaned up after this idle period
+    _ttl: timedelta = timedelta(minutes=20)
 
     @classmethod
     def get_manager(cls, workflow_execution_id: str) -> McpSessionManager:
+        expired_records: list[ManagerRecord] = []
+
         with cls._lock:
-            manager = cls._registry.get(workflow_execution_id)
-            if manager is None:
-                manager = McpSessionManager()
-                cls._registry[workflow_execution_id] = manager
-            return manager
+            now = datetime.now(UTC)
+            expired_records = cls._cleanup_expired(now)
+
+            record = cls._registry.get(workflow_execution_id)
+            if record is None:
+                record = ManagerRecord(manager=McpSessionManager(), last_accessed_at=now)
+                cls._registry[workflow_execution_id] = record
+            else:
+                record.last_accessed_at = now
+
+            manager = record.manager
+
+        for record in expired_records:
+            record.manager.cleanup()
+
+        return manager
 
     @classmethod
     def cleanup(cls, workflow_execution_id: str) -> None:
         with cls._lock:
-            manager = cls._registry.pop(workflow_execution_id, None)
+            record = cls._registry.pop(workflow_execution_id, None)
 
-        if manager:
-            manager.cleanup()
+        if record:
+            record.manager.cleanup()
+
+    @classmethod
+    def _cleanup_expired(cls, now: datetime) -> list[ManagerRecord]:
+        if cls._ttl is None:
+            return []
+
+        expired_records: list[ManagerRecord] = []
+        for workflow_id, record in list(cls._registry.items()):
+            if now - record.last_accessed_at > cls._ttl:
+                expired_records.append(cls._registry.pop(workflow_id))
+        return expired_records
