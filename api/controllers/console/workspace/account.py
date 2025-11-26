@@ -566,7 +566,7 @@ class EducationAutoCompleteApi(Resource):
     @cloud_edition_billing_enabled
     @marshal_with(data_fields)
     def get(self):
-        payload = console_ns.payload or request.args.to_dict(flat=True)  # type: ignore
+        payload = request.args.to_dict(flat=True)  # type: ignore
         args = EducationAutocompleteQuery.model_validate(payload)
 
         return BillingService.EducationIdentity.autocomplete(args.keywords, args.page, args.limit)
