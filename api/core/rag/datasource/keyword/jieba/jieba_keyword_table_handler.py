@@ -1,37 +1,70 @@
 import re
 from operator import itemgetter
-from typing import TYPE_CHECKING, cast
-
-if TYPE_CHECKING:
-    from jieba.analyse import TFIDF  # type: ignore
+from typing import cast
 
 
 class JiebaKeywordTableHandler:
     def __init__(self):
-        import jieba.analyse  # type: ignore
-
         from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 
-        # `default_tfidf` was removed in newer jieba versions, so create one if missing.
-        tfidf = getattr(jieba.analyse, "default_tfidf", None)
-        if tfidf is None:
-            tfidf_class = getattr(jieba.analyse, "TFIDF", None)
-            if tfidf_class is None:
-                try:
-                    from jieba.analyse.tfidf import TFIDF  # type: ignore
-                except Exception:
-                    tfidf_class = None
-                else:
-                    tfidf_class = TFIDF
-
-            if tfidf_class is not None:
-                tfidf = tfidf_class()
-                jieba.analyse.default_tfidf = tfidf  # type: ignore[attr-defined]
-            else:
-                tfidf = self._build_fallback_tfidf()
-
+        tfidf = self._load_tfidf_extractor()
         tfidf.stop_words = STOPWORDS  # type: ignore[attr-defined]
-        self._tfidf = cast("TFIDF", tfidf)
+        self._tfidf = tfidf
+
+    def _load_tfidf_extractor(self):
+        """
+        Load jieba TFIDF extractor with fallback strategy.
+
+        Loading Flow:
+        ┌─────────────────────────────────────────────────────────────────────┐
+        │                      jieba.analyse.default_tfidf                    │
+        │                              exists?                                │
+        └─────────────────────────────────────────────────────────────────────┘
+                           │                              │
+                          YES                            NO
+                           │                              │
+                           ▼                              ▼
+                ┌──────────────────┐       ┌──────────────────────────────────┐
+                │  Return default  │       │   jieba.analyse.TFIDF exists?    │
+                │      TFIDF       │       └──────────────────────────────────┘
+                └──────────────────┘                │                │
+                                                   YES              NO
+                                                    │                │
+                                                    │                ▼
+                                                    │   ┌────────────────────────────┐
+                                                    │   │  Try import from          │
+                                                    │   │  jieba.analyse.tfidf.TFIDF │
+                                                    │   └────────────────────────────┘
+                                                    │          │            │
+                                                    │        SUCCESS      FAILED
+                                                    │          │            │
+                                                    ▼          ▼            ▼
+                                        ┌────────────────────────┐    ┌─────────────────┐
+                                        │  Instantiate TFIDF()   │    │  Build fallback │
+                                        │  & cache to default    │    │  _SimpleTFIDF   │
+                                        └────────────────────────┘    └─────────────────┘
+        """
+        import jieba.analyse  # type: ignore
+
+        tfidf = getattr(jieba.analyse, "default_tfidf", None)
+        if tfidf is not None:
+            return tfidf
+
+        tfidf_class = getattr(jieba.analyse, "TFIDF", None)
+        if tfidf_class is None:
+            try:
+                from jieba.analyse.tfidf import TFIDF  # type: ignore
+
+                tfidf_class = TFIDF
+            except Exception:
+                tfidf_class = None
+
+        if tfidf_class is not None:
+            tfidf = tfidf_class()
+            jieba.analyse.default_tfidf = tfidf  # type: ignore[attr-defined]
+            return tfidf
+
+        return self._build_fallback_tfidf()
 
     @staticmethod
     def _build_fallback_tfidf():
