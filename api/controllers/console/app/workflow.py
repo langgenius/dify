@@ -90,14 +90,20 @@ workflow_pagination_model = console_ns.model("WorkflowPagination", workflow_pagi
 # Otherwise register it here
 from fields.end_user_fields import simple_end_user_fields
 
+simple_end_user_model = None
 try:
     simple_end_user_model = console_ns.models.get("SimpleEndUser")
-except (KeyError, AttributeError):
+except AttributeError:
+    pass
+if simple_end_user_model is None:
     simple_end_user_model = console_ns.model("SimpleEndUser", simple_end_user_fields)
 
+workflow_run_node_execution_model = None
 try:
     workflow_run_node_execution_model = console_ns.models.get("WorkflowRunNodeExecution")
-except (KeyError, AttributeError):
+except AttributeError:
+    pass
+if workflow_run_node_execution_model is None:
     workflow_run_node_execution_model = console_ns.model("WorkflowRunNodeExecution", workflow_run_node_execution_fields)
 
 
