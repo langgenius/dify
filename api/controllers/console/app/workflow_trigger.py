@@ -1,3 +1,4 @@
+from flask import request
 import logging
 
 from flask_restx import Resource, marshal_with
@@ -50,7 +51,7 @@ class WebhookTriggerApi(Resource):
     @marshal_with(webhook_trigger_fields)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
-        args = Parser.model_validate(console_ns.payload)
+        args = Parser.model_validate(request.args.to_dict())
 
         node_id = args.node_id
 
