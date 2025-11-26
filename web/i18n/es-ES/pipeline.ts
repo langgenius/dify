@@ -28,10 +28,12 @@ const translation = {
       loading: 'Tratamiento... Espera',
       viewDetails: 'Ver detalles',
       error: 'Error ocurrido durante la ejecución',
+      footerTip: 'En modo de prueba, previsualiza hasta {{count}} fragmentos',
     },
   },
   ragToolSuggestions: {
     title: 'Sugerencias para el GAR',
+    noRecommendationPlugins: 'No hay complementos recomendados, encuentra más en <CustomLink>Marketplace</CustomLink>',
   },
 }
 

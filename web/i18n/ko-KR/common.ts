@@ -65,10 +65,17 @@ const translation = {
     yes: '네',
     deleteConfirmTitle: '삭제하시겠습니까?',
     confirmAction: '귀하의 행동을 확인해 주세요.',
+    noSearchResults: '{{content}}가(이) 발견되지 않았습니다',
+    resetKeywords: '키워드 재설정',
+    selectCount: '{{count}} 선택됨',
+    searchCount: '{{count}} {{content}} 찾기',
+    noSearchCount: '0 {{content}}',
+    now: '지금',
   },
   placeholder: {
     input: '입력해주세요',
     select: '선택해주세요',
+    search: '검색...',
   },
   voice: {
     language: {
@@ -764,6 +771,13 @@ const translation = {
   },
   label: {
     optional: '(선택 사항)',
+  },
+  noData: '데이터 없음',
+  dynamicSelect: {
+    error: '옵션 불러오기 실패',
+    noData: '사용 가능한 옵션이 없습니다',
+    loading: '옵션 불러오는 중...',
+    selected: '{{count}} 선택됨',
   },
 }
 
