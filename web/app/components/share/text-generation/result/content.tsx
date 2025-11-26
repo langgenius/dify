@@ -1,8 +1,9 @@
+'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { Markdown } from '@/app/components/base/markdown'
 import Header from './header'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
-import { format } from '@/service/base'
 
 export type IResultProps = {
   content: string
@@ -24,10 +25,9 @@ const Result: FC<IResultProps> = ({
         style={{
           maxHeight: '70vh',
         }}
-        dangerouslySetInnerHTML={{
-          __html: format(content),
-        }}
-      ></div>
+      >
+        <Markdown content={content} className='w-full' />
+      </div>
     </div>
   )
 }
