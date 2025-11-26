@@ -281,7 +281,7 @@ class PluginIconApi(Resource):
     @console_ns.expect(console_ns.models[ParserIcon.__name__])
     @setup_required
     def get(self):
-        args = ParserIcon.model_validate(console_ns.payload)
+        args = ParserIcon.model_validate(request.args)
 
         try:
             icon_bytes, mimetype = PluginService.get_asset(args.tenant_id, args.filename)
