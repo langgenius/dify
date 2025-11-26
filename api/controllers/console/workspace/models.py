@@ -428,7 +428,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     @account_initialization_required
     def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
-
+        args = ParserSwitch.model_validate(console_ns.payload)
         args = ParserSwitch.model_validate_json(console_ns.payload)
 
         service = ModelProviderService()
