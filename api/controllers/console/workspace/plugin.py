@@ -266,7 +266,7 @@ class PluginListInstallationsFromIdsApi(Resource):
     def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = ParserLatest.model_validate_json(console_ns.payload)
+        args = ParserLatest.model_validate(console_ns.payload)
 
         try:
             plugins = PluginService.list_installations_from_ids(tenant_id, args.plugin_ids)
