@@ -13,7 +13,6 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
-from libs.uuid_utils import uuidv7
 
 from .base import TypeBase
 from .engine import db
