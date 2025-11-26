@@ -114,6 +114,11 @@ const translation = {
         },
       },
       launch: 'راه اندازی',
+      enableTooltip: {
+        description: 'برای فعال کردن این ویژگی، لطفاً یک گره ورودی کاربر به صفحه اضافه کنید. (ممکن است قبلاً در پیش‌نویس وجود داشته باشد، بعد از انتشار اعمال می‌شود)',
+        learnMore: 'بیشتر بدانید',
+      },
+      title: 'وب اپ',
     },
     apiInfo: {
       title: 'API سرویس بک‌اند',
@@ -124,6 +129,17 @@ const translation = {
     status: {
       running: 'در حال سرویس‌دهی',
       disable: 'غیرفعال',
+    },
+    triggerInfo: {
+      title: 'محرک‌ها',
+      explanation: 'مدیریت فعال‌سازی جریان کاری',
+      triggersAdded: '{{count}} محرک‌ها اضافه شدند',
+      noTriggerAdded: 'هیچ ماشه‌ای افزوده نشده است',
+      triggerStatusDescription: 'وضعیت گره تریگر در اینجا نمایش داده می‌شود. (ممکن است قبلاً در پیش‌نویس وجود داشته باشد، پس از انتشار اعمال می‌شود)',
+      learnAboutTriggers: 'با محرک‌ها آشنا شوید',
+    },
+    disableTooltip: {
+      triggerMode: 'ویژگی {{feature}} در حالت گره تریگر پشتیبانی نمی‌شود.',
     },
   },
   analysis: {

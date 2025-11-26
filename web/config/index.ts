@@ -144,7 +144,11 @@ export const getMaxToken = (modelId: string) => {
 
 export const LOCALE_COOKIE_NAME = 'locale'
 
-const COOKIE_DOMAIN = (process.env.NEXT_PUBLIC_COOKIE_DOMAIN || '').trim()
+const COOKIE_DOMAIN = getStringConfig(
+  process.env.NEXT_PUBLIC_COOKIE_DOMAIN,
+  DatasetAttr.DATA_PUBLIC_COOKIE_DOMAIN,
+  '',
+).trim()
 export const CSRF_COOKIE_NAME = () => {
   if (COOKIE_DOMAIN) return 'csrf_token'
   const isSecure = API_PREFIX.startsWith('https://')
@@ -421,6 +425,8 @@ export const ZENDESK_FIELD_IDS = {
 }
 export const APP_VERSION = pkg.version
 
+export const IS_MARKETPLACE = globalThis.document?.body?.getAttribute('data-is-marketplace') === 'true'
+
 export const RAG_PIPELINE_PREVIEW_CHUNK_NUM = 20
 
 export const PROVIDER_WITH_PRESET_TONE = ['langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
@@ -442,4 +448,9 @@ export const STOP_PARAMETER_RULE: ModelParameterRule = {
     en_US: 'Enter sequence and press Tab',
     zh_Hans: '输入序列并按 Tab 键',
   },
+}
+
+export const PARTNER_STACK_CONFIG = {
+  cookieName: 'partner_stack_info',
+  saveCookieDays: 90,
 }

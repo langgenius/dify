@@ -65,10 +65,17 @@ const translation = {
     yes: 'Sim',
     deleteConfirmTitle: 'Excluir?',
     confirmAction: 'Por favor, confirme sua ação.',
+    noSearchResults: 'Nenhum {{content}} foi encontrado',
+    resetKeywords: 'Redefinir palavras-chave',
+    selectCount: '{{count}} Selecionado',
+    searchCount: 'Encontre {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Agora',
   },
   placeholder: {
     input: 'Por favor, insira',
     select: 'Por favor, selecione',
+    search: 'Pesquisar...',
   },
   voice: {
     language: {
@@ -161,7 +168,6 @@ const translation = {
     workspace: 'Espaço de trabalho',
     createWorkspace: 'Criar Espaço de Trabalho',
     helpCenter: 'Ajuda',
-    communityFeedback: 'Feedback',
     roadmap: 'Roteiro',
     community: 'Comunidade',
     about: 'Sobre',
@@ -170,6 +176,7 @@ const translation = {
     support: 'Suporte',
     compliance: 'Conformidade',
     contactUs: 'Contate-Nos',
+    forum: 'Fórum',
   },
   settings: {
     accountGroup: 'CONTA',
@@ -726,6 +733,7 @@ const translation = {
     uploadFromComputerReadError: 'Falha na leitura do arquivo, tente novamente.',
     uploadFromComputerLimit: 'Carregar arquivo não pode exceder {{size}}',
     uploadFromComputerUploadError: 'Falha no upload do arquivo, faça o upload novamente.',
+    fileExtensionBlocked: 'Este tipo de arquivo está bloqueado por razões de segurança',
   },
   license: {
     expiring: 'Expirando em um dia',
@@ -767,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '(opcional)',
+  },
+  noData: 'Sem dados',
+  dynamicSelect: {
+    error: 'Falha ao carregar opções',
+    noData: 'Nenhuma opção disponível',
+    loading: 'Carregando opções...',
+    selected: '{{count}} selecionado',
   },
 }
 

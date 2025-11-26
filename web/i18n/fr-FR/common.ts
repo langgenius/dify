@@ -65,10 +65,17 @@ const translation = {
     confirmAction: 'Veuillez confirmer votre action.',
     deleteConfirmTitle: 'Supprimer ?',
     yes: 'Oui',
+    noSearchResults: 'Aucun {{content}} n\'a été trouvé',
+    resetKeywords: 'Réinitialiser les mots-clés',
+    selectCount: '{{count}} Sélectionné',
+    searchCount: 'Trouver {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Maintenant',
   },
   placeholder: {
     input: 'Veuillez entrer',
     select: 'Veuillez sélectionner',
+    search: 'Rechercher...',
   },
   voice: {
     language: {
@@ -161,7 +168,6 @@ const translation = {
     workspace: 'Espace de travail',
     createWorkspace: 'Créer un Espace de Travail',
     helpCenter: 'Aide',
-    communityFeedback: 'Retour d\'information',
     roadmap: 'Feuille de route',
     community: 'Communauté',
     about: 'À propos',
@@ -170,6 +176,7 @@ const translation = {
     github: 'GitHub',
     compliance: 'Conformité',
     contactUs: 'Contactez-nous',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'COMPTE',
@@ -203,7 +210,6 @@ const translation = {
     showAppLength: 'Afficher {{length}} applications',
     delete: 'Supprimer le compte',
     deleteTip: 'La suppression de votre compte effacera définitivement toutes vos données et elles ne pourront pas être récupérées.',
-    deleteConfirmTip: 'Pour confirmer, veuillez envoyer ce qui suit depuis votre adresse e-mail enregistrée à ',
     myAccount: 'Mon compte',
     account: 'Compte',
     studio: 'Dify Studio',
@@ -727,6 +733,7 @@ const translation = {
     fileExtensionNotSupport: 'Extension de fichier non prise en charge',
     pasteFileLinkInvalid: 'Lien de fichier non valide',
     uploadFromComputerLimit: 'Le fichier de téléchargement ne peut pas dépasser {{size}}',
+    fileExtensionBlocked: 'Ce type de fichier est bloqué pour des raisons de sécurité',
   },
   license: {
     expiring: 'Expirant dans un jour',
@@ -768,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '(facultatif)',
+  },
+  noData: 'Aucune donnée',
+  dynamicSelect: {
+    error: 'Échec du chargement des options',
+    noData: 'Aucune option disponible',
+    loading: 'Chargement des options...',
+    selected: '{{count}} sélectionné',
   },
 }
 

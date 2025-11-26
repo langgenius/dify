@@ -74,6 +74,10 @@ class File(BaseModel):
         storage_key: str | None = None,
         dify_model_identity: str | None = FILE_MODEL_IDENTITY,
         url: str | None = None,
+        # Legacy compatibility fields - explicitly handle known extra fields
+        tool_file_id: str | None = None,
+        upload_file_id: str | None = None,
+        datasource_file_id: str | None = None,
     ):
         super().__init__(
             id=id,

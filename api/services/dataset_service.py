@@ -50,6 +50,7 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
+from services.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -79,7 +80,6 @@ from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
-from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
@@ -254,6 +254,8 @@ class DatasetService:
             external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
             if not external_knowledge_api:
                 raise ValueError("External API template not found.")
+            if external_knowledge_id is None:
+                raise ValueError("external_knowledge_id is required")
             external_knowledge_binding = ExternalKnowledgeBindings(
                 tenant_id=tenant_id,
                 dataset_id=dataset.id,
@@ -1082,6 +1084,62 @@ class DocumentService:
         },
     }
 
+    DISPLAY_STATUS_ALIASES: dict[str, str] = {
+        "active": "available",
+        "enabled": "available",
+    }
+
+    _INDEXING_STATUSES: tuple[str, ...] = ("parsing", "cleaning", "splitting", "indexing")
+
+    DISPLAY_STATUS_FILTERS: dict[str, tuple[Any, ...]] = {
+        "queuing": (Document.indexing_status == "waiting",),
+        "indexing": (
+            Document.indexing_status.in_(_INDEXING_STATUSES),
+            Document.is_paused.is_not(True),
+        ),
+        "paused": (
+            Document.indexing_status.in_(_INDEXING_STATUSES),
+            Document.is_paused.is_(True),
+        ),
+        "error": (Document.indexing_status == "error",),
+        "available": (
+            Document.indexing_status == "completed",
+            Document.archived.is_(False),
+            Document.enabled.is_(True),
+        ),
+        "disabled": (
+            Document.indexing_status == "completed",
+            Document.archived.is_(False),
+            Document.enabled.is_(False),
+        ),
+        "archived": (
+            Document.indexing_status == "completed",
+            Document.archived.is_(True),
+        ),
+    }
+
+    @classmethod
+    def normalize_display_status(cls, status: str | None) -> str | None:
+        if not status:
+            return None
+        normalized = status.lower()
+        normalized = cls.DISPLAY_STATUS_ALIASES.get(normalized, normalized)
+        return normalized if normalized in cls.DISPLAY_STATUS_FILTERS else None
+
+    @classmethod
+    def build_display_status_filters(cls, status: str | None) -> tuple[Any, ...]:
+        normalized = cls.normalize_display_status(status)
+        if not normalized:
+            return ()
+        return cls.DISPLAY_STATUS_FILTERS[normalized]
+
+    @classmethod
+    def apply_display_status_filter(cls, query, status: str | None):
+        filters = cls.build_display_status_filters(status)
+        if not filters:
+            return query
+        return query.where(*filters)
+
     DOCUMENT_METADATA_SCHEMA: dict[str, Any] = {
         "book": {
             "title": str,
@@ -1317,6 +1375,11 @@ class DocumentService:
 
         document.name = name
         db.session.add(document)
+        if document.data_source_info_dict:
+            db.session.query(UploadFile).where(
+                UploadFile.id == document.data_source_info_dict["upload_file_id"]
+            ).update({UploadFile.name: name})
+
         db.session.commit()
 
         return document
@@ -1694,7 +1757,7 @@ class DocumentService:
 
                 # trigger async task
                 if document_ids:
-                    document_indexing_task.delay(dataset.id, document_ids)
+                    DocumentIndexingTaskProxy(dataset.tenant_id, dataset.id, document_ids).delay()
                 if duplicate_document_ids:
                     duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
 

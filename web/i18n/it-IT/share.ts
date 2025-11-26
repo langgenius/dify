@@ -76,8 +76,9 @@ const translation = {
         'Riga {{rowIndex}}: il valore di {{varName}} non può essere superiore a {{maxLength}} caratteri',
       atLeastOne: 'Per favore inserisci almeno una riga nel file caricato.',
     },
-    execution: 'ESECUZIONE',
-    executions: '{{num}} ESECUZIONI',
+    execution: 'Esegui',
+    executions: '{{num}} esecuzioni',
+    stopRun: 'Ferma l\'esecuzione',
   },
   login: {
     backToHome: 'Torna alla home',

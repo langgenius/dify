@@ -7,6 +7,7 @@ const translation = {
     all: '都',
     bundles: '束',
     datasources: '資料來源',
+    triggers: '觸發因素',
   },
   categorySingle: {
     model: '型',
@@ -15,6 +16,7 @@ const translation = {
     tool: '工具',
     bundle: '捆',
     datasource: '資料來源',
+    trigger: '觸發器',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       viewDetail: '查看詳情',
       update: '更新',
       checkUpdate: '檢查更新',
+      back: '返回',
     },
     toolSelector: {
       uninstalledContent: '此插件是從 local/GitHub 儲存庫安裝的。請在安裝後使用。',
@@ -57,11 +60,11 @@ const translation = {
       placeholder: '選擇工具...',
       uninstalledTitle: '未安裝工具',
       auto: '自動',
-      title: '添加工具',
+      title: '新增工具',
       unsupportedContent: '已安裝的插件版本不提供此作。',
       settings: '用戶設置',
       uninstalledLink: '在插件中管理',
-      empty: '點擊 『+』 按鈕添加工具。您可以新增多個工具。',
+      empty: '點擊 『+』 按鈕新增工具。您可以新增多個工具。',
       unsupportedContent2: '按兩下以切換版本。',
       paramsTip1: '控制 LLM 推理參數。',
       toolSetting: '工具設定',
@@ -74,7 +77,7 @@ const translation = {
     endpointDisableTip: '禁用端點',
     endpointsTip: '此插件通過終端節點提供特定功能，您可以為當前工作區配置多個終端節點集。',
     modelNum: '{{num}}包含的型號',
-    endpointsEmpty: '按兩下「+」按鈕添加端點',
+    endpointsEmpty: '按兩下「+」按鈕新增端點',
     endpointDisableContent: '您想禁用 {{name}} 嗎？',
     configureApp: '配置 App',
     endpointDeleteContent: '您想刪除 {{name}} 嗎？',
@@ -233,9 +236,9 @@ const translation = {
     oauthClientSettings: 'OAuth 客戶端設置',
     setupOAuth: '設置 OAuth 客戶端',
     saveOnly: '僅保存',
-    addApi: '添加 API 金鑰',
+    addApi: '新增 API 金鑰',
     custom: '自訂',
-    addOAuth: '添加 OAuth',
+    addOAuth: '新增 OAuth',
     useOAuthAuth: '使用 OAuth 授權',
     authorization: '授權',
     oauthClient: 'OAuth 客戶端',
@@ -305,6 +308,12 @@ const translation = {
     nextUpdateTime: '下次自動更新：{{time}}',
     specifyPluginsToUpdate: '指定要更新的插件',
     changeTimezone: '要更改時區，請前往<setTimezone>設定</setTimezone>',
+  },
+  readmeInfo: {
+    title: '自述檔',
+    needHelpCheckReadme: '需要幫忙嗎？查看自述檔。',
+    noReadmeAvailable: '沒有可用的自述文件',
+    failedToFetch: '無法獲取 README',
   },
 }
 

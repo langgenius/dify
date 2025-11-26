@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Context',
       noData: 'Puteți importa Cunoștințe ca context',
-      words: 'Cuvinte',
-      textBlocks: 'Blocuri de text',
       selectTitle: 'Selectați Cunoștințe de referință',
       selected: 'Cunoștințe selectate',
       noDataSet: 'Nu s-au găsit Cunoștințe',
@@ -261,7 +259,6 @@ const translation = {
   variableTable: {
     key: 'Cheie variabilă',
     name: 'Nume câmp de intrare utilizator',
-    optional: 'Opțional',
     type: 'Tip intrare',
     action: 'Acțiuni',
     typeString: 'Șir',
@@ -335,6 +332,7 @@ const translation = {
     'uploadFileTypes': 'Încărcați tipuri de fișiere',
     'localUpload': 'Încărcare locală',
     'maxNumberOfUploads': 'Numărul maxim de încărcări',
+    'maxNumberTip': 'Document < {{docLimit}}, imagine < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'both': 'Ambii',
     'optional': 'opțional',
     'jsonSchema': 'Schema JSON',

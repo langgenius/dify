@@ -1,16 +1,12 @@
 import type {
   Dispatch,
+  RefObject,
   SetStateAction,
 } from 'react'
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   BlockEnum,
-  OnSelectBlock,
   ToolWithProvider,
 } from '../types'
 import type { ToolDefaultValue, ToolValue } from './types'
@@ -19,13 +15,24 @@ import Tools from './tools'
 import { useToolTabs } from './hooks'
 import ViewTypeSelect, { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
-import { useGetLanguage } from '@/context/i18n'
+import Button from '@/app/components/base/button'
+import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import PluginList, { type ListProps } from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { PluginType } from '../../plugins/types'
+import type { Plugin } from '../../plugins/types'
+import { PluginCategoryEnum } from '../../plugins/types'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import RAGToolRecommendations from './rag-tool-recommendations'
+import FeaturedTools from './featured-tools'
+import Link from 'next/link'
+import Divider from '@/app/components/base/divider'
+import { RiArrowRightUpLine } from '@remixicon/react'
+import { getMarketplaceUrl } from '@/utils/var'
+import { useGetLanguage } from '@/context/i18n'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
+
+const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 
 type AllToolsProps = {
   className?: string
@@ -36,13 +43,17 @@ type AllToolsProps = {
   customTools: ToolWithProvider[]
   workflowTools: ToolWithProvider[]
   mcpTools: ToolWithProvider[]
-  onSelect: OnSelectBlock
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]
   canChooseMCPTool?: boolean
-  onTagsChange: Dispatch<SetStateAction<string[]>>
+  onTagsChange?: Dispatch<SetStateAction<string[]>>
   isInRAGPipeline?: boolean
+  featuredPlugins?: Plugin[]
+  featuredLoading?: boolean
+  showFeatured?: boolean
+  onFeaturedInstallSuccess?: () => Promise<void> | void
 }
 
 const DEFAULT_TAGS: AllToolsProps['tags'] = []
@@ -63,15 +74,33 @@ const AllTools = ({
   canChooseMCPTool,
   onTagsChange,
   isInRAGPipeline = false,
+  featuredPlugins = [],
+  featuredLoading = false,
+  showFeatured = false,
+  onFeaturedInstallSuccess,
 }: AllToolsProps) => {
+  const { t } = useTranslation()
   const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
-  const hasFilter = searchText || tags.length > 0
+  const trimmedSearchText = searchText.trim()
+  const hasSearchText = trimmedSearchText.length > 0
+  const hasTags = tags.length > 0
+  const hasFilter = hasSearchText || hasTags
   const isMatchingKeywords = (text: string, keywords: string) => {
     return text.toLowerCase().includes(keywords.toLowerCase())
   }
+  const allProviders = useMemo(() => [...buildInTools, ...customTools, ...workflowTools, ...mcpTools], [buildInTools, customTools, workflowTools, mcpTools])
+  const providerMap = useMemo(() => {
+    const map = new Map<string, ToolWithProvider>()
+    allProviders.forEach((provider) => {
+      const key = provider.plugin_id || provider.id
+      if (key)
+        map.set(key, provider)
+    })
+    return map
+  }, [allProviders])
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
     if (activeTab === ToolTypeEnum.All)
@@ -85,15 +114,55 @@ const AllTools = ({
     if (activeTab === ToolTypeEnum.MCP)
       mergedTools = mcpTools
 
-    if (!hasFilter)
+    const normalizedSearch = trimmedSearchText.toLowerCase()
+    const getLocalizedText = (text?: Record<string, string> | null) => {
+      if (!text)
+        return ''
+
+      if (text[language])
+        return text[language]
+
+      if (text['en-US'])
+        return text['en-US']
+
+      const firstValue = Object.values(text).find(Boolean)
+      return firstValue || ''
+    }
+
+    if (!hasFilter || !normalizedSearch)
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
 
-    return mergedTools.filter((toolWithProvider) => {
-      return isMatchingKeywords(toolWithProvider.name, searchText) || toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
+    return mergedTools.reduce<ToolWithProvider[]>((acc, toolWithProvider) => {
+      const providerLabel = getLocalizedText(toolWithProvider.label)
+      const providerMatches = [
+        toolWithProvider.name,
+        providerLabel,
+      ].some(text => isMatchingKeywords(text || '', normalizedSearch))
+
+      if (providerMatches) {
+        if (toolWithProvider.tools.length > 0)
+          acc.push(toolWithProvider)
+        return acc
+      }
+
+      const matchedTools = toolWithProvider.tools.filter((tool) => {
+        const toolLabel = getLocalizedText(tool.label)
+        return [
+          tool.name,
+          toolLabel,
+        ].some(text => isMatchingKeywords(text || '', normalizedSearch))
       })
-    })
-  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, searchText, language, hasFilter])
+
+      if (matchedTools.length > 0) {
+        acc.push({
+          ...toolWithProvider,
+          tools: matchedTools,
+        })
+      }
+
+      return acc
+    }, [])
+  }, [activeTab, buildInTools, customTools, workflowTools, mcpTools, trimmedSearchText, hasFilter, language])
 
   const {
     queryPluginsWithDebounced: fetchPlugins,
@@ -101,22 +170,38 @@ const AllTools = ({
   } = useMarketplacePlugins()
 
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+
   useEffect(() => {
     if (!enable_marketplace) return
-    if (searchText || tags.length > 0) {
+    if (hasFilter) {
       fetchPlugins({
         query: searchText,
         tags,
-        category: PluginType.tool,
+        category: PluginCategoryEnum.tool,
       })
     }
-  }, [searchText, tags, enable_marketplace])
+  }, [searchText, tags, enable_marketplace, hasFilter, fetchPlugins])
 
   const pluginRef = useRef<ListRef>(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
   const isSupportGroupView = [ToolTypeEnum.All, ToolTypeEnum.BuiltIn].includes(activeTab)
 
   const isShowRAGRecommendations = isInRAGPipeline && activeTab === ToolTypeEnum.All && !hasFilter
+  const hasToolsListContent = tools.length > 0 || isShowRAGRecommendations
+  const hasPluginContent = enable_marketplace && notInstalledPlugins.length > 0
+  const shouldShowEmptyState = hasFilter && !hasToolsListContent && !hasPluginContent
+  const shouldShowFeatured = showFeatured
+    && enable_marketplace
+    && !isInRAGPipeline
+    && activeTab === ToolTypeEnum.All
+    && !hasFilter
+  const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
+
+  const handleRAGSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
+    if (!pluginDefaultValue)
+      return
+    onSelect(type, pluginDefaultValue as ToolDefaultValue)
+  }, [onSelect])
 
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
@@ -142,41 +227,100 @@ const AllTools = ({
           <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
         )}
       </div>
-      <div
-        ref={wrapElemRef}
-        className='max-h-[464px] overflow-y-auto'
-        onScroll={pluginRef.current?.handleScroll}
-      >
-        {isShowRAGRecommendations && (
-          <RAGToolRecommendations
-            viewType={isSupportGroupView ? activeView : ViewType.flat}
-            onSelect={onSelect}
-            onTagsChange={onTagsChange}
-          />
-        )}
-        <Tools
-          className={toolContentClassName}
-          tools={tools}
-          onSelect={onSelect}
-          canNotSelectMultiple={canNotSelectMultiple}
-          onSelectMultiple={onSelectMultiple}
-          toolType={activeTab}
-          viewType={isSupportGroupView ? activeView : ViewType.flat}
-          hasSearchText={!!searchText}
-          selectedTools={selectedTools}
-          canChooseMCPTool={canChooseMCPTool}
-          isShowRAGRecommendations={isShowRAGRecommendations}
-        />
-        {/* Plugins from marketplace */}
-        {enable_marketplace && (
-          <PluginList
-            ref={pluginRef}
-            wrapElemRef={wrapElemRef}
-            list={notInstalledPlugins}
-            searchText={searchText}
-            toolContentClassName={toolContentClassName}
-            tags={tags}
-          />
+      <div className='flex max-h-[464px] flex-col'>
+        <div
+          ref={wrapElemRef}
+          className='flex-1 overflow-y-auto'
+          onScroll={() => pluginRef.current?.handleScroll()}
+        >
+          <div className={cn(shouldShowEmptyState && 'hidden')}>
+            {isShowRAGRecommendations && onTagsChange && (
+              <RAGToolRecommendations
+                viewType={isSupportGroupView ? activeView : ViewType.flat}
+                onSelect={handleRAGSelect}
+                onTagsChange={onTagsChange}
+              />
+            )}
+            {shouldShowFeatured && (
+              <>
+                <FeaturedTools
+                  plugins={featuredPlugins}
+                  providerMap={providerMap}
+                  onSelect={onSelect}
+                  selectedTools={selectedTools}
+                  canChooseMCPTool={canChooseMCPTool}
+                  isLoading={featuredLoading}
+                  onInstallSuccess={async () => {
+                    await onFeaturedInstallSuccess?.()
+                  }}
+                />
+                <div className='px-3'>
+                  <Divider className='!h-px' />
+                </div>
+              </>
+            )}
+            {hasToolsListContent && (
+              <>
+                <div className='px-3 pb-1 pt-2'>
+                  <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
+                </div>
+                <Tools
+                  className={toolContentClassName}
+                  tools={tools}
+                  onSelect={onSelect}
+                  canNotSelectMultiple={canNotSelectMultiple}
+                  onSelectMultiple={onSelectMultiple}
+                  toolType={activeTab}
+                  viewType={isSupportGroupView ? activeView : ViewType.flat}
+                  hasSearchText={hasSearchText}
+                  selectedTools={selectedTools}
+                  canChooseMCPTool={canChooseMCPTool}
+                />
+              </>
+            )}
+            {enable_marketplace && (
+              <PluginList
+                ref={pluginRef}
+                wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
+                list={notInstalledPlugins}
+                searchText={searchText}
+                toolContentClassName={toolContentClassName}
+                tags={tags}
+                hideFindMoreFooter
+              />
+            )}
+          </div>
+
+          {shouldShowEmptyState && (
+            <div className='flex h-full flex-col items-center justify-center gap-3 py-12 text-center'>
+              <SearchMenu className='h-8 w-8 text-text-quaternary' />
+              <div className='text-sm font-medium text-text-secondary'>
+                {t('workflow.tabs.noPluginsFound')}
+              </div>
+              <Link
+                href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
+                target='_blank'
+              >
+                <Button
+                  size='small'
+                  variant='secondary-accent'
+                  className='h-6 cursor-pointer px-3 text-xs'
+                >
+                  {t('workflow.tabs.requestToCommunity')}
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
+        {shouldShowMarketplaceFooter && (
+          <Link
+            className={marketplaceFooterClassName}
+            href={getMarketplaceUrl('')}
+            target='_blank'
+          >
+            <span>{t('plugin.findMoreInMarketplace')}</span>
+            <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
+          </Link>
         )}
       </div>
     </div>

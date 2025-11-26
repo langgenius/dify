@@ -35,15 +35,18 @@ recommended_app_list_fields = {
 }
 
 
+parser_apps = reqparse.RequestParser().add_argument("language", type=str, location="args")
+
+
 @console_ns.route("/explore/apps")
 class RecommendedAppListApi(Resource):
+    @console_ns.expect(parser_apps)
     @login_required
     @account_initialization_required
     @marshal_with(recommended_app_list_fields)
     def get(self):
         # language args
-        parser = reqparse.RequestParser().add_argument("language", type=str, location="args")
-        args = parser.parse_args()
+        args = parser_apps.parse_args()
 
         language = args.get("language")
         if language and language in languages:

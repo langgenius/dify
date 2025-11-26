@@ -207,6 +207,8 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
             return lambda x: x.transfer_method
         case "url":
             return lambda x: x.remote_url or ""
+        case "related_id":
+            return lambda x: x.related_id or ""
         case _:
             raise InvalidKeyError(f"Invalid key: {key}")
 
@@ -277,7 +279,7 @@ def _get_boolean_filter_func(*, condition: FilterOperator, value: bool) -> Calla
 
 def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str]) -> Callable[[File], bool]:
     extract_func: Callable[[File], Any]
-    if key in {"name", "extension", "mime_type", "url"} and isinstance(value, str):
+    if key in {"name", "extension", "mime_type", "url", "related_id"} and isinstance(value, str):
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_string_filter_func(condition=condition, value=value)(extract_func(x))
     if key in {"type", "transfer_method"}:
@@ -336,7 +338,7 @@ def _ge(value: int | float) -> Callable[[int | float], bool]:
 
 def _order_file(*, order: Order, order_by: str = "", array: Sequence[File]):
     extract_func: Callable[[File], Any]
-    if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "url"}:
+    if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "url", "related_id"}:
         extract_func = _get_file_extract_string_func(key=order_by)
         return sorted(array, key=lambda x: extract_func(x), reverse=order == Order.DESC)
     elif order_by == "size":

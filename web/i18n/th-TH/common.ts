@@ -65,6 +65,12 @@ const translation = {
     deleteConfirmTitle: 'ลบหรือไม่?',
     confirmAction: 'กรุณายืนยันการกระทำของคุณ',
     yes: 'ใช่',
+    noSearchResults: 'ไม่พบ {{content}}',
+    resetKeywords: 'รีเซ็ตคำสำคัญ',
+    selectCount: '{{count}} ที่เลือก',
+    searchCount: 'ค้นหา {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'ตอนนี้',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -73,6 +79,7 @@ const translation = {
   placeholder: {
     input: 'กรุณากรอก',
     select: 'กรุณาเลือก',
+    search: 'ค้นหา...',
   },
   voice: {
     language: {
@@ -160,7 +167,6 @@ const translation = {
     workspace: 'พื้นที่',
     createWorkspace: 'สร้างพื้นที่ทํางาน',
     helpCenter: 'วิธีใช้',
-    communityFeedback: 'การตอบสนอง',
     roadmap: 'แผนงาน',
     community: 'ชุมชน',
     about: 'ประมาณ',
@@ -169,6 +175,7 @@ const translation = {
     compliance: 'การปฏิบัติตามข้อกำหนด',
     support: 'การสนับสนุน',
     contactUs: 'ติดต่อเรา',
+    forum: 'ฟอรั่ม',
   },
   settings: {
     accountGroup: 'ทั่วไป',
@@ -706,6 +713,7 @@ const translation = {
     uploadFromComputerLimit: 'อัปโหลด {{type}} ต้องไม่เกิน {{size}}',
     pasteFileLinkInvalid: 'ลิงก์ไฟล์ไม่ถูกต้อง',
     fileExtensionNotSupport: 'ไม่รองรับนามสกุลไฟล์',
+    fileExtensionBlocked: 'ประเภทไฟล์นี้ถูกบล็อกด้วยเหตุผลด้านความปลอดภัย',
   },
   tag: {
     placeholder: 'แท็กทั้งหมด',
@@ -762,6 +770,13 @@ const translation = {
   },
   label: {
     optional: '(ไม่บังคับ)',
+  },
+  noData: 'ไม่มีข้อมูล',
+  dynamicSelect: {
+    error: 'การโหลดตัวเลือกล้มเหลว',
+    noData: 'ไม่มีตัวเลือก available',
+    loading: 'กำลังโหลดตัวเลือก...',
+    selected: '{{count}} ที่ถูกเลือก',
   },
 }
 

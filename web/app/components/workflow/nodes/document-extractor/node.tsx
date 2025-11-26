@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import React from 'react'
-import { useNodes } from 'reactflow'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useTranslation } from 'react-i18next'
 import type { DocExtractorNodeType } from './types'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
@@ -25,7 +25,7 @@ const NodeComponent: FC<NodeProps<DocExtractorNodeType>> = ({
   const isSystem = isSystemVar(variable)
   const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
   return (
-    <div className='relative px-3'>
+    <div className='relative mb-1 px-3 py-1'>
       <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t(`${i18nPrefix}.inputVar`)}</div>
       <VariableLabelInNode
         variables={variable}

@@ -286,4 +286,116 @@ describe('Navigation Utilities', () => {
       expect(mockPush).toHaveBeenCalledWith('/datasets/filtered-set/documents?page=1&limit=50&status=active&type=pdf&sort=created_at&order=desc')
     })
   })
+
+  describe('Edge Cases and Error Handling', () => {
+    test('handles special characters in query parameters', () => {
+      Object.defineProperty(window, 'location', {
+        value: { search: '?keyword=hello%20world&filter=type%3Apdf&tag=%E4%B8%AD%E6%96%87' },
+        writable: true,
+      })
+
+      const path = createNavigationPath('/datasets/123/documents')
+      expect(path).toContain('hello+world')
+      expect(path).toContain('type%3Apdf')
+      expect(path).toContain('%E4%B8%AD%E6%96%87')
+    })
+
+    test('handles duplicate query parameters', () => {
+      Object.defineProperty(window, 'location', {
+        value: { search: '?tag=tag1&tag=tag2&tag=tag3' },
+        writable: true,
+      })
+
+      const params = extractQueryParams(['tag'])
+      // URLSearchParams.get() returns the first value
+      expect(params.tag).toBe('tag1')
+    })
+
+    test('handles very long query strings', () => {
+      const longValue = 'a'.repeat(1000)
+      Object.defineProperty(window, 'location', {
+        value: { search: `?data=${longValue}` },
+        writable: true,
+      })
+
+      const path = createNavigationPath('/datasets/123/documents')
+      expect(path).toContain(longValue)
+      expect(path.length).toBeGreaterThan(1000)
+    })
+
+    test('handles empty string values in query parameters', () => {
+      const path = createNavigationPathWithParams('/datasets/123/documents', {
+        page: 1,
+        keyword: '',
+        filter: '',
+        sort: 'name',
+      })
+
+      expect(path).toBe('/datasets/123/documents?page=1&sort=name')
+      expect(path).not.toContain('keyword=')
+      expect(path).not.toContain('filter=')
+    })
+
+    test('handles null and undefined values in mergeQueryParams', () => {
+      Object.defineProperty(window, 'location', {
+        value: { search: '?page=1&limit=10&keyword=test' },
+        writable: true,
+      })
+
+      const merged = mergeQueryParams({
+        keyword: null,
+        filter: undefined,
+        sort: 'name',
+      })
+      const result = merged.toString()
+
+      expect(result).toContain('page=1')
+      expect(result).toContain('limit=10')
+      expect(result).not.toContain('keyword')
+      expect(result).toContain('sort=name')
+    })
+
+    test('handles navigation with hash fragments', () => {
+      Object.defineProperty(window, 'location', {
+        value: { search: '?page=1', hash: '#section-2' },
+        writable: true,
+      })
+
+      const path = createNavigationPath('/datasets/123/documents')
+      // Should preserve query params but not hash
+      expect(path).toBe('/datasets/123/documents?page=1')
+    })
+
+    test('handles malformed query strings gracefully', () => {
+      Object.defineProperty(window, 'location', {
+        value: { search: '?page=1&invalid&limit=10&=value&key=' },
+        writable: true,
+      })
+
+      const params = extractQueryParams(['page', 'limit', 'invalid', 'key'])
+      expect(params.page).toBe('1')
+      expect(params.limit).toBe('10')
+      // Malformed params should be handled by URLSearchParams
+      expect(params.invalid).toBe('') // for `&invalid`
+      expect(params.key).toBe('') // for `&key=`
+    })
+  })
+
+  describe('Performance Tests', () => {
+    test('handles large number of query parameters efficiently', () => {
+      const manyParams = Array.from({ length: 50 }, (_, i) => `param${i}=value${i}`).join('&')
+      Object.defineProperty(window, 'location', {
+        value: { search: `?${manyParams}` },
+        writable: true,
+      })
+
+      const startTime = Date.now()
+      const path = createNavigationPath('/datasets/123/documents')
+      const endTime = Date.now()
+
+      expect(endTime - startTime).toBeLessThan(50) // Should be fast
+      expect(path).toContain('param0=value0')
+      expect(path).toContain('param49=value49')
+    })
+  })
 })

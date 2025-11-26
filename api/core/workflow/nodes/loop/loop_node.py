@@ -117,7 +117,6 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
 
             if reach_break_condition:
                 loop_count = 0
-            cost_tokens = 0
 
             for i in range(loop_count):
                 graph_engine = self._create_graph_engine(start_at=start_at, root_node_id=root_node_id)
@@ -139,9 +138,6 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                     else:
                         # For other outputs, just update
                         self.graph_runtime_state.set_output(key, value)
-
-                # Update the total tokens from this iteration
-                cost_tokens += graph_engine.graph_runtime_state.total_tokens
 
                 # Accumulate usage from the sub-graph execution
                 loop_usage = self._merge_usage(loop_usage, graph_engine.graph_runtime_state.llm_usage)
@@ -171,7 +167,6 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                     pre_loop_output=self._node_data.outputs,
                 )
 
-            self.graph_runtime_state.total_tokens += cost_tokens
             self._accumulate_usage(loop_usage)
             # Loop completed successfully
             yield LoopSucceededEvent(

@@ -1,14 +1,12 @@
-from datetime import datetime
-
-import pytz
-from flask import jsonify
+from flask import abort, jsonify
 from flask_restx import Resource, reqparse
 from sqlalchemy.orm import sessionmaker
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
+from libs.datetime_utils import parse_time_range
 from libs.helper import DatetimeString
 from libs.login import current_account_with_tenant, login_required
 from models.enums import WorkflowRunTriggeredFrom
@@ -23,11 +21,13 @@ class WorkflowDailyRunsStatistic(Resource):
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
-    @api.doc("get_workflow_daily_runs_statistic")
-    @api.doc(description="Get workflow daily runs statistics")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.doc(params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"})
-    @api.response(200, "Daily runs statistics retrieved successfully")
+    @console_ns.doc("get_workflow_daily_runs_statistic")
+    @console_ns.doc(description="Get workflow daily runs statistics")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(
+        params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"}
+    )
+    @console_ns.response(200, "Daily runs statistics retrieved successfully")
     @get_app_model
     @setup_required
     @login_required
@@ -43,23 +43,11 @@ class WorkflowDailyRunsStatistic(Resource):
         args = parser.parse_args()
 
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        start_date = None
-        end_date = None
-
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_date = start_datetime_timezone.astimezone(utc_timezone)
-
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_date = end_datetime_timezone.astimezone(utc_timezone)
+        try:
+            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
         response_data = self._workflow_run_repo.get_daily_runs_statistics(
             tenant_id=app_model.tenant_id,
@@ -80,11 +68,13 @@ class WorkflowDailyTerminalsStatistic(Resource):
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
-    @api.doc("get_workflow_daily_terminals_statistic")
-    @api.doc(description="Get workflow daily terminals statistics")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.doc(params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"})
-    @api.response(200, "Daily terminals statistics retrieved successfully")
+    @console_ns.doc("get_workflow_daily_terminals_statistic")
+    @console_ns.doc(description="Get workflow daily terminals statistics")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(
+        params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"}
+    )
+    @console_ns.response(200, "Daily terminals statistics retrieved successfully")
     @get_app_model
     @setup_required
     @login_required
@@ -100,23 +90,11 @@ class WorkflowDailyTerminalsStatistic(Resource):
         args = parser.parse_args()
 
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        start_date = None
-        end_date = None
-
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_date = start_datetime_timezone.astimezone(utc_timezone)
-
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_date = end_datetime_timezone.astimezone(utc_timezone)
+        try:
+            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
         response_data = self._workflow_run_repo.get_daily_terminals_statistics(
             tenant_id=app_model.tenant_id,
@@ -137,11 +115,13 @@ class WorkflowDailyTokenCostStatistic(Resource):
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
-    @api.doc("get_workflow_daily_token_cost_statistic")
-    @api.doc(description="Get workflow daily token cost statistics")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.doc(params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"})
-    @api.response(200, "Daily token cost statistics retrieved successfully")
+    @console_ns.doc("get_workflow_daily_token_cost_statistic")
+    @console_ns.doc(description="Get workflow daily token cost statistics")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(
+        params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"}
+    )
+    @console_ns.response(200, "Daily token cost statistics retrieved successfully")
     @get_app_model
     @setup_required
     @login_required
@@ -157,23 +137,11 @@ class WorkflowDailyTokenCostStatistic(Resource):
         args = parser.parse_args()
 
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        start_date = None
-        end_date = None
-
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_date = start_datetime_timezone.astimezone(utc_timezone)
-
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_date = end_datetime_timezone.astimezone(utc_timezone)
+        try:
+            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
         response_data = self._workflow_run_repo.get_daily_token_cost_statistics(
             tenant_id=app_model.tenant_id,
@@ -194,11 +162,13 @@ class WorkflowAverageAppInteractionStatistic(Resource):
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         self._workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
-    @api.doc("get_workflow_average_app_interaction_statistic")
-    @api.doc(description="Get workflow average app interaction statistics")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.doc(params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"})
-    @api.response(200, "Average app interaction statistics retrieved successfully")
+    @console_ns.doc("get_workflow_average_app_interaction_statistic")
+    @console_ns.doc(description="Get workflow average app interaction statistics")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(
+        params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"}
+    )
+    @console_ns.response(200, "Average app interaction statistics retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -214,23 +184,11 @@ class WorkflowAverageAppInteractionStatistic(Resource):
         args = parser.parse_args()
 
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        start_date = None
-        end_date = None
-
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_date = start_datetime_timezone.astimezone(utc_timezone)
-
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_date = end_datetime_timezone.astimezone(utc_timezone)
+        try:
+            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
         response_data = self._workflow_run_repo.get_average_app_interaction_statistics(
             tenant_id=app_model.tenant_id,

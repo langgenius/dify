@@ -1,22 +1,123 @@
 import io
+from typing import Any, Literal
 
-from flask import send_file
-from flask_restx import Resource, reqparse
-from werkzeug.exceptions import Forbidden
+from flask import request, send_file
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, is_admin_or_owner_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
-from libs.helper import StrLen, uuid_value
+from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
 from services.model_provider_service import ModelProviderService
 
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class ParserModelList(BaseModel):
+    model_type: ModelType | None = None
+
+
+class ParserCredentialId(BaseModel):
+    credential_id: str | None = None
+
+    @field_validator("credential_id")
+    @classmethod
+    def validate_optional_credential_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class ParserCredentialCreate(BaseModel):
+    credentials: dict[str, Any]
+    name: str | None = Field(default=None, max_length=30)
+
+
+class ParserCredentialUpdate(BaseModel):
+    credential_id: str
+    credentials: dict[str, Any]
+    name: str | None = Field(default=None, max_length=30)
+
+    @field_validator("credential_id")
+    @classmethod
+    def validate_update_credential_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+
+class ParserCredentialDelete(BaseModel):
+    credential_id: str
+
+    @field_validator("credential_id")
+    @classmethod
+    def validate_delete_credential_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+
+class ParserCredentialSwitch(BaseModel):
+    credential_id: str
+
+    @field_validator("credential_id")
+    @classmethod
+    def validate_switch_credential_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+
+class ParserCredentialValidate(BaseModel):
+    credentials: dict[str, Any]
+
+
+class ParserPreferredProviderType(BaseModel):
+    preferred_provider_type: Literal["system", "custom"]
+
+
+console_ns.schema_model(
+    ParserModelList.__name__, ParserModelList.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+
+console_ns.schema_model(
+    ParserCredentialId.__name__,
+    ParserCredentialId.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+console_ns.schema_model(
+    ParserCredentialCreate.__name__,
+    ParserCredentialCreate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+console_ns.schema_model(
+    ParserCredentialUpdate.__name__,
+    ParserCredentialUpdate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+console_ns.schema_model(
+    ParserCredentialDelete.__name__,
+    ParserCredentialDelete.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+console_ns.schema_model(
+    ParserCredentialSwitch.__name__,
+    ParserCredentialSwitch.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+console_ns.schema_model(
+    ParserCredentialValidate.__name__,
+    ParserCredentialValidate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+console_ns.schema_model(
+    ParserPreferredProviderType.__name__,
+    ParserPreferredProviderType.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
 
 @console_ns.route("/workspaces/current/model-providers")
 class ModelProviderListApi(Resource):
+    @console_ns.expect(console_ns.models[ParserModelList.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -24,24 +125,18 @@ class ModelProviderListApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
 
-        parser = reqparse.RequestParser().add_argument(
-            "model_type",
-            type=str,
-            required=False,
-            nullable=True,
-            choices=[mt.value for mt in ModelType],
-            location="args",
-        )
-        args = parser.parse_args()
+        payload = request.args.to_dict(flat=True)  # type: ignore
+        args = ParserModelList.model_validate(payload)
 
         model_provider_service = ModelProviderService()
-        provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.get("model_type"))
+        provider_list = model_provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.model_type)
 
         return jsonable_encoder({"data": provider_list})
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials")
 class ModelProviderCredentialApi(Resource):
+    @console_ns.expect(console_ns.models[ParserCredentialId.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -49,32 +144,25 @@ class ModelProviderCredentialApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
         # if credential_id is not provided, return current used credential
-        parser = reqparse.RequestParser().add_argument(
-            "credential_id", type=uuid_value, required=False, nullable=True, location="args"
-        )
-        args = parser.parse_args()
+        payload = request.args.to_dict(flat=True)  # type: ignore
+        args = ParserCredentialId.model_validate(payload)
 
         model_provider_service = ModelProviderService()
         credentials = model_provider_service.get_provider_credential(
-            tenant_id=tenant_id, provider=provider, credential_id=args.get("credential_id")
+            tenant_id=tenant_id, provider=provider, credential_id=args.credential_id
         )
 
         return {"credentials": credentials}
 
+    @console_ns.expect(console_ns.models[ParserCredentialCreate.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-            .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
-        )
-        args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
+        payload = console_ns.payload or {}
+        args = ParserCredentialCreate.model_validate(payload)
 
         model_provider_service = ModelProviderService()
 
@@ -82,29 +170,24 @@ class ModelProviderCredentialApi(Resource):
             model_provider_service.create_provider_credential(
                 tenant_id=current_tenant_id,
                 provider=provider,
-                credentials=args["credentials"],
-                credential_name=args["name"],
+                credentials=args.credentials,
+                credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
 
         return {"result": "success"}, 201
 
+    @console_ns.expect(console_ns.models[ParserCredentialUpdate.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def put(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("credential_id", type=uuid_value, required=True, nullable=False, location="json")
-            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-            .add_argument("name", type=StrLen(30), required=False, nullable=True, location="json")
-        )
-        args = parser.parse_args()
+        payload = console_ns.payload or {}
+        args = ParserCredentialUpdate.model_validate(payload)
 
         model_provider_service = ModelProviderService()
 
@@ -112,30 +195,28 @@ class ModelProviderCredentialApi(Resource):
             model_provider_service.update_provider_credential(
                 tenant_id=current_tenant_id,
                 provider=provider,
-                credentials=args["credentials"],
-                credential_id=args["credential_id"],
-                credential_name=args["name"],
+                credentials=args.credentials,
+                credential_id=args.credential_id,
+                credential_name=args.name,
             )
         except CredentialsValidateFailedError as ex:
             raise ValueError(str(ex))
 
         return {"result": "success"}
 
+    @console_ns.expect(console_ns.models[ParserCredentialDelete.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def delete(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-        parser = reqparse.RequestParser().add_argument(
-            "credential_id", type=uuid_value, required=True, nullable=False, location="json"
-        )
-        args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
+        payload = console_ns.payload or {}
+        args = ParserCredentialDelete.model_validate(payload)
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_provider_credential(
-            tenant_id=current_tenant_id, provider=provider, credential_id=args["credential_id"]
+            tenant_id=current_tenant_id, provider=provider, credential_id=args.credential_id
         )
 
         return {"result": "success"}, 204
@@ -143,38 +224,35 @@ class ModelProviderCredentialApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
 class ModelProviderCredentialSwitchApi(Resource):
+    @console_ns.expect(console_ns.models[ParserCredentialSwitch.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
-        parser = reqparse.RequestParser().add_argument(
-            "credential_id", type=str, required=True, nullable=False, location="json"
-        )
-        args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
+        payload = console_ns.payload or {}
+        args = ParserCredentialSwitch.model_validate(payload)
 
         service = ModelProviderService()
         service.switch_active_provider_credential(
             tenant_id=current_tenant_id,
             provider=provider,
-            credential_id=args["credential_id"],
+            credential_id=args.credential_id,
         )
         return {"result": "success"}
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/validate")
 class ModelProviderValidateApi(Resource):
+    @console_ns.expect(console_ns.models[ParserCredentialValidate.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument(
-            "credentials", type=dict, required=True, nullable=False, location="json"
-        )
-        args = parser.parse_args()
+        payload = console_ns.payload or {}
+        args = ParserCredentialValidate.model_validate(payload)
 
         tenant_id = current_tenant_id
 
@@ -185,7 +263,7 @@ class ModelProviderValidateApi(Resource):
 
         try:
             model_provider_service.validate_provider_credentials(
-                tenant_id=tenant_id, provider=provider, credentials=args["credentials"]
+                tenant_id=tenant_id, provider=provider, credentials=args.credentials
             )
         except CredentialsValidateFailedError as ex:
             result = False
@@ -220,29 +298,22 @@ class ModelProviderIconApi(Resource):
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
 class PreferredProviderTypeUpdateApi(Resource):
+    @console_ns.expect(console_ns.models[ParserPreferredProviderType.__name__])
     @setup_required
     @login_required
+    @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
-        current_user, current_tenant_id = current_account_with_tenant()
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
 
         tenant_id = current_tenant_id
 
-        parser = reqparse.RequestParser().add_argument(
-            "preferred_provider_type",
-            type=str,
-            required=True,
-            nullable=False,
-            choices=["system", "custom"],
-            location="json",
-        )
-        args = parser.parse_args()
+        payload = console_ns.payload or {}
+        args = ParserPreferredProviderType.model_validate(payload)
 
         model_provider_service = ModelProviderService()
         model_provider_service.switch_preferred_provider(
-            tenant_id=tenant_id, provider=provider, preferred_provider_type=args["preferred_provider_type"]
+            tenant_id=tenant_id, provider=provider, preferred_provider_type=args.preferred_provider_type
         )
 
         return {"result": "success"}

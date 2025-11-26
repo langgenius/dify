@@ -65,10 +65,17 @@ const translation = {
     yes: 'Vâng',
     deleteConfirmTitle: 'Xóa?',
     confirmAction: 'Vui lòng xác nhận hành động của bạn.',
+    noSearchResults: 'Không tìm thấy {{content}} nào',
+    resetKeywords: 'Đặt lại từ khóa',
+    selectCount: '{{count}} Đã chọn',
+    searchCount: 'Tìm {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Bây giờ',
   },
   placeholder: {
     input: 'Vui lòng nhập',
     select: 'Vui lòng chọn',
+    search: 'Tìm kiếm...',
   },
   voice: {
     language: {
@@ -161,7 +168,6 @@ const translation = {
     workspace: 'Không gian làm việc',
     createWorkspace: 'Tạo Không gian làm việc',
     helpCenter: 'Trung tâm trợ giúp',
-    communityFeedback: 'Phản hồi',
     roadmap: 'Lộ trình',
     community: 'Cộng đồng',
     about: 'Về chúng tôi',
@@ -170,6 +176,7 @@ const translation = {
     github: 'GitHub',
     support: 'Hỗ trợ',
     contactUs: 'Liên hệ với chúng tôi',
+    forum: 'Diễn đàn',
   },
   settings: {
     accountGroup: 'TÀI KHOẢN',
@@ -726,6 +733,7 @@ const translation = {
     pasteFileLinkInvalid: 'Liên kết tệp không hợp lệ',
     uploadFromComputerUploadError: 'Tải lên tệp không thành công, vui lòng tải lên lại.',
     uploadFromComputerReadError: 'Đọc tệp không thành công, vui lòng thử lại.',
+    fileExtensionBlocked: 'Loại tệp này bị chặn vì lý do bảo mật',
   },
   license: {
     expiring_plural: 'Hết hạn sau {{count}} ngày',
@@ -767,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '(tùy chọn)',
+  },
+  noData: 'Không có dữ liệu',
+  dynamicSelect: {
+    error: 'Tải tùy chọn thất bại',
+    noData: 'Không có tùy chọn nào',
+    loading: 'Đang tải tùy chọn...',
+    selected: '{{count}} đã chọn',
   },
 }
 

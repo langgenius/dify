@@ -43,7 +43,8 @@ class HumanInputNode(Node[HumanInputNodeData]):
         return self._pause_generator()
 
     def _pause_generator(self):
-        yield PauseRequestedEvent(reason=HumanInputRequired())
+        # TODO(QuantumGhost): yield a real form id.
+        yield PauseRequestedEvent(reason=HumanInputRequired(form_id="test_form_id", node_id=self.id))
 
     def _is_completion_ready(self) -> bool:
         """Determine whether all required inputs are satisfied."""
