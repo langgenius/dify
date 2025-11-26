@@ -86,6 +86,34 @@ api/controllers/console/workspace/plugin.py @Mairuis @Yeuoly @Stream29
 api/controllers/inner_api/plugin/ @Mairuis @Yeuoly @Stream29
 api/tasks/process_tenant_plugin_autoupgrade_check_task.py @Mairuis @Yeuoly @Stream29
 
+# Backend - Trigger/Schedule/Webhook
+api/controllers/trigger/ @Mairuis @Yeuoly
+api/controllers/console/app/workflow_trigger.py @Mairuis @Yeuoly
+api/controllers/console/workspace/trigger_providers.py @Mairuis @Yeuoly
+api/core/trigger/ @Mairuis @Yeuoly
+api/core/app/layers/trigger_post_layer.py @Mairuis @Yeuoly
+api/services/trigger/ @Mairuis @Yeuoly
+api/models/trigger.py @Mairuis @Yeuoly
+api/fields/workflow_trigger_fields.py @Mairuis @Yeuoly
+api/repositories/workflow_trigger_log_repository.py @Mairuis @Yeuoly
+api/repositories/sqlalchemy_workflow_trigger_log_repository.py @Mairuis @Yeuoly
+api/libs/schedule_utils.py @Mairuis @Yeuoly
+api/services/workflow/scheduler.py @Mairuis @Yeuoly
+api/schedule/trigger_provider_refresh_task.py @Mairuis @Yeuoly
+api/schedule/workflow_schedule_task.py @Mairuis @Yeuoly
+api/tasks/trigger_processing_tasks.py @Mairuis @Yeuoly
+api/tasks/trigger_subscription_refresh_tasks.py @Mairuis @Yeuoly
+api/tasks/workflow_schedule_tasks.py @Mairuis @Yeuoly
+api/tasks/workflow_cfs_scheduler/ @Mairuis @Yeuoly
+api/events/event_handlers/sync_plugin_trigger_when_app_created.py @Mairuis @Yeuoly
+api/events/event_handlers/update_app_triggers_when_app_published_workflow_updated.py @Mairuis @Yeuoly
+api/events/event_handlers/sync_workflow_schedule_when_app_published.py @Mairuis @Yeuoly
+api/events/event_handlers/sync_webhook_when_app_created.py @Mairuis @Yeuoly
+
+# Backend - Async Workflow
+api/services/async_workflow_service.py @Mairuis @Yeuoly
+api/tasks/async_workflow_tasks.py @Mairuis @Yeuoly
+
 # Backend - Billing
 api/services/billing_service.py @hj24 @zyssyz123
 api/controllers/console/billing/ @hj24 @zyssyz123
