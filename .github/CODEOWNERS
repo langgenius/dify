@@ -103,9 +103,7 @@ api/migrations/ @snakevash @laipz8200
 # Frontend
 web/ @iamjoel
 
-# Frontend - Workflow - Engine
-web/app/components/workflow-app/components/workflow-main.tsx @iamjoel @zxhlyh
-web/app/components/workflow/store/ @iamjoel @zxhlyh
+# Frontend - RAG Pipeline - Engine
 web/app/components/rag-pipeline/components/rag-pipeline-main.tsx @iamjoel @zxhlyh
 web/app/components/rag-pipeline/store/ @iamjoel @zxhlyh
 
