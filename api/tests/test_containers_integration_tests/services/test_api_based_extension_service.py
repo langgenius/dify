@@ -295,9 +295,13 @@ class TestAPIBasedExtensionService:
         original_name = created_extension.name
         original_endpoint = created_extension.api_endpoint
 
-        # Update the extension
+        # Update the extension with guaranteed different values
         new_name = fake.company()
+        # Ensure new endpoint is different from original
         new_endpoint = f"https://{fake.domain_name()}/api"
+        # If by chance they're the same, generate a new one
+        while new_endpoint == original_endpoint:
+            new_endpoint = f"https://{fake.domain_name()}/api"
         new_api_key = fake.password(length=20)
 
         created_extension.name = new_name

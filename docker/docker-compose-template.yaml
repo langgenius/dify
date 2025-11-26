@@ -131,7 +131,7 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
-      
+
   # The PostgreSQL database.
   db_postgres:
     image: postgres:15-alpine
@@ -459,7 +459,7 @@ services:
       timeout: 10s
 
   # seekdb vector database
-  seekdb: 
+  seekdb:
     image: oceanbase/seekdb:latest
     container_name: seekdb
     profiles:
@@ -486,7 +486,7 @@ services:
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
   qdrant:
-    image: langgenius/qdrant:v1.7.3
+    image: langgenius/qdrant:v1.8.3
     profiles:
       - qdrant
     restart: always

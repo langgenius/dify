@@ -11,6 +11,7 @@ import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { ReactSortable } from 'react-sortablejs'
 import { noop } from 'lodash-es'
 import cn from '@/utils/classnames'
+import { RiDraggable } from '@remixicon/react'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
@@ -135,9 +136,13 @@ const ClassList: FC<Props> = ({
                     }}
                   >
                     <div>
+                      {canDrag && <RiDraggable className={cn(
+                        'handle absolute left-2 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+                        'group-hover:block',
+                      )} />}
                       <Item
                         className={cn(canDrag && 'handle')}
-                        headerClassName={cn(canDrag && 'cursor-grab')}
+                        headerClassName={cn(canDrag && 'cursor-grab group-hover:pl-5')}
                         nodeId={nodeId}
                         key={list[index].id}
                         payload={item}

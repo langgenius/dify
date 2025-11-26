@@ -418,6 +418,7 @@ const translation = {
     'placeholder': 'Yer tutucu',
     'placeholderPlaceholder': 'Alan boş olduğunda görüntülenecek metni girin',
     'defaultValuePlaceholder': 'Alanı önceden doldurmak için varsayılan değeri girin',
+    'maxNumberTip': 'Belge < {{docLimit}}, resim < {{imgLimit}}, ses < {{audioLimit}}, video < {{videoLimit}}',
   },
   vision: {
     name: 'Görüş',
