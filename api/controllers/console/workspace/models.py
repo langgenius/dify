@@ -1,3 +1,4 @@
+from pydantic.main import BaseModel
 import logging
 
 from flask_restx import Resource, reqparse
@@ -13,40 +14,60 @@ from services.model_load_balancing_service import ModelLoadBalancingService
 from services.model_provider_service import ModelProviderService
 
 logger = logging.getLogger(__name__)
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-parser_get_default = reqparse.RequestParser().add_argument(
-    "model_type",
-    type=str,
-    required=True,
-    nullable=False,
-    choices=[mt.value for mt in ModelType],
-    location="args",
+class ParserGetDefault(BaseModel):
+    model_type: ModelType
+
+
+class ParserPostDefault(BaseModel):
+    class Inner(BaseModel):
+        model_type: ModelType
+        model: str
+        provider: str | None = None
+
+    model_settings: list[Inner]
+
+
+console_ns.schema_model(
+    ParserGetDefault.__name__, ParserGetDefault.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
-parser_post_default = reqparse.RequestParser().add_argument(
-    "model_settings", type=list, required=True, nullable=False, location="json"
+
+console_ns.schema_model(
+    ParserPostDefault.__name__, ParserPostDefault.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+
+
+class parser_delete_models(BaseModel):
+    model: str
+    model_type: ModelType
+
+
+console_ns.schema_model(
+    parser_delete_models.__name__, parser_delete_models.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
-    @console_ns.expect(parser_get_default)
+    @console_ns.expect(console_ns.models[ParserGetDefault.__name__], validate=True)
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_get_default.parse_args()
+        args = ParserGetDefault.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
         default_model_entity = model_provider_service.get_default_model_of_model_type(
-            tenant_id=tenant_id, model_type=args["model_type"]
+            tenant_id=tenant_id, model_type=args.model_type
         )
 
         return jsonable_encoder({"data": default_model_entity})
 
-    @console_ns.expect(parser_post_default)
+    @console_ns.expect(console_ns.models[ParserPostDefault.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -54,31 +75,25 @@ class DefaultModelApi(Resource):
     def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_post_default.parse_args()
+        args = ParserPostDefault.model_validate(console_ns.payload)
         model_provider_service = ModelProviderService()
-        model_settings = args["model_settings"]
+        model_settings = args.model_settings
         for model_setting in model_settings:
-            if "model_type" not in model_setting or model_setting["model_type"] not in [mt.value for mt in ModelType]:
-                raise ValueError("invalid model type")
-
-            if "provider" not in model_setting:
+            if model_setting.provider is None:
                 continue
-
-            if "model" not in model_setting:
-                raise ValueError("invalid model")
 
             try:
                 model_provider_service.update_default_model_of_model_type(
                     tenant_id=tenant_id,
-                    model_type=model_setting["model_type"],
-                    provider=model_setting["provider"],
-                    model=model_setting["model"],
+                    model_type=model_setting.model_type,
+                    provider=model_setting.provider,
+                    model=model_setting.model,
                 )
             except Exception as ex:
                 logger.exception(
                     "Failed to update default model, model type: %s, model: %s",
-                    model_setting["model_type"],
-                    model_setting.get("model"),
+                    model_setting.model_type,
+                    model_setting.model,
                 )
                 raise ex
 
@@ -99,18 +114,6 @@ parser_post_models = (
     .add_argument("load_balancing", type=dict, required=False, nullable=True, location="json")
     .add_argument("config_from", type=str, required=False, nullable=True, location="json")
     .add_argument("credential_id", type=uuid_value, required=False, nullable=True, location="json")
-)
-parser_delete_models = (
-    reqparse.RequestParser()
-    .add_argument("model", type=str, required=True, nullable=False, location="json")
-    .add_argument(
-        "model_type",
-        type=str,
-        required=True,
-        nullable=False,
-        choices=[mt.value for mt in ModelType],
-        location="json",
-    )
 )
 
 
@@ -173,7 +176,7 @@ class ModelProviderModelApi(Resource):
 
         return {"result": "success"}, 200
 
-    @console_ns.expect(parser_delete_models)
+    @console_ns.expect(console_ns.models[parser_delete_models.__name__], validate=True)
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -181,11 +184,11 @@ class ModelProviderModelApi(Resource):
     def delete(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_delete_models.parse_args()
+        args = parser_delete_models.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model(
-            tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+            tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
         )
 
         return {"result": "success"}, 204
@@ -383,24 +386,20 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
-parser_switch = (
-    reqparse.RequestParser()
-    .add_argument("model", type=str, required=True, nullable=False, location="json")
-    .add_argument(
-        "model_type",
-        type=str,
-        required=True,
-        nullable=False,
-        choices=[mt.value for mt in ModelType],
-        location="json",
-    )
-    .add_argument("credential_id", type=str, required=True, nullable=False, location="json")
+class parser_switch(BaseModel):
+    model: str
+    model_type: ModelType
+    credential_id: str
+
+
+console_ns.schema_model(
+    parser_switch.__name__, parser_switch.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
-    @console_ns.expect(parser_switch)
+    @console_ns.expect(console_ns.models[parser_switch.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -408,49 +407,35 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        args = parser_switch.parse_args()
+        args = parser_switch.model_validate_json(console_ns.payload)
 
         service = ModelProviderService()
         service.add_model_credential_to_model_list(
             tenant_id=current_tenant_id,
             provider=provider,
-            model_type=args["model_type"],
-            model=args["model"],
-            credential_id=args["credential_id"],
+            model_type=args.model_type,
+            model=args.model,
+            credential_id=args.credential_id,
         )
         return {"result": "success"}
-
-
-parser_model_enable_disable = (
-    reqparse.RequestParser()
-    .add_argument("model", type=str, required=True, nullable=False, location="json")
-    .add_argument(
-        "model_type",
-        type=str,
-        required=True,
-        nullable=False,
-        choices=[mt.value for mt in ModelType],
-        location="json",
-    )
-)
 
 
 @console_ns.route(
     "/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable"
 )
 class ModelProviderModelEnableApi(Resource):
-    @console_ns.expect(parser_model_enable_disable)
+    @console_ns.expect(console_ns.models[parser_delete_models.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_model_enable_disable.parse_args()
+        args = parser_delete_models.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
         model_provider_service.enable_model(
-            tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+            tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
         )
 
         return {"result": "success"}
@@ -460,48 +445,44 @@ class ModelProviderModelEnableApi(Resource):
     "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
 )
 class ModelProviderModelDisableApi(Resource):
-    @console_ns.expect(parser_model_enable_disable)
+    @console_ns.expect(console_ns.models[parser_delete_models.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_model_enable_disable.parse_args()
+        args = parser_delete_models.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
         model_provider_service.disable_model(
-            tenant_id=tenant_id, provider=provider, model=args["model"], model_type=args["model_type"]
+            tenant_id=tenant_id, provider=provider, model=args.model, model_type=args.model_type
         )
 
         return {"result": "success"}
 
 
-parser_validate = (
-    reqparse.RequestParser()
-    .add_argument("model", type=str, required=True, nullable=False, location="json")
-    .add_argument(
-        "model_type",
-        type=str,
-        required=True,
-        nullable=False,
-        choices=[mt.value for mt in ModelType],
-        location="json",
-    )
-    .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
+class parser_validate(BaseModel):
+    model: str
+    model_type: ModelType
+    credentials: dict
+
+
+console_ns.schema_model(
+    parser_validate.__name__, parser_validate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
-    @console_ns.expect(parser_validate)
+    @console_ns.expect(console_ns.models[parser_validate.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_validate.parse_args()
+        args = parser_validate.model_validate_json(console_ns.payload)
 
         model_provider_service = ModelProviderService()
 
@@ -512,9 +493,9 @@ class ModelProviderModelValidateApi(Resource):
             model_provider_service.validate_model_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=args["model"],
-                model_type=args["model_type"],
-                credentials=args["credentials"],
+                model=args.model,
+                model_type=args.model_type,
+                credentials=args.credentials,
             )
         except CredentialsValidateFailedError as ex:
             result = False
