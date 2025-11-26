@@ -30,7 +30,9 @@ class ToolOAuthSystemClient(TypeBase):
         sa.UniqueConstraint("plugin_id", "provider", name="tool_oauth_system_client_plugin_id_provider_idx"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     plugin_id: Mapped[str] = mapped_column(String(512), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the tool provider
@@ -45,7 +47,9 @@ class ToolOAuthTenantClient(TypeBase):
         sa.UniqueConstraint("tenant_id", "plugin_id", "provider", name="unique_tool_oauth_tenant_client"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -71,7 +75,9 @@ class BuiltinToolProvider(TypeBase):
     )
 
     # id of the tool provider
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     name: Mapped[str] = mapped_column(
         String(256),
         nullable=False,
@@ -120,7 +126,9 @@ class ApiToolProvider(TypeBase):
         sa.UniqueConstraint("name", "tenant_id", name="unique_api_tool_provider"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # name of the api provider
     name: Mapped[str] = mapped_column(
         String(255),
@@ -192,7 +200,9 @@ class ToolLabelBinding(TypeBase):
         sa.UniqueConstraint("tool_id", "label_name", name="unique_tool_label_bind"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # tool id
     tool_id: Mapped[str] = mapped_column(String(64), nullable=False)
     # tool type
@@ -213,7 +223,9 @@ class WorkflowToolProvider(TypeBase):
         sa.UniqueConstraint("tenant_id", "app_id", name="unique_workflow_tool_provider_app_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # name of the workflow provider
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     # label of the workflow provider

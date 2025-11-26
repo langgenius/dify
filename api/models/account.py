@@ -356,7 +356,9 @@ class TenantPluginPermission(TypeBase):
         sa.UniqueConstraint("tenant_id", name="unique_tenant_plugin"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     install_permission: Mapped[InstallPermission] = mapped_column(
         String(16), nullable=False, server_default="everyone", default=InstallPermission.EVERYONE
@@ -383,7 +385,9 @@ class TenantPluginAutoUpgradeStrategy(TypeBase):
         sa.UniqueConstraint("tenant_id", name="unique_tenant_plugin_auto_upgrade_strategy"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     strategy_setting: Mapped[StrategySetting] = mapped_column(
         String(16), nullable=False, server_default="fix_only", default=StrategySetting.FIX_ONLY
