@@ -79,7 +79,7 @@ class JiebaKeywordTableHandler:
                 self._lcut = getattr(jieba, "lcut", None)
 
             def extract_tags(self, sentence: str, top_k: int | None = 20, **kwargs):
-                # Basic frequency-based keywords as a degraded tf-idf substitute.
+                # Basic frequency-based keyword extraction as a fallback when TF-IDF is unavailable.
                 top_k = kwargs.pop("topK", top_k)
                 cut = getattr(jieba, "cut", None)
                 if self._lcut:
