@@ -26,13 +26,13 @@ from services.workflow_service import WorkflowService
 class TestWorkflowAssociatedDataFactory:
     """
     Factory class for creating test data and mock objects for workflow service tests.
-    
+
     This factory provides reusable methods to create mock objects for:
     - App models with configurable attributes
     - Workflow models with graph and feature configurations
     - Account models for user authentication
     - Valid workflow graph structures for testing
-    
+
     All factory methods return MagicMock objects that simulate database models
     without requiring actual database connections.
     """
@@ -47,14 +47,14 @@ class TestWorkflowAssociatedDataFactory:
     ) -> MagicMock:
         """
         Create a mock App with specified attributes.
-        
+
         Args:
             app_id: Unique identifier for the app
             tenant_id: Workspace/tenant identifier
             mode: App mode (workflow, chat, completion, etc.)
             workflow_id: Optional ID of the published workflow
             **kwargs: Additional attributes to set on the mock
-            
+
         Returns:
             MagicMock object configured as an App model
         """
@@ -81,7 +81,7 @@ class TestWorkflowAssociatedDataFactory:
     ) -> MagicMock:
         """
         Create a mock Workflow with specified attributes.
-        
+
         Args:
             workflow_id: Unique identifier for the workflow
             tenant_id: Workspace/tenant identifier
@@ -92,7 +92,7 @@ class TestWorkflowAssociatedDataFactory:
             features: Feature configuration (file upload, text-to-speech, etc.)
             unique_hash: Hash for optimistic locking during updates
             **kwargs: Additional attributes to set on the mock
-            
+
         Returns:
             MagicMock object configured as a Workflow model with graph/features
         """
@@ -157,14 +157,14 @@ class TestWorkflowAssociatedDataFactory:
     def create_valid_workflow_graph(include_start: bool = True, include_trigger: bool = False) -> dict:
         """
         Create a valid workflow graph structure for testing.
-        
+
         Args:
             include_start: Whether to include a START node (for regular workflows)
             include_trigger: Whether to include trigger nodes (webhook, schedule, etc.)
-            
+
         Returns:
             Dictionary containing nodes and edges arrays representing workflow graph
-            
+
         Note:
             Start nodes and trigger nodes cannot coexist in the same workflow.
             This is validated by the workflow service.
@@ -232,7 +232,7 @@ class TestWorkflowService:
     def workflow_service(self):
         """
         Create a WorkflowService instance with mocked dependencies.
-        
+
         This fixture patches the database to avoid real database connections
         during testing. Each test gets a fresh service instance.
         """
@@ -244,7 +244,7 @@ class TestWorkflowService:
     def mock_db_session(self):
         """
         Mock database session for testing database operations.
-        
+
         Provides mock implementations of:
         - session.add(): Adding new records
         - session.commit(): Committing transactions
@@ -264,7 +264,7 @@ class TestWorkflowService:
     def mock_sqlalchemy_session(self):
         """
         Mock SQLAlchemy Session for publish_workflow tests.
-        
+
         This is a separate fixture because publish_workflow uses
         SQLAlchemy's Session class directly rather than the Flask-SQLAlchemy
         db.session object.
@@ -281,7 +281,7 @@ class TestWorkflowService:
     def test_is_workflow_exist_returns_true(self, workflow_service, mock_db_session):
         """
         Test is_workflow_exist returns True when draft workflow exists.
-        
+
         Verifies that the service correctly identifies when an app has a draft workflow.
         This is used to determine whether to create or update a workflow.
         """
@@ -311,7 +311,7 @@ class TestWorkflowService:
     def test_get_draft_workflow_success(self, workflow_service, mock_db_session):
         """
         Test get_draft_workflow returns draft workflow successfully.
-        
+
         Draft workflows are the working copy that users edit before publishing.
         Each app can have only one draft workflow at a time.
         """
@@ -362,9 +362,7 @@ class TestWorkflowService:
         """Test get_published_workflow_by_id returns published workflow."""
         app = TestWorkflowAssociatedDataFactory.create_app_mock()
         workflow_id = "workflow-123"
-        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(
-            workflow_id=workflow_id, version="v1"
-        )
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
 
         # Mock database query
         mock_query = MagicMock()
@@ -378,7 +376,7 @@ class TestWorkflowService:
     def test_get_published_workflow_by_id_raises_error_for_draft(self, workflow_service, mock_db_session):
         """
         Test get_published_workflow_by_id raises error when workflow is draft.
-        
+
         This prevents using draft workflows in production contexts where only
         published, stable versions should be used (e.g., API execution).
         """
@@ -439,7 +437,7 @@ class TestWorkflowService:
     def test_sync_draft_workflow_creates_new_draft(self, workflow_service, mock_db_session):
         """
         Test sync_draft_workflow creates new draft workflow when none exists.
-        
+
         When a user first creates a workflow app, this creates the initial draft.
         The draft is validated before creation to ensure graph and features are valid.
         """
@@ -454,9 +452,11 @@ class TestWorkflowService:
         mock_db_session.session.query.return_value = mock_query
         mock_query.where.return_value.first.return_value = None
 
-        with patch.object(workflow_service, "validate_features_structure"), patch.object(
-            workflow_service, "validate_graph_structure"
-        ), patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with (
+            patch.object(workflow_service, "validate_features_structure"),
+            patch.object(workflow_service, "validate_graph_structure"),
+            patch("services.workflow_service.app_draft_workflow_was_synced"),
+        ):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=graph,
@@ -474,7 +474,7 @@ class TestWorkflowService:
     def test_sync_draft_workflow_updates_existing_draft(self, workflow_service, mock_db_session):
         """
         Test sync_draft_workflow updates existing draft workflow.
-        
+
         When users edit their workflow, this updates the existing draft.
         The unique_hash is used for optimistic locking to prevent conflicts.
         """
@@ -491,9 +491,11 @@ class TestWorkflowService:
         mock_db_session.session.query.return_value = mock_query
         mock_query.where.return_value.first.return_value = mock_workflow
 
-        with patch.object(workflow_service, "validate_features_structure"), patch.object(
-            workflow_service, "validate_graph_structure"
-        ), patch("services.workflow_service.app_draft_workflow_was_synced"):
+        with (
+            patch.object(workflow_service, "validate_features_structure"),
+            patch.object(workflow_service, "validate_graph_structure"),
+            patch("services.workflow_service.app_draft_workflow_was_synced"),
+        ):
             result = workflow_service.sync_draft_workflow(
                 app_model=app,
                 graph=graph,
@@ -513,7 +515,7 @@ class TestWorkflowService:
     def test_sync_draft_workflow_raises_hash_not_equal_error(self, workflow_service, mock_db_session):
         """
         Test sync_draft_workflow raises error when hash doesn't match.
-        
+
         This implements optimistic locking: if the workflow was modified by another
         user/session since it was loaded, the hash won't match and the update fails.
         This prevents overwriting concurrent changes.
@@ -561,11 +563,11 @@ class TestWorkflowService:
     def test_validate_graph_structure_start_and_trigger_coexist_raises_error(self, workflow_service):
         """
         Test validate_graph_structure raises error when start and trigger nodes coexist.
-        
+
         Workflows can be either:
         - User-initiated (with START node): User provides input to start execution
         - Event-driven (with trigger nodes): External events trigger execution
-        
+
         These two patterns cannot be mixed in a single workflow.
         """
         # Create a graph with both start and trigger nodes
@@ -596,7 +598,7 @@ class TestWorkflowService:
     def test_validate_features_structure_workflow_mode(self, workflow_service):
         """
         Test validate_features_structure for workflow mode.
-        
+
         Different app modes have different feature configurations.
         This ensures the features match the expected schema for workflow apps.
         """
@@ -634,7 +636,7 @@ class TestWorkflowService:
     def test_publish_workflow_success(self, workflow_service, mock_sqlalchemy_session):
         """
         Test publish_workflow creates new published version.
-        
+
         Publishing creates a timestamped snapshot of the draft workflow.
         This allows users to:
         - Roll back to previous versions
@@ -646,16 +648,15 @@ class TestWorkflowService:
         graph = TestWorkflowAssociatedDataFactory.create_valid_workflow_graph()
 
         # Mock draft workflow
-        mock_draft = TestWorkflowAssociatedDataFactory.create_workflow_mock(
-            version=Workflow.VERSION_DRAFT, graph=graph
-        )
+        mock_draft = TestWorkflowAssociatedDataFactory.create_workflow_mock(version=Workflow.VERSION_DRAFT, graph=graph)
         mock_sqlalchemy_session.scalar.return_value = mock_draft
 
-        with patch.object(workflow_service, "validate_graph_structure"), patch(
-            "services.workflow_service.app_published_workflow_was_updated"
-        ), patch("services.workflow_service.dify_config") as mock_config, patch(
-            "services.workflow_service.Workflow.new"
-        ) as mock_workflow_new:
+        with (
+            patch.object(workflow_service, "validate_graph_structure"),
+            patch("services.workflow_service.app_published_workflow_was_updated"),
+            patch("services.workflow_service.dify_config") as mock_config,
+            patch("services.workflow_service.Workflow.new") as mock_workflow_new,
+        ):
             # Disable billing
             mock_config.BILLING_ENABLED = False
 
@@ -678,7 +679,7 @@ class TestWorkflowService:
     def test_publish_workflow_no_draft_raises_error(self, workflow_service, mock_sqlalchemy_session):
         """
         Test publish_workflow raises error when no draft exists.
-        
+
         Cannot publish if there's no draft to publish from.
         Users must create and save a draft before publishing.
         """
@@ -689,14 +690,12 @@ class TestWorkflowService:
         mock_sqlalchemy_session.scalar.return_value = None
 
         with pytest.raises(ValueError, match="No valid workflow found"):
-            workflow_service.publish_workflow(
-                session=mock_sqlalchemy_session, app_model=app, account=account
-            )
+            workflow_service.publish_workflow(session=mock_sqlalchemy_session, app_model=app, account=account)
 
     def test_publish_workflow_trigger_limit_exceeded(self, workflow_service, mock_sqlalchemy_session):
         """
         Test publish_workflow raises error when trigger node limit exceeded in SANDBOX plan.
-        
+
         Free/sandbox tier users have limits on the number of trigger nodes.
         This prevents resource abuse while allowing users to test the feature.
         The limit is enforced at publish time, not during draft editing.
@@ -715,21 +714,18 @@ class TestWorkflowService:
             "edges": [],
         }
 
-        mock_draft = TestWorkflowAssociatedDataFactory.create_workflow_mock(
-            version=Workflow.VERSION_DRAFT, graph=graph
-        )
+        mock_draft = TestWorkflowAssociatedDataFactory.create_workflow_mock(version=Workflow.VERSION_DRAFT, graph=graph)
         mock_sqlalchemy_session.scalar.return_value = mock_draft
 
-        with patch.object(workflow_service, "validate_graph_structure"), patch(
-            "services.workflow_service.dify_config"
-        ) as mock_config, patch("services.workflow_service.BillingService") as MockBillingService, patch(
-            "services.workflow_service.NodeType"
-        ) as MockNodeType:
+        with (
+            patch.object(workflow_service, "validate_graph_structure"),
+            patch("services.workflow_service.dify_config") as mock_config,
+            patch("services.workflow_service.BillingService") as MockBillingService,
+            patch("services.workflow_service.NodeType") as MockNodeType,
+        ):
             # Enable billing and set SANDBOX plan
             mock_config.BILLING_ENABLED = True
-            MockBillingService.get_info.return_value = {
-                "subscription": {"plan": "sandbox"}
-            }
+            MockBillingService.get_info.return_value = {"subscription": {"plan": "sandbox"}}
 
             # Mock NodeType to identify trigger nodes
             def is_trigger_node_side_effect(node_type_str):
@@ -740,9 +736,7 @@ class TestWorkflowService:
             MockNodeType.side_effect = is_trigger_node_side_effect
 
             with pytest.raises(TriggerNodeLimitExceededError):
-                workflow_service.publish_workflow(
-                    session=mock_sqlalchemy_session, app_model=app, account=account
-                )
+                workflow_service.publish_workflow(session=mock_sqlalchemy_session, app_model=app, account=account)
 
     # ==================== Version Management Tests ====================
     # These tests verify listing and managing published workflow versions
@@ -750,7 +744,7 @@ class TestWorkflowService:
     def test_get_all_published_workflow_with_pagination(self, workflow_service):
         """
         Test get_all_published_workflow returns paginated results.
-        
+
         Apps can have many published versions over time.
         Pagination prevents loading all versions at once, improving performance.
         """
@@ -783,7 +777,7 @@ class TestWorkflowService:
     def test_get_all_published_workflow_has_more(self, workflow_service):
         """
         Test get_all_published_workflow indicates has_more when results exceed limit.
-        
+
         The has_more flag tells the UI whether to show a "Load More" button.
         This is determined by fetching limit+1 records and checking if we got that many.
         """
@@ -831,7 +825,7 @@ class TestWorkflowService:
     def test_update_workflow_success(self, workflow_service):
         """
         Test update_workflow updates workflow attributes.
-        
+
         Allows updating metadata like marked_name and marked_comment
         without creating a new version. Only specific fields are allowed
         to prevent accidental modification of workflow logic.
@@ -888,15 +882,13 @@ class TestWorkflowService:
     def test_delete_workflow_success(self, workflow_service):
         """
         Test delete_workflow successfully deletes a published workflow.
-        
+
         Users can delete old published versions they no longer need.
         This helps manage storage and keeps the version list clean.
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
-        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(
-            workflow_id=workflow_id, version="v1"
-        )
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
 
         mock_session = MagicMock()
         # Mock successful deletion scenario:
@@ -921,7 +913,7 @@ class TestWorkflowService:
     def test_delete_workflow_draft_raises_error(self, workflow_service):
         """
         Test delete_workflow raises error when trying to delete draft.
-        
+
         Draft workflows cannot be deleted - they're the working copy.
         Users can only delete published versions to clean up old snapshots.
         """
@@ -940,22 +932,18 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(DraftWorkflowDeletionError, match="Cannot delete draft workflow"):
-                workflow_service.delete_workflow(
-                    session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id
-                )
+                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
 
     def test_delete_workflow_in_use_by_app_raises_error(self, workflow_service):
         """
         Test delete_workflow raises error when workflow is in use by app.
-        
+
         Cannot delete a workflow version that's currently published/active.
         This would break the app for users. Must publish a different version first.
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
-        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(
-            workflow_id=workflow_id, version="v1"
-        )
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
         mock_app = TestWorkflowAssociatedDataFactory.create_app_mock(workflow_id=workflow_id)
 
         mock_session = MagicMock()
@@ -967,23 +955,19 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="currently in use by app"):
-                workflow_service.delete_workflow(
-                    session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id
-                )
+                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
 
     def test_delete_workflow_published_as_tool_raises_error(self, workflow_service):
         """
         Test delete_workflow raises error when workflow is published as tool.
-        
+
         Workflows can be published as reusable tools for other workflows.
         Cannot delete a version that's being used as a tool, as this would
         break other workflows that depend on it.
         """
         workflow_id = "workflow-123"
         tenant_id = "tenant-456"
-        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(
-            workflow_id=workflow_id, version="v1"
-        )
+        mock_workflow = TestWorkflowAssociatedDataFactory.create_workflow_mock(workflow_id=workflow_id, version="v1")
         mock_tool_provider = MagicMock()
 
         mock_session = MagicMock()
@@ -996,9 +980,7 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(WorkflowInUseError, match="published as a tool"):
-                workflow_service.delete_workflow(
-                    session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id
-                )
+                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
 
     def test_delete_workflow_not_found_raises_error(self, workflow_service):
         """Test delete_workflow raises error when workflow not found."""
@@ -1014,9 +996,7 @@ class TestWorkflowService:
             mock_stmt.where.return_value = mock_stmt
 
             with pytest.raises(ValueError, match="not found"):
-                workflow_service.delete_workflow(
-                    session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id
-                )
+                workflow_service.delete_workflow(session=mock_session, workflow_id=workflow_id, tenant_id=tenant_id)
 
     # ==================== Get Default Block Config Tests ====================
     # These tests verify retrieval of default node configurations
@@ -1024,7 +1004,7 @@ class TestWorkflowService:
     def test_get_default_block_configs(self, workflow_service):
         """
         Test get_default_block_configs returns list of default configs.
-        
+
         Returns default configurations for all available node types.
         Used by the UI to populate the node palette and provide sensible defaults
         when users add new nodes to their workflow.
@@ -1044,12 +1024,13 @@ class TestWorkflowService:
     def test_get_default_block_config_for_node_type(self, workflow_service):
         """
         Test get_default_block_config returns config for specific node type.
-        
+
         Returns the default configuration for a specific node type (e.g., LLM, HTTP).
         This includes default values for all required and optional parameters.
         """
-        with patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping, patch(
-            "services.workflow_service.LATEST_VERSION", "latest"
+        with (
+            patch("services.workflow_service.NODE_TYPE_CLASSES_MAPPING") as mock_mapping,
+            patch("services.workflow_service.LATEST_VERSION", "latest"),
         ):
             # Mock node class with default config
             mock_node_class = MagicMock()
@@ -1082,7 +1063,7 @@ class TestWorkflowService:
     def test_convert_to_workflow_from_chat_app(self, workflow_service):
         """
         Test convert_to_workflow converts chat app to workflow.
-        
+
         Allows users to migrate from simple chat apps to advanced workflow apps.
         The conversion creates equivalent workflow nodes from the chat configuration,
         giving users more control and customization options.
@@ -1109,7 +1090,7 @@ class TestWorkflowService:
     def test_convert_to_workflow_from_completion_app(self, workflow_service):
         """
         Test convert_to_workflow converts completion app to workflow.
-        
+
         Similar to chat conversion, but for completion-style apps.
         Completion apps are simpler (single prompt-response), so the
         conversion creates a basic workflow with fewer nodes.
@@ -1130,7 +1111,7 @@ class TestWorkflowService:
     def test_convert_to_workflow_invalid_mode_raises_error(self, workflow_service):
         """
         Test convert_to_workflow raises error for invalid app mode.
-        
+
         Only chat and completion apps can be converted to workflows.
         Apps that are already workflows or have other modes cannot be converted.
         """
