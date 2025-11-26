@@ -32,11 +32,13 @@ class WorkflowAppRunnerHandler(SpanHandler):
 
             entity = runner.application_generate_entity
             app_config = getattr(entity, "app_config", None)
+            if app_config is None:
+                return wrapped(*args, **kwargs)
 
-            app_id = getattr(app_config, "app_id", None) if app_config is not None else "unknown"
-            tenant_id = getattr(app_config, "tenant_id", None) if app_config is not None else "unknown"
-            user_id = getattr(entity, "user_id", None) or "unknown"
-            workflow_id = getattr(app_config, "workflow_id", None) if app_config is not None else "unknown"
+            user_id: AttributeValue = getattr(entity, "user_id", None) or "unknown"
+            app_id: AttributeValue = getattr(app_config, "app_id", None) or "unknown"
+            tenant_id: AttributeValue = getattr(app_config, "tenant_id", None) or "unknown"
+            workflow_id: AttributeValue = getattr(app_config, "workflow_id", None) or "unknown"
             streaming = getattr(entity, "stream", True)
 
             attributes: dict[str, AttributeValue] = {
@@ -61,4 +63,3 @@ class WorkflowAppRunnerHandler(SpanHandler):
                 span.record_exception(exc)
                 span.set_status(Status(StatusCode.ERROR, str(exc)))
                 raise
-

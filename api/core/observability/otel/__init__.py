@@ -5,7 +5,7 @@ from core.observability.otel.handlers.workflow_app_runner_handler import Workflo
 
 __all__ = [
     "AppGenerateHandler",
-    "WorkflowAppRunnerHandler",
     "SpanHandler",
+    "WorkflowAppRunnerHandler",
     "trace_span",
 ]

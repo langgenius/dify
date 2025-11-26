@@ -1,7 +1,7 @@
 import functools
 import os
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 
 from opentelemetry.trace import get_tracer
 
@@ -16,7 +16,7 @@ _HANDLER_INSTANCES: dict[type[SpanHandler], SpanHandler] = {SpanHandler: SpanHan
 def _is_instrument_flag_enabled() -> bool:
     """
     Check if external instrumentation is enabled via environment variable.
-    
+
     Third-party non-invasive instrumentation agents set this flag to coordinate
     with Dify's manual OpenTelemetry instrumentation.
     """
@@ -56,6 +56,6 @@ def trace_span(handler_class: type[SpanHandler] | None = None) -> Callable[[T], 
                 kwargs=kwargs,
             )
 
-        return wrapper
+        return cast(T, wrapper)
 
     return decorator
