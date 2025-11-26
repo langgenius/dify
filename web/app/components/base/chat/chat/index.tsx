@@ -212,9 +212,9 @@ const Chat: FC<ChatProps> = ({
       if (isAutoScrollingRef.current) return
 
       const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop
-      const threshold = 100
+      const SCROLL_UP_THRESHOLD = 100
 
-      userScrolledRef.current = distanceToBottom > threshold
+      userScrolledRef.current = distanceToBottom > SCROLL_UP_THRESHOLD
     }
 
     const container = chatContainerRef.current
