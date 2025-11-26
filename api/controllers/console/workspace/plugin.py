@@ -68,7 +68,7 @@ class PluginListApi(Resource):
 
 
 class ParserLatest(BaseModel):
-    plugin_ids: list
+    plugin_ids: list[str]
 
 
 console_ns.schema_model(
