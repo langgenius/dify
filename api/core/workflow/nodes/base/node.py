@@ -69,8 +69,8 @@ class Node(Generic[NodeDataT]):
         3. Validates that `T` is a proper `BaseNodeData` subclass
         4. Stores it in `_node_data_type` for automatic hydration in `__init__`
 
-        This eliminates the need for subclasses to manually implement `init_node_data()`
-        and other boilerplate accessor methods.
+        This eliminates the need for subclasses to manually implement boilerplate
+        accessor methods like `_get_title()`, `_get_error_strategy()`, etc.
 
         How it works:
         ::
@@ -120,7 +120,7 @@ class Node(Generic[NodeDataT]):
         Example:
             class CodeNode(Node[CodeNodeData]):  # CodeNodeData is auto-extracted
                 node_type = NodeType.CODE
-                # No need to implement init_node_data, _get_title, etc.
+                # No need to implement _get_title, _get_error_strategy, etc.
         """
         super().__init_subclass__(**kwargs)
 
@@ -196,11 +196,6 @@ class Node(Generic[NodeDataT]):
 
     def _hydrate_node_data(self, data: Mapping[str, Any]) -> NodeDataT:
         return cast(NodeDataT, self._node_data_type.model_validate(data))
-
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
-        """Backward-compatible explicit initialization for legacy callers."""
-        self._node_data = self._hydrate_node_data(data)
-        self.post_init()
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:

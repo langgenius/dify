@@ -2,10 +2,11 @@ from collections.abc import Mapping
 
 import pytest
 
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import NodeType
 from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.nodes.base.node import Node
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
 

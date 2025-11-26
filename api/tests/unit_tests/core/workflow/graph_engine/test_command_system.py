@@ -45,7 +45,6 @@ def test_abort_command():
         ),
         graph_runtime_state=shared_runtime_state,
     )
-    start_node.init_node_data({"title": "start", "variables": []})
     mock_graph.nodes["start"] = start_node
 
     # Mock graph methods
@@ -155,7 +154,6 @@ def test_pause_command():
         ),
         graph_runtime_state=shared_runtime_state,
     )
-    start_node.init_node_data({"title": "start", "variables": []})
     mock_graph.nodes["start"] = start_node
 
     mock_graph.get_outgoing_edges = MagicMock(return_value=[])
