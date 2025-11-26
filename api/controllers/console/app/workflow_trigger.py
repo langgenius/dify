@@ -1,6 +1,6 @@
-from flask import request
 import logging
 
+from flask import request
 from flask_restx import Resource, marshal_with
 from pydantic.main import BaseModel
 from sqlalchemy import select
