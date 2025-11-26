@@ -1,7 +1,4 @@
-import contextlib
-import io
 import logging
-import os
 from collections.abc import Mapping
 from enum import StrEnum
 from threading import Lock
@@ -155,42 +152,5 @@ class CodeExecutor:
             raise CodeExecutionError(f"Unsupported language {language}")
 
         runner, preload = template_transformer.transform_caller(code, inputs)
-
-        try:
-            response = cls.execute_code(language, preload, runner)
-        except CodeExecutionError as e:
-            fallback_response = cls._execute_code_locally_if_allowed(language, preload, runner)
-            if fallback_response is None:
-                raise e
-            response = fallback_response
-
+        response = cls.execute_code(language, preload, runner)
         return template_transformer.transform_response(response)
-
-    @classmethod
-    def _execute_code_locally_if_allowed(cls, language: CodeLanguage, preload: str, runner: str) -> str | None:
-        """Attempt a local execution fallback when running under tests."""
-
-        if language is not CodeLanguage.PYTHON3:
-            return None
-
-        # Restrict fallback to test environments to avoid executing untrusted code in production.
-        if "PYTEST_CURRENT_TEST" not in os.environ:
-            return None
-
-        try:
-            return cls._execute_python_runner_locally(preload, runner)
-        except Exception as fallback_error:
-            raise CodeExecutionError(str(fallback_error)) from fallback_error
-
-    @staticmethod
-    def _execute_python_runner_locally(preload: str, runner: str) -> str:
-        namespace: dict[str, Any] = {}
-
-        if preload:
-            exec(preload, namespace, namespace)  # noqa: S102
-
-        stdout_buffer = io.StringIO()
-        with contextlib.redirect_stdout(stdout_buffer):
-            exec(runner, namespace, namespace)  # noqa: S102
-
-        return stdout_buffer.getvalue()

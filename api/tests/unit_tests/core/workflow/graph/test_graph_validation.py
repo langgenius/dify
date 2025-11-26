@@ -44,9 +44,8 @@ class _TestNode(Node[_TestNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self.data = dict(self.node_data.model_dump())
 
-        node_type_value = data.get("type")
+        node_type_value = self.data.get("type")
         if isinstance(node_type_value, NodeType):
             self.node_type = node_type_value
         elif isinstance(node_type_value, str):
