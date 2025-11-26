@@ -146,21 +146,21 @@ class ModelProviderCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
-parser_switch = reqparse.RequestParser().add_argument(
+ParserSwitch = reqparse.RequestParser().add_argument(
     "credential_id", type=str, required=True, nullable=False, location="json"
 )
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/credentials/switch")
 class ModelProviderCredentialSwitchApi(Resource):
-    @console_ns.expect(parser_switch)
+    @console_ns.expect(ParserSwitch)
     @setup_required
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
     def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
-        args = parser_switch.parse_args()
+        args = ParserSwitch.parse_args()
 
         service = ModelProviderService()
         service.switch_active_provider_credential(

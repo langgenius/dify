@@ -40,25 +40,25 @@ class PluginDebuggingKeyApi(Resource):
             raise ValueError(e)
 
 
-class parser_list(BaseModel):
+class ParserList(BaseModel):
     page: int = Field(default=1)
     page_size: int = Field(default=256)
 
 
 console_ns.schema_model(
-    parser_list.__name__, parser_list.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+    ParserList.__name__, ParserList.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
 @console_ns.route("/workspaces/current/plugin/list")
 class PluginListApi(Resource):
-    @console_ns.expect(console_ns.models[parser_list.__name__])
+    @console_ns.expect(console_ns.models[ParserList.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         _, tenant_id = current_account_with_tenant()
-        args = parser_list.model_validate_json(console_ns.payload)
+        args = ParserList.model_validate_json(console_ns.payload)
         try:
             plugins_with_total = PluginService.list_with_total(tenant_id, args.page, args.page_size)
         except PluginDaemonClientSideError as e:
@@ -67,12 +67,12 @@ class PluginListApi(Resource):
         return jsonable_encoder({"plugins": plugins_with_total.list, "total": plugins_with_total.total})
 
 
-class parser_latest(BaseModel):
+class ParserLatest(BaseModel):
     plugin_ids: list
 
 
 console_ns.schema_model(
-    parser_latest.__name__, parser_latest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+    ParserLatest.__name__, ParserLatest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
@@ -144,9 +144,7 @@ class ParserDynamicOptions(BaseModel):
 
 
 class PluginPermissionSettingsPayload(BaseModel):
-    install_permission: TenantPluginPermission.InstallPermission = (
-        TenantPluginPermission.InstallPermission.EVERYONE
-    )
+    install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
     debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
 
 
@@ -244,12 +242,12 @@ console_ns.schema_model(
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
 class PluginListLatestVersionsApi(Resource):
-    @console_ns.expect(console_ns.models[parser_latest.__name__])
+    @console_ns.expect(console_ns.models[ParserLatest.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
-        args = parser_latest.model_validate_json(console_ns.payload)
+        args = ParserLatest.model_validate_json(console_ns.payload)
 
         try:
             versions = PluginService.list_latest_versions(args.plugin_ids)
@@ -261,14 +259,14 @@ class PluginListLatestVersionsApi(Resource):
 
 @console_ns.route("/workspaces/current/plugin/list/installations/ids")
 class PluginListInstallationsFromIdsApi(Resource):
-    @console_ns.expect(console_ns.models[parser_latest.__name__])
+    @console_ns.expect(console_ns.models[ParserLatest.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_latest.model_validate_json(console_ns.payload)
+        args = ParserLatest.model_validate_json(console_ns.payload)
 
         try:
             plugins = PluginService.list_installations_from_ids(tenant_id, args.plugin_ids)
@@ -482,11 +480,7 @@ class PluginFetchManifestApi(Resource):
 
         try:
             return jsonable_encoder(
-                {
-                    "manifest": PluginService.fetch_plugin_manifest(
-                        tenant_id, args.plugin_unique_identifier
-                    ).model_dump()
-                }
+                {"manifest": PluginService.fetch_plugin_manifest(tenant_id, args.plugin_unique_identifier).model_dump()}
             )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
@@ -505,9 +499,7 @@ class PluginFetchInstallTasksApi(Resource):
         args = ParserTasks.model_validate(console_ns.payload)
 
         try:
-            return jsonable_encoder(
-                {"tasks": PluginService.fetch_install_tasks(tenant_id, args.page, args.page_size)}
-            )
+            return jsonable_encoder({"tasks": PluginService.fetch_install_tasks(tenant_id, args.page, args.page_size)})
         except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
@@ -831,9 +823,5 @@ class PluginReadmeApi(Resource):
         _, tenant_id = current_account_with_tenant()
         args = ParserReadme.model_validate(console_ns.payload)
         return jsonable_encoder(
-            {
-                "readme": PluginService.fetch_plugin_readme(
-                    tenant_id, args.plugin_unique_identifier, args.language
-                )
-            }
+            {"readme": PluginService.fetch_plugin_readme(tenant_id, args.plugin_unique_identifier, args.language)}
         )

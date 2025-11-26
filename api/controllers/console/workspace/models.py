@@ -40,13 +40,13 @@ console_ns.schema_model(
 )
 
 
-class parser_delete_models(BaseModel):
+class ParserDeleteModels(BaseModel):
     model: str
     model_type: ModelType
 
 
 console_ns.schema_model(
-    parser_delete_models.__name__, parser_delete_models.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+    ParserDeleteModels.__name__, ParserDeleteModels.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
@@ -257,7 +257,7 @@ class ModelProviderModelApi(Resource):
 
         return {"result": "success"}, 200
 
-    @console_ns.expect(console_ns.models[parser_delete_models.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__], validate=True)
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -265,7 +265,7 @@ class ModelProviderModelApi(Resource):
     def delete(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_delete_models.model_validate(console_ns.payload)
+        args = ParserDeleteModels.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
         model_provider_service.remove_model(
@@ -407,20 +407,20 @@ class ModelProviderModelCredentialApi(Resource):
         return {"result": "success"}, 204
 
 
-class parser_switch(BaseModel):
+class ParserSwitch(BaseModel):
     model: str
     model_type: ModelType
     credential_id: str
 
 
 console_ns.schema_model(
-    parser_switch.__name__, parser_switch.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+    ParserSwitch.__name__, ParserSwitch.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/switch")
 class ModelProviderModelCredentialSwitchApi(Resource):
-    @console_ns.expect(console_ns.models[parser_switch.__name__])
+    @console_ns.expect(console_ns.models[ParserSwitch.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -428,7 +428,7 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
 
-        args = parser_switch.model_validate_json(console_ns.payload)
+        args = ParserSwitch.model_validate_json(console_ns.payload)
 
         service = ModelProviderService()
         service.add_model_credential_to_model_list(
@@ -445,14 +445,14 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     "/workspaces/current/model-providers/<path:provider>/models/enable", endpoint="model-provider-model-enable"
 )
 class ModelProviderModelEnableApi(Resource):
-    @console_ns.expect(console_ns.models[parser_delete_models.__name__])
+    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_delete_models.model_validate(console_ns.payload)
+        args = ParserDeleteModels.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
         model_provider_service.enable_model(
@@ -466,14 +466,14 @@ class ModelProviderModelEnableApi(Resource):
     "/workspaces/current/model-providers/<path:provider>/models/disable", endpoint="model-provider-model-disable"
 )
 class ModelProviderModelDisableApi(Resource):
-    @console_ns.expect(console_ns.models[parser_delete_models.__name__])
+    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def patch(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_delete_models.model_validate(console_ns.payload)
+        args = ParserDeleteModels.model_validate(console_ns.payload)
 
         model_provider_service = ModelProviderService()
         model_provider_service.disable_model(
@@ -483,27 +483,27 @@ class ModelProviderModelDisableApi(Resource):
         return {"result": "success"}
 
 
-class parser_validate(BaseModel):
+class ParserValidate(BaseModel):
     model: str
     model_type: ModelType
     credentials: dict
 
 
 console_ns.schema_model(
-    parser_validate.__name__, parser_validate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+    ParserValidate.__name__, ParserValidate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/models/credentials/validate")
 class ModelProviderModelValidateApi(Resource):
-    @console_ns.expect(console_ns.models[parser_validate.__name__])
+    @console_ns.expect(console_ns.models[ParserValidate.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     def post(self, provider: str):
         _, tenant_id = current_account_with_tenant()
 
-        args = parser_validate.model_validate_json(console_ns.payload)
+        args = ParserValidate.model_validate_json(console_ns.payload)
 
         model_provider_service = ModelProviderService()
 

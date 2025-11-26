@@ -1,8 +1,7 @@
-from pydantic.fields import Field
-from pydantic.main import BaseModel
 import logging
 
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with
+from pydantic.main import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
