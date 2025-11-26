@@ -30,12 +30,24 @@ class WorkflowToolConfigurationUtils:
         get workflow graph output
         """
         nodes = graph.get("nodes", [])
-        end_node = next(filter(lambda x: x.get("data", {}).get("type") == "end", nodes), None)
+        outputs_by_variable: dict[str, OutputVariableEntity] = {}
+        variable_order: list[str] = []
 
-        if not end_node:
-            return []
+        for node in nodes:
+            if node.get("data", {}).get("type") != "end":
+                continue
 
-        return [OutputVariableEntity.model_validate(output) for output in end_node.get("data", {}).get("outputs", [])]
+            for output in node.get("data", {}).get("outputs", []):
+                entity = OutputVariableEntity.model_validate(output)
+                variable = entity.variable
+
+                if variable not in variable_order:
+                    variable_order.append(variable)
+
+                # Later end nodes override duplicated variable definitions.
+                outputs_by_variable[variable] = entity
+
+        return [outputs_by_variable[variable] for variable in variable_order]
 
     @classmethod
     def check_is_synced(
