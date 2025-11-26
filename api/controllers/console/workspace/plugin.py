@@ -1,5 +1,5 @@
-from typing import Literal
 import io
+from typing import Literal
 
 from flask import request, send_file
 from flask_restx import Resource
