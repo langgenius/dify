@@ -33,7 +33,7 @@ import { IconR } from '@/app/components/base/icons/src/vender/line/arrows'
 import type {
   BlockEnum,
 } from '../types'
-import useNodes from '../store/workflow/use-nodes'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 
 type WorkflowChecklistProps = {
   disabled: boolean

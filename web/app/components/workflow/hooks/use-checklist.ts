@@ -56,7 +56,7 @@ import {
 } from '@/service/use-tools'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppModeEnum } from '@/types/app'
-import useNodes from '../store/workflow/use-nodes'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 
 export type ChecklistItem = {
   id: string
