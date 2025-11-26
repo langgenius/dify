@@ -186,7 +186,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
       setNodesInStore(nodes)
   }, [nodesInStore, setNodesInStore])
   useEffect(() => {
-    // console.log('changes')
     setNodesOnlyChangeWithData(currentNodes)
   }, [currentNodes, setNodesOnlyChangeWithData])
   const {
