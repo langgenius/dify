@@ -227,12 +227,18 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             for tool_call_id, tool_call_name, tool_call_args in tool_calls:
                 tool_instance = tool_instances.get(tool_call_name)
                 if not tool_instance:
-                    tool_response = {
-                        "tool_call_id": tool_call_id,
-                        "tool_call_name": tool_call_name,
-                        "tool_response": f"there is not a tool named {tool_call_name}",
-                        "meta": ToolInvokeMeta.error_instance(f"there is not a tool named {tool_call_name}").to_dict(),
-                    }
+                    error_message = f"there is not a tool named {tool_call_name}"
+                    tool_invoke_meta = ToolInvokeMeta.error_instance(error_message)
+                    tool_invoke_response = error_message
+                    tool_response = self._create_tool_response(
+                        tool_call_id,
+                        tool_call_name,
+                        tool_call_args,
+                        tool_invoke_response,
+                        tool_invoke_meta,
+                        False,
+                    )
+                    tool_responses.append(tool_response)
                 else:
                     # invoke tool
                     tool_invoke_response, message_files, tool_invoke_meta = ToolEngine.agent_invoke(
@@ -257,24 +263,40 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         # add message file ids
                         message_file_ids.append(message_file_id)
 
-                    tool_response = {
-                        "tool_call_id": tool_call_id,
-                        "tool_call_name": tool_call_name,
-                        "tool_response": tool_invoke_response,
-                        "meta": tool_invoke_meta.to_dict(),
-                    }
-
-                tool_responses.append(tool_response)
-                if tool_response["tool_response"] is not None:
-                    self._current_thoughts.append(
-                        ToolPromptMessage(
-                            content=str(tool_response["tool_response"]),
-                            tool_call_id=tool_call_id,
-                            name=tool_call_name,
-                        )
+                    direct_flag = bool((tool_invoke_meta.extra or {}).get("return_direct", False))
+                    tool_response = self._create_tool_response(
+                        tool_call_id,
+                        tool_call_name,
+                        tool_call_args,
+                        tool_invoke_response,
+                        tool_invoke_meta,
+                        direct_flag,
                     )
+                    tool_responses.append(tool_response)
 
             if len(tool_responses) > 0:
+                all_direct = all(tr.get("direct_flag") is True for tr in tool_responses)
+                if all_direct:
+                    llm_final_usage = llm_usage.get("usage") or LLMUsage.empty_usage()
+                    yield from self._handle_direct_return(
+                        agent_thought_id,
+                        tool_responses,
+                        response or "",
+                        message_file_ids,
+                        prompt_messages,
+                        llm_final_usage,
+                    )
+                    return
+
+                for tr in tool_responses:
+                    if tr["tool_response"] is not None:
+                        self._current_thoughts.append(
+                            ToolPromptMessage(
+                                content=str(tr["tool_response"]),
+                                tool_call_id=tr["tool_call_id"],
+                                name=tr["tool_call_name"],
+                            )
+                        )
                 # save agent thought
                 self.save_agent_thought(
                     agent_thought_id=agent_thought_id,
@@ -301,18 +323,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             iteration_step += 1
 
-        # publish end event
-        self.queue_manager.publish(
-            QueueMessageEndEvent(
-                llm_result=LLMResult(
-                    model=model_instance.model,
-                    prompt_messages=prompt_messages,
-                    message=AssistantPromptMessage(content=final_answer),
-                    usage=llm_usage["usage"] or LLMUsage.empty_usage(),
-                    system_fingerprint="",
-                )
-            ),
-            PublishFrom.APPLICATION_MANAGER,
+        yield from self._yield_final_answer(
+            prompt_messages,
+            final_answer,
+            llm_usage.get("usage") or LLMUsage.empty_usage(),
         )
 
     def check_tool_calls(self, llm_result_chunk: LLMResultChunk) -> bool:
@@ -376,6 +390,95 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             )
 
         return tool_calls
+
+    def _yield_final_answer(
+        self,
+        prompt_messages: list[PromptMessage],
+        final_answer: str,
+        usage: LLMUsage,
+    ) -> Generator[LLMResultChunk, None, None]:
+        yield LLMResultChunk(
+            model=self.model_instance.model,
+            prompt_messages=prompt_messages,
+            system_fingerprint="",
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content=final_answer),
+                usage=usage,
+            ),
+        )
+
+        self.queue_manager.publish(
+            QueueMessageEndEvent(
+                llm_result=LLMResult(
+                    model=self.model_instance.model,
+                    prompt_messages=prompt_messages,
+                    message=AssistantPromptMessage(content=final_answer),
+                    usage=usage,
+                    system_fingerprint="",
+                )
+            ),
+            PublishFrom.APPLICATION_MANAGER,
+        )
+
+    def _create_tool_response(
+        self,
+        tool_call_id: str,
+        tool_call_name: str,
+        tool_call_args: dict[str, Any],
+        tool_invoke_response: str | None,
+        tool_invoke_meta: ToolInvokeMeta,
+        direct_flag: bool,
+    ) -> dict[str, Any]:
+        return {
+            "tool_call_id": tool_call_id,
+            "tool_call_name": tool_call_name,
+            "tool_response": tool_invoke_response,
+            "tool_call_args": tool_call_args,
+            "meta": tool_invoke_meta.to_dict(),
+            "direct_flag": direct_flag,
+        }
+
+    def _handle_direct_return(
+        self,
+        agent_thought_id: str,
+        tool_responses: list[dict[str, Any]],
+        thought: str,
+        message_file_ids: list[str],
+        prompt_messages: list[PromptMessage],
+        usage: LLMUsage,
+    ) -> Generator[LLMResultChunk, None, None]:
+        def _flatten(agg_dict: dict[str, list[Any]]) -> dict[str, Any]:
+            return {k: (v[0] if len(v) == 1 else v) for k, v in agg_dict.items()}
+
+        final_answer = "\n".join(
+            [str(tr["tool_response"]) for tr in tool_responses if tr.get("tool_response") is not None]
+        )
+        tool_invoke_meta_agg: dict[str, list[Any]] = {}
+        observation_agg: dict[str, list[Any]] = {}
+        tool_input_agg: dict[str, list[Any]] = {}
+        for tr in tool_responses:
+            tool_invoke_meta_agg.setdefault(tr["tool_call_name"], []).append(tr["meta"])
+            observation_agg.setdefault(tr["tool_call_name"], []).append(tr["tool_response"])
+            tool_input_agg.setdefault(tr["tool_call_name"], []).append(tr.get("tool_call_args", {}))
+        tool_invoke_meta = _flatten(tool_invoke_meta_agg)
+        observation = _flatten(observation_agg)
+        tool_input = _flatten(tool_input_agg)
+        tool_name = ";".join(sorted({tr["tool_call_name"] for tr in tool_responses}))
+        self.save_agent_thought(
+            agent_thought_id=agent_thought_id,
+            tool_name=tool_name,
+            tool_input=tool_input,
+            thought=thought,
+            tool_invoke_meta=tool_invoke_meta,
+            observation=observation,
+            answer=final_answer,
+            messages_ids=message_file_ids,
+        )
+        self.queue_manager.publish(
+            QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
+        )
+        yield from self._yield_final_answer(prompt_messages, final_answer, usage)
 
     def _init_system_message(self, prompt_template: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
