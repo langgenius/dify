@@ -169,25 +169,22 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setShowConfirm,
     setControlPromptEditorRerenderKey,
     setSyncWorkflowDraftHash,
+    nodes: nodesInStore,
     setNodes: setNodesInStore,
   } = workflowStore.getState()
-  const [nodesOnlyChangeWithData, doSetNodesOnlyChangeWithData] = useState<any[]>([])
   const currentNodes = useNodes()
   const setNodesOnlyChangeWithData = useCallback((nodes: any[]) => {
     const nodesData = nodes.map(node => ({
       id: node.id,
       data: node.data,
     }))
-    const oldData = nodesOnlyChangeWithData.map(node => ({
+    const oldData = nodesInStore.map(node => ({
       id: node.id,
       data: node.data,
     }))
-    if (!isEqual(oldData, nodesData)) {
-      doSetNodesOnlyChangeWithData(nodes)
+    if (!isEqual(oldData, nodesData))
       setNodesInStore(nodes)
-      // console.log('updates')
-    }
-  }, [nodesOnlyChangeWithData, doSetNodesOnlyChangeWithData])
+  }, [nodesInStore, setNodesInStore])
   useEffect(() => {
     // console.log('changes')
     setNodesOnlyChangeWithData(currentNodes)
