@@ -5,7 +5,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import {
   useEdges,
-  useNodes,
 } from 'reactflow'
 import {
   RiCloseLine,
@@ -19,7 +18,6 @@ import {
 import type { ChecklistItem } from '../hooks/use-checklist'
 import type {
   CommonEdgeType,
-  CommonNodeType,
 } from '../types'
 import cn from '@/utils/classnames'
 import {
@@ -32,7 +30,10 @@ import {
 } from '@/app/components/base/icons/src/vender/line/general'
 import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { IconR } from '@/app/components/base/icons/src/vender/line/arrows'
-import type { BlockEnum } from '../types'
+import type {
+  BlockEnum,
+} from '../types'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 
 type WorkflowChecklistProps = {
   disabled: boolean
@@ -42,8 +43,8 @@ const WorkflowChecklist = ({
 }: WorkflowChecklistProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const nodes = useNodes<CommonNodeType>()
   const edges = useEdges<CommonEdgeType>()
+  const nodes = useNodes()
   const needWarningNodes = useChecklist(nodes, edges)
   const { handleNodeSelect } = useNodesInteractions()
 

@@ -636,7 +636,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.10.0
+    image: langgenius/dify-api:1.10.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -675,7 +675,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.10.0
+    image: langgenius/dify-api:1.10.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -712,7 +712,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.10.0
+    image: langgenius/dify-api:1.10.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -740,7 +740,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.10.0
+    image: langgenius/dify-web:1.10.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -765,7 +765,7 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
-      
+
   # The PostgreSQL database.
   db_postgres:
     image: postgres:15-alpine
@@ -1093,7 +1093,7 @@ services:
       timeout: 10s
 
   # seekdb vector database
-  seekdb: 
+  seekdb:
     image: oceanbase/seekdb:latest
     container_name: seekdb
     profiles:
@@ -1120,7 +1120,7 @@ services:
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
   qdrant:
-    image: langgenius/qdrant:v1.7.3
+    image: langgenius/qdrant:v1.8.3
     profiles:
       - qdrant
     restart: always
