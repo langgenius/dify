@@ -6,6 +6,7 @@ from typing import Any
 
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPConnectionError
+from core.mcp.session_manager import McpSessionRegistry
 from core.mcp.types import AudioContent, CallToolResult, ImageContent, TextContent
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
