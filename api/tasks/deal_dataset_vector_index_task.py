@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
-def deal_dataset_vector_index_task(dataset_id: str, action: Literal["remove", "add", "update"]):
+def deal_dataset_vector_index_task(dataset_id: str, action: str):
     """
     Async deal dataset from index
     :param dataset_id: dataset_id
