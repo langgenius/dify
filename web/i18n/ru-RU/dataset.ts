@@ -36,8 +36,6 @@ const translation = {
       recommend: 'Рекомендуется',
     },
     invertedIndex: {
-      title: 'Инвертированный индекс',
-      description: 'Инвертированный индекс - это структура, используемая для эффективного поиска. Организованный по терминам, каждый термин указывает на документы или веб-страницы, содержащие его.',
     },
     change: 'Изменить',
     changeRetrievalMethod: 'Изменить метод поиска',
@@ -236,6 +234,10 @@ const translation = {
     title: 'Сервисный API',
     disabled: 'Отключено',
   },
+  docAllEnabled_one: 'Документ {{count}} включен',
+  docAllEnabled_other: 'Все документы {{count}} включены',
+  partialEnabled_one: 'Всего {{count}} документов, доступно {{num}}',
+  partialEnabled_other: 'Всего {{count}} документов, доступно {{num}}',
 }
 
 export default translation
