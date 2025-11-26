@@ -270,6 +270,9 @@ export type Memory = {
     size: number | string | null
   }
   query_prompt_template: string
+  // New fields for memory behavior
+  scope?: 'shared' | 'independent'
+  clear_after_execution?: boolean
 }
 
 export enum VarType {

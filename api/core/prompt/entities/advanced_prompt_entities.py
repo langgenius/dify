@@ -48,3 +48,8 @@ class MemoryConfig(BaseModel):
     role_prefix: RolePrefix | None = None
     window: WindowConfig
     query_prompt_template: str | None = None
+    # Memory scope: shared (default, uses TokenBufferMemory), or independent
+    # (per-node, persisted in ConversationVariable)
+    scope: Literal["shared", "independent"] = "shared"
+    # If true, clear the per-node memory after this node finishes execution (only applies to independent scope)
+    clear_after_execution: bool = False
