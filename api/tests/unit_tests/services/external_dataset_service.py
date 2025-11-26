@@ -213,7 +213,7 @@ class TestExternalDatasetServiceValidateApiList:
         ExternalDatasetService.validate_api_list(config)
 
     @pytest.mark.parametrize(
-        "config, expected_message",
+        ("config", "expected_message"),
         [
             ({}, "api list is empty"),
             ({"api_key": "k"}, "endpoint is required"),
