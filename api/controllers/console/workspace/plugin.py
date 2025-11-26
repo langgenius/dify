@@ -690,7 +690,7 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
         current_user, tenant_id = current_account_with_tenant()
         user_id = current_user.id
 
-        args = ParserDynamicOptions.model_validate(console_ns.payload)
+        args = ParserDynamicOptions.model_validate(request.args)
 
         try:
             options = PluginParameterService.get_dynamic_select_options(
