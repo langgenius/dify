@@ -292,7 +292,7 @@ class WorkspaceInfoApi(Resource):
         if not current_tenant_id:
             raise ValueError("No current tenant")
         tenant = db.get_or_404(Tenant, current_tenant_id)
-        tenant.name = args["name"]
+        tenant.name = args.name
         db.session.commit()
 
         return {"result": "success", "tenant": marshal(WorkspaceService.get_tenant_info(tenant), tenant_fields)}
