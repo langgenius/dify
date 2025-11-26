@@ -123,6 +123,16 @@ class ApiProviderAuthType(StrEnum):
         raise ValueError(f"invalid mode value '{value}', expected one of: {valid}")
 
 
+class ToolAuthType(StrEnum):
+    """
+    Enum class for tool authentication type.
+    Determines whether OAuth credentials are workspace-level or end-user-level.
+    """
+
+    WORKSPACE = "workspace"
+    END_USER = "end_user"
+
+
 class ToolInvokeMessage(BaseModel):
     class TextMessage(BaseModel):
         text: str
