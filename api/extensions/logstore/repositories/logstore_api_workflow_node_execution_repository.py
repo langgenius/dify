@@ -6,6 +6,7 @@ WorkflowNodeExecutionModel operations using Aliyun SLS LogStore.
 """
 
 import logging
+import time
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Any
@@ -33,6 +34,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         The returned model is not attached to any SQLAlchemy session.
         Relationship fields (like offload_data) are not loaded from LogStore.
     """
+    logger.info("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
     # Create model instance without session
     model = WorkflowNodeExecutionModel()
 
@@ -104,6 +106,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Args:
             session_maker: SQLAlchemy sessionmaker (unused, for compatibility with factory pattern)
         """
+        logger.info("LogstoreAPIWorkflowNodeExecutionRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
 
     def get_node_last_execution(
@@ -118,6 +121,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
 
         Uses window function to get latest version, ordered by created_at.
         """
+        logger.info("get_node_last_execution: tenant_id=%s, app_id=%s, workflow_id=%s, node_id=%s", tenant_id, app_id, workflow_id, node_id)
         query = f"""
             * | SELECT * FROM (
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
@@ -155,34 +159,53 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         """
         Get all node executions for a specific workflow run.
 
-        Uses finished_at IS NOT NULL for deduplication optimization.
+        Uses query syntax to get raw logs and selects the one with max log_version for each node execution.
         Ordered by index DESC for trace visualization.
         """
-        query = f"""
-            * | SELECT *
-            FROM {AliyunLogStore.workflow_node_execution_logstore}
-            WHERE tenant_id='{tenant_id}'
-              AND app_id='{app_id}'
-              AND workflow_run_id='{workflow_run_id}'
-              AND finished_at IS NOT NULL
-            ORDER BY index DESC
-        """
+        logger.info("[LogStore] get_executions_by_workflow_run: tenant_id=%s, app_id=%s, workflow_run_id=%s", tenant_id, app_id, workflow_run_id)
+        # Build query string using LogStore query syntax
+        query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_run_id: {workflow_run_id}"
 
         try:
-            results = self.logstore_client.execute_sql(
-                query=query, logstore=AliyunLogStore.workflow_node_execution_logstore
+            # Query raw logs with large time range (last 30 days)
+            from_time = int(time.time()) - 86400 * 30  # 30 days ago
+            to_time = int(time.time())  # now
+
+            results = self.logstore_client.get_logs(
+                logstore=AliyunLogStore.workflow_node_execution_logstore,
+                from_time=from_time,
+                to_time=to_time,
+                query=query,
+                line=1000,  # Get more results for node executions
+                reverse=False,
             )
 
-            # Convert results and filter out any None values
-            models = []
+            if not results:
+                return []
+
+            # Group by id and select the one with max log_version for each group
+            id_to_results: dict[str, list[dict[str, Any]]] = {}
             for row in results:
-                try:
-                    model = _dict_to_workflow_node_execution_model(row)
-                    if model and model.id:  # Ensure model is valid
-                        models.append(model)
-                except Exception as e:
-                    logger.warning("Failed to convert row to model: %s, row=%s", e, row)
-                    continue
+                row_id = row.get("id")
+                if row_id:
+                    if row_id not in id_to_results:
+                        id_to_results[row_id] = []
+                    id_to_results[row_id].append(row)
+
+            # For each id, select the row with max log_version and filter finished executions
+            models = []
+            for rows in id_to_results.values():
+                if len(rows) > 1:
+                    max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
+                else:
+                    max_row = rows[0]
+
+                model = _dict_to_workflow_node_execution_model(max_row)
+                if model and model.id:  # Ensure model is valid
+                    models.append(model)
+
+            # Sort by index DESC for trace visualization
+            models.sort(key=lambda x: x.index, reverse=True)
 
             return models
 
@@ -197,9 +220,9 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
     ) -> WorkflowNodeExecutionModel | None:
         """
         Get a workflow node execution by its ID.
-
         Uses window function to get latest version.
         """
+        logger.info("get_execution_by_id: execution_id=%s, tenant_id=%s", execution_id, tenant_id)
         tenant_filter = f"AND tenant_id='{tenant_id}'" if tenant_id else ""
 
         query = f"""

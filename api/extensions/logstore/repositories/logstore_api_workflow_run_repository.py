@@ -45,6 +45,7 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     Returns:
         WorkflowRun instance
     """
+    logger.info("_dict_to_workflow_run: data keys=%s", list(data.keys())[:5])
     # Create model instance without session
     model = WorkflowRun()
 
@@ -116,6 +117,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Args:
             session_maker: SQLAlchemy sessionmaker (unused, for compatibility with factory pattern)
         """
+        logger.info("LogstoreAPIWorkflowRunRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
 
     def get_paginated_workflow_runs(
@@ -143,6 +145,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Returns:
             InfiniteScrollPagination object
         """
+        logger.info("get_paginated_workflow_runs: tenant_id=%s, app_id=%s, limit=%d, status=%s", tenant_id, app_id, limit, status)
         # Convert triggered_from to list if needed
         if isinstance(triggered_from, WorkflowRunTriggeredFrom):
             triggered_from_list = [triggered_from]
@@ -207,6 +210,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Uses query syntax to get raw logs and selects the one with max log_version in code.
         """
+        logger.info("get_workflow_run_by_id: tenant_id=%s, app_id=%s, run_id=%s", tenant_id, app_id, run_id)
         # Build query string using LogStore query syntax
         query = f"id: {run_id} and tenant_id: {tenant_id} and app_id: {app_id}"
 
@@ -245,6 +249,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get a specific workflow run by ID without tenant/app context.
         """
+        logger.info("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
         query = f"""
             * | SELECT * FROM (
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
@@ -281,6 +286,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL for completed runs (10-50x faster)
         """
+        logger.info("get_workflow_runs_count: tenant_id=%s, app_id=%s, triggered_from=%s, status=%s", tenant_id, app_id, triggered_from, status)
         # Build time range filter
         time_filter = ""
         if time_range:
@@ -414,6 +420,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + COUNT(DISTINCT id) (20-100x faster)
         """
+        logger.info("get_daily_runs_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from)
         # Build time range filter
         time_filter = ""
         if start_date:
@@ -461,6 +468,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + COUNT(DISTINCT created_by) (20-100x faster)
         """
+        logger.info("get_daily_terminals_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from)
         # Build time range filter
         time_filter = ""
         if start_date:
@@ -507,6 +515,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + SUM(total_tokens) (20-100x faster)
         """
+        logger.info("get_daily_token_cost_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from)
         # Build time range filter
         time_filter = ""
         if start_date:
@@ -553,6 +562,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + AVG (20-100x faster)
         """
+        logger.info("get_average_app_interaction_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from)
         # Build time range filter
         time_filter = ""
         if start_date:

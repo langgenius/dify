@@ -28,6 +28,7 @@ class AliyunLogStore:
 
         self.project_name: str = os.environ.get("ALIYUN_SLS_PROJECT_NAME", "")
         self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 3650))
+        self.log_enabled: bool = os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
 
         self.client = LogClient(endpoint, access_key_id, access_key_secret, auth_version=AUTH_VERSION_4, region=region)
 
@@ -129,6 +130,15 @@ class AliyunLogStore:
     def put_log(self, logstore: str, contents: list[tuple[str, str]]) -> None:
         log_item = LogItem(contents=contents)
         request = PutLogsRequest(project=self.project_name, logstore=logstore, logitems=[log_item])
+
+        if self.log_enabled:
+            logger.info(
+                "[LogStore] PUT_LOG | logstore=%s | project=%s | items_count=%d",
+                logstore,
+                self.project_name,
+                len(contents),
+            )
+
         try:
             self.client.put_logs(request)
         except LogException as e:
@@ -140,7 +150,6 @@ class AliyunLogStore:
                 e.get_request_id(),
             )
             raise
-    
 
     def get_logs(
         self,
@@ -164,11 +173,36 @@ class AliyunLogStore:
             offset=offset,
             reverse=reverse,
         )
+
+        # Log query info if SQLALCHEMY_ECHO is enabled
+        if self.log_enabled:
+            logger.info(
+                "[LogStore] GET_LOGS | logstore=%s | project=%s | query=%s | "
+                "from_time=%d | to_time=%d | line=%d | offset=%d | reverse=%s",
+                logstore,
+                self.project_name,
+                query,
+                from_time,
+                to_time,
+                line,
+                offset,
+                reverse,
+            )
+
         try:
             response = self.client.get_logs(request)
             result = []
             for log in response.get_logs():
                 result.append(log.get_contents())
+
+            # Log result count if SQLALCHEMY_ECHO is enabled
+            if self.log_enabled:
+                logger.info(
+                    "[LogStore] GET_LOGS RESULT | logstore=%s | returned_count=%d",
+                    logstore,
+                    len(result),
+                )
+
             return result
         except LogException as e:
             logger.error(
@@ -220,12 +254,33 @@ class AliyunLogStore:
             toTime=to_time,
             query=query,
         )
+
+        # Log query info if SQLALCHEMY_ECHO is enabled
+        if self.log_enabled:
+            logger.info(
+                "[LogStore] EXECUTE_SQL | logstore=%s | project=%s | from_time=%d | to_time=%d | query=%s",
+                logstore,
+                self.project_name,
+                from_time,
+                to_time,
+                query,
+            )
+
         try:
             response = self.client.get_logs(request)
 
             result = []
             for log in response.get_logs():
                 result.append(log.get_contents())
+
+            # Log result count if SQLALCHEMY_ECHO is enabled
+            if self.log_enabled:
+                logger.info(
+                    "[LogStore] EXECUTE_SQL RESULT | logstore=%s | returned_count=%d",
+                    logstore,
+                    len(result),
+                )
+
             return result
         except LogException as e:
             logger.error(
