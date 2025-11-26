@@ -1,7 +1,7 @@
-from flask import request
 import logging
 from typing import Any
 
+from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
 
