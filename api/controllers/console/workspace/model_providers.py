@@ -125,7 +125,7 @@ class ModelProviderListApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
 
-        payload = console_ns.payload or {}
+        payload = request.args.to_dict()
         args = ParserModelList.model_validate(payload)
 
         model_provider_service = ModelProviderService()
