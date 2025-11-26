@@ -65,9 +65,7 @@ class TestIterationNodeExceptions:
 
     def test_exception_with_detailed_message(self):
         """Test exception with detailed message."""
-        error = IteratorVariableNotFoundError(
-            "Variable 'items' not found in node 'start_node'"
-        )
+        error = IteratorVariableNotFoundError("Variable 'items' not found in node 'start_node'")
 
         assert "items" in str(error)
         assert "start_node" in str(error)
