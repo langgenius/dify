@@ -164,6 +164,7 @@ x-shared-env: &shared-api-worker-env
   WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
   WEAVIATE_GRPC_ENDPOINT: ${WEAVIATE_GRPC_ENDPOINT:-grpc://weaviate:50051}
+  WEAVIATE_TOKENIZATION: ${WEAVIATE_TOKENIZATION:-word}
   OCEANBASE_VECTOR_HOST: ${OCEANBASE_VECTOR_HOST:-oceanbase}
   OCEANBASE_VECTOR_PORT: ${OCEANBASE_VECTOR_PORT:-2881}
   OCEANBASE_VECTOR_USER: ${OCEANBASE_VECTOR_USER:-root@test}
@@ -764,7 +765,7 @@ services:
       ENABLE_WEBSITE_JINAREADER: ${ENABLE_WEBSITE_JINAREADER:-true}
       ENABLE_WEBSITE_FIRECRAWL: ${ENABLE_WEBSITE_FIRECRAWL:-true}
       ENABLE_WEBSITE_WATERCRAWL: ${ENABLE_WEBSITE_WATERCRAWL:-true}
-      
+
   # The PostgreSQL database.
   db_postgres:
     image: postgres:15-alpine
@@ -1092,7 +1093,7 @@ services:
       timeout: 10s
 
   # seekdb vector database
-  seekdb: 
+  seekdb:
     image: oceanbase/seekdb:latest
     container_name: seekdb
     profiles:
@@ -1119,7 +1120,7 @@ services:
   # Qdrant vector store.
   # (if used, you need to set VECTOR_STORE to qdrant in the api & worker service.)
   qdrant:
-    image: langgenius/qdrant:v1.7.3
+    image: langgenius/qdrant:v1.8.3
     profiles:
       - qdrant
     restart: always

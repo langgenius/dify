@@ -283,24 +283,15 @@ const BaseNode: FC<BaseNodeProps> = ({
             data.type === BlockEnum.Loop && data._loopIndex && LoopIndex
           }
           {
-            isLoading && (
-              <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
-            )
-          }
-          {
-            (!isLoading && (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)) && (
-              <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
-            )
-          }
-          {
-            data._runningStatus === NodeRunningStatus.Failed && (
-              <RiErrorWarningFill className='h-3.5 w-3.5 text-text-destructive' />
-            )
-          }
-          {
-            data._runningStatus === NodeRunningStatus.Exception && (
-              <RiAlertFill className='h-3.5 w-3.5 text-text-warning-secondary' />
-            )
+            isLoading
+              ? <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
+              : data._runningStatus === NodeRunningStatus.Failed
+                ? <RiErrorWarningFill className='h-3.5 w-3.5 text-text-destructive' />
+                : data._runningStatus === NodeRunningStatus.Exception
+                  ? <RiAlertFill className='h-3.5 w-3.5 text-text-warning-secondary' />
+                  : (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)
+                    ? <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
+                    : null
           }
         </div>
         {
