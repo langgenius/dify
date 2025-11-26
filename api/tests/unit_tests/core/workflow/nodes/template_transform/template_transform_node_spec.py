@@ -1,14 +1,12 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from core.helper.code_executor.code_executor import CodeExecutionError
-from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.base.entities import VariableSelector
-from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
+
+from core.helper.code_executor.code_executor import CodeExecutionError
+from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from models.workflow import WorkflowType
 
@@ -130,7 +128,9 @@ class TestTemplateTransformNode:
         assert TemplateTransformNode.version() == "1"
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_simple_template(self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params):
+    def test_run_simple_template(
+        self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
+    ):
         """Test _run with simple template transformation."""
         # Setup mock variable pool
         mock_name_value = MagicMock()
@@ -188,7 +188,9 @@ class TestTemplateTransformNode:
         assert result.inputs["value"] is None
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_with_code_execution_error(self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_code_execution_error(
+        self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
+    ):
         """Test _run when code execution fails."""
         mock_graph_runtime_state.variable_pool.get.return_value = MagicMock()
         mock_execute.side_effect = CodeExecutionError("Template syntax error")
@@ -208,7 +210,9 @@ class TestTemplateTransformNode:
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
     @patch("core.workflow.nodes.template_transform.template_transform_node.MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH", 10)
-    def test_run_output_length_exceeds_limit(self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params):
+    def test_run_output_length_exceeds_limit(
+        self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
+    ):
         """Test _run when output exceeds maximum length."""
         mock_graph_runtime_state.variable_pool.get.return_value = MagicMock()
         mock_execute.return_value = {"result": "This is a very long output that exceeds the limit"}
@@ -227,7 +231,9 @@ class TestTemplateTransformNode:
         assert "Output length exceeds" in result.error
 
     @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutor.execute_workflow_code_template")
-    def test_run_with_complex_jinja2_template(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
+    def test_run_with_complex_jinja2_template(
+        self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params
+    ):
         """Test _run with complex Jinja2 template including loops and conditions."""
         node_data = {
             "title": "Complex Template",

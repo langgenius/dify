@@ -2,7 +2,6 @@ import pytest
 from pydantic import ValidationError
 
 from core.workflow.enums import ErrorStrategy
-from core.workflow.nodes.base.entities import RetryConfig, VariableSelector
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 
 
@@ -55,8 +54,7 @@ class TestTemplateTransformNodeData:
                 {"variable": "total", "value_selector": ["sys", "total_count"]},
             ],
             "template": (
-                "{% for item in items %}{{ item }}{% if not loop.last %}, {% endif %}{% endfor %}. "
-                "Total: {{ total }}"
+                "{% for item in items %}{{ item }}{% if not loop.last %}, {% endif %}{% endfor %}. Total: {{ total }}"
             ),
         }
 
