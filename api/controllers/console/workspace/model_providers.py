@@ -144,7 +144,7 @@ class ModelProviderCredentialApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         tenant_id = current_tenant_id
         # if credential_id is not provided, return current used credential
-        payload = console_ns.payload or {}
+        payload = request.args.to_dict()
         args = ParserCredentialId.model_validate(payload)
 
         model_provider_service = ModelProviderService()
