@@ -97,6 +97,12 @@ class AccountPasswordPayload(BaseModel):
     new_password: str
     repeat_new_password: str
 
+    @model_validator(mode="after")
+    def check_passwords_match(self) -> "AccountPasswordPayload":
+        if self.new_password != self.repeat_new_password:
+            raise RepeatPasswordNotMatchError()
+        return self
+
 
 class AccountDeletePayload(BaseModel):
     token: str
@@ -379,9 +385,6 @@ class AccountPasswordApi(Resource):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         args = AccountPasswordPayload.model_validate(payload)
-
-        if args.new_password != args.repeat_new_password:
-            raise RepeatPasswordNotMatchError()
 
         try:
             AccountService.update_account_password(current_user, args.password, args.new_password)
