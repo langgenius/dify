@@ -1,3 +1,5 @@
+from pydantic import model_validator
+from typing import Literal
 from datetime import datetime
 
 import pytz
@@ -80,8 +82,7 @@ class AccountInterfaceLanguagePayload(BaseModel):
 
 
 class AccountInterfaceThemePayload(BaseModel):
-    interface_theme: str = Field(pattern="^(light|dark)$")
-
+    interface_theme: Literal["light", "dark"]
 
 class AccountTimezonePayload(BaseModel):
     timezone: str

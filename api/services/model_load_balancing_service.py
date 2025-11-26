@@ -28,7 +28,7 @@ class ModelLoadBalancingService:
     def __init__(self):
         self.provider_manager = ProviderManager()
 
-    def enable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
+    def enable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: ModelType):
         """
         enable model load balancing.
 
@@ -47,9 +47,9 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Enable model load balancing
-        provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
+        provider_configuration.enable_model_load_balancing(model=model, model_type=model_type)
 
-    def disable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: str):
+    def disable_model_load_balancing(self, tenant_id: str, provider: str, model: str, model_type: ModelType):
         """
         disable model load balancing.
 
@@ -68,10 +68,10 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # disable model load balancing
-        provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
+        provider_configuration.disable_model_load_balancing(model=model, model_type=model_type)
 
     def get_load_balancing_configs(
-        self, tenant_id: str, provider: str, model: str, model_type: str, config_from: str = ""
+        self, tenant_id: str, provider: str, model: str, model_type: ModelType, config_from: str = ""
     ) -> tuple[bool, list[dict]]:
         """
         Get load balancing configurations.
@@ -90,7 +90,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = model_type
 
         # Get provider model setting
         provider_model_setting = provider_configuration.get_provider_model_setting(
@@ -210,7 +210,7 @@ class ModelLoadBalancingService:
         return is_load_balancing_enabled, datas
 
     def get_load_balancing_config(
-        self, tenant_id: str, provider: str, model: str, model_type: str, config_id: str
+        self, tenant_id: str, provider: str, model: str, model_type: ModelType, config_id: str
     ) -> dict | None:
         """
         Get load balancing configuration.
@@ -230,7 +230,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = model_type
 
         # Get load balancing configurations
         load_balancing_model_config = (
@@ -317,7 +317,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = model_type
 
         if not isinstance(configs, list):
             raise ValueError("Invalid load balancing configs")
@@ -476,7 +476,7 @@ class ModelLoadBalancingService:
         tenant_id: str,
         provider: str,
         model: str,
-        model_type: str,
+        model_type: ModelType,
         credentials: dict,
         config_id: str | None = None,
     ):
@@ -499,7 +499,7 @@ class ModelLoadBalancingService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Convert model type to ModelType
-        model_type_enum = ModelType.value_of(model_type)
+        model_type_enum = model_type
 
         load_balancing_model_config = None
         if config_id:
