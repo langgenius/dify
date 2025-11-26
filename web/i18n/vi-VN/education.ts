@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: 'Đừng lo — điều này sẽ không ảnh hưởng đến gói đăng ký hiện tại của bạn, nhưng bạn sẽ không nhận được giảm giá giáo dục khi nó tự động gia hạn trừ khi bạn xác minh lại trạng thái của mình.',
+      title: 'Tình trạng giáo dục của bạn sẽ hết hạn vào {{date}}',
     },
     stillInEducation: {
       title: 'Vẫn đang học tập?',

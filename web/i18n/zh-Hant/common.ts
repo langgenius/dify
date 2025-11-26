@@ -65,10 +65,17 @@ const translation = {
     confirmAction: '請確認您的操作。',
     deleteConfirmTitle: '刪除？',
     no: '不',
+    noSearchResults: '未找到 {{content}}',
+    resetKeywords: '重置關鍵字',
+    selectCount: '{{count}} 已選',
+    searchCount: '找到 {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: '現在',
   },
   placeholder: {
     input: '請輸入',
     select: '請選擇',
+    search: '搜尋...',
   },
   voice: {
     language: {
@@ -161,7 +168,6 @@ const translation = {
     workspace: '工作空間',
     createWorkspace: '建立工作空間',
     helpCenter: '查看幫助文件',
-    communityFeedback: '使用者反饋',
     roadmap: '路線圖',
     community: '社群',
     about: '關於',
@@ -769,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '（選用）',
+  },
+  noData: '無資料',
+  dynamicSelect: {
+    error: '載入選項失敗',
+    noData: '沒有可用選項',
+    loading: '正在載入選項...',
+    selected: '{{count}} 已選擇',
   },
 }
 

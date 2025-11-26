@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: 'Ne skrbite — to ne bo vplivalo na vaše trenutno naročnino, vendar ne boste dobili izobraževalne popusti, ko se obnovi, razen če ponovno potrdite svoj status.',
+      title: 'Vaš status izobraževanja bo potekel {{date}}',
     },
     stillInEducation: {
       title: 'Še vedno v izobraževanju?',

@@ -81,7 +81,10 @@ const translation = {
       ok: 'ตกลง, ได้',
     },
     learnMore: 'ศึกษาเพิ่มเติม',
-    sort: {},
+    sort: {
+      uploadTime: 'เวลาที่อัปโหลด',
+      hitCount: 'จำนวนการดึงข้อมูล',
+    },
   },
   metadata: {
     title: 'ข้อมูลเมตา',
