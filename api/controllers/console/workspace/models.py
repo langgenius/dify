@@ -429,7 +429,6 @@ class ModelProviderModelCredentialSwitchApi(Resource):
     def post(self, provider: str):
         _, current_tenant_id = current_account_with_tenant()
         args = ParserSwitch.model_validate(console_ns.payload)
-        args = ParserSwitch.model_validate_json(console_ns.payload)
 
         service = ModelProviderService()
         service.add_model_credential_to_model_list(
@@ -504,7 +503,6 @@ class ModelProviderModelValidateApi(Resource):
     def post(self, provider: str):
         _, tenant_id = current_account_with_tenant()
         args = ParserValidate.model_validate(console_ns.payload)
-        args = ParserValidate.model_validate_json(console_ns.payload)
 
         model_provider_service = ModelProviderService()
 
