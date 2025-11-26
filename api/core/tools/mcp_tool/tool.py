@@ -8,6 +8,7 @@ from typing import Any
 
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPConnectionError
+from core.mcp.session_manager import McpSessionRegistry
 from core.mcp.types import (
     AudioContent,
     BlobResourceContents,
