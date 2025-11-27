@@ -32,6 +32,12 @@
         <img alt="Issues cerrados" src="https://img.shields.io/github/issues-search?query=repo%3Alanggenius%2Fdify%20is%3Aclosed&label=issues%20cerrados&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
     <a href="https://github.com/langgenius/dify/discussions/" target="_blank">
         <img alt="Publicaciones de discusión" src="https://img.shields.io/github/discussions/langgenius/dify?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
+    <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
+        <img alt="LFX Health Score" src="https://insights.linuxfoundation.org/api/badge/health-score?project=langgenius-dify"></a>
+    <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
+        <img alt="LFX Contributors" src="https://insights.linuxfoundation.org/api/badge/contributors?project=langgenius-dify"></a>
+    <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
+        <img alt="LFX Active Contributors" src="https://insights.linuxfoundation.org/api/badge/active-contributors?project=langgenius-dify"></a>
 </p>
 
 <p align="center">

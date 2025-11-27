@@ -28,10 +28,12 @@ const translation = {
       viewDetails: 'ดูรายละเอียด',
       error: 'เกิดข้อผิดพลาดระหว่างการดําเนินการ',
       loading: 'กำลังประมวลผล...กรุณารอ',
+      footerTip: 'ในโหมดทดสอบ ลองดูตัวอย่างได้สูงสุด {{count}} ชิ้น',
     },
   },
   ragToolSuggestions: {
     title: 'คําแนะนําสําหรับ RAG',
+    noRecommendationPlugins: 'ไม่มีปลั๊กอินที่แนะนำ ค้นหาเพิ่มเติมได้ใน <CustomLink>ตลาด</CustomLink>',
   },
 }
 

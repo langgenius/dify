@@ -1,14 +1,13 @@
 import logging
 
-from flask_restx import Resource, marshal_with, reqparse
+from flask import request
+from flask_restx import Resource, marshal_with
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from controllers.console import console_ns
-from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from extensions.ext_database import db
 from fields.workflow_trigger_fields import trigger_fields, triggers_list_fields, webhook_trigger_fields
 from libs.login import current_user, login_required
@@ -16,12 +15,35 @@ from models.enums import AppTriggerStatus
 from models.model import Account, App, AppMode
 from models.trigger import AppTrigger, WorkflowWebhookTrigger
 
+from .. import console_ns
+from ..app.wraps import get_app_model
+from ..wraps import account_initialization_required, edit_permission_required, setup_required
+
 logger = logging.getLogger(__name__)
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
+class Parser(BaseModel):
+    node_id: str
+
+
+class ParserEnable(BaseModel):
+    trigger_id: str
+    enable_trigger: bool
+
+
+console_ns.schema_model(Parser.__name__, Parser.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+console_ns.schema_model(
+    ParserEnable.__name__, ParserEnable.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/triggers/webhook")
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
+    @console_ns.expect(console_ns.models[Parser.__name__], validate=True)
     @setup_required
     @login_required
     @account_initialization_required
@@ -29,10 +51,9 @@ class WebhookTriggerApi(Resource):
     @marshal_with(webhook_trigger_fields)
     def get(self, app_model: App):
         """Get webhook trigger for a node"""
-        parser = reqparse.RequestParser().add_argument("node_id", type=str, required=True, help="Node ID is required")
-        args = parser.parse_args()
+        args = Parser.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        node_id = str(args["node_id"])
+        node_id = args.node_id
 
         with Session(db.engine) as session:
             # Get webhook trigger for this app and node
@@ -51,6 +72,7 @@ class WebhookTriggerApi(Resource):
             return webhook_trigger
 
 
+@console_ns.route("/apps/<uuid:app_id>/triggers")
 class AppTriggersApi(Resource):
     """App Triggers list API"""
 
@@ -90,7 +112,9 @@ class AppTriggersApi(Resource):
         return {"data": triggers}
 
 
+@console_ns.route("/apps/<uuid:app_id>/trigger-enable")
 class AppTriggerEnableApi(Resource):
+    @console_ns.expect(console_ns.models[ParserEnable.__name__], validate=True)
     @setup_required
     @login_required
     @account_initialization_required
@@ -99,17 +123,11 @@ class AppTriggerEnableApi(Resource):
     @marshal_with(trigger_fields)
     def post(self, app_model: App):
         """Update app trigger (enable/disable)"""
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("trigger_id", type=str, required=True, nullable=False, location="json")
-            .add_argument("enable_trigger", type=bool, required=True, nullable=False, location="json")
-        )
-        args = parser.parse_args()
+        args = ParserEnable.model_validate(console_ns.payload)
 
         assert current_user.current_tenant_id is not None
 
-        trigger_id = args["trigger_id"]
-
+        trigger_id = args.trigger_id
         with Session(db.engine) as session:
             # Find the trigger using select
             trigger = session.execute(
@@ -124,7 +142,7 @@ class AppTriggerEnableApi(Resource):
                 raise NotFound("Trigger not found")
 
             # Update status based on enable_trigger boolean
-            trigger.status = AppTriggerStatus.ENABLED if args["enable_trigger"] else AppTriggerStatus.DISABLED
+            trigger.status = AppTriggerStatus.ENABLED if args.enable_trigger else AppTriggerStatus.DISABLED
 
             session.commit()
             session.refresh(trigger)
@@ -137,8 +155,3 @@ class AppTriggerEnableApi(Resource):
             trigger.icon = ""  # type: ignore
 
         return trigger
-
-
-console_ns.add_resource(WebhookTriggerApi, "/apps/<uuid:app_id>/workflows/triggers/webhook")
-console_ns.add_resource(AppTriggersApi, "/apps/<uuid:app_id>/triggers")
-console_ns.add_resource(AppTriggerEnableApi, "/apps/<uuid:app_id>/trigger-enable")

@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Опубликован конвейер знаний',
+      tip: '<CustomLink>Перейдите в «Документы»</CustomLink>, чтобы добавить или управлять документами.',
     },
     error: {
       message: 'Не удалось опубликовать конвейер знаний',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Структура',
     structureTooltip: 'Структура блоков определяет порядок разделения и индексирования документов (в соответствии с режимами «Общие», «Родитель-потомок» и «Вопросы и ответы») и является уникальной для каждой базы знаний.',
+    createdBy: 'По {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'письмена',
     backToDataSource: 'Источник данных',
     title: 'Добавить документы',
+    selectOnlineDocumentTip: 'Обработать до {{count}} страниц',
+    selectOnlineDriveTip: 'Обрабатывайте до {{count}} файлов, максимум {{fileSize}} МБ каждый',
   },
   documentSettings: {
     title: 'Настройки документа',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} страниц',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Все файлы',
       searchPlaceholder: 'Поиск файлов...',
       allBuckets: 'Все корзины облачного хранилища',
+      searchResult: 'Найти {{searchResultsLength}} элементов в папке "{{folderName}}"',
     },
     resetKeywords: 'Сброс ключевых слов',
     emptyFolder: 'Эта папка пуста',
     emptySearchResult: 'Предметы не найдены',
     notSupportedFileType: 'Этот тип файлов не поддерживается',
+    notConnected: '{{name}} не подключен',
+    notConnectedTip: 'Чтобы синхронизироваться с {{name}}, сначала необходимо установить соединение с {{name}}.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Подтверждение',
@@ -149,6 +160,7 @@ const translation = {
   knowledgeNameAndIconPlaceholder: 'Пожалуйста, введите название базы знаний',
   editPipelineInfo: 'Редактирование сведений о воронке продаж',
   knowledgeDescriptionPlaceholder: 'Опишите, что входит в эту базу знаний. Подробное описание позволяет ИИ более точно получать доступ к содержимому набора данных. Если значение пусто, Dify будет использовать стратегию попадания по умолчанию. (Дополнительный)',
+  configurationTip: 'Настроить {{pluginName}}',
 }
 
 export default translation

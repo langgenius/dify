@@ -234,6 +234,10 @@ const translation = {
     disabled: 'Onemogočeno',
     enabled: 'V storitvi',
   },
+  docAllEnabled_one: '{{count}} dokument omogočen',
+  docAllEnabled_other: 'Vsi dokumenti {{count}} omogočeni',
+  partialEnabled_one: 'Skupno {{count}} dokumentov, na voljo {{num}}',
+  partialEnabled_other: 'Skupno {{count}} dokumentov, na voljo {{num}}',
 }
 
 export default translation
