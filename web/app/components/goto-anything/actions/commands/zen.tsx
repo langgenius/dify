@@ -11,6 +11,11 @@ type ZenDeps = Record<string, never>
 // Custom event name for zen toggle
 export const ZEN_TOGGLE_EVENT = 'zen-toggle-maximize'
 
+// Shared function to dispatch zen toggle event
+const toggleZenMode = () => {
+  window.dispatchEvent(new CustomEvent(ZEN_TOGGLE_EVENT))
+}
+
 /**
  * Zen command - Toggle canvas maximize (focus mode) in workflow pages
  * Only available in workflow and chatflow pages
@@ -24,10 +29,7 @@ export const zenCommand: SlashCommandHandler<ZenDeps> = {
   isAvailable: () => isInWorkflowPage(),
 
   // Direct execution function
-  execute: () => {
-    // Dispatch custom event to trigger maximize toggle in workflow
-    window.dispatchEvent(new CustomEvent(ZEN_TOGGLE_EVENT))
-  },
+  execute: toggleZenMode,
 
   async search(_args: string, locale: string = 'en') {
     return [{
@@ -46,10 +48,7 @@ export const zenCommand: SlashCommandHandler<ZenDeps> = {
 
   register(_deps: ZenDeps) {
     registerCommands({
-      'workflow.zen': async (_args) => {
-        // Dispatch custom event to trigger maximize toggle in workflow
-        window.dispatchEvent(new CustomEvent(ZEN_TOGGLE_EVENT))
-      },
+      'workflow.zen': async () => toggleZenMode(),
     })
   },
 

@@ -110,6 +110,14 @@ export class SlashCommandRegistry {
   }
 
   /**
+   * Get all available commands in current context (deduplicated and filtered)
+   * Commands without isAvailable method are considered always available
+   */
+  getAvailableCommands(): SlashCommandHandler[] {
+    return this.getAllCommands().filter(handler => this.isCommandAvailable(handler))
+  }
+
+  /**
    * Search commands
    * @param query Full query (e.g., "/theme dark" or "/lang en")
    * @param locale Current language
@@ -160,27 +168,16 @@ export class SlashCommandRegistry {
    * Only shows commands that are available in current context
    */
   private async getRootCommands(): Promise<CommandSearchResult[]> {
-    const results: CommandSearchResult[] = []
-
-    for (const handler of this.getAllCommands()) {
-      // Check if command is available (default to true if isAvailable not implemented)
-      const isAvailable = this.isCommandAvailable(handler)
-      if (!isAvailable)
-        continue
-
-      results.push({
-        id: `root-${handler.name}`,
-        title: `/${handler.name}`,
-        description: handler.description,
-        type: 'command' as const,
-        data: {
-          command: `root.${handler.name}`,
-          args: { name: handler.name },
-        },
-      })
-    }
-
-    return results
+    return this.getAvailableCommands().map(handler => ({
+      id: `root-${handler.name}`,
+      title: `/${handler.name}`,
+      description: handler.description,
+      type: 'command' as const,
+      data: {
+        command: `root.${handler.name}`,
+        args: { name: handler.name },
+      },
+    }))
   }
 
   /**
@@ -191,12 +188,7 @@ export class SlashCommandRegistry {
     const lowercaseQuery = query.toLowerCase()
     const matches: CommandSearchResult[] = []
 
-    for (const handler of this.getAllCommands()) {
-      // Check if command is available (default to true if isAvailable not implemented)
-      const isAvailable = this.isCommandAvailable(handler)
-      if (!isAvailable)
-        continue
-
+    for (const handler of this.getAvailableCommands()) {
       // Check if command name matches
       if (handler.name.toLowerCase().includes(lowercaseQuery)) {
         matches.push({

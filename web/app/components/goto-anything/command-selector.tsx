@@ -27,14 +27,10 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
   const slashCommands = useMemo(() => {
     if (!isSlashMode) return []
 
-    const allCommands = slashCommandRegistry.getAllCommands()
+    const availableCommands = slashCommandRegistry.getAvailableCommands()
     const filter = searchFilter?.toLowerCase() || '' // searchFilter already has '/' removed
 
-    return allCommands.filter((cmd) => {
-      // Check if command is available in current context
-      const isAvailable = cmd.isAvailable?.() ?? true
-      if (!isAvailable) return false
-
+    return availableCommands.filter((cmd) => {
       if (!filter) return true
       return cmd.name.toLowerCase().includes(filter)
     }).map(cmd => ({
