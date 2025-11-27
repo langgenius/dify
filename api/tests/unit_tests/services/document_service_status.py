@@ -215,7 +215,7 @@ class DocumentStatusTestDataFactory:
 
         # Mock data_source_info_dict property
         document.data_source_info_dict = data_source_info or {}
-
+        document.completed_at = datetime.datetime(2023, 1, 1, 12, 0, 0) if indexing_status == "completed" else None
         return document
 
     @staticmethod
