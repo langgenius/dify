@@ -2,15 +2,14 @@ from collections.abc import Mapping
 from typing import Any
 
 from core.workflow.entities.pause_reason import HumanInputRequired
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 
 from .entities import HumanInputNodeData
 
 
-class HumanInputNode(Node):
+class HumanInputNode(Node[HumanInputNodeData]):
     node_type = NodeType.HUMAN_INPUT
     execution_type = NodeExecutionType.BRANCH
 
@@ -28,30 +27,9 @@ class HumanInputNode(Node):
 
     _node_data: HumanInputNodeData
 
-    def init_node_data(self, data: Mapping[str, Any]) -> None:
-        self._node_data = HumanInputNodeData(**data)
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
-
     @classmethod
     def version(cls) -> str:
         return "1"
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
 
     def _run(self):  # type: ignore[override]
         if self._is_completion_ready():
@@ -65,7 +43,8 @@ class HumanInputNode(Node):
         return self._pause_generator()
 
     def _pause_generator(self):
-        yield PauseRequestedEvent(reason=HumanInputRequired())
+        # TODO(QuantumGhost): yield a real form id.
+        yield PauseRequestedEvent(reason=HumanInputRequired(form_id="test_form_id", node_id=self.id))
 
     def _is_completion_ready(self) -> bool:
         """Determine whether all required inputs are satisfied."""
