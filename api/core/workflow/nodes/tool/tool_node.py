@@ -47,8 +47,6 @@ class ToolNode(Node[ToolNodeData]):
 
     node_type = NodeType.TOOL
 
-    _node_data: ToolNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
@@ -59,7 +57,7 @@ class ToolNode(Node[ToolNodeData]):
         """
         from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 
-        node_data = self._node_data
+        node_data = self.node_data
 
         # fetch tool icon
         tool_info = {
@@ -80,7 +78,7 @@ class ToolNode(Node[ToolNodeData]):
             if node_data.version != "1" or node_data.tool_node_version is not None:
                 variable_pool = self.graph_runtime_state.variable_pool
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self._node_id, self._node_data, self.invoke_from, variable_pool
+                self.tenant_id, self.app_id, self._node_id, self.node_data, self.invoke_from, variable_pool
             )
         except ToolNodeError as e:
             yield StreamCompletedEvent(
@@ -99,12 +97,12 @@ class ToolNode(Node[ToolNodeData]):
         parameters = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self._node_data,
+            node_data=self.node_data,
         )
         parameters_for_log = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self._node_data,
+            node_data=self.node_data,
             for_log=True,
         )
         # get conversation id
@@ -495,4 +493,4 @@ class ToolNode(Node[ToolNodeData]):
 
     @property
     def retry(self) -> bool:
-        return self._node_data.retry_config.retry_enabled
+        return self.node_data.retry_config.retry_enabled

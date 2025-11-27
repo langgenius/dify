@@ -70,7 +70,6 @@ class AgentNode(Node[AgentNodeData]):
     """
 
     node_type = NodeType.AGENT
-    _node_data: AgentNodeData
 
     @classmethod
     def version(cls) -> str:
@@ -82,8 +81,8 @@ class AgentNode(Node[AgentNodeData]):
         try:
             strategy = get_plugin_agent_strategy(
                 tenant_id=self.tenant_id,
-                agent_strategy_provider_name=self._node_data.agent_strategy_provider_name,
-                agent_strategy_name=self._node_data.agent_strategy_name,
+                agent_strategy_provider_name=self.node_data.agent_strategy_provider_name,
+                agent_strategy_name=self.node_data.agent_strategy_name,
             )
         except Exception as e:
             yield StreamCompletedEvent(
@@ -101,13 +100,13 @@ class AgentNode(Node[AgentNodeData]):
         parameters = self._generate_agent_parameters(
             agent_parameters=agent_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self._node_data,
+            node_data=self.node_data,
             strategy=strategy,
         )
         parameters_for_log = self._generate_agent_parameters(
             agent_parameters=agent_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self._node_data,
+            node_data=self.node_data,
             for_log=True,
             strategy=strategy,
         )
@@ -140,7 +139,7 @@ class AgentNode(Node[AgentNodeData]):
                 messages=message_stream,
                 tool_info={
                     "icon": self.agent_strategy_icon,
-                    "agent_strategy": self._node_data.agent_strategy_name,
+                    "agent_strategy": self.node_data.agent_strategy_name,
                 },
                 parameters_for_log=parameters_for_log,
                 user_id=self.user_id,
@@ -387,7 +386,7 @@ class AgentNode(Node[AgentNodeData]):
             current_plugin = next(
                 plugin
                 for plugin in plugins
-                if f"{plugin.plugin_id}/{plugin.name}" == self._node_data.agent_strategy_provider_name
+                if f"{plugin.plugin_id}/{plugin.name}" == self.node_data.agent_strategy_provider_name
             )
             icon = current_plugin.declaration.icon
         except StopIteration:
