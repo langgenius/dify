@@ -88,20 +88,20 @@ def create_mock_document(
 ) -> Document:
     """
     Create a mock Document object for testing.
-    
+
     This helper function standardizes document creation across tests,
     ensuring consistent structure and reducing code duplication.
-    
+
     Args:
         content: The text content of the document
         doc_id: Unique identifier for the document chunk
         score: Relevance score (0.0 to 1.0)
         provider: Document provider ("dify" or "external")
         additional_metadata: Optional extra metadata fields
-    
+
     Returns:
         Document: A properly structured Document object
-    
+
     Example:
         >>> doc = create_mock_document("Python is great", "doc1", score=0.95)
         >>> assert doc.metadata["score"] == 0.95
@@ -112,11 +112,11 @@ def create_mock_document(
         "dataset_id": str(uuid4()),
         "score": score,
     }
-    
+
     # Merge additional metadata if provided
     if additional_metadata:
         metadata.update(additional_metadata)
-    
+
     return Document(
         page_content=content,
         metadata=metadata,
@@ -127,29 +127,29 @@ def create_mock_document(
 def create_side_effect_for_search(documents: list[Document]):
     """
     Create a side effect function for mocking search methods.
-    
+
     This helper creates a function that simulates how RetrievalService
     search methods work - they modify the all_documents list in-place
     rather than returning values directly.
-    
+
     Args:
         documents: List of documents to add to all_documents
-    
+
     Returns:
         Callable: A side effect function compatible with mock.side_effect
-    
+
     Example:
         >>> mock_search.side_effect = create_side_effect_for_search([doc1, doc2])
-    
+
     Note:
         The RetrievalService uses ThreadPoolExecutor which submits tasks that
         modify a shared all_documents list. This pattern simulates that behavior.
     """
-    def side_effect(flask_app, dataset_id, query, top_k, *args, 
-                   all_documents, exceptions, **kwargs):
+
+    def side_effect(flask_app, dataset_id, query, top_k, *args, all_documents, exceptions, **kwargs):
         """
         Side effect function that mimics search method behavior.
-        
+
         Args:
             flask_app: Flask application context (unused in mock)
             dataset_id: ID of the dataset being searched
@@ -160,40 +160,40 @@ def create_side_effect_for_search(documents: list[Document]):
             **kwargs: Additional arguments (score_threshold, document_ids_filter, etc.)
         """
         all_documents.extend(documents)
-    
+
     return side_effect
 
 
 def create_side_effect_with_exception(error_message: str):
     """
     Create a side effect function that adds an exception to the exceptions list.
-    
+
     Used for testing error handling in the RetrievalService.
-    
+
     Args:
         error_message: The error message to add to exceptions
-    
+
     Returns:
         Callable: A side effect function that simulates an error
-    
+
     Example:
         >>> mock_search.side_effect = create_side_effect_with_exception("Search failed")
     """
-    def side_effect(flask_app, dataset_id, query, top_k, *args,
-                   all_documents, exceptions, **kwargs):
+
+    def side_effect(flask_app, dataset_id, query, top_k, *args, all_documents, exceptions, **kwargs):
         """Add error message to exceptions list."""
         exceptions.append(error_message)
-    
+
     return side_effect
 
 
 class TestRetrievalService:
     """
     Comprehensive test suite for RetrievalService class.
-    
+
     This test class validates all retrieval methods and their interactions,
     including edge cases, error handling, and integration scenarios.
-    
+
     Test Organization:
     ==================
     1. Fixtures (lines ~190-240)
@@ -201,42 +201,42 @@ class TestRetrievalService:
        - sample_documents: Reusable test documents with varying scores
        - mock_flask_app: Flask application context
        - mock_thread_pool: Synchronous executor for deterministic testing
-    
+
     2. Vector Search Tests (lines ~240-350)
        - Basic functionality
        - Document filtering
        - Empty results
        - Metadata filtering
        - Score thresholds
-    
+
     3. Keyword Search Tests (lines ~350-450)
        - Basic keyword matching
        - Special character handling
        - Document filtering
-    
+
     4. Hybrid Search Tests (lines ~450-640)
        - Vector + full-text combination
        - Deduplication logic
        - Weighted score merging
-    
+
     5. Full-Text Search Tests (lines ~640-680)
        - BM25-based search
-    
+
     6. Score Merging Tests (lines ~680-790)
        - Deduplication algorithms
        - Score comparison
        - Provider-specific handling
-    
+
     7. Error Handling Tests (lines ~790-920)
        - Empty queries
        - Non-existent datasets
        - Exception propagation
-    
+
     8. Additional Tests (lines ~920-1080)
        - Query escaping
        - Reranking integration
        - Top-K limiting
-    
+
     Mocking Strategy:
     =================
     Tests mock at the method level (embedding_search, keyword_search, etc.)
@@ -245,23 +245,23 @@ class TestRetrievalService:
     - Provides clearer test intent
     - Makes tests more maintainable
     - Properly simulates the in-place list modification pattern
-    
+
     Common Patterns:
     ================
     1. **Arrange**: Set up mocks with side_effect functions
     2. **Act**: Call RetrievalService.retrieve() with specific parameters
     3. **Assert**: Verify results, mock calls, and side effects
-    
+
     Example Test Structure:
         ```python
         def test_example(self, mock_get_dataset, mock_search, mock_dataset):
             # Arrange: Set up test data and mocks
             mock_get_dataset.return_value = mock_dataset
             mock_search.side_effect = create_side_effect_for_search([doc1, doc2])
-            
+
             # Act: Execute the method under test
             results = RetrievalService.retrieve(...)
-            
+
             # Assert: Verify expectations
             assert len(results) == 2
             mock_search.assert_called_once()
@@ -272,7 +272,7 @@ class TestRetrievalService:
     def mock_dataset(self) -> Dataset:
         """
         Create a mock Dataset object for testing.
-        
+
         Returns:
             Dataset: Mock dataset with standard configuration
         """
@@ -295,7 +295,7 @@ class TestRetrievalService:
     def sample_documents(self) -> list[Document]:
         """
         Create sample documents for testing retrieval results.
-        
+
         Returns:
             list[Document]: List of mock documents with varying scores
         """
@@ -336,7 +336,7 @@ class TestRetrievalService:
     def mock_flask_app(self):
         """
         Create a mock Flask application context.
-        
+
         Returns:
             Mock: Flask app mock with app_context
         """
@@ -349,7 +349,7 @@ class TestRetrievalService:
     def mock_thread_pool(self):
         """
         Mock ThreadPoolExecutor to run tasks synchronously in tests.
-        
+
         The RetrievalService uses ThreadPoolExecutor to run search operations
         concurrently (embedding_search, keyword_search, full_text_index_search).
         In tests, we want synchronous execution for:
@@ -357,46 +357,46 @@ class TestRetrievalService:
         - Easier debugging
         - Avoiding race conditions
         - Simpler assertions
-        
+
         How it works:
         -------------
         1. Intercepts ThreadPoolExecutor creation
         2. Replaces submit() to execute functions immediately (synchronously)
         3. Functions modify shared all_documents list in-place
         4. Mocks concurrent.futures.wait() since tasks are already done
-        
+
         Why this approach:
         ------------------
         - RetrievalService.retrieve() creates a ThreadPoolExecutor context
         - It submits search tasks that modify all_documents list
         - concurrent.futures.wait() waits for all tasks to complete
         - By executing synchronously, we avoid threading complexity in tests
-        
+
         Returns:
             Mock: Mocked ThreadPoolExecutor that executes tasks synchronously
         """
         with patch("core.rag.datasource.retrieval_service.ThreadPoolExecutor") as mock_executor:
             # Store futures to track submitted tasks (for debugging if needed)
             futures_list = []
-            
+
             def sync_submit(fn, *args, **kwargs):
                 """
                 Synchronous replacement for ThreadPoolExecutor.submit().
-                
+
                 Instead of scheduling the function for async execution,
                 we execute it immediately in the current thread.
-                
+
                 Args:
                     fn: The function to execute (e.g., embedding_search)
                     *args, **kwargs: Arguments to pass to the function
-                
+
                 Returns:
                     Mock: A mock Future object
                 """
                 future = Mock()
                 try:
                     # Execute immediately - this modifies all_documents in place
-                    # The function signature is: fn(flask_app, dataset_id, query, 
+                    # The function signature is: fn(flask_app, dataset_id, query,
                     #                             top_k, all_documents, exceptions, ...)
                     fn(*args, **kwargs)
                     future.result.return_value = None
@@ -405,18 +405,18 @@ class TestRetrievalService:
                     # If function raises, store exception in future
                     future.result.return_value = None
                     future.exception.return_value = e
-                
+
                 futures_list.append(future)
                 return future
 
             # Set up the mock executor instance
             mock_executor_instance = Mock()
             mock_executor_instance.submit = sync_submit
-            
+
             # Configure context manager behavior (__enter__ and __exit__)
             mock_executor.return_value.__enter__.return_value = mock_executor_instance
             mock_executor.return_value.__exit__.return_value = None
-            
+
             # Mock concurrent.futures.wait to do nothing since tasks are already done
             # In real code, this waits for all futures to complete
             # In tests, futures complete immediately, so wait is a no-op
@@ -430,13 +430,13 @@ class TestRetrievalService:
     def test_vector_search_basic(self, mock_get_dataset, mock_embedding_search, mock_dataset, sample_documents):
         """
         Test basic vector/semantic search functionality.
-        
+
         This test validates the core vector search flow:
         1. Dataset is retrieved from database
         2. embedding_search is called via ThreadPoolExecutor
         3. Documents are added to shared all_documents list
         4. Results are returned to caller
-        
+
         Verifies:
         - Vector search is called with correct parameters
         - Results are returned in expected format
@@ -446,19 +446,28 @@ class TestRetrievalService:
         # ==================== ARRANGE ====================
         # Set up the mock dataset that will be "retrieved" from database
         mock_get_dataset.return_value = mock_dataset
-        
+
         # Create a side effect function that simulates embedding_search behavior
         # In the real implementation, embedding_search:
         # 1. Gets the dataset
         # 2. Creates a Vector instance
         # 3. Calls search_by_vector with embeddings
         # 4. Extends all_documents with results
-        def side_effect_embedding_search(flask_app, dataset_id, query, top_k, score_threshold, 
-                                         reranking_model, all_documents, retrieval_method, 
-                                         exceptions, document_ids_filter=None):
+        def side_effect_embedding_search(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             """Simulate embedding_search adding documents to the shared list."""
             all_documents.extend(sample_documents)
-        
+
         mock_embedding_search.side_effect = side_effect_embedding_search
 
         # Define test parameters
@@ -486,15 +495,13 @@ class TestRetrievalService:
         # ==================== ASSERT ====================
         # Verify we got the expected number of documents
         assert len(results) == 3, "Should return 3 documents from sample_documents"
-        
+
         # Verify all results are Document objects (type safety)
-        assert all(isinstance(doc, Document) for doc in results), \
-            "All results should be Document instances"
-        
+        assert all(isinstance(doc, Document) for doc in results), "All results should be Document instances"
+
         # Verify documents maintain their scores (highest score first in sample_documents)
-        assert results[0].metadata["score"] == 0.95, \
-            "First document should have highest score from sample_documents"
-        
+        assert results[0].metadata["score"] == 0.95, "First document should have highest score from sample_documents"
+
         # Verify embedding_search was called exactly once
         # This confirms the search method was invoked by ThreadPoolExecutor
         mock_embedding_search.assert_called_once()
@@ -506,7 +513,7 @@ class TestRetrievalService:
     ):
         """
         Test vector search with document ID filtering.
-        
+
         Verifies:
         - Document ID filter is passed correctly to vector search
         - Only specified documents are searched
@@ -514,12 +521,21 @@ class TestRetrievalService:
         # Arrange
         mock_get_dataset.return_value = mock_dataset
         filtered_docs = [sample_documents[0]]
-        
-        def side_effect_embedding_search(flask_app, dataset_id, query, top_k, score_threshold, 
-                                         reranking_model, all_documents, retrieval_method, 
-                                         exceptions, document_ids_filter=None):
+
+        def side_effect_embedding_search(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             all_documents.extend(filtered_docs)
-        
+
         mock_embedding_search.side_effect = side_effect_embedding_search
         document_ids_filter = [sample_documents[0].metadata["document_id"]]
 
@@ -544,7 +560,7 @@ class TestRetrievalService:
     def test_vector_search_empty_results(self, mock_get_dataset, mock_embedding_search, mock_dataset):
         """
         Test vector search when no results match the query.
-        
+
         Verifies:
         - Empty list is returned when no documents match
         - No errors are raised
@@ -572,7 +588,7 @@ class TestRetrievalService:
     def test_keyword_search_basic(self, mock_get_dataset, mock_keyword_search, mock_dataset, sample_documents):
         """
         Test basic keyword search functionality.
-        
+
         Verifies:
         - Keyword search is invoked correctly
         - Query is escaped properly for search
@@ -580,11 +596,12 @@ class TestRetrievalService:
         """
         # Arrange
         mock_get_dataset.return_value = mock_dataset
-        
-        def side_effect_keyword_search(flask_app, dataset_id, query, top_k, all_documents, 
-                                       exceptions, document_ids_filter=None):
+
+        def side_effect_keyword_search(
+            flask_app, dataset_id, query, top_k, all_documents, exceptions, document_ids_filter=None
+        ):
             all_documents.extend(sample_documents)
-        
+
         mock_keyword_search.side_effect = side_effect_keyword_search
 
         query = "Python programming"
@@ -608,7 +625,7 @@ class TestRetrievalService:
     def test_keyword_search_with_special_characters(self, mock_get_dataset, mock_keyword_search, mock_dataset):
         """
         Test keyword search with special characters in query.
-        
+
         Verifies:
         - Special characters are escaped correctly
         - Search handles quotes and other special chars
@@ -641,7 +658,7 @@ class TestRetrievalService:
     ):
         """
         Test keyword search with document ID filtering.
-        
+
         Verifies:
         - Document filter is applied to keyword search
         - Only filtered documents are returned
@@ -649,11 +666,12 @@ class TestRetrievalService:
         # Arrange
         mock_get_dataset.return_value = mock_dataset
         filtered_docs = [sample_documents[1]]
-        
-        def side_effect_keyword_search(flask_app, dataset_id, query, top_k, all_documents, 
-                                       exceptions, document_ids_filter=None):
+
+        def side_effect_keyword_search(
+            flask_app, dataset_id, query, top_k, all_documents, exceptions, document_ids_filter=None
+        ):
             all_documents.extend(filtered_docs)
-        
+
         mock_keyword_search.side_effect = side_effect_keyword_search
         document_ids_filter = [sample_documents[1].metadata["document_id"]]
 
@@ -677,12 +695,17 @@ class TestRetrievalService:
     @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_hybrid_search_basic(
-        self, mock_get_dataset, mock_embedding_search, mock_fulltext_search, 
-        mock_data_processor_class, mock_dataset, sample_documents
+        self,
+        mock_get_dataset,
+        mock_embedding_search,
+        mock_fulltext_search,
+        mock_data_processor_class,
+        mock_dataset,
+        sample_documents,
     ):
         """
         Test basic hybrid search combining vector and full-text search.
-        
+
         Verifies:
         - Both vector and full-text search are executed
         - Results are merged and deduplicated
@@ -692,19 +715,37 @@ class TestRetrievalService:
         mock_get_dataset.return_value = mock_dataset
 
         # Vector search returns first 2 docs
-        def side_effect_embedding(flask_app, dataset_id, query, top_k, score_threshold, 
-                                 reranking_model, all_documents, retrieval_method, 
-                                 exceptions, document_ids_filter=None):
+        def side_effect_embedding(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             all_documents.extend(sample_documents[:2])
-        
+
         mock_embedding_search.side_effect = side_effect_embedding
 
         # Full-text search returns last 2 docs (with overlap)
-        def side_effect_fulltext(flask_app, dataset_id, query, top_k, score_threshold, 
-                                reranking_model, all_documents, retrieval_method, 
-                                exceptions, document_ids_filter=None):
+        def side_effect_fulltext(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             all_documents.extend(sample_documents[1:])
-        
+
         mock_fulltext_search.side_effect = side_effect_fulltext
 
         # Mock DataPostProcessor
@@ -732,29 +773,28 @@ class TestRetrievalService:
     @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_hybrid_search_deduplication(
-        self, mock_get_dataset, mock_embedding_search, mock_fulltext_search, 
-        mock_data_processor_class, mock_dataset
+        self, mock_get_dataset, mock_embedding_search, mock_fulltext_search, mock_data_processor_class, mock_dataset
     ):
         """
         Test that hybrid search properly deduplicates documents.
-        
+
         Hybrid search combines results from multiple search methods (vector + full-text).
         This can lead to duplicate documents when the same chunk is found by both methods.
-        
+
         Scenario:
         ---------
         1. Vector search finds document "duplicate_doc" with score 0.9
         2. Full-text search also finds "duplicate_doc" but with score 0.6
         3. Both searches find "unique_doc"
         4. Deduplication should keep only the higher-scoring version (0.9)
-        
+
         Why deduplication matters:
         --------------------------
         - Prevents showing the same content multiple times to users
         - Ensures score consistency (keeps best match)
         - Improves result quality and user experience
         - Happens BEFORE reranking to avoid processing duplicates
-        
+
         Verifies:
         - Duplicate documents (same doc_id) are removed
         - Higher scoring duplicate is retained
@@ -771,7 +811,7 @@ class TestRetrievalService:
             metadata={
                 "doc_id": "duplicate_doc",  # Same doc_id as doc1_low
                 "score": 0.9,  # Higher score - should be kept
-                "document_id": str(uuid4())
+                "document_id": str(uuid4()),
             },
             provider="dify",
         )
@@ -780,7 +820,7 @@ class TestRetrievalService:
             metadata={
                 "doc_id": "duplicate_doc",  # Same doc_id as doc1_high
                 "score": 0.6,  # Lower score - should be discarded
-                "document_id": str(uuid4())
+                "document_id": str(uuid4()),
             },
             provider="dify",
         )
@@ -789,27 +829,45 @@ class TestRetrievalService:
             metadata={
                 "doc_id": "unique_doc",  # Unique doc_id
                 "score": 0.8,
-                "document_id": str(uuid4())
+                "document_id": str(uuid4()),
             },
             provider="dify",
         )
 
         # Simulate vector search returning high-score duplicate + unique doc
-        def side_effect_embedding(flask_app, dataset_id, query, top_k, score_threshold, 
-                                 reranking_model, all_documents, retrieval_method, 
-                                 exceptions, document_ids_filter=None):
+        def side_effect_embedding(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             """Vector search finds 2 documents including high-score duplicate."""
             all_documents.extend([doc1_high, doc2])
-        
+
         mock_embedding_search.side_effect = side_effect_embedding
-        
+
         # Simulate full-text search returning low-score duplicate
-        def side_effect_fulltext(flask_app, dataset_id, query, top_k, score_threshold, 
-                                reranking_model, all_documents, retrieval_method, 
-                                exceptions, document_ids_filter=None):
+        def side_effect_fulltext(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             """Full-text search finds the same document but with lower score."""
             all_documents.extend([doc1_low])
-        
+
         mock_fulltext_search.side_effect = side_effect_fulltext
 
         # Mock DataPostProcessor to return deduplicated results
@@ -834,16 +892,13 @@ class TestRetrievalService:
 
         # ==================== ASSERT ====================
         # Verify deduplication worked correctly
-        assert len(results) == 2, \
-            "Should have 2 unique documents after deduplication (not 3)"
-        
+        assert len(results) == 2, "Should have 2 unique documents after deduplication (not 3)"
+
         # Verify the correct documents are present
         doc_ids = [doc.metadata["doc_id"] for doc in results]
-        assert "duplicate_doc" in doc_ids, \
-            "Duplicate doc should be present (higher score version)"
-        assert "unique_doc" in doc_ids, \
-            "Unique doc should be present"
-        
+        assert "duplicate_doc" in doc_ids, "Duplicate doc should be present (higher score version)"
+        assert "unique_doc" in doc_ids, "Unique doc should be present"
+
         # Implicitly verifies that doc1_low (score 0.6) was discarded
         # in favor of doc1_high (score 0.9)
 
@@ -852,31 +907,54 @@ class TestRetrievalService:
     @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
     def test_hybrid_search_with_weights(
-        self, mock_get_dataset, mock_embedding_search, mock_fulltext_search,
-        mock_data_processor_class, mock_dataset, sample_documents
+        self,
+        mock_get_dataset,
+        mock_embedding_search,
+        mock_fulltext_search,
+        mock_data_processor_class,
+        mock_dataset,
+        sample_documents,
     ):
         """
         Test hybrid search with custom weights for score merging.
-        
+
         Verifies:
         - Weights are passed to DataPostProcessor
         - Score merging respects weight configuration
         """
         # Arrange
         mock_get_dataset.return_value = mock_dataset
-        
-        def side_effect_embedding(flask_app, dataset_id, query, top_k, score_threshold, 
-                                 reranking_model, all_documents, retrieval_method, 
-                                 exceptions, document_ids_filter=None):
+
+        def side_effect_embedding(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             all_documents.extend(sample_documents[:2])
-        
+
         mock_embedding_search.side_effect = side_effect_embedding
-        
-        def side_effect_fulltext(flask_app, dataset_id, query, top_k, score_threshold, 
-                                reranking_model, all_documents, retrieval_method, 
-                                exceptions, document_ids_filter=None):
+
+        def side_effect_fulltext(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             all_documents.extend(sample_documents[1:])
-        
+
         mock_fulltext_search.side_effect = side_effect_fulltext
 
         mock_processor_instance = Mock()
@@ -921,19 +999,28 @@ class TestRetrievalService:
     def test_fulltext_search_basic(self, mock_get_dataset, mock_fulltext_search, mock_dataset, sample_documents):
         """
         Test basic full-text search functionality.
-        
+
         Verifies:
         - Full-text search is invoked correctly
         - Results are returned in expected format
         """
         # Arrange
         mock_get_dataset.return_value = mock_dataset
-        
-        def side_effect_fulltext(flask_app, dataset_id, query, top_k, score_threshold, 
-                                reranking_model, all_documents, retrieval_method, 
-                                exceptions, document_ids_filter=None):
+
+        def side_effect_fulltext(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             all_documents.extend(sample_documents)
-        
+
         mock_fulltext_search.side_effect = side_effect_fulltext
 
         # Act
@@ -953,7 +1040,7 @@ class TestRetrievalService:
     def test_deduplicate_documents_basic(self):
         """
         Test basic document deduplication logic.
-        
+
         Verifies:
         - Documents with same doc_id are deduplicated
         - First occurrence is kept by default
@@ -988,7 +1075,7 @@ class TestRetrievalService:
     def test_deduplicate_documents_keeps_higher_score(self):
         """
         Test that deduplication keeps document with higher score.
-        
+
         Verifies:
         - When duplicates exist, higher scoring version is retained
         - Score comparison works correctly
@@ -1018,7 +1105,7 @@ class TestRetrievalService:
     def test_deduplicate_documents_empty_list(self):
         """
         Test deduplication with empty document list.
-        
+
         Verifies:
         - Empty list returns empty list
         - No errors are raised
@@ -1032,7 +1119,7 @@ class TestRetrievalService:
     def test_deduplicate_documents_non_dify_provider(self):
         """
         Test deduplication with non-dify provider documents.
-        
+
         Verifies:
         - External provider documents use content-based deduplication
         - Different providers are handled correctly
@@ -1067,7 +1154,7 @@ class TestRetrievalService:
     ):
         """
         Test vector search with metadata-based document filtering.
-        
+
         Verifies:
         - Metadata filters are applied correctly
         - Only documents matching metadata criteria are returned
@@ -1078,12 +1165,21 @@ class TestRetrievalService:
         # Add metadata to documents
         filtered_doc = sample_documents[0]
         filtered_doc.metadata["category"] = "programming"
-        
-        def side_effect_embedding(flask_app, dataset_id, query, top_k, score_threshold, 
-                                 reranking_model, all_documents, retrieval_method, 
-                                 exceptions, document_ids_filter=None):
+
+        def side_effect_embedding(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             all_documents.append(filtered_doc)
-        
+
         mock_embedding_search.side_effect = side_effect_embedding
 
         # Act
@@ -1105,7 +1201,7 @@ class TestRetrievalService:
     def test_retrieve_with_empty_query(self, mock_get_dataset, mock_dataset):
         """
         Test retrieval with empty query string.
-        
+
         Verifies:
         - Empty query returns empty results
         - No search operations are performed
@@ -1128,7 +1224,7 @@ class TestRetrievalService:
     def test_retrieve_with_nonexistent_dataset(self, mock_get_dataset):
         """
         Test retrieval with non-existent dataset ID.
-        
+
         Verifies:
         - Non-existent dataset returns empty results
         - No errors are raised
@@ -1152,20 +1248,29 @@ class TestRetrievalService:
     def test_retrieve_with_exception_handling(self, mock_get_dataset, mock_embedding_search, mock_dataset):
         """
         Test that exceptions during retrieval are properly handled.
-        
+
         Verifies:
         - Exceptions are caught and added to exceptions list
         - ValueError is raised with exception messages
         """
         # Arrange
         mock_get_dataset.return_value = mock_dataset
-        
+
         # Make embedding_search add an exception to the exceptions list
-        def side_effect_with_exception(flask_app, dataset_id, query, top_k, score_threshold, 
-                                      reranking_model, all_documents, retrieval_method, 
-                                      exceptions, document_ids_filter=None):
+        def side_effect_with_exception(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             exceptions.append("Search failed")
-        
+
         mock_embedding_search.side_effect = side_effect_with_exception
 
         # Act & Assert
@@ -1186,7 +1291,7 @@ class TestRetrievalService:
     def test_vector_search_with_score_threshold(self, mock_get_dataset, mock_embedding_search, mock_dataset):
         """
         Test vector search with score threshold filtering.
-        
+
         Verifies:
         - Score threshold is passed to search method
         - Documents below threshold are filtered out
@@ -1200,12 +1305,21 @@ class TestRetrievalService:
             metadata={"doc_id": "doc1", "score": 0.85},
             provider="dify",
         )
-        
-        def side_effect_embedding(flask_app, dataset_id, query, top_k, score_threshold, 
-                                 reranking_model, all_documents, retrieval_method, 
-                                 exceptions, document_ids_filter=None):
+
+        def side_effect_embedding(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             all_documents.append(high_score_doc)
-        
+
         mock_embedding_search.side_effect = side_effect_embedding
 
         score_threshold = 0.8
@@ -1230,7 +1344,7 @@ class TestRetrievalService:
     def test_retrieve_respects_top_k_limit(self, mock_get_dataset, mock_embedding_search, mock_dataset):
         """
         Test that retrieval respects top_k parameter.
-        
+
         Verifies:
         - Only top_k documents are returned
         - Limit is applied correctly
@@ -1247,13 +1361,22 @@ class TestRetrievalService:
             )
             for i in range(10)
         ]
-        
-        def side_effect_embedding(flask_app, dataset_id, query, top_k, score_threshold, 
-                                 reranking_model, all_documents, retrieval_method, 
-                                 exceptions, document_ids_filter=None):
+
+        def side_effect_embedding(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             # Return only top_k documents
             all_documents.extend(many_docs[:top_k])
-        
+
         mock_embedding_search.side_effect = side_effect_embedding
 
         top_k = 3
@@ -1279,17 +1402,17 @@ class TestRetrievalService:
     def test_escape_query_for_search(self):
         """
         Test query escaping for special characters.
-        
+
         Verifies:
         - Double quotes are properly escaped
         - Other characters remain unchanged
         """
         # Test cases with expected outputs
         test_cases = [
-            ('simple query', 'simple query'),
+            ("simple query", "simple query"),
             ('query with "quotes"', 'query with \\"quotes\\"'),
             ('"quoted phrase"', '\\"quoted phrase\\"'),
-            ('no special chars', 'no special chars'),
+            ("no special chars", "no special chars"),
         ]
 
         for input_query, expected_output in test_cases:
@@ -1305,23 +1428,32 @@ class TestRetrievalService:
     ):
         """
         Test semantic search with reranking model.
-        
+
         Verifies:
         - Reranking is applied when configured
         - DataPostProcessor is invoked with correct parameters
         """
         # Arrange
         mock_get_dataset.return_value = mock_dataset
-        
+
         # Simulate reranking changing order
         reranked_docs = list(reversed(sample_documents))
-        
-        def side_effect_embedding(flask_app, dataset_id, query, top_k, score_threshold, 
-                                 reranking_model, all_documents, retrieval_method, 
-                                 exceptions, document_ids_filter=None):
+
+        def side_effect_embedding(
+            flask_app,
+            dataset_id,
+            query,
+            top_k,
+            score_threshold,
+            reranking_model,
+            all_documents,
+            retrieval_method,
+            exceptions,
+            document_ids_filter=None,
+        ):
             # embedding_search handles reranking internally
             all_documents.extend(reranked_docs)
-        
+
         mock_embedding_search.side_effect = side_effect_embedding
 
         reranking_model = {
@@ -1348,34 +1480,34 @@ class TestRetrievalService:
 class TestRetrievalMethods:
     """
     Test suite for RetrievalMethod enum and utility methods.
-    
+
     The RetrievalMethod enum defines the available search strategies:
-    
+
     1. **SEMANTIC_SEARCH**: Vector-based similarity search using embeddings
        - Best for: Natural language queries, conceptual similarity
        - Uses: Embedding models (e.g., text-embedding-ada-002)
        - Example: "What is machine learning?" matches "AI and ML concepts"
-    
+
     2. **FULL_TEXT_SEARCH**: BM25-based text matching
        - Best for: Exact phrase matching, keyword presence
        - Uses: BM25 algorithm with sparse vectors
        - Example: "Python programming" matches documents with those exact terms
-    
+
     3. **HYBRID_SEARCH**: Combination of semantic + full-text
        - Best for: Comprehensive search with both conceptual and exact matching
        - Uses: Both embedding vectors and BM25, with score merging
        - Example: Finds both semantically similar and keyword-matching documents
-    
+
     4. **KEYWORD_SEARCH**: Traditional keyword-based search (economy mode)
        - Best for: Simple, fast searches without embeddings
        - Uses: Jieba tokenization and keyword matching
        - Example: Basic text search without vector database
-    
+
     Utility Methods:
     ================
     - is_support_semantic_search(): Check if method uses embeddings
     - is_support_fulltext_search(): Check if method uses BM25
-    
+
     These utilities help determine which search operations to execute
     in the RetrievalService.retrieve() method.
     """
@@ -1383,10 +1515,10 @@ class TestRetrievalMethods:
     def test_retrieval_method_values(self):
         """
         Test that all retrieval method constants are defined correctly.
-        
+
         This ensures the enum values match the expected string constants
         used throughout the codebase for configuration and API calls.
-        
+
         Verifies:
         - All expected retrieval methods exist
         - Values are correct strings (not accidentally changed)
@@ -1400,7 +1532,7 @@ class TestRetrievalMethods:
     def test_is_support_semantic_search(self):
         """
         Test semantic search support detection.
-        
+
         Verifies:
         - Semantic search method is detected
         - Hybrid search method is detected (includes semantic)
@@ -1414,7 +1546,7 @@ class TestRetrievalMethods:
     def test_is_support_fulltext_search(self):
         """
         Test full-text search support detection.
-        
+
         Verifies:
         - Full-text search method is detected
         - Hybrid search method is detected (includes full-text)
@@ -1429,10 +1561,10 @@ class TestRetrievalMethods:
 class TestDocumentModel:
     """
     Test suite for Document model used in retrieval.
-    
+
     The Document class is the core data structure for representing text chunks
     in the retrieval system. It's based on Pydantic BaseModel for validation.
-    
+
     Document Structure:
     ===================
     - **page_content** (str): The actual text content of the document chunk
@@ -1445,29 +1577,29 @@ class TestDocumentModel:
     - **provider** (str): Source of the document ("dify" or "external")
     - **vector** (list[float] | None): Embedding vector for semantic search
     - **children** (list[ChildDocument] | None): Sub-chunks for hierarchical docs
-    
+
     Document Lifecycle:
     ===================
     1. **Creation**: Documents are created when text is indexed
        - Content is chunked into manageable pieces
        - Embeddings are generated for semantic search
        - Metadata is attached for filtering and tracking
-    
+
     2. **Storage**: Documents are stored in vector databases
        - Vector field stores embeddings
        - Metadata enables filtering
        - Provider tracks source (internal vs external)
-    
+
     3. **Retrieval**: Documents are returned from search operations
        - Scores are added during search
        - Multiple documents may be combined (hybrid search)
        - Deduplication uses doc_id
-    
+
     4. **Post-processing**: Documents may be reranked or filtered
        - Scores can be recalculated
        - Content may be truncated or formatted
        - Metadata is used for display
-    
+
     Why Test the Document Model:
     ============================
     - Ensures data structure integrity
@@ -1475,7 +1607,7 @@ class TestDocumentModel:
     - Confirms default values work correctly
     - Tests equality comparison for deduplication
     - Verifies metadata handling
-    
+
     Related Classes:
     ================
     - ChildDocument: For hierarchical document structures
@@ -1485,10 +1617,10 @@ class TestDocumentModel:
     def test_document_creation_basic(self):
         """
         Test basic Document object creation.
-        
+
         Tests the minimal required fields and default values.
         Only page_content is required; all other fields have defaults.
-        
+
         Verifies:
         - Document can be created with minimal fields
         - Default values are set correctly
@@ -1506,7 +1638,7 @@ class TestDocumentModel:
     def test_document_creation_with_metadata(self):
         """
         Test Document creation with metadata.
-        
+
         Verifies:
         - Metadata is stored correctly
         - Metadata can contain various types
@@ -1525,7 +1657,7 @@ class TestDocumentModel:
     def test_document_creation_with_vector(self):
         """
         Test Document creation with embedding vector.
-        
+
         Verifies:
         - Vector embeddings can be stored
         - Vector is optional
@@ -1539,7 +1671,7 @@ class TestDocumentModel:
     def test_document_with_external_provider(self):
         """
         Test Document with external provider.
-        
+
         Verifies:
         - Provider can be set to external
         - External documents are handled correctly
@@ -1551,7 +1683,7 @@ class TestDocumentModel:
     def test_document_equality(self):
         """
         Test Document equality comparison.
-        
+
         Verifies:
         - Documents with same content are considered equal
         - Metadata affects equality
@@ -1562,4 +1694,3 @@ class TestDocumentModel:
 
         assert doc1 == doc2
         assert doc1 != doc3
-
