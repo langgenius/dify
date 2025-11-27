@@ -14,8 +14,6 @@ MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
 class TemplateTransformNode(Node[TemplateTransformNodeData]):
     node_type = NodeType.TEMPLATE_TRANSFORM
 
-    _node_data: TemplateTransformNodeData
-
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         """
@@ -35,14 +33,14 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
     def _run(self) -> NodeRunResult:
         # Get variables
         variables: dict[str, Any] = {}
-        for variable_selector in self._node_data.variables:
+        for variable_selector in self.node_data.variables:
             variable_name = variable_selector.variable
             value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
             variables[variable_name] = value.to_object() if value else None
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(
-                language=CodeLanguage.JINJA2, code=self._node_data.template, inputs=variables
+                language=CodeLanguage.JINJA2, code=self.node_data.template, inputs=variables
             )
         except CodeExecutionError as e:
             return NodeRunResult(inputs=variables, status=WorkflowNodeExecutionStatus.FAILED, error=str(e))

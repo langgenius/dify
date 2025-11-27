@@ -47,8 +47,6 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     node_type = NodeType.QUESTION_CLASSIFIER
     execution_type = NodeExecutionType.BRANCH
 
-    _node_data: QuestionClassifierNodeData
-
     _file_outputs: list["File"]
     _llm_file_saver: LLMFileSaver
 
@@ -82,7 +80,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
         return "1"
 
     def _run(self):
-        node_data = self._node_data
+        node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
 
         # extract variables

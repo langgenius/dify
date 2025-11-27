@@ -53,8 +53,6 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
 class VariableAssignerNode(Node[VariableAssignerNodeData]):
     node_type = NodeType.VARIABLE_ASSIGNER
 
-    _node_data: VariableAssignerNodeData
-
     def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool:
         """
         Check if this Variable Assigner node blocks the output of specific variables.
@@ -62,7 +60,7 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
         Returns True if this node updates any of the requested conversation variables.
         """
         # Check each item in this Variable Assigner node
-        for item in self._node_data.items:
+        for item in self.node_data.items:
             # Convert the item's variable_selector to tuple for comparison
             item_selector_tuple = tuple(item.variable_selector)
 
@@ -97,13 +95,13 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
         return var_mapping
 
     def _run(self) -> NodeRunResult:
-        inputs = self._node_data.model_dump()
+        inputs = self.node_data.model_dump()
         process_data: dict[str, Any] = {}
         # NOTE: This node has no outputs
         updated_variable_selectors: list[Sequence[str]] = []
 
         try:
-            for item in self._node_data.items:
+            for item in self.node_data.items:
                 variable = self.graph_runtime_state.variable_pool.get(item.variable_selector)
 
                 # ==================== Validation Part

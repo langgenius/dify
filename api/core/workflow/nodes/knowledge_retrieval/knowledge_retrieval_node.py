@@ -83,8 +83,6 @@ default_retrieval_model = {
 class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeData]):
     node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
-    _node_data: KnowledgeRetrievalNodeData
-
     # Instance attributes specific to LLMNode.
     # Output variable for file
     _file_outputs: list["File"]
@@ -122,7 +120,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
     def _run(self) -> NodeRunResult:
         # extract variables
-        variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
+        variable = self.graph_runtime_state.variable_pool.get(self.node_data.query_variable_selector)
         if not isinstance(variable, StringSegment):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -163,7 +161,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         # retrieve knowledge
         usage = LLMUsage.empty_usage()
         try:
-            results, usage = self._fetch_dataset_retriever(node_data=self._node_data, query=query)
+            results, usage = self._fetch_dataset_retriever(node_data=self.node_data, query=query)
             outputs = {"result": ArrayObjectSegment(value=results)}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -536,7 +534,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 prompt_messages=prompt_messages,
                 stop=stop,
                 user_id=self.user_id,
-                structured_output_enabled=self._node_data.structured_output_enabled,
+                structured_output_enabled=self.node_data.structured_output_enabled,
                 structured_output=None,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,

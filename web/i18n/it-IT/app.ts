@@ -308,6 +308,8 @@ const translation = {
       accountDesc: 'Vai alla pagina dell\'account',
       feedbackDesc: 'Discussioni di feedback della comunità aperta',
       docDesc: 'Apri la documentazione di aiuto',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Nessuna base di conoscenza trovata',
