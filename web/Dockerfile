@@ -57,24 +57,30 @@ ENV TZ=UTC
 RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo ${TZ} > /etc/timezone
 
+# global runtime packages
+RUN pnpm add -g pm2
+
+
+# Create non-root user
+ARG dify_uid=1001
+RUN addgroup -S -g ${dify_uid} dify && \
+    adduser -S -u ${dify_uid} -G dify -s /bin/ash -h /home/dify dify && \
+    mkdir /app && \
+    mkdir /.pm2 && \
+    chown -R dify:dify /app /.pm2
+
 
 WORKDIR /app/web
-COPY --from=builder /app/web/public ./public
-COPY --from=builder /app/web/.next/standalone ./
-COPY --from=builder /app/web/.next/static ./.next/static
 
-COPY docker/entrypoint.sh ./entrypoint.sh
+COPY --from=builder --chown=dify:dify /app/web/public ./public
+COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./
+COPY --from=builder --chown=dify:dify /app/web/.next/static ./.next/static
 
-
-# global runtime packages
-RUN pnpm add -g pm2 \
-    && mkdir /.pm2 \
-    && chown -R 1001:0 /.pm2 /app/web \
-    && chmod -R g=u /.pm2 /app/web
+COPY --chown=dify:dify docker/entrypoint.sh ./entrypoint.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
 
-USER 1001
+USER dify
 EXPOSE 3000
 ENTRYPOINT ["/bin/sh", "./entrypoint.sh"]
