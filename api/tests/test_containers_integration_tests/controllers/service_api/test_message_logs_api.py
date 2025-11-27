@@ -23,9 +23,10 @@ from faker import Faker
 from extensions.ext_database import db
 from models import Account, ApiToken, EndUser
 from models.enums import CreatorUserRole
-from models.model import App, Conversation, Message
-from services.account_service import AccountService, TenantService
-from services.app_service import AppService
+from models.model import App, AppMode, Conversation, Message
+
+# Import services inside test methods to avoid circular import issues
+# These imports are deferred to prevent circular dependencies during test collection
 
 
 class TestCompletionMessageLogsAPI:
@@ -82,6 +83,8 @@ class TestCompletionMessageLogsAPI:
         Returns:
             tuple: (app, account, api_token) - Created instances
         """
+        from services.account_service import AccountService, TenantService
+
         fake = Faker()
 
         # Create account and tenant
@@ -210,7 +213,7 @@ class TestCompletionMessageLogsAPI:
         return message
 
     def test_get_completion_message_logs_success(
-        self, db_session_with_containers, mock_external_service_dependencies, test_client
+        self, db_session_with_containers, mock_external_service_dependencies, test_client_with_containers
     ):
         """
         Test successful retrieval of completion message logs via API.
@@ -248,8 +251,8 @@ class TestCompletionMessageLogsAPI:
         )
 
         # Act: Make API request
-        response = test_client.get(
-            "/v1/completion-messages/logs",
+        response = test_client_with_containers.get(
+            f"/v1/completion-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"page": 1, "limit": 20},
         )
@@ -279,7 +282,7 @@ class TestCompletionMessageLogsAPI:
             assert log_entry["total_tokens"] == log_entry["message_tokens"] + log_entry["answer_tokens"]
 
     def test_get_completion_message_logs_with_keyword_filter(
-        self, db_session_with_containers, mock_external_service_dependencies, test_client
+        self, db_session_with_containers, mock_external_service_dependencies, test_client_with_containers
     ):
         """
         Test keyword filtering via API.
@@ -316,8 +319,8 @@ class TestCompletionMessageLogsAPI:
         db.session.commit()
 
         # Act: Search for "Python"
-        response = test_client.get(
-            "/v1/completion-messages/logs",
+        response = test_client_with_containers.get(
+            f"/v1/completion-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"keyword": "Python", "page": 1, "limit": 20},
         )
@@ -331,7 +334,7 @@ class TestCompletionMessageLogsAPI:
         assert data["data"][0]["id"] == message1.id
 
     def test_get_completion_message_logs_unauthorized(
-        self, db_session_with_containers, mock_external_service_dependencies, test_client
+        self, db_session_with_containers, mock_external_service_dependencies, test_client_with_containers
     ):
         """
         Test that unauthorized requests are rejected.
@@ -339,8 +342,8 @@ class TestCompletionMessageLogsAPI:
         This test verifies that requests without valid API token return 401.
         """
         # Act: Make request without authentication
-        response = test_client.get(
-            "/v1/completion-messages/logs",
+        response = test_client_with_containers.get(
+            f"/v1/completion-messages/logs",
             query_string={"page": 1, "limit": 20},
         )
 
@@ -348,7 +351,7 @@ class TestCompletionMessageLogsAPI:
         assert response.status_code == 401
 
     def test_get_completion_message_logs_wrong_app_mode(
-        self, db_session_with_containers, mock_external_service_dependencies, test_client
+        self, db_session_with_containers, mock_external_service_dependencies, test_client_with_containers
     ):
         """
         Test that wrong app mode returns error.
@@ -363,8 +366,8 @@ class TestCompletionMessageLogsAPI:
         )
 
         # Act: Try to get completion logs for chat app
-        response = test_client.get(
-            "/v1/completion-messages/logs",
+        response = test_client_with_containers.get(
+            f"/v1/completion-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"page": 1, "limit": 20},
         )
@@ -534,7 +537,7 @@ class TestChatMessageLogsAPI:
         return message
 
     def test_get_chat_message_logs_success(
-        self, db_session_with_containers, mock_external_service_dependencies, test_client
+        self, db_session_with_containers, mock_external_service_dependencies, test_client_with_containers
     ):
         """
         Test successful retrieval of chat message logs via API.
@@ -572,8 +575,8 @@ class TestChatMessageLogsAPI:
         )
 
         # Act: Make API request
-        response = test_client.get(
-            "/v1/chat-messages/logs",
+        response = test_client_with_containers.get(
+            f"/v1/chat-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"page": 1, "limit": 20},
         )
@@ -603,7 +606,7 @@ class TestChatMessageLogsAPI:
             assert log_entry["total_tokens"] == log_entry["message_tokens"] + log_entry["answer_tokens"]
 
     def test_get_chat_message_logs_with_date_filter(
-        self, db_session_with_containers, mock_external_service_dependencies, test_client
+        self, db_session_with_containers, mock_external_service_dependencies, test_client_with_containers
     ):
         """
         Test date range filtering via API.
@@ -642,8 +645,8 @@ class TestChatMessageLogsAPI:
         created_after = (base_time - timedelta(days=2)).isoformat()
         created_before = base_time.isoformat()
 
-        response = test_client.get(
-            "/v1/chat-messages/logs",
+        response = test_client_with_containers.get(
+            f"/v1/chat-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={
                 "created_at__after": created_after,
@@ -662,7 +665,7 @@ class TestChatMessageLogsAPI:
         assert data["data"][0]["id"] == message1.id
 
     def test_get_chat_message_logs_wrong_app_mode(
-        self, db_session_with_containers, mock_external_service_dependencies, test_client
+        self, db_session_with_containers, mock_external_service_dependencies, test_client_with_containers
     ):
         """
         Test that wrong app mode returns error.
@@ -677,11 +680,12 @@ class TestChatMessageLogsAPI:
         )
 
         # Act: Try to get chat logs for completion app
-        response = test_client.get(
-            "/v1/chat-messages/logs",
+        response = test_client_with_containers.get(
+            f"/v1/chat-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"page": 1, "limit": 20},
         )
 
         # Assert: Verify error response
         assert response.status_code in [400, 404]  # Depending on implementation
+
