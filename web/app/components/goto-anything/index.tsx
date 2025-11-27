@@ -303,7 +303,8 @@ const GotoAnything: FC<Props> = ({
                         const handler = slashCommandRegistry.findCommand(commandName)
 
                         // If it's a direct mode command, execute immediately
-                        if (handler?.mode === 'direct' && handler.execute) {
+                        const isAvailable = handler?.isAvailable?.() ?? true
+                        if (handler?.mode === 'direct' && handler.execute && isAvailable) {
                           e.preventDefault()
                           handler.execute()
                           setShow(false)

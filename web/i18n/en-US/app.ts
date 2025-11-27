@@ -325,6 +325,8 @@ const translation = {
       communityDesc: 'Open Discord community',
       docDesc: 'Open help documentation',
       feedbackDesc: 'Open community feedback discussions',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: 'No apps found',

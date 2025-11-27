@@ -10,8 +10,6 @@ from core.workflow.nodes.variable_aggregator.entities import VariableAggregatorN
 class VariableAggregatorNode(Node[VariableAggregatorNodeData]):
     node_type = NodeType.VARIABLE_AGGREGATOR
 
-    _node_data: VariableAggregatorNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
@@ -21,8 +19,8 @@ class VariableAggregatorNode(Node[VariableAggregatorNodeData]):
         outputs: dict[str, Segment | Mapping[str, Segment]] = {}
         inputs = {}
 
-        if not self._node_data.advanced_settings or not self._node_data.advanced_settings.group_enabled:
-            for selector in self._node_data.variables:
+        if not self.node_data.advanced_settings or not self.node_data.advanced_settings.group_enabled:
+            for selector in self.node_data.variables:
                 variable = self.graph_runtime_state.variable_pool.get(selector)
                 if variable is not None:
                     outputs = {"output": variable}
@@ -30,7 +28,7 @@ class VariableAggregatorNode(Node[VariableAggregatorNodeData]):
                     inputs = {".".join(selector[1:]): variable.to_object()}
                     break
         else:
-            for group in self._node_data.advanced_settings.groups:
+            for group in self.node_data.advanced_settings.groups:
                 for selector in group.variables:
                     variable = self.graph_runtime_state.variable_pool.get(selector)
 

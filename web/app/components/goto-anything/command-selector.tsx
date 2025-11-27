@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useEffect, useMemo } from 'react'
+import { usePathname } from 'next/navigation'
 import { Command } from 'cmdk'
 import { useTranslation } from 'react-i18next'
 import type { ActionItem } from './actions/types'
@@ -16,18 +17,20 @@ type Props = {
 
 const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, commandValue, onCommandValueChange, originalQuery }) => {
   const { t } = useTranslation()
+  const pathname = usePathname()
 
   // Check if we're in slash command mode
   const isSlashMode = originalQuery?.trim().startsWith('/') || false
 
   // Get slash commands from registry
+  // Note: pathname is included in deps because some commands (like /zen) check isAvailable based on current route
   const slashCommands = useMemo(() => {
     if (!isSlashMode) return []
 
-    const allCommands = slashCommandRegistry.getAllCommands()
+    const availableCommands = slashCommandRegistry.getAvailableCommands()
     const filter = searchFilter?.toLowerCase() || '' // searchFilter already has '/' removed
 
-    return allCommands.filter((cmd) => {
+    return availableCommands.filter((cmd) => {
       if (!filter) return true
       return cmd.name.toLowerCase().includes(filter)
     }).map(cmd => ({
@@ -36,7 +39,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
       title: cmd.name,
       description: cmd.description,
     }))
-  }, [isSlashMode, searchFilter])
+  }, [isSlashMode, searchFilter, pathname])
 
   const filteredActions = useMemo(() => {
     if (isSlashMode) return []
@@ -107,6 +110,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
                     '/feedback': 'app.gotoAnything.actions.feedbackDesc',
                     '/docs': 'app.gotoAnything.actions.docDesc',
                     '/community': 'app.gotoAnything.actions.communityDesc',
+                    '/zen': 'app.gotoAnything.actions.zenDesc',
                   }
                   return t(slashKeyMap[item.key] || item.description)
                 })()

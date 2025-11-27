@@ -84,7 +84,7 @@ class TriggerWebhookNode(Node[WebhookData]):
         webhook_headers = webhook_data.get("headers", {})
         webhook_headers_lower = {k.lower(): v for k, v in webhook_headers.items()}
 
-        for header in self._node_data.headers:
+        for header in self.node_data.headers:
             header_name = header.name
             value = _get_normalized(webhook_headers, header_name)
             if value is None:
@@ -93,20 +93,20 @@ class TriggerWebhookNode(Node[WebhookData]):
             outputs[sanitized_name] = value
 
         # Extract configured query parameters
-        for param in self._node_data.params:
+        for param in self.node_data.params:
             param_name = param.name
             outputs[param_name] = webhook_data.get("query_params", {}).get(param_name)
 
         # Extract configured body parameters
-        for body_param in self._node_data.body:
+        for body_param in self.node_data.body:
             param_name = body_param.name
             param_type = body_param.type
 
-            if self._node_data.content_type == ContentType.TEXT:
+            if self.node_data.content_type == ContentType.TEXT:
                 # For text/plain, the entire body is a single string parameter
                 outputs[param_name] = str(webhook_data.get("body", {}).get("raw", ""))
                 continue
-            elif self._node_data.content_type == ContentType.BINARY:
+            elif self.node_data.content_type == ContentType.BINARY:
                 outputs[param_name] = webhook_data.get("body", {}).get("raw", b"")
                 continue
 
