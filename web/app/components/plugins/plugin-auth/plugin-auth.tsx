@@ -9,7 +9,6 @@ import type { ReactNode } from 'react'
 import {
   RiAddLine,
   RiArrowDownSLine,
-  RiCheckLine,
   RiEqualizer2Line,
   RiKey2Line,
   RiUserStarLine,
@@ -20,7 +19,6 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { SimpleSelect } from '@/app/components/base/select'
 import Authorize from './authorize'
 import Authorized from './authorized'
 import AddApiKeyButton from './authorize/add-api-key-button'
@@ -60,11 +58,18 @@ const PluginAuth = ({
     disabled,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
+    hasOAuthClientConfigured,
   } = usePluginAuth(pluginPayload, !!pluginPayload.provider)
   const shouldShowGuide = !!showConnectGuide
   const [showCredentialPanel, setShowCredentialPanel] = useState(false)
   const [showAddMenu, setShowAddMenu] = useState(false)
+  const [showEndUserTypeMenu, setShowEndUserTypeMenu] = useState(false)
   const configuredDisabled = !!endUserCredentialEnabled
+  const shouldShowAuthorizeCard = useMemo(() => {
+    const hasCredential = credentials.length > 0
+    const canAdd = canOAuth || canApiKey || hasOAuthClientConfigured
+    return !hasCredential && canAdd
+  }, [credentials.length, canOAuth, canApiKey, hasOAuthClientConfigured])
   const availableEndUserTypes = useMemo(() => {
     const list: { value: string; label: string; icon: ReactNode }[] = []
     if (canOAuth) {
@@ -100,6 +105,7 @@ const PluginAuth = ({
 
   const handleSelectEndUserType = useCallback((value: string) => {
     onEndUserCredentialTypeChange?.(value)
+    setShowEndUserTypeMenu(false)
   }, [onEndUserCredentialTypeChange])
   const containerClassName = useMemo(() => {
     if (showConnectGuide)
@@ -165,43 +171,54 @@ const PluginAuth = ({
                 <div className='system-sm-semibold text-text-primary'>
                   {t('plugin.auth.endUserCredentials.typeLabel')}
                 </div>
-                <SimpleSelect
-                  wrapperClassName='w-[190px]'
-                  items={availableEndUserTypes.map(item => ({
-                    value: item.value,
-                    name: item.label,
-                    icon: item.icon,
-                  }))}
-                  defaultValue={endUserCredentialType || availableEndUserTypes[0]?.value}
-                  disabled={disabled}
-                  onSelect={item => handleSelectEndUserType(item.value as string)}
-                  renderTrigger={(value, open) => (
+                <PortalToFollowElem
+                  open={showEndUserTypeMenu}
+                  onOpenChange={setShowEndUserTypeMenu}
+                  placement='bottom-end'
+                  offset={6}
+                >
+                  <PortalToFollowElemTrigger asChild>
                     <button
                       type='button'
-                      className='border-components-input-border flex h-9 w-full items-center justify-between rounded-lg border bg-components-input-bg-normal px-3 text-left text-text-primary shadow-xs hover:bg-components-input-bg-hover'
+                      className='border-components-input-border flex h-9 min-w-[190px] items-center justify-between rounded-lg border bg-components-input-bg-normal px-3 text-left text-text-primary shadow-xs hover:bg-components-input-bg-hover'
+                      onClick={() => setShowEndUserTypeMenu(v => !v)}
                     >
-                      <span className='system-sm-semibold'>{value?.name || endUserCredentialLabel}</span>
-                      <RiArrowDownSLine
-                        className={cn(
-                          'h-4 w-4 text-text-tertiary transition-transform',
-                          open && 'rotate-180',
-                        )}
-                      />
+                      <span className='system-sm-semibold'>{endUserCredentialLabel}</span>
+                      <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />
                     </button>
-                  )}
-                  renderOption={({ item, selected }) => (
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center gap-2'>
-                        {item.icon}
-                        <span className='system-sm-semibold text-text-primary'>{item.name}</span>
+                  </PortalToFollowElemTrigger>
+                  <PortalToFollowElemContent className='z-[120]'>
+                    <div className='w-[220px] rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg'>
+                      <div className='flex flex-col gap-1 p-1'>
+                        {canOAuth && (
+                          <AddOAuthButton
+                            pluginPayload={pluginPayload}
+                            buttonVariant='ghost'
+                            className='w-full justify-between bg-transparent text-text-primary hover:bg-transparent'
+                            buttonText={t('plugin.auth.addOAuth')}
+                            disabled={disabled}
+                            onUpdate={() => {
+                              handleSelectEndUserType('oauth2')
+                              invalidPluginCredentialInfo()
+                            }}
+                          />
+                        )}
+                        {canApiKey && (
+                          <AddApiKeyButton
+                            pluginPayload={pluginPayload}
+                            buttonVariant='ghost'
+                            buttonText={t('plugin.auth.addApi')}
+                            disabled={disabled}
+                            onUpdate={() => {
+                              handleSelectEndUserType('api-key')
+                              invalidPluginCredentialInfo()
+                            }}
+                          />
+                        )}
                       </div>
-                      {selected && <RiCheckLine className='h-4 w-4 text-text-accent' />}
                     </div>
-                  )}
-                  optionWrapClassName='p-1'
-                  optionClassName='px-3 py-2 rounded-lg'
-                  hideChecked
-                />
+                  </PortalToFollowElemContent>
+                </PortalToFollowElem>
               </div>
             )
           }
@@ -282,8 +299,9 @@ const PluginAuth = ({
                                 <AddOAuthButton
                                   pluginPayload={pluginPayload}
                                   buttonVariant='ghost'
+                                  className='w-full justify-between bg-transparent text-text-primary hover:bg-transparent'
                                   buttonText={t('plugin.auth.addOAuth')}
-                                  disabled={disabled || configuredDisabled}
+                                  disabled={disabled}
                                   onUpdate={() => {
                                     setShowAddMenu(false)
                                     invalidPluginCredentialInfo()
@@ -297,7 +315,7 @@ const PluginAuth = ({
                                   pluginPayload={pluginPayload}
                                   buttonVariant='ghost'
                                   buttonText={t('plugin.auth.addApi')}
-                                  disabled={disabled || configuredDisabled}
+                                  disabled={disabled}
                                   onUpdate={() => {
                                     setShowAddMenu(false)
                                     invalidPluginCredentialInfo()
@@ -314,22 +332,24 @@ const PluginAuth = ({
                     {credentialList}
                   </div>
                   {
-                    credentials.length === 0 && (
+                    shouldShowAuthorizeCard && (
                       <div className={cn(
                         'mt-4 flex items-start gap-1.5 rounded-xl bg-background-section px-4 py-8',
                         configuredDisabled && 'pointer-events-none opacity-50',
                       )}>
                         <div className='flex w-full justify-center'>
-                          <Authorize
-                            pluginPayload={pluginPayload}
-                            canOAuth={canOAuth}
-                            canApiKey={canApiKey}
-                            disabled={disabled || configuredDisabled}
-                            onUpdate={invalidPluginCredentialInfo}
-                            notAllowCustomCredential={notAllowCustomCredential}
-                            theme='secondary'
-                            showDivider={!!(canOAuth && canApiKey)}
-                          />
+                          <div className='w-full max-w-[520px]'>
+                            <Authorize
+                              pluginPayload={pluginPayload}
+                              canOAuth={canOAuth}
+                              canApiKey={canApiKey}
+                              disabled={disabled || configuredDisabled}
+                              onUpdate={invalidPluginCredentialInfo}
+                              notAllowCustomCredential={notAllowCustomCredential}
+                              theme='secondary'
+                              showDivider={!!(canOAuth && canApiKey)}
+                            />
+                          </div>
                         </div>
                       </div>
                     )

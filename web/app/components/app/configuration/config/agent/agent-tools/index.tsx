@@ -33,7 +33,7 @@ import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTo
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useMittContextSelector } from '@/context/mitt-context'
 
-type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
+type AgentToolWithMoreInfo = (AgentTool & { icon: any; collection?: Collection; use_end_user_credentials?: boolean; end_user_credential_type?: string }) | null
 const AgentTools: FC = () => {
   const { t } = useTranslation()
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
@@ -102,7 +102,9 @@ const AgentTools: FC = () => {
       tool_parameters: tool.params,
       notAuthor: !tool.is_team_authorization,
       enabled: true,
-    }
+      use_end_user_credentials: false,
+      end_user_credential_type: '',
+    } as any
   }
   const handleSelectTool = (tool: ToolDefaultValue) => {
     const newModelConfig = produce(modelConfig, (draft) => {
@@ -133,6 +135,34 @@ const AgentTools: FC = () => {
     setCurrentTool({
       ...currentTool,
       credential_id: credentialId,
+    } as any)
+    setModelConfig(newModelConfig)
+    formattingChangedDispatcher()
+  }, [currentTool, modelConfig, setModelConfig, formattingChangedDispatcher])
+
+  const handleEndUserCredentialChange = useCallback((enabled: boolean) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === currentTool?.provider_id)
+      if (tool)
+        (tool as AgentTool).use_end_user_credentials = enabled
+    })
+    setCurrentTool({
+      ...currentTool,
+      use_end_user_credentials: enabled,
+    } as any)
+    setModelConfig(newModelConfig)
+    formattingChangedDispatcher()
+  }, [currentTool, modelConfig, setModelConfig, formattingChangedDispatcher])
+
+  const handleEndUserCredentialTypeChange = useCallback((type: string) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === currentTool?.provider_id)
+      if (tool)
+        (tool as AgentTool).end_user_credential_type = type
+    })
+    setCurrentTool({
+      ...currentTool,
+      end_user_credential_type: type,
     } as any)
     setModelConfig(newModelConfig)
     formattingChangedDispatcher()
@@ -315,6 +345,10 @@ const AgentTools: FC = () => {
           onHide={() => setIsShowSettingTool(false)}
           credentialId={currentTool?.credential_id}
           onAuthorizationItemClick={handleAuthorizationItemClick}
+          useEndUserCredentialEnabled={currentTool?.use_end_user_credentials}
+          endUserCredentialType={currentTool?.end_user_credential_type}
+          onEndUserCredentialChange={handleEndUserCredentialChange}
+          onEndUserCredentialTypeChange={handleEndUserCredentialTypeChange}
         />
       )}
     </>

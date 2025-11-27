@@ -130,6 +130,8 @@ export type AgentTool = {
   isDeleted?: boolean
   notAuthor?: boolean
   credential_id?: string
+  use_end_user_credentials?: boolean
+  end_user_credential_type?: string
 }
 
 export type ToolItem = {

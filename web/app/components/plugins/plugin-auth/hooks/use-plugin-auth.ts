@@ -13,6 +13,7 @@ export const usePluginAuth = (pluginPayload: PluginPayload, enable?: boolean) =>
   const canOAuth = data?.supported_credential_types.includes(CredentialTypeEnum.OAUTH2)
   const canApiKey = data?.supported_credential_types.includes(CredentialTypeEnum.API_KEY)
   const invalidPluginCredentialInfo = useInvalidPluginCredentialInfoHook(pluginPayload)
+  const hasOAuthClientConfigured = data?.is_oauth_custom_client_enabled
 
   return {
     isAuthorized,
@@ -22,5 +23,6 @@ export const usePluginAuth = (pluginPayload: PluginPayload, enable?: boolean) =>
     disabled: !isCurrentWorkspaceManager,
     notAllowCustomCredential: data?.allow_custom_token === false,
     invalidPluginCredentialInfo,
+    hasOAuthClientConfigured: !!hasOAuthClientConfigured,
   }
 }

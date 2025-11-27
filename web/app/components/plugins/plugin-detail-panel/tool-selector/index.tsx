@@ -210,6 +210,18 @@ const ToolSelector: FC<Props> = ({
       credential_id: id,
     } as any)
   }
+  const handleEndUserCredentialChange = (enabled: boolean) => {
+    onSelect({
+      ...value,
+      use_end_user_credentials: enabled,
+    } as any)
+  }
+  const handleEndUserCredentialTypeChange = (type: string) => {
+    onSelect({
+      ...value,
+      end_user_credential_type: type,
+    } as any)
+  }
 
   return (
     <>
@@ -323,6 +335,10 @@ const ToolSelector: FC<Props> = ({
                       }}
                       credentialId={value?.credential_id}
                       onAuthorizationItemClick={handleAuthorizationItemClick}
+                      useEndUserCredentialEnabled={value?.use_end_user_credentials}
+                      endUserCredentialType={value?.end_user_credential_type}
+                      onEndUserCredentialChange={handleEndUserCredentialChange}
+                      onEndUserCredentialTypeChange={handleEndUserCredentialTypeChange}
                     />
                   </div>
                 </>
