@@ -4,7 +4,7 @@ import {
   useEffect,
   useMemo,
 } from 'react'
-import { useNodes } from 'reactflow'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '../block-icon'
 import type { BlockEnum, CommonNodeType } from '../types'

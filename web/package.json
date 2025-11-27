@@ -1,8 +1,8 @@
 {
   "name": "dify-web",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "private": true,
-  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c",
+  "packageManager": "pnpm@10.23.0+sha512.21c4e5698002ade97e4efe8b8b4a89a8de3c85a37919f957e7a0f30f38fbc5bbdd05980ffe29179b2fb6e6e691242e098d945d1601772cad0fef5fb6411e2a4b",
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -37,6 +37,7 @@
     "check:i18n-types": "node ./i18n-config/check-i18n-sync.js",
     "test": "jest",
     "test:watch": "jest --watch",
+    "analyze-component": "node testing/analyze-component.js",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "preinstall": "npx only-allow pnpm",

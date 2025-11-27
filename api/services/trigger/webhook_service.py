@@ -5,6 +5,7 @@ import secrets
 from collections.abc import Mapping
 from typing import Any
 
+import orjson
 from flask import request
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -169,7 +170,7 @@ class WebhookService:
                 - method: HTTP method
                 - headers: Request headers
                 - query_params: Query parameters as strings
-                - body: Request body (varies by content type)
+                - body: Request body (varies by content type; JSON parsing errors raise ValueError)
                 - files: Uploaded files (if any)
         """
         cls._validate_content_length()
@@ -255,14 +256,21 @@ class WebhookService:
 
         Returns:
             tuple: (body_data, files_data) where:
-                - body_data: Parsed JSON content or empty dict if parsing fails
+                - body_data: Parsed JSON content
                 - files_data: Empty dict (JSON requests don't contain files)
+
+        Raises:
+            ValueError: If JSON parsing fails
         """
+        raw_body = request.get_data(cache=True)
+        if not raw_body or raw_body.strip() == b"":
+            return {}, {}
+
         try:
-            body = request.get_json() or {}
-        except Exception:
-            logger.warning("Failed to parse JSON body")
-            body = {}
+            body = orjson.loads(raw_body)
+        except orjson.JSONDecodeError as exc:
+            logger.warning("Failed to parse JSON body: %s", exc)
+            raise ValueError(f"Invalid JSON body: {exc}") from exc
         return body, {}
 
     @classmethod
