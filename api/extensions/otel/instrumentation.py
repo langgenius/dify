@@ -106,5 +106,3 @@ def init_runtime_instrumentors(app: DifyApp) -> None:
     init_sqlalchemy_instrumentor(app)
     init_redis_instrumentor()
     init_httpx_instrumentor()
-
-
