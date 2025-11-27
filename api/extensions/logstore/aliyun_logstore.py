@@ -98,7 +98,7 @@ class AliyunLogStore:
                     index_keys[column_name] = IndexKeyConfig(index_type=logstore_type, doc_value=True)
 
         # Add log_version field (not in PG model, but used in logstore for versioning)
-        index_keys["log_version"] = IndexKeyConfig(index_type="text", case_sensitive=False, doc_value=True)
+        index_keys["log_version"] = IndexKeyConfig(index_type="long", doc_value=True)
 
         return index_keys
 
@@ -276,11 +276,9 @@ class AliyunLogStore:
         elif logstore_name == AliyunLogStore.workflow_node_execution_logstore:
             field_keys = self._get_workflow_node_execution_index_keys()
 
-        # Convert field_keys dict to list of (key_name, key_config) tuples for IndexConfig
-        key_config_list = [(key_name, key_config) for key_name, key_config in field_keys.items()]
-
+        # key_config_list should be a dict, not a list
         # Create index config with both line and field indexes
-        return IndexConfig(line_config=line_config, key_config_list=key_config_list)
+        return IndexConfig(line_config=line_config, key_config_list=field_keys)
 
     def create_index(self, logstore_name: str) -> None:
         """
@@ -294,7 +292,7 @@ class AliyunLogStore:
             logger.info(
                 "index for %s created successfully with %d field indexes",
                 logstore_name,
-                len(index_config.key_config_list or []),
+                len(index_config.key_config_list or {}),
             )
         except LogException as e:
             logger.exception(
@@ -329,11 +327,9 @@ class AliyunLogStore:
         Returns:
             Tuple of (merged_config, needs_update)
         """
-        # Convert existing key_config_list to dict for easier processing
-        existing_keys = {}
-        if existing_config.key_config_list:
-            for key_name, key_config in existing_config.key_config_list:
-                existing_keys[key_name] = key_config
+        # key_config_list is already a dict in the SDK
+        # Make a copy to avoid modifying the original
+        existing_keys = dict(existing_config.key_config_list) if existing_config.key_config_list else {}
 
         # Track changes
         needs_update = False
@@ -408,9 +404,9 @@ class AliyunLogStore:
             )
 
         # Create merged config
-        merged_key_config_list = list(existing_keys.items())
+        # key_config_list should be a dict, not a list
         merged_config = IndexConfig(
-            line_config=existing_config.line_config or IndexLineConfig(), key_config_list=merged_key_config_list
+            line_config=existing_config.line_config or IndexLineConfig(), key_config_list=existing_keys
         )
 
         return merged_config, needs_update
@@ -458,7 +454,7 @@ class AliyunLogStore:
                     logger.info(
                         "Logstore %s: Index updated successfully, now has %d total field indexes",
                         logstore_name,
-                        len(merged_config.key_config_list or []),
+                        len(merged_config.key_config_list or {}),
                     )
                 except LogException as e:
                     logger.exception(
