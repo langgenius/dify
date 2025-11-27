@@ -404,7 +404,9 @@ class ModelProviderService:
                     provider=provider,
                     label=first_model.provider.label,
                     icon_small=first_model.provider.icon_small,
+                    icon_small_dark=first_model.provider.icon_small_dark,
                     icon_large=first_model.provider.icon_large,
+                    icon_large_dark=first_model.provider.icon_large_dark,
                     status=CustomConfigurationStatus.ACTIVE,
                     models=[
                         ProviderModelWithStatusEntity(

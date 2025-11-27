@@ -99,7 +99,9 @@ class SimpleProviderEntity(BaseModel):
     provider: str
     label: I18nObject
     icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
     icon_large: I18nObject | None = None
+    icon_large_dark: I18nObject | None = None
     supported_model_types: Sequence[ModelType]
     models: list[AIModelEntity] = []
 

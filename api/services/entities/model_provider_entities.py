@@ -121,7 +121,9 @@ class ProviderWithModelsResponse(BaseModel):
     provider: str
     label: I18nObject
     icon_small: I18nObject | None = None
+    icon_small_dark: I18nObject | None = None
     icon_large: I18nObject | None = None
+    icon_large_dark: I18nObject | None = None
     status: CustomConfigurationStatus
     models: list[ProviderModelWithStatusEntity]
 
@@ -135,9 +137,19 @@ class ProviderWithModelsResponse(BaseModel):
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
 
+        if self.icon_small_dark is not None:
+            self.icon_small_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_small_dark/en_US", zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans"
+            )
+
         if self.icon_large is not None:
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+            )
+
+        if self.icon_large_dark is not None:
+            self.icon_large_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_large_dark/en_US", zh_Hans=f"{url_prefix}/icon_large_dark/zh_Hans"
             )
         return self
 
@@ -159,9 +171,18 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
             )
 
+        if self.icon_small_dark is not None:
+            self.icon_small_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_small_dark/en_US", zh_Hans=f"{url_prefix}/icon_small_dark/zh_Hans"
+            )
+
         if self.icon_large is not None:
             self.icon_large = I18nObject(
                 en_US=f"{url_prefix}/icon_large/en_US", zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+            )
+        if self.icon_large_dark is not None:
+            self.icon_large_dark = I18nObject(
+                en_US=f"{url_prefix}/icon_large_dark/en_US", zh_Hans=f"{url_prefix}/icon_large_dark/zh_Hans"
             )
         return self
 
