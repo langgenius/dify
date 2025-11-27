@@ -129,12 +129,10 @@ class Node(Generic[NodeDataT]):
 
         node_data_type = cls._extract_node_data_type_from_generic()
 
-        if node_data_type is not None:
-            cls._node_data_type = node_data_type
-        elif "_node_data_type" not in cls.__dict__:
-            # Allow abstract intermediary classes to defer specification only if they
-            # explicitly override `_node_data_type`.
+        if node_data_type is None:
             raise TypeError(f"{cls.__name__} must inherit from Node[T] with a BaseNodeData subtype")
+
+        cls._node_data_type = node_data_type
 
     @classmethod
     def _extract_node_data_type_from_generic(cls) -> type[BaseNodeData] | None:

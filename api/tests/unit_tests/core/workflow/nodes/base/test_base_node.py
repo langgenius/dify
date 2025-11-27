@@ -60,13 +60,9 @@ def test_extract_node_data_type_from_generic_extracts_type():
     assert result is _TestNodeData
 
 
-def test_extract_node_data_type_from_generic_returns_none_without_parameter():
-    """When a class doesn't parameterize Node with a type, should return None."""
-
-    class _IntermediateNode(Node):
-        _node_data_type = _TestNodeData  # Bypass __init_subclass__ validation
-
-    result = _IntermediateNode._extract_node_data_type_from_generic()
+def test_extract_node_data_type_from_generic_returns_none_for_base_node():
+    """The base Node class itself should return None (no generic parameter)."""
+    result = Node._extract_node_data_type_from_generic()
 
     assert result is None
 
@@ -99,18 +95,17 @@ def test_init_subclass_raises_without_generic_or_explicit_type():
             pass
 
 
-def test_init_subclass_allows_explicit_node_data_type():
-    """A subclass can bypass generic by explicitly setting _node_data_type."""
+def test_init_subclass_rejects_explicit_node_data_type_without_generic():
+    """Setting _node_data_type explicitly cannot bypass the Node[T] requirement."""
+    with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
 
-    class _ExplicitNode(Node):
-        _node_data_type = _TestNodeData
-        node_type = NodeType.CODE
+        class _ExplicitNode(Node):
+            _node_data_type = _TestNodeData
+            node_type = NodeType.CODE
 
-        @staticmethod
-        def version() -> str:
-            return "1"
-
-    assert _ExplicitNode._node_data_type is _TestNodeData
+            @staticmethod
+            def version() -> str:
+                return "1"
 
 
 def test_init_subclass_sets_node_data_type_from_generic():
