@@ -73,7 +73,6 @@ def tool_node(monkeypatch) -> "ToolNode":
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    node.init_node_data(config["data"])
     return node
 
 
