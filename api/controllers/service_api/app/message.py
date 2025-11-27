@@ -12,6 +12,9 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.app.entities.app_invoke_entities import InvokeFrom
 from fields.conversation_fields import build_message_file_model
 from fields.message_fields import build_agent_thought_model, build_feedback_model
+
+# Import for issue #20759: message log fields
+from fields.message_log_fields import build_message_log_pagination_model
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField, uuid_value
 from models.model import App, AppMode, EndUser
@@ -21,9 +24,6 @@ from services.errors.message import (
     SuggestedQuestionsAfterAnswerDisabledError,
 )
 from services.message_service import MessageService
-
-# Import for issue #20759: message log fields
-from fields.message_log_fields import build_message_log_pagination_model
 
 logger = logging.getLogger(__name__)
 
@@ -303,8 +303,8 @@ class CompletionMessageLogApi(Resource):
         - total_tokens: Total tokens consumed (message_tokens + answer_tokens)
         """
         from dateutil.parser import isoparse
-        from fields.message_log_fields import build_message_log_pagination_model
         from sqlalchemy.orm import Session
+
         from services.message_service import MessageService
 
         args = message_log_parser.parse_args()
@@ -375,8 +375,8 @@ class ChatMessageLogApi(Resource):
         - total_tokens: Total tokens consumed (message_tokens + answer_tokens)
         """
         from dateutil.parser import isoparse
-        from fields.message_log_fields import build_message_log_pagination_model
         from sqlalchemy.orm import Session
+
         from services.message_service import MessageService
 
         args = message_log_parser.parse_args()

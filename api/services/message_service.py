@@ -17,7 +17,6 @@ from core.ops.utils import measure_time
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
-from models.enums import CreatorUserRole
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
 from services.errors.message import (
@@ -342,9 +341,7 @@ class MessageService:
         :return: Pagination object with message logs including token consumption
         """
         # Build base statement using SQLAlchemy 2.0 style
-        stmt = select(Message).where(
-            Message.app_id == app_model.id
-        )
+        stmt = select(Message).where(Message.app_id == app_model.id)
 
         # Apply keyword search if provided
         # Search in both query and answer fields

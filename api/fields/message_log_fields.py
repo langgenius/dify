@@ -8,12 +8,9 @@ consumption for each log entry, similar to how workflow logs are retrieved.
 
 from flask_restx import Api, Namespace, fields
 
-from extensions.ext_database import db
 from fields.end_user_fields import build_simple_end_user_model, simple_end_user_fields
 from fields.member_fields import build_simple_account_model, simple_account_fields
 from libs.helper import TimestampField
-from models import Account
-from models.model import EndUser
 
 # Message log fields that include token consumption information
 message_log_fields = {
@@ -77,4 +74,3 @@ def build_message_log_pagination_model(api_or_ns: Api | Namespace):
     copied_fields = message_log_pagination_fields.copy()
     copied_fields["data"] = fields.List(fields.Nested(message_log_model))
     return api_or_ns.model("MessageLogPagination", copied_fields)
-
