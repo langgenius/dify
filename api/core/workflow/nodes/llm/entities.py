@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
+from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.entities import VariableSelector
 
@@ -58,6 +59,30 @@ class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
     jinja2_text: str | None = None
 
 
+class ToolMetadata(BaseModel):
+    """
+    Tool metadata for LLM node with tool support.
+
+    Defines the essential fields needed for tool configuration,
+    particularly the 'type' field to identify tool provider type.
+    """
+
+    # Core fields
+    enabled: bool = True
+    type: ToolProviderType = Field(..., description="Tool provider type: builtin, api, mcp, workflow")
+    provider_name: str = Field(..., description="Tool provider name/identifier")
+    tool_name: str = Field(..., description="Tool name")
+
+    # Optional fields
+    plugin_unique_identifier: str | None = Field(None, description="Plugin unique identifier for plugin tools")
+    credential_id: str | None = Field(None, description="Credential ID for tools requiring authentication")
+
+    # Configuration fields
+    parameters: dict[str, Any] = Field(default_factory=dict, description="Tool parameters")
+    settings: dict[str, Any] = Field(default_factory=dict, description="Tool settings configuration")
+    extra: dict[str, Any] = Field(default_factory=dict, description="Extra tool configuration like custom description")
+
+
 class LLMNodeData(BaseNodeData):
     model: ModelConfig
     prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
@@ -85,6 +110,9 @@ class LLMNodeData(BaseNodeData):
             """
         ),
     )
+
+    # Tool support (from Agent V2)
+    tools: Sequence[ToolMetadata] = Field(default_factory=list)
 
     @field_validator("prompt_config", mode="before")
     @classmethod

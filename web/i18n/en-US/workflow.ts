@@ -502,6 +502,9 @@ const translation = {
       contextTooltip: 'You can import Knowledge as context',
       notSetContextInPromptTip: 'To enable the context feature, please fill in the context variable in PROMPT.',
       prompt: 'prompt',
+      tools: 'Tools',
+      toolsCount: '{{count}} tools selected',
+      toolsNotSupportedWarning: 'This model does not support native tool calling. A ReAct prompt template has been automatically added to the system prompt to enable tool usage.',
       roleDescription: {
         system: 'Give high level instructions for the conversation',
         user: 'Provide instructions, queries, or any text-based input to the model',

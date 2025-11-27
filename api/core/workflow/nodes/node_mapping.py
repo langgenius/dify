@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 
 from core.workflow.enums import NodeType
-from core.workflow.nodes.agent.agent_node import AgentNode
+from core.workflow.nodes.agent import AgentNode
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code import CodeNode
@@ -132,10 +132,6 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[Node]]] = {
     },
     NodeType.AGENT: {
         LATEST_VERSION: AgentNode,
-        # This is an issue that caused problems before.
-        # Logically, we shouldn't use two different versions to point to the same class here,
-        # but in order to maintain compatibility with historical data, this approach has been retained.
-        "2": AgentNode,
         "1": AgentNode,
     },
     NodeType.HUMAN_INPUT: {

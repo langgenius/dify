@@ -665,7 +665,7 @@ class WorkflowResponseConverter:
             task_id=task_id,
             data=AgentLogStreamResponse.Data(
                 node_execution_id=event.node_execution_id,
-                id=event.id,
+                message_id=event.id,
                 parent_id=event.parent_id,
                 label=event.label,
                 error=event.error,

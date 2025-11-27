@@ -18,6 +18,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import StructureOutput from './components/structure-output'
 import ReasoningFormatConfig from './components/reasoning-format-config'
+import ToolsConfig from './components/tools-config'
 import Switch from '@/app/components/base/switch'
 import { RiAlertFill, RiQuestionLine } from '@remixicon/react'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
@@ -57,12 +58,14 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     isModelSupportStructuredOutput,
+    isModelSupportToolCall,
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     handleStructureOutputChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    handleToolsChange,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -240,6 +243,26 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
           config={inputs.vision?.configs}
           onConfigChange={handleVisionResolutionChange}
         />
+
+        {/* Tools configuration */}
+        <Split />
+        <ToolsConfig
+          tools={inputs.tools}
+          onChange={handleToolsChange}
+          readonly={readOnly}
+          nodeId={id}
+          availableVars={availableVars}
+          availableNodes={availableNodesWithParent}
+        />
+        {/* Show warning when model doesn't support tool call but tools are selected */}
+        {inputs.tools && inputs.tools.length > 0 && !isModelSupportToolCall && isChatModel && (
+          <div className="mx-4 mt-2 flex items-start rounded-lg border border-yellow-200 bg-yellow-50 p-3 dark:border-yellow-900 dark:bg-yellow-900/20">
+            <RiAlertFill className="mr-2 mt-0.5 h-4 w-4 shrink-0 text-yellow-600 dark:text-yellow-500" />
+            <div className="text-xs text-yellow-700 dark:text-yellow-400">
+              {t('workflow.nodes.llm.toolsNotSupportedWarning')}
+            </div>
+          </div>
+        )}
 
         {/* Reasoning Format */}
         <ReasoningFormatConfig

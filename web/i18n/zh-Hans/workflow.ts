@@ -502,6 +502,9 @@ const translation = {
       contextTooltip: '您可以导入知识库作为上下文',
       notSetContextInPromptTip: '要启用上下文功能，请在提示中填写上下文变量。',
       prompt: '提示词',
+      tools: '工具',
+      toolsCount: '已选择 {{count}} 个工具',
+      toolsNotSupportedWarning: '该模型不支持原生工具调用功能。已自动在系统提示词中添加 ReAct 提示模板以启用工具使用。',
       addMessage: '添加消息',
       roleDescription: {
         system: '为对话提供高层指导',
