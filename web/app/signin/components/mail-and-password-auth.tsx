@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { useState, useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext } from 'use-context-selector'
@@ -65,9 +65,8 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   useEffect(() => {
     const checkAutofill = () => {
       // If the input has a value but our state doesn't, it was likely autofilled
-      if (passwordInputRef.current && passwordInputRef.current.value && !password) {
+      if (passwordInputRef.current && passwordInputRef.current.value && !password)
         setPassword(passwordInputRef.current.value)
-      }
     }
 
     // Check immediately and after a short delay to catch autofill
@@ -228,13 +227,12 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
             // which helps catch cases where onChange might not fire.
             // This is crucial because browser autofill may not trigger onChange
             // events, leaving the login button disabled even when password is filled.
-            onInput={e => {
+            onInput={(e) => {
               const target = e.target as HTMLInputElement
               // Update state if the input value changed (e.g., from autofill)
               // This ensures the login button becomes enabled when autofill occurs
-              if (target.value && target.value !== password) {
+              if (target.value && target.value !== password)
                 setPassword(target.value)
-              }
             }}
             // Allow form submission via Enter key for better UX
             onKeyDown={(e) => {
