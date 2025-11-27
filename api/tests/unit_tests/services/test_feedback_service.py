@@ -48,6 +48,7 @@ class TestFeedbackServiceFactory:
         created_at: datetime | None = None,
     ):
         """Create a mock Message object."""
+
         # Create a simple object with instance attributes
         # Using a class with __init__ ensures attributes are instance attributes
         class Message:
@@ -57,7 +58,7 @@ class TestFeedbackServiceFactory:
                 self.answer = answer
                 self.inputs = inputs
                 self.created_at = created_at or datetime.now()
-        
+
         return Message()
 
     @staticmethod
@@ -141,7 +142,7 @@ class TestFeedbackService:
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
         mock_query.all.return_value = sample_feedback_data
-        
+
         # Set up the session.query to return our mock
         mock_db.session.query.return_value = mock_query
 
@@ -179,7 +180,7 @@ class TestFeedbackService:
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
         mock_query.all.return_value = sample_feedback_data
-        
+
         # Set up the session.query to return our mock
         mock_db.session.query.return_value = mock_query
 
