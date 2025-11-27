@@ -262,6 +262,8 @@ const translation = {
       searchKnowledgeBasesDesc: 'Cari dan navigasikan ke basis pengetahuan Anda',
       themeSystem: 'Tema Sistem',
       languageChangeDesc: 'Mengubah bahasa UI',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noWorkflowNodesFound: 'Tidak ada simpul alur kerja yang ditemukan',

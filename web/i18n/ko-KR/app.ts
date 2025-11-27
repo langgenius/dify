@@ -322,6 +322,8 @@ const translation = {
       feedbackDesc: '공개 커뮤니티 피드백 토론',
       docDesc: '도움 문서 열기',
       accountDesc: '계정 페이지로 이동',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: '앱을 찾을 수 없습니다.',
