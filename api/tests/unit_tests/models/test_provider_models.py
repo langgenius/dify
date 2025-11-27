@@ -14,7 +14,7 @@ This test suite covers:
 - ProviderModelCredential storage
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
@@ -478,7 +478,7 @@ class TestProviderOrder:
         # Arrange
         tenant_id = str(uuid4())
         account_id = str(uuid4())
-        paid_time = datetime.now(timezone.utc)
+        paid_time = datetime.now(UTC)
 
         # Act
         order = ProviderOrder(
@@ -526,7 +526,7 @@ class TestProviderOrder:
         failed_order = ProviderOrder(
             **base_params,
             payment_status="failed",
-            pay_failed_at=datetime.now(timezone.utc),
+            pay_failed_at=datetime.now(UTC),
         )
         assert failed_order.payment_status == "failed"
         assert failed_order.pay_failed_at is not None
@@ -535,7 +535,7 @@ class TestProviderOrder:
         refunded_order = ProviderOrder(
             **base_params,
             payment_status="refunded",
-            refunded_at=datetime.now(timezone.utc),
+            refunded_at=datetime.now(UTC),
         )
         assert refunded_order.payment_status == "refunded"
         assert refunded_order.refunded_at is not None
