@@ -324,6 +324,8 @@ const translation = {
       communityDesc: '打开 Discord 社区',
       docDesc: '打开帮助文档',
       feedbackDesc: '打开社区反馈讨论',
+      zenTitle: '专注模式',
+      zenDesc: '切换画布专注模式',
     },
     emptyState: {
       noAppsFound: '未找到应用',

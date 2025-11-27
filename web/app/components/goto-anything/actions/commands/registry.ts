@@ -156,12 +156,17 @@ export class SlashCommandRegistry {
 
   /**
    * Get root level command list
+   * Only shows commands that are available in current context
    */
   private async getRootCommands(): Promise<CommandSearchResult[]> {
     const results: CommandSearchResult[] = []
 
-    // Generate a root level item for each command
     for (const handler of this.getAllCommands()) {
+      // Check if command is available (default to true if isAvailable not implemented)
+      const isAvailable = handler.isAvailable?.() ?? true
+      if (!isAvailable)
+        continue
+
       results.push({
         id: `root-${handler.name}`,
         title: `/${handler.name}`,
@@ -179,12 +184,18 @@ export class SlashCommandRegistry {
 
   /**
    * Fuzzy search commands
+   * Only shows commands that are available in current context
    */
   private fuzzySearchCommands(query: string): CommandSearchResult[] {
     const lowercaseQuery = query.toLowerCase()
     const matches: CommandSearchResult[] = []
 
-    this.getAllCommands().forEach((handler) => {
+    for (const handler of this.getAllCommands()) {
+      // Check if command is available (default to true if isAvailable not implemented)
+      const isAvailable = handler.isAvailable?.() ?? true
+      if (!isAvailable)
+        continue
+
       // Check if command name matches
       if (handler.name.toLowerCase().includes(lowercaseQuery)) {
         matches.push({
@@ -216,7 +227,7 @@ export class SlashCommandRegistry {
           }
         })
       }
-    })
+    }
 
     return matches
   }
