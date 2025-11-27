@@ -145,7 +145,7 @@ class ToolNode(Node[ToolNodeData]):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error=f"Failed to invoke tool {node_data.provider_name}: {str(e)}",
+                    error=f"Failed to invoke tool {self.node_data.provider_name}: {str(e)}",
                     error_type=type(e).__name__,
                 )
             )
@@ -155,7 +155,7 @@ class ToolNode(Node[ToolNodeData]):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error=e.to_user_friendly_error(plugin_name=node_data.provider_name),
+                    error=e.to_user_friendly_error(plugin_name=self.node_data.provider_name),
                     error_type=type(e).__name__,
                 )
             )
