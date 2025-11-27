@@ -14,14 +14,12 @@ class AnswerNode(Node[AnswerNodeData]):
     node_type = NodeType.ANSWER
     execution_type = NodeExecutionType.RESPONSE
 
-    _node_data: AnswerNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
 
     def _run(self) -> NodeRunResult:
-        segments = self.graph_runtime_state.variable_pool.convert_template(self._node_data.answer)
+        segments = self.graph_runtime_state.variable_pool.convert_template(self.node_data.answer)
         files = self._extract_files_from_segments(segments.value)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -71,4 +69,4 @@ class AnswerNode(Node[AnswerNodeData]):
         Returns:
             Template instance for this Answer node
         """
-        return Template.from_answer_template(self._node_data.answer)
+        return Template.from_answer_template(self.node_data.answer)

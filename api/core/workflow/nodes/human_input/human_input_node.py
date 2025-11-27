@@ -25,8 +25,6 @@ class HumanInputNode(Node[HumanInputNodeData]):
         "handle",
     )
 
-    _node_data: HumanInputNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
@@ -49,12 +47,12 @@ class HumanInputNode(Node[HumanInputNodeData]):
     def _is_completion_ready(self) -> bool:
         """Determine whether all required inputs are satisfied."""
 
-        if not self._node_data.required_variables:
+        if not self.node_data.required_variables:
             return False
 
         variable_pool = self.graph_runtime_state.variable_pool
 
-        for selector_str in self._node_data.required_variables:
+        for selector_str in self.node_data.required_variables:
             parts = selector_str.split(".")
             if len(parts) != 2:
                 return False
@@ -74,7 +72,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
             if handle:
                 return handle
 
-        default_values = self._node_data.default_value_dict
+        default_values = self.node_data.default_value_dict
         for key in self._BRANCH_SELECTION_KEYS:
             handle = self._normalize_branch_value(default_values.get(key))
             if handle:

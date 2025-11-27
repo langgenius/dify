@@ -25,8 +25,6 @@ class VariableAssignerNode(Node[VariableAssignerData]):
     node_type = NodeType.VARIABLE_ASSIGNER
     _conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY
 
-    _node_data: VariableAssignerData
-
     def __init__(
         self,
         id: str,
@@ -71,21 +69,21 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         return mapping
 
     def _run(self) -> NodeRunResult:
-        assigned_variable_selector = self._node_data.assigned_variable_selector
+        assigned_variable_selector = self.node_data.assigned_variable_selector
         # Should be String, Number, Object, ArrayString, ArrayNumber, ArrayObject
         original_variable = self.graph_runtime_state.variable_pool.get(assigned_variable_selector)
         if not isinstance(original_variable, Variable):
             raise VariableOperatorNodeError("assigned variable not found")
 
-        match self._node_data.write_mode:
+        match self.node_data.write_mode:
             case WriteMode.OVER_WRITE:
-                income_value = self.graph_runtime_state.variable_pool.get(self._node_data.input_variable_selector)
+                income_value = self.graph_runtime_state.variable_pool.get(self.node_data.input_variable_selector)
                 if not income_value:
                     raise VariableOperatorNodeError("input value not found")
                 updated_variable = original_variable.model_copy(update={"value": income_value.value})
 
             case WriteMode.APPEND:
-                income_value = self.graph_runtime_state.variable_pool.get(self._node_data.input_variable_selector)
+                income_value = self.graph_runtime_state.variable_pool.get(self.node_data.input_variable_selector)
                 if not income_value:
                     raise VariableOperatorNodeError("input value not found")
                 updated_value = original_variable.value + [income_value.value]
