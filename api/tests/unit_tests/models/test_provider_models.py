@@ -465,6 +465,15 @@ class TestProviderOrder:
             provider_name="openai",
             account_id=account_id,
             payment_product_id="prod_123",
+            payment_id=None,
+            transaction_id=None,
+            quantity=1,
+            currency=None,
+            total_amount=None,
+            payment_status="wait_pay",
+            paid_at=None,
+            pay_failed_at=None,
+            refunded_at=None,
         )
 
         # Assert
@@ -472,6 +481,8 @@ class TestProviderOrder:
         assert order.provider_name == "openai"
         assert order.account_id == account_id
         assert order.payment_product_id == "prod_123"
+        assert order.payment_status == "wait_pay"
+        assert order.quantity == 1
 
     def test_provider_order_with_payment_details(self):
         """Test provider order with full payment details."""
@@ -493,6 +504,8 @@ class TestProviderOrder:
             total_amount=9999,
             payment_status="paid",
             paid_at=paid_time,
+            pay_failed_at=None,
+            refunded_at=None,
         )
 
         # Assert
@@ -512,6 +525,14 @@ class TestProviderOrder:
             "provider_name": "openai",
             "account_id": str(uuid4()),
             "payment_product_id": "prod_123",
+            "payment_id": None,
+            "transaction_id": None,
+            "quantity": 1,
+            "currency": None,
+            "total_amount": None,
+            "paid_at": None,
+            "pay_failed_at": None,
+            "refunded_at": None,
         }
 
         # Act & Assert - Wait pay status
@@ -523,20 +544,14 @@ class TestProviderOrder:
         assert paid_order.payment_status == "paid"
 
         # Act & Assert - Failed status
-        failed_order = ProviderOrder(
-            **base_params,
-            payment_status="failed",
-            pay_failed_at=datetime.now(UTC),
-        )
+        failed_params = {**base_params, "pay_failed_at": datetime.now(UTC)}
+        failed_order = ProviderOrder(**failed_params, payment_status="failed")
         assert failed_order.payment_status == "failed"
         assert failed_order.pay_failed_at is not None
 
         # Act & Assert - Refunded status
-        refunded_order = ProviderOrder(
-            **base_params,
-            payment_status="refunded",
-            refunded_at=datetime.now(UTC),
-        )
+        refunded_params = {**base_params, "refunded_at": datetime.now(UTC)}
+        refunded_order = ProviderOrder(**refunded_params, payment_status="refunded")
         assert refunded_order.payment_status == "refunded"
         assert refunded_order.refunded_at is not None
 
