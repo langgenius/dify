@@ -240,34 +240,80 @@ class MessageSuggestedApi(Resource):
         return {"result": "success", "data": questions}
 
 
+# ============================================================================
 # Fix for issue #20759: Add log retrieval APIs for completion and chat applications
-# Define parser for message log APIs
+# ============================================================================
+# This section implements new API endpoints for retrieving message logs from
+# text generation (completion) and chat applications. These endpoints provide
+# access to message logs with token consumption data, similar to how workflow
+# logs can be retrieved.
+#
+# The endpoints support:
+# - Pagination (page, limit)
+# - Keyword searching (in query and answer fields)
+# - Date range filtering (created_at__before, created_at__after)
+# - User filtering (by account email or end user session ID)
+# - Token consumption data (message_tokens, answer_tokens, total_tokens)
+#
+# ============================================================================
+
+# Define parser for message log API endpoints
+# This parser validates and extracts query parameters from the HTTP request
 message_log_parser = (
     reqparse.RequestParser()
-    .add_argument("keyword", type=str, location="args", help="Search keyword for filtering logs")
+    # Keyword search parameter - searches in both query and answer fields
+    .add_argument(
+        "keyword",
+        type=str,
+        location="args",
+        help="Search keyword for filtering logs. Searches in both query and answer fields.",
+    )
+    # Date range filter - messages created before this timestamp
     .add_argument(
         "created_at__before",
         type=str,
         location="args",
-        help="Filter logs created before this timestamp (ISO 8601 format)",
+        help="Filter logs created before this timestamp (ISO 8601 format, e.g., 2024-01-01T00:00:00Z)",
     )
+    # Date range filter - messages created after this timestamp
     .add_argument(
         "created_at__after",
         type=str,
         location="args",
-        help="Filter logs created after this timestamp (ISO 8601 format)",
+        help="Filter logs created after this timestamp (ISO 8601 format, e.g., 2024-01-01T00:00:00Z)",
     )
-    .add_argument("page", type=int_range(1, 99999), required=False, default=1, location="args", help="Page number")
+    # Pagination - page number (1-indexed)
     .add_argument(
-        "limit", type=int_range(1, 100), required=False, default=20, location="args", help="Number of items per page"
+        "page",
+        type=int_range(1, 99999),
+        required=False,
+        default=1,
+        location="args",
+        help="Page number for pagination (1-indexed, default: 1)",
     )
+    # Pagination - number of items per page
+    .add_argument(
+        "limit",
+        type=int_range(1, 100),
+        required=False,
+        default=20,
+        location="args",
+        help="Number of items per page (1-100, default: 20)",
+    )
+    # User filter - filter by end user session ID
     .add_argument(
         "created_by_end_user_session_id",
         type=str,
         location="args",
-        help="Filter by end user session ID",
+        help="Filter by end user session ID. Only applies to API-sourced messages.",
     )
-    .add_argument("created_by_account", type=str, location="args", help="Filter by account email")
+    # User filter - filter by account email
+    .add_argument(
+        "created_by_account",
+        type=str,
+        location="args",
+        help="Filter by account email. Only applies to console-sourced messages.",
+    )
 )
 
 

@@ -18,24 +18,55 @@ import { resolvePostLoginRedirect } from './utils/post-login-redirect'
 import Split from './split'
 import { useIsLogin } from '@/service/use-common'
 
+/**
+ * Normal Signin Form Component
+ *
+ * This component renders the main signin form with support for multiple
+ * authentication methods (social, SSO, email/password, email/code).
+ *
+ * Fix for issue #21177 Bug 2: The component now properly redirects logged-in
+ * users instead of showing a loading state indefinitely.
+ */
 const NormalForm = () => {
+  // ============================================================================
+  // Hooks and Context
+  // ============================================================================
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+
+  // ============================================================================
+  // Authentication State Check
+  // ============================================================================
   // Check if user is already logged in
+  // This hook makes an API call to verify authentication status
   const { isLoading: isCheckLoading, data: loginData } = useIsLogin()
   const isLoggedIn = loginData?.logged_in
 
-  // Extract URL parameters
+  // ============================================================================
+  // URL Parameters
+  // ============================================================================
+  // Extract message from URL (e.g., error messages from redirects)
   const message = decodeURIComponent(searchParams.get('message') || '')
+
+  // Extract invite token from URL (for workspace invitations)
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
 
-  // Local state for initialization
+  // ============================================================================
+  // Local State
+  // ============================================================================
+  // Local state for initialization checks
+  // This tracks whether we've finished checking system features and setup
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
 
+  // ============================================================================
+  // Loading State Calculation
+  // ============================================================================
   // Fix for issue #21177 Bug 2: Remove isLoggedIn from isLoading calculation
   // Previously, if the user was logged in, isLoading would be true, preventing
-  // the redirect logic from executing. Now we only check loading states.
+  // the redirect logic in the init callback from executing. Now we only check
+  // actual loading states (authentication check and initialization), allowing
+  // the redirect to happen when the user is already authenticated.
   const isLoading = isCheckLoading || isInitCheckLoading
   const { systemFeatures } = useGlobalPublicStore()
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')

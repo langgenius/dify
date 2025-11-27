@@ -283,29 +283,81 @@ class ExternalDatasetService:
         external_retrieval_parameters: dict,
         metadata_condition: MetadataCondition | None = None,
     ):
+        """
+        Fetch knowledge retrieval results from an external knowledge API.
+
+        This method handles the communication with external knowledge bases (like RAGFlow)
+        to retrieve relevant documents based on a query and optional metadata filtering.
+
+        Fix for issue #21070: The metadata_condition parameter is now only included in the
+        request when it's not None. This prevents external APIs from ignoring metadata
+        filtering when None values are sent in the JSON request.
+
+        Args:
+            tenant_id: The tenant ID for the dataset
+            dataset_id: The dataset ID to retrieve from
+            query: The search query string
+            external_retrieval_parameters: Dictionary containing retrieval parameters like
+                top_k, score_threshold, etc.
+            metadata_condition: Optional metadata filtering conditions. If None, no metadata
+                filtering will be applied.
+
+        Returns:
+            list[Any]: List of retrieved document records from the external API
+
+        Raises:
+            ValueError: If external knowledge binding or API template is not found
+        """
+        # ========================================================================
+        # STEP 1: Retrieve the external knowledge binding for this dataset
+        # ========================================================================
+        # The binding links the dataset to an external knowledge base
         external_knowledge_binding = (
-            db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
+            db.session.query(ExternalKnowledgeBindings)
+            .filter_by(dataset_id=dataset_id, tenant_id=tenant_id)
+            .first()
         )
+
+        # Validate that the binding exists
         if not external_knowledge_binding:
             raise ValueError("external knowledge binding not found")
 
+        # ========================================================================
+        # STEP 2: Retrieve the external knowledge API configuration
+        # ========================================================================
+        # This contains the endpoint URL and API key for the external service
         external_knowledge_api = (
             db.session.query(ExternalKnowledgeApis)
             .filter_by(id=external_knowledge_binding.external_knowledge_api_id)
             .first()
         )
+
+        # Validate that the API configuration exists and has settings
         if external_knowledge_api is None or external_knowledge_api.settings is None:
             raise ValueError("external api template not found")
 
+        # Step 3: Parse the API settings from JSON
+        # Settings typically include endpoint URL and API key
         settings = json.loads(external_knowledge_api.settings)
+
+        # Step 4: Build HTTP headers for the request
+        # Always include Content-Type, and add Authorization if API key is provided
         headers = {"Content-Type": "application/json"}
+
+        # Add Bearer token authentication if API key is configured
         if settings.get("api_key"):
             headers["Authorization"] = f"Bearer {settings.get('api_key')}"
-        # Extract score threshold settings from external retrieval parameters
-        score_threshold_enabled = external_retrieval_parameters.get("score_threshold_enabled") or False
-        score_threshold = external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
 
-        # Build the base request parameters for the external knowledge API
+        # Step 5: Extract and process score threshold settings
+        # Score threshold is used to filter out low-relevance results
+        # Only apply threshold if it's explicitly enabled
+        score_threshold_enabled = external_retrieval_parameters.get("score_threshold_enabled") or False
+        score_threshold = (
+            external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
+        )
+
+        # Step 6: Build the base request parameters for the external knowledge API
+        # These parameters are always included in the request
         request_params = {
             "retrieval_setting": {
                 "top_k": external_retrieval_parameters.get("top_k"),
@@ -315,12 +367,17 @@ class ExternalDatasetService:
             "knowledge_id": external_knowledge_binding.external_knowledge_id,
         }
 
-        # Fix for issue #21070: Only include metadata_condition if it's not None
-        # This ensures that None values are not sent in the request, which could cause
-        # the external API to ignore the metadata filtering
+        # Step 7: Fix for issue #21070 - Conditionally include metadata_condition
+        # Only include metadata_condition if it's not None. This ensures that:
+        # 1. None values are not sent in the JSON request (which could cause issues)
+        # 2. External APIs receive the metadata filtering conditions correctly
+        # 3. The external API can properly apply metadata filters when provided
         if metadata_condition:
+            # Convert the MetadataCondition model to a dictionary for JSON serialization
             request_params["metadata_condition"] = metadata_condition.model_dump()
 
+        # Step 8: Make the HTTP request to the external knowledge API
+        # The process_external_api method handles the actual HTTP communication
         response = ExternalDatasetService.process_external_api(
             ExternalKnowledgeApiSetting(
                 url=f"{settings.get('endpoint')}/retrieval",
@@ -330,6 +387,11 @@ class ExternalDatasetService:
             ),
             None,
         )
+
+        # Step 9: Parse and return the response
+        # Extract the "records" field from the JSON response, which contains the retrieved documents
         if response.status_code == 200:
             return cast(list[Any], response.json().get("records", []))
+
+        # Return empty list if request was not successful
         return []
