@@ -127,8 +127,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_id: {workflow_id} and node_id: {node_id}"
 
         try:
-            # Query raw logs with large time range (last 30 days)
-            from_time = int(time.time()) - 86400 * 30  # 30 days ago
+            # Query raw logs with large time range
+            from_time = 0
             to_time = int(time.time())  # now
 
             results = self.logstore_client.get_logs(
@@ -193,8 +193,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_run_id: {workflow_run_id}"
 
         try:
-            # Query raw logs with large time range (last 30 days)
-            from_time = int(time.time()) - 86400 * 30  # 30 days ago
+            # Query raw logs with large time range
+            from_time = 0
             to_time = int(time.time())  # now
 
             results = self.logstore_client.get_logs(
@@ -256,8 +256,8 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             query = f"id: {execution_id}"
 
         try:
-            # Query raw logs with large time range (last 30 days)
-            from_time = int(time.time()) - 86400 * 30  # 30 days ago
+            # Query raw logs with large time range
+            from_time = 0
             to_time = int(time.time())  # now
 
             results = self.logstore_client.get_logs(

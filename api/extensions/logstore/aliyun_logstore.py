@@ -240,9 +240,9 @@ class AliyunLogStore:
         if not logstore:
             raise ValueError("logstore parameter is required for execute_sql")
 
-        # Provide default time range if not specified (last 30 days)
+        # Provide default time range if not specified
         if from_time is None:
-            from_time = int(time.time()) - 86400
+            from_time = 0
 
         if to_time is None:
             to_time = int(time.time())  # now
