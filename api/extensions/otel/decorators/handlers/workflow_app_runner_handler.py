@@ -5,15 +5,14 @@ from typing import Any
 from opentelemetry.trace import SpanKind, Status, StatusCode
 from opentelemetry.util.types import AttributeValue
 
-from core.observability.otel.core.handler import SpanHandler
-from core.observability.otel.semconv import DifySpanAttributes, GenAIAttributes
-from models.model import Account
+from extensions.otel.decorators.handler import SpanHandler
+from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 
 logger = logging.getLogger(__name__)
 
 
-class AppGenerateHandler(SpanHandler):
-    """Span handler for ``AppGenerateService.generate``."""
+class WorkflowAppRunnerHandler(SpanHandler):
+    """Span handler for ``WorkflowAppRunner.run``."""
 
     def wrapper(
         self,
@@ -27,30 +26,32 @@ class AppGenerateHandler(SpanHandler):
             if not arguments:
                 return wrapped(*args, **kwargs)
 
-            app_model = arguments.get("app_model")
-            user = arguments.get("user")
-            invoke_from_args = arguments.get("args", {})
-            streaming = arguments.get("streaming", True)
-
-            if not app_model or not user or not isinstance(invoke_from_args, dict):
+            runner = arguments.get("self")
+            if runner is None or not hasattr(runner, "application_generate_entity"):
                 return wrapped(*args, **kwargs)
-            app_id = getattr(app_model, "id", None) or "unknown"
-            tenant_id = getattr(app_model, "tenant_id", None) or "unknown"
-            user_id = getattr(user, "id", None) or "unknown"
-            workflow_id = invoke_from_args.get("workflow_id") or "unknown"
+
+            entity = runner.application_generate_entity
+            app_config = getattr(entity, "app_config", None)
+            if app_config is None:
+                return wrapped(*args, **kwargs)
+
+            user_id: AttributeValue = getattr(entity, "user_id", None) or "unknown"
+            app_id: AttributeValue = getattr(app_config, "app_id", None) or "unknown"
+            tenant_id: AttributeValue = getattr(app_config, "tenant_id", None) or "unknown"
+            workflow_id: AttributeValue = getattr(app_config, "workflow_id", None) or "unknown"
+            streaming = getattr(entity, "stream", True)
 
             attributes: dict[str, AttributeValue] = {
                 DifySpanAttributes.APP_ID: app_id,
                 DifySpanAttributes.TENANT_ID: tenant_id,
                 GenAIAttributes.USER_ID: user_id,
-                DifySpanAttributes.USER_TYPE: "Account" if isinstance(user, Account) else "EndUser",
                 DifySpanAttributes.STREAMING: streaming,
                 DifySpanAttributes.WORKFLOW_ID: workflow_id,
             }
 
             span_name = self._build_span_name(wrapped)
         except Exception as exc:
-            logger.warning("Failed to prepare span attributes for AppGenerateService.generate: %s", exc, exc_info=True)
+            logger.warning("Failed to prepare span attributes for WorkflowAppRunner.run: %s", exc, exc_info=True)
             return wrapped(*args, **kwargs)
 
         with tracer.start_as_current_span(span_name, kind=SpanKind.INTERNAL, attributes=attributes) as span:

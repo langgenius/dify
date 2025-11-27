@@ -6,7 +6,7 @@ from typing import Any, TypeVar, cast
 from opentelemetry.trace import get_tracer
 
 from configs import dify_config
-from core.observability.otel.core.handler import SpanHandler
+from extensions.otel.decorators.handler import SpanHandler
 
 T = TypeVar("T", bound=Callable[..., Any])
 

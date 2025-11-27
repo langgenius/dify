@@ -7,7 +7,6 @@ from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
-from core.observability.otel import WorkflowAppRunnerHandler, trace_span
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
@@ -19,6 +18,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
+from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 from models.workflow import Workflow
