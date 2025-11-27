@@ -839,21 +839,12 @@ function extractCopyContent(prompt) {
  * Priority: index files > common entry files (node.tsx, panel.tsx, etc.)
  */
 function resolveDirectoryEntry(absolutePath, componentPath) {
-  // Priority 1: index files
-  const indexFiles = ['index.tsx', 'index.ts']
-  for (const indexFile of indexFiles) {
-    const indexPath = path.join(absolutePath, indexFile)
-    if (fs.existsSync(indexPath)) {
-      return {
-        absolutePath: indexPath,
-        componentPath: path.join(componentPath, indexFile),
-      }
-    }
-  }
-
-  // Priority 2: common entry files (for workflow nodes and other patterns)
-  const commonEntryFiles = ['node.tsx', 'panel.tsx', 'component.tsx', 'main.tsx', 'container.tsx']
-  for (const entryFile of commonEntryFiles) {
+  // Entry files in priority order: index files first, then common entry files
+  const entryFiles = [
+    'index.tsx', 'index.ts', // Priority 1: index files
+    'node.tsx', 'panel.tsx', 'component.tsx', 'main.tsx', 'container.tsx', // Priority 2: common entry files
+  ]
+  for (const entryFile of entryFiles) {
     const entryPath = path.join(absolutePath, entryFile)
     if (fs.existsSync(entryPath)) {
       return {
@@ -877,7 +868,7 @@ function listAnalyzableFiles(dirPath) {
       .map(entry => entry.name)
       .sort((a, b) => {
         // Prioritize common entry files
-        const priority = ['node.tsx', 'panel.tsx', 'index.tsx', 'component.tsx']
+        const priority = ['index.tsx', 'index.ts', 'node.tsx', 'panel.tsx', 'component.tsx', 'main.tsx', 'container.tsx']
         const aIdx = priority.indexOf(a)
         const bIdx = priority.indexOf(b)
         if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx
