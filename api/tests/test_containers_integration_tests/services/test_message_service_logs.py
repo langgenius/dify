@@ -176,13 +176,13 @@ class TestMessageServiceLogs:
         app: App,
         conversation: Conversation,
         account: Account = None,
-        end_user: EndUser = None,
-        fake: Faker = None,
-        query: str = None,
-        answer: str = None,
+        end_user: EndUser | None = None,
+        fake: Faker | None = None,
+        query: str | None = None,
+        answer: str | None = None,
         message_tokens: int = 100,
         answer_tokens: int = 200,
-        created_at: datetime = None,
+        created_at: datetime | None = None,
     ):
         """
         Helper method to create a test message with token consumption data.

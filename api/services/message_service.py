@@ -379,7 +379,8 @@ class MessageService:
             ...         limit=20
             ...     )
             ...     for log_entry in result["data"]:
-            ...         print(f"Tokens: {log_entry.message_tokens} + {log_entry.answer_tokens} = {log_entry.message_tokens + log_entry.answer_tokens}")
+            ...         total = log_entry.message_tokens + log_entry.answer_tokens
+            ...         print(f"Tokens: {log_entry.message_tokens} + {log_entry.answer_tokens} = {total}")
         """
         # ========================================================================
         # STEP 1: Build the base SQL query
