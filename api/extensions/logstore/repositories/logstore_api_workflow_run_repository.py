@@ -248,26 +248,35 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
     ) -> WorkflowRun | None:
         """
         Get a specific workflow run by ID without tenant/app context.
+        Uses query syntax to get raw logs and selects the one with max log_version.
         """
         logger.info("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
-        query = f"""
-            * | SELECT * FROM (
-                SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
-                FROM {AliyunLogStore.workflow_execution_logstore}
-                WHERE id='{run_id}'
-            ) t
-            WHERE rn = 1
-        """
+        # Build query string using LogStore query syntax
+        query = f"id: {run_id}"
 
         try:
-            results = self.logstore_client.execute_sql(
-                query=query, logstore=AliyunLogStore.workflow_execution_logstore, from_time=None, to_time=None
+            # Query raw logs with large time range (last 30 days)
+            from_time = int(time.time()) - 86400 * 30  # 30 days ago
+            to_time = int(time.time())  # now
+
+            results = self.logstore_client.get_logs(
+                logstore=AliyunLogStore.workflow_execution_logstore,
+                from_time=from_time,
+                to_time=to_time,
+                query=query,
+                line=100,
+                reverse=False,
             )
 
-            if results and len(results) > 0:
-                return _dict_to_workflow_run(results[0])
+            if not results:
+                return None
 
-            return None
+            # If multiple results, select the one with max log_version
+            if len(results) > 1:
+                max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
+                return _dict_to_workflow_run(max_result)
+            else:
+                return _dict_to_workflow_run(results[0])
 
         except Exception:
             logger.exception("Failed to get workflow run without tenant: run_id=%s", run_id)

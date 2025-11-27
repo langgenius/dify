@@ -119,30 +119,56 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         """
         Get the most recent execution for a specific node.
 
-        Uses window function to get latest version, ordered by created_at.
+        Uses query syntax to get raw logs and selects the one with max log_version.
+        Returns the most recent execution ordered by created_at.
         """
         logger.info("get_node_last_execution: tenant_id=%s, app_id=%s, workflow_id=%s, node_id=%s", tenant_id, app_id, workflow_id, node_id)
-        query = f"""
-            * | SELECT * FROM (
-                SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
-                FROM {AliyunLogStore.workflow_node_execution_logstore}
-                WHERE tenant_id='{tenant_id}'
-                  AND app_id='{app_id}'
-                  AND workflow_id='{workflow_id}'
-                  AND node_id='{node_id}'
-            ) t
-            WHERE rn = 1
-            ORDER BY created_at DESC
-            LIMIT 1
-        """
+        # Build query string using LogStore query syntax
+        query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_id: {workflow_id} and node_id: {node_id}"
 
         try:
-            results = self.logstore_client.execute_sql(
-                query=query, logstore=AliyunLogStore.workflow_node_execution_logstore
+            # Query raw logs with large time range (last 30 days)
+            from_time = int(time.time()) - 86400 * 30  # 30 days ago
+            to_time = int(time.time())  # now
+
+            results = self.logstore_client.get_logs(
+                logstore=AliyunLogStore.workflow_node_execution_logstore,
+                from_time=from_time,
+                to_time=to_time,
+                query=query,
+                line=100,
+                reverse=False,
             )
 
-            if results and len(results) > 0:
-                return _dict_to_workflow_node_execution_model(results[0])
+            if not results:
+                return None
+
+            # Group by id and select the one with max log_version for each group
+            id_to_results: dict[str, list[dict[str, Any]]] = {}
+            for row in results:
+                row_id = row.get("id")
+                if row_id:
+                    if row_id not in id_to_results:
+                        id_to_results[row_id] = []
+                    id_to_results[row_id].append(row)
+
+            # For each id, select the row with max log_version
+            deduplicated_results = []
+            for rows in id_to_results.values():
+                if len(rows) > 1:
+                    max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
+                else:
+                    max_row = rows[0]
+                deduplicated_results.append(max_row)
+
+            # Sort by created_at DESC and return the most recent one
+            deduplicated_results.sort(
+                key=lambda x: x.get("created_at", 0) if isinstance(x.get("created_at"), (int, float)) else 0,
+                reverse=True
+            )
+
+            if deduplicated_results:
+                return _dict_to_workflow_node_execution_model(deduplicated_results[0])
 
             return None
 
@@ -220,30 +246,38 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
     ) -> WorkflowNodeExecutionModel | None:
         """
         Get a workflow node execution by its ID.
-        Uses window function to get latest version.
+        Uses query syntax to get raw logs and selects the one with max log_version.
         """
         logger.info("get_execution_by_id: execution_id=%s, tenant_id=%s", execution_id, tenant_id)
-        tenant_filter = f"AND tenant_id='{tenant_id}'" if tenant_id else ""
-
-        query = f"""
-            * | SELECT * FROM (
-                SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
-                FROM {AliyunLogStore.workflow_node_execution_logstore}
-                WHERE id='{execution_id}'
-                  {tenant_filter}
-            ) t
-            WHERE rn = 1
-        """
+        # Build query string using LogStore query syntax
+        if tenant_id:
+            query = f"id: {execution_id} and tenant_id: {tenant_id}"
+        else:
+            query = f"id: {execution_id}"
 
         try:
-            results = self.logstore_client.execute_sql(
-                query=query, logstore=AliyunLogStore.workflow_node_execution_logstore
+            # Query raw logs with large time range (last 30 days)
+            from_time = int(time.time()) - 86400 * 30  # 30 days ago
+            to_time = int(time.time())  # now
+
+            results = self.logstore_client.get_logs(
+                logstore=AliyunLogStore.workflow_node_execution_logstore,
+                from_time=from_time,
+                to_time=to_time,
+                query=query,
+                line=100,
+                reverse=False,
             )
 
-            if results and len(results) > 0:
-                return _dict_to_workflow_node_execution_model(results[0])
+            if not results:
+                return None
 
-            return None
+            # If multiple results, select the one with max log_version
+            if len(results) > 1:
+                max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
+                return _dict_to_workflow_node_execution_model(max_result)
+            else:
+                return _dict_to_workflow_node_execution_model(results[0])
 
         except Exception:
             logger.exception("Failed to get execution by ID from LogStore: execution_id=%s", execution_id)
