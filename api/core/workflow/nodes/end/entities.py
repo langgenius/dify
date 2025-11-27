@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 
-from core.workflow.nodes.base import BaseNodeData
-from core.workflow.nodes.base.entities import VariableSelector
+from core.workflow.nodes.base.entities import BaseNodeData, OutputVariableEntity
 
 
 class EndNodeData(BaseNodeData):
@@ -9,7 +8,7 @@ class EndNodeData(BaseNodeData):
     END Node Data.
     """
 
-    outputs: list[VariableSelector]
+    outputs: list[OutputVariableEntity]
 
 
 class EndStreamParam(BaseModel):

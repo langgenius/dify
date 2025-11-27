@@ -6,10 +6,10 @@ from unittest.mock import Mock, patch
 import pytest
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.workflow.entities.workflow_pause import WorkflowPauseEntity
 from core.workflow.enums import WorkflowExecutionStatus
 from models.workflow import WorkflowPause as WorkflowPauseModel
 from models.workflow import WorkflowRun
+from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.sqlalchemy_api_workflow_run_repository import (
     DifyAPISQLAlchemyWorkflowRunRepository,
     _PrivateWorkflowPauseEntity,
@@ -129,12 +129,14 @@ class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
                     workflow_run_id=workflow_run_id,
                     state_owner_user_id=state_owner_user_id,
                     state=state,
+                    pause_reasons=[],
                 )
 
                 # Assert
                 assert isinstance(result, _PrivateWorkflowPauseEntity)
                 assert result.id == "pause-123"
                 assert result.workflow_execution_id == workflow_run_id
+                assert result.get_pause_reasons() == []
 
                 # Verify database interactions
                 mock_session.get.assert_called_once_with(WorkflowRun, workflow_run_id)
@@ -156,6 +158,7 @@ class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
                 workflow_run_id="workflow-run-123",
                 state_owner_user_id="user-123",
                 state='{"test": "state"}',
+                pause_reasons=[],
             )
 
         mock_session.get.assert_called_once_with(WorkflowRun, "workflow-run-123")
@@ -174,6 +177,7 @@ class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
                 workflow_run_id="workflow-run-123",
                 state_owner_user_id="user-123",
                 state='{"test": "state"}',
+                pause_reasons=[],
             )
 
 
@@ -316,19 +320,10 @@ class TestDeleteWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
 class TestPrivateWorkflowPauseEntity(TestDifyAPISQLAlchemyWorkflowRunRepository):
     """Test _PrivateWorkflowPauseEntity class."""
 
-    def test_from_models(self, sample_workflow_pause: Mock):
-        """Test creating _PrivateWorkflowPauseEntity from models."""
-        # Act
-        entity = _PrivateWorkflowPauseEntity.from_models(sample_workflow_pause)
-
-        # Assert
-        assert isinstance(entity, _PrivateWorkflowPauseEntity)
-        assert entity._pause_model == sample_workflow_pause
-
     def test_properties(self, sample_workflow_pause: Mock):
         """Test entity properties."""
         # Arrange
-        entity = _PrivateWorkflowPauseEntity.from_models(sample_workflow_pause)
+        entity = _PrivateWorkflowPauseEntity(pause_model=sample_workflow_pause, reason_models=[], human_input_form=[])
 
         # Act & Assert
         assert entity.id == sample_workflow_pause.id
@@ -338,7 +333,7 @@ class TestPrivateWorkflowPauseEntity(TestDifyAPISQLAlchemyWorkflowRunRepository)
     def test_get_state(self, sample_workflow_pause: Mock):
         """Test getting state from storage."""
         # Arrange
-        entity = _PrivateWorkflowPauseEntity.from_models(sample_workflow_pause)
+        entity = _PrivateWorkflowPauseEntity(pause_model=sample_workflow_pause, reason_models=[], human_input_form=[])
         expected_state = b'{"test": "state"}'
 
         with patch("repositories.sqlalchemy_api_workflow_run_repository.storage") as mock_storage:
@@ -354,7 +349,7 @@ class TestPrivateWorkflowPauseEntity(TestDifyAPISQLAlchemyWorkflowRunRepository)
     def test_get_state_caching(self, sample_workflow_pause: Mock):
         """Test state caching in get_state method."""
         # Arrange
-        entity = _PrivateWorkflowPauseEntity.from_models(sample_workflow_pause)
+        entity = _PrivateWorkflowPauseEntity(pause_model=sample_workflow_pause, reason_models=[], human_input_form=[])
         expected_state = b'{"test": "state"}'
 
         with patch("repositories.sqlalchemy_api_workflow_run_repository.storage") as mock_storage:

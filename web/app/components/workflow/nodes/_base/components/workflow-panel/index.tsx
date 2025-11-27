@@ -381,6 +381,10 @@ const BasePanel: FC<BasePanelProps> = ({
     return !pluginDetail ? null : <ReadmeEntrance pluginDetail={pluginDetail as any} className='mt-auto' />
   }, [data.type, currToolCollection, currentDataSource, currentTriggerPlugin])
 
+  const selectedNode = useMemo(() => ({
+    id,
+    data,
+  }) as Node, [id, data])
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -649,7 +653,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   <div className='system-xs-regular mb-2 text-text-tertiary'>
                     {t('workflow.panel.addNextStep')}
                   </div>
-                  <NextStep selectedNode={{ id, data } as Node} />
+                  <NextStep selectedNode={selectedNode} />
                 </div>
               )
             }

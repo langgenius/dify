@@ -16,14 +16,12 @@ from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.enums import (
-    ErrorStrategy,
     NodeType,
     SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
@@ -42,7 +40,7 @@ if TYPE_CHECKING:
     from core.workflow.runtime import VariablePool
 
 
-class ToolNode(Node):
+class ToolNode(Node[ToolNodeData]):
     """
     Tool Node
     """
@@ -50,9 +48,6 @@ class ToolNode(Node):
     node_type = NodeType.TOOL
 
     _node_data: ToolNodeData
-
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = ToolNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -329,7 +324,15 @@ class ToolNode(Node):
                     json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                stream_text = f"Link: {message.message.text}\n"
+
+                # Check if this LINK message is a file link
+                file_obj = (message.meta or {}).get("file")
+                if isinstance(file_obj, File):
+                    files.append(file_obj)
+                    stream_text = f"File: {message.message.text}\n"
+                else:
+                    stream_text = f"Link: {message.message.text}\n"
+
                 text += stream_text
                 yield StreamChunkEvent(
                     selector=[node_id, "text"],
@@ -489,24 +492,6 @@ class ToolNode(Node):
         result = {node_id + "." + key: value for key, value in result.items()}
 
         return result
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     @property
     def retry(self) -> bool:

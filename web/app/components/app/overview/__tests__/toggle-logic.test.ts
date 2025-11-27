@@ -1,4 +1,5 @@
 import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
+import type { Node } from '@/app/components/workflow/types'
 
 // Mock the getWorkflowEntryNode function
 jest.mock('@/app/components/workflow/utils/workflow-entry', () => ({
@@ -6,6 +7,9 @@ jest.mock('@/app/components/workflow/utils/workflow-entry', () => ({
 }))
 
 const mockGetWorkflowEntryNode = getWorkflowEntryNode as jest.MockedFunction<typeof getWorkflowEntryNode>
+
+// Mock entry node for testing (truthy value)
+const mockEntryNode = { id: 'start-node', data: { type: 'start' } } as Node
 
 describe('App Card Toggle Logic', () => {
   beforeEach(() => {
@@ -39,7 +43,7 @@ describe('App Card Toggle Logic', () => {
 
   describe('Entry Node Detection Logic', () => {
     it('should disable toggle when workflow missing entry node', () => {
-      mockGetWorkflowEntryNode.mockReturnValue(false)
+      mockGetWorkflowEntryNode.mockReturnValue(undefined)
 
       const result = calculateToggleState(
         'workflow',
@@ -55,7 +59,7 @@ describe('App Card Toggle Logic', () => {
     })
 
     it('should enable toggle when workflow has entry node', () => {
-      mockGetWorkflowEntryNode.mockReturnValue(true)
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
 
       const result = calculateToggleState(
         'workflow',
@@ -101,7 +105,7 @@ describe('App Card Toggle Logic', () => {
     })
 
     it('should consider published state when workflow has graph', () => {
-      mockGetWorkflowEntryNode.mockReturnValue(true)
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
 
       const result = calculateToggleState(
         'workflow',
@@ -117,7 +121,7 @@ describe('App Card Toggle Logic', () => {
 
   describe('Permissions Logic', () => {
     it('should disable webapp toggle when user lacks editor permissions', () => {
-      mockGetWorkflowEntryNode.mockReturnValue(true)
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
 
       const result = calculateToggleState(
         'workflow',
@@ -132,7 +136,7 @@ describe('App Card Toggle Logic', () => {
     })
 
     it('should disable api toggle when user lacks manager permissions', () => {
-      mockGetWorkflowEntryNode.mockReturnValue(true)
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
 
       const result = calculateToggleState(
         'workflow',
@@ -147,7 +151,7 @@ describe('App Card Toggle Logic', () => {
     })
 
     it('should enable toggle when user has proper permissions', () => {
-      mockGetWorkflowEntryNode.mockReturnValue(true)
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
 
       const webappResult = calculateToggleState(
         'workflow',
@@ -172,7 +176,7 @@ describe('App Card Toggle Logic', () => {
 
   describe('Combined Conditions Logic', () => {
     it('should handle multiple disable conditions correctly', () => {
-      mockGetWorkflowEntryNode.mockReturnValue(false)
+      mockGetWorkflowEntryNode.mockReturnValue(undefined)
 
       const result = calculateToggleState(
         'workflow',
@@ -191,7 +195,7 @@ describe('App Card Toggle Logic', () => {
     })
 
     it('should enable when all conditions are satisfied', () => {
-      mockGetWorkflowEntryNode.mockReturnValue(true)
+      mockGetWorkflowEntryNode.mockReturnValue(mockEntryNode)
 
       const result = calculateToggleState(
         'workflow',

@@ -101,9 +101,6 @@ def test_overwrite_string_variable():
         conv_var_updater_factory=mock_conv_var_updater_factory,
     )
 
-    # Initialize node data
-    node.init_node_data(node_config["data"])
-
     list(node.run())
     expected_var = StringVariable(
         id=conversation_variable.id,
@@ -203,9 +200,6 @@ def test_append_variable_to_array():
         conv_var_updater_factory=mock_conv_var_updater_factory,
     )
 
-    # Initialize node data
-    node.init_node_data(node_config["data"])
-
     list(node.run())
     expected_value = list(conversation_variable.value)
     expected_value.append(input_variable.value)
@@ -295,9 +289,6 @@ def test_clear_array():
         config=node_config,
         conv_var_updater_factory=mock_conv_var_updater_factory,
     )
-
-    # Initialize node data
-    node.init_node_data(node_config["data"])
 
     list(node.run())
     expected_var = ArrayStringVariable(

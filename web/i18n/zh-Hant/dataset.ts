@@ -234,6 +234,10 @@ const translation = {
     title: '服務 API',
     disabled: '已停用',
   },
+  docAllEnabled_one: '{{count}} 文件已啟用',
+  docAllEnabled_other: '所有 {{count}} 文件已啟用',
+  partialEnabled_one: '共 {{count}} 份文件，{{num}} 份可用',
+  partialEnabled_other: '共 {{count}} 份文件，{{num}} 份可用',
 }
 
 export default translation

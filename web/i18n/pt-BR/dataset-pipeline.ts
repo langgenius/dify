@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Pipeline de conhecimento publicado',
+      tip: 'Vá para Documentos para adicionar ou gerenciar documentos.',
     },
     error: {
       message: 'Falha ao publicar o pipeline de conhecimento',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Estrutura',
     structureTooltip: 'A Estrutura de Partes determina como os documentos são divididos e indexados, oferecendo os modos Geral, Pai-Filho e P e Resposta, e é exclusiva para cada base de conhecimento.',
+    createdBy: 'Por {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'Caracteres',
     title: 'Adicionar documentos',
     backToDataSource: 'Fonte de dados',
+    selectOnlineDocumentTip: 'Processar até {{count}} páginas',
+    selectOnlineDriveTip: 'Processar até {{count}} arquivos, com no máximo {{fileSize}} MB cada',
   },
   documentSettings: {
     title: 'Configurações do documento',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} páginas',
+  },
   onlineDrive: {
     breadcrumbs: {
       searchPlaceholder: 'Pesquisar arquivos...',
       allFiles: 'Todos os arquivos',
       allBuckets: 'Todos os buckets do Cloud Storage',
+      searchResult: 'Encontrar {{searchResultsLength}} itens na pasta "{{folderName}}"',
     },
     resetKeywords: 'Redefinir palavras-chave',
     notSupportedFileType: 'Este tipo de arquivo não é suportado',
     emptyFolder: 'Esta pasta está vazia',
     emptySearchResult: 'Nenhum item foi encontrado',
+    notConnected: '{{name}} não está conectado',
+    notConnectedTip: 'Para sincronizar com {{name}}, a conexão com {{name}} deve ser estabelecida primeiro.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}} de {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Confirmação',
@@ -149,6 +160,7 @@ const translation = {
   knowledgeNameAndIcon: 'Nome e ícone do conhecimento',
   editPipelineInfo: 'Editar informações do pipeline',
   knowledgeDescriptionPlaceholder: 'Descreva o que está nesta Base de Conhecimento. Uma descrição detalhada permite que a IA acesse o conteúdo do conjunto de dados com mais precisão. Se estiver vazio, o Dify usará a estratégia de acerto padrão. (Opcional)',
+  configurationTip: 'Configure {{pluginName}}',
 }
 
 export default translation

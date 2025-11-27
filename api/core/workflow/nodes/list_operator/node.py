@@ -1,12 +1,11 @@
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Sequence
 from typing import Any, TypeAlias, TypeVar
 
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
 from core.variables.segments import ArrayAnySegment, ArrayBooleanSegment, ArraySegment
-from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 
 from .entities import FilterOperator, ListOperatorNodeData, Order
@@ -35,31 +34,10 @@ def _negation(filter_: Callable[[_T], bool]) -> Callable[[_T], bool]:
     return wrapper
 
 
-class ListOperatorNode(Node):
+class ListOperatorNode(Node[ListOperatorNodeData]):
     node_type = NodeType.LIST_OPERATOR
 
     _node_data: ListOperatorNodeData
-
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = ListOperatorNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     @classmethod
     def version(cls) -> str:
@@ -229,6 +207,8 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
             return lambda x: x.transfer_method
         case "url":
             return lambda x: x.remote_url or ""
+        case "related_id":
+            return lambda x: x.related_id or ""
         case _:
             raise InvalidKeyError(f"Invalid key: {key}")
 
@@ -299,7 +279,7 @@ def _get_boolean_filter_func(*, condition: FilterOperator, value: bool) -> Calla
 
 def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str]) -> Callable[[File], bool]:
     extract_func: Callable[[File], Any]
-    if key in {"name", "extension", "mime_type", "url"} and isinstance(value, str):
+    if key in {"name", "extension", "mime_type", "url", "related_id"} and isinstance(value, str):
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_string_filter_func(condition=condition, value=value)(extract_func(x))
     if key in {"type", "transfer_method"}:
@@ -358,7 +338,7 @@ def _ge(value: int | float) -> Callable[[int | float], bool]:
 
 def _order_file(*, order: Order, order_by: str = "", array: Sequence[File]):
     extract_func: Callable[[File], Any]
-    if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "url"}:
+    if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "url", "related_id"}:
         extract_func = _get_file_extract_string_func(key=order_by)
         return sorted(array, key=lambda x: extract_func(x), reverse=order == Order.DESC)
     elif order_by == "size":
