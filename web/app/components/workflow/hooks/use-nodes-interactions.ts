@@ -64,6 +64,7 @@ import {
   useWorkflowHistory,
 } from './use-workflow-history'
 import { useNodesMetaData } from './use-nodes-meta-data'
+import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import useInspectVarsCrud from './use-inspect-vars-crud'
 import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
@@ -106,6 +107,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
   const { saveStateToHistory, undo, redo } = useWorkflowHistory()
+  const autoGenerateWebhookUrl = useAutoGenerateWebhookUrl()
 
   const handleNodeDragStart = useCallback<NodeDragHandler>(
     (_, node) => {
@@ -1562,7 +1564,14 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
         return filtered
       })
       setEdges(newEdges)
-      handleSyncWorkflowDraft()
+      if (nodeType === BlockEnum.TriggerWebhook) {
+        handleSyncWorkflowDraft(true, true, {
+          onSuccess: () => autoGenerateWebhookUrl(newCurrentNode.id),
+        })
+      }
+      else {
+        handleSyncWorkflowDraft()
+      }
 
       saveStateToHistory(WorkflowHistoryEvent.NodeChange, {
         nodeId: currentNodeId,
@@ -1574,6 +1583,7 @@ export const useNodesInteractions = (options?: UseNodesInteractionsOptions) => {
       handleSyncWorkflowDraft,
       saveStateToHistory,
       nodesMetaDataMap,
+      autoGenerateWebhookUrl,
     ],
   )
 
