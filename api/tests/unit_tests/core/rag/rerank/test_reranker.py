@@ -133,9 +133,7 @@ class TestRerankModelRunner:
         mock_model_instance.invoke_rerank.return_value = mock_rerank_result
 
         # Act: Run reranking with score threshold
-        result = rerank_runner.run(
-            query="programming", documents=sample_documents, score_threshold=0.60
-        )
+        result = rerank_runner.run(query="programming", documents=sample_documents, score_threshold=0.60)
 
         # Assert: Only documents above threshold are returned
         assert len(result) == 2
@@ -653,7 +651,7 @@ class TestWeightRerankRunner:
             provider="external",
             vector=[0.1, 0.2],
         )
-        
+
         documents = [
             Document(
                 page_content="Content 1",
@@ -1202,10 +1200,7 @@ class TestRerankEdgeCases:
         num_docs = 100
 
         # Create rerank results for all documents
-        rerank_docs = [
-            RerankDocument(index=i, text=f"Document {i}", score=1.0 - (i * 0.01))
-            for i in range(num_docs)
-        ]
+        rerank_docs = [RerankDocument(index=i, text=f"Document {i}", score=1.0 - (i * 0.01)) for i in range(num_docs)]
         mock_rerank_result = RerankResult(model="bge-reranker-base", docs=rerank_docs)
         mock_model_instance.invoke_rerank.return_value = mock_rerank_result
 
@@ -1342,10 +1337,7 @@ class TestRerankPerformance:
         mock_model_instance = Mock(spec=ModelInstance)
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
-            docs=[
-                RerankDocument(index=i, text=f"Doc {i}", score=0.9 - i * 0.1)
-                for i in range(5)
-            ],
+            docs=[RerankDocument(index=i, text=f"Doc {i}", score=0.9 - i * 0.1) for i in range(5)],
         )
         mock_model_instance.invoke_rerank.return_value = mock_rerank_result
 
