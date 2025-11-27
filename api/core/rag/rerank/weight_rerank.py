@@ -1,5 +1,6 @@
 import math
 from collections import Counter, defaultdict
+from typing import DefaultDict
 
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.models.document import Document
@@ -34,7 +35,7 @@ class WeightRerankRunner(BaseRerankRunner):
         query_scores = self._calculate_keyword_score(query, documents)
         query_vector_scores = self._get_documents_score(documents)
 
-        score_map = defaultdict(float)
+        score_map: DefaultDict[str, float] = defaultdict(float)
         for document, q_score, q_vector_score in zip(documents, query_scores, query_vector_scores):
             if document.provider == "dify" and document.metadata is not None and "doc_id" in document.metadata:
                 doc_id = document.metadata["doc_id"]
