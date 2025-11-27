@@ -124,8 +124,30 @@ class Node(Generic[NodeDataT]):
         """
         super().__init_subclass__(**kwargs)
 
-        node_data_type: type[BaseNodeData] | None = None
+        node_data_type = cls._extract_node_data_type_from_generic()
 
+        if node_data_type is None:
+            # Allow abstract intermediary classes to defer specification only if they
+            # explicitly override `_node_data_type`.
+            if cls is not Node and "_node_data_type" not in cls.__dict__:
+                raise TypeError(f"{cls.__name__} must inherit from Node[T] with a BaseNodeData subtype")
+        else:
+            cls._node_data_type = node_data_type
+
+    @classmethod
+    def _extract_node_data_type_from_generic(cls) -> type[BaseNodeData] | None:
+        """
+        Extract the node data type from the generic parameter `Node[T]`.
+
+        Inspects `__orig_bases__` to find the `Node[T]` parameterization and extracts `T`.
+
+        Returns:
+            The extracted BaseNodeData subtype, or None if not found.
+
+        Raises:
+            TypeError: If the generic argument is invalid (not exactly one argument,
+                      or not a BaseNodeData subtype).
+        """
         # __orig_bases__ contains the original generic bases before type erasure.
         # For `class CodeNode(Node[CodeNodeData])`, this would be `(Node[CodeNodeData],)`.
         for base in getattr(cls, "__orig_bases__", ()):  # type: ignore[attr-defined]
@@ -139,16 +161,9 @@ class Node(Generic[NodeDataT]):
                 if not isinstance(candidate, type) or not issubclass(candidate, BaseNodeData):
                     raise TypeError(f"{cls.__name__} must parameterize Node with a BaseNodeData subtype")
 
-                node_data_type = candidate
-                break
+                return candidate
 
-        if node_data_type is None:
-            # Allow abstract intermediary classes to defer specification only if they
-            # explicitly override `_node_data_type`.
-            if cls is not Node and "_node_data_type" not in cls.__dict__:
-                raise TypeError(f"{cls.__name__} must inherit from Node[T] with a BaseNodeData subtype")
-        else:
-            cls._node_data_type = node_data_type
+        return None
 
     def __init__(
         self,
