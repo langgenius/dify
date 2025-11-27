@@ -20,8 +20,7 @@ FROM base AS packages
 
 WORKDIR /app/web
 
-COPY package.json .
-COPY pnpm-lock.yaml .
+COPY package.json pnpm-lock.yaml /app/web/
 
 # Use packageManager from package.json
 RUN corepack install
