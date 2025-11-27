@@ -57,13 +57,11 @@ class ToolNode(Node[ToolNodeData]):
         """
         from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 
-        node_data = self.node_data
-
         # fetch tool icon
         tool_info = {
-            "provider_type": node_data.provider_type.value,
-            "provider_id": node_data.provider_id,
-            "plugin_unique_identifier": node_data.plugin_unique_identifier,
+            "provider_type": self.node_data.provider_type.value,
+            "provider_id": self.node_data.provider_id,
+            "plugin_unique_identifier": self.node_data.plugin_unique_identifier,
         }
 
         # get tool runtime
@@ -75,7 +73,7 @@ class ToolNode(Node[ToolNodeData]):
             # But for backward compatibility with historical data
             # this version field judgment is still preserved here.
             variable_pool: VariablePool | None = None
-            if node_data.version != "1" or node_data.tool_node_version is not None:
+            if self.node_data.version != "1" or self.node_data.tool_node_version is not None:
                 variable_pool = self.graph_runtime_state.variable_pool
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self._node_id, self.node_data, self.invoke_from, variable_pool
