@@ -81,6 +81,10 @@ const translation = {
     },
     addUrl: 'URL 추가',
     learnMore: '더 알아보세요',
+    sort: {
+      uploadTime: '업로드 시간',
+      hitCount: '검색 횟수',
+    },
   },
   metadata: {
     title: '메타데이터',

@@ -4,7 +4,7 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEdges, useNodes, useStoreApi } from 'reactflow'
+import { useEdges, useStoreApi } from 'reactflow'
 import type {
   CommonEdgeType,
   CommonNodeType,
@@ -56,6 +56,7 @@ import {
 } from '@/service/use-tools'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { AppModeEnum } from '@/types/app'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 
 export type ChecklistItem = {
   id: string
@@ -249,6 +250,8 @@ export const useChecklistBeforePublish = () => {
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+  const appMode = useAppStore.getState().appDetail?.mode
+  const shouldCheckStartNode = appMode === AppModeEnum.WORKFLOW || appMode === AppModeEnum.ADVANCED_CHAT
 
   const getCheckData = useCallback((data: CommonNodeType<{}>, datasets: DataSet[]) => {
     let checkData = data
@@ -366,17 +369,22 @@ export const useChecklistBeforePublish = () => {
         }
       }
 
-      if (!validNodes.find(n => n.id === node.id)) {
+      const isStartNodeMeta = nodesExtraData?.[node.data.type as BlockEnum]?.metaData.isStart ?? false
+      const canSkipConnectionCheck = shouldCheckStartNode ? isStartNodeMeta : true
+      const isUnconnected = !validNodes.find(n => n.id === node.id)
+
+      if (isUnconnected && !canSkipConnectionCheck) {
         notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.common.needConnectTip')}` })
         return false
       }
     }
 
-    const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
-
-    if (startNodesFiltered.length === 0) {
-      notify({ type: 'error', message: t('workflow.common.needStartNode') })
-      return false
+    if (shouldCheckStartNode) {
+      const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
+      if (startNodesFiltered.length === 0) {
+        notify({ type: 'error', message: t('workflow.common.needStartNode') })
+        return false
+      }
     }
 
     const isRequiredNodesType = Object.keys(nodesExtraData!).filter((key: any) => (nodesExtraData as any)[key].metaData.isRequired)
@@ -391,7 +399,7 @@ export const useChecklistBeforePublish = () => {
     }
 
     return true
-  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, workflowStore, buildInTools, customTools, workflowTools])
+  }, [store, notify, t, language, nodesExtraData, strategyProviders, updateDatasetsDetail, getCheckData, workflowStore, buildInTools, customTools, workflowTools, shouldCheckStartNode])
 
   return {
     handleCheckBeforePublish,
@@ -400,7 +408,7 @@ export const useChecklistBeforePublish = () => {
 
 export const useWorkflowRunValidation = () => {
   const { t } = useTranslation()
-  const nodes = useNodes<CommonNodeType>()
+  const nodes = useNodes()
   const edges = useEdges<CommonEdgeType>()
   const needWarningNodes = useChecklist(nodes, edges)
   const { notify } = useToastContext()

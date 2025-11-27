@@ -110,13 +110,8 @@ const BasePanel: FC<BasePanelProps> = ({
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const otherPanelWidth = useStore(s => s.otherPanelWidth)
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
-  const {
-    pendingSingleRun,
-    setPendingSingleRun,
-  } = useStore(s => ({
-    pendingSingleRun: s.pendingSingleRun,
-    setPendingSingleRun: s.setPendingSingleRun,
-  }))
+  const pendingSingleRun = useStore(s => s.pendingSingleRun)
+  const setPendingSingleRun = useStore(s => s.setPendingSingleRun)
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -298,7 +293,7 @@ const BasePanel: FC<BasePanelProps> = ({
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
-    if (currentTriggerPlugin?.subscription_constructor) {
+    if (currentTriggerPlugin) {
       setDetail({
         name: currentTriggerPlugin.label[language],
         plugin_id: currentTriggerPlugin.plugin_id || '',

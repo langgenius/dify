@@ -127,6 +127,11 @@ const translation = {
         },
       },
       launch: 'Lanciare',
+      enableTooltip: {
+        description: 'Per abilitare questa funzione, aggiungi un nodo di input utente alla tela. (Potrebbe già esistere nella bozza, efficace dopo la pubblicazione)',
+        learnMore: 'Scopri di più',
+      },
+      title: 'App Web',
     },
     apiInfo: {
       title: 'API del servizio backend',
@@ -137,6 +142,17 @@ const translation = {
     status: {
       running: 'In servizio',
       disable: 'Disabilita',
+    },
+    triggerInfo: {
+      title: 'Inneschi',
+      explanation: 'Gestione dei trigger del flusso di lavoro',
+      triggersAdded: 'Trigger aggiunti',
+      noTriggerAdded: 'Nessun trigger aggiunto',
+      triggerStatusDescription: 'Lo stato del nodo trigger appare qui. (Può già esistere in bozza, prende effetto dopo la pubblicazione)',
+      learnAboutTriggers: 'Scopri i Trigger',
+    },
+    disableTooltip: {
+      triggerMode: 'La funzionalità {{feature}} non è supportata in modalità Nodo Trigger.',
     },
   },
   analysis: {

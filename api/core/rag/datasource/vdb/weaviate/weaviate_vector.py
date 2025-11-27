@@ -167,13 +167,18 @@ class WeaviateVector(BaseVector):
 
             try:
                 if not self._client.collections.exists(self._collection_name):
+                    tokenization = (
+                        wc.Tokenization(dify_config.WEAVIATE_TOKENIZATION)
+                        if dify_config.WEAVIATE_TOKENIZATION
+                        else wc.Tokenization.WORD
+                    )
                     self._client.collections.create(
                         name=self._collection_name,
                         properties=[
                             wc.Property(
                                 name=Field.TEXT_KEY.value,
                                 data_type=wc.DataType.TEXT,
-                                tokenization=wc.Tokenization.WORD,
+                                tokenization=tokenization,
                             ),
                             wc.Property(name="document_id", data_type=wc.DataType.TEXT),
                             wc.Property(name="doc_id", data_type=wc.DataType.TEXT),

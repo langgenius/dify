@@ -65,7 +65,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     })
     return tools
   }, [currentStrategy?.parameters, inputs.agent_parameters])
-  return <div className='mb-1 space-y-1 px-3 py-1'>
+  return <div className='mb-1 space-y-1 px-3'>
     {inputs.agent_strategy_name
       ? <SettingItem
         label={t('workflow.nodes.agent.strategy.shortLabel')}

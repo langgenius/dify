@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Pipeline de connaissances publié',
+      tip: '<CustomLink>Allez dans Documents</CustomLink> pour ajouter ou gérer des documents.',
     },
     error: {
       message: 'Échec de la publication du pipeline de connaissances',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Structure',
     structureTooltip: 'La structure par blocs détermine la façon dont les documents sont divisés et indexés (en proposant les modes Général, Parent-Enfant et Q&R) et est unique à chaque base de connaissances.',
+    createdBy: 'Par {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'caractères',
     title: 'Ajouter des documents',
     backToDataSource: 'Source des données',
+    selectOnlineDocumentTip: 'Traiter jusqu\'à {{count}} pages',
+    selectOnlineDriveTip: 'Traiter jusqu\'à {{count}} fichiers, maximum {{fileSize}} Mo chacun',
   },
   documentSettings: {
     title: 'Paramètres du document',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} pages',
+  },
   onlineDrive: {
     breadcrumbs: {
       searchPlaceholder: 'Rechercher des fichiers...',
       allBuckets: 'Tous les compartiments de stockage dans le cloud',
       allFiles: 'Tous les fichiers',
+      searchResult: 'Trouver {{searchResultsLength}} éléments dans le dossier « {{folderName}} »',
     },
     notSupportedFileType: 'Ce type de fichier n’est pas pris en charge',
     emptySearchResult: 'Aucun objet n’a été trouvé',
     emptyFolder: 'Ce dossier est vide',
     resetKeywords: 'Réinitialiser les mots-clés',
+    notConnected: '{{name}} n\'est pas connecté',
+    notConnectedTip: 'Pour se synchroniser avec {{name}}, une connexion à {{name}} doit d\'abord être établie.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}} de {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Confirmation',
@@ -149,6 +160,7 @@ const translation = {
   knowledgeNameAndIcon: 'Nom et icône de la connaissance',
   inputField: 'Champ de saisie',
   knowledgeDescriptionPlaceholder: 'Décrivez le contenu de cette base de connaissances. Une description détaillée permet à l’IA d’accéder plus précisément au contenu de l’ensemble de données. S’il est vide, Dify utilisera la stratégie d’accès par défaut. (Facultatif)',
+  configurationTip: 'Configurer {{pluginName}}',
 }
 
 export default translation

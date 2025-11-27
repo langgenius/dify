@@ -2,7 +2,6 @@ const translation = {
   title: 'Werkzeuge',
   createCustomTool: 'Eigenes Werkzeug erstellen',
   type: {
-    all: 'Alle',
     builtIn: 'Integriert',
     custom: 'Benutzerdefiniert',
     workflow: 'Arbeitsablauf',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'Nach der Konfiguration der Anmeldeinformationen können alle Mitglieder im Arbeitsbereich dieses Werkzeug beim Orchestrieren von Anwendungen nutzen.',
   },
   includeToolNum: '{{num}} Werkzeuge inkludiert',
-  addTool: 'Werkzeug hinzufügen',
   createTool: {
     title: 'Eigenes Werkzeug erstellen',
     editAction: 'Konfigurieren',
@@ -143,9 +141,7 @@ const translation = {
   addToolModal: {
     type: 'Art',
     category: 'Kategorie',
-    add: 'hinzufügen',
     added: 'zugefügt',
-    manageInTools: 'Verwalten in Tools',
     custom: {
       title: 'Kein benutzerdefiniertes Werkzeug verfügbar',
       tip: 'Benutzerdefiniertes Werkzeug erstellen',
@@ -209,6 +205,7 @@ const translation = {
       authentication: 'Authentifizierung',
       useDynamicClientRegistration: 'Dynamische Client-Registrierung verwenden',
       configurations: 'Konfigurationen',
+      redirectUrlWarning: 'Bitte konfigurieren Sie Ihre OAuth-Umleitungs-URL wie folgt:',
     },
     delete: 'MCP-Server entfernen',
     deleteConfirmTitle: 'Möchten Sie {{mcp}} entfernen?',
