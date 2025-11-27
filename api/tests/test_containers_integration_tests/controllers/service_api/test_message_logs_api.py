@@ -417,6 +417,9 @@ class TestChatMessageLogsAPI:
         """
         Helper method to create a test app and account with API token.
         """
+        from services.account_service import AccountService, TenantService
+        from services.app_service import AppService
+
         fake = Faker()
 
         account = AccountService.create_account(
