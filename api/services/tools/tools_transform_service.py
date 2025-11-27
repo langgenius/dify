@@ -405,6 +405,7 @@ class ToolTransformService:
                 name=tool.operation_id or "",
                 label=I18nObject(en_US=tool.operation_id, zh_Hans=tool.operation_id),
                 description=I18nObject(en_US=tool.summary or "", zh_Hans=tool.summary or ""),
+                output_schema=tool.output_schema,
                 parameters=tool.parameters,
                 labels=labels or [],
             )
