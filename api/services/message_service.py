@@ -483,10 +483,9 @@ class MessageService:
 
             # Validate that the account was found
             if not account:
-                # Use BadRequest for API consistency (matches remote version)
-                from controllers.service_api.app.error import BadRequest
-
-                raise BadRequest(f"Account not found: {created_by_account}")
+                # Use ValueError for service layer consistency
+                # The API layer can convert this to BadRequest if needed
+                raise ValueError(f"Account not found: {created_by_account}")
 
             # Join with Account table to filter by account ID
             # Using outerjoin to handle edge cases
