@@ -179,6 +179,7 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
     appId ? state.mentionableUsersCache[appId] : undefined
   ))
   const mentionUsers = mentionUsersFromStore ?? []
+  const setCommentPreviewHovering = useStore(state => state.setCommentPreviewHovering)
 
   // Extract all mentionable names for highlighting
   const mentionableNames = useMemo(() => {
@@ -191,6 +192,10 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
   useEffect(() => {
     setReplyContent('')
   }, [comment.id])
+
+  useEffect(() => () => {
+    setCommentPreviewHovering(false)
+  }, [setCommentPreviewHovering])
 
   // P0: Auto-focus reply input when thread opens or comment changes
   useEffect(() => {
@@ -344,6 +349,8 @@ export const CommentThread: FC<CommentThreadProps> = memo(({
         top: canvasPosition.y,
         transform: 'translateY(-20%)',
       }}
+      onMouseEnter={() => setCommentPreviewHovering(true)}
+      onMouseLeave={() => setCommentPreviewHovering(false)}
     >
       <div
         ref={threadRef}
