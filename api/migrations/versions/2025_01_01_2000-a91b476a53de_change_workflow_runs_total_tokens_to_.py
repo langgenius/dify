@@ -1,7 +1,7 @@
 """change workflow_runs.total_tokens to bigint
 
 Revision ID: a91b476a53de
-Revises: 923752d42eb6
+Revises: a1b2c3d4e5f6
 Create Date: 2025-01-01 20:00:01.207369
 
 """
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'a91b476a53de'
-down_revision = '923752d42eb6'
+down_revision = 'a1b2c3d4e5f6'
 branch_labels = None
 depends_on = None
 

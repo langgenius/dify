@@ -1,7 +1,7 @@
 """add workflow performance analytics tables
 
 Revision ID: a1b2c3d4e5f6
-Revises: cf8f4fc45278
+Revises: e1944c35e15e
 Create Date: 2024-11-24 08:00:00.000000
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'a1b2c3d4e5f6'
-down_revision = 'cf8f4fc45278'
+down_revision = 'e1944c35e15e'
 branch_labels = None
 depends_on = None
 

@@ -13,6 +13,7 @@ from datetime import timedelta
 from typing import Any, Optional
 
 from sqlalchemy import and_, case, delete, desc, func, select
+from sqlalchemy.dialects.postgresql import insert
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now

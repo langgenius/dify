@@ -12,7 +12,7 @@ from flask_restx import Resource, fields, marshal_with, reqparse
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models.workflow_performance import OptimizationCategory, OptimizationSeverity
 from services.workflow_cache_service import WorkflowCacheService
 from services.workflow_optimization_advisor import WorkflowOptimizationAdvisor
@@ -100,7 +100,34 @@ cache_statistics_fields = console_ns.model(
 )
 
 
-@console_ns.route("/apps/<uuid:app_id>/workflows/<uuid:workflow_id>/performance/summary")
+def _serialize_recommendation(rec) -> dict:
+    """
+    Helper function to serialize a WorkflowOptimizationRecommendation object.
+    
+    Args:
+        rec: WorkflowOptimizationRecommendation instance
+        
+    Returns:
+        Dictionary representation of the recommendation
+    """
+    return {
+        'id': rec.id,
+        'title': rec.title,
+        'description': rec.description,
+        'category': rec.category,
+        'severity': rec.severity,
+        'estimated_improvement': rec.estimated_improvement,
+        'affected_nodes': rec.affected_nodes,
+        'recommendation_steps': rec.recommendation_steps,
+        'code_example': rec.code_example,
+        'documentation_link': rec.documentation_link,
+        'supporting_metrics': rec.supporting_metrics,
+        'status': rec.status,
+        'created_at': rec.created_at.isoformat(),
+    }
+
+
+@console_ns.route('/apps/<uuid:app_id>/workflows/<uuid:workflow_id>/performance/summary')
 class WorkflowPerformanceSummaryAPI(Resource):
     """API for retrieving workflow performance summary"""
 
@@ -131,8 +158,8 @@ class WorkflowNodePerformanceAPI(Resource):
 
     @setup_required
     @login_required
-    @account_initialization_required
     @get_app_model
+    @account_initialization_required
     def get(self, app_model, workflow_id):
         """
         Get performance breakdown by node type
@@ -155,8 +182,8 @@ class WorkflowBottlenecksAPI(Resource):
 
     @setup_required
     @login_required
-    @account_initialization_required
     @get_app_model
+    @account_initialization_required
     def get(self, app_model, workflow_id):
         """
         Identify performance bottlenecks in the workflow
@@ -181,8 +208,8 @@ class WorkflowOptimizationRecommendationsAPI(Resource):
 
     @setup_required
     @login_required
-    @account_initialization_required
     @get_app_model
+    @account_initialization_required
     def get(self, app_model, workflow_id):
         """
         Get active optimization recommendations
@@ -209,24 +236,7 @@ class WorkflowOptimizationRecommendationsAPI(Resource):
         )
 
         return {
-            "recommendations": [
-                {
-                    "id": rec.id,
-                    "title": rec.title,
-                    "description": rec.description,
-                    "category": rec.category,
-                    "severity": rec.severity,
-                    "estimated_improvement": rec.estimated_improvement,
-                    "affected_nodes": rec.affected_nodes,
-                    "recommendation_steps": rec.recommendation_steps,
-                    "code_example": rec.code_example,
-                    "documentation_link": rec.documentation_link,
-                    "supporting_metrics": rec.supporting_metrics,
-                    "status": rec.status,
-                    "created_at": rec.created_at.isoformat(),
-                }
-                for rec in recommendations
-            ]
+            'recommendations': [_serialize_recommendation(rec) for rec in recommendations]
         }
 
     @setup_required
@@ -248,25 +258,8 @@ class WorkflowOptimizationRecommendationsAPI(Resource):
         )
 
         return {
-            "recommendations": [
-                {
-                    "id": rec.id,
-                    "title": rec.title,
-                    "description": rec.description,
-                    "category": rec.category,
-                    "severity": rec.severity,
-                    "estimated_improvement": rec.estimated_improvement,
-                    "affected_nodes": rec.affected_nodes,
-                    "recommendation_steps": rec.recommendation_steps,
-                    "code_example": rec.code_example,
-                    "documentation_link": rec.documentation_link,
-                    "supporting_metrics": rec.supporting_metrics,
-                    "status": rec.status,
-                    "created_at": rec.created_at.isoformat(),
-                }
-                for rec in recommendations
-            ],
-            "count": len(recommendations),
+            'recommendations': [_serialize_recommendation(rec) for rec in recommendations],
+            'count': len(recommendations),
         }
 
 
@@ -278,14 +271,12 @@ class DismissRecommendationAPI(Resource):
 
     @setup_required
     @login_required
-    @account_initialization_required
     @get_app_model
+    @account_initialization_required
     def post(self, app_model, workflow_id, recommendation_id):
         """
         Dismiss an optimization recommendation
         """
-        from libs.login import current_account_with_tenant
-
         account, _ = current_account_with_tenant()
 
         parser = reqparse.RequestParser()
@@ -337,8 +328,8 @@ class TopCachedNodesAPI(Resource):
 
     @setup_required
     @login_required
-    @account_initialization_required
     @get_app_model
+    @account_initialization_required
     def get(self, app_model, workflow_id):
         """
         Get the most frequently cached nodes
@@ -362,8 +353,8 @@ class InvalidateCacheAPI(Resource):
 
     @setup_required
     @login_required
-    @account_initialization_required
     @get_app_model
+    @account_initialization_required
     def post(self, app_model, workflow_id):
         """
         Invalidate cache entries
@@ -391,8 +382,8 @@ class CleanupCacheAPI(Resource):
 
     @setup_required
     @login_required
-    @account_initialization_required
     @get_app_model
+    @account_initialization_required
     def post(self, app_model, workflow_id):
         """
         Clean up expired cache entries

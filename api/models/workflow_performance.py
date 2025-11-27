@@ -72,7 +72,6 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
         UniqueConstraint("workflow_run_id", name="uq_workflow_run_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=uuidv7)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False, unique=True)
@@ -108,8 +107,6 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
     # Additional metadata
     extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
-
 
 class WorkflowNodePerformance(Base, DefaultFieldsMixin):
     """
@@ -127,7 +124,6 @@ class WorkflowNodePerformance(Base, DefaultFieldsMixin):
         UniqueConstraint("workflow_run_id", "node_execution_id", name="uq_workflow_node_execution"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=uuidv7)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str] = mapped_column(String(255), nullable=False)
     node_execution_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -160,8 +156,6 @@ class WorkflowNodePerformance(Base, DefaultFieldsMixin):
     # Additional metadata
     extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
-
 
 class WorkflowOptimizationRecommendation(Base, DefaultFieldsMixin):
     """
@@ -181,7 +175,6 @@ class WorkflowOptimizationRecommendation(Base, DefaultFieldsMixin):
         Index("idx_wf_opt_created_at", "created_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=uuidv7)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
@@ -219,11 +212,6 @@ class WorkflowOptimizationRecommendation(Base, DefaultFieldsMixin):
     # Additional metadata
     extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime, nullable=False, default=naive_utc_now, onupdate=naive_utc_now
-    )
-
 
 class WorkflowCacheEntry(Base, DefaultFieldsMixin):
     """
@@ -241,7 +229,6 @@ class WorkflowCacheEntry(Base, DefaultFieldsMixin):
         Index("idx_wf_cache_last_accessed", "last_accessed_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=uuidv7)
     cache_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
 
     # Node information
@@ -254,7 +241,6 @@ class WorkflowCacheEntry(Base, DefaultFieldsMixin):
     output_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Cache metadata
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     last_accessed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
@@ -284,7 +270,6 @@ class WorkflowPerformanceTrend(Base, DefaultFieldsMixin):
         UniqueConstraint("workflow_id", "period_start", "metric_type", name="uq_workflow_period_metric"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=uuidv7)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
@@ -311,5 +296,3 @@ class WorkflowPerformanceTrend(Base, DefaultFieldsMixin):
 
     # Additional metadata
     extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
-
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
