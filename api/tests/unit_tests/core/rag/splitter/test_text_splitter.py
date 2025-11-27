@@ -11,13 +11,13 @@ and semantic meaning.
 ### Core Splitter Types Tested:
 1. **RecursiveCharacterTextSplitter**: Main splitter that recursively tries different
    separators (paragraph -> line -> word -> character) to split text appropriately.
-   
+
 2. **TokenTextSplitter**: Splits text based on token count using tiktoken library,
    useful for LLM context window management.
-   
+
 3. **EnhanceRecursiveCharacterTextSplitter**: Enhanced version with custom token
    counting support via embedding models or GPT2 tokenizer.
-   
+
 4. **FixedRecursiveCharacterTextSplitter**: Prioritizes a fixed separator before
    falling back to recursive splitting, useful for structured documents.
 
@@ -187,7 +187,7 @@ def another_function():
 def markdown_text():
     """
     Provide markdown formatted text for testing.
-    
+
     This fixture simulates a typical markdown document with headers,
     paragraphs, and code blocks.
     """
@@ -219,7 +219,7 @@ Final paragraph."""
 def html_text():
     """
     Provide HTML formatted text for testing.
-    
+
     Tests how splitters handle structured markup content.
     """
     return """<html>
@@ -237,7 +237,7 @@ def html_text():
 def json_text():
     """
     Provide JSON formatted text for testing.
-    
+
     Tests splitting of structured data formats.
     """
     return """{
@@ -258,7 +258,7 @@ def json_text():
 def technical_text():
     """
     Provide technical documentation text.
-    
+
     Simulates API documentation or technical writing with
     specific terminology and formatting.
     """
@@ -291,7 +291,7 @@ Error Codes:
 class TestSplitTextWithRegex:
     """
     Test the _split_text_with_regex helper function.
-    
+
     This helper function is used internally by text splitters to split
     text using regex patterns. It supports keeping or removing separators
     and handles special regex characters properly.
@@ -300,7 +300,7 @@ class TestSplitTextWithRegex:
     def test_split_with_separator_keep(self):
         """
         Test splitting text with separator kept.
-        
+
         When keep_separator=True, the separator should be appended to each
         chunk (except possibly the last one). This is useful for maintaining
         document structure like paragraph breaks.
@@ -345,6 +345,7 @@ class TestSplitTextOnTokens:
 
     def test_basic_token_splitting(self):
         """Test basic token-based splitting."""
+
         # Mock tokenizer
         def mock_encode(text: str) -> list[int]:
             return [ord(c) for c in text]
@@ -352,9 +353,7 @@ class TestSplitTextOnTokens:
         def mock_decode(tokens: list[int]) -> str:
             return "".join([chr(t) for t in tokens])
 
-        tokenizer = Tokenizer(
-            chunk_overlap=2, tokens_per_chunk=5, decode=mock_decode, encode=mock_encode
-        )
+        tokenizer = Tokenizer(chunk_overlap=2, tokens_per_chunk=5, decode=mock_decode, encode=mock_encode)
 
         text = "ABCDEFGHIJ"
         result = split_text_on_tokens(text=text, tokenizer=tokenizer)
@@ -372,9 +371,7 @@ class TestSplitTextOnTokens:
         def mock_decode(tokens: list[int]) -> str:
             return "".join([str(t) for t in tokens])
 
-        tokenizer = Tokenizer(
-            chunk_overlap=2, tokens_per_chunk=5, decode=mock_decode, encode=mock_encode
-        )
+        tokenizer = Tokenizer(chunk_overlap=2, tokens_per_chunk=5, decode=mock_decode, encode=mock_encode)
 
         text = string.digits
         result = split_text_on_tokens(text=text, tokenizer=tokenizer)
@@ -391,9 +388,7 @@ class TestSplitTextOnTokens:
         def mock_decode(tokens: list[int]) -> str:
             return "".join([chr(t) for t in tokens])
 
-        tokenizer = Tokenizer(
-            chunk_overlap=2, tokens_per_chunk=100, decode=mock_decode, encode=mock_encode
-        )
+        tokenizer = Tokenizer(chunk_overlap=2, tokens_per_chunk=100, decode=mock_decode, encode=mock_encode)
 
         text = "Short"
         result = split_text_on_tokens(text=text, tokenizer=tokenizer)
@@ -411,7 +406,7 @@ class TestSplitTextOnTokens:
 class TestRecursiveCharacterTextSplitter:
     """
     Test RecursiveCharacterTextSplitter functionality.
-    
+
     RecursiveCharacterTextSplitter is the main text splitting class that
     recursively tries different separators (paragraph -> line -> word -> character)
     to split text into chunks of appropriate size. This is the most commonly
@@ -421,7 +416,7 @@ class TestRecursiveCharacterTextSplitter:
     def test_initialization(self):
         """
         Test splitter initialization with default parameters.
-        
+
         Verifies that the splitter is properly initialized with the correct
         chunk size, overlap, and default separator hierarchy.
         """
@@ -434,9 +429,7 @@ class TestRecursiveCharacterTextSplitter:
     def test_initialization_custom_separators(self):
         """Test splitter initialization with custom separators."""
         custom_separators = ["\n\n\n", "\n\n", "\n", " "]
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=100, chunk_overlap=10, separators=custom_separators
-        )
+        splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=10, separators=custom_separators)
         assert splitter._separators == custom_separators
 
     def test_chunk_overlap_validation(self):
@@ -484,9 +477,7 @@ class TestRecursiveCharacterTextSplitter:
     def test_keep_separator_true(self):
         """Test that separators are kept when keep_separator=True."""
         text = "Para1\n\nPara2\n\nPara3"
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=50, chunk_overlap=5, keep_separator=True
-        )
+        splitter = RecursiveCharacterTextSplitter(chunk_size=50, chunk_overlap=5, keep_separator=True)
         result = splitter.split_text(text)
 
         # At least one chunk should contain the separator
@@ -497,9 +488,7 @@ class TestRecursiveCharacterTextSplitter:
     def test_keep_separator_false(self):
         """Test that separators are removed when keep_separator=False."""
         text = "Para1\n\nPara2\n\nPara3"
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=50, chunk_overlap=5, keep_separator=False
-        )
+        splitter = RecursiveCharacterTextSplitter(chunk_size=50, chunk_overlap=5, keep_separator=False)
         result = splitter.split_text(text)
 
         assert len(result) > 0
@@ -511,7 +500,7 @@ class TestRecursiveCharacterTextSplitter:
     def test_overlap_handling(self):
         """
         Test that chunk overlap is correctly handled.
-        
+
         Overlap ensures that context is preserved between chunks by having
         some content appear in consecutive chunks. This is crucial for
         maintaining semantic continuity in RAG applications.
@@ -558,9 +547,7 @@ class TestRecursiveCharacterTextSplitter:
 
     def test_create_documents_with_start_index(self):
         """Test creating documents with start_index in metadata."""
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=20, chunk_overlap=5, add_start_index=True
-        )
+        splitter = RecursiveCharacterTextSplitter(chunk_size=20, chunk_overlap=5, add_start_index=True)
         texts = ["This is a longer text that will be split into chunks"]
 
         documents = splitter.create_documents(texts)
@@ -589,9 +576,7 @@ class TestRecursiveCharacterTextSplitter:
     def test_transform_documents(self):
         """Test transform_documents interface."""
         splitter = RecursiveCharacterTextSplitter(chunk_size=30, chunk_overlap=5)
-        docs = [
-            Document(page_content="Document to transform", metadata={"key": "value"})
-        ]
+        docs = [Document(page_content="Document to transform", metadata={"key": "value"})]
 
         result = splitter.transform_documents(docs)
 
@@ -627,29 +612,21 @@ class TestRecursiveCharacterTextSplitter:
 class TestTokenTextSplitter:
     """Test TokenTextSplitter functionality."""
 
-    @pytest.mark.skipif(
-        True, reason="Requires tiktoken library which may not be installed"
-    )
+    @pytest.mark.skipif(True, reason="Requires tiktoken library which may not be installed")
     def test_initialization_with_encoding(self):
         """Test TokenTextSplitter initialization with encoding name."""
         try:
-            splitter = TokenTextSplitter(
-                encoding_name="gpt2", chunk_size=100, chunk_overlap=10
-            )
+            splitter = TokenTextSplitter(encoding_name="gpt2", chunk_size=100, chunk_overlap=10)
             assert splitter._chunk_size == 100
             assert splitter._chunk_overlap == 10
         except ImportError:
             pytest.skip("tiktoken not installed")
 
-    @pytest.mark.skipif(
-        True, reason="Requires tiktoken library which may not be installed"
-    )
+    @pytest.mark.skipif(True, reason="Requires tiktoken library which may not be installed")
     def test_initialization_with_model(self):
         """Test TokenTextSplitter initialization with model name."""
         try:
-            splitter = TokenTextSplitter(
-                model_name="gpt-3.5-turbo", chunk_size=100, chunk_overlap=10
-            )
+            splitter = TokenTextSplitter(model_name="gpt-3.5-turbo", chunk_size=100, chunk_overlap=10)
             assert splitter._chunk_size == 100
         except ImportError:
             pytest.skip("tiktoken not installed")
@@ -661,15 +638,11 @@ class TestTokenTextSplitter:
             with pytest.raises(ImportError, match="tiktoken"):
                 TokenTextSplitter(chunk_size=100)
 
-    @pytest.mark.skipif(
-        True, reason="Requires tiktoken library which may not be installed"
-    )
+    @pytest.mark.skipif(True, reason="Requires tiktoken library which may not be installed")
     def test_split_text_by_tokens(self, sample_text):
         """Test splitting text by token count."""
         try:
-            splitter = TokenTextSplitter(
-                encoding_name="gpt2", chunk_size=50, chunk_overlap=10
-            )
+            splitter = TokenTextSplitter(encoding_name="gpt2", chunk_size=50, chunk_overlap=10)
             result = splitter.split_text(sample_text)
 
             assert len(result) > 0
@@ -677,15 +650,11 @@ class TestTokenTextSplitter:
         except ImportError:
             pytest.skip("tiktoken not installed")
 
-    @pytest.mark.skipif(
-        True, reason="Requires tiktoken library which may not be installed"
-    )
+    @pytest.mark.skipif(True, reason="Requires tiktoken library which may not be installed")
     def test_token_overlap(self):
         """Test that token overlap works correctly."""
         try:
-            splitter = TokenTextSplitter(
-                encoding_name="gpt2", chunk_size=20, chunk_overlap=5
-            )
+            splitter = TokenTextSplitter(encoding_name="gpt2", chunk_size=20, chunk_overlap=5)
             text = " ".join([f"word{i}" for i in range(50)])
             result = splitter.split_text(text)
 
@@ -714,9 +683,7 @@ class TestEnhanceRecursiveCharacterTextSplitter:
     def test_from_encoder_with_mock_model(self):
         """Test creating splitter from encoder with mock embedding model."""
         mock_model = Mock()
-        mock_model.get_text_embedding_num_tokens = Mock(
-            return_value=[10, 20, 30]
-        )
+        mock_model.get_text_embedding_num_tokens = Mock(return_value=[10, 20, 30])
 
         splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
             embedding_model_instance=mock_model, chunk_size=100, chunk_overlap=10
@@ -752,9 +719,7 @@ class TestEnhanceRecursiveCharacterTextSplitter:
         """Test token counting with embedding model."""
         mock_model = Mock()
         # Mock returns token counts for input texts
-        mock_model.get_text_embedding_num_tokens = Mock(
-            side_effect=lambda texts: [len(t) // 2 for t in texts]
-        )
+        mock_model.get_text_embedding_num_tokens = Mock(side_effect=lambda texts: [len(t) // 2 for t in texts])
 
         splitter = EnhanceRecursiveCharacterTextSplitter.from_encoder(
             embedding_model_instance=mock_model, chunk_size=50, chunk_overlap=5
@@ -777,9 +742,7 @@ class TestFixedRecursiveCharacterTextSplitter:
 
     def test_initialization_with_fixed_separator(self):
         """Test initialization with fixed separator."""
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\n\n", chunk_size=100, chunk_overlap=10
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\n\n", chunk_size=100, chunk_overlap=10)
 
         assert splitter._fixed_separator == "\n\n"
         assert splitter._chunk_size == 100
@@ -788,9 +751,7 @@ class TestFixedRecursiveCharacterTextSplitter:
     def test_split_by_fixed_separator(self):
         """Test splitting by fixed separator first."""
         text = "Part 1\n\nPart 2\n\nPart 3"
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\n\n", chunk_size=100, chunk_overlap=10
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\n\n", chunk_size=100, chunk_overlap=10)
 
         result = splitter.split_text(text)
 
@@ -803,9 +764,7 @@ class TestFixedRecursiveCharacterTextSplitter:
         large_chunk = " ".join([f"word{i}" for i in range(50)])
         text = f"{large_chunk}\n\n{large_chunk}"
 
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\n\n", chunk_size=50, chunk_overlap=5
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\n\n", chunk_size=50, chunk_overlap=5)
 
         result = splitter.split_text(text)
 
@@ -830,9 +789,7 @@ class TestFixedRecursiveCharacterTextSplitter:
     def test_no_fixed_separator(self):
         """Test behavior when no fixed separator is provided."""
         text = "This is a test text without fixed separator"
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="", chunk_size=20, chunk_overlap=5
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="", chunk_size=20, chunk_overlap=5)
 
         result = splitter.split_text(text)
 
@@ -841,9 +798,7 @@ class TestFixedRecursiveCharacterTextSplitter:
     def test_chinese_separator(self):
         """Test with Chinese period separator."""
         text = "这是第一句。这是第二句。这是第三句。"
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="。", chunk_size=50, chunk_overlap=5
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="。", chunk_size=50, chunk_overlap=5)
 
         result = splitter.split_text(text)
 
@@ -897,9 +852,7 @@ class TestFixedRecursiveCharacterTextSplitter:
 
     def test_metadata_preservation_in_documents(self):
         """Test that metadata is preserved when splitting documents."""
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\n\n", chunk_size=50, chunk_overlap=5
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\n\n", chunk_size=50, chunk_overlap=5)
 
         docs = [
             Document(
@@ -918,9 +871,7 @@ class TestFixedRecursiveCharacterTextSplitter:
 
     def test_empty_text_handling(self):
         """Test handling of empty text."""
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\n\n", chunk_size=100, chunk_overlap=10
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\n\n", chunk_size=100, chunk_overlap=10)
 
         result = splitter.split_text("")
 
@@ -931,9 +882,7 @@ class TestFixedRecursiveCharacterTextSplitter:
     def test_single_chunk_text(self):
         """Test text that fits in a single chunk."""
         text = "Short text"
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\n\n", chunk_size=100, chunk_overlap=10
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\n\n", chunk_size=100, chunk_overlap=10)
 
         result = splitter.split_text(text)
 
@@ -961,7 +910,7 @@ class TestFixedRecursiveCharacterTextSplitter:
 class TestMetadataPreservation:
     """
     Test metadata preservation across different splitters.
-    
+
     Metadata preservation is critical for RAG systems as it allows tracking
     the source, author, timestamps, and other contextual information for
     each chunk. All chunks derived from a document should inherit its metadata.
@@ -970,7 +919,7 @@ class TestMetadataPreservation:
     def test_recursive_splitter_metadata(self):
         """
         Test metadata preservation with RecursiveCharacterTextSplitter.
-        
+
         When a document is split into multiple chunks, each chunk should
         receive a copy of the original document's metadata. This ensures
         that we can trace each chunk back to its source.
@@ -1009,9 +958,7 @@ class TestMetadataPreservation:
 
     def test_fixed_splitter_metadata(self):
         """Test metadata preservation with FixedRecursiveCharacterTextSplitter."""
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\n", chunk_size=30, chunk_overlap=5
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\n", chunk_size=30, chunk_overlap=5)
 
         docs = [
             Document(
@@ -1028,9 +975,7 @@ class TestMetadataPreservation:
 
     def test_metadata_with_start_index(self):
         """Test that start_index is added to metadata when requested."""
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=20, chunk_overlap=5, add_start_index=True
-        )
+        splitter = RecursiveCharacterTextSplitter(chunk_size=20, chunk_overlap=5, add_start_index=True)
 
         texts = ["This is a test text that will be split"]
         metadatas = [{"original": "metadata"}]
@@ -1056,9 +1001,7 @@ class TestEdgeCases:
     def test_chunk_size_equals_text_length(self):
         """Test when chunk size equals text length."""
         text = "Exact size text"
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=len(text), chunk_overlap=0
-        )
+        splitter = RecursiveCharacterTextSplitter(chunk_size=len(text), chunk_overlap=0)
 
         result = splitter.split_text(text)
 
@@ -1178,9 +1121,7 @@ class TestIntegrationScenarios:
     def test_document_processing_pipeline(self):
         """Test complete document processing pipeline."""
         # Simulate a document processing workflow
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=100, chunk_overlap=20, add_start_index=True
-        )
+        splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20, add_start_index=True)
 
         # Original documents with metadata
         original_docs = [
@@ -1217,9 +1158,7 @@ class TestIntegrationScenarios:
 
     def test_code_documentation_splitting(self, code_text):
         """Test splitting code documentation."""
-        splitter = FixedRecursiveCharacterTextSplitter(
-            fixed_separator="\n\n", chunk_size=100, chunk_overlap=10
-        )
+        splitter = FixedRecursiveCharacterTextSplitter(fixed_separator="\n\n", chunk_size=100, chunk_overlap=10)
 
         result = splitter.split_text(code_text)
 
@@ -1251,9 +1190,7 @@ Conclusion paragraph with summary.
 
 Additional notes and references."""
 
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=100, chunk_overlap=20, keep_separator=True
-        )
+        splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20, keep_separator=True)
 
         result = splitter.split_text(text)
 
@@ -1301,7 +1238,7 @@ class TestPerformanceAndLimits:
     def test_deeply_nested_splitting(self):
         """
         Test that recursive splitting works for deeply nested cases.
-        
+
         This test verifies that the splitter can handle text that requires
         multiple levels of recursive splitting (paragraph -> line -> word -> character).
         """
@@ -1328,7 +1265,7 @@ class TestPerformanceAndLimits:
 class TestAdvancedSplittingScenarios:
     """
     Test advanced and complex splitting scenarios.
-    
+
     This test class covers edge cases and advanced use cases that may occur
     in production environments, including structured documents, special
     formatting, and boundary conditions.
@@ -1337,45 +1274,38 @@ class TestAdvancedSplittingScenarios:
     def test_markdown_document_splitting(self, markdown_text):
         """
         Test splitting of markdown formatted documents.
-        
+
         Markdown documents have hierarchical structure with headers and sections.
         This test verifies that the splitter respects document structure while
         maintaining readability of chunks.
         """
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=150, 
-            chunk_overlap=20,
-            keep_separator=True
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=150, chunk_overlap=20, keep_separator=True)
+
         result = splitter.split_text(markdown_text)
-        
+
         # Should create multiple chunks
         assert len(result) > 0
-        
+
         # Verify markdown structure is somewhat preserved
         combined = "\n".join(result)
         assert "#" in combined  # Headers should be present
         assert "Section" in combined
-        
+
         # Each chunk should be within size limits
         assert all(len(chunk) <= 200 for chunk in result)
 
     def test_html_content_splitting(self, html_text):
         """
         Test splitting of HTML formatted content.
-        
+
         HTML has nested tags and structure. This test ensures that
         splitting doesn't break the content in ways that would make
         it unusable.
         """
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=100,
-            chunk_overlap=15
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=15)
+
         result = splitter.split_text(html_text)
-        
+
         assert len(result) > 0
         # Verify HTML content is preserved
         combined = "".join(result)
@@ -1384,18 +1314,15 @@ class TestAdvancedSplittingScenarios:
     def test_json_structure_splitting(self, json_text):
         """
         Test splitting of JSON formatted data.
-        
+
         JSON has specific structure with braces, brackets, and quotes.
         While the splitter doesn't parse JSON, it should handle it
         without losing critical content.
         """
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=80,
-            chunk_overlap=10
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=80, chunk_overlap=10)
+
         result = splitter.split_text(json_text)
-        
+
         assert len(result) > 0
         # Verify key JSON elements are preserved
         combined = "".join(result)
@@ -1404,19 +1331,15 @@ class TestAdvancedSplittingScenarios:
     def test_technical_documentation_splitting(self, technical_text):
         """
         Test splitting of technical documentation.
-        
+
         Technical docs often have specific formatting with sections,
         code examples, and structured information. This test ensures
         such content is split appropriately.
         """
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=200,
-            chunk_overlap=30,
-            keep_separator=True
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=200, chunk_overlap=30, keep_separator=True)
+
         result = splitter.split_text(technical_text)
-        
+
         assert len(result) > 0
         # Verify technical content is preserved
         combined = "\n".join(result)
@@ -1426,7 +1349,7 @@ class TestAdvancedSplittingScenarios:
     def test_mixed_content_types(self):
         """
         Test splitting document with mixed content types.
-        
+
         Real-world documents often mix prose, code, lists, and other
         content types. This test verifies handling of such mixed content.
         """
@@ -1446,13 +1369,10 @@ Key Points:
 
 Conclusion paragraph with final thoughts."""
 
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=120,
-            chunk_overlap=20
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=120, chunk_overlap=20)
+
         result = splitter.split_text(mixed_text)
-        
+
         assert len(result) > 0
         # Verify different content types are preserved
         combined = "\n".join(result)
@@ -1462,7 +1382,7 @@ Conclusion paragraph with final thoughts."""
     def test_bullet_points_and_lists(self):
         """
         Test splitting of text with bullet points and lists.
-        
+
         Lists are common in documents and should be split in a way
         that maintains their structure and readability.
         """
@@ -1480,13 +1400,10 @@ Additional Information:
 2. Second numbered item
 3. Third numbered item"""
 
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=100,
-            chunk_overlap=15
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=15)
+
         result = splitter.split_text(list_text)
-        
+
         assert len(result) > 0
         # Verify list structure is somewhat maintained
         combined = "\n".join(result)
@@ -1495,7 +1412,7 @@ Additional Information:
     def test_quoted_text_handling(self):
         """
         Test handling of quoted text and dialogue.
-        
+
         Quotes and dialogue have special formatting that should be
         preserved during splitting.
         """
@@ -1509,13 +1426,10 @@ A third voice added, "Let's not forget about the other perspective here."
 
 The discussion continued with more detailed points."""
 
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=100,
-            chunk_overlap=20
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=20)
+
         result = splitter.split_text(quoted_text)
-        
+
         assert len(result) > 0
         # Verify quotes are preserved
         combined = " ".join(result)
@@ -1524,7 +1438,7 @@ The discussion continued with more detailed points."""
     def test_table_like_content(self):
         """
         Test splitting of table-like formatted content.
-        
+
         Tables and structured data layouts should be handled gracefully
         even though the splitter doesn't understand table semantics.
         """
@@ -1539,13 +1453,10 @@ Product D     | $49.99 | 4.9    | 25
 
 Notes: All prices include tax."""
 
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=120,
-            chunk_overlap=15
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=120, chunk_overlap=15)
+
         result = splitter.split_text(table_text)
-        
+
         assert len(result) > 0
         # Verify table content is preserved
         combined = "\n".join(result)
@@ -1554,7 +1465,7 @@ Notes: All prices include tax."""
     def test_urls_and_links_preservation(self):
         """
         Test that URLs and links are preserved during splitting.
-        
+
         URLs should not be broken across chunks as that would make
         them unusable.
         """
@@ -1571,11 +1482,11 @@ Contact us at support@example.com for help."""
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=100,
             chunk_overlap=20,
-            separators=["\n\n", "\n", " ", ""]  # Space separator helps keep URLs together
+            separators=["\n\n", "\n", " ", ""],  # Space separator helps keep URLs together
         )
-        
+
         result = splitter.split_text(url_text)
-        
+
         assert len(result) > 0
         # Verify URLs are present in chunks
         combined = " ".join(result)
@@ -1584,7 +1495,7 @@ Contact us at support@example.com for help."""
     def test_email_content_splitting(self):
         """
         Test splitting of email-like content.
-        
+
         Emails have headers, body, and signatures that should be
         handled appropriately.
         """
@@ -1608,13 +1519,10 @@ Best regards,
 John Doe
 Senior Manager"""
 
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=150,
-            chunk_overlap=20
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=150, chunk_overlap=20)
+
         result = splitter.split_text(email_text)
-        
+
         assert len(result) > 0
         # Verify email structure is preserved
         combined = "\n".join(result)
@@ -1629,7 +1537,7 @@ Senior Manager"""
 class TestSplitterConfiguration:
     """
     Test various configuration options for text splitters.
-    
+
     This class tests different parameter combinations and configurations
     to ensure splitters behave correctly under various settings.
     """
@@ -1637,23 +1545,24 @@ class TestSplitterConfiguration:
     def test_custom_length_function(self):
         """
         Test using a custom length function.
-        
+
         The splitter allows custom length functions for specialized
         counting (e.g., word count instead of character count).
         """
+
         # Custom length function that counts words
         def word_count_length(texts: list[str]) -> list[int]:
             return [len(text.split()) for text in texts]
-        
+
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=10,  # 10 words
             chunk_overlap=2,  # 2 words overlap
-            length_function=word_count_length
+            length_function=word_count_length,
         )
-        
+
         text = " ".join([f"word{i}" for i in range(30)])
         result = splitter.split_text(text)
-        
+
         # Should create multiple chunks based on word count
         assert len(result) > 1
         # Each chunk should have roughly 10 words or fewer
@@ -1664,28 +1573,24 @@ class TestSplitterConfiguration:
     def test_different_separator_orders(self):
         """
         Test different orderings of separators.
-        
+
         The order of separators affects how text is split. This test
         verifies that different orders produce different results.
         """
         text = "Paragraph one.\n\nParagraph two.\nLine break here.\nAnother line."
-        
+
         # Try paragraph-first splitting
         splitter1 = RecursiveCharacterTextSplitter(
-            chunk_size=50,
-            chunk_overlap=5,
-            separators=["\n\n", "\n", ".", " ", ""]
+            chunk_size=50, chunk_overlap=5, separators=["\n\n", "\n", ".", " ", ""]
         )
         result1 = splitter1.split_text(text)
-        
+
         # Try line-first splitting
         splitter2 = RecursiveCharacterTextSplitter(
-            chunk_size=50,
-            chunk_overlap=5,
-            separators=["\n", "\n\n", ".", " ", ""]
+            chunk_size=50, chunk_overlap=5, separators=["\n", "\n\n", ".", " ", ""]
         )
         result2 = splitter2.split_text(text)
-        
+
         # Both should produce valid results
         assert len(result1) > 0
         assert len(result2) > 0
@@ -1696,26 +1601,20 @@ class TestSplitterConfiguration:
     def test_extreme_overlap_ratios(self):
         """
         Test splitters with extreme overlap ratios.
-        
+
         Tests edge cases where overlap is very small or very large
         relative to chunk size.
         """
         text = "A B C D E F G H I J K L M N O P Q R S T U V W X Y Z"
-        
+
         # Very small overlap (1% of chunk size)
-        splitter_small = RecursiveCharacterTextSplitter(
-            chunk_size=20,
-            chunk_overlap=1
-        )
+        splitter_small = RecursiveCharacterTextSplitter(chunk_size=20, chunk_overlap=1)
         result_small = splitter_small.split_text(text)
-        
+
         # Large overlap (90% of chunk size)
-        splitter_large = RecursiveCharacterTextSplitter(
-            chunk_size=20,
-            chunk_overlap=18
-        )
+        splitter_large = RecursiveCharacterTextSplitter(chunk_size=20, chunk_overlap=18)
         result_large = splitter_large.split_text(text)
-        
+
         # Both should work
         assert len(result_small) > 0
         assert len(result_large) > 0
@@ -1725,43 +1624,39 @@ class TestSplitterConfiguration:
     def test_add_start_index_accuracy(self):
         """
         Test that start_index metadata is accurately calculated.
-        
+
         The start_index should point to the actual position of the
         chunk in the original text.
         """
         text = string.ascii_uppercase
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=10,
-            chunk_overlap=2,
-            add_start_index=True
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=10, chunk_overlap=2, add_start_index=True)
+
         docs = splitter.create_documents([text])
-        
+
         # Verify start indices are correct
         for doc in docs:
             start_idx = doc.metadata.get("start_index")
             if start_idx is not None:
                 # The chunk should actually appear at that index
-                assert text[start_idx:start_idx + len(doc.page_content)] == doc.page_content
+                assert text[start_idx : start_idx + len(doc.page_content)] == doc.page_content
 
     def test_separator_regex_patterns(self):
         """
         Test using regex patterns as separators.
-        
+
         Separators can be regex patterns for more sophisticated splitting.
         """
         # Text with multiple spaces and tabs
         text = "Word1    Word2\t\tWord3   Word4\tWord5"
-        
+
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=20,
             chunk_overlap=3,
-            separators=[r"\s+", ""]  # Split on any whitespace
+            separators=[r"\s+", ""],  # Split on any whitespace
         )
-        
+
         result = splitter.split_text(text)
-        
+
         assert len(result) > 0
         # Verify words are split
         combined = " ".join(result)
@@ -1776,7 +1671,7 @@ class TestSplitterConfiguration:
 class TestErrorHandlingAndRobustness:
     """
     Test error handling and robustness of splitters.
-    
+
     This class tests how splitters handle invalid inputs, edge cases,
     and error conditions.
     """
@@ -1784,11 +1679,11 @@ class TestErrorHandlingAndRobustness:
     def test_none_text_handling(self):
         """
         Test handling of None as input.
-        
+
         Splitters should handle None gracefully without crashing.
         """
         splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=10)
-        
+
         # Should handle None without crashing
         try:
             result = splitter.split_text(None)
@@ -1801,17 +1696,14 @@ class TestErrorHandlingAndRobustness:
     def test_very_large_chunk_size(self):
         """
         Test splitter with chunk size larger than any reasonable text.
-        
+
         When chunk size is very large, text should remain unsplit.
         """
         text = "This is a short text."
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000000,
-            chunk_overlap=100
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=1000000, chunk_overlap=100)
+
         result = splitter.split_text(text)
-        
+
         # Should return single chunk
         assert len(result) == 1
         assert result[0] == text
@@ -1819,17 +1711,14 @@ class TestErrorHandlingAndRobustness:
     def test_chunk_size_one(self):
         """
         Test splitter with minimum chunk size of 1.
-        
+
         This extreme case should split text character by character.
         """
         text = "ABC"
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1,
-            chunk_overlap=0
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=1, chunk_overlap=0)
+
         result = splitter.split_text(text)
-        
+
         # Should split into individual characters
         assert len(result) >= 3
         # Verify all content is preserved
@@ -1841,18 +1730,15 @@ class TestErrorHandlingAndRobustness:
     def test_special_unicode_characters(self):
         """
         Test handling of special unicode characters.
-        
+
         Splitters should handle emojis, special symbols, and other
         unicode characters without issues.
         """
         text = "Hello 👋 World 🌍 Test 🚀 Data 📊 End 🎉"
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=20,
-            chunk_overlap=5
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=20, chunk_overlap=5)
+
         result = splitter.split_text(text)
-        
+
         assert len(result) > 0
         # Verify unicode is preserved
         combined = " ".join(result)
@@ -1862,18 +1748,15 @@ class TestErrorHandlingAndRobustness:
     def test_control_characters(self):
         """
         Test handling of control characters.
-        
+
         Text may contain tabs, carriage returns, and other control
         characters that should be handled properly.
         """
         text = "Line1\r\nLine2\tTabbed\r\nLine3"
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=30,
-            chunk_overlap=5
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=30, chunk_overlap=5)
+
         result = splitter.split_text(text)
-        
+
         assert len(result) > 0
         # Verify content is preserved
         combined = "".join(result)
@@ -1883,18 +1766,15 @@ class TestErrorHandlingAndRobustness:
     def test_repeated_separators(self):
         """
         Test text with many repeated separators.
-        
+
         Multiple consecutive separators should be handled without
         creating empty chunks.
         """
         text = "Word1\n\n\n\n\nWord2\n\n\n\nWord3"
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=50,
-            chunk_overlap=5
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=50, chunk_overlap=5)
+
         result = splitter.split_text(text)
-        
+
         assert len(result) > 0
         # Should not have empty chunks
         assert all(len(chunk.strip()) > 0 for chunk in result)
@@ -1902,19 +1782,17 @@ class TestErrorHandlingAndRobustness:
     def test_documents_with_empty_metadata(self):
         """
         Test splitting documents with empty metadata.
-        
+
         Documents may have empty metadata dict, which should be handled
         properly and preserved in chunks.
         """
         splitter = RecursiveCharacterTextSplitter(chunk_size=30, chunk_overlap=5)
-        
+
         # Create documents with empty metadata
-        docs = [
-            Document(page_content="Content here", metadata={})
-        ]
-        
+        docs = [Document(page_content="Content here", metadata={})]
+
         result = splitter.split_documents(docs)
-        
+
         assert len(result) > 0
         # Metadata should be dict (empty dict is valid)
         for doc in result:
@@ -1923,18 +1801,14 @@ class TestErrorHandlingAndRobustness:
     def test_empty_separator_list(self):
         """
         Test splitter with empty separator list.
-        
+
         Edge case where no separators are provided should still work
         by falling back to default behavior.
         """
         text = "Test text here"
-        
+
         try:
-            splitter = RecursiveCharacterTextSplitter(
-                chunk_size=20,
-                chunk_overlap=5,
-                separators=[]
-            )
+            splitter = RecursiveCharacterTextSplitter(chunk_size=20, chunk_overlap=5, separators=[])
             result = splitter.split_text(text)
             # Should still produce some result
             assert isinstance(result, list)
@@ -1951,7 +1825,7 @@ class TestErrorHandlingAndRobustness:
 class TestPerformanceCharacteristics:
     """
     Test performance-related characteristics of splitters.
-    
+
     These tests verify that splitters perform efficiently and handle
     large-scale operations appropriately.
     """
@@ -1959,18 +1833,15 @@ class TestPerformanceCharacteristics:
     def test_consistent_chunk_sizes(self):
         """
         Test that chunk sizes are relatively consistent.
-        
+
         While chunks may vary in size, they should generally be close
         to the target chunk size (except for the last chunk).
         """
         text = " ".join([f"Word{i}" for i in range(200)])
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=100,
-            chunk_overlap=10
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=10)
+
         result = splitter.split_text(text)
-        
+
         # Most chunks should be close to target size
         sizes = [len(chunk) for chunk in result[:-1]]  # Exclude last chunk
         if sizes:
@@ -1981,20 +1852,16 @@ class TestPerformanceCharacteristics:
     def test_minimal_information_loss(self):
         """
         Test that splitting and rejoining preserves information.
-        
+
         When chunks are rejoined, the content should be largely preserved
         (accounting for separator handling).
         """
         text = "The quick brown fox jumps over the lazy dog. " * 10
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=50,
-            chunk_overlap=10,
-            keep_separator=True
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=50, chunk_overlap=10, keep_separator=True)
+
         result = splitter.split_text(text)
         combined = "".join(result)
-        
+
         # Most of the original text should be preserved
         # (Some separators might be handled differently)
         assert "quick" in combined
@@ -2005,20 +1872,17 @@ class TestPerformanceCharacteristics:
     def test_deterministic_splitting(self):
         """
         Test that splitting is deterministic.
-        
+
         Running the same splitter on the same text multiple times
         should produce identical results.
         """
         text = "Consistent text for deterministic testing. " * 5
-        splitter = RecursiveCharacterTextSplitter(
-            chunk_size=50,
-            chunk_overlap=10
-        )
-        
+        splitter = RecursiveCharacterTextSplitter(chunk_size=50, chunk_overlap=10)
+
         result1 = splitter.split_text(text)
         result2 = splitter.split_text(text)
         result3 = splitter.split_text(text)
-        
+
         # All results should be identical
         assert result1 == result2
         assert result2 == result3
@@ -2026,25 +1890,19 @@ class TestPerformanceCharacteristics:
     def test_chunk_count_estimation(self):
         """
         Test that chunk count is reasonable for given text length.
-        
+
         The number of chunks should be proportional to text length
         and inversely proportional to chunk size.
         """
         base_text = "Word " * 100
-        
+
         # Small chunks should create more chunks
-        splitter_small = RecursiveCharacterTextSplitter(
-            chunk_size=20,
-            chunk_overlap=5
-        )
+        splitter_small = RecursiveCharacterTextSplitter(chunk_size=20, chunk_overlap=5)
         result_small = splitter_small.split_text(base_text)
-        
+
         # Large chunks should create fewer chunks
-        splitter_large = RecursiveCharacterTextSplitter(
-            chunk_size=100,
-            chunk_overlap=5
-        )
+        splitter_large = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=5)
         result_large = splitter_large.split_text(base_text)
-        
+
         # Small chunk size should produce more chunks
         assert len(result_small) > len(result_large)
