@@ -88,23 +88,13 @@ from uuid import uuid4
 import pytest
 from flask import Flask
 from flask_restx import Api
-from werkzeug.exceptions import Forbidden, NotFound
 
-from controllers.console import console_ns
-from controllers.console.datasets.datasets import DatasetListApi, DatasetApi
-from controllers.console.datasets.datasets_document import DocumentResource
-from controllers.console.datasets.hit_testing import HitTestingApi
+from controllers.console.datasets.datasets import DatasetApi, DatasetListApi
 from controllers.console.datasets.external import (
     ExternalApiTemplateListApi,
-    ExternalApiTemplateApi,
-    ExternalDatasetCreateApi,
 )
-from libs.login import current_account_with_tenant
+from controllers.console.datasets.hit_testing import HitTestingApi
 from models.dataset import Dataset, DatasetPermissionEnum
-from services.dataset_service import DatasetService, DocumentService
-from services.hit_testing_service import HitTestingService
-from services.external_knowledge_service import ExternalDatasetService
-
 
 # ============================================================================
 # Test Data Factory
@@ -328,9 +318,7 @@ class TestDatasetListApi:
         Provides a Flask test client that can make HTTP requests to
         the dataset list endpoint.
         """
-        return ControllerApiTestDataFactory.create_test_client(
-            app, api, DatasetListApi, "/datasets"
-        )
+        return ControllerApiTestDataFactory.create_test_client(app, api, DatasetListApi, "/datasets")
 
     @pytest.fixture
     def mock_current_user(self):
@@ -361,9 +349,7 @@ class TestDatasetListApi:
         """
         # Arrange
         datasets = [
-            ControllerApiTestDataFactory.create_dataset_mock(
-                dataset_id=f"dataset-{i}", name=f"Dataset {i}"
-            )
+            ControllerApiTestDataFactory.create_dataset_mock(dataset_id=f"dataset-{i}", name=f"Dataset {i}")
             for i in range(3)
         ]
 
@@ -402,11 +388,7 @@ class TestDatasetListApi:
         """
         # Arrange
         search_keyword = "test"
-        datasets = [
-            ControllerApiTestDataFactory.create_dataset_mock(
-                dataset_id="dataset-1", name="Test Dataset"
-            )
-        ]
+        datasets = [ControllerApiTestDataFactory.create_dataset_mock(dataset_id="dataset-1", name="Test Dataset")]
 
         with patch("controllers.console.datasets.datasets.DatasetService.get_datasets") as mock_get_datasets:
             mock_get_datasets.return_value = (datasets, 1)
@@ -436,9 +418,7 @@ class TestDatasetListApi:
         """
         # Arrange
         datasets = [
-            ControllerApiTestDataFactory.create_dataset_mock(
-                dataset_id=f"dataset-{i}", name=f"Dataset {i}"
-            )
+            ControllerApiTestDataFactory.create_dataset_mock(dataset_id=f"dataset-{i}", name=f"Dataset {i}")
             for i in range(5)
         ]
 
@@ -499,9 +479,7 @@ class TestDatasetApiGet:
     @pytest.fixture
     def client(self, app, api):
         """Create test client with DatasetApi registered."""
-        return ControllerApiTestDataFactory.create_test_client(
-            app, api, DatasetApi, "/datasets/<uuid:dataset_id>"
-        )
+        return ControllerApiTestDataFactory.create_test_client(app, api, DatasetApi, "/datasets/<uuid:dataset_id>")
 
     @pytest.fixture
     def mock_current_user(self):
@@ -528,9 +506,7 @@ class TestDatasetApiGet:
         """
         # Arrange
         dataset_id = str(uuid4())
-        dataset = ControllerApiTestDataFactory.create_dataset_mock(
-            dataset_id=dataset_id, name="Test Dataset"
-        )
+        dataset = ControllerApiTestDataFactory.create_dataset_mock(dataset_id=dataset_id, name="Test Dataset")
 
         with (
             patch("controllers.console.datasets.datasets.DatasetService.get_dataset") as mock_get_dataset,
@@ -619,9 +595,7 @@ class TestDatasetApiCreate:
     @pytest.fixture
     def client(self, app, api):
         """Create test client with DatasetApi registered."""
-        return ControllerApiTestDataFactory.create_test_client(
-            app, api, DatasetApi, "/datasets"
-        )
+        return ControllerApiTestDataFactory.create_test_client(app, api, DatasetApi, "/datasets")
 
     @pytest.fixture
     def mock_current_user(self):
@@ -647,9 +621,7 @@ class TestDatasetApiCreate:
         """
         # Arrange
         dataset_id = str(uuid4())
-        dataset = ControllerApiTestDataFactory.create_dataset_mock(
-            dataset_id=dataset_id, name="New Dataset"
-        )
+        dataset = ControllerApiTestDataFactory.create_dataset_mock(dataset_id=dataset_id, name="New Dataset")
 
         request_data = {
             "name": "New Dataset",
@@ -761,7 +733,9 @@ class TestHitTestingApi:
         }
 
         with (
-            patch("controllers.console.datasets.hit_testing.HitTestingApi.get_and_validate_dataset") as mock_get_dataset,
+            patch(
+                "controllers.console.datasets.hit_testing.HitTestingApi.get_and_validate_dataset"
+            ) as mock_get_dataset,
             patch("controllers.console.datasets.hit_testing.HitTestingApi.parse_args") as mock_parse_args,
             patch("controllers.console.datasets.hit_testing.HitTestingApi.hit_testing_args_check") as mock_check_args,
             patch("controllers.console.datasets.hit_testing.HitTestingApi.perform_hit_testing") as mock_perform,
@@ -859,12 +833,11 @@ class TestExternalDatasetApi:
         - Status code is 200
         """
         # Arrange
-        apis = [
-            {"id": f"api-{i}", "name": f"API {i}", "endpoint": f"https://api{i}.com"}
-            for i in range(3)
-        ]
+        apis = [{"id": f"api-{i}", "name": f"API {i}", "endpoint": f"https://api{i}.com"} for i in range(3)]
 
-        with patch("controllers.console.datasets.external.ExternalDatasetService.get_external_knowledge_apis") as mock_get_apis:
+        with patch(
+            "controllers.console.datasets.external.ExternalDatasetService.get_external_knowledge_apis"
+        ) as mock_get_apis:
             mock_get_apis.return_value = (apis, 3)
 
             # Act
@@ -1107,4 +1080,3 @@ class TestExternalDatasetApi:
 #    - Follow consistent patterns
 #
 # ============================================================================
-
