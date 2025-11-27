@@ -96,16 +96,10 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
-import datetime
-from typing import Any
 from unittest.mock import Mock, create_autospec, patch
-from uuid import uuid4
 
 import pytest
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
-from extensions.ext_database import db
 from models import Account, TenantAccountRole
 from models.dataset import (
     Dataset,
@@ -114,7 +108,6 @@ from models.dataset import (
 )
 from services.dataset_service import DatasetPermissionService, DatasetService
 from services.errors.account import NoPermissionError
-
 
 # ============================================================================
 # Test Data Factory
@@ -617,9 +610,7 @@ class TestDatasetPermissionServiceCheckPermission:
         Provides a mocked version of the get_dataset_partial_member_list
         method for testing permission validation logic.
         """
-        with patch.object(
-            DatasetPermissionService, "get_dataset_partial_member_list"
-        ) as mock_get_list:
+        with patch.object(DatasetPermissionService, "get_dataset_partial_member_list") as mock_get_list:
             yield mock_get_list
 
     def test_check_permission_dataset_editor_success(self, mock_get_partial_member_list):
@@ -635,19 +626,13 @@ class TestDatasetPermissionServiceCheckPermission:
         - Partial member list validation is skipped for non-operators
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            is_dataset_editor=True, is_dataset_operator=False
-        )
-        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.ONLY_ME
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(is_dataset_editor=True, is_dataset_operator=False)
+        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(permission=DatasetPermissionEnum.ONLY_ME)
         requested_permission = DatasetPermissionEnum.ALL_TEAM
         requested_partial_member_list = None
 
         # Act (should not raise)
-        DatasetPermissionService.check_permission(
-            user, dataset, requested_permission, requested_partial_member_list
-        )
+        DatasetPermissionService.check_permission(user, dataset, requested_permission, requested_partial_member_list)
 
         # Assert
         # Verify get_partial_member_list was not called (not needed for non-operators)
@@ -690,19 +675,13 @@ class TestDatasetPermissionServiceCheckPermission:
         - Current permission is preserved
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            is_dataset_editor=True, is_dataset_operator=True
-        )
-        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.ONLY_ME
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(is_dataset_editor=True, is_dataset_operator=True)
+        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(permission=DatasetPermissionEnum.ONLY_ME)
         requested_permission = DatasetPermissionEnum.ALL_TEAM  # Trying to change
         requested_partial_member_list = None
 
         # Act & Assert
-        with pytest.raises(
-            NoPermissionError, match="Dataset operators cannot change the dataset permissions"
-        ):
+        with pytest.raises(NoPermissionError, match="Dataset operators cannot change the dataset permissions"):
             DatasetPermissionService.check_permission(
                 user, dataset, requested_permission, requested_partial_member_list
             )
@@ -720,12 +699,8 @@ class TestDatasetPermissionServiceCheckPermission:
         - Error type is correct
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            is_dataset_editor=True, is_dataset_operator=True
-        )
-        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.PARTIAL_TEAM
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(is_dataset_editor=True, is_dataset_operator=True)
+        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(permission=DatasetPermissionEnum.PARTIAL_TEAM)
         requested_permission = "partial_members"
         requested_partial_member_list = None  # Missing list
 
@@ -748,12 +723,8 @@ class TestDatasetPermissionServiceCheckPermission:
         - Current member list is preserved
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            is_dataset_editor=True, is_dataset_operator=True
-        )
-        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.PARTIAL_TEAM
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(is_dataset_editor=True, is_dataset_operator=True)
+        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(permission=DatasetPermissionEnum.PARTIAL_TEAM)
         requested_permission = "partial_members"
 
         # Current member list
@@ -784,12 +755,8 @@ class TestDatasetPermissionServiceCheckPermission:
         - Permission validation works correctly
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            is_dataset_editor=True, is_dataset_operator=True
-        )
-        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
-            permission=DatasetPermissionEnum.PARTIAL_TEAM
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(is_dataset_editor=True, is_dataset_operator=True)
+        dataset = DatasetPermissionTestDataFactory.create_dataset_mock(permission=DatasetPermissionEnum.PARTIAL_TEAM)
         requested_permission = "partial_members"
 
         # Current member list
@@ -802,9 +769,7 @@ class TestDatasetPermissionServiceCheckPermission:
         )
 
         # Act (should not raise)
-        DatasetPermissionService.check_permission(
-            user, dataset, requested_permission, requested_partial_member_list
-        )
+        DatasetPermissionService.check_permission(user, dataset, requested_permission, requested_partial_member_list)
 
         # Assert
         # Verify get_partial_member_list was called to compare lists
@@ -1001,9 +966,7 @@ class TestDatasetServiceCheckDatasetPermission:
         - Access is granted automatically
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            role=TenantAccountRole.OWNER, tenant_id="tenant-123"
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(role=TenantAccountRole.OWNER, tenant_id="tenant-123")
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.ONLY_ME,
@@ -1050,9 +1013,7 @@ class TestDatasetServiceCheckDatasetPermission:
         - Access is granted correctly
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.ONLY_ME,
@@ -1075,9 +1036,7 @@ class TestDatasetServiceCheckDatasetPermission:
         - Error type is correct
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.ONLY_ME,
@@ -1101,9 +1060,7 @@ class TestDatasetServiceCheckDatasetPermission:
         - Database query is executed
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.PARTIAL_TEAM,
@@ -1139,9 +1096,7 @@ class TestDatasetServiceCheckDatasetPermission:
         - Error type is correct
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.PARTIAL_TEAM,
@@ -1171,9 +1126,7 @@ class TestDatasetServiceCheckDatasetPermission:
         - Access is granted correctly
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.PARTIAL_TEAM,
@@ -1200,9 +1153,7 @@ class TestDatasetServiceCheckDatasetPermission:
         - Access is granted correctly
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.ALL_TEAM,
@@ -1303,9 +1254,7 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
         - Access is granted automatically
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            role=TenantAccountRole.OWNER, tenant_id="tenant-123"
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(role=TenantAccountRole.OWNER, tenant_id="tenant-123")
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.ONLY_ME,
@@ -1328,9 +1277,7 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
         - Access is granted correctly
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.ONLY_ME,
@@ -1353,9 +1300,7 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
         - Error type is correct
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.ONLY_ME,
@@ -1366,9 +1311,7 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
         with pytest.raises(NoPermissionError, match="You do not have permission to access this dataset"):
             DatasetService.check_dataset_operator_permission(user=user, dataset=dataset)
 
-    def test_check_dataset_operator_permission_partial_members_with_permission_success(
-        self, mock_db_session
-    ):
+    def test_check_dataset_operator_permission_partial_members_with_permission_success(self, mock_db_session):
         """
         Test that user with explicit permission can access partial_members dataset.
 
@@ -1381,9 +1324,7 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
         - Database query is executed
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.PARTIAL_TEAM,
@@ -1406,9 +1347,7 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
         # Verify permission query was executed
         mock_db_session.query.assert_called()
 
-    def test_check_dataset_operator_permission_partial_members_without_permission_error(
-        self, mock_db_session
-    ):
+    def test_check_dataset_operator_permission_partial_members_without_permission_error(self, mock_db_session):
         """
         Test error when user without permission tries to access partial_members dataset.
 
@@ -1421,9 +1360,7 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
         - Error type is correct
         """
         # Arrange
-        user = DatasetPermissionTestDataFactory.create_user_mock(
-            user_id="user-123", role=TenantAccountRole.NORMAL
-        )
+        user = DatasetPermissionTestDataFactory.create_user_mock(user_id="user-123", role=TenantAccountRole.NORMAL)
         dataset = DatasetPermissionTestDataFactory.create_dataset_mock(
             tenant_id="tenant-123",
             permission=DatasetPermissionEnum.PARTIAL_TEAM,
@@ -1473,4 +1410,3 @@ class TestDatasetServiceCheckDatasetOperatorPermission:
 # based on real-world usage patterns or discovered edge cases.
 #
 # ============================================================================
-
