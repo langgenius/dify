@@ -17,6 +17,8 @@ This test suite covers:
 from datetime import datetime, timezone
 from uuid import uuid4
 
+import pytest
+
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -64,11 +66,8 @@ class TestProviderTypeEnum:
     def test_provider_type_value_of_invalid_raises_error(self):
         """Test ProviderType.value_of raises ValueError for invalid value."""
         # Act & Assert
-        try:
+        with pytest.raises(ValueError, match="No matching enum found"):
             ProviderType.value_of("invalid_type")
-            assert False, "Expected ValueError"
-        except ValueError as e:
-            assert "No matching enum found" in str(e)
 
     def test_provider_type_iteration(self):
         """Test iterating over ProviderType enum members."""
@@ -126,11 +125,8 @@ class TestProviderQuotaTypeEnum:
     def test_provider_quota_type_value_of_invalid_raises_error(self):
         """Test ProviderQuotaType.value_of raises ValueError for invalid value."""
         # Act & Assert
-        try:
+        with pytest.raises(ValueError, match="No matching enum found"):
             ProviderQuotaType.value_of("invalid_quota")
-            assert False, "Expected ValueError"
-        except ValueError as e:
-            assert "No matching enum found" in str(e)
 
     def test_provider_quota_type_iteration(self):
         """Test iterating over ProviderQuotaType enum members."""
