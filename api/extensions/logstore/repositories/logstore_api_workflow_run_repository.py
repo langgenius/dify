@@ -145,7 +145,13 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Returns:
             InfiniteScrollPagination object
         """
-        logger.info("get_paginated_workflow_runs: tenant_id=%s, app_id=%s, limit=%d, status=%s", tenant_id, app_id, limit, status)
+        logger.info(
+            "get_paginated_workflow_runs: tenant_id=%s, app_id=%s, limit=%d, status=%s",
+            tenant_id,
+            app_id,
+            limit,
+            status,
+        )
         # Convert triggered_from to list if needed
         if isinstance(triggered_from, WorkflowRunTriggeredFrom):
             triggered_from_list = [triggered_from]
@@ -295,7 +301,13 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL for completed runs (10-50x faster)
         """
-        logger.info("get_workflow_runs_count: tenant_id=%s, app_id=%s, triggered_from=%s, status=%s", tenant_id, app_id, triggered_from, status)
+        logger.info(
+            "get_workflow_runs_count: tenant_id=%s, app_id=%s, triggered_from=%s, status=%s",
+            tenant_id,
+            app_id,
+            triggered_from,
+            status,
+        )
         # Build time range filter
         time_filter = ""
         if time_range:
@@ -429,7 +441,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + COUNT(DISTINCT id) (20-100x faster)
         """
-        logger.info("get_daily_runs_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from)
+        logger.info(
+            "get_daily_runs_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from
+        )
         # Build time range filter
         time_filter = ""
         if start_date:
@@ -477,7 +491,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + COUNT(DISTINCT created_by) (20-100x faster)
         """
-        logger.info("get_daily_terminals_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from)
+        logger.info(
+            "get_daily_terminals_statistics: tenant_id=%s, app_id=%s, triggered_from=%s",
+            tenant_id,
+            app_id,
+            triggered_from,
+        )
         # Build time range filter
         time_filter = ""
         if start_date:
@@ -524,7 +543,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + SUM(total_tokens) (20-100x faster)
         """
-        logger.info("get_daily_token_cost_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from)
+        logger.info(
+            "get_daily_token_cost_statistics: tenant_id=%s, app_id=%s, triggered_from=%s",
+            tenant_id,
+            app_id,
+            triggered_from,
+        )
         # Build time range filter
         time_filter = ""
         if start_date:
@@ -571,7 +595,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + AVG (20-100x faster)
         """
-        logger.info("get_average_app_interaction_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from)
+        logger.info(
+            "get_average_app_interaction_statistics: tenant_id=%s, app_id=%s, triggered_from=%s",
+            tenant_id,
+            app_id,
+            triggered_from,
+        )
         # Build time range filter
         time_filter = ""
         if start_date:

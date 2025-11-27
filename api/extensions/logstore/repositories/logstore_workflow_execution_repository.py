@@ -39,10 +39,12 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
         """
-        logger.info("LogstoreWorkflowExecutionRepository.__init__: app_id=%s, triggered_from=%s", app_id, triggered_from)
+        logger.info(
+            "LogstoreWorkflowExecutionRepository.__init__: app_id=%s, triggered_from=%s", app_id, triggered_from
+        )
         # Initialize LogStore client
+        # Note: Project/logstore/index initialization is done at app startup via ext_logstore
         self.logstore_client = AliyunLogStore()
-        self.logstore_client.init_project_logstore()
 
         # Extract tenant_id from user
         tenant_id = extract_tenant_id(user)
@@ -77,7 +79,12 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         Returns:
             The logstore model as a list of key-value tuples
         """
-        logger.info("_to_logstore_model: id=%s, workflow_id=%s, status=%s", domain_model.id_, domain_model.workflow_id, domain_model.status.value)
+        logger.info(
+            "_to_logstore_model: id=%s, workflow_id=%s, status=%s",
+            domain_model.id_,
+            domain_model.workflow_id,
+            domain_model.status.value,
+        )
         # Use values from constructor if provided
         if not self._triggered_from:
             raise ValueError("triggered_from is required in repository constructor")
@@ -135,7 +142,9 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         Args:
             execution: The WorkflowExecution domain entity to persist
         """
-        logger.info("save: id=%s, workflow_id=%s, status=%s", execution.id_, execution.workflow_id, execution.status.value)
+        logger.info(
+            "save: id=%s, workflow_id=%s, status=%s", execution.id_, execution.workflow_id, execution.status.value
+        )
         try:
             logstore_model = self._to_logstore_model(execution)
             self.logstore_client.put_log(AliyunLogStore.workflow_execution_logstore, logstore_model)

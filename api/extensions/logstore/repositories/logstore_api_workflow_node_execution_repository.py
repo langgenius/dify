@@ -122,7 +122,13 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Uses query syntax to get raw logs and selects the one with max log_version.
         Returns the most recent execution ordered by created_at.
         """
-        logger.info("get_node_last_execution: tenant_id=%s, app_id=%s, workflow_id=%s, node_id=%s", tenant_id, app_id, workflow_id, node_id)
+        logger.info(
+            "get_node_last_execution: tenant_id=%s, app_id=%s, workflow_id=%s, node_id=%s",
+            tenant_id,
+            app_id,
+            workflow_id,
+            node_id,
+        )
         # Build query string using LogStore query syntax
         query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_id: {workflow_id} and node_id: {node_id}"
 
@@ -164,7 +170,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             # Sort by created_at DESC and return the most recent one
             deduplicated_results.sort(
                 key=lambda x: x.get("created_at", 0) if isinstance(x.get("created_at"), (int, float)) else 0,
-                reverse=True
+                reverse=True,
             )
 
             if deduplicated_results:
@@ -188,7 +194,12 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Uses query syntax to get raw logs and selects the one with max log_version for each node execution.
         Ordered by index DESC for trace visualization.
         """
-        logger.info("[LogStore] get_executions_by_workflow_run: tenant_id=%s, app_id=%s, workflow_run_id=%s", tenant_id, app_id, workflow_run_id)
+        logger.info(
+            "[LogStore] get_executions_by_workflow_run: tenant_id=%s, app_id=%s, workflow_run_id=%s",
+            tenant_id,
+            app_id,
+            workflow_run_id,
+        )
         # Build query string using LogStore query syntax
         query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_run_id: {workflow_run_id}"
 

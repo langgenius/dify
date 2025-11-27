@@ -120,7 +120,9 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
         """
-        logger.info("LogstoreWorkflowNodeExecutionRepository.__init__: app_id=%s, triggered_from=%s", app_id, triggered_from)
+        logger.info(
+            "LogstoreWorkflowNodeExecutionRepository.__init__: app_id=%s, triggered_from=%s", app_id, triggered_from
+        )
         # Initialize LogStore client
         self.logstore_client = AliyunLogStore()
 
@@ -148,7 +150,12 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "true").lower() == "true"
 
     def _to_logstore_model(self, domain_model: WorkflowNodeExecution) -> Sequence[tuple[str, str]]:
-        logger.info("_to_logstore_model: id=%s, node_id=%s, status=%s", domain_model.id, domain_model.node_id, domain_model.status.value)
+        logger.info(
+            "_to_logstore_model: id=%s, node_id=%s, status=%s",
+            domain_model.id,
+            domain_model.node_id,
+            domain_model.status.value,
+        )
         if not self._triggered_from:
             raise ValueError("triggered_from is required in repository constructor")
         if not self._creator_user_id:
@@ -223,7 +230,12 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         Args:
             execution: The NodeExecution domain entity to persist
         """
-        logger.info("save: id=%s, node_execution_id=%s, status=%s", execution.id, execution.node_execution_id, execution.status.value)
+        logger.info(
+            "save: id=%s, node_execution_id=%s, status=%s",
+            execution.id,
+            execution.node_execution_id,
+            execution.status.value,
+        )
         try:
             logstore_model = self._to_logstore_model(execution)
             self.logstore_client.put_log(AliyunLogStore.workflow_node_execution_logstore, logstore_model)
