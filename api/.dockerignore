@@ -1,6 +1,26 @@
 .env
 *.env.*
 
+# VCS and editor noise
+.git
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.swp
+.vscode
+
+# Large or irrelevant project files
+docs/
+dev/
+images/
+
+
+# Local caches
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
 storage/generate_files/*
 storage/privkeys/*
 storage/tools/*
