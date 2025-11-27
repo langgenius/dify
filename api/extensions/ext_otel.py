@@ -29,7 +29,7 @@ def init_app(app: DifyApp):
     from opentelemetry.semconv.resource import ResourceAttributes
     from opentelemetry.trace import set_tracer_provider
 
-    from extensions.otel.instrumentation import init_runtime_instrumentors
+    from extensions.otel.instrumentation import init_instruments
     from extensions.otel.runtime import setup_context_propagation, shutdown_tracer
 
     setup_context_propagation()
@@ -108,7 +108,7 @@ def init_app(app: DifyApp):
     )
     set_meter_provider(MeterProvider(resource=resource, metric_readers=[reader]))
 
-    init_runtime_instrumentors(app)
+    init_instruments(app)
 
     atexit.register(shutdown_tracer)
 

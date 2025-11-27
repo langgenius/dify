@@ -97,7 +97,7 @@ def init_httpx_instrumentor() -> None:
     HTTPXClientInstrumentor().instrument()
 
 
-def init_runtime_instrumentors(app: DifyApp) -> None:
+def init_instruments(app: DifyApp) -> None:
     if not is_celery_worker():
         init_flask_instrumentor(app)
         CeleryInstrumentor(tracer_provider=get_tracer_provider(), meter_provider=get_meter_provider()).instrument()
