@@ -707,9 +707,9 @@ class TestWorkflowService:
         # Trigger nodes enable event-driven automation which consumes resources
         graph = {
             "nodes": [
-                {"id": "trigger-1", "data": {"type": NodeType.TRIGGER_WEBHOOK.value}},
-                {"id": "trigger-2", "data": {"type": NodeType.TRIGGER_SCHEDULE.value}},
-                {"id": "trigger-3", "data": {"type": NodeType.TRIGGER_PLUGIN.value}},
+                {"id": "trigger-1", "data": {"type": "trigger-webhook"}},
+                {"id": "trigger-2", "data": {"type": "trigger-schedule"}},
+                {"id": "trigger-3", "data": {"type": "trigger-plugin"}},
             ],
             "edges": [],
         }
@@ -720,19 +720,11 @@ class TestWorkflowService:
             patch.object(workflow_service, "validate_graph_structure"),
             patch("services.workflow_service.dify_config") as mock_config,
             patch("services.workflow_service.BillingService") as MockBillingService,
-            patch("services.workflow_service.NodeType") as MockNodeType,
+            patch("services.workflow_service.app_published_workflow_was_updated"),
         ):
             # Enable billing and set SANDBOX plan
             mock_config.BILLING_ENABLED = True
             MockBillingService.get_info.return_value = {"subscription": {"plan": "sandbox"}}
-
-            # Mock NodeType to identify trigger nodes
-            def is_trigger_node_side_effect(node_type_str):
-                mock_node_type = MagicMock()
-                mock_node_type.is_trigger_node = node_type_str in ["http-request", "schedule"]
-                return mock_node_type
-
-            MockNodeType.side_effect = is_trigger_node_side_effect
 
             with pytest.raises(TriggerNodeLimitExceededError):
                 workflow_service.publish_workflow(session=mock_sqlalchemy_session, app_model=app, account=account)
