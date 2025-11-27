@@ -424,13 +424,13 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         # Build time range filter
         time_filter = ""
         if start_date:
-            time_filter += f" AND created_at >= '{start_date.isoformat()}'"
+            time_filter += f" AND __time__ >= to_unixtime(from_iso8601_timestamp('{start_date.isoformat()}'))"
         if end_date:
-            time_filter += f" AND created_at < '{end_date.isoformat()}'"
+            time_filter += f" AND __time__ < to_unixtime(from_iso8601_timestamp('{end_date.isoformat()}'))"
 
         # Optimized query: Use finished_at filter to avoid window function
         query = f"""
-            SELECT DATE(created_at) as date, COUNT(DISTINCT id) as runs
+            SELECT DATE(from_unixtime(__time__)) as date, COUNT(DISTINCT id) as runs
             FROM {AliyunLogStore.workflow_execution_logstore}
             WHERE tenant_id='{tenant_id}'
               AND app_id='{app_id}'
@@ -472,12 +472,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         # Build time range filter
         time_filter = ""
         if start_date:
-            time_filter += f" AND created_at >= '{start_date.isoformat()}'"
+            time_filter += f" AND __time__ >= to_unixtime(from_iso8601_timestamp('{start_date.isoformat()}'))"
         if end_date:
-            time_filter += f" AND created_at < '{end_date.isoformat()}'"
+            time_filter += f" AND __time__ < to_unixtime(from_iso8601_timestamp('{end_date.isoformat()}'))"
 
         query = f"""
-            * | SELECT DATE(created_at) as date, COUNT(DISTINCT created_by) as terminal_count
+            * | SELECT DATE(from_unixtime(__time__)) as date, COUNT(DISTINCT created_by) as terminal_count
             FROM {AliyunLogStore.workflow_execution_logstore}
             WHERE tenant_id='{tenant_id}'
               AND app_id='{app_id}'
@@ -519,12 +519,12 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         # Build time range filter
         time_filter = ""
         if start_date:
-            time_filter += f" AND created_at >= '{start_date.isoformat()}'"
+            time_filter += f" AND __time__ >= to_unixtime(from_iso8601_timestamp('{start_date.isoformat()}'))"
         if end_date:
-            time_filter += f" AND created_at < '{end_date.isoformat()}'"
+            time_filter += f" AND __time__ < to_unixtime(from_iso8601_timestamp('{end_date.isoformat()}'))"
 
         query = f"""
-            * | SELECT DATE(created_at) as date, SUM(total_tokens) as token_count
+            * | SELECT DATE(from_unixtime(__time__)) as date, SUM(total_tokens) as token_count
             FROM {AliyunLogStore.workflow_execution_logstore}
             WHERE tenant_id='{tenant_id}'
               AND app_id='{app_id}'
@@ -566,9 +566,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         # Build time range filter
         time_filter = ""
         if start_date:
-            time_filter += f" AND created_at >= '{start_date.isoformat()}'"
+            time_filter += f" AND __time__ >= to_unixtime(from_iso8601_timestamp('{start_date.isoformat()}'))"
         if end_date:
-            time_filter += f" AND created_at < '{end_date.isoformat()}'"
+            time_filter += f" AND __time__ < to_unixtime(from_iso8601_timestamp('{end_date.isoformat()}'))"
 
         query = f"""
             * | SELECT
@@ -576,7 +576,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 sub.date
             FROM (
                 SELECT
-                    DATE(created_at) AS date,
+                    DATE(from_unixtime(__time__)) AS date,
                     created_by,
                     COUNT(DISTINCT id) AS interactions
                 FROM {AliyunLogStore.workflow_execution_logstore}
