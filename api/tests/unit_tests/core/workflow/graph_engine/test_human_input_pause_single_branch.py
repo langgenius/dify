@@ -62,7 +62,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    start_node.init_node_data(start_config["data"])
 
     def _create_llm_node(node_id: str, title: str, prompt_text: str) -> MockLLMNode:
         llm_data = LLMNodeData(
@@ -87,7 +86,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        llm_node.init_node_data(llm_config["data"])
         return llm_node
 
     llm_first = _create_llm_node("llm_initial", "Initial LLM", "Initial prompt")
@@ -104,7 +102,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    human_node.init_node_data(human_config["data"])
 
     llm_second = _create_llm_node("llm_resume", "Follow-up LLM", "Follow-up prompt")
 
@@ -123,7 +120,6 @@ def _build_llm_human_llm_graph(mock_config: MockConfig) -> tuple[Graph, GraphRun
         graph_init_params=graph_init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    end_node.init_node_data(end_config["data"])
 
     graph = (
         Graph.new()
