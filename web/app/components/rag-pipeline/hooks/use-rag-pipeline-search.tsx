@@ -23,7 +23,7 @@ export const useRagPipelineSearch = () => {
 
   // Process nodes to create searchable data structure
   const searchableNodes = useMemo(() => {
-    return nodes.map((node) => {
+    return nodes?.map((node) => {
       const nodeData = node.data as CommonNodeType
       const title = nodeData.title || nodeData.type || 'Untitled Node'
       let desc = nodeData.desc || ''
