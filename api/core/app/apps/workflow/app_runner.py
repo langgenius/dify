@@ -240,7 +240,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 )
                 session.add(workflow_app_log)
                 session.commit()
-                
+
             self._workflow_log_saved = True
         except Exception:
             logger.exception("Failed to save workflow app log, workflow_run_id: %s", workflow_run_id)
