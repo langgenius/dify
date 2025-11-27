@@ -10,7 +10,7 @@ import hashlib
 import json
 import logging
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_, case, delete, desc, func, select
 from sqlalchemy.dialects.postgresql import insert
@@ -107,7 +107,7 @@ class WorkflowCacheService:
     @staticmethod
     def get_cached_result(
         cache_key: str,
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Retrieve a cached result if it exists and is not expired.
 
@@ -153,8 +153,8 @@ class WorkflowCacheService:
         input_data: dict[str, Any],
         output_data: dict[str, Any],
         execution_time: float,
-        ttl_hours: Optional[int] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        ttl_hours: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> WorkflowCacheEntry:
         """
         Store a node execution result in the cache.
@@ -188,6 +188,7 @@ class WorkflowCacheService:
         config_hash = WorkflowCacheService.generate_config_hash(node_config)
         input_hash = WorkflowCacheService.generate_input_hash(input_data)
 
+<<<<<<< HEAD
         # Check if entry already exists
         existing_entry = db.session.execute(
             select(WorkflowCacheEntry).where(WorkflowCacheEntry.cache_key == cache_key)
@@ -205,6 +206,14 @@ class WorkflowCacheService:
         else:
             # Create new entry
             cache_entry = WorkflowCacheEntry(
+=======
+        now = naive_utc_now()
+
+        # Use PostgreSQL's INSERT ... ON CONFLICT for atomic upsert
+        stmt = (
+            insert(WorkflowCacheEntry)
+            .values(
+>>>>>>> 84fa5d33dcdd42d2fe53fedd665885197fba2c6c
                 cache_key=cache_key,
                 node_type=node_type,
                 node_config_hash=config_hash,
@@ -214,6 +223,7 @@ class WorkflowCacheService:
                 expires_at=expires_at,
                 original_execution_time=execution_time,
                 total_time_saved=0.0,
+<<<<<<< HEAD
                 metadata=metadata or {},
             )
             db.session.add(cache_entry)
@@ -227,13 +237,44 @@ class WorkflowCacheService:
 
         db.session.commit()
 
+=======
+                extra_info=metadata or {},
+                last_accessed_at=now,
+            )
+            .on_conflict_do_update(
+                index_elements=["cache_key"],
+                set_={
+                    "output_data": output_data,
+                    "output_size_bytes": output_size_bytes,
+                    "expires_at": expires_at,
+                    "last_accessed_at": now,
+                    "extra_info": metadata or {},
+                    "updated_at": now,
+                },
+            )
+            .returning(WorkflowCacheEntry)
+        )
+
+        result = db.session.execute(stmt)
+        cache_entry = result.scalar_one()
+        db.session.commit()
+
+        logger.info(
+            "Stored cache entry: key=%s, node_type=%s, ttl=%sh, size=%s bytes",
+            cache_key,
+            node_type,
+            ttl_hours,
+            output_size_bytes,
+        )
+
+>>>>>>> 84fa5d33dcdd42d2fe53fedd665885197fba2c6c
         return cache_entry
 
     @staticmethod
     def invalidate_cache(
-        cache_key: Optional[str] = None,
-        node_type: Optional[str] = None,
-        older_than_hours: Optional[int] = None,
+        cache_key: str | None = None,
+        node_type: str | None = None,
+        older_than_hours: int | None = None,
     ) -> int:
         """
         Invalidate cache entries based on criteria.
@@ -291,7 +332,7 @@ class WorkflowCacheService:
 
     @staticmethod
     def get_cache_statistics(
-        node_type: Optional[str] = None,
+        node_type: str | None = None,
         days: int = 7,
     ) -> dict[str, Any]:
         """

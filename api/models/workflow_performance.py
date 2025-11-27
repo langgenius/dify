@@ -7,7 +7,7 @@ including execution metrics, node-level profiling, and optimization recommendati
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, Float, Index, Integer, String, Text, UniqueConstraint
@@ -15,7 +15,6 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.datetime_utils import naive_utc_now
-from libs.uuid_utils import uuidv7
 
 from .base import Base, DefaultFieldsMixin
 from .types import StringUUID
@@ -59,6 +58,7 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
     """
     Stores aggregated performance metrics for workflow executions.
 
+
     This table tracks performance data at the workflow level, enabling
     trend analysis and performance monitoring over time.
     """
@@ -76,7 +76,11 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_run_id: Mapped[str] = mapped_column(StringUUID, nullable=False, unique=True)
 
+
     # Execution metrics
+    total_execution_time: Mapped[float] = mapped_column(
+        Float, nullable=False, comment="Total execution time in seconds"
+    )
     total_execution_time: Mapped[float] = mapped_column(
         Float, nullable=False, comment="Total execution time in seconds"
     )
@@ -85,7 +89,12 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
     failed_nodes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     cached_nodes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+
     # Resource usage
+    total_tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="Total LLM tokens consumed")
+    total_tokens_cost: Mapped[float | None] = mapped_column(Float, nullable=True, comment="Estimated cost in USD")
+    peak_memory_mb: Mapped[float | None] = mapped_column(Float, nullable=True, comment="Peak memory usage in MB")
+
     total_tokens_used: Mapped[Optional[int]] = mapped_column(
         Integer, nullable=True, comment="Total LLM tokens consumed"
     )
@@ -94,6 +103,12 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
 
     # Performance indicators
     avg_node_execution_time: Mapped[float] = mapped_column(Float, nullable=False, comment="Average node execution time")
+    slowest_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    slowest_node_time: Mapped[float | None] = mapped_column(Float, nullable=True)
+    cache_hit_rate: Mapped[float] = mapped_column(
+        Float, nullable=False, default=0.0, comment="Percentage of cache hits"
+    )
+
     slowest_node_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     slowest_node_time: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     cache_hit_rate: Mapped[float] = mapped_column(
@@ -102,15 +117,18 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
 
     # Execution context
     execution_status: Mapped[str] = mapped_column(String(50), nullable=False, comment="succeeded, failed, partial")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Additional metadata
-    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
 
 class WorkflowNodePerformance(Base, DefaultFieldsMixin):
     """
     Stores detailed performance metrics for individual workflow nodes.
+
 
     This table enables node-level performance analysis and bottleneck identification.
     """
@@ -128,6 +146,8 @@ class WorkflowNodePerformance(Base, DefaultFieldsMixin):
     node_id: Mapped[str] = mapped_column(String(255), nullable=False)
     node_execution_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_type: Mapped[str] = mapped_column(String(100), nullable=False)
+    node_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
+
     node_title: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     # Execution metrics
@@ -135,31 +155,43 @@ class WorkflowNodePerformance(Base, DefaultFieldsMixin):
     start_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     end_time: Mapped[datetime] = mapped_column(DateTime, nullable=False)
 
+
     # Resource usage
+    tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    tokens_cost: Mapped[float | None] = mapped_column(Float, nullable=True)
+    memory_used_mb: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     tokens_used: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     tokens_cost: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     memory_used_mb: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # Performance indicators
     is_cached: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
-    cache_key: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    cache_key: Mapped[str | None] = mapped_column(String(255), nullable=True)
     retry_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
 
     # Status
     status: Mapped[str] = mapped_column(String(50), nullable=False, comment="succeeded, failed, skipped")
+    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Input/Output sizes for analysis
+    input_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    output_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     input_size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     output_size_bytes: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
 
     # Additional metadata
-    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
 
 class WorkflowOptimizationRecommendation(Base, DefaultFieldsMixin):
     """
     Stores AI-generated optimization recommendations for workflows.
+
 
     This table contains actionable insights to improve workflow performance,
     reduce costs, and enhance reliability.
@@ -178,44 +210,64 @@ class WorkflowOptimizationRecommendation(Base, DefaultFieldsMixin):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
+
     # Recommendation details
     title: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(
         String(50), nullable=False, comment="performance, cost, reliability, scalability, best_practice"
+        String(50), nullable=False, comment="performance, cost, reliability, scalability, best_practice"
     )
     severity: Mapped[str] = mapped_column(String(20), nullable=False, comment="info, low, medium, high, critical")
 
+    severity: Mapped[str] = mapped_column(String(20), nullable=False, comment="info, low, medium, high, critical")
+
     # Impact analysis
+    estimated_improvement: Mapped[str | None] = mapped_column(
+        String(255), nullable=True, comment="e.g., '30% faster', '20% cost reduction'"
     estimated_improvement: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True, comment="e.g., '30% faster', '20% cost reduction'"
     )
+    affected_nodes: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+
     affected_nodes: Mapped[Optional[list[str]]] = mapped_column(JSONB, nullable=True)
 
     # Actionable guidance
     recommendation_steps: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    code_example: Mapped[str | None] = mapped_column(Text, nullable=True)
+    documentation_link: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
     code_example: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     documentation_link: Mapped[Optional[str]] = mapped_column(String(500), nullable=True)
 
     # Evidence and metrics
+    supporting_metrics: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
+    sample_workflow_runs: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+
     supporting_metrics: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
     sample_workflow_runs: Mapped[Optional[list[str]]] = mapped_column(JSONB, nullable=True)
 
     # Status tracking
     status: Mapped[str] = mapped_column(
         String(20), nullable=False, default="active", comment="active, dismissed, implemented, obsolete"
+        String(20), nullable=False, default="active", comment="active, dismissed, implemented, obsolete"
     )
+    dismissed_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
+    dismissed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    dismissed_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     dismissed_by: Mapped[Optional[str]] = mapped_column(StringUUID, nullable=True)
     dismissed_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     dismissed_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     # Additional metadata
-    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
 
 class WorkflowCacheEntry(Base, DefaultFieldsMixin):
     """
     Stores cached results for workflow nodes to improve performance.
+
 
     This table implements intelligent caching with TTL and invalidation strategies.
     """
@@ -231,33 +283,42 @@ class WorkflowCacheEntry(Base, DefaultFieldsMixin):
 
     cache_key: Mapped[str] = mapped_column(String(255), nullable=False, unique=True)
 
+
     # Node information
     node_type: Mapped[str] = mapped_column(String(100), nullable=False)
     node_config_hash: Mapped[str] = mapped_column(String(64), nullable=False, comment="Hash of node configuration")
+
 
     # Cached data
     input_hash: Mapped[str] = mapped_column(String(64), nullable=False, comment="Hash of input data")
     output_data: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     output_size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
 
+
     # Cache metadata
     expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     last_accessed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=naive_utc_now)
     hit_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
+
     # Performance tracking
+    original_execution_time: Mapped[float] = mapped_column(
+        Float, nullable=False, comment="Original execution time in seconds"
+    )
     original_execution_time: Mapped[float] = mapped_column(
         Float, nullable=False, comment="Original execution time in seconds"
     )
     total_time_saved: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, comment="Cumulative time saved")
 
+
     # Additional metadata
-    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
 
 
 class WorkflowPerformanceTrend(Base, DefaultFieldsMixin):
     """
     Stores aggregated performance trends for workflows over time.
+
 
     This table enables historical analysis and trend detection.
     """
@@ -273,26 +334,35 @@ class WorkflowPerformanceTrend(Base, DefaultFieldsMixin):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
+
     # Time period
     period_start: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     period_end: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     period_type: Mapped[str] = mapped_column(String(20), nullable=False, comment="hourly, daily, weekly, monthly")
 
+
     # Metric information
     metric_type: Mapped[str] = mapped_column(String(50), nullable=False)
     metric_value: Mapped[float] = mapped_column(Float, nullable=False)
+
 
     # Statistical data
     min_value: Mapped[float] = mapped_column(Float, nullable=False)
     max_value: Mapped[float] = mapped_column(Float, nullable=False)
     avg_value: Mapped[float] = mapped_column(Float, nullable=False)
+    median_value: Mapped[float | None] = mapped_column(Float, nullable=True)
+    std_deviation: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     median_value: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     std_deviation: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # Sample data
     sample_count: Mapped[int] = mapped_column(Integer, nullable=False)
+    percentile_95: Mapped[float | None] = mapped_column(Float, nullable=True)
+    percentile_99: Mapped[float | None] = mapped_column(Float, nullable=True)
+
     percentile_95: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     percentile_99: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
 
     # Additional metadata
-    extra_info: Mapped[Optional[dict[str, Any]]] = mapped_column(JSONB, nullable=True)
+    extra_info: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)

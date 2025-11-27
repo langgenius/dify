@@ -103,31 +103,31 @@ cache_statistics_fields = console_ns.model(
 def _serialize_recommendation(rec) -> dict:
     """
     Helper function to serialize a WorkflowOptimizationRecommendation object.
-    
+
     Args:
         rec: WorkflowOptimizationRecommendation instance
-        
+
     Returns:
         Dictionary representation of the recommendation
     """
     return {
-        'id': rec.id,
-        'title': rec.title,
-        'description': rec.description,
-        'category': rec.category,
-        'severity': rec.severity,
-        'estimated_improvement': rec.estimated_improvement,
-        'affected_nodes': rec.affected_nodes,
-        'recommendation_steps': rec.recommendation_steps,
-        'code_example': rec.code_example,
-        'documentation_link': rec.documentation_link,
-        'supporting_metrics': rec.supporting_metrics,
-        'status': rec.status,
-        'created_at': rec.created_at.isoformat(),
+        "id": rec.id,
+        "title": rec.title,
+        "description": rec.description,
+        "category": rec.category,
+        "severity": rec.severity,
+        "estimated_improvement": rec.estimated_improvement,
+        "affected_nodes": rec.affected_nodes,
+        "recommendation_steps": rec.recommendation_steps,
+        "code_example": rec.code_example,
+        "documentation_link": rec.documentation_link,
+        "supporting_metrics": rec.supporting_metrics,
+        "status": rec.status,
+        "created_at": rec.created_at.isoformat(),
     }
 
 
-@console_ns.route('/apps/<uuid:app_id>/workflows/<uuid:workflow_id>/performance/summary')
+@console_ns.route("/apps/<uuid:app_id>/workflows/<uuid:workflow_id>/performance/summary")
 class WorkflowPerformanceSummaryAPI(Resource):
     """API for retrieving workflow performance summary"""
 
@@ -235,9 +235,7 @@ class WorkflowOptimizationRecommendationsAPI(Resource):
             category=category,
         )
 
-        return {
-            'recommendations': [_serialize_recommendation(rec) for rec in recommendations]
-        }
+        return {"recommendations": [_serialize_recommendation(rec) for rec in recommendations]}
 
     @setup_required
     @login_required
@@ -258,8 +256,8 @@ class WorkflowOptimizationRecommendationsAPI(Resource):
         )
 
         return {
-            'recommendations': [_serialize_recommendation(rec) for rec in recommendations],
-            'count': len(recommendations),
+            "recommendations": [_serialize_recommendation(rec) for rec in recommendations],
+            "count": len(recommendations),
         }
 
 

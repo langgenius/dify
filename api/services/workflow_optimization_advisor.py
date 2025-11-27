@@ -183,6 +183,7 @@ class WorkflowOptimizationAdvisor:
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
 
+<<<<<<< HEAD
         # Get workflow run IDs
         run_ids_stmt = select(WorkflowPerformanceMetrics.workflow_run_id).where(
             and_(
@@ -197,6 +198,9 @@ class WorkflowOptimizationAdvisor:
             return recommendations
 
         # Find nodes with low cache hit rates but high execution times
+=======
+        # Use JOIN to filter nodes in a single query
+>>>>>>> 84fa5d33dcdd42d2fe53fedd665885197fba2c6c
         stmt = (
             select(
                 WorkflowNodePerformance.node_id,
@@ -208,7 +212,7 @@ class WorkflowOptimizationAdvisor:
             )
             .join(
                 WorkflowPerformanceMetrics,
-                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id,
             )
             .where(
                 and_(
@@ -285,6 +289,7 @@ class WorkflowOptimizationAdvisor:
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
 
+<<<<<<< HEAD
         # Get workflow run IDs
         run_ids_stmt = select(WorkflowPerformanceMetrics.workflow_run_id).where(
             and_(
@@ -299,6 +304,9 @@ class WorkflowOptimizationAdvisor:
             return recommendations
 
         # Find nodes with high failure rates
+=======
+        # Use JOIN to filter nodes in a single query
+>>>>>>> 84fa5d33dcdd42d2fe53fedd665885197fba2c6c
         stmt = (
             select(
                 WorkflowNodePerformance.node_id,
@@ -309,7 +317,7 @@ class WorkflowOptimizationAdvisor:
             )
             .join(
                 WorkflowPerformanceMetrics,
-                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id,
             )
             .where(
                 and_(
@@ -388,6 +396,7 @@ class WorkflowOptimizationAdvisor:
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
 
+<<<<<<< HEAD
         # Get workflow run IDs
         run_ids_stmt = select(WorkflowPerformanceMetrics.workflow_run_id).where(
             and_(
@@ -402,6 +411,9 @@ class WorkflowOptimizationAdvisor:
             return recommendations
 
         # Find LLM nodes with high token usage
+=======
+        # Use JOIN to filter nodes in a single query
+>>>>>>> 84fa5d33dcdd42d2fe53fedd665885197fba2c6c
         stmt = (
             select(
                 WorkflowNodePerformance.node_id,
@@ -413,7 +425,7 @@ class WorkflowOptimizationAdvisor:
             )
             .join(
                 WorkflowPerformanceMetrics,
-                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id,
             )
             .where(
                 and_(
@@ -542,6 +554,7 @@ class WorkflowOptimizationAdvisor:
         recommendations = []
         cutoff_date = naive_utc_now() - timedelta(days=days)
 
+<<<<<<< HEAD
         # Get workflow run IDs
         run_ids_stmt = select(WorkflowPerformanceMetrics.workflow_run_id).where(
             and_(
@@ -556,6 +569,9 @@ class WorkflowOptimizationAdvisor:
             return recommendations
 
         # Find nodes with high retry counts
+=======
+        # Use JOIN to filter nodes in a single query
+>>>>>>> 84fa5d33dcdd42d2fe53fedd665885197fba2c6c
         stmt = (
             select(
                 WorkflowNodePerformance.node_id,
@@ -567,7 +583,7 @@ class WorkflowOptimizationAdvisor:
             )
             .join(
                 WorkflowPerformanceMetrics,
-                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id
+                WorkflowNodePerformance.workflow_run_id == WorkflowPerformanceMetrics.workflow_run_id,
             )
             .where(
                 and_(
