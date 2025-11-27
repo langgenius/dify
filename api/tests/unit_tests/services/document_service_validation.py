@@ -106,15 +106,11 @@ This test suite follows a comprehensive testing strategy that covers:
 ================================================================================
 """
 
-import datetime
-from typing import Any
-from unittest.mock import Mock, create_autospec, patch
-from uuid import uuid4
+from unittest.mock import Mock, patch
 
 import pytest
 
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from models.dataset import Dataset, DatasetProcessRule, Document
 from services.dataset_service import DatasetService, DocumentService
@@ -127,13 +123,10 @@ from services.entities.knowledge_entities.knowledge_entities import (
     NotionPage,
     PreProcessingRule,
     ProcessRule,
-    RetrievalMethod,
-    RetrievalModel,
     Rule,
     Segmentation,
     WebsiteInfo,
 )
-
 
 # ============================================================================
 # Test Data Factory
@@ -286,9 +279,7 @@ class DocumentValidationTestDataFactory:
         rule.pre_processing_rules = pre_processing_rules or [
             Mock(spec=PreProcessingRule, id="remove_extra_spaces", enabled=True)
         ]
-        rule.segmentation = segmentation or Mock(
-            spec=Segmentation, separator="\n", max_tokens=1024, chunk_overlap=50
-        )
+        rule.segmentation = segmentation or Mock(spec=Segmentation, separator="\n", max_tokens=1024, chunk_overlap=50)
         rule.parent_mode = parent_mode
 
         process_rule = Mock(spec=ProcessRule)
@@ -489,9 +480,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
         - No errors are raised
         """
         # Arrange
-        dataset = DocumentValidationTestDataFactory.create_dataset_mock(
-            indexing_technique="economy"
-        )
+        dataset = DocumentValidationTestDataFactory.create_dataset_mock(indexing_technique="economy")
 
         # Act (should not raise)
         DatasetService.check_dataset_model_setting(dataset)
@@ -550,9 +539,7 @@ class TestDatasetServiceCheckDatasetModelSetting:
 
         error_description = "Provider token not initialized"
         mock_instance = Mock()
-        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(
-            description=error_description
-        )
+        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(description=error_description)
         mock_model_manager.return_value = mock_instance
 
         # Act & Assert
@@ -674,9 +661,7 @@ class TestDatasetServiceCheckEmbeddingModelSetting:
 
         error_description = "Provider token not initialized"
         mock_instance = Mock()
-        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(
-            description=error_description
-        )
+        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(description=error_description)
         mock_model_manager.return_value = mock_instance
 
         # Act & Assert
@@ -798,9 +783,7 @@ class TestDatasetServiceCheckRerankingModelSetting:
 
         error_description = "Provider token not initialized"
         mock_instance = Mock()
-        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(
-            description=error_description
-        )
+        mock_instance.get_model_instance.side_effect = ProviderTokenNotInitError(description=error_description)
         mock_model_manager.return_value = mock_instance
 
         # Act & Assert
@@ -992,9 +975,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         data_source = DocumentValidationTestDataFactory.create_data_source_mock(
             data_source_type="upload_file", file_ids=["file-123", "file-456"]
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            data_source=data_source
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=data_source)
 
         # Mock Document.DATA_SOURCES
         with patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]):
@@ -1025,9 +1006,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         data_source = DocumentValidationTestDataFactory.create_data_source_mock(
             data_source_type="notion_import", notion_info_list=[notion_info]
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            data_source=data_source
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=data_source)
 
         # Mock Document.DATA_SOURCES
         with patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]):
@@ -1059,9 +1038,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         data_source = DocumentValidationTestDataFactory.create_data_source_mock(
             data_source_type="website_crawl", website_info_list=website_info
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            data_source=data_source
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=data_source)
 
         # Mock Document.DATA_SOURCES
         with patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]):
@@ -1083,9 +1060,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         - Error type is correct
         """
         # Arrange
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            data_source=None
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=None)
 
         # Act & Assert
         with pytest.raises(ValueError, match="Data source is required"):
@@ -1104,12 +1079,8 @@ class TestDocumentServiceDataSourceArgsValidate:
         - Error type is correct
         """
         # Arrange
-        data_source = DocumentValidationTestDataFactory.create_data_source_mock(
-            data_source_type="invalid_type"
-        )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            data_source=data_source
-        )
+        data_source = DocumentValidationTestDataFactory.create_data_source_mock(data_source_type="invalid_type")
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=data_source)
 
         # Mock Document.DATA_SOURCES
         with patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]):
@@ -1131,9 +1102,7 @@ class TestDocumentServiceDataSourceArgsValidate:
         # Arrange
         data_source = Mock(spec=DataSource)
         data_source.info_list = None
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            data_source=data_source
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=data_source)
 
         # Act & Assert
         with pytest.raises(ValueError, match="Data source info is required"):
@@ -1156,9 +1125,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             data_source_type="upload_file", file_ids=None
         )
         data_source.info_list.file_info_list = None
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            data_source=data_source
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=data_source)
 
         # Mock Document.DATA_SOURCES
         with patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]):
@@ -1183,9 +1150,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             data_source_type="notion_import", notion_info_list=None
         )
         data_source.info_list.notion_info_list = None
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            data_source=data_source
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=data_source)
 
         # Mock Document.DATA_SOURCES
         with patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]):
@@ -1210,9 +1175,7 @@ class TestDocumentServiceDataSourceArgsValidate:
             data_source_type="website_crawl", website_info_list=None
         )
         data_source.info_list.website_info_list = None
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            data_source=data_source
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(data_source=data_source)
 
         # Mock Document.DATA_SOURCES
         with patch.object(Document, "DATA_SOURCES", ["upload_file", "notion_import", "website_crawl"]):
@@ -1263,9 +1226,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         """
         # Arrange
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(mode="automatic")
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1297,9 +1258,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(
             mode="custom", pre_processing_rules=pre_processing_rules, segmentation=segmentation
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1322,9 +1281,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         - No errors are raised
         """
         # Arrange
-        pre_processing_rules = [
-            Mock(spec=PreProcessingRule, id="remove_extra_spaces", enabled=True)
-        ]
+        pre_processing_rules = [Mock(spec=PreProcessingRule, id="remove_extra_spaces", enabled=True)]
         segmentation = Mock(spec=Segmentation, separator="\n", max_tokens=1024, chunk_overlap=50)
 
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(
@@ -1333,9 +1290,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
             segmentation=segmentation,
             parent_mode="paragraph",
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1357,9 +1312,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         - Error type is correct
         """
         # Arrange
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=None
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=None)
 
         # Act & Assert
         with pytest.raises(ValueError, match="Process rule is required"):
@@ -1380,9 +1333,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         # Arrange
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock()
         process_rule.mode = None
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Act & Assert
         with pytest.raises(ValueError, match="Process rule mode is required"):
@@ -1402,9 +1353,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         """
         # Arrange
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(mode="invalid_mode")
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1427,9 +1376,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         # Arrange
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(mode="custom")
         process_rule.rules = None
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1452,9 +1399,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         # Arrange
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(mode="custom")
         process_rule.rules.pre_processing_rules = None
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1481,9 +1426,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(
             mode="custom", pre_processing_rules=pre_processing_rules
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1510,9 +1453,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(
             mode="custom", pre_processing_rules=pre_processing_rules
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1534,9 +1475,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         # Arrange
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(mode="custom")
         process_rule.rules.segmentation = None
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1561,9 +1500,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(
             mode="custom", segmentation=segmentation
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1588,9 +1525,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(
             mode="custom", segmentation=segmentation
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1615,9 +1550,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(
             mode="custom", segmentation=segmentation
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1642,9 +1575,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(
             mode="custom", segmentation=segmentation
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1669,9 +1600,7 @@ class TestDocumentServiceProcessRuleArgsValidate:
         process_rule = DocumentValidationTestDataFactory.create_process_rule_mock(
             mode="hierarchical", segmentation=segmentation, parent_mode="full-doc"
         )
-        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(
-            process_rule=process_rule
-        )
+        knowledge_config = DocumentValidationTestDataFactory.create_knowledge_config_mock(process_rule=process_rule)
 
         # Mock DatasetProcessRule.MODES
         with patch.object(DatasetProcessRule, "MODES", ["automatic", "custom", "hierarchical"]):
@@ -1713,4 +1642,3 @@ class TestDocumentServiceProcessRuleArgsValidate:
 # based on real-world usage patterns or discovered edge cases.
 #
 # ============================================================================
-
