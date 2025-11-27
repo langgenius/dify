@@ -706,14 +706,14 @@ class TestWorkflowService:
         # Create graph with 3 trigger nodes (exceeds SANDBOX limit of 2)
         # Trigger nodes enable event-driven automation which consumes resources
         graph = {
+        graph = {
             "nodes": [
-                {"id": "trigger-1", "data": {"type": "http-request"}},
-                {"id": "trigger-2", "data": {"type": "schedule"}},
-                {"id": "trigger-3", "data": {"type": "http-request"}},
+                {"id": "trigger-1", "data": {"type": NodeType.TRIGGER_WEBHOOK.value}},
+                {"id": "trigger-2", "data": {"type": NodeType.TRIGGER_SCHEDULE.value}},
+                {"id": "trigger-3", "data": {"type": NodeType.TRIGGER_PLUGIN.value}},
             ],
             "edges": [],
         }
-
         mock_draft = TestWorkflowAssociatedDataFactory.create_workflow_mock(version=Workflow.VERSION_DRAFT, graph=graph)
         mock_sqlalchemy_session.scalar.return_value = mock_draft
 
