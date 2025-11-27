@@ -4,10 +4,10 @@ from core.variables.segments import Segment
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.variable_aggregator.entities import VariableAssignerNodeData
+from core.workflow.nodes.variable_aggregator.entities import VariableAggregatorNodeData
 
 
-class VariableAggregatorNode(Node[VariableAssignerNodeData]):
+class VariableAggregatorNode(Node[VariableAggregatorNodeData]):
     node_type = NodeType.VARIABLE_AGGREGATOR
 
     @classmethod

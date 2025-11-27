@@ -11,7 +11,7 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.nodes.base.entities import VariableSelector
+from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
 from core.workflow.nodes.if_else.entities import IfElseNodeData
@@ -123,8 +123,12 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
     end_primary_data = EndNodeData(
         title="End Primary",
         outputs=[
-            VariableSelector(variable="initial_text", value_selector=["llm_initial", "text"]),
-            VariableSelector(variable="primary_text", value_selector=["llm_primary", "text"]),
+            OutputVariableEntity(
+                variable="initial_text", value_type=OutputVariableType.STRING, value_selector=["llm_initial", "text"]
+            ),
+            OutputVariableEntity(
+                variable="primary_text", value_type=OutputVariableType.STRING, value_selector=["llm_primary", "text"]
+            ),
         ],
         desc=None,
     )
@@ -139,8 +143,14 @@ def _build_if_else_graph(branch_value: str, mock_config: MockConfig) -> tuple[Gr
     end_secondary_data = EndNodeData(
         title="End Secondary",
         outputs=[
-            VariableSelector(variable="initial_text", value_selector=["llm_initial", "text"]),
-            VariableSelector(variable="secondary_text", value_selector=["llm_secondary", "text"]),
+            OutputVariableEntity(
+                variable="initial_text", value_type=OutputVariableType.STRING, value_selector=["llm_initial", "text"]
+            ),
+            OutputVariableEntity(
+                variable="secondary_text",
+                value_type=OutputVariableType.STRING,
+                value_selector=["llm_secondary", "text"],
+            ),
         ],
         desc=None,
     )
