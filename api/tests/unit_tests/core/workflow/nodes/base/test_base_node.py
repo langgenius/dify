@@ -1,10 +1,19 @@
+import pytest
+
 from core.workflow.enums import NodeType
+from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.nodes.base.node import Node
 
 # Ensures that all node classes are imported.
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 
 _ = NODE_TYPE_CLASSES_MAPPING
+
+
+class _TestNodeData(BaseNodeData):
+    """Test node data for unit tests."""
+
+    pass
 
 
 def _get_all_subclasses(root: type[Node]) -> list[type[Node]]:
@@ -34,3 +43,84 @@ def test_ensure_subclasses_of_base_node_has_node_type_and_version_method_defined
         node_type_and_version = (node_type, node_version)
         assert node_type_and_version not in type_version_set
         type_version_set.add(node_type_and_version)
+
+
+def test_extract_node_data_type_from_generic_extracts_type():
+    """When a class inherits from Node[T], it should extract T."""
+
+    class _ConcreteNode(Node[_TestNodeData]):
+        node_type = NodeType.CODE
+
+        @staticmethod
+        def version() -> str:
+            return "1"
+
+    result = _ConcreteNode._extract_node_data_type_from_generic()
+
+    assert result is _TestNodeData
+
+
+def test_extract_node_data_type_from_generic_returns_none_without_parameter():
+    """When a class doesn't parameterize Node with a type, should return None."""
+
+    class _IntermediateNode(Node):
+        _node_data_type = _TestNodeData  # Bypass __init_subclass__ validation
+
+    result = _IntermediateNode._extract_node_data_type_from_generic()
+
+    assert result is None
+
+
+def test_extract_node_data_type_from_generic_raises_for_non_base_node_data():
+    """When generic parameter is not a BaseNodeData subtype, should raise TypeError."""
+    with pytest.raises(TypeError, match="must parameterize Node with a BaseNodeData subtype"):
+
+        class _InvalidNode(Node[str]):  # type: ignore[type-arg]
+            pass
+
+
+def test_extract_node_data_type_from_generic_raises_for_non_type():
+    """When generic parameter is not a concrete type, should raise TypeError."""
+    from typing import TypeVar
+
+    T = TypeVar("T")
+
+    with pytest.raises(TypeError, match="must parameterize Node with a BaseNodeData subtype"):
+
+        class _InvalidNode(Node[T]):  # type: ignore[type-arg]
+            pass
+
+
+def test_init_subclass_raises_without_generic_or_explicit_type():
+    """A subclass must either use Node[T] or explicitly set _node_data_type."""
+    with pytest.raises(TypeError, match="must inherit from Node\\[T\\] with a BaseNodeData subtype"):
+
+        class _InvalidNode(Node):
+            pass
+
+
+def test_init_subclass_allows_explicit_node_data_type():
+    """A subclass can bypass generic by explicitly setting _node_data_type."""
+
+    class _ExplicitNode(Node):
+        _node_data_type = _TestNodeData
+        node_type = NodeType.CODE
+
+        @staticmethod
+        def version() -> str:
+            return "1"
+
+    assert _ExplicitNode._node_data_type is _TestNodeData
+
+
+def test_init_subclass_sets_node_data_type_from_generic():
+    """Verify that __init_subclass__ sets _node_data_type from the generic parameter."""
+
+    class _AutoNode(Node[_TestNodeData]):
+        node_type = NodeType.CODE
+
+        @staticmethod
+        def version() -> str:
+            return "1"
+
+    assert _AutoNode._node_data_type is _TestNodeData
