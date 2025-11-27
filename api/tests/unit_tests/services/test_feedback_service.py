@@ -46,15 +46,19 @@ class TestFeedbackServiceFactory:
         answer: str = "AI stands for Artificial Intelligence.",
         inputs: dict | None = None,
         created_at: datetime | None = None,
-    ) -> MagicMock:
+    ):
         """Create a mock Message object."""
-        message = MagicMock()
-        message.id = message_id
-        message.query = query
-        message.answer = answer
-        message.inputs = inputs or {}
-        message.created_at = created_at or datetime.now()
-        return message
+        # Create a simple object with instance attributes
+        # Using a class with __init__ ensures attributes are instance attributes
+        class Message:
+            def __init__(self):
+                self.id = message_id
+                self.query = query
+                self.answer = answer
+                self.inputs = inputs
+                self.created_at = created_at or datetime.now()
+        
+        return Message()
 
     @staticmethod
     def create_conversation_mock(
@@ -130,19 +134,23 @@ class TestFeedbackService:
         """Test basic CSV export with single feedback record."""
         # Arrange
         mock_query = MagicMock()
-        mock_db.session.query.return_value = mock_query
+        # Configure the mock to return itself for all chaining methods
         mock_query.join.return_value = mock_query
         mock_query.outerjoin.return_value = mock_query
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
         mock_query.all.return_value = sample_feedback_data
+        
+        # Set up the session.query to return our mock
+        mock_db.session.query.return_value = mock_query
 
         # Act
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="csv")
 
         # Assert
-        assert response.mimetype == "text/csv; charset=utf-8-sig"
+        assert response.mimetype == "text/csv"
+        assert "charset=utf-8-sig" in response.content_type
         assert "attachment" in response.headers["Content-Disposition"]
         assert "dify_feedback_export_app-456" in response.headers["Content-Disposition"]
 
@@ -164,19 +172,23 @@ class TestFeedbackService:
         """Test basic JSON export with metadata structure."""
         # Arrange
         mock_query = MagicMock()
-        mock_db.session.query.return_value = mock_query
+        # Configure the mock to return itself for all chaining methods
         mock_query.join.return_value = mock_query
         mock_query.outerjoin.return_value = mock_query
         mock_query.where.return_value = mock_query
         mock_query.filter.return_value = mock_query
         mock_query.order_by.return_value = mock_query
         mock_query.all.return_value = sample_feedback_data
+        
+        # Set up the session.query to return our mock
+        mock_db.session.query.return_value = mock_query
 
         # Act
         response = FeedbackService.export_feedbacks(app_id="app-456", format_type="json")
 
         # Assert
-        assert response.mimetype == "application/json; charset=utf-8"
+        assert response.mimetype == "application/json"
+        assert "charset=utf-8" in response.content_type
         assert "attachment" in response.headers["Content-Disposition"]
 
         # Verify JSON structure
