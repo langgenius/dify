@@ -74,6 +74,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         final_answer = ""
         prompt_messages: list = []  # Initialize prompt_messages
         agent_thought_id = ""  # Initialize agent_thought_id
+        is_final_answer_from_tool = False
 
         def increase_usage(final_llm_usage_dict: dict[str, LLMUsage | None], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
@@ -233,6 +234,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
                     if direct_flag:
                         final_answer = str(tool_invoke_response or "")
+                        is_final_answer_from_tool = True
                         # keep function_call_state as False to end iterations
                     else:
                         function_call_state = True
@@ -252,17 +254,18 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             system_fingerprint="",
         )
 
-        # save agent thought
-        self.save_agent_thought(
-            agent_thought_id=agent_thought_id,
-            tool_name="",
-            tool_input={},
-            tool_invoke_meta={},
-            thought=final_answer,
-            observation={},
-            answer=final_answer,
-            messages_ids=[],
-        )
+        # save agent thought only when final answer is NOT directly from tool
+        if not is_final_answer_from_tool:
+            self.save_agent_thought(
+                agent_thought_id=agent_thought_id,
+                tool_name="",
+                tool_input={},
+                tool_invoke_meta={},
+                thought=final_answer,
+                observation={},
+                answer=final_answer,
+                messages_ids=[],
+            )
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(
