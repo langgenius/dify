@@ -27,7 +27,7 @@ from services.billing_service import BillingService
 
 class TestBillingServiceSendRequest:
     """Unit tests for BillingService._send_request method.
-    
+
     Tests cover:
     - Successful GET/PUT/POST/DELETE requests
     - Error handling for various HTTP status codes
@@ -262,7 +262,7 @@ class TestBillingServiceSendRequest:
 
 class TestBillingServiceSubscriptionInfo:
     """Unit tests for subscription tier and billing info retrieval.
-    
+
     Tests cover:
     - Billing information retrieval
     - Knowledge base rate limits with default and custom values
@@ -390,7 +390,7 @@ class TestBillingServiceSubscriptionInfo:
 
 class TestBillingServiceUsageCalculation:
     """Unit tests for usage calculation and credit management.
-    
+
     Tests cover:
     - Feature plan usage information retrieval
     - Credit addition (positive delta)
@@ -409,9 +409,7 @@ class TestBillingServiceUsageCalculation:
         """Test retrieval of tenant feature plan usage information."""
         # Arrange
         tenant_id = "tenant-123"
-        expected_response = {
-            "features": {"trigger": {"used": 50, "limit": 100}, "workflow": {"used": 20, "limit": 50}}
-        }
+        expected_response = {"features": {"trigger": {"used": 50, "limit": 100}, "workflow": {"used": 20, "limit": 50}}}
         mock_send_request.return_value = expected_response
 
         # Act
@@ -419,9 +417,7 @@ class TestBillingServiceUsageCalculation:
 
         # Assert
         assert result == expected_response
-        mock_send_request.assert_called_once_with(
-            "GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id}
-        )
+        mock_send_request.assert_called_once_with("GET", "/tenant-feature-usage/info", params={"tenant_id": tenant_id})
 
     def test_update_tenant_feature_plan_usage_positive_delta(self, mock_send_request):
         """Test updating tenant feature usage with positive delta (adding credits)."""
@@ -502,7 +498,7 @@ class TestBillingServiceUsageCalculation:
 
 class TestBillingServiceRateLimitEnforcement:
     """Unit tests for rate limit enforcement mechanisms.
-    
+
     Tests cover:
     - Compliance download rate limiting (4 requests per 60 seconds)
     - Education verification rate limiting (10 requests per 60 seconds)
@@ -528,11 +524,12 @@ class TestBillingServiceRateLimitEnforcement:
         expected_response = {"download_link": "https://example.com/download"}
 
         # Mock the rate limiter to return False (not limited)
-        with patch.object(
-            BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=False
-        ) as mock_is_limited, patch.object(
-            BillingService.compliance_download_rate_limiter, "increment_rate_limit"
-        ) as mock_increment:
+        with (
+            patch.object(
+                BillingService.compliance_download_rate_limiter, "is_rate_limited", return_value=False
+            ) as mock_is_limited,
+            patch.object(BillingService.compliance_download_rate_limiter, "increment_rate_limit") as mock_increment,
+        ):
             mock_send_request.return_value = expected_response
 
             # Act
@@ -586,11 +583,14 @@ class TestBillingServiceRateLimitEnforcement:
         expected_response = {"verified": True, "institution": "University"}
 
         # Mock the rate limiter to return False (not limited)
-        with patch.object(
-            BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
-        ) as mock_is_limited, patch.object(
-            BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"
-        ) as mock_increment:
+        with (
+            patch.object(
+                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
+            ) as mock_is_limited,
+            patch.object(
+                BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"
+            ) as mock_increment,
+        ):
             mock_send_request.return_value = expected_response
 
             # Act
@@ -635,11 +635,14 @@ class TestBillingServiceRateLimitEnforcement:
         expected_response = {"result": "success", "activated": True}
 
         # Mock the rate limiter to return False (not limited)
-        with patch.object(
-            BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=False
-        ) as mock_is_limited, patch.object(
-            BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit"
-        ) as mock_increment:
+        with (
+            patch.object(
+                BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=False
+            ) as mock_is_limited,
+            patch.object(
+                BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit"
+            ) as mock_increment,
+        ):
             mock_send_request.return_value = expected_response
 
             # Act
@@ -684,7 +687,7 @@ class TestBillingServiceRateLimitEnforcement:
 
 class TestBillingServiceEducationIdentity:
     """Unit tests for education identity verification and management.
-    
+
     Tests cover:
     - Education verification status checking
     - Institution autocomplete with pagination
@@ -753,7 +756,7 @@ class TestBillingServiceEducationIdentity:
 
 class TestBillingServiceAccountManagement:
     """Unit tests for account-related billing operations.
-    
+
     Tests cover:
     - Account deletion
     - Email freeze status checking
@@ -921,7 +924,7 @@ class TestBillingServiceAccountManagement:
 
 class TestBillingServiceCacheManagement:
     """Unit tests for billing cache management.
-    
+
     Tests cover:
     - Billing info cache invalidation
     - Proper Redis key formatting
@@ -948,7 +951,7 @@ class TestBillingServiceCacheManagement:
 
 class TestBillingServicePartnerIntegration:
     """Unit tests for partner integration features.
-    
+
     Tests cover:
     - Partner tenant binding synchronization
     - Click ID tracking
@@ -981,7 +984,7 @@ class TestBillingServicePartnerIntegration:
 
 class TestBillingServiceEdgeCases:
     """Unit tests for edge cases and error scenarios.
-    
+
     Tests cover:
     - Empty responses from billing API
     - Malformed JSON responses
@@ -1101,7 +1104,7 @@ class TestBillingServiceEdgeCases:
         """Test refund with various history ID formats."""
         # Arrange - test with different ID formats
         test_ids = ["hist-123", "uuid-abc-def", "12345", ""]
-        
+
         for history_id in test_ids:
             expected_response = {"result": "success", "history_id": history_id}
             mock_send_request.return_value = expected_response
@@ -1155,7 +1158,7 @@ class TestBillingServiceEdgeCases:
 
 class TestBillingServiceIntegrationScenarios:
     """Integration-style tests simulating real-world usage scenarios.
-    
+
     These tests combine multiple service methods to test common workflows:
     - Complete subscription upgrade flow
     - Usage tracking and refund workflow
@@ -1172,7 +1175,7 @@ class TestBillingServiceIntegrationScenarios:
         """Test complete subscription upgrade workflow."""
         # Arrange
         tenant_id = "tenant-upgrade"
-        
+
         # Step 1: Get current billing info
         mock_send_request.return_value = {
             "subscription_plan": "sandbox",
@@ -1198,7 +1201,7 @@ class TestBillingServiceIntegrationScenarios:
         # Arrange
         tenant_id = "tenant-usage"
         feature_key = "workflow"
-        
+
         # Step 1: Consume credits
         mock_send_request.return_value = {"result": "success", "history_id": "hist-consume-123"}
         consume_result = BillingService.update_tenant_feature_plan_usage(tenant_id, feature_key, -10)
@@ -1230,20 +1233,19 @@ class TestBillingServiceIntegrationScenarios:
         doc_name = "compliance_report.pdf"
         ip = "192.168.1.1"
         device_info = "Mozilla/5.0"
-        
+
         # Mock rate limiter to allow 3 requests (under limit of 4)
-        with patch.object(
-            BillingService.compliance_download_rate_limiter, "is_rate_limited", side_effect=[False, False, False]
-        ) as mock_is_limited, patch.object(
-            BillingService.compliance_download_rate_limiter, "increment_rate_limit"
-        ) as mock_increment:
+        with (
+            patch.object(
+                BillingService.compliance_download_rate_limiter, "is_rate_limited", side_effect=[False, False, False]
+            ) as mock_is_limited,
+            patch.object(BillingService.compliance_download_rate_limiter, "increment_rate_limit") as mock_increment,
+        ):
             mock_send_request.return_value = {"download_link": "https://example.com/download"}
 
             # Act - Make 3 requests
             for i in range(3):
-                result = BillingService.get_compliance_download_link(
-                    doc_name, account_id, tenant_id, ip, device_info
-                )
+                result = BillingService.get_compliance_download_link(doc_name, account_id, tenant_id, ip, device_info)
                 assert "download_link" in result
 
             # Assert - All 3 requests succeeded
@@ -1257,12 +1259,13 @@ class TestBillingServiceIntegrationScenarios:
         account.id = "account-edu"
         account.email = "student@mit.edu"
         account.current_tenant_id = "tenant-edu"
-        
+
         # Step 1: Search for institution
-        with patch.object(
-            BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
-        ), patch.object(
-            BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"
+        with (
+            patch.object(
+                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
+            ),
+            patch.object(BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"),
         ):
             mock_send_request.return_value = {
                 "institutions": [{"name": "Massachusetts Institute of Technology", "domain": "mit.edu"}]
@@ -1271,10 +1274,11 @@ class TestBillingServiceIntegrationScenarios:
             assert len(institutions["institutions"]) > 0
 
         # Step 2: Verify email
-        with patch.object(
-            BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
-        ), patch.object(
-            BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"
+        with (
+            patch.object(
+                BillingService.EducationIdentity.verification_rate_limit, "is_rate_limited", return_value=False
+            ),
+            patch.object(BillingService.EducationIdentity.verification_rate_limit, "increment_rate_limit"),
         ):
             mock_send_request.return_value = {"verified": True, "institution": "MIT"}
             verify_result = BillingService.EducationIdentity.verify(account.id, account.email)
@@ -1286,13 +1290,10 @@ class TestBillingServiceIntegrationScenarios:
         assert status["verified"] is True
 
         # Step 4: Activate education benefits
-        with patch.object(
-            BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=False
-        ), patch.object(
-            BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit"
+        with (
+            patch.object(BillingService.EducationIdentity.activation_rate_limit, "is_rate_limited", return_value=False),
+            patch.object(BillingService.EducationIdentity.activation_rate_limit, "increment_rate_limit"),
         ):
             mock_send_request.return_value = {"result": "success", "activated": True}
-            activate_result = BillingService.EducationIdentity.activate(
-                account, "token-123", "MIT", "student"
-            )
+            activate_result = BillingService.EducationIdentity.activate(account, "token-123", "MIT", "student")
             assert activate_result["activated"] is True
