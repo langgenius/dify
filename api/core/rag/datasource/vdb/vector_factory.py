@@ -20,7 +20,6 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.dataset import Dataset, Whitelist
 from models.model import UploadFile
-from services.attachment_service import AttachmentService
 
 logger = logging.getLogger(__name__)
 
@@ -223,15 +222,19 @@ class Vector:
                 for document in batch:
                     attachment_id = document.metadata["doc_id"]
                     doc_type = document.metadata["doc_type"]
-                    file_base64_str = AttachmentService(db.engine).get_file_base64(attachment_id)
-                    file_base64_list.append(
-                        {
-                            "content": file_base64_str,
-                            "content_type": doc_type,
-                            "file_id": attachment_id,
-                        }
-                    )
-                    real_batch.append(document)
+                    # Query file info within db.session context to ensure thread-safe access
+                    upload_file = db.session.query(UploadFile).where(UploadFile.id == attachment_id).first()
+                    if upload_file:
+                        blob = storage.load_once(upload_file.key)
+                        file_base64_str = base64.b64encode(blob).decode()
+                        file_base64_list.append(
+                            {
+                                "content": file_base64_str,
+                                "content_type": doc_type,
+                                "file_id": attachment_id,
+                            }
+                        )
+                        real_batch.append(document)
                 batch_embeddings = self._embeddings.embed_multimodal_documents(file_base64_list)
                 logger.info(
                     "Embedding batch %s/%s took %s s", i // batch_size + 1, total_batches, time.time() - batch_start
