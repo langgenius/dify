@@ -1,5 +1,9 @@
 import json
+from datetime import datetime
 from typing import Union
+
+from sqlalchemy import and_, func, or_, select
+from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -13,6 +17,7 @@ from core.ops.utils import measure_time
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account
+from models.enums import CreatorUserRole
 from models.model import App, AppMode, AppModelConfig, EndUser, Message, MessageFeedback
 from services.conversation_service import ConversationService
 from services.errors.message import (
@@ -303,3 +308,168 @@ class MessageService:
         )
 
         return questions
+
+    @classmethod
+    def get_paginate_message_logs(
+        cls,
+        *,
+        session: Session,
+        app_model: App,
+        keyword: str | None = None,
+        created_at_before: datetime | None = None,
+        created_at_after: datetime | None = None,
+        page: int = 1,
+        limit: int = 20,
+        created_by_end_user_session_id: str | None = None,
+        created_by_account: str | None = None,
+    ):
+        """
+        Get paginated message logs for completion and chat applications with token consumption.
+
+        Fix for issue #20759: Add interfaces for retrieving logs from text generation
+        applications and chat applications, and enable the retrieval of the total token
+        consumption for each log entry, similar to how workflow logs are retrieved.
+
+        :param session: SQLAlchemy session
+        :param app_model: app model
+        :param keyword: search keyword (searches in query and answer)
+        :param created_at_before: filter messages created before this timestamp
+        :param created_at_after: filter messages created after this timestamp
+        :param page: page number
+        :param limit: items per page
+        :param created_by_end_user_session_id: filter by end user session id
+        :param created_by_account: filter by account email
+        :return: Pagination object with message logs including token consumption
+        """
+        # Build base statement using SQLAlchemy 2.0 style
+        stmt = select(Message).where(
+            Message.app_id == app_model.id
+        )
+
+        # Apply keyword search if provided
+        # Search in both query and answer fields
+        if keyword:
+            keyword_like_val = f"%{keyword[:30].encode('unicode_escape').decode('utf-8')}%".replace(r"\u", r"\\u")
+            keyword_conditions = [
+                Message.query.ilike(keyword_like_val),
+                Message.answer.ilike(keyword_like_val),
+            ]
+
+            # Filter keyword by end user session id if created by end user role
+            if created_by_end_user_session_id:
+                stmt = stmt.outerjoin(
+                    EndUser,
+                    and_(
+                        Message.from_end_user_id == EndUser.id,
+                        Message.from_source == "api",
+                    ),
+                ).where(
+                    or_(
+                        *keyword_conditions,
+                        and_(
+                            Message.from_source == "api",
+                            EndUser.session_id.ilike(keyword_like_val),
+                        ),
+                    ),
+                )
+            else:
+                stmt = stmt.where(or_(*keyword_conditions))
+
+        # Add time-based filtering
+        if created_at_before:
+            stmt = stmt.where(Message.created_at <= created_at_before)
+
+        if created_at_after:
+            stmt = stmt.where(Message.created_at >= created_at_after)
+
+        # Filter by end user session id
+        if created_by_end_user_session_id:
+            # Join with EndUser to filter by session_id
+            stmt = stmt.outerjoin(
+                EndUser,
+                and_(
+                    Message.from_end_user_id == EndUser.id,
+                    Message.from_source == "api",
+                ),
+            ).where(EndUser.session_id == created_by_end_user_session_id)
+
+        # Filter by account email
+        if created_by_account:
+            # Find the account by email first
+            account = session.scalar(select(Account).where(Account.email == created_by_account))
+            if not account:
+                raise ValueError(f"Account not found: {created_by_account}")
+
+            # Join with Account to filter by account ID
+            stmt = stmt.outerjoin(
+                Account,
+                and_(
+                    Message.from_account_id == Account.id,
+                    Message.from_source == "console",
+                ),
+            ).where(Account.id == account.id)
+
+        # Order by creation time (newest first)
+        stmt = stmt.order_by(Message.created_at.desc())
+
+        # Get total count using the same filters
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = session.scalar(count_stmt) or 0
+
+        # Apply pagination limits
+        offset_stmt = stmt.offset((page - 1) * limit).limit(limit)
+
+        # Execute query and get items
+        items = session.scalars(offset_stmt).all()
+
+        # Enhance items with account and end_user information to avoid N+1 queries
+        # This is similar to how workflow logs handle relationships
+        enhanced_items = []
+        account_ids = set()
+        end_user_ids = set()
+
+        # Collect all account and end_user IDs
+        for item in items:
+            if item.from_account_id:
+                account_ids.add(item.from_account_id)
+            if item.from_end_user_id:
+                end_user_ids.add(item.from_end_user_id)
+
+        # Batch load accounts and end_users
+        accounts_dict = {}
+        if account_ids:
+            accounts = session.scalars(select(Account).where(Account.id.in_(account_ids))).all()
+            accounts_dict = {acc.id: acc for acc in accounts}
+
+        end_users_dict = {}
+        if end_user_ids:
+            end_users = session.scalars(select(EndUser).where(EndUser.id.in_(end_user_ids))).all()
+            end_users_dict = {eu.id: eu for eu in end_users}
+
+        # Create enhanced message objects with account and end_user references
+        # We'll use a simple wrapper to add these attributes
+        class MessageLogView:
+            """Wrapper for Message with account and end_user references."""
+
+            def __init__(self, message: Message, account, end_user):
+                self._message = message
+                self.created_by_account = account
+                self.created_by_end_user = end_user
+
+            def __getattr__(self, name):
+                # Delegate all other attributes to the message object
+                return getattr(self._message, name)
+
+        # Build enhanced items
+        for item in items:
+            account = accounts_dict.get(item.from_account_id) if item.from_account_id else None
+            end_user = end_users_dict.get(item.from_end_user_id) if item.from_end_user_id else None
+            enhanced_items.append(MessageLogView(item, account, end_user))
+
+        return {
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "has_more": total > page * limit,
+            "data": enhanced_items,
+        }

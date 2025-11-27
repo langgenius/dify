@@ -22,12 +22,21 @@ const NormalForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
+  // Check if user is already logged in
   const { isLoading: isCheckLoading, data: loginData } = useIsLogin()
   const isLoggedIn = loginData?.logged_in
+
+  // Extract URL parameters
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
+
+  // Local state for initialization
   const [isInitCheckLoading, setInitCheckLoading] = useState(true)
-  const isLoading = isCheckLoading || loginData?.logged_in || isInitCheckLoading
+
+  // Fix for issue #21177 Bug 2: Remove isLoggedIn from isLoading calculation
+  // Previously, if the user was logged in, isLoading would be true, preventing
+  // the redirect logic from executing. Now we only check loading states.
+  const isLoading = isCheckLoading || isInitCheckLoading
   const { systemFeatures } = useGlobalPublicStore()
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)

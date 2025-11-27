@@ -301,8 +301,11 @@ class ExternalDatasetService:
         headers = {"Content-Type": "application/json"}
         if settings.get("api_key"):
             headers["Authorization"] = f"Bearer {settings.get('api_key')}"
+        # Extract score threshold settings from external retrieval parameters
         score_threshold_enabled = external_retrieval_parameters.get("score_threshold_enabled") or False
         score_threshold = external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
+
+        # Build the base request parameters for the external knowledge API
         request_params = {
             "retrieval_setting": {
                 "top_k": external_retrieval_parameters.get("top_k"),
@@ -310,8 +313,13 @@ class ExternalDatasetService:
             },
             "query": query,
             "knowledge_id": external_knowledge_binding.external_knowledge_id,
-            "metadata_condition": metadata_condition.model_dump() if metadata_condition else None,
         }
+
+        # Fix for issue #21070: Only include metadata_condition if it's not None
+        # This ensures that None values are not sent in the request, which could cause
+        # the external API to ignore the metadata filtering
+        if metadata_condition:
+            request_params["metadata_condition"] = metadata_condition.model_dump()
 
         response = ExternalDatasetService.process_external_api(
             ExternalKnowledgeApiSetting(

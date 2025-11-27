@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext } from 'use-context-selector'
@@ -26,10 +26,34 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
+  // State management for form inputs
   const [email, setEmail] = useState(emailFromLink)
   const [password, setPassword] = useState('')
+  const passwordInputRef = useRef<HTMLInputElement>(null)
 
+  // Loading state for form submission
   const [isLoading, setIsLoading] = useState(false)
+
+  // Fix for issue #21177 Bug 1: Check for autofilled password value
+  // Chrome and other browsers may autofill the password field without triggering
+  // the onChange event, which leaves the login button disabled. This effect
+  // periodically checks the input value to detect autofill and update state.
+  useEffect(() => {
+    const checkAutofill = () => {
+      // If the input has a value but our state doesn't, it was likely autofilled
+      if (passwordInputRef.current && passwordInputRef.current.value && !password) {
+        setPassword(passwordInputRef.current.value)
+      }
+    }
+
+    // Check immediately and after a short delay to catch autofill
+    // The delay is necessary because autofill may happen after initial render
+    checkAutofill()
+    const timeoutId = setTimeout(checkAutofill, 100)
+
+    // Cleanup timeout on unmount or dependency change
+    return () => clearTimeout(timeoutId)
+  }, [password])
 
   const handleEmailPasswordLogin = async () => {
     if (!email) {
@@ -124,9 +148,21 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
       </label>
       <div className="relative mt-1">
         <Input
+          ref={passwordInputRef}
           id="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
+          // Fix for issue #21177 Bug 1: Handle autofill events via onInput
+          // The onInput event fires for all input changes including autofill,
+          // which helps catch cases where onChange might not fire
+          onInput={e => {
+            const target = e.target as HTMLInputElement
+            // Update state if the input value changed (e.g., from autofill)
+            if (target.value && target.value !== password) {
+              setPassword(target.value)
+            }
+          }}
+          // Allow form submission via Enter key
           onKeyDown={(e) => {
             if (e.key === 'Enter')
               handleEmailPasswordLogin()

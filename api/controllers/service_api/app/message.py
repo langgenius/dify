@@ -22,6 +22,9 @@ from services.errors.message import (
 )
 from services.message_service import MessageService
 
+# Import for issue #20759: message log fields
+from fields.message_log_fields import build_message_log_pagination_model
+
 logger = logging.getLogger(__name__)
 
 
@@ -235,3 +238,177 @@ class MessageSuggestedApi(Resource):
             raise InternalServerError()
 
         return {"result": "success", "data": questions}
+
+
+# Fix for issue #20759: Add log retrieval APIs for completion and chat applications
+# Define parser for message log APIs
+message_log_parser = (
+    reqparse.RequestParser()
+    .add_argument("keyword", type=str, location="args", help="Search keyword for filtering logs")
+    .add_argument(
+        "created_at__before",
+        type=str,
+        location="args",
+        help="Filter logs created before this timestamp (ISO 8601 format)",
+    )
+    .add_argument(
+        "created_at__after",
+        type=str,
+        location="args",
+        help="Filter logs created after this timestamp (ISO 8601 format)",
+    )
+    .add_argument("page", type=int_range(1, 99999), required=False, default=1, location="args", help="Page number")
+    .add_argument(
+        "limit", type=int_range(1, 100), required=False, default=20, location="args", help="Number of items per page"
+    )
+    .add_argument(
+        "created_by_end_user_session_id",
+        type=str,
+        location="args",
+        help="Filter by end user session ID",
+    )
+    .add_argument("created_by_account", type=str, location="args", help="Filter by account email")
+)
+
+
+@service_api_ns.route("/completion-messages/logs")
+class CompletionMessageLogApi(Resource):
+    """
+    Fix for issue #20759: API endpoint for retrieving completion (text generation) application logs.
+
+    This endpoint provides access to message logs from text generation applications,
+    including token consumption information for each log entry.
+    """
+
+    @service_api_ns.expect(message_log_parser)
+    @service_api_ns.doc("get_completion_message_logs")
+    @service_api_ns.doc(description="Get completion application message logs with token consumption")
+    @service_api_ns.doc(
+        responses={
+            200: "Logs retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            400: "Bad request - invalid parameters",
+        }
+    )
+    @validate_app_token
+    @service_api_ns.marshal_with(build_message_log_pagination_model(service_api_ns))
+    def get(self, app_model: App):
+        """
+        Get completion app message logs.
+
+        Returns paginated message logs with filtering options and token consumption data.
+        Each log entry includes:
+        - message_tokens: Number of tokens in the input message
+        - answer_tokens: Number of tokens in the generated answer
+        - total_tokens: Total tokens consumed (message_tokens + answer_tokens)
+        """
+        from dateutil.parser import isoparse
+        from fields.message_log_fields import build_message_log_pagination_model
+        from sqlalchemy.orm import Session
+        from services.message_service import MessageService
+
+        args = message_log_parser.parse_args()
+
+        # Validate app mode - must be completion
+        if app_model.mode != AppMode.COMPLETION:
+            from controllers.service_api.app.error import NotCompletionAppError
+
+            raise NotCompletionAppError()
+
+        # Parse datetime strings if provided
+        created_at_before = None
+        created_at_after = None
+
+        if args.created_at__before:
+            created_at_before = isoparse(args.created_at__before)
+
+        if args.created_at__after:
+            created_at_after = isoparse(args.created_at__after)
+
+        # Get paginated message logs
+        message_service = MessageService()
+        with Session(db.engine) as session:
+            message_log_pagination = message_service.get_paginate_message_logs(
+                session=session,
+                app_model=app_model,
+                keyword=args.keyword,
+                created_at_before=created_at_before,
+                created_at_after=created_at_after,
+                page=args.page,
+                limit=args.limit,
+                created_by_end_user_session_id=args.created_by_end_user_session_id,
+                created_by_account=args.created_by_account,
+            )
+
+            return message_log_pagination
+
+
+@service_api_ns.route("/chat-messages/logs")
+class ChatMessageLogApi(Resource):
+    """
+    Fix for issue #20759: API endpoint for retrieving chat application logs.
+
+    This endpoint provides access to message logs from chat applications,
+    including token consumption information for each log entry.
+    """
+
+    @service_api_ns.expect(message_log_parser)
+    @service_api_ns.doc("get_chat_message_logs")
+    @service_api_ns.doc(description="Get chat application message logs with token consumption")
+    @service_api_ns.doc(
+        responses={
+            200: "Logs retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            400: "Bad request - invalid parameters",
+        }
+    )
+    @validate_app_token
+    @service_api_ns.marshal_with(build_message_log_pagination_model(service_api_ns))
+    def get(self, app_model: App):
+        """
+        Get chat app message logs.
+
+        Returns paginated message logs with filtering options and token consumption data.
+        Each log entry includes:
+        - message_tokens: Number of tokens in the input message
+        - answer_tokens: Number of tokens in the generated answer
+        - total_tokens: Total tokens consumed (message_tokens + answer_tokens)
+        """
+        from dateutil.parser import isoparse
+        from fields.message_log_fields import build_message_log_pagination_model
+        from sqlalchemy.orm import Session
+        from services.message_service import MessageService
+
+        args = message_log_parser.parse_args()
+
+        # Validate app mode - must be chat, agent_chat, or advanced_chat
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
+            raise NotChatAppError()
+
+        # Parse datetime strings if provided
+        created_at_before = None
+        created_at_after = None
+
+        if args.created_at__before:
+            created_at_before = isoparse(args.created_at__before)
+
+        if args.created_at__after:
+            created_at_after = isoparse(args.created_at__after)
+
+        # Get paginated message logs
+        message_service = MessageService()
+        with Session(db.engine) as session:
+            message_log_pagination = message_service.get_paginate_message_logs(
+                session=session,
+                app_model=app_model,
+                keyword=args.keyword,
+                created_at_before=created_at_before,
+                created_at_after=created_at_after,
+                page=args.page,
+                limit=args.limit,
+                created_by_end_user_session_id=args.created_by_end_user_session_id,
+                created_by_account=args.created_by_account,
+            )
+
+            return message_log_pagination
