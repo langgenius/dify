@@ -88,9 +88,19 @@ ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 # Pre-fetch NLTK data and warm tiktoken cache before copying source to maximize layer reuse
 RUN set -eux; \
     mkdir -p /usr/local/share/nltk_data; \
-    NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')"; \
+    NLTK_DATA=/usr/local/share/nltk_data python - <<'PY' \
+import nltk
+nltk.download('punkt')
+nltk.download('averaged_perceptron_tagger')
+nltk.download('stopwords')
+PY
+    ; \
     chmod -R 755 /usr/local/share/nltk_data; \
-    python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')"; \
+    python - <<'PY' \
+import tiktoken
+tiktoken.encoding_for_model('gpt2')
+PY
+    ; \
     chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
 
 # Copy source code
