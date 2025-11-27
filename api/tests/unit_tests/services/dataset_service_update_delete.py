@@ -92,20 +92,12 @@ This test suite follows a comprehensive testing strategy that covers:
 """
 
 import datetime
-from typing import Any
 from unittest.mock import Mock, create_autospec, patch
-from uuid import uuid4
 
 import pytest
-from sqlalchemy import exists, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from core.model_runtime.entities.model_entities import ModelType
-from events.dataset_event import dataset_was_deleted
-from extensions.ext_database import db
-from libs.datetime_utils import naive_utc_now
-from libs.login import current_user
 from models import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
@@ -114,7 +106,6 @@ from models.dataset import (
 )
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
-
 
 # ============================================================================
 # Test Data Factory
@@ -829,7 +820,9 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         """
         with (
             patch("services.dataset_service.DatasetService.get_dataset") as mock_get_dataset,
-            patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
+            patch(
+                "services.dataset_service.current_user", create_autospec(Account, instance=True)
+            ) as mock_current_user,
             patch("extensions.ext_database.db.session") as mock_db,
             patch("services.dataset_service.naive_utc_now") as mock_naive_utc_now,
         ):
@@ -860,9 +853,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         """
         # Arrange
         dataset_id = "dataset-123"
-        dataset = DatasetUpdateDeleteTestDataFactory.create_dataset_mock(
-            dataset_id=dataset_id, enable_api=False
-        )
+        dataset = DatasetUpdateDeleteTestDataFactory.create_dataset_mock(dataset_id=dataset_id, enable_api=False)
 
         mock_dataset_service_dependencies["get_dataset"].return_value = dataset
 
@@ -895,9 +886,7 @@ class TestDatasetServiceUpdateDatasetApiStatus:
         """
         # Arrange
         dataset_id = "dataset-123"
-        dataset = DatasetUpdateDeleteTestDataFactory.create_dataset_mock(
-            dataset_id=dataset_id, enable_api=True
-        )
+        dataset = DatasetUpdateDeleteTestDataFactory.create_dataset_mock(dataset_id=dataset_id, enable_api=True)
 
         mock_dataset_service_dependencies["get_dataset"].return_value = dataset
 
@@ -1015,7 +1004,9 @@ class TestDatasetServiceUpdateRagPipelineDatasetSettings:
         - Task scheduling
         """
         with (
-            patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
+            patch(
+                "services.dataset_service.current_user", create_autospec(Account, instance=True)
+            ) as mock_current_user,
             patch("services.dataset_service.ModelManager") as mock_model_manager,
             patch(
                 "services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding"
@@ -1082,7 +1073,9 @@ class TestDatasetServiceUpdateRagPipelineDatasetSettings:
         mock_session.merge.return_value = dataset
 
         # Act
-        DatasetService.update_rag_pipeline_dataset_settings(mock_session, dataset, knowledge_config, has_published=False)
+        DatasetService.update_rag_pipeline_dataset_settings(
+            mock_session, dataset, knowledge_config, has_published=False
+        )
 
         # Assert
         assert dataset.chunk_structure == "list"
@@ -1230,4 +1223,3 @@ class TestDatasetServiceUpdateRagPipelineDatasetSettings:
 # based on real-world usage patterns or discovered edge cases.
 #
 # ============================================================================
-
