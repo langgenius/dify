@@ -90,9 +90,8 @@ RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
 # Copy source code
 COPY --chown=dify:dify . /app/api/
 
-# Copy entrypoint
+# Prepare entrypoint script
 COPY --chown=dify:dify docker/entrypoint.sh /entrypoint.sh
-RUN chmod +x /entrypoint.sh
 
 
 ARG COMMIT_SHA
