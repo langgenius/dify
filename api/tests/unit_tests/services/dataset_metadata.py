@@ -85,23 +85,16 @@ This test suite follows a comprehensive testing strategy that covers:
 """
 
 from unittest.mock import Mock, patch
-from uuid import uuid4
 
 import pytest
 
-from core.rag.index_processor.constant.built_in_field import BuiltInField, MetadataDataSource
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
-from libs.login import current_account_with_tenant
+from core.rag.index_processor.constant.built_in_field import BuiltInField
 from models.dataset import Dataset, DatasetMetadata, DatasetMetadataBinding
-from services.dataset_service import DocumentService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
-    MetadataOperationData,
     MetadataValue,
 )
 from services.metadata_service import MetadataService
-
 
 # ============================================================================
 # Test Data Factory
@@ -278,7 +271,7 @@ class MetadataTestDataFactory:
         document.data_source_type = data_source_type
 
         # Mock datetime objects for upload_date and last_update_date
-        from datetime import datetime
+
         document.upload_date = Mock()
         document.upload_date.timestamp.return_value = 1234567890.0
         document.last_update_date = Mock()
@@ -405,9 +398,7 @@ class TestMetadataServiceCreateMetadata:
         """
         # Arrange
         dataset_id = "dataset-123"
-        metadata_args = MetadataTestDataFactory.create_metadata_args_mock(
-            name="category", metadata_type="string"
-        )
+        metadata_args = MetadataTestDataFactory.create_metadata_args_mock(name="category", metadata_type="string")
 
         # Mock query to return None (no existing metadata with same name)
         mock_query = Mock()
@@ -449,9 +440,7 @@ class TestMetadataServiceCreateMetadata:
         # Arrange
         dataset_id = "dataset-123"
         long_name = "a" * 256  # 256 characters (exceeds limit)
-        metadata_args = MetadataTestDataFactory.create_metadata_args_mock(
-            name=long_name, metadata_type="string"
-        )
+        metadata_args = MetadataTestDataFactory.create_metadata_args_mock(name=long_name, metadata_type="string")
 
         # Act & Assert
         with pytest.raises(ValueError, match="Metadata name cannot exceed 255 characters"):
@@ -475,9 +464,7 @@ class TestMetadataServiceCreateMetadata:
         """
         # Arrange
         dataset_id = "dataset-123"
-        metadata_args = MetadataTestDataFactory.create_metadata_args_mock(
-            name="category", metadata_type="string"
-        )
+        metadata_args = MetadataTestDataFactory.create_metadata_args_mock(name="category", metadata_type="string")
 
         # Mock existing metadata with same name
         existing_metadata = MetadataTestDataFactory.create_metadata_mock(name="category")
@@ -608,9 +595,7 @@ class TestMetadataServiceUpdateMetadataName:
         metadata_id = "metadata-123"
         new_name = "updated_category"
 
-        existing_metadata = MetadataTestDataFactory.create_metadata_mock(
-            metadata_id=metadata_id, name="category"
-        )
+        existing_metadata = MetadataTestDataFactory.create_metadata_mock(metadata_id=metadata_id, name="category")
 
         # Mock query for duplicate check (no duplicate)
         mock_query = Mock()
@@ -758,9 +743,7 @@ class TestMetadataServiceDeleteMetadata:
         dataset_id = "dataset-123"
         metadata_id = "metadata-123"
 
-        existing_metadata = MetadataTestDataFactory.create_metadata_mock(
-            metadata_id=metadata_id, name="category"
-        )
+        existing_metadata = MetadataTestDataFactory.create_metadata_mock(metadata_id=metadata_id, name="category")
 
         # Mock metadata retrieval
         mock_query = Mock()
@@ -1083,4 +1066,3 @@ class TestMetadataServiceGetDatasetMetadatas:
 # based on real-world usage patterns or discovered edge cases.
 #
 # ============================================================================
-
