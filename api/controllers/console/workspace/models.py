@@ -26,7 +26,7 @@ class ParserGetDefault(BaseModel):
 class ParserPostDefault(BaseModel):
     class Inner(BaseModel):
         model_type: ModelType
-        model: str
+        model: str | None = None
         provider: str | None = None
 
     model_settings: list[Inner]
@@ -150,7 +150,7 @@ console_ns.schema_model(
 
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGetDefault.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ParserGetDefault.__name__])
     @setup_required
     @login_required
     @account_initialization_required
