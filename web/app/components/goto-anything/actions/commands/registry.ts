@@ -70,11 +70,12 @@ export class SlashCommandRegistry {
 
     // First check if any alias starts with this
     const aliasMatch = this.findHandlerByAliasPrefix(lowerPartial)
-    if (aliasMatch)
+    if (aliasMatch && this.isCommandAvailable(aliasMatch))
       return aliasMatch
 
     // Then check if command name starts with this
-    return this.findHandlerByNamePrefix(lowerPartial)
+    const nameMatch = this.findHandlerByNamePrefix(lowerPartial)
+    return nameMatch && this.isCommandAvailable(nameMatch) ? nameMatch : undefined
   }
 
   /**
@@ -128,7 +129,7 @@ export class SlashCommandRegistry {
 
     // First try exact match
     let handler = this.findCommand(commandName)
-    if (handler) {
+    if (handler && this.isCommandAvailable(handler)) {
       try {
         return await handler.search(args, locale)
       }
@@ -140,7 +141,7 @@ export class SlashCommandRegistry {
 
     // If no exact match, try smart partial matching
     handler = this.findBestPartialMatch(commandName)
-    if (handler) {
+    if (handler && this.isCommandAvailable(handler)) {
       try {
         return await handler.search(args, locale)
       }
@@ -163,7 +164,7 @@ export class SlashCommandRegistry {
 
     for (const handler of this.getAllCommands()) {
       // Check if command is available (default to true if isAvailable not implemented)
-      const isAvailable = handler.isAvailable?.() ?? true
+      const isAvailable = this.isCommandAvailable(handler)
       if (!isAvailable)
         continue
 
@@ -192,7 +193,7 @@ export class SlashCommandRegistry {
 
     for (const handler of this.getAllCommands()) {
       // Check if command is available (default to true if isAvailable not implemented)
-      const isAvailable = handler.isAvailable?.() ?? true
+      const isAvailable = this.isCommandAvailable(handler)
       if (!isAvailable)
         continue
 
@@ -237,6 +238,14 @@ export class SlashCommandRegistry {
    */
   getCommandDependencies(commandName: string): any {
     return this.commandDeps.get(commandName)
+  }
+
+  /**
+   * Determine if a command is available in the current context.
+   * Defaults to true when a handler does not implement the guard.
+   */
+  private isCommandAvailable(handler: SlashCommandHandler) {
+    return handler.isAvailable?.() ?? true
   }
 }
 
