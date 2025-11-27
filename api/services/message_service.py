@@ -398,7 +398,7 @@ class MessageService:
                 raise ValueError(f"Account not found: {created_by_account}")
 
             # Join with Account to filter by account ID
-            stmt = stmt.outerjoin(
+                raise BadRequest(f"Account not found: {created_by_account}")
                 Account,
                 and_(
                     Message.from_account_id == Account.id,
