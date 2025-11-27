@@ -39,6 +39,7 @@ import useTheme from '@/hooks/use-theme'
 import cn from '@/utils/classnames'
 import { useIsChatMode } from '@/app/components/workflow/hooks'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
@@ -61,6 +62,7 @@ const FeaturesTrigger = () => {
   const nodes = useNodes()
   const hasWorkflowNodes = nodes.length > 0
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
+  const endNode = nodes.find(node => node.data.type === BlockEnum.End)
   const startVariables = (startNode as Node<StartNodeType>)?.data?.variables
   const edges = useEdges<CommonEdgeType>()
 
@@ -81,6 +83,7 @@ const FeaturesTrigger = () => {
 
     return data
   }, [fileSettings?.image?.enabled, startVariables])
+  const endVariables = useMemo(() => (endNode as Node<EndNodeType>)?.data?.outputs || [], [endNode])
 
   const { handleCheckBeforePublish } = useChecklistBeforePublish()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -201,6 +204,7 @@ const FeaturesTrigger = () => {
           disabled: nodesReadOnly || !hasWorkflowNodes,
           toolPublished,
           inputs: variables,
+          outputs: endVariables,
           onRefreshData: handleToolConfigureUpdate,
           onPublish,
           onToggle: onPublisherToggle,
