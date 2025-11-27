@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource
@@ -26,7 +26,7 @@ class ParserGetDefault(BaseModel):
 class ParserPostDefault(BaseModel):
     class Inner(BaseModel):
         model_type: ModelType
-        model: str
+        model: str | None = None
         provider: str | None = None
 
     model_settings: list[Inner]
@@ -150,7 +150,7 @@ console_ns.schema_model(
 
 @console_ns.route("/workspaces/current/default-model")
 class DefaultModelApi(Resource):
-    @console_ns.expect(console_ns.models[ParserGetDefault.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ParserGetDefault.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -186,7 +186,7 @@ class DefaultModelApi(Resource):
                     tenant_id=tenant_id,
                     model_type=model_setting.model_type,
                     provider=model_setting.provider,
-                    model=model_setting.model,
+                    model=cast(str, model_setting.model),
                 )
             except Exception as ex:
                 logger.exception(
