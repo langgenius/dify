@@ -556,7 +556,7 @@ class TestDocumentServiceRecoverDocument:
 
         # Verify Redis cache flag was deleted
         expected_cache_key = f"document_{document.id}_is_paused"
-        mock_document_service_dependencies["redis_client"].delete.assert_called_once_with(expected_cache_key)
+            paused_at=datetime.datetime(2023, 1, 1, 12, 0, 0),
 
         # Verify recovery task was triggered
         mock_document_service_dependencies["recover_task"].delay.assert_called_once_with(
