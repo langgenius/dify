@@ -109,22 +109,15 @@ This test suite follows a comprehensive testing strategy that covers:
 """
 
 import datetime
-from typing import Any
 from unittest.mock import Mock, create_autospec, patch
-from uuid import uuid4
 
 import pytest
-from werkzeug.exceptions import NotFound
 
-from extensions.ext_database import db
-from libs.datetime_utils import naive_utc_now
-from libs.login import current_user
 from models import Account
 from models.dataset import Dataset, Document
 from models.model import UploadFile
 from services.dataset_service import DocumentService
 from services.errors.document import DocumentIndexingError
-
 
 # ============================================================================
 # Test Data Factory
@@ -327,7 +320,9 @@ class TestDocumentServicePauseDocument:
         - Current time utilities
         """
         with (
-            patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
+            patch(
+                "services.dataset_service.current_user", create_autospec(Account, instance=True)
+            ) as mock_current_user,
             patch("extensions.ext_database.db.session") as mock_db,
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.naive_utc_now") as mock_naive_utc_now,
@@ -359,9 +354,7 @@ class TestDocumentServicePauseDocument:
         - Redis cache flag is set
         """
         # Arrange
-        document = DocumentStatusTestDataFactory.create_document_mock(
-            indexing_status="waiting", is_paused=False
-        )
+        document = DocumentStatusTestDataFactory.create_document_mock(indexing_status="waiting", is_paused=False)
 
         # Act
         DocumentService.pause_document(document)
@@ -377,9 +370,7 @@ class TestDocumentServicePauseDocument:
 
         # Verify Redis cache flag was set
         expected_cache_key = f"document_{document.id}_is_paused"
-        mock_document_service_dependencies["redis_client"].setnx.assert_called_once_with(
-            expected_cache_key, "True"
-        )
+        mock_document_service_dependencies["redis_client"].setnx.assert_called_once_with(expected_cache_key, "True")
 
     def test_pause_document_indexing_state_success(self, mock_document_service_dependencies):
         """
@@ -393,9 +384,7 @@ class TestDocumentServicePauseDocument:
         - All pause operations complete correctly
         """
         # Arrange
-        document = DocumentStatusTestDataFactory.create_document_mock(
-            indexing_status="indexing", is_paused=False
-        )
+        document = DocumentStatusTestDataFactory.create_document_mock(indexing_status="indexing", is_paused=False)
 
         # Act
         DocumentService.pause_document(document)
@@ -415,9 +404,7 @@ class TestDocumentServicePauseDocument:
         - Pause operations work for all valid states
         """
         # Arrange
-        document = DocumentStatusTestDataFactory.create_document_mock(
-            indexing_status="parsing", is_paused=False
-        )
+        document = DocumentStatusTestDataFactory.create_document_mock(indexing_status="parsing", is_paused=False)
 
         # Act
         DocumentService.pause_document(document)
@@ -438,9 +425,7 @@ class TestDocumentServicePauseDocument:
         - No database operations are performed
         """
         # Arrange
-        document = DocumentStatusTestDataFactory.create_document_mock(
-            indexing_status="completed", is_paused=False
-        )
+        document = DocumentStatusTestDataFactory.create_document_mock(indexing_status="completed", is_paused=False)
 
         # Act & Assert
         with pytest.raises(DocumentIndexingError):
@@ -463,9 +448,7 @@ class TestDocumentServicePauseDocument:
         - No database operations are performed
         """
         # Arrange
-        document = DocumentStatusTestDataFactory.create_document_mock(
-            indexing_status="error", is_paused=False
-        )
+        document = DocumentStatusTestDataFactory.create_document_mock(indexing_status="error", is_paused=False)
 
         # Act & Assert
         with pytest.raises(DocumentIndexingError):
@@ -558,9 +541,7 @@ class TestDocumentServiceRecoverDocument:
 
         # Verify Redis cache flag was deleted
         expected_cache_key = f"document_{document.id}_is_paused"
-        mock_document_service_dependencies["redis_client"].delete.assert_called_once_with(
-            expected_cache_key
-        )
+        mock_document_service_dependencies["redis_client"].delete.assert_called_once_with(expected_cache_key)
 
         # Verify recovery task was triggered
         mock_document_service_dependencies["recover_task"].delay.assert_called_once_with(
@@ -580,9 +561,7 @@ class TestDocumentServiceRecoverDocument:
         - No database operations are performed
         """
         # Arrange
-        document = DocumentStatusTestDataFactory.create_document_mock(
-            indexing_status="indexing", is_paused=False
-        )
+        document = DocumentStatusTestDataFactory.create_document_mock(indexing_status="indexing", is_paused=False)
 
         # Act & Assert
         with pytest.raises(DocumentIndexingError):
@@ -632,7 +611,9 @@ class TestDocumentServiceRetryDocument:
         - Retry task
         """
         with (
-            patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
+            patch(
+                "services.dataset_service.current_user", create_autospec(Account, instance=True)
+            ) as mock_current_user,
             patch("extensions.ext_database.db.session") as mock_db,
             patch("services.dataset_service.redis_client") as mock_redis,
             patch("services.dataset_service.retry_document_indexing_task") as mock_task,
@@ -683,9 +664,7 @@ class TestDocumentServiceRetryDocument:
 
         # Verify retry flag was set
         expected_cache_key = f"document_{document.id}_is_retried"
-        mock_document_service_dependencies["redis_client"].setex.assert_called_once_with(
-            expected_cache_key, 600, 1
-        )
+        mock_document_service_dependencies["redis_client"].setex.assert_called_once_with(expected_cache_key, 600, 1)
 
         # Verify retry task was triggered
         mock_document_service_dependencies["retry_task"].delay.assert_called_once_with(
@@ -1124,7 +1103,9 @@ class TestDocumentServiceRenameDocument:
         with (
             patch("services.dataset_service.DatasetService.get_dataset") as mock_get_dataset,
             patch("services.dataset_service.DocumentService.get_document") as mock_get_document,
-            patch("services.dataset_service.current_user", create_autospec(Account, instance=True)) as mock_current_user,
+            patch(
+                "services.dataset_service.current_user", create_autospec(Account, instance=True)
+            ) as mock_current_user,
             patch("extensions.ext_database.db.session") as mock_db,
         ):
             mock_current_user.current_tenant_id = "tenant-123"
@@ -1190,9 +1171,7 @@ class TestDocumentServiceRenameDocument:
         document_id = "document-123"
         new_name = "New Document Name"
 
-        dataset = DocumentStatusTestDataFactory.create_dataset_mock(
-            dataset_id=dataset_id, built_in_field_enabled=True
-        )
+        dataset = DocumentStatusTestDataFactory.create_dataset_mock(dataset_id=dataset_id, built_in_field_enabled=True)
         document = DocumentStatusTestDataFactory.create_document_mock(
             document_id=document_id,
             dataset_id=dataset_id,
@@ -1323,7 +1302,9 @@ class TestDocumentServiceRenameDocument:
 
         dataset = DocumentStatusTestDataFactory.create_dataset_mock(dataset_id=dataset_id)
         document = DocumentStatusTestDataFactory.create_document_mock(
-            document_id=document_id, dataset_id=dataset_id, tenant_id="tenant-456"  # Different tenant
+            document_id=document_id,
+            dataset_id=dataset_id,
+            tenant_id="tenant-456",  # Different tenant
         )
 
         mock_document_service_dependencies["get_dataset"].return_value = dataset
@@ -1332,4 +1313,3 @@ class TestDocumentServiceRenameDocument:
         # Act & Assert
         with pytest.raises(ValueError, match="No permission"):
             DocumentService.rename_document(dataset_id, document_id, new_name)
-
