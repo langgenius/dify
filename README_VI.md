@@ -2,8 +2,8 @@
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
-  <a href="https://docs.dify.ai/self-hosting/quick-start/docker-compose">Tự triển khai</a> ·
-  <a href="https://docs.dify.ai/documentation/pages/getting-started/introduction">Tài liệu</a> ·
+  <a href="https://docs.dify.ai/self-host/quick-start/docker-compose">Tự triển khai</a> ·
+  <a href="https://docs.dify.ai/use-dify/getting-started/introduction">Tài liệu</a> ·
   <a href="https://dify.ai/pricing">Tổng quan các lựa chọn sản phẩm Dify</a>
 </p>
 
@@ -55,7 +55,7 @@ Dify là một nền tảng phát triển ứng dụng LLM mã nguồn mở. Gia
 Xây dựng và kiểm tra các quy trình làm việc AI mạnh mẽ trên một canvas trực quan, tận dụng tất cả các tính năng sau đây và hơn thế nữa.
 
 **2. Hỗ trợ mô hình toàn diện**:
-Tích hợp liền mạch với hàng trăm mô hình LLM độc quyền / mã nguồn mở từ hàng chục nhà cung cấp suy luận và giải pháp tự lưu trữ, bao gồm GPT, Mistral, Llama3, và bất kỳ mô hình tương thích API OpenAI nào. Danh sách đầy đủ các nhà cung cấp mô hình được hỗ trợ có thể được tìm thấy [tại đây](https://docs.dify.ai/documentation/pages/workspace/model-providers).
+Tích hợp liền mạch với hàng trăm mô hình LLM độc quyền / mã nguồn mở từ hàng chục nhà cung cấp suy luận và giải pháp tự lưu trữ, bao gồm GPT, Mistral, Llama3, và bất kỳ mô hình tương thích API OpenAI nào. Danh sách đầy đủ các nhà cung cấp mô hình được hỗ trợ có thể được tìm thấy [tại đây](https://docs.dify.ai/use-dify/workspace/model-providers).
 
 ![providers-v5](https://github.com/langgenius/dify/assets/13230914/5a17bdbe-097a-4100-8363-40255b70f6e3)
 
@@ -81,7 +81,7 @@ Tất cả các dịch vụ của Dify đều đi kèm với các API tương �
 
 - **Tự triển khai Dify Community Edition</br>**
   Nhanh chóng chạy Dify trong môi trường của bạn với [hướng dẫn bắt đầu](#quick-start) này.
-  Sử dụng [tài liệu](https://docs.dify.ai/documentation/pages/getting-started/introduction) của chúng tôi để tham khảo thêm và nhận hướng dẫn chi tiết hơn.
+  Sử dụng [tài liệu](https://docs.dify.ai/use-dify/getting-started/introduction) của chúng tôi để tham khảo thêm và nhận hướng dẫn chi tiết hơn.
 
 - **Dify cho doanh nghiệp / tổ chức</br>**
   Chúng tôi cung cấp các tính năng bổ sung tập trung vào doanh nghiệp. [Ghi lại câu hỏi của bạn cho chúng tôi thông qua chatbot này](https://udify.app/chat/22L1zSxg6yW1cWQg) hoặc [gửi email cho chúng tôi](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) để thảo luận về nhu cầu doanh nghiệp. </br>
@@ -113,11 +113,11 @@ docker compose up -d
 
 Sau khi chạy, bạn có thể truy cập bảng điều khiển Dify trong trình duyệt của bạn tại [http://localhost/install](http://localhost/install) và bắt đầu quá trình khởi tạo.
 
-> Nếu bạn muốn đóng góp cho Dify hoặc phát triển thêm, hãy tham khảo [hướng dẫn triển khai từ mã nguồn](https://docs.dify.ai/self-hosting/advanced-deployments/local-source-code) của chúng tôi
+> Nếu bạn muốn đóng góp cho Dify hoặc phát triển thêm, hãy tham khảo [hướng dẫn triển khai từ mã nguồn](https://docs.dify.ai/self-host/advanced-deployments/local-source-code) của chúng tôi
 
 ## Các bước tiếp theo
 
-Nếu bạn cần tùy chỉnh cấu hình, vui lòng tham khảo các nhận xét trong tệp [.env.example](docker/.env.example) của chúng tôi và cập nhật các giá trị tương ứng trong tệp `.env` của bạn. Ngoài ra, bạn có thể cần điều chỉnh tệp `docker-compose.yaml`, chẳng hạn như thay đổi phiên bản hình ảnh, ánh xạ cổng hoặc gắn kết khối lượng, dựa trên môi trường triển khai cụ thể và yêu cầu của bạn. Sau khi thực hiện bất kỳ thay đổi nào, vui lòng chạy lại `docker-compose up -d`. Bạn có thể tìm thấy danh sách đầy đủ các biến môi trường có sẵn [tại đây](https://docs.dify.ai/self-hosting/configuration/environments).
+Nếu bạn cần tùy chỉnh cấu hình, vui lòng tham khảo các nhận xét trong tệp [.env.example](docker/.env.example) của chúng tôi và cập nhật các giá trị tương ứng trong tệp `.env` của bạn. Ngoài ra, bạn có thể cần điều chỉnh tệp `docker-compose.yaml`, chẳng hạn như thay đổi phiên bản hình ảnh, ánh xạ cổng hoặc gắn kết khối lượng, dựa trên môi trường triển khai cụ thể và yêu cầu của bạn. Sau khi thực hiện bất kỳ thay đổi nào, vui lòng chạy lại `docker-compose up -d`. Bạn có thể tìm thấy danh sách đầy đủ các biến môi trường có sẵn [tại đây](https://docs.dify.ai/self-host/configuration/environments).
 
 Nếu bạn muốn cấu hình một cài đặt có độ sẵn sàng cao, có các [Helm Charts](https://helm.sh/) và tệp YAML do cộng đồng đóng góp cho phép Dify được triển khai trên Kubernetes.
 

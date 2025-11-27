@@ -22,5 +22,5 @@ export const getDocsUrl = (locale: string, path: string) => {
   else if (locale === LanguagesSupported[7])
     localePath = 'ja-jp'
 
-  return `https://docs.dify.ai/documentation/pages/getting-started/introduction/${localePath}${path}`
+  return `https://docs.dify.ai/use-dify/getting-started/introduction/${localePath}${path}`
 }

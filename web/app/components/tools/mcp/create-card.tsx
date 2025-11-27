@@ -33,10 +33,10 @@ const NewMCPCard = ({ handleCreate }: Props) => {
 
   const linkUrl = useMemo(() => {
     if (language.startsWith('zh_'))
-      return 'https://docs.dify.ai/cn/documentation/pages/build/mcp'
+      return 'https://docs.dify.ai/cn/use-dify/build/mcp'
     if (language.startsWith('ja_jp'))
-      return 'https://docs.dify.ai/jp/documentation/pages/build/mcp'
-    return 'https://docs.dify.ai/en/documentation/pages/build/mcp'
+      return 'https://docs.dify.ai/jp/use-dify/build/mcp'
+    return 'https://docs.dify.ai/en/use-dify/build/mcp'
   }, [language])
 
   const [showModal, setShowModal] = useState(false)
