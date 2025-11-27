@@ -1,8 +1,9 @@
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from core.app.app_config.entities import OutputVariableEntity, VariableEntity
+from core.app.app_config.entities import VariableEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.workflow.nodes.base.entities import OutputVariableEntity
 
 
 class WorkflowToolConfigurationUtils:

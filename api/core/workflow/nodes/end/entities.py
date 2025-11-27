@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 
-from core.app.app_config.entities import OutputVariableEntity
-from core.workflow.nodes.base import BaseNodeData
+from core.workflow.nodes.base.entities import BaseNodeData, OutputVariableEntity
 
 
 class EndNodeData(BaseNodeData):

@@ -1,6 +1,5 @@
 import time
 
-from core.app.app_config.entities import OutputVariableEntity, OutputVariableType
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.workflow.entities import GraphInitParams
@@ -12,6 +11,7 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
 from core.workflow.nodes.if_else.entities import IfElseNodeData
