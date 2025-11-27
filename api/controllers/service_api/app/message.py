@@ -10,6 +10,7 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
+from extensions.ext_database import db
 from fields.conversation_fields import build_message_file_model
 from fields.message_fields import build_agent_thought_model, build_feedback_model
 
