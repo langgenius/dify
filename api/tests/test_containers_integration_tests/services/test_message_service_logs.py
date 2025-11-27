@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 from extensions.ext_database import db
 from models import Account, EndUser
 from models.enums import CreatorUserRole
-from models.model import App, AppMode, Conversation, Message
+from models.model import App, Conversation, Message
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 from services.message_service import MessageService
@@ -716,4 +716,3 @@ class TestMessageServiceLogs:
         assert result["total"] == 1
         assert len(result["data"]) == 1
         assert result["data"][0].id == message1.id
-

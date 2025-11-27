@@ -23,7 +23,7 @@ from faker import Faker
 from extensions.ext_database import db
 from models import Account, ApiToken, EndUser
 from models.enums import CreatorUserRole
-from models.model import App, AppMode, Conversation, Message
+from models.model import App, Conversation, Message
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
 
@@ -249,7 +249,7 @@ class TestCompletionMessageLogsAPI:
 
         # Act: Make API request
         response = test_client.get(
-            f"/v1/completion-messages/logs",
+            "/v1/completion-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"page": 1, "limit": 20},
         )
@@ -317,7 +317,7 @@ class TestCompletionMessageLogsAPI:
 
         # Act: Search for "Python"
         response = test_client.get(
-            f"/v1/completion-messages/logs",
+            "/v1/completion-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"keyword": "Python", "page": 1, "limit": 20},
         )
@@ -340,7 +340,7 @@ class TestCompletionMessageLogsAPI:
         """
         # Act: Make request without authentication
         response = test_client.get(
-            f"/v1/completion-messages/logs",
+            "/v1/completion-messages/logs",
             query_string={"page": 1, "limit": 20},
         )
 
@@ -364,7 +364,7 @@ class TestCompletionMessageLogsAPI:
 
         # Act: Try to get completion logs for chat app
         response = test_client.get(
-            f"/v1/completion-messages/logs",
+            "/v1/completion-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"page": 1, "limit": 20},
         )
@@ -573,7 +573,7 @@ class TestChatMessageLogsAPI:
 
         # Act: Make API request
         response = test_client.get(
-            f"/v1/chat-messages/logs",
+            "/v1/chat-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"page": 1, "limit": 20},
         )
@@ -643,7 +643,7 @@ class TestChatMessageLogsAPI:
         created_before = base_time.isoformat()
 
         response = test_client.get(
-            f"/v1/chat-messages/logs",
+            "/v1/chat-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={
                 "created_at__after": created_after,
@@ -678,11 +678,10 @@ class TestChatMessageLogsAPI:
 
         # Act: Try to get chat logs for completion app
         response = test_client.get(
-            f"/v1/chat-messages/logs",
+            "/v1/chat-messages/logs",
             headers={"Authorization": f"Bearer {api_token.token}"},
             query_string={"page": 1, "limit": 20},
         )
 
         # Assert: Verify error response
         assert response.status_code in [400, 404]  # Depending on implementation
-

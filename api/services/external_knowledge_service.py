@@ -313,9 +313,7 @@ class ExternalDatasetService:
         # ========================================================================
         # The binding links the dataset to an external knowledge base
         external_knowledge_binding = (
-            db.session.query(ExternalKnowledgeBindings)
-            .filter_by(dataset_id=dataset_id, tenant_id=tenant_id)
-            .first()
+            db.session.query(ExternalKnowledgeBindings).filter_by(dataset_id=dataset_id, tenant_id=tenant_id).first()
         )
 
         # Validate that the binding exists
@@ -352,9 +350,7 @@ class ExternalDatasetService:
         # Score threshold is used to filter out low-relevance results
         # Only apply threshold if it's explicitly enabled
         score_threshold_enabled = external_retrieval_parameters.get("score_threshold_enabled") or False
-        score_threshold = (
-            external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
-        )
+        score_threshold = external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
 
         # Step 6: Build the base request parameters for the external knowledge API
         # These parameters are always included in the request

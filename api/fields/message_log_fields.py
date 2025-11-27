@@ -34,9 +34,8 @@ message_log_fields = {
     "query": fields.String(description="User's input query or message"),
     "answer": fields.String(
         attribute="re_sign_file_url_answer",
-        description="Assistant's response answer (with file URL re-signing if applicable)"
+        description="Assistant's response answer (with file URL re-signing if applicable)",
     ),
-
     # ========================================================================
     # Token Consumption Fields (Issue #20759)
     # ========================================================================
@@ -46,44 +45,28 @@ message_log_fields = {
     # - Usage analytics and reporting
     # - Performance monitoring
     # - Resource planning
-    "message_tokens": fields.Integer(
-        description="Number of tokens in the input message (user query)"
-    ),
-    "answer_tokens": fields.Integer(
-        description="Number of tokens in the answer (assistant response)"
-    ),
+    "message_tokens": fields.Integer(description="Number of tokens in the input message (user query)"),
+    "answer_tokens": fields.Integer(description="Number of tokens in the answer (assistant response)"),
     "total_tokens": fields.Integer(
         attribute=lambda obj: obj.message_tokens + obj.answer_tokens,
         description="Total tokens consumed for this message (message_tokens + answer_tokens). "
-                   "This is computed dynamically from the message and answer token counts."
+        "This is computed dynamically from the message and answer token counts.",
     ),
-
     # Performance and metadata fields
     "provider_response_latency": fields.Float(
         description="Response latency in seconds (time taken to generate the response)"
     ),
     "from_source": fields.String(
-        description="Source of the message (api, console, etc.). "
-                   "Indicates where the message originated from."
+        description="Source of the message (api, console, etc.). Indicates where the message originated from."
     ),
-    "status": fields.String(
-        description="Message status (e.g., 'normal', 'error', etc.)"
-    ),
-    "error": fields.String(
-        description="Error message if the message processing failed, null otherwise"
-    ),
-
+    "status": fields.String(description="Message status (e.g., 'normal', 'error', etc.)"),
+    "error": fields.String(description="Error message if the message processing failed, null otherwise"),
     # Creator information fields
     "created_by_role": fields.String(
-        attribute=lambda obj: (
-            "end_user" if obj.from_end_user_id
-            else "account" if obj.from_account_id
-            else "unknown"
-        ),
+        attribute=lambda obj: ("end_user" if obj.from_end_user_id else "account" if obj.from_account_id else "unknown"),
         description="Role of the message creator (end_user, account, or unknown). "
-                   "This is computed based on the presence of from_end_user_id or from_account_id."
+        "This is computed based on the presence of from_end_user_id or from_account_id.",
     ),
-
     # ========================================================================
     # Related Entity Fields
     # ========================================================================
@@ -94,26 +77,22 @@ message_log_fields = {
     "created_by_account": fields.Nested(
         simple_account_fields,
         allow_null=True,
-        description="Account that created this message (for console-sourced messages). "
-                   "Null for API-sourced messages."
+        description="Account that created this message (for console-sourced messages). Null for API-sourced messages.",
     ),
     "created_by_end_user": fields.Nested(
         simple_end_user_fields,
         allow_null=True,
-        description="End user that created this message (for API-sourced messages). "
-                   "Null for console-sourced messages."
+        description="End user that created this message (for API-sourced messages). Null for console-sourced messages.",
     ),
-
     # Timestamp field
-    "created_at": TimestampField(
-        description="Message creation timestamp (Unix timestamp in seconds)"
-    ),
+    "created_at": TimestampField(description="Message creation timestamp (Unix timestamp in seconds)"),
 }
 
 
 # ============================================================================
 # Model Builder Functions
 # ============================================================================
+
 
 def build_message_log_model(api_or_ns: Api | Namespace):
     """
@@ -140,14 +119,10 @@ def build_message_log_model(api_or_ns: Api | Namespace):
     # Replace the simple field references with properly nested models
     # This ensures the nested Account and EndUser data is properly serialized
     copied_fields["created_by_account"] = fields.Nested(
-        simple_account_model,
-        attribute="created_by_account",
-        allow_null=True
+        simple_account_model, attribute="created_by_account", allow_null=True
     )
     copied_fields["created_by_end_user"] = fields.Nested(
-        simple_end_user_model,
-        attribute="created_by_end_user",
-        allow_null=True
+        simple_end_user_model, attribute="created_by_end_user", allow_null=True
     )
 
     # Register and return the model
@@ -162,22 +137,15 @@ def build_message_log_model(api_or_ns: Api | Namespace):
 # loading all logs at once, which is essential for applications with many messages.
 # ============================================================================
 message_log_pagination_fields = {
-    "page": fields.Integer(
-        description="Current page number (1-indexed)"
-    ),
-    "limit": fields.Integer(
-        description="Number of items per page"
-    ),
-    "total": fields.Integer(
-        description="Total number of messages matching the filters (across all pages)"
-    ),
+    "page": fields.Integer(description="Current page number (1-indexed)"),
+    "limit": fields.Integer(description="Number of items per page"),
+    "total": fields.Integer(description="Total number of messages matching the filters (across all pages)"),
     "has_more": fields.Boolean(
         description="Whether there are more pages available after the current page. "
-                   "True if (page * limit) < total, False otherwise."
+        "True if (page * limit) < total, False otherwise."
     ),
     "data": fields.List(
-        fields.Nested(message_log_fields),
-        description="List of message log entries for the current page"
+        fields.Nested(message_log_fields), description="List of message log entries for the current page"
     ),
 }
 

@@ -387,9 +387,7 @@ class MessageService:
         # ========================================================================
         # Start with a basic SELECT statement filtering by app_id
         # This ensures we only retrieve messages for the specified application
-        stmt = select(Message).where(
-            Message.app_id == app_model.id
-        )
+        stmt = select(Message).where(Message.app_id == app_model.id)
 
         # ========================================================================
         # STEP 2: Apply keyword search filtering (if provided)
@@ -487,6 +485,7 @@ class MessageService:
             if not account:
                 # Use BadRequest for API consistency (matches remote version)
                 from controllers.service_api.app.error import BadRequest
+
                 raise BadRequest(f"Account not found: {created_by_account}")
 
             # Join with Account table to filter by account ID
