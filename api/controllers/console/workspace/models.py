@@ -1,5 +1,5 @@
 import logging
-from typing import Any
+from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource
@@ -186,7 +186,7 @@ class DefaultModelApi(Resource):
                     tenant_id=tenant_id,
                     model_type=model_setting.model_type,
                     provider=model_setting.provider,
-                    model=model_setting.model,
+                    model=cast(str, model_setting.model),
                 )
             except Exception as ex:
                 logger.exception(
