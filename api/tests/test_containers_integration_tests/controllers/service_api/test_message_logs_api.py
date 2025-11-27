@@ -84,6 +84,7 @@ class TestCompletionMessageLogsAPI:
             tuple: (app, account, api_token) - Created instances
         """
         from services.account_service import AccountService, TenantService
+        from services.app_service import AppService
 
         fake = Faker()
 
