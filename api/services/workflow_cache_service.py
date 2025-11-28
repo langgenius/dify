@@ -238,7 +238,7 @@ class WorkflowCacheService:
         result = db.session.execute(stmt)
         db.session.commit()
 
-        count = result.rowcount
+        count = result.rowcount if result.rowcount is not None else 0  # type: ignore[attr-defined]
         logger.info("Invalidated %d cache entries: node_type=%s", count, node_type)
 
         return count
@@ -258,7 +258,7 @@ class WorkflowCacheService:
         result = db.session.execute(stmt)
         db.session.commit()
 
-        count = result.rowcount
+        count = result.rowcount if result.rowcount is not None else 0  # type: ignore[attr-defined]
         logger.info("Cleaned up %d expired cache entries", count)
 
         return count

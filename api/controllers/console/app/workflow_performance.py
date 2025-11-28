@@ -7,7 +7,7 @@ caching management, and optimization recommendations.
 
 # pyright: reportUntypedBaseClass=false
 
-from flask_restful import Resource, reqparse  # type: ignore[import-untyped]
+from flask_restful import Resource, reqparse  # type: ignore[import-not-found]
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
