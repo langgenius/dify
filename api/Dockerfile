@@ -71,9 +71,9 @@ RUN set -eux; \
         # install fonts to support the use of tools like pypdfium2
         fonts-noto-cjk \
         # install a package to improve the accuracy of guessing mime type and file extension
-        media-types \
-        # install libmagic to support the use of python-magic guess MIMETYPE
-        libmagic1; \
+    media-types \
+    # install libmagic to support the use of python-magic guess MIMETYPE
+    libmagic1; \
     apt-get autoremove -y; \
     rm -rf /var/lib/apt/lists/*
 
