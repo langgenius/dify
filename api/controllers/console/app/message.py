@@ -124,17 +124,13 @@ class FeedbackExportQuery(BaseModel):
         return value
 
 
-console_ns.schema_model(
-    ChatMessagesQuery.__name__, ChatMessagesQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    MessageFeedbackPayload.__name__,
-    MessageFeedbackPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    FeedbackExportQuery.__name__,
-    FeedbackExportQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(ChatMessagesQuery)
+reg(MessageFeedbackPayload)
+reg(FeedbackExportQuery)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models

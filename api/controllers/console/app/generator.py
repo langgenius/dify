@@ -55,26 +55,15 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
-console_ns.schema_model(
-    RuleGeneratePayload.__name__,
-    RuleGeneratePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    RuleCodeGeneratePayload.__name__,
-    RuleCodeGeneratePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    RuleStructuredOutputPayload.__name__,
-    RuleStructuredOutputPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    InstructionGeneratePayload.__name__,
-    InstructionGeneratePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    InstructionTemplatePayload.__name__,
-    InstructionTemplatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(RuleGeneratePayload)
+reg(RuleCodeGeneratePayload)
+reg(RuleStructuredOutputPayload)
+reg(InstructionGeneratePayload)
+reg(InstructionTemplatePayload)
 
 
 @console_ns.route("/rule-generate")

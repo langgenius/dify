@@ -150,38 +150,20 @@ class AppTracePayload(BaseModel):
     tracing_provider: str = Field(..., description="Tracing provider")
 
 
-console_ns.schema_model(
-    AppListQuery.__name__, AppListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    CreateAppPayload.__name__, CreateAppPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    UpdateAppPayload.__name__, UpdateAppPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    CopyAppPayload.__name__, CopyAppPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    AppExportQuery.__name__, AppExportQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    AppNamePayload.__name__, AppNamePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    AppIconPayload.__name__, AppIconPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    AppSiteStatusPayload.__name__,
-    AppSiteStatusPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    AppApiStatusPayload.__name__,
-    AppApiStatusPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    AppTracePayload.__name__, AppTracePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(AppListQuery)
+reg(CreateAppPayload)
+reg(UpdateAppPayload)
+reg(CopyAppPayload)
+reg(AppExportQuery)
+reg(AppNamePayload)
+reg(AppIconPayload)
+reg(AppSiteStatusPayload)
+reg(AppApiStatusPayload)
+reg(AppTracePayload)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register base models first

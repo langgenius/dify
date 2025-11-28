@@ -188,56 +188,23 @@ class DraftWorkflowTriggerRunAllPayload(BaseModel):
     node_ids: list[str]
 
 
-console_ns.schema_model(
-    SyncDraftWorkflowPayload.__name__,
-    SyncDraftWorkflowPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    AdvancedChatWorkflowRunPayload.__name__,
-    AdvancedChatWorkflowRunPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    IterationNodeRunPayload.__name__,
-    IterationNodeRunPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    LoopNodeRunPayload.__name__, LoopNodeRunPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    DraftWorkflowRunPayload.__name__,
-    DraftWorkflowRunPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    DraftWorkflowNodeRunPayload.__name__,
-    DraftWorkflowNodeRunPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    PublishWorkflowPayload.__name__,
-    PublishWorkflowPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    DefaultBlockConfigQuery.__name__,
-    DefaultBlockConfigQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    ConvertToWorkflowPayload.__name__,
-    ConvertToWorkflowPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    WorkflowListQuery.__name__, WorkflowListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    WorkflowUpdatePayload.__name__,
-    WorkflowUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    DraftWorkflowTriggerRunPayload.__name__,
-    DraftWorkflowTriggerRunPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    DraftWorkflowTriggerRunAllPayload.__name__,
-    DraftWorkflowTriggerRunAllPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(SyncDraftWorkflowPayload)
+reg(AdvancedChatWorkflowRunPayload)
+reg(IterationNodeRunPayload)
+reg(LoopNodeRunPayload)
+reg(DraftWorkflowRunPayload)
+reg(DraftWorkflowNodeRunPayload)
+reg(PublishWorkflowPayload)
+reg(DefaultBlockConfigQuery)
+reg(ConvertToWorkflowPayload)
+reg(WorkflowListQuery)
+reg(WorkflowUpdatePayload)
+reg(DraftWorkflowTriggerRunPayload)
+reg(DraftWorkflowTriggerRunAllPayload)
 
 
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
@@ -852,7 +819,6 @@ class PublishedAllWorkflowApi(Resource):
         if user_id:
             if user_id != current_user.id:
                 raise Forbidden()
-            user_id = cast(str, user_id)
 
         workflow_service = WorkflowService()
         with Session(db.engine) as session:
