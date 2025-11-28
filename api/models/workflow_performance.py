@@ -7,7 +7,7 @@ including execution metrics, node-level profiling, caching, and optimization rec
 
 from datetime import datetime
 from enum import StrEnum
-from typing import Any, Optional
+from typing import Any
 
 import sqlalchemy as sa
 from sqlalchemy import DateTime, Float, Index, Integer, String, Text, UniqueConstraint
@@ -72,9 +72,7 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
     cached_nodes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Resource usage
-    total_tokens_used: Mapped[int | None] = mapped_column(
-        Integer, nullable=True, comment="Total LLM tokens consumed"
-    )
+    total_tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="Total LLM tokens consumed")
     total_tokens_cost: Mapped[float | None] = mapped_column(Float, nullable=True, comment="Estimated cost in USD")
     peak_memory_mb: Mapped[float | None] = mapped_column(Float, nullable=True, comment="Peak memory usage in MB")
 

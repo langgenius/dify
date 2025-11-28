@@ -9,7 +9,7 @@ import hashlib
 import json
 import logging
 from datetime import timedelta
-from typing import Any, Optional
+from typing import Any
 
 from sqlalchemy import and_, delete, func, select
 from sqlalchemy.dialects.postgresql import insert
