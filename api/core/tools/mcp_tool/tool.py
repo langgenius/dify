@@ -166,7 +166,7 @@ class MCPTool(Tool):
             if workflow_execution_id:
                 # Workflow path: reuse MCP session scoped by workflow_execution_id
                 manager = McpSessionRegistry.get_manager(workflow_execution_id)
-                session_key = self._build_session_key()
+                session_key = self._build_session_key(server_url)
 
                 def factory() -> MCPClientWithAuthRetry:
                     client = MCPClientWithAuthRetry(
@@ -200,5 +200,5 @@ class MCPTool(Tool):
         except Exception as e:
             raise ToolInvokeError(f"Failed to invoke tool: {e}") from e
 
-    def _build_session_key(self) -> str:
-        return f"{self.provider_id}:{self.server_url}"
+    def _build_session_key(self, server_url: str) -> str:
+        return f"{self.provider_id}:{server_url}"
