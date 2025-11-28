@@ -214,7 +214,7 @@ vdb = [
     "pymilvus~=2.5.0",
     "pymochow==2.2.9",
     "pyobvector~=0.2.17",
-    "qdrant-client==1.9.0",
+    "qdrant-client==1.16.0",
     "tablestore==6.3.7",
     "tcvectordb~=1.6.4",
     "tidb-vector==0.0.9",
