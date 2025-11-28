@@ -837,9 +837,7 @@ class TestIndexingRunnerRun:
         # Since we're mocking the internal methods, we just verify no exceptions were raised
 
         with (
-            patch.object(
-                runner, "_extract", return_value=[Document(page_content="Test", metadata={})]
-            ) as mock_extract,
+            patch.object(runner, "_extract", return_value=[Document(page_content="Test", metadata={})]) as mock_extract,
             patch.object(
                 runner,
                 "_transform",
