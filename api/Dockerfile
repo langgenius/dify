@@ -1,3 +1,6 @@
+# syntax=docker/dockerfile:1
+# check=error=true
+
 # base image
 FROM python:3.12-slim-bookworm AS base
 
@@ -14,12 +17,12 @@ FROM base AS packages
 # if you located in China, you can use aliyun mirror to speed up
 # RUN sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-          # basic environment
-          g++ \
-          # for building gmpy2
-          libmpfr-dev libmpc-dev
+RUN <<EOF
+    apt-get update
+    apt-get install -y --no-install-recommends \
+              g++ \
+              libmpfr-dev libmpc-dev
+EOF
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
@@ -45,47 +48,52 @@ ENV TZ=UTC
 ENV LANG=en_US.UTF-8
 ENV LC_ALL=en_US.UTF-8
 ENV PYTHONIOENCODING=utf-8
+# NLTK_DATA environment variable for NLTK data, refering to https://www.nltk.org/data.html#interactive-installer
+ENV NLTK_DATA=/usr/local/share/nltk_data
+ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 
 WORKDIR /app/api
 
 # Create non-root user
 ARG dify_uid=1001
-RUN groupadd -r -g ${dify_uid} dify && \
-    useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
+RUN <<EOF
+    groupadd -r -g ${dify_uid} dify
+    useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify
     chown -R dify:dify /app
+EOF
 
-RUN \
-    apt-get update \
+RUN <<EOF
+    set -ex
+    apt-get update
     # Install dependencies
-    && apt-get install -y --no-install-recommends \
-        # basic environment
+    apt-get install -y --no-install-recommends \
         curl nodejs \
-        # for gmpy2 \
         libgmp-dev libmpfr-dev libmpc-dev \
-        # For Security
         expat libldap-2.5-0=2.5.13+dfsg-5 perl libsqlite3-0=3.40.1-2+deb12u2 zlib1g=1:1.2.13.dfsg-1 \
-        # install fonts to support the use of tools like pypdfium2
         fonts-noto-cjk \
-        # install a package to improve the accuracy of guessing mime type and file extension
         media-types \
-        # install libmagic to support the use of python-magic guess MIMETYPE
-        libmagic1 \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+        libmagic1
+    apt-get autoremove -y
+    rm -rf /var/lib/apt/lists/*
+EOF
 
 # Copy Python environment and packages
 ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
-# Download nltk data
-RUN mkdir -p /usr/local/share/nltk_data && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')" \
-    && chmod -R 755 /usr/local/share/nltk_data
+RUN <<EOF
+    set -ex
 
-ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
+    # Download nltk data
+    mkdir -p ${NLTK_DATA}
+    python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')"
+    chmod -R 755 ${NLTK_DATA}
 
-RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
-    && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
+    # Preload tiktoken encodings
+    python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')"
+    chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
+EOF
 
 # Copy source code
 COPY --chown=dify:dify . /app/api/
@@ -96,8 +104,8 @@ COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh /entrypoint.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
-ENV NLTK_DATA=/usr/local/share/nltk_data
 
+# Switch to non-root user
 USER dify
 
 ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
