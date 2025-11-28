@@ -26,16 +26,11 @@ Tests cover:
 - Time-series analysis
 """
 
-import json
 import uuid
 from datetime import datetime, timedelta
-from decimal import Decimal
-from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import patch
 
 import pytest
-
-from extensions.ext_database import db
 from models.workflow_performance import (
     WorkflowCacheEntry,
     WorkflowNodePerformance,
@@ -46,6 +41,8 @@ from models.workflow_performance import (
 from services.workflow_cache_service import WorkflowCacheService
 from services.workflow_optimization_advisor import WorkflowOptimizationAdvisor
 from services.workflow_performance_service import WorkflowPerformanceService
+
+from extensions.ext_database import db
 
 
 @pytest.fixture
@@ -159,9 +156,7 @@ def setup_test_data(app_id, tenant_id, workflow_id):
 class TestWorkflowPerformanceIntegration:
     """Integration tests for workflow performance tracking."""
 
-    def test_end_to_end_workflow_execution_tracking(
-        self, app_id, tenant_id, workflow_id, workflow_run_id
-    ):
+    def test_end_to_end_workflow_execution_tracking(self, app_id, tenant_id, workflow_id, workflow_run_id):
         """Test complete workflow execution tracking from start to finish."""
         # Record workflow execution
         WorkflowPerformanceService.record_workflow_execution(
@@ -192,31 +187,23 @@ class TestWorkflowPerformanceIntegration:
             )
 
         # Verify workflow metrics
-        metrics = WorkflowPerformanceMetrics.query.filter_by(
-            workflow_run_id=workflow_run_id
-        ).first()
+        metrics = WorkflowPerformanceMetrics.query.filter_by(workflow_run_id=workflow_run_id).first()
         assert metrics is not None
         assert metrics.total_duration == 2.5
         assert metrics.total_tokens == 500
         assert metrics.total_steps == 10
 
         # Verify node performance records
-        node_records = WorkflowNodePerformance.query.filter_by(
-            workflow_run_id=workflow_run_id
-        ).all()
+        node_records = WorkflowNodePerformance.query.filter_by(workflow_run_id=workflow_run_id).all()
         assert len(node_records) == 3
         assert all(record.status == "success" for record in node_records)
 
         # Get performance summary
-        summary = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id, days=1
-        )
+        summary = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id, days=1)
         assert summary["total_executions"] >= 1
         assert summary["avg_duration"] > 0
 
-    def test_cache_hit_miss_tracking_integration(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_cache_hit_miss_tracking_integration(self, app_id, tenant_id, workflow_id):
         """Test cache hit/miss tracking across multiple executions."""
         node_id = "test_cache_node"
         node_type = "llm"
@@ -270,17 +257,13 @@ class TestWorkflowPerformanceIntegration:
         assert result3 is not None
 
         # Verify cache statistics
-        stats = WorkflowCacheService.get_cache_statistics(
-            workflow_id=workflow_id, days=1
-        )
+        stats = WorkflowCacheService.get_cache_statistics(workflow_id=workflow_id, days=1)
         assert stats["total_entries"] >= 1
         assert stats["total_hits"] >= 2
         assert stats["total_misses"] >= 1
         assert stats["hit_rate"] > 0.5
 
-    def test_bottleneck_detection_with_varying_performance(
-        self, app_id, tenant_id, workflow_id, setup_test_data
-    ):
+    def test_bottleneck_detection_with_varying_performance(self, app_id, tenant_id, workflow_id, setup_test_data):
         """Test bottleneck detection with nodes having varying performance."""
         # Add slow node executions
         slow_node_id = "slow_node"
@@ -318,16 +301,12 @@ class TestWorkflowPerformanceIntegration:
         )
 
         # Verify slow node is identified as bottleneck
-        slow_node_bottleneck = next(
-            (b for b in bottlenecks if b["node_id"] == slow_node_id), None
-        )
+        slow_node_bottleneck = next((b for b in bottlenecks if b["node_id"] == slow_node_id), None)
         assert slow_node_bottleneck is not None
         assert slow_node_bottleneck["avg_execution_time"] > 5.0
 
         # Verify fast node is not a bottleneck
-        fast_node_bottleneck = next(
-            (b for b in bottlenecks if b["node_id"] == fast_node_id), None
-        )
+        fast_node_bottleneck = next((b for b in bottlenecks if b["node_id"] == fast_node_id), None)
         assert fast_node_bottleneck is None or fast_node_bottleneck["avg_execution_time"] < 1.0
 
     def test_optimization_recommendation_generation_flow(
@@ -392,9 +371,7 @@ class TestWorkflowPerformanceIntegration:
             assert dismissed.dismissed_at is not None
             assert dismissed.dismissed_by == account_id
 
-    def test_concurrent_workflow_executions(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_concurrent_workflow_executions(self, app_id, tenant_id, workflow_id):
         """Test handling of concurrent workflow executions."""
         # Simulate concurrent executions
         run_ids = [str(uuid.uuid4()) for _ in range(10)]
@@ -413,20 +390,14 @@ class TestWorkflowPerformanceIntegration:
             )
 
         # Verify all executions were recorded
-        metrics = WorkflowPerformanceMetrics.query.filter_by(
-            workflow_id=workflow_id
-        ).all()
+        metrics = WorkflowPerformanceMetrics.query.filter_by(workflow_id=workflow_id).all()
         assert len(metrics) >= 10
 
         # Verify summary aggregates correctly
-        summary = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id, days=1
-        )
+        summary = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id, days=1)
         assert summary["total_executions"] >= 10
 
-    def test_cache_expiration_and_cleanup(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_cache_expiration_and_cleanup(self, app_id, tenant_id, workflow_id):
         """Test cache entry expiration and cleanup mechanisms."""
         # Create expired cache entries
         expired_entries = []
@@ -490,9 +461,7 @@ class TestWorkflowPerformanceIntegration:
         ).count()
         assert remaining_valid == 5
 
-    def test_performance_degradation_detection(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_performance_degradation_detection(self, app_id, tenant_id, workflow_id):
         """Test detection of performance degradation over time."""
         # Create baseline performance (good)
         for i in range(10):
@@ -523,17 +492,13 @@ class TestWorkflowPerformanceIntegration:
             )
 
         # Get performance summary
-        summary = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id, days=7
-        )
+        summary = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id, days=7)
 
         # Verify degradation is reflected in metrics
         assert summary["avg_duration"] > 2.0  # Average should be high
         assert summary["success_rate"] < 0.85  # Success rate should be lower
 
-    def test_multi_workflow_isolation(
-        self, app_id, tenant_id
-    ):
+    def test_multi_workflow_isolation(self, app_id, tenant_id):
         """Test that metrics are properly isolated between workflows."""
         workflow_id_1 = str(uuid.uuid4())
         workflow_id_2 = str(uuid.uuid4())
@@ -567,22 +532,16 @@ class TestWorkflowPerformanceIntegration:
             )
 
         # Verify workflow 1 metrics
-        summary_1 = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id_1, days=1
-        )
+        summary_1 = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id_1, days=1)
         assert summary_1["total_executions"] == 5
         assert summary_1["avg_duration"] == 1.0
 
         # Verify workflow 2 metrics
-        summary_2 = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id_2, days=1
-        )
+        summary_2 = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id_2, days=1)
         assert summary_2["total_executions"] == 10
         assert summary_2["avg_duration"] == 2.0
 
-    def test_cache_invalidation_scenarios(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_cache_invalidation_scenarios(self, app_id, tenant_id, workflow_id):
         """Test various cache invalidation scenarios."""
         # Create cache entries for different node types
         node_types = ["llm", "code", "http_request"]
@@ -619,34 +578,25 @@ class TestWorkflowPerformanceIntegration:
         assert invalidated_llm == 3
 
         # Verify only LLM entries were invalidated
-        remaining_llm = WorkflowCacheEntry.query.filter_by(
-            workflow_id=workflow_id,
-            node_type="llm"
-        ).count()
+        remaining_llm = WorkflowCacheEntry.query.filter_by(workflow_id=workflow_id, node_type="llm").count()
         assert remaining_llm == 0
 
-        remaining_others = WorkflowCacheEntry.query.filter_by(
-            workflow_id=workflow_id
-        ).filter(
-            WorkflowCacheEntry.node_type != "llm"
-        ).count()
+        remaining_others = (
+            WorkflowCacheEntry.query.filter_by(workflow_id=workflow_id)
+            .filter(WorkflowCacheEntry.node_type != "llm")
+            .count()
+        )
         assert remaining_others == 6
 
         # Test invalidation by workflow (all remaining)
-        invalidated_all = WorkflowCacheService.invalidate_cache(
-            workflow_id=workflow_id
-        )
+        invalidated_all = WorkflowCacheService.invalidate_cache(workflow_id=workflow_id)
         assert invalidated_all == 6
 
         # Verify all entries are gone
-        remaining_total = WorkflowCacheEntry.query.filter_by(
-            workflow_id=workflow_id
-        ).count()
+        remaining_total = WorkflowCacheEntry.query.filter_by(workflow_id=workflow_id).count()
         assert remaining_total == 0
 
-    def test_node_performance_breakdown_accuracy(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_node_performance_breakdown_accuracy(self, app_id, tenant_id, workflow_id):
         """Test accuracy of node performance breakdown calculations."""
         # Create precise test data
         test_data = {
@@ -670,23 +620,17 @@ class TestWorkflowPerformanceIntegration:
                 )
 
         # Get breakdown
-        breakdown = WorkflowPerformanceService.get_node_performance_breakdown(
-            workflow_id=workflow_id, days=1
-        )
+        breakdown = WorkflowPerformanceService.get_node_performance_breakdown(workflow_id=workflow_id, days=1)
 
         # Verify each node type
         for node_type, data in test_data.items():
-            node_stats = next(
-                (b for b in breakdown if b["node_type"] == node_type), None
-            )
+            node_stats = next((b for b in breakdown if b["node_type"] == node_type), None)
             assert node_stats is not None
             assert node_stats["total_executions"] == data["count"]
             assert abs(node_stats["avg_execution_time"] - data["time"]) < 0.01
             assert node_stats["avg_tokens"] == data["tokens"]
 
-    def test_recommendation_priority_and_severity(
-        self, app_id, workflow_id
-    ):
+    def test_recommendation_priority_and_severity(self, app_id, workflow_id):
         """Test recommendation priority and severity assignment."""
         # Create recommendations with different severities
         severities = ["critical", "high", "medium", "low"]
@@ -701,7 +645,7 @@ class TestWorkflowPerformanceIntegration:
                 description=f"Description for {severity} severity",
                 category="performance",
                 severity=severity,
-                estimated_improvement={"duration_reduction": f"{(4-i)*10}%"},
+                estimated_improvement={"duration_reduction": f"{(4 - i) * 10}%"},
                 affected_nodes=["node_1"],
                 recommendation_steps=["Step 1"],
                 created_at=datetime.utcnow(),
@@ -720,9 +664,7 @@ class TestWorkflowPerformanceIntegration:
             assert len(filtered) >= 1
             assert all(r.severity == severity for r in filtered)
 
-    def test_error_handling_invalid_data(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_error_handling_invalid_data(self, app_id, tenant_id, workflow_id):
         """Test error handling with invalid input data."""
         # Test with negative duration
         with pytest.raises(ValueError):
@@ -752,38 +694,26 @@ class TestWorkflowPerformanceIntegration:
                 error_rate=0.0,
             )
 
-    def test_cache_key_generation_consistency(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_cache_key_generation_consistency(self, app_id, tenant_id, workflow_id):
         """Test cache key generation is consistent for same inputs."""
         node_id = "test_node"
         node_type = "llm"
         input_data = {"prompt": "test", "model": "gpt-4", "temperature": 0.7}
 
         # Generate cache key multiple times
-        key1 = WorkflowCacheService._generate_cache_key(
-            workflow_id, node_id, input_data
-        )
-        key2 = WorkflowCacheService._generate_cache_key(
-            workflow_id, node_id, input_data
-        )
-        key3 = WorkflowCacheService._generate_cache_key(
-            workflow_id, node_id, input_data
-        )
+        key1 = WorkflowCacheService._generate_cache_key(workflow_id, node_id, input_data)
+        key2 = WorkflowCacheService._generate_cache_key(workflow_id, node_id, input_data)
+        key3 = WorkflowCacheService._generate_cache_key(workflow_id, node_id, input_data)
 
         # Verify consistency
         assert key1 == key2 == key3
 
         # Verify different inputs produce different keys
         different_input = {"prompt": "different", "model": "gpt-4"}
-        key4 = WorkflowCacheService._generate_cache_key(
-            workflow_id, node_id, different_input
-        )
+        key4 = WorkflowCacheService._generate_cache_key(workflow_id, node_id, different_input)
         assert key4 != key1
 
-    def test_time_series_performance_trends(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_time_series_performance_trends(self, app_id, tenant_id, workflow_id):
         """Test time-series performance trend analysis."""
         # Create performance data over multiple days
         base_date = datetime.utcnow()
@@ -807,20 +737,14 @@ class TestWorkflowPerformanceIntegration:
                 )
 
         # Get summary for different time periods
-        summary_1_day = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id, days=1
-        )
-        summary_7_days = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id, days=7
-        )
+        summary_1_day = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id, days=1)
+        summary_7_days = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id, days=7)
 
         # Recent performance should be better
         assert summary_1_day["avg_duration"] < summary_7_days["avg_duration"]
         assert summary_1_day["success_rate"] > summary_7_days["success_rate"]
 
-    def test_large_scale_cache_operations(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_large_scale_cache_operations(self, app_id, tenant_id, workflow_id):
         """Test cache operations at scale."""
         # Create many cache entries
         num_entries = 100
@@ -849,9 +773,7 @@ class TestWorkflowPerformanceIntegration:
         db.session.commit()
 
         # Get statistics
-        stats = WorkflowCacheService.get_cache_statistics(
-            workflow_id=workflow_id, days=1
-        )
+        stats = WorkflowCacheService.get_cache_statistics(workflow_id=workflow_id, days=1)
 
         assert stats["total_entries"] >= num_entries
         assert stats["total_hits"] > 0
@@ -859,18 +781,14 @@ class TestWorkflowPerformanceIntegration:
 
         # Test bulk invalidation performance
         start_time = datetime.utcnow()
-        invalidated = WorkflowCacheService.invalidate_cache(
-            workflow_id=workflow_id
-        )
+        invalidated = WorkflowCacheService.invalidate_cache(workflow_id=workflow_id)
         end_time = datetime.utcnow()
 
         assert invalidated >= num_entries
         # Should complete in reasonable time (< 1 second)
         assert (end_time - start_time).total_seconds() < 1.0
 
-    def test_recommendation_deduplication(
-        self, app_id, workflow_id
-    ):
+    def test_recommendation_deduplication(self, app_id, workflow_id):
         """Test that duplicate recommendations are not created."""
         # Create initial recommendation
         rec1 = WorkflowOptimizationRecommendation(
@@ -899,9 +817,7 @@ class TestWorkflowPerformanceIntegration:
         assert existing is not None
         assert existing.id == rec1.id
 
-    def test_node_execution_status_tracking(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_node_execution_status_tracking(self, app_id, tenant_id, workflow_id):
         """Test tracking of different node execution statuses."""
         statuses = ["success", "failed", "timeout", "cancelled"]
         node_id = "status_test_node"
@@ -930,9 +846,7 @@ class TestWorkflowPerformanceIntegration:
         recorded_statuses = {r.status for r in records}
         assert recorded_statuses == set(statuses)
 
-    def test_cache_data_integrity(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_cache_data_integrity(self, app_id, tenant_id, workflow_id):
         """Test cache data integrity and serialization."""
         node_id = "integrity_test_node"
         node_type = "llm"
@@ -944,12 +858,8 @@ class TestWorkflowPerformanceIntegration:
                 "model": "gpt-4",
                 "temperature": 0.7,
                 "max_tokens": 1000,
-                "nested": {
-                    "deep": {
-                        "value": [1, 2, 3, {"key": "value"}]
-                    }
-                }
-            }
+                "nested": {"deep": {"value": [1, 2, 3, {"key": "value"}]}},
+            },
         }
 
         complex_output = {
@@ -961,8 +871,8 @@ class TestWorkflowPerformanceIntegration:
                 "usage": {
                     "prompt_tokens": 50,
                     "completion_tokens": 50,
-                }
-            }
+                },
+            },
         }
 
         # Store complex data
@@ -992,9 +902,7 @@ class TestWorkflowPerformanceIntegration:
         assert retrieved["metadata"]["tokens"] == 100
         assert retrieved["metadata"]["usage"]["prompt_tokens"] == 50
 
-    def test_performance_percentile_calculations(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_performance_percentile_calculations(self, app_id, tenant_id, workflow_id):
         """Test percentile calculations for performance metrics."""
         # Create data with known distribution
         durations = [0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
@@ -1013,9 +921,7 @@ class TestWorkflowPerformanceIntegration:
             )
 
         # Get summary with percentiles
-        summary = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id, days=1
-        )
+        summary = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id, days=1)
 
         # Verify percentile calculations
         if "p50_duration" in summary:
@@ -1031,17 +937,13 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_empty_workflow_performance_summary(self, workflow_id):
         """Test getting summary for workflow with no data."""
-        summary = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id, days=7
-        )
+        summary = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id, days=7)
 
         assert summary["total_executions"] == 0
         assert summary["avg_duration"] == 0.0
         assert summary["avg_tokens"] == 0
 
-    def test_cache_with_null_values(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_cache_with_null_values(self, app_id, tenant_id, workflow_id):
         """Test cache handling with null/None values."""
         node_id = "null_test_node"
         node_type = "code"
@@ -1082,9 +984,7 @@ class TestEdgeCasesAndErrorHandling:
         assert retrieved is not None
         assert retrieved["result"] is None
 
-    def test_very_large_token_counts(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_very_large_token_counts(self, app_id, tenant_id, workflow_id):
         """Test handling of very large token counts."""
         large_tokens = 1_000_000
 
@@ -1100,15 +1000,11 @@ class TestEdgeCasesAndErrorHandling:
             error_rate=0.0,
         )
 
-        summary = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id, days=1
-        )
+        summary = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id, days=1)
 
         assert summary["total_tokens"] >= large_tokens
 
-    def test_zero_duration_executions(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_zero_duration_executions(self, app_id, tenant_id, workflow_id):
         """Test handling of zero-duration executions."""
         WorkflowPerformanceService.record_workflow_execution(
             app_id=app_id,
@@ -1122,16 +1018,12 @@ class TestEdgeCasesAndErrorHandling:
             error_rate=0.0,
         )
 
-        summary = WorkflowPerformanceService.get_workflow_performance_summary(
-            workflow_id=workflow_id, days=1
-        )
+        summary = WorkflowPerformanceService.get_workflow_performance_summary(workflow_id=workflow_id, days=1)
 
         assert summary["total_executions"] >= 1
         assert summary["avg_duration"] >= 0.0
 
-    def test_recommendation_with_missing_fields(
-        self, app_id, workflow_id
-    ):
+    def test_recommendation_with_missing_fields(self, app_id, workflow_id):
         """Test recommendation creation with minimal required fields."""
         rec = WorkflowOptimizationRecommendation(
             id=str(uuid.uuid4()),
@@ -1153,18 +1045,14 @@ class TestEdgeCasesAndErrorHandling:
 
     def test_cache_statistics_with_no_entries(self, workflow_id):
         """Test cache statistics when no entries exist."""
-        stats = WorkflowCacheService.get_cache_statistics(
-            workflow_id=workflow_id, days=7
-        )
+        stats = WorkflowCacheService.get_cache_statistics(workflow_id=workflow_id, days=7)
 
         assert stats["total_entries"] == 0
         assert stats["total_hits"] == 0
         assert stats["total_misses"] == 0
         assert stats["hit_rate"] == 0.0
 
-    def test_bottleneck_detection_with_single_node(
-        self, app_id, tenant_id, workflow_id
-    ):
+    def test_bottleneck_detection_with_single_node(self, app_id, tenant_id, workflow_id):
         """Test bottleneck detection with only one node."""
         WorkflowPerformanceService.record_node_execution(
             app_id=app_id,
