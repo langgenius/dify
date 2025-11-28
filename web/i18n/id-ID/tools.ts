@@ -117,7 +117,7 @@ const translation = {
     toolOutput: {
       title: 'Keluaran Alat',
       name: 'Nama',
-      reserved: 'Dipesan',
+      reserved: 'Dicadangkan',
       reservedParameterDuplicateTip: 'text, json, dan file adalah variabel yang dicadangkan. Variabel dengan nama-nama ini tidak dapat muncul dalam skema keluaran.',
       description: 'Deskripsi',
     },
