@@ -1347,13 +1347,11 @@ class TestIndexingRunnerLoadSegments:
         runner = IndexingRunner()
         mock_docstore_instance = MagicMock()
         mock_dependencies["docstore"].return_value = mock_docstore_instance
+        with patch.object(runner, '_update_document_index_status'), \
+             patch.object(runner, '_update_segments_by_document'):
+            # Act
+            runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
 
-        expected_word_count = sum(len(doc.page_content) for doc in sample_documents)
-
-        # Mock update methods to avoid database calls
-        with (
-            patch.object(runner, "_update_document_index_status"),
-            patch.object(runner, "_update_segments_by_document"),
         ):
             # Act
             runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
