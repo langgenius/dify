@@ -333,8 +333,9 @@ class RAGPipelineDatasetTestDataFactory:
             Mock KnowledgeConfiguration object
         """
         # Create mock configuration
-        # Use spec_set=False to allow setting attributes that may not be in spec
-        config = Mock(spec=KnowledgeConfiguration, spec_set=False)
+        # Use plain Mock() to allow flexible attribute setting
+        # KnowledgeConfiguration is a Pydantic model, so we need to mock it flexibly
+        config = Mock()
 
         # Set attributes
         config.chunk_structure = chunk_structure
