@@ -122,7 +122,7 @@ const translation = {
     toolOutput: {
       title: 'Salida de la herramienta',
       name: 'Nombre',
-      reserved: 'reservado',
+      reserved: 'Reservado',
       reservedParameterDuplicateTip: 'text, json y files son variables reservadas. Las variables con estos nombres no pueden aparecer en el esquema de salida.',
       description: 'Descripción',
     },
