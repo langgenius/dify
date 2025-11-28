@@ -18,7 +18,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
-import GroupAuthControl from './group-auth-control'
 import ConfigContext from '@/context/debug-configuration'
 import type { AgentTool } from '@/types/app'
 import { type Collection, CollectionType } from '@/app/components/tools/types'
@@ -237,24 +236,6 @@ const AgentTools: FC = () => {
                   ? <div className='h-5 w-5 rounded-md bg-cover bg-center' style={{ backgroundImage: `url(${group.icon})` }} />
                   : <AppIcon className='rounded-md' size='xs' icon={group.icon?.content} background={group.icon?.background} />}
                 <div className='system-sm-semibold text-text-secondary'>{group.providerName}</div>
-                <div className='ml-auto'>
-                  <GroupAuthControl
-                    providerId={group.providerId}
-                    providerName={group.providerName}
-                    providerType={group.providerType}
-                    credentialId={group.tools.find(t => !!t.credential_id)?.credential_id}
-                    onChange={(id) => {
-                      const newModelConfig = produce(modelConfig, (draft) => {
-                        draft.agentConfig.tools.forEach((tool: any) => {
-                          if (tool.provider_id === group.providerId)
-                            tool.credential_id = id
-                        })
-                      })
-                      setModelConfig(newModelConfig)
-                      formattingChangedDispatcher()
-                    }}
-                  />
-                </div>
                 {group.tools.every(t => t.notAuthor) && (
                   <Button
                     variant='secondary'
@@ -279,11 +260,6 @@ const AgentTools: FC = () => {
                       'group relative flex w-full items-center justify-between rounded-lg pl-[21px] pr-2 hover:bg-state-base-hover',
                       isDeleting === item.__index && 'border border-state-destructive-border hover:bg-state-destructive-hover',
                     )}
-                    onClickCapture={() => {
-                      // 调试：查看工具行数据
-
-                      console.log('tool item', item)
-                    }}
                   >
                     <div className='flex w-0 grow items-center'>
                       <div
