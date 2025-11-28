@@ -81,6 +81,7 @@ def chat_app(tenant):
     app.tenant_id = tenant.id
     app.name = "Test Chat App"
     app.mode = AppMode.CHAT.value
+    app.is_agent = False
     app.enable_site = True
     app.enable_api = True
     app.created_at = datetime.utcnow()
@@ -174,14 +175,12 @@ class TestAppGenerateServiceChatMode:
         mock_config.BILLING_ENABLED = False
         mock_config.APP_MAX_ACTIVE_REQUESTS = 10
         mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
-        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
-        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
+        
+        # Mock rate limit
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-
-        mock_generator_instance = MagicMock()
-        mock_generator.return_value = mock_generator_instance
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         # Mock streaming response
         def mock_generate():
@@ -189,7 +188,16 @@ class TestAppGenerateServiceChatMode:
             yield {"type": "message", "content": " World"}
             yield {"type": "end"}
 
+        # Mock generator instance
+        mock_generator_instance = MagicMock()
+        mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = mock_generate()
+        
+        # Mock convert_to_event_stream to pass through the generator
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through the generator
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello", "conversation_id": None}
