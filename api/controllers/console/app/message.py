@@ -1,4 +1,5 @@
 import logging
+from typing import Literal
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
@@ -59,48 +60,21 @@ class ChatMessagesQuery(BaseModel):
 
 class MessageFeedbackPayload(BaseModel):
     message_id: str = Field(..., description="Message ID")
-    rating: str | None = Field(default=None, description="Feedback rating")
+    rating: Literal["like", "dislike"] | None = Field(default=None, description="Feedback rating")
 
     @field_validator("message_id")
     @classmethod
     def validate_message_id(cls, value: str) -> str:
         return uuid_value(value)
 
-    @field_validator("rating")
-    @classmethod
-    def validate_rating(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if value not in {"like", "dislike"}:
-            raise ValueError("rating must be 'like' or 'dislike'")
-        return value
-
 
 class FeedbackExportQuery(BaseModel):
-    from_source: str | None = Field(default=None, description="Filter by feedback source")
-    rating: str | None = Field(default=None, description="Filter by rating")
+    from_source: Literal["user", "admin"] | None = Field(default=None, description="Filter by feedback source")
+    rating: Literal["like", "dislike"] | None = Field(default=None, description="Filter by rating")
     has_comment: bool | None = Field(default=None, description="Only include feedback with comments")
     start_date: str | None = Field(default=None, description="Start date (YYYY-MM-DD)")
     end_date: str | None = Field(default=None, description="End date (YYYY-MM-DD)")
-    format: str = Field(default="csv", description="Export format")
-
-    @field_validator("from_source")
-    @classmethod
-    def validate_source(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if value not in {"user", "admin"}:
-            raise ValueError("from_source must be 'user' or 'admin'")
-        return value
-
-    @field_validator("rating")
-    @classmethod
-    def validate_rating(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if value not in {"like", "dislike"}:
-            raise ValueError("rating must be 'like' or 'dislike'")
-        return value
+    format: Literal["csv", "json"] = Field(default="csv", description="Export format")
 
     @field_validator("has_comment", mode="before")
     @classmethod
@@ -113,13 +87,6 @@ class FeedbackExportQuery(BaseModel):
         if lowered in {"false", "0", "no", "off"}:
             return False
         raise ValueError("has_comment must be a boolean value")
-
-    @field_validator("format")
-    @classmethod
-    def validate_format(cls, value: str) -> str:
-        if value not in {"csv", "json"}:
-            raise ValueError("format must be 'csv' or 'json'")
-        return value
 
 
 def reg(cls: type[BaseModel]):

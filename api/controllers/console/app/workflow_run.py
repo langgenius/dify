@@ -1,4 +1,4 @@
-from typing import cast
+from typing import Literal, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
@@ -99,8 +99,12 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 class WorkflowRunListQuery(BaseModel):
     last_id: str | None = Field(default=None, description="Last run ID for pagination")
     limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
-    status: str | None = Field(default=None, description="Workflow run status filter")
-    triggered_from: str | None = Field(default=None, description="Filter by trigger source: debugging or app-run")
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
+        default=None, description="Workflow run status filter"
+    )
+    triggered_from: Literal["debugging", "app-run"] | None = Field(
+        default=None, description="Filter by trigger source: debugging or app-run"
+    )
 
     @field_validator("last_id")
     @classmethod
@@ -109,38 +113,15 @@ class WorkflowRunListQuery(BaseModel):
             return value
         return uuid_value(value)
 
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if value not in WORKFLOW_RUN_STATUS_CHOICES:
-            raise ValueError("Invalid status")
-        return value
-
-    @field_validator("triggered_from")
-    @classmethod
-    def validate_trigger(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if value not in {"debugging", "app-run"}:
-            raise ValueError("triggered_from must be 'debugging' or 'app-run'")
-        return value
-
 
 class WorkflowRunCountQuery(BaseModel):
-    status: str | None = Field(default=None, description="Workflow run status filter")
+    status: Literal["running", "succeeded", "failed", "stopped", "partial-succeeded"] | None = Field(
+        default=None, description="Workflow run status filter"
+    )
     time_range: str | None = Field(default=None, description="Time range filter (e.g., 7d, 4h, 30m, 30s)")
-    triggered_from: str | None = Field(default=None, description="Filter by trigger source: debugging or app-run")
-
-    @field_validator("status")
-    @classmethod
-    def validate_status(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if value not in WORKFLOW_RUN_STATUS_CHOICES:
-            raise ValueError("Invalid status")
-        return value
+    triggered_from: Literal["debugging", "app-run"] | None = Field(
+        default=None, description="Filter by trigger source: debugging or app-run"
+    )
 
     @field_validator("time_range")
     @classmethod
@@ -148,15 +129,6 @@ class WorkflowRunCountQuery(BaseModel):
         if value is None:
             return value
         return time_duration(value)
-
-    @field_validator("triggered_from")
-    @classmethod
-    def validate_trigger(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        if value not in {"debugging", "app-run"}:
-            raise ValueError("triggered_from must be 'debugging' or 'app-run'")
-        return value
 
 
 console_ns.schema_model(
