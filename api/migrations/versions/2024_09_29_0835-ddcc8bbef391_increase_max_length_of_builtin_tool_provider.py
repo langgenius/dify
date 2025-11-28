@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = 'ddcc8bbef391'
-down_revision = 'a91b476a53de' # HEAD OF PLUGIN BRANCH
+down_revision = 'merge_20241128_01' # Points to merge migration that unified workflow heads
 branch_labels = None
 depends_on = None
 
