@@ -1368,16 +1368,16 @@ class TestIndexingRunnerEstimate:
     Tests cover:
     - Token estimation
     - Segment count estimation
-    - Preview generation
-    - Batch upload limits
-    """
+        with patch.object(runner, '_update_document_index_status') as mock_update_status, \
+             patch.object(runner, '_update_segments_by_document'):
+            # Act
+            runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
 
-    @pytest.fixture
-    def mock_dependencies(self):
-        """Mock all external dependencies."""
-        with (
-            patch("core.indexing_runner.db") as mock_db,
-            patch("core.indexing_runner.FeatureService") as mock_feature_service,
+        # Assert
+        # Verify word count was calculated correctly and passed to status update
+        mock_update_status.assert_called_once()
+        call_kwargs = mock_update_status.call_args.kwargs
+        assert call_kwargs['extra_update_params'][DatasetDocument.word_count] == expected_word_count
             patch("core.indexing_runner.IndexProcessorFactory") as mock_factory,
         ):
             yield {
