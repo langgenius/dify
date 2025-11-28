@@ -1,7 +1,8 @@
 from typing import cast
 
-from flask_restx import Resource, fields, marshal_with, reqparse
-from flask_restx.inputs import int_range
+from flask import request
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -92,70 +93,79 @@ workflow_run_node_execution_list_model = console_ns.model(
     "WorkflowRunNodeExecutionList", workflow_run_node_execution_list_fields_copy
 )
 
-
-def _parse_workflow_run_list_args():
-    """
-    Parse common arguments for workflow run list endpoints.
-
-    Returns:
-        Parsed arguments containing last_id, limit, status, and triggered_from filters
-    """
-    parser = (
-        reqparse.RequestParser()
-        .add_argument("last_id", type=uuid_value, location="args")
-        .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        .add_argument(
-            "status",
-            type=str,
-            choices=WORKFLOW_RUN_STATUS_CHOICES,
-            location="args",
-            required=False,
-        )
-        .add_argument(
-            "triggered_from",
-            type=str,
-            choices=["debugging", "app-run"],
-            location="args",
-            required=False,
-            help="Filter by trigger source: debugging or app-run",
-        )
-    )
-    return parser.parse_args()
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
-def _parse_workflow_run_count_args():
-    """
-    Parse common arguments for workflow run count endpoints.
+class WorkflowRunListQuery(BaseModel):
+    last_id: str | None = Field(default=None, description="Last run ID for pagination")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of items per page (1-100)")
+    status: str | None = Field(default=None, description="Workflow run status filter")
+    triggered_from: str | None = Field(default=None, description="Filter by trigger source: debugging or app-run")
 
-    Returns:
-        Parsed arguments containing status, time_range, and triggered_from filters
-    """
-    parser = (
-        reqparse.RequestParser()
-        .add_argument(
-            "status",
-            type=str,
-            choices=WORKFLOW_RUN_STATUS_CHOICES,
-            location="args",
-            required=False,
-        )
-        .add_argument(
-            "time_range",
-            type=time_duration,
-            location="args",
-            required=False,
-            help="Time range filter (e.g., 7d, 4h, 30m, 30s)",
-        )
-        .add_argument(
-            "triggered_from",
-            type=str,
-            choices=["debugging", "app-run"],
-            location="args",
-            required=False,
-            help="Filter by trigger source: debugging or app-run",
-        )
-    )
-    return parser.parse_args()
+    @field_validator("last_id")
+    @classmethod
+    def validate_last_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value not in WORKFLOW_RUN_STATUS_CHOICES:
+            raise ValueError("Invalid status")
+        return value
+
+    @field_validator("triggered_from")
+    @classmethod
+    def validate_trigger(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value not in {"debugging", "app-run"}:
+            raise ValueError("triggered_from must be 'debugging' or 'app-run'")
+        return value
+
+
+class WorkflowRunCountQuery(BaseModel):
+    status: str | None = Field(default=None, description="Workflow run status filter")
+    time_range: str | None = Field(default=None, description="Time range filter (e.g., 7d, 4h, 30m, 30s)")
+    triggered_from: str | None = Field(default=None, description="Filter by trigger source: debugging or app-run")
+
+    @field_validator("status")
+    @classmethod
+    def validate_status(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value not in WORKFLOW_RUN_STATUS_CHOICES:
+            raise ValueError("Invalid status")
+        return value
+
+    @field_validator("time_range")
+    @classmethod
+    def validate_time_range(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return time_duration(value)
+
+    @field_validator("triggered_from")
+    @classmethod
+    def validate_trigger(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        if value not in {"debugging", "app-run"}:
+            raise ValueError("triggered_from must be 'debugging' or 'app-run'")
+        return value
+
+
+console_ns.schema_model(
+    WorkflowRunListQuery.__name__, WorkflowRunListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+console_ns.schema_model(
+    WorkflowRunCountQuery.__name__,
+    WorkflowRunCountQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs")
@@ -170,6 +180,10 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @console_ns.doc(
         params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
+    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
+    @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
+    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
+    @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
     @console_ns.response(200, "Workflow runs retrieved successfully", advanced_chat_workflow_run_pagination_model)
     @setup_required
     @login_required
@@ -180,12 +194,13 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         """
         Get advanced chat app workflow run list
         """
-        args = _parse_workflow_run_list_args()
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
         triggered_from = (
-            WorkflowRunTriggeredFrom(args.get("triggered_from"))
-            if args.get("triggered_from")
+            WorkflowRunTriggeredFrom(args_model.triggered_from)
+            if args_model.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -226,12 +241,13 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         """
         Get advanced chat workflow runs count statistics
         """
-        args = _parse_workflow_run_count_args()
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
         triggered_from = (
-            WorkflowRunTriggeredFrom(args.get("triggered_from"))
-            if args.get("triggered_from")
+            WorkflowRunTriggeredFrom(args_model.triggered_from)
+            if args_model.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -268,12 +284,13 @@ class WorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        args = _parse_workflow_run_list_args()
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (
-            WorkflowRunTriggeredFrom(args.get("triggered_from"))
-            if args.get("triggered_from")
+            WorkflowRunTriggeredFrom(args_model.triggered_from)
+            if args_model.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
@@ -314,12 +331,13 @@ class WorkflowRunCountApi(Resource):
         """
         Get workflow runs count statistics
         """
-        args = _parse_workflow_run_count_args()
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
         triggered_from = (
-            WorkflowRunTriggeredFrom(args.get("triggered_from"))
-            if args.get("triggered_from")
+            WorkflowRunTriggeredFrom(args_model.triggered_from)
+            if args_model.triggered_from
             else WorkflowRunTriggeredFrom.DEBUGGING
         )
 
