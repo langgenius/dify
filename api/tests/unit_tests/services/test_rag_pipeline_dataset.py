@@ -333,7 +333,8 @@ class RAGPipelineDatasetTestDataFactory:
             Mock KnowledgeConfiguration object
         """
         # Create mock configuration
-        config = Mock(spec=KnowledgeConfiguration)
+        # Use spec_set=False to allow setting attributes that may not be in spec
+        config = Mock(spec=KnowledgeConfiguration, spec_set=False)
 
         # Set attributes
         config.chunk_structure = chunk_structure
