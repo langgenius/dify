@@ -341,9 +341,15 @@ class RAGPipelineDatasetTestDataFactory:
         config.embedding_model_provider = embedding_model_provider
         config.embedding_model = embedding_model
         config.keyword_number = keyword_number
-        config.retrieval_model = retrieval_model or RetrievalSetting(
-            top_k=2, score_threshold=0.0, reranking_enable=False
-        )
+        if retrieval_model is None:
+            retrieval_model = RetrievalSetting(
+                search_method=RetrievalMethod.SEMANTIC_SEARCH,
+                top_k=2,
+                score_threshold=0.0,
+                score_threshold_enabled=False,
+                reranking_enable=False,
+            )
+        config.retrieval_model = retrieval_model
 
         return config
 
