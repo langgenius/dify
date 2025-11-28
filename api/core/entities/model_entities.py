@@ -31,7 +31,6 @@ class SimpleModelProviderEntity(BaseModel):
     icon_small: I18nObject | None = None
     icon_small_dark: I18nObject | None = None
     icon_large: I18nObject | None = None
-    icon_large_dark: I18nObject | None = None
     supported_model_types: list[ModelType]
 
     def __init__(self, provider_entity: ProviderEntity):
@@ -46,7 +45,6 @@ class SimpleModelProviderEntity(BaseModel):
             icon_small=provider_entity.icon_small,
             icon_small_dark=provider_entity.icon_small_dark,
             icon_large=provider_entity.icon_large,
-            icon_large_dark=provider_entity.icon_large_dark,
             supported_model_types=provider_entity.supported_model_types,
         )
 

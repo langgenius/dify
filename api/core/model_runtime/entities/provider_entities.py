@@ -101,7 +101,6 @@ class SimpleProviderEntity(BaseModel):
     icon_small: I18nObject | None = None
     icon_small_dark: I18nObject | None = None
     icon_large: I18nObject | None = None
-    icon_large_dark: I18nObject | None = None
     supported_model_types: Sequence[ModelType]
     models: list[AIModelEntity] = []
 
@@ -126,7 +125,6 @@ class ProviderEntity(BaseModel):
     icon_small: I18nObject | None = None
     icon_large: I18nObject | None = None
     icon_small_dark: I18nObject | None = None
-    icon_large_dark: I18nObject | None = None
     background: str | None = None
     help: ProviderHelpEntity | None = None
     supported_model_types: Sequence[ModelType]

@@ -81,7 +81,6 @@ class ModelProviderService:
                 icon_small=provider_configuration.provider.icon_small,
                 icon_small_dark=provider_configuration.provider.icon_small_dark,
                 icon_large=provider_configuration.provider.icon_large,
-                icon_large_dark=provider_configuration.provider.icon_large_dark,
                 background=provider_configuration.provider.background,
                 help=provider_configuration.provider.help,
                 supported_model_types=provider_configuration.provider.supported_model_types,
@@ -406,7 +405,6 @@ class ModelProviderService:
                     icon_small=first_model.provider.icon_small,
                     icon_small_dark=first_model.provider.icon_small_dark,
                     icon_large=first_model.provider.icon_large,
-                    icon_large_dark=first_model.provider.icon_large_dark,
                     status=CustomConfigurationStatus.ACTIVE,
                     models=[
                         ProviderModelWithStatusEntity(
