@@ -73,6 +73,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum allowed execution time for the application in seconds",
         default=1200,
     )
+    APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
+        description="Default number of concurrent active requests per app (0 for unlimited)",
+        default=0,
+    )
     APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
