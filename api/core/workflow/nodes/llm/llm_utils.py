@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Sequence
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
