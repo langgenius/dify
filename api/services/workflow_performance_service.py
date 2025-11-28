@@ -9,13 +9,8 @@ actionable recommendations for improving workflow performance.
 """
 
 import logging
-<<<<<<< HEAD
 from datetime import datetime, timedelta
-from typing import Any, Optional
-=======
-from datetime import timedelta
 from typing import Any
->>>>>>> 84fa5d33dcdd42d2fe53fedd665885197fba2c6c
 
 from sqlalchemy import and_, case, desc, func, select
 

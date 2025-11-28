@@ -188,32 +188,12 @@ class WorkflowCacheService:
         config_hash = WorkflowCacheService.generate_config_hash(node_config)
         input_hash = WorkflowCacheService.generate_input_hash(input_data)
 
-<<<<<<< HEAD
-        # Check if entry already exists
-        existing_entry = db.session.execute(
-            select(WorkflowCacheEntry).where(WorkflowCacheEntry.cache_key == cache_key)
-        ).scalar_one_or_none()
-
-        if existing_entry:
-            # Update existing entry
-            existing_entry.output_data = output_data
-            existing_entry.output_size_bytes = output_size_bytes
-            existing_entry.expires_at = expires_at
-            existing_entry.last_accessed_at = naive_utc_now()
-            existing_entry.metadata = metadata or {}
-            cache_entry = existing_entry
-            logger.info("Updated cache entry for key %s", cache_key)
-        else:
-            # Create new entry
-            cache_entry = WorkflowCacheEntry(
-=======
         now = naive_utc_now()
 
         # Use PostgreSQL's INSERT ... ON CONFLICT for atomic upsert
         stmt = (
             insert(WorkflowCacheEntry)
             .values(
->>>>>>> 84fa5d33dcdd42d2fe53fedd665885197fba2c6c
                 cache_key=cache_key,
                 node_type=node_type,
                 node_config_hash=config_hash,
@@ -223,21 +203,6 @@ class WorkflowCacheService:
                 expires_at=expires_at,
                 original_execution_time=execution_time,
                 total_time_saved=0.0,
-<<<<<<< HEAD
-                metadata=metadata or {},
-            )
-            db.session.add(cache_entry)
-            logger.info(
-                "Stored cache entry: key=%s, node_type=%s, ttl=%sh, size=%s bytes",
-                cache_key,
-                node_type,
-                ttl_hours,
-                output_size_bytes,
-            )
-
-        db.session.commit()
-
-=======
                 extra_info=metadata or {},
                 last_accessed_at=now,
             )
@@ -267,7 +232,6 @@ class WorkflowCacheService:
             output_size_bytes,
         )
 
->>>>>>> 84fa5d33dcdd42d2fe53fedd665885197fba2c6c
         return cache_entry
 
     @staticmethod

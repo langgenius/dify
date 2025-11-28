@@ -153,7 +153,14 @@ class TestWorkflowCacheService:
         output_data = {"result": "test output"}
         execution_time = 5.0
 
-        mock_db_session.session.execute.return_value.scalar_one_or_none.return_value = None
+        # Mock the INSERT ... ON CONFLICT result
+        mock_cache_entry = MagicMock(spec=WorkflowCacheEntry)
+        mock_cache_entry.cache_key = cache_key
+        mock_cache_entry.node_type = node_type
+        mock_cache_entry.output_data = output_data
+        mock_cache_entry.original_execution_time = execution_time
+        
+        mock_db_session.session.execute.return_value.scalar_one.return_value = mock_cache_entry
 
         # Act
         cache_entry = WorkflowCacheService.store_cached_result(
@@ -171,7 +178,7 @@ class TestWorkflowCacheService:
         assert cache_entry.node_type == node_type
         assert cache_entry.output_data == output_data
         assert cache_entry.original_execution_time == execution_time
-        mock_db_session.session.add.assert_called_once()
+        mock_db_session.session.execute.assert_called_once()
         mock_db_session.session.commit.assert_called_once()
 
     def test_store_cached_result_update_existing(self, mock_db_session):
@@ -184,8 +191,13 @@ class TestWorkflowCacheService:
         output_data = {"result": "updated output"}
         execution_time = 5.0
 
-        mock_existing_entry = MagicMock(spec=WorkflowCacheEntry)
-        mock_db_session.session.execute.return_value.scalar_one_or_none.return_value = mock_existing_entry
+        # Mock the INSERT ... ON CONFLICT result (returns updated entry)
+        mock_updated_entry = MagicMock(spec=WorkflowCacheEntry)
+        mock_updated_entry.cache_key = cache_key
+        mock_updated_entry.node_type = node_type
+        mock_updated_entry.output_data = output_data
+        
+        mock_db_session.session.execute.return_value.scalar_one.return_value = mock_updated_entry
 
         # Act
         cache_entry = WorkflowCacheService.store_cached_result(
@@ -198,9 +210,9 @@ class TestWorkflowCacheService:
         )
 
         # Assert
-        assert cache_entry == mock_existing_entry
-        assert mock_existing_entry.output_data == output_data
-        mock_db_session.session.add.assert_not_called()  # Not adding new entry
+        assert cache_entry.cache_key == cache_key
+        assert cache_entry.output_data == output_data
+        mock_db_session.session.execute.assert_called_once()
         mock_db_session.session.commit.assert_called_once()
 
     def test_store_cached_result_default_ttl(self, mock_db_session):
@@ -213,7 +225,12 @@ class TestWorkflowCacheService:
         output_data = {"result": "test output"}
         execution_time = 5.0
 
-        mock_db_session.session.execute.return_value.scalar_one_or_none.return_value = None
+        # Mock the INSERT ... ON CONFLICT result
+        mock_cache_entry = MagicMock(spec=WorkflowCacheEntry)
+        mock_cache_entry.cache_key = cache_key
+        mock_cache_entry.expires_at = naive_utc_now() + timedelta(hours=24)
+        
+        mock_db_session.session.execute.return_value.scalar_one.return_value = mock_cache_entry
 
         # Act
         cache_entry = WorkflowCacheService.store_cached_result(
