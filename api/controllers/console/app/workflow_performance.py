@@ -5,6 +5,8 @@ This module provides REST API endpoints for workflow performance analytics,
 caching management, and optimization recommendations.
 """
 
+# pyright: reportUntypedBaseClass=false
+
 from flask_restful import Resource, reqparse  # type: ignore[import-untyped]
 
 from controllers.console import api
