@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce } from 'immer'
-import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
+import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import Input from '@/app/components/base/input'
@@ -16,6 +16,8 @@ import MethodSelector from '@/app/components/tools/workflow-tool/method-selector
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
 import Tooltip from '@/app/components/base/tooltip'
+import { VarType } from '@/app/components/workflow/types'
+import { RiErrorWarningLine } from '@remixicon/react'
 
 type Props = {
   isAdd?: boolean
@@ -45,7 +47,29 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [name, setName] = useState(payload.name)
   const [description, setDescription] = useState(payload.description)
   const [parameters, setParameters] = useState<WorkflowToolProviderParameter[]>(payload.parameters)
-  const handleParameterChange = (key: string, value: string, index: number) => {
+  const outputParameters = useMemo<WorkflowToolProviderOutputParameter[]>(() => payload.outputParameters, [payload.outputParameters])
+  const reservedOutputParameters: WorkflowToolProviderOutputParameter[] = [
+    {
+      name: 'text',
+      description: t('workflow.nodes.tool.outputVars.text'),
+      type: VarType.string,
+      reserved: true,
+    },
+    {
+      name: 'files',
+      description: t('workflow.nodes.tool.outputVars.files.title'),
+      type: VarType.arrayFile,
+      reserved: true,
+    },
+    {
+      name: 'json',
+      description: t('workflow.nodes.tool.outputVars.json'),
+      type: VarType.arrayObject,
+      reserved: true,
+    },
+  ]
+
+  const handleParameterChange = (key: string, value: any, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
       if (key === 'description')
         draft[index].description = value
@@ -67,6 +91,10 @@ const WorkflowToolAsModal: FC<Props> = ({
       return true
 
     return /^\w+$/.test(name)
+  }
+
+  const isOutputParameterReserved = (name: string) => {
+    return reservedOutputParameters.find(p => p.name === name)
   }
 
   const onConfirm = () => {
@@ -218,6 +246,51 @@ const WorkflowToolAsModal: FC<Props> = ({
                               value={item.description}
                               onChange={e => handleParameterChange('description', e.target.value, index)}
                             />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              {/* Tool Output  */}
+              <div>
+                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.toolOutput.title')}</div>
+                <div className='w-full overflow-x-auto rounded-lg border border-divider-regular'>
+                  <table className='w-full text-xs font-normal leading-[18px] text-text-secondary'>
+                    <thead className='uppercase text-text-tertiary'>
+                      <tr className='border-b border-divider-regular'>
+                        <th className="w-[156px] p-2 pl-3 font-medium">{t('tools.createTool.name')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.toolOutput.description')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...reservedOutputParameters, ...outputParameters].map((item, index) => (
+                        <tr key={index} className='border-b border-divider-regular last:border-0'>
+                          <td className="max-w-[156px] p-2 pl-3">
+                            <div className='text-[13px] leading-[18px]'>
+                              <div title={item.name} className='flex items-center'>
+                                <span className='truncate font-medium text-text-primary'>{item.name}</span>
+                                <span className='shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]'>{item.reserved ? t('tools.createTool.toolOutput.reserved') : ''}</span>
+                                {
+                                  !item.reserved && isOutputParameterReserved(item.name) ? (
+                                    <Tooltip
+                                      popupContent={
+                                        <div className='w-[180px]'>
+                                          {t('tools.createTool.toolOutput.reservedParameterDuplicateTip')}
+                                        </div>
+                                      }
+                                    >
+                                      <RiErrorWarningLine className='h-3 w-3 text-text-warning-secondary' />
+                                    </Tooltip>
+                                  ) : null
+                                }
+                              </div>
+                              <div className='text-text-tertiary'>{item.type}</div>
+                            </div>
+                          </td>
+                          <td className="w-[236px] p-2 pl-3 text-text-tertiary">
+                            <span className='text-[13px] font-normal leading-[18px] text-text-secondary'>{item.description}</span>
                           </td>
                         </tr>
                       ))}

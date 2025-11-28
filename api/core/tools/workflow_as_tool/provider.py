@@ -141,6 +141,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         form=parameter.form,
                         llm_description=parameter.description,
                         required=variable.required,
+                        default=variable.default,
                         options=options,
                         placeholder=I18nObject(en_US="", zh_Hans=""),
                     )
@@ -161,6 +162,20 @@ class WorkflowToolProviderController(ToolProviderController):
             else:
                 raise ValueError("variable not found")
 
+        # get output schema from workflow
+        outputs = WorkflowToolConfigurationUtils.get_workflow_graph_output(graph)
+
+        reserved_keys = {"json", "text", "files"}
+
+        properties = {}
+        for output in outputs:
+            if output.variable not in reserved_keys:
+                properties[output.variable] = {
+                    "type": output.value_type,
+                    "description": "",
+                }
+        output_schema = {"type": "object", "properties": properties}
+
         return WorkflowTool(
             workflow_as_tool_id=db_provider.id,
             entity=ToolEntity(
@@ -176,6 +191,7 @@ class WorkflowToolProviderController(ToolProviderController):
                     llm=db_provider.description,
                 ),
                 parameters=workflow_tool_parameters,
+                output_schema=output_schema,
             ),
             runtime=ToolRuntime(
                 tenant_id=db_provider.tenant_id,

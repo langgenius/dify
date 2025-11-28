@@ -187,6 +187,19 @@ const GotoAnything: FC<Props> = ({
   }, {} as { [key: string]: SearchResult[] }),
   [searchResults])
 
+  useEffect(() => {
+    if (isCommandsMode)
+      return
+
+    if (!searchResults.length)
+      return
+
+    const currentValueExists = searchResults.some(result => `${result.type}-${result.id}` === cmdVal)
+
+    if (!currentValueExists)
+      setCmdVal(`${searchResults[0].type}-${searchResults[0].id}`)
+  }, [isCommandsMode, searchResults, cmdVal])
+
   const emptyResult = useMemo(() => {
     if (searchResults.length || !searchQuery.trim() || isLoading || isCommandsMode)
       return null
@@ -303,7 +316,8 @@ const GotoAnything: FC<Props> = ({
                         const handler = slashCommandRegistry.findCommand(commandName)
 
                         // If it's a direct mode command, execute immediately
-                        if (handler?.mode === 'direct' && handler.execute) {
+                        const isAvailable = handler?.isAvailable?.() ?? true
+                        if (handler?.mode === 'direct' && handler.execute && isAvailable) {
                           e.preventDefault()
                           handler.execute()
                           setShow(false)
@@ -384,8 +398,8 @@ const GotoAnything: FC<Props> = ({
                         {results.map(result => (
                           <Command.Item
                             key={`${result.type}-${result.id}`}
-                            value={result.title}
-                            className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] aria-[selected=true]:bg-state-base-hover data-[selected=true]:bg-state-base-hover'
+                            value={`${result.type}-${result.id}`}
+                            className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt data-[selected=true]:bg-state-base-hover-alt'
                             onSelect={() => handleNavigate(result)}
                           >
                             {result.icon}

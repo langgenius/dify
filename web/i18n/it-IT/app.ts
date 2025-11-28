@@ -155,6 +155,14 @@ const translation = {
       removeConfirmTitle: 'Rimuovere la configurazione di {{key}}?',
       removeConfirmContent:
         'La configurazione attuale è in uso, rimuovendola disattiverà la funzione di Tracciamento.',
+      password: 'Password',
+      clientId: 'ID client OAuth',
+      username: 'Nome utente',
+      trackingUri: 'URI di tracciamento',
+      personalAccessToken: 'Token di accesso personale (legacy)',
+      clientSecret: 'Segreto del client OAuth',
+      experimentId: 'ID Esperimento',
+      databricksHost: 'URL dell\'area di lavoro Databricks',
     },
     view: 'Vista',
     opik: {
@@ -168,6 +176,14 @@ const translation = {
     aliyun: {
       title: 'Monitoraggio Cloud',
       description: 'La piattaforma di osservabilità completamente gestita e senza manutenzione fornita da Alibaba Cloud consente il monitoraggio, il tracciamento e la valutazione delle applicazioni Dify fin da subito.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Piattaforma LLMOps open source per il tracciamento degli esperimenti, l\'osservabilità e la valutazione, per costruire app AI/LLM con sicurezza.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks offre MLflow completamente gestito con forte governance e sicurezza per memorizzare i dati di tracciamento.',
     },
     tencent: {
       title: 'Tencent APM',
@@ -292,6 +308,8 @@ const translation = {
       accountDesc: 'Vai alla pagina dell\'account',
       feedbackDesc: 'Discussioni di feedback della comunità aperta',
       docDesc: 'Apri la documentazione di aiuto',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Nessuna base di conoscenza trovata',
@@ -332,6 +350,8 @@ const translation = {
     tips: 'Premi ↑↓ per navigare',
     pressEscToClose: 'Premi ESC per chiudere',
   },
+  noUserInputNode: 'Nodo di input utente mancante',
+  notPublishedYet: 'L\'app non è ancora pubblicata',
 }
 
 export default translation

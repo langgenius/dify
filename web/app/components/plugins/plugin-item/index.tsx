@@ -13,13 +13,13 @@ import {
   RiErrorWarningLine,
   RiHardDrive3Line,
   RiLoginCircleLine,
-  RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { gte } from 'semver'
 import useTheme from '@/hooks/use-theme'
+import Verified from '../base/badges/verified'
 import Badge from '../../base/badge'
 import { Github } from '../../base/icons/src/public/common'
 import CornerMark from '../card/base/corner-mark'
@@ -116,7 +116,7 @@ const PluginItem: FC<Props> = ({
           <div className='ml-3 w-0 grow'>
             <div className='flex h-5 items-center'>
               <Title title={title} />
-              {verified && <RiVerifiedBadgeLine className='ml-0.5 h-4 w-4 shrink-0 text-text-accent' />}
+              {verified && <Verified className='ml-0.5 h-4 w-4' text={t('plugin.marketplace.verifiedTip')} />}
               {!isDifyVersionCompatible && <Tooltip popupContent={
                 t('plugin.difyVersionNotCompatible', { minimalDifyVersion: declarationMeta.minimum_dify_version })
               }><RiErrorWarningLine color='red' className='ml-0.5 h-4 w-4 shrink-0 text-text-accent' /></Tooltip>}

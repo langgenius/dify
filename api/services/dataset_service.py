@@ -254,6 +254,8 @@ class DatasetService:
             external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
             if not external_knowledge_api:
                 raise ValueError("External API template not found.")
+            if external_knowledge_id is None:
+                raise ValueError("external_knowledge_id is required")
             external_knowledge_binding = ExternalKnowledgeBindings(
                 tenant_id=tenant_id,
                 dataset_id=dataset.id,
@@ -1373,6 +1375,11 @@ class DocumentService:
 
         document.name = name
         db.session.add(document)
+        if document.data_source_info_dict:
+            db.session.query(UploadFile).where(
+                UploadFile.id == document.data_source_info_dict["upload_file_id"]
+            ).update({UploadFile.name: name})
+
         db.session.commit()
 
         return document

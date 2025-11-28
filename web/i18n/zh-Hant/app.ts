@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: '查看{{key}}文件',
       removeConfirmTitle: '移除{{key}}配置？',
       removeConfirmContent: '當前配置正在使用中，移除它將關閉追蹤功能。',
+      experimentId: '實驗編號',
+      databricksHost: 'Databricks 工作區網址',
+      password: '密碼',
+      trackingUri: '追蹤 URI',
+      personalAccessToken: '個人存取權杖（舊版）',
+      clientSecret: 'OAuth 用戶端密鑰',
+      username: '使用者名稱',
+      clientId: 'OAuth 用戶端 ID',
     },
     opik: {
       title: '奧皮克',
@@ -161,6 +169,14 @@ const translation = {
     aliyun: {
       title: '雲端監控',
       description: '阿里雲提供的完全管理且無需維護的可觀察性平台，支持即時監控、追蹤和評估 Dify 應用程序。',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: '開源LLMOps平台，提供實驗追蹤、可觀測性和評估功能，幫助您自信地構建AI/LLM應用。',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks提供完全託管的MLflow，具有強大的治理和安全功能，用於存儲追蹤數據。',
     },
     tencent: {
       title: '騰訊 APM',
@@ -285,6 +301,8 @@ const translation = {
       accountDesc: '導航到帳戶頁面',
       feedbackDesc: '開放社區反饋討論',
       docDesc: '開啟幫助文件',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: '未找到應用',
@@ -325,6 +343,8 @@ const translation = {
     pressEscToClose: '按 ESC 鍵關閉',
     selectToNavigate: '選擇以進行導航',
   },
+  notPublishedYet: '應用程式尚未發布',
+  noUserInputNode: '缺少使用者輸入節點',
 }
 
 export default translation

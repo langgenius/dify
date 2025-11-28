@@ -119,6 +119,13 @@ const translation = {
     confirmTip: 'Приложения, использующие этот инструмент, будут затронуты',
     deleteToolConfirmTitle: 'Удалить этот инструмент?',
     deleteToolConfirmContent: 'Удаление инструмента необратимо. Пользователи больше не смогут получить доступ к вашему инструменту.',
+    toolOutput: {
+      title: 'Вывод инструмента',
+      name: 'Имя',
+      reserved: 'Зарезервировано',
+      reservedParameterDuplicateTip: 'text, json и files — зарезервированные переменные. Переменные с этими именами не могут появляться в схеме вывода.',
+      description: 'Описание',
+    },
   },
   test: {
     title: 'Тест',

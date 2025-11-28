@@ -258,6 +258,10 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         run_id = self._extract_workflow_run_id(runtime_state)
         self._workflow_execution_id = run_id
+
+        with self._database_session() as session:
+            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
+
         start_resp = self._workflow_response_converter.workflow_start_to_stream_response(
             task_id=self._application_generate_entity.task_id,
             workflow_run_id=run_id,
@@ -414,9 +418,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             graph_runtime_state=validated_state,
         )
 
-        with self._database_session() as session:
-            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
-
         yield workflow_finish_resp
 
     def _handle_workflow_partial_success_event(
@@ -437,10 +438,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             graph_runtime_state=validated_state,
             exceptions_count=event.exceptions_count,
         )
-
-        with self._database_session() as session:
-            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
-
         yield workflow_finish_resp
 
     def _handle_workflow_failed_and_stop_events(
@@ -471,10 +468,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             error=error,
             exceptions_count=exceptions_count,
         )
-
-        with self._database_session() as session:
-            self._save_workflow_app_log(session=session, workflow_run_id=self._workflow_execution_id)
-
         yield workflow_finish_resp
 
     def _handle_text_chunk_event(
@@ -644,17 +637,17 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if not workflow_run_id:
             return
 
-        workflow_app_log = WorkflowAppLog()
-        workflow_app_log.tenant_id = self._application_generate_entity.app_config.tenant_id
-        workflow_app_log.app_id = self._application_generate_entity.app_config.app_id
-        workflow_app_log.workflow_id = self._workflow.id
-        workflow_app_log.workflow_run_id = workflow_run_id
-        workflow_app_log.created_from = created_from.value
-        workflow_app_log.created_by_role = self._created_by_role
-        workflow_app_log.created_by = self._user_id
+        workflow_app_log = WorkflowAppLog(
+            tenant_id=self._application_generate_entity.app_config.tenant_id,
+            app_id=self._application_generate_entity.app_config.app_id,
+            workflow_id=self._workflow.id,
+            workflow_run_id=workflow_run_id,
+            created_from=created_from.value,
+            created_by_role=self._created_by_role,
+            created_by=self._user_id,
+        )
 
         session.add(workflow_app_log)
-        session.commit()
 
     def _text_chunk_to_stream_response(
         self, text: str, from_variable_selector: list[str] | None = None

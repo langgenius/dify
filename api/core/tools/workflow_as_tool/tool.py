@@ -114,6 +114,11 @@ class WorkflowTool(Tool):
             for file in files:
                 yield self.create_file_message(file)  # type: ignore
 
+        # traverse `outputs` field and create variable messages
+        for key, value in outputs.items():
+            if key not in {"text", "json", "files"}:
+                yield self.create_variable_message(variable_name=key, variable_value=value)
+
         self._latest_usage = self._derive_usage_from_result(data)
 
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))

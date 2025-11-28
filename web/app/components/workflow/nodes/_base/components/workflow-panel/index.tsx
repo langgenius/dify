@@ -110,13 +110,8 @@ const BasePanel: FC<BasePanelProps> = ({
   const nodePanelWidth = useStore(s => s.nodePanelWidth)
   const otherPanelWidth = useStore(s => s.otherPanelWidth)
   const setNodePanelWidth = useStore(s => s.setNodePanelWidth)
-  const {
-    pendingSingleRun,
-    setPendingSingleRun,
-  } = useStore(s => ({
-    pendingSingleRun: s.pendingSingleRun,
-    setPendingSingleRun: s.setPendingSingleRun,
-  }))
+  const pendingSingleRun = useStore(s => s.pendingSingleRun)
+  const setPendingSingleRun = useStore(s => s.setPendingSingleRun)
 
   const reservedCanvasWidth = 400 // Reserve the minimum visible width for the canvas
 
@@ -370,6 +365,10 @@ const BasePanel: FC<BasePanelProps> = ({
     return !pluginDetail ? null : <ReadmeEntrance pluginDetail={pluginDetail as any} className='mt-auto' />
   }, [data.type, currToolCollection, currentDataSource, currentTriggerPlugin])
 
+  const selectedNode = useMemo(() => ({
+    id,
+    data,
+  }) as Node, [id, data])
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -633,7 +632,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   <div className='system-xs-regular mb-2 text-text-tertiary'>
                     {t('workflow.panel.addNextStep')}
                   </div>
-                  <NextStep selectedNode={{ id, data } as Node} />
+                  <NextStep selectedNode={selectedNode} />
                 </div>
               )
             }
