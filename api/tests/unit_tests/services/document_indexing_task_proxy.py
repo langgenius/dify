@@ -498,7 +498,9 @@ class TestDocumentIndexingTaskProxy:
         proxy._send_to_direct_queue(mock_task)
 
         # Assert
-        mock_task.delay.assert_called_once_with(tenant_id="tenant-123", dataset_id="dataset-456", document_ids=["doc-1"])
+        mock_task.delay.assert_called_once_with(
+            tenant_id="tenant-123", dataset_id="dataset-456", document_ids=["doc-1"]
+        )
 
     @patch("services.document_indexing_task_proxy.normal_document_indexing_task")
     def test_send_to_direct_queue_with_empty_documents(self, mock_task):
@@ -1285,4 +1287,3 @@ class TestDocumentIndexingTaskProxy:
         assert pushed_tasks[0]["document_ids"] == ["doc-1", "doc-2", "doc-3"]
 
         mock_task.delay.assert_not_called()
-
