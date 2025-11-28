@@ -2,8 +2,8 @@
 Unit tests for WorkflowOptimizationAdvisor
 """
 
-from unittest.mock import MagicMock, patch
-import pytest
+from unittest.mock import patch
+
 from models.workflow_performance import WorkflowOptimizationRecommendation
 from services.workflow_optimization_advisor import WorkflowOptimizationAdvisor
 
