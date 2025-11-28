@@ -256,7 +256,7 @@ class TestMessageServicePaginationByFirstId:
                 else:
                     return mock_query_history
 
-        mock_db.session.query.side_effect = query_side_effect
+        mock_db.session.query.side_effect = [mock_query_first, mock_query_history]
 
         # Setup first message query
         mock_query_first.where.return_value = mock_query_first
