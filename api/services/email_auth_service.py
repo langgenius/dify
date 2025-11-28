@@ -387,9 +387,7 @@ class EmailAuthService:
     def cleanup_expired_tokens(self) -> int:
         """Remove expired tokens and return count of removed tokens."""
         now = time.time()
-        expired_keys = [
-            key for key, token in self._verification_tokens.items() if token.expires_at < now
-        ]
+        expired_keys = [key for key, token in self._verification_tokens.items() if token.expires_at < now]
         for key in expired_keys:
             del self._verification_tokens[key]
         return len(expired_keys)
@@ -429,9 +427,7 @@ class EmailAuthService:
         self._rate_limits[key].append(now)
         return True
 
-    def get_rate_limit_remaining(
-        self, email: str, window_seconds: int = 3600, max_attempts: int = 5
-    ) -> int:
+    def get_rate_limit_remaining(self, email: str, window_seconds: int = 3600, max_attempts: int = 5) -> int:
         """Get remaining attempts before rate limit."""
         try:
             normalized = self.normalize_email(email)

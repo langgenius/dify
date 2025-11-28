@@ -108,9 +108,7 @@ class PatternFilter(ContentFilter):
     def _compile_patterns(self) -> None:
         """Compile regex patterns for efficiency."""
         flags = 0 if self.case_sensitive else re.IGNORECASE
-        self._compiled_patterns = [
-            (re.compile(pattern, flags), replacement) for pattern, replacement in self.patterns
-        ]
+        self._compiled_patterns = [(re.compile(pattern, flags), replacement) for pattern, replacement in self.patterns]
 
     def apply(self, chunk: StreamChunk) -> FilterResult:
         """Apply pattern replacements to the chunk."""
@@ -384,9 +382,7 @@ class LLMOutputFilterService:
             if not filter_instance.enabled:
                 continue
 
-            result = filter_instance.apply(
-                StreamChunk(content=current_content, index=index, is_final=is_final)
-            )
+            result = filter_instance.apply(StreamChunk(content=current_content, index=index, is_final=is_final))
 
             combined_metadata[filter_instance.name] = result.metadata
             current_content = result.content
@@ -471,16 +467,12 @@ class LLMOutputFilterService:
 
             elif filter_type == "sensitive_data":
                 enabled_patterns = filter_config.get("enabled_patterns")
-                service.add_filter(
-                    SensitiveDataFilter(name=filter_name, enabled_patterns=enabled_patterns)
-                )
+                service.add_filter(SensitiveDataFilter(name=filter_name, enabled_patterns=enabled_patterns))
 
             elif filter_type == "profanity":
                 word_list = filter_config.get("word_list", [])
                 replacement = filter_config.get("replacement", "***")
-                service.add_filter(
-                    ProfanityFilter(name=filter_name, word_list=word_list, replacement=replacement)
-                )
+                service.add_filter(ProfanityFilter(name=filter_name, word_list=word_list, replacement=replacement))
 
             elif filter_type == "length_limit":
                 max_length = filter_config.get("max_length", 10000)

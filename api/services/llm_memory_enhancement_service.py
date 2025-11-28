@@ -204,7 +204,7 @@ class SlidingWindowStrategy(MemoryStrategy):
         # Apply importance decay to older messages
         for i, message in enumerate(state.messages):
             age_factor = (len(state.messages) - i) / len(state.messages)
-            message.importance_score *= self.config.importance_decay_rate ** age_factor
+            message.importance_score *= self.config.importance_decay_rate**age_factor
 
         # Sort by importance but preserve recent messages
         preserve_count = self.config.preserve_recent_count
