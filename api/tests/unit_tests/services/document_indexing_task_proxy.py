@@ -458,9 +458,7 @@ class TestDocumentIndexingTaskProxy:
         proxy._send_to_direct_queue(mock_task)
 
         # Assert
-        mock_task.delay.assert_called_once_with(
-            tenant_id=tenant_id, dataset_id=dataset_id, document_ids=document_ids
-        )
+        mock_task.delay.assert_called_once_with(tenant_id=tenant_id, dataset_id=dataset_id, document_ids=document_ids)
 
     @patch("services.document_indexing_task_proxy.priority_document_indexing_task")
     def test_send_to_direct_queue_with_priority_task(self, mock_task):
