@@ -1111,7 +1111,7 @@ class TestDatasetServiceEmbeddingConfiguration:
 
     @patch("services.dataset_service.DatasetCollectionBindingService.get_dataset_collection_binding")
     @patch("services.dataset_service.ModelManager")
-    @patch("services.dataset_service.current_user")
+    @patch("services.dataset_service.current_user", spec=Account)
     def test_configure_embedding_model_for_high_quality_success(
         self, mock_current_user, mock_model_manager_class, mock_get_binding, factory
     ):
@@ -1132,7 +1132,7 @@ class TestDatasetServiceEmbeddingConfiguration:
         tenant_id = "tenant-123"
         user = factory.create_user_mock(user_id="user-123", tenant_id=tenant_id)
 
-        # Configure current_user mock
+        # Configure current_user mock - use create_autospec to pass isinstance check
         mock_current_user.current_tenant_id = tenant_id
 
         # Create mock embedding model
@@ -1179,7 +1179,7 @@ class TestDatasetServiceEmbeddingConfiguration:
         assert filtered_data["collection_binding_id"] == "binding-123", "Binding ID should be set"
 
     @patch("services.dataset_service.ModelManager")
-    @patch("services.dataset_service.current_user")
+    @patch("services.dataset_service.current_user", spec=Account)
     def test_configure_embedding_model_for_high_quality_llm_bad_request_error(
         self, mock_current_user, mock_model_manager_class, factory
     ):
@@ -1199,7 +1199,7 @@ class TestDatasetServiceEmbeddingConfiguration:
         tenant_id = "tenant-123"
         user = factory.create_user_mock(user_id="user-123", tenant_id=tenant_id)
 
-        # Configure current_user mock
+        # Configure current_user mock - use create_autospec to pass isinstance check
         mock_current_user.current_tenant_id = tenant_id
 
         # Configure ModelManager to raise LLMBadRequestError
@@ -1219,7 +1219,7 @@ class TestDatasetServiceEmbeddingConfiguration:
             DatasetService._configure_embedding_model_for_high_quality(data, filtered_data)
 
     @patch("services.dataset_service.ModelManager")
-    @patch("services.dataset_service.current_user")
+    @patch("services.dataset_service.current_user", spec=Account)
     def test_configure_embedding_model_for_high_quality_provider_token_error(
         self, mock_current_user, mock_model_manager_class, factory
     ):
@@ -1239,7 +1239,7 @@ class TestDatasetServiceEmbeddingConfiguration:
         tenant_id = "tenant-123"
         user = factory.create_user_mock(user_id="user-123", tenant_id=tenant_id)
 
-        # Configure current_user mock
+        # Configure current_user mock - use create_autospec to pass isinstance check
         mock_current_user.current_tenant_id = tenant_id
 
         # Configure ModelManager to raise ProviderTokenNotInitError
