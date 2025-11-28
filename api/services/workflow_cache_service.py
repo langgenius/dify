@@ -291,6 +291,18 @@ class WorkflowCacheService:
 
         result = db.session.execute(stmt).first()
 
+        # Handle case where no results are found
+        if not result:
+            return {
+                "total_entries": 0,
+                "total_hits": 0,
+                "total_time_saved": 0.0,
+                "avg_hits_per_entry": 0.0,
+                "total_size_bytes": 0,
+                "total_size_mb": 0.0,
+                "by_node_type": [],
+            }
+
         # Get statistics by node type
         stmt_by_type = (
             select(
