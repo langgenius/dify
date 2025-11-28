@@ -101,8 +101,8 @@ const translation = {
     toolOutput: {
       title: 'Kết quả công cụ',
       name: 'Tên',
-      reserved: 'Đã đặt trước',
-      reservedParameterDuplicateTip: 'text, json và files là các biến được đặt trước. Các biến có tên này không thể xuất hiện trong sơ đồ đầu ra.',
+      reserved: 'Dành riêng',
+      reservedParameterDuplicateTip: 'text, json và files là các biến dành riêng. Các biến có tên này không thể xuất hiện trong sơ đồ đầu ra.',
       description: 'Mô tả',
     },
   },
