@@ -181,8 +181,7 @@ class ConversationAccessService:
                 message="Conversation not found",
             )
             self._log_access(
-                conversation_id, requester_id, requester_type,
-                "check_access", result, ip_address, user_agent
+                conversation_id, requester_id, requester_type, "check_access", result, ip_address, user_agent
             )
             return result
 
@@ -194,8 +193,7 @@ class ConversationAccessService:
                 message="Conversation has been deleted",
             )
             self._log_access(
-                conversation_id, requester_id, requester_type,
-                "check_access", result, ip_address, user_agent
+                conversation_id, requester_id, requester_type, "check_access", result, ip_address, user_agent
             )
             return result
 
@@ -207,8 +205,7 @@ class ConversationAccessService:
                 message="Conversation belongs to a different tenant",
             )
             self._log_access(
-                conversation_id, requester_id, requester_type,
-                "check_access", result, ip_address, user_agent
+                conversation_id, requester_id, requester_type, "check_access", result, ip_address, user_agent
             )
             return result
 
@@ -220,26 +217,21 @@ class ConversationAccessService:
                 message="Conversation has expired",
             )
             self._log_access(
-                conversation_id, requester_id, requester_type,
-                "check_access", result, ip_address, user_agent
+                conversation_id, requester_id, requester_type, "check_access", result, ip_address, user_agent
             )
             return result
 
-        access_level = self._determine_access_level(
-            ownership, requester_id, requester_type
-        )
+        access_level = self._determine_access_level(ownership, requester_id, requester_type)
 
         if self._compare_access_levels(access_level, required_level) < 0:
             result = AccessCheckResult(
                 allowed=False,
                 access_level=access_level,
                 reason=AccessDeniedReason.INSUFFICIENT_PERMISSIONS,
-                message=f"Required access level: {required_level.value}, "
-                        f"actual: {access_level.value}",
+                message=f"Required access level: {required_level.value}, actual: {access_level.value}",
             )
             self._log_access(
-                conversation_id, requester_id, requester_type,
-                "check_access", result, ip_address, user_agent
+                conversation_id, requester_id, requester_type, "check_access", result, ip_address, user_agent
             )
             return result
 
@@ -247,10 +239,7 @@ class ConversationAccessService:
             allowed=True,
             access_level=access_level,
         )
-        self._log_access(
-            conversation_id, requester_id, requester_type,
-            "check_access", result, ip_address, user_agent
-        )
+        self._log_access(conversation_id, requester_id, requester_type, "check_access", result, ip_address, user_agent)
         return result
 
     def _determine_access_level(
@@ -299,9 +288,7 @@ class ConversationAccessService:
         if self.policy.conversation_expiry_days <= 0:
             return False
 
-        expiry_date = ownership.created_at + timedelta(
-            days=self.policy.conversation_expiry_days
-        )
+        expiry_date = ownership.created_at + timedelta(days=self.policy.conversation_expiry_days)
         return datetime.now() > expiry_date
 
     def _log_access(
@@ -444,9 +431,7 @@ class ConversationAccessService:
             if ownership.tenant_id != tenant_id:
                 continue
 
-            if ownership.owner_id == user_id or (
-                include_shared and user_id in ownership.shared_with
-            ):
+            if ownership.owner_id == user_id or (include_shared and user_id in ownership.shared_with):
                 conversations.append(conv_id)
 
         return conversations
@@ -489,8 +474,7 @@ class ConversationAccessService:
             Dictionary of statistics
         """
         tenant_conversations = [
-            o for o in self._ownership_cache.values()
-            if o.tenant_id == tenant_id and not o.is_deleted
+            o for o in self._ownership_cache.values() if o.tenant_id == tenant_id and not o.is_deleted
         ]
 
         total = len(tenant_conversations)
@@ -498,8 +482,7 @@ class ConversationAccessService:
         with_grants = sum(1 for o in tenant_conversations if o.access_grants)
 
         recent_audits = [
-            e for e in self._audit_log
-            if e.conversation_id in [o.conversation_id for o in tenant_conversations]
+            e for e in self._audit_log if e.conversation_id in [o.conversation_id for o in tenant_conversations]
         ]
         denied_count = sum(1 for e in recent_audits if e.result == "denied")
 

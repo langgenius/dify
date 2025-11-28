@@ -159,9 +159,7 @@ class WorkflowTaskMonitorService:
         self._metrics: dict[str, TaskMetrics] = {}
         self._checkpoints: dict[str, list[TaskCheckpoint]] = {}
         self._transitions: dict[str, list[TaskTransition]] = {}
-        self._state_handlers: dict[TaskState, list[Callable[[TaskInfo], None]]] = {
-            state: [] for state in TaskState
-        }
+        self._state_handlers: dict[TaskState, list[Callable[[TaskInfo], None]]] = {state: [] for state in TaskState}
 
     def register_task(
         self,
@@ -468,9 +466,7 @@ class WorkflowTaskMonitorService:
 
         return len(tasks_to_remove)
 
-    def register_state_handler(
-        self, state: TaskState, handler: Callable[[TaskInfo], None]
-    ) -> None:
+    def register_state_handler(self, state: TaskState, handler: Callable[[TaskInfo], None]) -> None:
         """Register a handler to be called when tasks enter a specific state."""
         self._state_handlers[state].append(handler)
 

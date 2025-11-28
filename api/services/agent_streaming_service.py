@@ -382,9 +382,7 @@ class AgentStreamingService:
         self._event_buffer[session_id] = []
         return sorted(buffer, key=lambda x: x.sequence_number)
 
-    def generate_tool_call_events(
-        self, session_id: str, call_id: str
-    ) -> Generator[StreamEvent, None, None]:
+    def generate_tool_call_events(self, session_id: str, call_id: str) -> Generator[StreamEvent, None, None]:
         """
         Generate the sequence of events for a complete tool call.
 
@@ -497,9 +495,7 @@ class AgentStreamingService:
             "completed_tool_calls": len(completed_calls),
             "failed_tool_calls": len(failed_calls),
             "pending_tool_calls": len(state.pending_tool_calls),
-            "average_tool_duration_ms": total_duration_ms // len(completed_calls)
-            if completed_calls
-            else 0,
+            "average_tool_duration_ms": total_duration_ms // len(completed_calls) if completed_calls else 0,
             "events_generated": self._sequence_counters.get(session_id, 0),
         }
 
