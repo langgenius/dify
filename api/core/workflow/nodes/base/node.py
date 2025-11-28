@@ -240,23 +240,23 @@ class Node(Generic[NodeDataT]):
         from core.workflow.nodes.tool.tool_node import ToolNode
 
         if isinstance(self, ToolNode):
-            start_event.provider_id = getattr(self.get_base_node_data(), "provider_id", "")
-            start_event.provider_type = getattr(self.get_base_node_data(), "provider_type", "")
+            start_event.provider_id = getattr(self.node_data, "provider_id", "")
+            start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
         from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 
         if isinstance(self, DatasourceNode):
-            plugin_id = getattr(self.get_base_node_data(), "plugin_id", "")
-            provider_name = getattr(self.get_base_node_data(), "provider_name", "")
+            plugin_id = getattr(self.node_data, "plugin_id", "")
+            provider_name = getattr(self.node_data, "provider_name", "")
 
             start_event.provider_id = f"{plugin_id}/{provider_name}"
-            start_event.provider_type = getattr(self.get_base_node_data(), "provider_type", "")
+            start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
         from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 
         if isinstance(self, TriggerEventNode):
-            start_event.provider_id = getattr(self.get_base_node_data(), "provider_id", "")
-            start_event.provider_type = getattr(self.get_base_node_data(), "provider_type", "")
+            start_event.provider_id = getattr(self.node_data, "provider_id", "")
+            start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
         from typing import cast
 
@@ -265,7 +265,7 @@ class Node(Generic[NodeDataT]):
 
         if isinstance(self, AgentNode):
             start_event.agent_strategy = AgentNodeStrategyInit(
-                name=cast(AgentNodeData, self.get_base_node_data()).agent_strategy_name,
+                name=cast(AgentNodeData, self.node_data).agent_strategy_name,
                 icon=self.agent_strategy_icon,
             )
 
@@ -419,10 +419,6 @@ class Node(Generic[NodeDataT]):
         """Get the default values dictionary for this node."""
         return self._node_data.default_value_dict
 
-    def get_base_node_data(self) -> BaseNodeData:
-        """Get the BaseNodeData object for this node."""
-        return self._node_data
-
     # Public interface properties that delegate to abstract methods
     @property
     def error_strategy(self) -> ErrorStrategy | None:
@@ -548,7 +544,7 @@ class Node(Generic[NodeDataT]):
             id=self._node_execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             metadata=event.metadata,
@@ -561,7 +557,7 @@ class Node(Generic[NodeDataT]):
             id=self._node_execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             index=event.index,
             pre_loop_output=event.pre_loop_output,
         )
@@ -572,7 +568,7 @@ class Node(Generic[NodeDataT]):
             id=self._node_execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             outputs=event.outputs,
@@ -586,7 +582,7 @@ class Node(Generic[NodeDataT]):
             id=self._node_execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             outputs=event.outputs,
@@ -601,7 +597,7 @@ class Node(Generic[NodeDataT]):
             id=self._node_execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             metadata=event.metadata,
@@ -614,7 +610,7 @@ class Node(Generic[NodeDataT]):
             id=self._node_execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             index=event.index,
             pre_iteration_output=event.pre_iteration_output,
         )
@@ -625,7 +621,7 @@ class Node(Generic[NodeDataT]):
             id=self._node_execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             outputs=event.outputs,
@@ -639,7 +635,7 @@ class Node(Generic[NodeDataT]):
             id=self._node_execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             outputs=event.outputs,
