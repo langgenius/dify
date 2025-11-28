@@ -78,10 +78,10 @@ from models.dataset import Dataset
 from models.model import App, Tag, TagBinding
 from services.tag_service import TagService
 
-
 # ============================================================================
 # TEST DATA FACTORY
 # ============================================================================
+
 
 class TagServiceTestDataFactory:
     """
@@ -280,6 +280,7 @@ class TagServiceTestDataFactory:
 # PYTEST FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def factory():
     """
@@ -297,6 +298,7 @@ def factory():
 # ============================================================================
 # TAG RETRIEVAL TESTS
 # ============================================================================
+
 
 class TestTagServiceRetrieval:
     """
@@ -340,19 +342,19 @@ class TestTagServiceRetrieval:
         # Mock query results: tuples of (tag_id, type, name, binding_count)
         # This simulates the SQL query result with aggregated binding counts
         mock_results = [
-            ("tag-1", "app", "Frontend", 5),   # Frontend tag with 5 bindings
-            ("tag-2", "app", "Backend", 3),    # Backend tag with 3 bindings
-            ("tag-3", "app", "API", 0),        # API tag with no bindings
+            ("tag-1", "app", "Frontend", 5),  # Frontend tag with 5 bindings
+            ("tag-2", "app", "Backend", 3),  # Backend tag with 3 bindings
+            ("tag-3", "app", "API", 0),  # API tag with no bindings
         ]
 
         # Configure mock database session and query chain
         mock_query = MagicMock()
         mock_db_session.query.return_value = mock_query
-        mock_query.outerjoin.return_value = mock_query    # LEFT OUTER JOIN with TagBinding
-        mock_query.where.return_value = mock_query        # WHERE clause for filtering
-        mock_query.group_by.return_value = mock_query     # GROUP BY for aggregation
-        mock_query.order_by.return_value = mock_query     # ORDER BY for sorting
-        mock_query.all.return_value = mock_results        # Final result
+        mock_query.outerjoin.return_value = mock_query  # LEFT OUTER JOIN with TagBinding
+        mock_query.where.return_value = mock_query  # WHERE clause for filtering
+        mock_query.group_by.return_value = mock_query  # GROUP BY for aggregation
+        mock_query.order_by.return_value = mock_query  # ORDER BY for sorting
+        mock_query.all.return_value = mock_results  # Final result
 
         # Act
         # Execute the method under test
@@ -612,9 +614,9 @@ class TestTagServiceRetrieval:
         # Configure mock database session and query chain
         mock_query = MagicMock()
         mock_db_session.query.return_value = mock_query
-        mock_query.join.return_value = mock_query    # JOIN with TagBinding
-        mock_query.where.return_value = mock_query    # WHERE clause for filtering
-        mock_query.all.return_value = tags            # Final result
+        mock_query.join.return_value = mock_query  # JOIN with TagBinding
+        mock_query.where.return_value = mock_query  # WHERE clause for filtering
+        mock_query.all.return_value = tags  # Final result
 
         # Act
         # Execute the method under test
@@ -632,6 +634,7 @@ class TestTagServiceRetrieval:
 # ============================================================================
 # TAG CRUD OPERATIONS TESTS
 # ============================================================================
+
 
 class TestTagServiceCRUD:
     """
@@ -920,10 +923,7 @@ class TestTagServiceCRUD:
         tag = factory.create_tag_mock(tag_id=tag_id)
 
         # Create mock bindings that will be cascade deleted
-        bindings = [
-            factory.create_tag_binding_mock(binding_id=f"binding-{i}", tag_id=tag_id)
-            for i in range(3)
-        ]
+        bindings = [factory.create_tag_binding_mock(binding_id=f"binding-{i}", tag_id=tag_id) for i in range(3)]
 
         # Configure mock database session for tag query
         mock_query = MagicMock()
@@ -980,6 +980,7 @@ class TestTagServiceCRUD:
 # ============================================================================
 # TAG BINDING OPERATIONS TESTS
 # ============================================================================
+
 
 class TestTagServiceBindings:
     """
