@@ -1280,11 +1280,12 @@ class TestDocumentIndexingTaskProxy:
 
         pushed_tasks = proxy._tenant_isolated_task_queue.push_tasks.call_args[0][0]
 
-        assert len(pushed_tasks) == 1
-
-        assert pushed_tasks[0]["tenant_id"] == "tenant-123"
-
-        assert pushed_tasks[0]["dataset_id"] == "dataset-456"
+        expected_task_data = {
+            "tenant_id": "tenant-123",
+            "dataset_id": "dataset-456",
+            "document_ids": ["doc-1", "doc-2", "doc-3"],
+        }
+        assert pushed_tasks[0] == expected_task_data
 
         assert pushed_tasks[0]["document_ids"] == ["doc-1", "doc-2", "doc-3"]
 
