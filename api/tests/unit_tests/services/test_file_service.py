@@ -110,27 +110,23 @@ Tests file deletion:
 # ============================================================================
 
 import hashlib
-import os
 from unittest.mock import MagicMock, Mock, create_autospec, patch
-from uuid import uuid4
 
 import pytest
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
-from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
-from libs.helper import extract_tenant_id
 from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 from services.errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
-from services.file_service import FileService, PREVIEW_WORDS_LIMIT
-
+from services.file_service import PREVIEW_WORDS_LIMIT, FileService
 
 # ============================================================================
 # TEST DATA FACTORY
 # ============================================================================
+
 
 class FileServiceTestDataFactory:
     """
@@ -319,6 +315,7 @@ class FileServiceTestDataFactory:
 # PYTEST FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def factory():
     """
@@ -336,6 +333,7 @@ def factory():
 # ============================================================================
 # INITIALIZATION TESTS
 # ============================================================================
+
 
 class TestFileServiceInitialization:
     """
@@ -436,6 +434,7 @@ class TestFileServiceInitialization:
 # ============================================================================
 # FILE UPLOAD TESTS
 # ============================================================================
+
 
 class TestFileServiceUpload:
     """
@@ -820,6 +819,7 @@ class TestFileServiceUpload:
 # FILE VALIDATION TESTS
 # ============================================================================
 
+
 class TestFileServiceValidation:
     """
     Test file validation operations.
@@ -852,15 +852,15 @@ class TestFileServiceValidation:
         # Arrange
         user = factory.create_account_mock()
         invalid_filenames = [
-            "file/name.pdf",      # Forward slash
-            "file\\name.pdf",     # Backslash
-            "file:name.pdf",      # Colon
-            "file*name.pdf",      # Asterisk
-            "file?name.pdf",      # Question mark
-            'file"name.pdf',      # Quote
-            "file<name.pdf",      # Less than
-            "file>name.pdf",      # Greater than
-            "file|name.pdf",      # Pipe
+            "file/name.pdf",  # Forward slash
+            "file\\name.pdf",  # Backslash
+            "file:name.pdf",  # Colon
+            "file*name.pdf",  # Asterisk
+            "file?name.pdf",  # Question mark
+            'file"name.pdf',  # Quote
+            "file<name.pdf",  # Less than
+            "file>name.pdf",  # Greater than
+            "file|name.pdf",  # Pipe
         ]
 
         mock_config.UPLOAD_FILE_EXTENSION_BLACKLIST = []
@@ -1011,7 +1011,9 @@ class TestFileServiceValidation:
             # Test with document extension (should pass validation)
             with patch.object(FileService, "is_file_size_within_limit", return_value=True):
                 with patch("services.file_service.storage"):
-                    with patch("services.file_service.uuid.uuid4", return_value=Mock(__str__=Mock(return_value="uuid"))):
+                    with patch(
+                        "services.file_service.uuid.uuid4", return_value=Mock(__str__=Mock(return_value="uuid"))
+                    ):
                         with patch("services.file_service.naive_utc_now", return_value=Mock()):
                             with patch("services.file_service.file_helpers.get_signed_file_url", return_value="url"):
                                 mock_session = MagicMock(spec=Session)
@@ -1031,6 +1033,7 @@ class TestFileServiceValidation:
 # ============================================================================
 # FILE SIZE LIMIT TESTS
 # ============================================================================
+
 
 class TestFileServiceSizeLimits:
     """
@@ -1138,7 +1141,10 @@ class TestFileServiceSizeLimits:
                 with patch("services.file_service.AUDIO_EXTENSIONS", {"mp3"}):
                     # Act & Assert
                     assert FileService.is_file_size_within_limit(extension="pdf", file_size=default_limit_bytes) is True
-                    assert FileService.is_file_size_within_limit(extension="pdf", file_size=default_limit_bytes + 1) is False
+                    assert (
+                        FileService.is_file_size_within_limit(extension="pdf", file_size=default_limit_bytes + 1)
+                        is False
+                    )
 
     @patch("services.file_service.extract_tenant_id")
     @patch("services.file_service.dify_config")
@@ -1183,6 +1189,7 @@ class TestFileServiceSizeLimits:
 # ============================================================================
 # FILE RETRIEVAL TESTS
 # ============================================================================
+
 
 class TestFileServiceRetrieval:
     """
@@ -1408,7 +1415,9 @@ class TestFileServiceRetrieval:
         generator, returned_file = service.get_file_generator_by_file_id(file_id, timestamp, nonce, sign)
 
         # Assert
-        mock_verify_signature.assert_called_once_with(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
+        mock_verify_signature.assert_called_once_with(
+            upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
+        )
         mock_storage.load.assert_called_once_with(upload_file.key, stream=True)
         assert generator == mock_generator, "Generator should match"
         assert returned_file == upload_file, "UploadFile should match"
@@ -1530,6 +1539,7 @@ class TestFileServiceRetrieval:
 # FILE DELETION TESTS
 # ============================================================================
 
+
 class TestFileServiceDeletion:
     """
     Test file deletion operations.
@@ -1622,4 +1632,3 @@ class TestFileServiceDeletion:
 
         # Verify no database delete operations
         mock_session.delete.assert_not_called()
-
