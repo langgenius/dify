@@ -193,7 +193,7 @@ class TagServiceTestDataFactory:
         binding.tenant_id = tenant_id
 
         # Set default optional attributes
-        binding.created_by = kwargs.get("created_by", "user-123")
+        binding.created_by = kwargs.pop("created_by", "user-123")
 
         # Apply any additional attributes from kwargs
         for key, value in kwargs.items():
