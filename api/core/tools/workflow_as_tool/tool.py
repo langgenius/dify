@@ -1,360 +1,378 @@
+import contextlib
 import json
-import logging
-from collections.abc import Generator, Mapping, Sequence
-from typing import Any, cast
+from collections.abc import Generator, Iterable
+from copy import deepcopy
+from datetime import UTC, datetime
+from mimetypes import guess_type
+from typing import Any, Union, cast
 
-from flask import has_request_context
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from yarl import URL
 
-from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
-from core.model_runtime.entities.llm_entities import LLMUsage, LLMUsageMetadata
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
+from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
+from core.file import FileType
+from core.file.models import FileTransferMethod
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.__base.tool import Tool
-from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
-    ToolEntity,
     ToolInvokeMessage,
+    ToolInvokeMessageBinary,
+    ToolInvokeMeta,
     ToolParameter,
-    ToolProviderType,
 )
-from core.tools.errors import ToolInvokeError
+from core.tools.errors import (
+    ToolEngineInvokeError,
+    ToolInvokeError,
+    ToolNotFoundError,
+    ToolNotSupportedError,
+    ToolParameterValidationError,
+    ToolProviderCredentialValidationError,
+    ToolProviderNotFoundError,
+)
+from core.tools.utils.message_transformer import ToolFileMessageTransformer, safe_json_value
+from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from factories.file_factory import build_from_mapping
-from libs.login import current_user
-from models import Account, Tenant
-from models.model import App, EndUser
-from models.workflow import Workflow
-
-logger = logging.getLogger(__name__)
+from models.enums import CreatorUserRole
+from models.model import Message, MessageFile
 
 
-class WorkflowTool(Tool):
+class ToolEngine:
     """
-    Workflow tool.
+    Tool runtime engine take care of the tool executions.
     """
 
-    def __init__(
-        self,
-        workflow_app_id: str,
-        workflow_as_tool_id: str,
-        version: str,
-        workflow_entities: dict[str, Any],
-        workflow_call_depth: int,
-        entity: ToolEntity,
-        runtime: ToolRuntime,
-        label: str = "Workflow",
-    ):
-        self.workflow_app_id = workflow_app_id
-        self.workflow_as_tool_id = workflow_as_tool_id
-        self.version = version
-        self.workflow_entities = workflow_entities
-        self.workflow_call_depth = workflow_call_depth
-        self.label = label
-        self._latest_usage = LLMUsage.empty_usage()
-
-        super().__init__(entity=entity, runtime=runtime)
-
-    def tool_provider_type(self) -> ToolProviderType:
-        """
-        get the tool provider type
-
-        :return: the tool provider type
-        """
-        return ToolProviderType.WORKFLOW
-
-    def _invoke(
-        self,
+    @staticmethod
+    def agent_invoke(
+        tool: Tool,
+        tool_parameters: Union[str, dict],
         user_id: str,
+        tenant_id: str,
+        message: Message,
+        invoke_from: InvokeFrom,
+        agent_tool_callback: DifyAgentCallbackHandler,
+        trace_manager: TraceQueueManager | None = None,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+    ) -> tuple[str, list[str], ToolInvokeMeta]:
+        """
+        Agent invokes the tool with the given arguments.
+        """
+        # check if arguments is a string
+        if isinstance(tool_parameters, str):
+            # check if this tool has only one parameter
+            parameters = [
+                parameter
+                for parameter in tool.get_runtime_parameters()
+                if parameter.form == ToolParameter.ToolParameterForm.LLM
+            ]
+            if parameters and len(parameters) == 1:
+                tool_parameters = {parameters[0].name: tool_parameters}
+            else:
+                with contextlib.suppress(Exception):
+                    tool_parameters = json.loads(tool_parameters)
+                if not isinstance(tool_parameters, dict):
+                    raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
+
+        try:
+            # hit the callback handler
+            agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
+
+            messages = ToolEngine._invoke(tool, tool_parameters, user_id, conversation_id, app_id, message_id)
+            invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
+
+            def message_callback(
+                invocation_meta_dict: dict, messages: Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]
+            ):
+                for message in messages:
+                    if isinstance(message, ToolInvokeMeta):
+                        invocation_meta_dict["meta"] = message
+                    else:
+                        yield message
+
+            messages = ToolFileMessageTransformer.transform_tool_invoke_messages(
+                messages=message_callback(invocation_meta_dict, messages),
+                user_id=user_id,
+                tenant_id=tenant_id,
+                conversation_id=message.conversation_id,
+            )
+
+            message_list = list(messages)
+
+            # extract binary data from tool invoke message
+            binary_files = ToolEngine._extract_tool_response_binary_and_text(message_list)
+            # create message file
+            message_files = ToolEngine._create_message_files(
+                tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
+            )
+
+            # detect return_direct signal from variable messages (strict boolean short-circuit)
+            return_direct = any(
+                m.type == ToolInvokeMessage.MessageType.VARIABLE
+                and (variable := cast(ToolInvokeMessage.VariableMessage, m.message))
+                and variable.variable_name == "return_direct"
+                and variable.variable_value is True
+                for m in message_list
+            )
+
+            plain_text = ToolEngine._convert_tool_response_to_str(message_list)
+
+            meta = invocation_meta_dict["meta"]
+            meta.extra = {"return_direct": return_direct}
+
+            # hit the callback handler
+            agent_tool_callback.on_tool_end(
+                tool_name=tool.entity.identity.name,
+                tool_inputs=tool_parameters,
+                tool_outputs=plain_text,
+                message_id=message.id,
+                trace_manager=trace_manager,
+            )
+
+            # transform tool invoke message to get LLM friendly message
+            return plain_text, message_files, meta
+        except ToolProviderCredentialValidationError as e:
+            error_response = "Please check your tool provider credentials"
+            agent_tool_callback.on_tool_error(e)
+        except (ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError) as e:
+            error_response = f"there is not a tool named {tool.entity.identity.name}"
+            agent_tool_callback.on_tool_error(e)
+        except ToolParameterValidationError as e:
+            error_response = f"tool parameters validation error: {e}, please check your tool parameters"
+            agent_tool_callback.on_tool_error(e)
+        except ToolInvokeError as e:
+            error_response = f"tool invoke error: {e}"
+            agent_tool_callback.on_tool_error(e)
+        except ToolEngineInvokeError as e:
+            meta = e.meta
+            error_response = f"tool invoke error: {meta.error}"
+            agent_tool_callback.on_tool_error(e)
+            return error_response, [], meta
+        except Exception as e:
+            error_response = f"unknown error: {e}"
+            agent_tool_callback.on_tool_error(e)
+
+        return error_response, [], ToolInvokeMeta.error_instance(error_response)
+
+    @staticmethod
+    def generic_invoke(
+        tool: Tool,
         tool_parameters: dict[str, Any],
+        user_id: str,
+        workflow_tool_callback: DifyWorkflowCallbackHandler,
+        workflow_call_depth: int,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
-        invoke the tool
-        """
-        app = self._get_app(app_id=self.workflow_app_id)
-        workflow = self._get_workflow(app_id=self.workflow_app_id, version=self.version)
-
-        # transform the tool parameters
-        tool_parameters, files = self._transform_args(tool_parameters=tool_parameters)
-
-        from core.app.apps.workflow.app_generator import WorkflowAppGenerator
-
-        generator = WorkflowAppGenerator()
-        assert self.runtime is not None
-        assert self.runtime.invoke_from is not None
-
-        user = self._resolve_user(user_id=user_id)
-        if user is None:
-            raise ToolInvokeError("User not found")
-
-        self._latest_usage = LLMUsage.empty_usage()
-
-        result = generator.generate(
-            app_model=app,
-            workflow=workflow,
-            user=user,
-            args={"inputs": tool_parameters, "files": files},
-            invoke_from=self.runtime.invoke_from,
-            streaming=False,
-            call_depth=self.workflow_call_depth + 1,
-        )
-        assert isinstance(result, dict)
-        data = result.get("data", {})
-
-        if err := data.get("error"):
-            raise ToolInvokeError(err)
-
-        outputs = data.get("outputs")
-        if outputs is None:
-            outputs = {}
-        else:
-            outputs, files = self._extract_files(outputs)  # type: ignore
-            for file in files:
-                yield self.create_file_message(file)  # type: ignore
-
-        return_direct_flag = isinstance(outputs, dict) and outputs.pop("return_direct", None) is True
-
-        self._latest_usage = self._derive_usage_from_result(data)
-
-        direct_text = None
-        if return_direct_flag:
-            string_values = [v for v in outputs.values() if isinstance(v, str)]
-            if string_values:
-                direct_text = "\n".join(string_values)
-
-        if direct_text is not None:
-            yield self.create_text_message(direct_text)
-        else:
-            yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
-
-        yield self.create_json_message(outputs, suppress_output=True)
-        if return_direct_flag:
-            yield self.create_variable_message("return_direct", True)
-
-    @property
-    def latest_usage(self) -> LLMUsage:
-        return self._latest_usage
-
-    @classmethod
-    def _derive_usage_from_result(cls, data: Mapping[str, Any]) -> LLMUsage:
-        usage_dict = cls._extract_usage_dict(data)
-        if usage_dict is not None:
-            return LLMUsage.from_metadata(cast(LLMUsageMetadata, dict(usage_dict)))
-
-        total_tokens = data.get("total_tokens")
-        total_price = data.get("total_price")
-        if total_tokens is None and total_price is None:
-            return LLMUsage.empty_usage()
-
-        usage_metadata: dict[str, Any] = {}
-        if total_tokens is not None:
-            try:
-                usage_metadata["total_tokens"] = int(str(total_tokens))
-            except (TypeError, ValueError):
-                pass
-        if total_price is not None:
-            usage_metadata["total_price"] = str(total_price)
-        currency = data.get("currency")
-        if currency is not None:
-            usage_metadata["currency"] = currency
-
-        if not usage_metadata:
-            return LLMUsage.empty_usage()
-
-        return LLMUsage.from_metadata(cast(LLMUsageMetadata, usage_metadata))
-
-    @classmethod
-    def _extract_usage_dict(cls, payload: Mapping[str, Any]) -> Mapping[str, Any] | None:
-        usage_candidate = payload.get("usage")
-        if isinstance(usage_candidate, Mapping):
-            return usage_candidate
-
-        metadata_candidate = payload.get("metadata")
-        if isinstance(metadata_candidate, Mapping):
-            usage_candidate = metadata_candidate.get("usage")
-            if isinstance(usage_candidate, Mapping):
-                return usage_candidate
-
-        for value in payload.values():
-            if isinstance(value, Mapping):
-                found = cls._extract_usage_dict(value)
-                if found is not None:
-                    return found
-            elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
-                for item in value:
-                    if isinstance(item, Mapping):
-                        found = cls._extract_usage_dict(item)
-                        if found is not None:
-                            return found
-        return None
-
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
-        """
-        fork a new tool with metadata
-
-        :return: the new tool
-        """
-        return self.__class__(
-            entity=self.entity.model_copy(),
-            runtime=runtime,
-            workflow_app_id=self.workflow_app_id,
-            workflow_as_tool_id=self.workflow_as_tool_id,
-            workflow_entities=self.workflow_entities,
-            workflow_call_depth=self.workflow_call_depth,
-            version=self.version,
-            label=self.label,
-        )
-
-    def _resolve_user(self, user_id: str) -> Account | EndUser | None:
-        """
-        Resolve user object in both HTTP and worker contexts.
-
-        In HTTP context: dereference the current_user LocalProxy (can return Account or EndUser).
-        In worker context: load Account from database by user_id (only returns Account, never EndUser).
-
-        Returns:
-            Account | EndUser | None: The resolved user object, or None if resolution fails.
-        """
-        if has_request_context():
-            return self._resolve_user_from_request()
-        else:
-            return self._resolve_user_from_database(user_id=user_id)
-
-    def _resolve_user_from_request(self) -> Account | EndUser | None:
-        """
-        Resolve user from Flask request context.
+        Workflow invokes the tool with the given arguments.
         """
         try:
-            # Note: `current_user` is a LocalProxy. Never compare it with None directly.
-            return getattr(current_user, "_get_current_object", lambda: current_user)()
+            # hit the callback handler
+            workflow_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
+
+            if isinstance(tool, WorkflowTool):
+                tool.workflow_call_depth = workflow_call_depth + 1
+
+            if tool.runtime and tool.runtime.runtime_parameters:
+                tool_parameters = {**tool.runtime.runtime_parameters, **tool_parameters}
+
+            response = tool.invoke(
+                user_id=user_id,
+                tool_parameters=tool_parameters,
+                conversation_id=conversation_id,
+                app_id=app_id,
+                message_id=message_id,
+            )
+
+            # hit the callback handler
+            response = workflow_tool_callback.on_tool_execution(
+                tool_name=tool.entity.identity.name,
+                tool_inputs=tool_parameters,
+                tool_outputs=response,
+            )
+
+            return response
         except Exception as e:
-            logger.warning("Failed to resolve user from request context: %s", e)
-            return None
+            workflow_tool_callback.on_tool_error(e)
+            raise e
 
-    def _resolve_user_from_database(self, user_id: str) -> Account | None:
+    @staticmethod
+    def _invoke(
+        tool: Tool,
+        tool_parameters: dict,
+        user_id: str,
+        conversation_id: str | None = None,
+        app_id: str | None = None,
+        message_id: str | None = None,
+    ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
         """
-        Resolve user from database (worker/Celery context).
+        Invoke the tool with the given arguments.
         """
+        started_at = datetime.now(UTC)
+        meta = ToolInvokeMeta(
+            time_cost=0.0,
+            error=None,
+            tool_config={
+                "tool_name": tool.entity.identity.name,
+                "tool_provider": tool.entity.identity.provider,
+                "tool_provider_type": tool.tool_provider_type().value,
+                "tool_parameters": deepcopy(tool.runtime.runtime_parameters),
+                "tool_icon": tool.entity.identity.icon,
+            },
+        )
+        try:
+            yield from tool.invoke(user_id, tool_parameters, conversation_id, app_id, message_id)
+        except Exception as e:
+            meta.error = str(e)
+            raise ToolEngineInvokeError(meta)
+        finally:
+            ended_at = datetime.now(UTC)
+            meta.time_cost = (ended_at - started_at).total_seconds()
+            yield meta
 
-        user_stmt = select(Account).where(Account.id == user_id)
-        user = db.session.scalar(user_stmt)
-        if not user:
-            return None
-
-        tenant_stmt = select(Tenant).where(Tenant.id == self.runtime.tenant_id)
-        tenant = db.session.scalar(tenant_stmt)
-        if not tenant:
-            return None
-
-        user.current_tenant = tenant
-
-        return user
-
-    def _get_workflow(self, app_id: str, version: str) -> Workflow:
+    @staticmethod
+    def _convert_tool_response_to_str(tool_response: list[ToolInvokeMessage]) -> str:
         """
-        get the workflow by app id and version
+        Handle tool response
         """
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            if not version:
-                stmt = (
-                    select(Workflow)
-                    .where(Workflow.app_id == app_id, Workflow.version != Workflow.VERSION_DRAFT)
-                    .order_by(Workflow.created_at.desc())
+        parts: list[str] = []
+        json_parts: list[str] = []
+
+        for response in tool_response:
+            if response.type == ToolInvokeMessage.MessageType.TEXT:
+                parts.append(cast(ToolInvokeMessage.TextMessage, response.message).text)
+            elif response.type == ToolInvokeMessage.MessageType.LINK:
+                parts.append(
+                    f"result link: {cast(ToolInvokeMessage.TextMessage, response.message).text}."
+                    + " please tell user to check it."
                 )
-                workflow = session.scalars(stmt).first()
-            else:
-                stmt = select(Workflow).where(Workflow.app_id == app_id, Workflow.version == version)
-                workflow = session.scalar(stmt)
-
-        if not workflow:
-            raise ValueError("workflow not found or not published")
-
-        return workflow
-
-    def _get_app(self, app_id: str) -> App:
-        """
-        get the app by app id
-        """
-        stmt = select(App).where(App.id == app_id)
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            app = session.scalar(stmt)
-        if not app:
-            raise ValueError("app not found")
-
-        return app
-
-    def _transform_args(self, tool_parameters: dict) -> tuple[dict, list[dict]]:
-        """
-        transform the tool parameters
-
-        :param tool_parameters: the tool parameters
-        :return: tool_parameters, files
-        """
-        parameter_rules = self.get_merged_runtime_parameters()
-        parameters_result = {}
-        files = []
-        for parameter in parameter_rules:
-            if parameter.type == ToolParameter.ToolParameterType.SYSTEM_FILES:
-                file = tool_parameters.get(parameter.name)
-                if file:
-                    try:
-                        file_var_list = [File.model_validate(f) for f in file]
-                        for file in file_var_list:
-                            file_dict: dict[str, str | None] = {
-                                "transfer_method": file.transfer_method.value,
-                                "type": file.type.value,
-                            }
-                            if file.transfer_method == FileTransferMethod.TOOL_FILE:
-                                file_dict["tool_file_id"] = file.related_id
-                            elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-                                file_dict["upload_file_id"] = file.related_id
-                            elif file.transfer_method == FileTransferMethod.REMOTE_URL:
-                                file_dict["url"] = file.generate_url()
-
-                            files.append(file_dict)
-                    except Exception:
-                        logger.exception("Failed to transform file %s", file)
-            else:
-                parameters_result[parameter.name] = tool_parameters.get(parameter.name)
-
-        return parameters_result, files
-
-    def _extract_files(self, outputs: dict) -> tuple[dict, list[File]]:
-        """
-        extract files from the result
-
-        :return: the result, files
-        """
-        files: list[File] = []
-        result = {}
-        for key, value in outputs.items():
-            if isinstance(value, list):
-                for item in value:
-                    if isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                        item = self._update_file_mapping(item)
-                        file = build_from_mapping(
-                            mapping=item,
-                            tenant_id=str(self.runtime.tenant_id),
-                        )
-                        files.append(file)
-            elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
-                value = self._update_file_mapping(value)
-                file = build_from_mapping(
-                    mapping=value,
-                    tenant_id=str(self.runtime.tenant_id),
+            elif response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
+                parts.append(
+                    "image has been created and sent to user already, "
+                    + "you do not need to create it, just tell the user to check it now."
                 )
-                files.append(file)
+            elif response.type == ToolInvokeMessage.MessageType.JSON:
+                json_message = cast(ToolInvokeMessage.JsonMessage, response.message)
+                if json_message.suppress_output:
+                    continue
+                json_parts.append(
+                    json.dumps(
+                        safe_json_value(cast(ToolInvokeMessage.JsonMessage, response.message).json_object),
+                        ensure_ascii=False,
+                    )
+                )
+            elif response.type == ToolInvokeMessage.MessageType.VARIABLE:
+                # internal variable messages should not be surfaced into plain text
+                continue
+            else:
+                parts.append(str(response.message))
 
-            result[key] = value
+        # Add JSON parts, avoiding duplicates from text parts.
+        if json_parts:
+            existing_parts = set(parts)
+            parts.extend(p for p in json_parts if p not in existing_parts)
 
-        return result, files
+        return "".join(parts)
 
-    def _update_file_mapping(self, file_dict: dict):
-        transfer_method = FileTransferMethod.value_of(file_dict.get("transfer_method"))
-        if transfer_method == FileTransferMethod.TOOL_FILE:
-            file_dict["tool_file_id"] = file_dict.get("related_id")
-        elif transfer_method == FileTransferMethod.LOCAL_FILE:
-            file_dict["upload_file_id"] = file_dict.get("related_id")
-        return file_dict
+    @staticmethod
+    def _extract_tool_response_binary_and_text(
+        tool_response: list[ToolInvokeMessage],
+    ) -> Generator[ToolInvokeMessageBinary, None, None]:
+        """
+        Extract tool response binary
+        """
+        for response in tool_response:
+            if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
+                mimetype = None
+                if not response.meta:
+                    raise ValueError("missing meta data")
+                if response.meta.get("mime_type"):
+                    mimetype = response.meta.get("mime_type")
+                else:
+                    with contextlib.suppress(Exception):
+                        url = URL(cast(ToolInvokeMessage.TextMessage, response.message).text)
+                        extension = url.suffix
+                        guess_type_result, _ = guess_type(f"a{extension}")
+                        if guess_type_result:
+                            mimetype = guess_type_result
+
+                if not mimetype:
+                    mimetype = "image/jpeg"
+
+                yield ToolInvokeMessageBinary(
+                    mimetype=response.meta.get("mime_type", mimetype),
+                    url=cast(ToolInvokeMessage.TextMessage, response.message).text,
+                )
+            elif response.type == ToolInvokeMessage.MessageType.BLOB:
+                if not response.meta:
+                    raise ValueError("missing meta data")
+
+                yield ToolInvokeMessageBinary(
+                    mimetype=response.meta.get("mime_type", "application/octet-stream"),
+                    url=cast(ToolInvokeMessage.TextMessage, response.message).text,
+                )
+            elif response.type == ToolInvokeMessage.MessageType.LINK:
+                # check if there is a mime type in meta
+                if response.meta and "mime_type" in response.meta:
+                    yield ToolInvokeMessageBinary(
+                        mimetype=response.meta.get("mime_type", "application/octet-stream")
+                        if response.meta
+                        else "application/octet-stream",
+                        url=cast(ToolInvokeMessage.TextMessage, response.message).text,
+                    )
+
+    @staticmethod
+    def _create_message_files(
+        tool_messages: Iterable[ToolInvokeMessageBinary],
+        agent_message: Message,
+        invoke_from: InvokeFrom,
+        user_id: str,
+    ) -> list[str]:
+        """
+        Create message file
+
+        :return: message file ids
+        """
+        result = []
+
+        for message in tool_messages:
+            if "image" in message.mimetype:
+                file_type = FileType.IMAGE
+            elif "video" in message.mimetype:
+                file_type = FileType.VIDEO
+            elif "audio" in message.mimetype:
+                file_type = FileType.AUDIO
+            elif "text" in message.mimetype or "pdf" in message.mimetype:
+                file_type = FileType.DOCUMENT
+            else:
+                file_type = FileType.CUSTOM
+
+            # extract tool file id from url
+            tool_file_id = message.url.split("/")[-1].split(".")[0]
+            message_file = MessageFile(
+                message_id=agent_message.id,
+                type=file_type,
+                transfer_method=FileTransferMethod.TOOL_FILE,
+                belongs_to="assistant",
+                url=message.url,
+                upload_file_id=tool_file_id,
+                created_by_role=(
+                    CreatorUserRole.ACCOUNT
+                    if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
+                    else CreatorUserRole.END_USER
+                ),
+                created_by=user_id,
+            )
+
+            db.session.add(message_file)
+            db.session.commit()
+            db.session.refresh(message_file)
+
+            result.append(message_file.id)
+
+        db.session.close()
+
+        return result
