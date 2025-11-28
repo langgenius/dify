@@ -91,7 +91,6 @@ from models.workflow import Workflow
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.rag_pipeline_entities import (
     IconInfo,
-    KnowledgeConfiguration,
     RagPipelineDatasetCreateEntity,
     RetrievalSetting,
 )
