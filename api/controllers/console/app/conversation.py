@@ -2,7 +2,7 @@ import sqlalchemy as sa
 from flask import abort
 from flask_restx import Resource, fields, marshal_with, reqparse
 from flask_restx.inputs import int_range
-from sqlalchemy import func, or_
+from sqlalchemy import String, func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
 
@@ -505,6 +505,7 @@ class ChatConversationApi(Resource):
                         Conversation.name.ilike(keyword_filter),
                         Conversation.introduction.ilike(keyword_filter),
                         subquery.c.from_end_user_session_id.ilike(keyword_filter),
+                        func.cast(Conversation.id, String).ilike(keyword_filter),
                     ),
                 )
                 .group_by(Conversation.id)
