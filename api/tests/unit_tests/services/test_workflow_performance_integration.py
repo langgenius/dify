@@ -588,7 +588,7 @@ class TestWorkflowPerformanceIntegration:
         node_types = ["llm", "code", "http_request"]
         entries = []
 
-        for i, node_type in enumerate(node_types):
+        for node_type in node_types:
             for j in range(3):
                 entry = WorkflowCacheEntry(
                     id=str(uuid.uuid4()),
@@ -906,7 +906,7 @@ class TestWorkflowPerformanceIntegration:
         statuses = ["success", "failed", "timeout", "cancelled"]
         node_id = "status_test_node"
 
-        for i, status in enumerate(statuses):
+        for status in statuses:
             WorkflowPerformanceService.record_node_execution(
                 app_id=app_id,
                 tenant_id=tenant_id,
