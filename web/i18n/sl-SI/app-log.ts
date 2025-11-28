@@ -19,6 +19,7 @@ const translation = {
       tokens: 'ŽETONI',
       user: 'Končni uporabnik ali račun',
       version: 'VERZIJA',
+      triggered_from: 'SPROŽENO Z',
     },
     pagination: {
       previous: 'Prejšnja',
@@ -97,6 +98,15 @@ const translation = {
     finalProcessing: 'Končna obdelava',
   },
   dateFormat: 'MM/DD/LETNO',
+  triggerBy: {
+    debugging: 'Razhroščevanje',
+    appRun: 'Spletna aplikacija',
+    webhook: 'Webhook',
+    schedule: 'Urnik',
+    plugin: 'Vtičnik',
+    ragPipelineRun: 'RAG cevovod',
+    ragPipelineDebugging: 'RAG odpravljanje napak',
+  },
 }
 
 export default translation

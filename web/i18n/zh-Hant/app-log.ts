@@ -19,6 +19,7 @@ const translation = {
       tokens: 'TOKENS',
       user: '使用者或賬戶',
       version: '版本',
+      triggered_from: '由…觸發',
     },
     pagination: {
       previous: '上一頁',
@@ -97,6 +98,15 @@ const translation = {
     finalProcessing: '最終處理',
   },
   dateFormat: '月/日/年',
+  triggerBy: {
+    debugging: '除錯',
+    appRun: '網頁應用程式',
+    webhook: 'Webhook',
+    schedule: '時間表',
+    plugin: '插件',
+    ragPipelineRun: 'RAG 流程',
+    ragPipelineDebugging: 'RAG 除錯',
+  },
 }
 
 export default translation

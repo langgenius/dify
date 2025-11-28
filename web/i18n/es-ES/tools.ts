@@ -119,6 +119,13 @@ const translation = {
     confirmTip: 'Las aplicaciones que usen esta herramienta se verán afectadas',
     deleteToolConfirmTitle: '¿Eliminar esta Herramienta?',
     deleteToolConfirmContent: 'Eliminar la herramienta es irreversible. Los usuarios ya no podrán acceder a tu herramienta.',
+    toolOutput: {
+      title: 'Salida de la herramienta',
+      name: 'Nombre',
+      reserved: 'Reservado',
+      reservedParameterDuplicateTip: 'text, json y files son variables reservadas. Las variables con estos nombres no pueden aparecer en el esquema de salida.',
+      description: 'Descripción',
+    },
   },
   test: {
     title: 'Probar',

@@ -63,7 +63,6 @@ class TestMockTemplateTransformNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -125,7 +124,6 @@ class TestMockTemplateTransformNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -184,7 +182,6 @@ class TestMockTemplateTransformNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -246,7 +243,6 @@ class TestMockTemplateTransformNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -311,7 +307,6 @@ class TestMockCodeNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -376,7 +371,6 @@ class TestMockCodeNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -445,7 +439,6 @@ class TestMockCodeNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()

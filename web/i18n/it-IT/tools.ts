@@ -126,6 +126,13 @@ const translation = {
     deleteToolConfirmTitle: 'Eliminare questo Strumento?',
     deleteToolConfirmContent:
       'L\'eliminazione dello Strumento è irreversibile. Gli utenti non potranno più accedere al tuo Strumento.',
+    toolOutput: {
+      title: 'Output dello strumento',
+      name: 'Nome',
+      reserved: 'Riservato',
+      reservedParameterDuplicateTip: 'text, json e files sono variabili riservate. Le variabili con questi nomi non possono comparire nello schema di output.',
+      description: 'Descrizione',
+    },
   },
   test: {
     title: 'Test',
