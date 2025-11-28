@@ -231,7 +231,7 @@ class TestAppGenerateServiceChatMode:
         mock_config.BILLING_ENABLED = False
         mock_config.APP_MAX_ACTIVE_REQUESTS = 10
         mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
-        
+
         # Mock rate limit
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
@@ -243,14 +243,14 @@ class TestAppGenerateServiceChatMode:
             "message": "Complete response",
             "conversation_id": str(uuid.uuid4()),
         }
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = response_dict
-        
+
         # Mock convert_to_event_stream to return the dict as-is for blocking
         mock_generator.convert_to_event_stream.return_value = response_dict
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -278,7 +278,7 @@ class TestAppGenerateServiceChatMode:
         mock_config.BILLING_ENABLED = False
         mock_config.APP_MAX_ACTIVE_REQUESTS = 10
         mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
-        
+
         # Mock rate limit
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
@@ -287,14 +287,14 @@ class TestAppGenerateServiceChatMode:
 
         # Mock response
         response_dict = {"message": "Response"}
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = response_dict
-        
+
         # Mock convert_to_event_stream to return the dict as-is
         mock_generator.convert_to_event_stream.return_value = response_dict
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -348,7 +348,7 @@ class TestAppGenerateServiceCompletionMode:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -392,7 +392,7 @@ class TestAppGenerateServiceCompletionMode:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -445,7 +445,7 @@ class TestAppGenerateServiceAgentMode:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -510,7 +510,7 @@ class TestAppGenerateServiceWorkflowMode:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -562,7 +562,7 @@ class TestAppGenerateServiceWorkflowMode:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -667,7 +667,7 @@ class TestAppGenerateServiceRateLimiting:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -708,7 +708,7 @@ class TestAppGenerateServiceRateLimiting:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -758,7 +758,7 @@ class TestAppGenerateServiceQuotaManagement:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -832,7 +832,7 @@ class TestAppGenerateServiceQuotaManagement:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -875,7 +875,7 @@ class TestAppGenerateServiceInvokeSources:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -916,7 +916,7 @@ class TestAppGenerateServiceInvokeSources:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -956,7 +956,7 @@ class TestAppGenerateServiceInvokeSources:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -1011,7 +1011,7 @@ class TestAppGenerateServiceAdvancedChat:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -1060,7 +1060,7 @@ class TestAppGenerateServiceEdgeCases:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -1098,7 +1098,7 @@ class TestAppGenerateServiceEdgeCases:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -1138,7 +1138,7 @@ class TestAppGenerateServiceEdgeCases:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -1186,7 +1186,7 @@ class TestAppGenerateServiceEdgeCases:
                 invoke_from=InvokeFrom.WEB_APP,
                 streaming=True,
             )
-        
+
         # The exception is raised during generator instantiation, not consumption
         assert "Generation failed" in str(exc_info.value)
         # Rate limit should be released in exception handler
@@ -1214,7 +1214,7 @@ class TestAppGenerateServiceEdgeCases:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
@@ -1257,7 +1257,7 @@ class TestAppGenerateServiceMaxActiveRequests:
 
         # Mock convert_to_event_stream to pass through
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
