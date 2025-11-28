@@ -214,10 +214,8 @@ class TestWorkflowPerformanceService:
             ),
         ]
 
-        mock_session.execute.side_effect = [
-            MagicMock(fetchall=lambda: mock_run_ids),
-            MagicMock(fetchall=lambda: mock_bottleneck_data),
-        ]
+        # Mock execute to return bottleneck data directly (no run_ids query with JOIN)
+        mock_session.execute.return_value.fetchall.return_value = mock_bottleneck_data
 
         # Act
         bottlenecks = WorkflowPerformanceService.identify_bottlenecks(
@@ -262,10 +260,8 @@ class TestWorkflowPerformanceService:
             ),
         ]
 
-        mock_session.execute.side_effect = [
-            MagicMock(fetchall=lambda: mock_run_ids),
-            MagicMock(fetchall=lambda: mock_node_data),
-        ]
+        # Mock execute to return node data directly (no run_ids query with JOIN)
+        mock_session.execute.return_value.fetchall.return_value = mock_node_data
 
         # Act
         breakdown = WorkflowPerformanceService.get_node_performance_breakdown(
