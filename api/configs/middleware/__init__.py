@@ -106,7 +106,7 @@ class KeywordStoreConfig(BaseSettings):
 
 class DatabaseConfig(BaseSettings):
     # Database type selector
-    DB_TYPE: Literal["postgresql", "mysql", "oceanbase"] = Field(
+    DB_TYPE: Literal["postgresql", "mysql", "oceanbase", "seekdb"] = Field(
         description="Database type to use. OceanBase is MySQL-compatible.",
         default="postgresql",
     )
