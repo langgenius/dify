@@ -55,24 +55,23 @@ class AppListQuery(BaseModel):
     @field_validator("tag_ids", mode="before")
     @classmethod
     def validate_tag_ids(cls, value: str | list[str] | None) -> list[str] | None:
-        if value in (None, "", []):
+        if not value:
             return None
-        if isinstance(value, list):
-            parsed: list[str] = []
-            for item in value:
-                if item is None:
-                    continue
-                parsed.extend(cls.validate_tag_ids(str(item)) or [])
-            return parsed or None
+
         if isinstance(value, str):
-            parts = [part.strip() for part in value.split(",") if part.strip()]
-            if not parts:
-                return None
-            try:
-                return [str(uuid.UUID(part)) for part in parts]
-            except ValueError as exc:
-                raise ValueError("Invalid UUID format in tag_ids.") from exc
-        raise TypeError("Unsupported tag_ids type.")
+            items = [item.strip() for item in value.split(",") if item.strip()]
+        elif isinstance(value, list):
+            items = [str(item).strip() for item in value if item and str(item).strip()]
+        else:
+            raise TypeError("Unsupported tag_ids type.")
+
+        if not items:
+            return None
+
+        try:
+            return [str(uuid.UUID(item)) for item in items]
+        except ValueError as exc:
+            raise ValueError("Invalid UUID format in tag_ids.") from exc
 
 
 class CreateAppPayload(BaseModel):
