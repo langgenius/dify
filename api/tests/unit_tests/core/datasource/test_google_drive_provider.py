@@ -188,9 +188,7 @@ class TestGoogleDriveFileListing:
             plugin_unique_identifier="langgenius/google_drive_datasource",
         )
 
-    def _create_drive_file(
-        self, file_id: str, name: str, file_type: str = "file", size: int = 1024
-    ) -> OnlineDriveFile:
+    def _create_drive_file(self, file_id: str, name: str, file_type: str = "file", size: int = 1024) -> OnlineDriveFile:
         """Helper to create a Google Drive file structure."""
         return OnlineDriveFile(id=file_id, name=name, type=file_type, size=size)
 
@@ -245,9 +243,7 @@ class TestGoogleDriveFileListing:
             result=[
                 OnlineDriveFileBucket(
                     bucket=None,
-                    files=[
-                        self._create_drive_file(f"file-{i}", f"File{i}.txt", "file", 1024) for i in range(1, 21)
-                    ],
+                    files=[self._create_drive_file(f"file-{i}", f"File{i}.txt", "file", 1024) for i in range(1, 21)],
                     is_truncated=True,
                     next_page_parameters={"page_token": "next-page-token-abc"},
                 )
@@ -259,9 +255,7 @@ class TestGoogleDriveFileListing:
             result=[
                 OnlineDriveFileBucket(
                     bucket=None,
-                    files=[
-                        self._create_drive_file(f"file-{i}", f"File{i}.txt", "file", 1024) for i in range(21, 31)
-                    ],
+                    files=[self._create_drive_file(f"file-{i}", f"File{i}.txt", "file", 1024) for i in range(21, 31)],
                     is_truncated=False,
                     next_page_parameters=None,
                 )
@@ -327,9 +321,7 @@ class TestGoogleDriveFileListing:
         mock_manager_class.return_value = mock_manager
 
         mock_response = OnlineDriveBrowseFilesResponse(
-            result=[
-                OnlineDriveFileBucket(bucket=None, files=[], is_truncated=False, next_page_parameters=None)
-            ]
+            result=[OnlineDriveFileBucket(bucket=None, files=[], is_truncated=False, next_page_parameters=None)]
         )
 
         def mock_generator():
@@ -555,7 +547,7 @@ class TestGoogleDriveFileDownload:
         # Assert
         assert len(result) == 1
         assert isinstance(result[0].message, bytes)
-        assert result[0].message[:2] == b"\xFF\xD8"  # JPEG magic number
+        assert result[0].message[:2] == b"\xff\xd8"  # JPEG magic number
         assert result[0].meta["mime_type"] == "image/jpeg"
 
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
@@ -670,9 +662,7 @@ class TestGoogleDriveIncrementalSync:
 
         # Empty result indicating no changes
         no_changes = OnlineDriveBrowseFilesResponse(
-            result=[
-                OnlineDriveFileBucket(bucket=None, files=[], is_truncated=False, next_page_parameters=None)
-            ]
+            result=[OnlineDriveFileBucket(bucket=None, files=[], is_truncated=False, next_page_parameters=None)]
         )
 
         def mock_generator():
@@ -1114,7 +1104,7 @@ class TestGoogleDriveAdvancedScenarios:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_shared_drive_file_listing(self, mock_manager_class, google_drive_plugin):
         """Test browsing files in a shared/team drive.
-        
+
         Shared drives (formerly Team Drives) are collaborative spaces where teams
         can store and access files. This test verifies proper handling of shared
         drive file listings.
@@ -1158,7 +1148,7 @@ class TestGoogleDriveAdvancedScenarios:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_google_workspace_file_types(self, mock_manager_class, google_drive_plugin):
         """Test handling of Google Workspace native file types.
-        
+
         Google Workspace files (Docs, Sheets, Slides) require special handling
         as they don't have traditional file sizes and may need export/conversion.
         """
@@ -1204,7 +1194,7 @@ class TestGoogleDriveAdvancedScenarios:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_unicode_and_special_characters_in_filenames(self, mock_manager_class, google_drive_plugin):
         """Test handling of Unicode and special characters in file names.
-        
+
         File names can contain various Unicode characters, emojis, and special
         characters that need to be properly handled.
         """
@@ -1253,7 +1243,7 @@ class TestGoogleDriveAdvancedScenarios:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_deep_pagination_scenario(self, mock_manager_class, google_drive_plugin):
         """Test handling of deep pagination with multiple page tokens.
-        
+
         Large folders may require multiple pagination requests. This test
         simulates navigating through several pages of results.
         """
@@ -1303,7 +1293,7 @@ class TestGoogleDriveAdvancedScenarios:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_empty_credentials_scenario(self, mock_manager_class, google_drive_plugin):
         """Test behavior when credentials are empty or invalid.
-        
+
         Ensures graceful handling when OAuth credentials are missing or invalid,
         which can happen during credential refresh failures.
         """
@@ -1317,7 +1307,7 @@ class TestGoogleDriveAdvancedScenarios:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_mixed_content_types_in_folder(self, mock_manager_class, google_drive_plugin):
         """Test folder containing mixed content types.
-        
+
         Real-world folders often contain a mix of files, folders, shortcuts,
         and Google Workspace documents. This test ensures all types are handled.
         """
@@ -1361,12 +1351,12 @@ class TestGoogleDriveAdvancedScenarios:
         # Assert
         files = result[0].result[0].files
         assert len(files) == 8
-        
+
         # Count different types
         folders = [f for f in files if f.type == "folder"]
         regular_files = [f for f in files if f.type == "file" and f.size > 0]
         workspace_files = [f for f in files if f.type == "file" and f.size == 0]
-        
+
         assert len(folders) == 2
         assert len(regular_files) == 4
         assert len(workspace_files) == 2
@@ -1374,7 +1364,7 @@ class TestGoogleDriveAdvancedScenarios:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_file_download_with_metadata(self, mock_manager_class, google_drive_plugin):
         """Test file download includes comprehensive metadata.
-        
+
         Downloaded files should include metadata like MIME type, file size,
         modification time, and other relevant information.
         """
@@ -1418,7 +1408,7 @@ class TestGoogleDriveAdvancedScenarios:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_incremental_sync_with_multiple_change_types(self, mock_manager_class, google_drive_plugin):
         """Test incremental sync detecting various types of changes.
-        
+
         Changes can include: new files, modified files, deleted files, moved files,
         and renamed files. This test ensures all change types are tracked.
         """
@@ -1469,7 +1459,7 @@ class TestGoogleDriveAdvancedScenarios:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_concurrent_file_operations_simulation(self, mock_manager_class, google_drive_plugin):
         """Test handling of concurrent file operations.
-        
+
         Simulates scenario where multiple files are being accessed/modified
         simultaneously, ensuring thread-safety and consistency.
         """
@@ -1538,7 +1528,7 @@ class TestGoogleDriveEdgeCases:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_zero_byte_files(self, mock_manager_class, google_drive_plugin):
         """Test handling of zero-byte (empty) files.
-        
+
         Empty files are valid and should be handled correctly without errors.
         """
         # Arrange
@@ -1577,7 +1567,7 @@ class TestGoogleDriveEdgeCases:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_extremely_long_filename(self, mock_manager_class, google_drive_plugin):
         """Test handling of files with extremely long names.
-        
+
         File systems have limits on filename length, but cloud storage may allow
         longer names. This test ensures proper handling.
         """
@@ -1618,7 +1608,7 @@ class TestGoogleDriveEdgeCases:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_files_without_extension(self, mock_manager_class, google_drive_plugin):
         """Test handling of files without file extensions.
-        
+
         Not all files have extensions (e.g., README, Makefile, LICENSE).
         These should be handled correctly.
         """
@@ -1659,7 +1649,7 @@ class TestGoogleDriveEdgeCases:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_duplicate_filenames_different_folders(self, mock_manager_class, google_drive_plugin):
         """Test handling of duplicate filenames in different folders.
-        
+
         Google Drive allows files with the same name in different folders.
         File IDs should be used to distinguish them.
         """
@@ -1720,7 +1710,7 @@ class TestGoogleDriveEdgeCases:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_deeply_nested_folder_structure(self, mock_manager_class, google_drive_plugin):
         """Test navigation through deeply nested folder structures.
-        
+
         Verifies that the provider can handle deep folder hierarchies
         (e.g., /root/level1/level2/level3/level4/level5).
         """
@@ -1762,7 +1752,7 @@ class TestGoogleDriveEdgeCases:
     @patch("core.datasource.online_drive.online_drive_plugin.PluginDatasourceManager")
     def test_download_zero_byte_file(self, mock_manager_class, google_drive_plugin):
         """Test downloading a zero-byte (empty) file.
-        
+
         Empty files should download successfully with no content.
         """
         # Arrange
