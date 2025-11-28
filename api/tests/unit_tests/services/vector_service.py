@@ -791,9 +791,7 @@ class TestVectorService:
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_index_processor
 
         # Act
-        VectorService.generate_child_chunks(
-            segment, dataset_document, dataset, embedding_model, processing_rule, False
-        )
+        VectorService.generate_child_chunks(segment, dataset_document, dataset, embedding_model, processing_rule, False)
 
         # Assert
         mock_index_processor.transform.assert_called_once()
@@ -831,9 +829,7 @@ class TestVectorService:
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_index_processor
 
         # Act
-        VectorService.generate_child_chunks(
-            segment, dataset_document, dataset, embedding_model, processing_rule, True
-        )
+        VectorService.generate_child_chunks(segment, dataset_document, dataset, embedding_model, processing_rule, True)
 
         # Assert
         mock_index_processor.clean.assert_called_once()
@@ -875,9 +871,7 @@ class TestVectorService:
         mock_index_processor_factory.return_value.init_index_processor.return_value = mock_index_processor
 
         # Act
-        VectorService.generate_child_chunks(
-            segment, dataset_document, dataset, embedding_model, processing_rule, False
-        )
+        VectorService.generate_child_chunks(segment, dataset_document, dataset, embedding_model, processing_rule, False)
 
         # Assert
         mock_index_processor.transform.assert_called_once()
@@ -1795,4 +1789,3 @@ class TestVector:
         mock_cache_embedding.assert_called_once_with(mock_embedding_model)
 
         assert vector._embeddings == mock_cache_embedding_instance
-
