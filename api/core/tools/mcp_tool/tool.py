@@ -207,3 +207,6 @@ class MCPTool(Tool):
             raise ToolInvokeError(f"Failed to connect to MCP server: {e}") from e
         except Exception as e:
             raise ToolInvokeError(f"Failed to invoke tool: {e}") from e
+
+    def _build_session_key(self, server_url: str) -> str:
+        return f"{self.provider_id}:{server_url}"

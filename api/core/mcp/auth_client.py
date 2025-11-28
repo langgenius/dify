@@ -163,7 +163,7 @@ class MCPClientWithAuthRetry(MCPClient):
         """Enter the context manager with retry support."""
 
         def initialize_with_retry():
-            super(MCPClientWithAuthRetry, self).__enter__()
+            super().__enter__()
             return self
 
         return self._execute_with_retry(initialize_with_retry)
@@ -172,7 +172,7 @@ class MCPClientWithAuthRetry(MCPClient):
         """Initialize the client once with auth retry semantics and return self."""
 
         def connect_with_retry() -> "MCPClientWithAuthRetry":
-            super(MCPClientWithAuthRetry, self).connect()
+            super().connect()
             return self
 
         return self._execute_with_retry(connect_with_retry)
