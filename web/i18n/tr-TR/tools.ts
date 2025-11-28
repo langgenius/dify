@@ -122,7 +122,7 @@ const translation = {
     toolOutput: {
       title: 'Araç Çıktısı',
       name: 'İsim',
-      reserved: 'Rezerve',
+      reserved: 'Ayrılmış',
       reservedParameterDuplicateTip: 'text, json ve dosyalar ayrılmış değişkenlerdir. Bu isimlere sahip değişkenler çıktı şemasında yer alamaz.',
       description: 'Açıklama',
     },
