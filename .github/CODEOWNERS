@@ -18,10 +18,10 @@ api/core/workflow/node_events/ @laipz8200 @QuantumGhost
 api/core/model_runtime/ @laipz8200 @QuantumGhost
 
 # Backend - Workflow - Nodes (Agent, Iteration, Loop, LLM)
-api/core/workflow/nodes/agent/ @Novice
-api/core/workflow/nodes/iteration/ @Novice
-api/core/workflow/nodes/loop/ @Novice
-api/core/workflow/nodes/llm/ @Novice
+api/core/workflow/nodes/agent/ Nov1c444
+api/core/workflow/nodes/iteration/ Nov1c444
+api/core/workflow/nodes/loop/ Nov1c444
+api/core/workflow/nodes/llm/ Nov1c444
 
 # Backend - RAG (Retrieval Augmented Generation)
 api/core/rag/ @JohnJyong
@@ -141,7 +141,7 @@ web/app/components/app/log-annotation/ @JzoNgKVO @iamjoel
 web/app/components/app/annotation/ @JzoNgKVO @iamjoel
 
 # Frontend - App - Monitoring
-web/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/ @JzoNgKVO @iamjoel
+web/app/(commonLayout)/app/(appDetailLayout)/\[appId\]/overview/ @JzoNgKVO @iamjoel
 web/app/components/app/overview/ @JzoNgKVO @iamjoel
 
 # Frontend - App - Settings
