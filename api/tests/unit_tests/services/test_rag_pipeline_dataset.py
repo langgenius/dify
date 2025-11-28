@@ -80,7 +80,6 @@ Tests dataset settings update operations:
 
 import json
 from unittest.mock import MagicMock, Mock, create_autospec, patch
-from uuid import uuid4
 
 import pytest
 from sqlalchemy.orm import Session
@@ -97,12 +96,11 @@ from services.entities.knowledge_entities.rag_pipeline_entities import (
     RetrievalSetting,
 )
 from services.errors.dataset import DatasetNameDuplicateError
-from services.rag_pipeline.rag_pipeline import RagPipelineService
-
 
 # ============================================================================
 # TEST DATA FACTORY
 # ============================================================================
+
 
 class RAGPipelineDatasetTestDataFactory:
     """
@@ -305,9 +303,7 @@ class RAGPipelineDatasetTestDataFactory:
         entity.name = name
         entity.description = description
         entity.permission = permission
-        entity.icon_info = icon_info or IconInfo(
-            icon_type="emoji", icon="📚", icon_background="#FFE5B4", icon_url=None
-        )
+        entity.icon_info = icon_info or IconInfo(icon_type="emoji", icon="📚", icon_background="#FFE5B4", icon_url=None)
         entity.partial_member_list = partial_member_list
         entity.yaml_content = yaml_content
 
@@ -718,9 +714,7 @@ class TestPipelineKnowledgeBaseNodeUpdates:
             "edges": [],
         }
 
-        published_workflow = factory.create_workflow_mock(
-            workflow_id="published-123", graph=json.dumps(workflow_graph)
-        )
+        published_workflow = factory.create_workflow_mock(workflow_id="published-123", graph=json.dumps(workflow_graph))
         draft_workflow = factory.create_workflow_mock(workflow_id="draft-123", graph=json.dumps(workflow_graph))
 
         # Mock RagPipelineService
@@ -755,9 +749,7 @@ class TestPipelineKnowledgeBaseNodeUpdates:
         assert mock_rag_pipeline_service.get_draft_workflow.called
 
     @patch("services.dataset_service.db.session")
-    def test_update_pipeline_knowledge_base_node_data_non_rag_pipeline_skips(
-        self, mock_db_session, factory
-    ):
+    def test_update_pipeline_knowledge_base_node_data_non_rag_pipeline_skips(self, mock_db_session, factory):
         """
         Test that non-RAG pipeline datasets skip node updates.
 
@@ -780,9 +772,7 @@ class TestPipelineKnowledgeBaseNodeUpdates:
         mock_db_session.query.assert_not_called()
 
     @patch("services.dataset_service.db.session")
-    def test_update_pipeline_knowledge_base_node_data_missing_pipeline_skips(
-        self, mock_db_session, factory
-    ):
+    def test_update_pipeline_knowledge_base_node_data_missing_pipeline_skips(self, mock_db_session, factory):
         """
         Test that missing pipeline skips node updates.
 
@@ -925,9 +915,7 @@ class TestPipelineDatasetSettingsUpdates:
         mock_session.add.assert_called_once_with(dataset)
 
     @patch("services.dataset_service.current_user", new_callable=lambda: create_autospec(Account, instance=True))
-    def test_update_rag_pipeline_dataset_settings_unpublished_economy_success(
-        self, mock_current_user, factory
-    ):
+    def test_update_rag_pipeline_dataset_settings_unpublished_economy_success(self, mock_current_user, factory):
         """
         Test successful settings update for unpublished dataset with economy indexing.
 
@@ -1024,9 +1012,7 @@ class TestPipelineDatasetSettingsUpdates:
             )
 
     @patch("services.dataset_service.current_user", new_callable=lambda: create_autospec(Account, instance=True))
-    def test_update_rag_pipeline_dataset_settings_published_cannot_change_to_economy(
-        self, mock_current_user, factory
-    ):
+    def test_update_rag_pipeline_dataset_settings_published_cannot_change_to_economy(self, mock_current_user, factory):
         """
         Test that published datasets cannot change to economy indexing.
 
@@ -1070,9 +1056,7 @@ class TestPipelineDatasetSettingsUpdates:
             )
 
     @patch("services.dataset_service.current_user", new_callable=lambda: create_autospec(Account, instance=True))
-    def test_update_rag_pipeline_dataset_settings_no_current_user_raises_error(
-        self, mock_current_user, factory
-    ):
+    def test_update_rag_pipeline_dataset_settings_no_current_user_raises_error(self, mock_current_user, factory):
         """
         Test that missing current_user raises ValueError.
 
@@ -1104,9 +1088,7 @@ class TestPipelineDatasetSettingsUpdates:
             )
 
     @patch("services.dataset_service.current_user", new_callable=lambda: create_autospec(Account, instance=True))
-    def test_update_rag_pipeline_dataset_settings_invalid_index_method_raises_error(
-        self, mock_current_user, factory
-    ):
+    def test_update_rag_pipeline_dataset_settings_invalid_index_method_raises_error(self, mock_current_user, factory):
         """
         Test that invalid indexing technique raises ValueError.
 
@@ -1144,4 +1126,3 @@ class TestPipelineDatasetSettingsUpdates:
             DatasetService.update_rag_pipeline_dataset_settings(
                 mock_session, dataset, knowledge_config, has_published=False
             )
-
