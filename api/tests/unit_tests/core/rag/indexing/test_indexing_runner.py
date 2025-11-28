@@ -81,20 +81,20 @@ def create_mock_dataset(
     embedding_model: str = "text-embedding-ada-002",
 ) -> Mock:
     """Create a mock Dataset object with configurable parameters.
-    
+
     This helper function creates a properly configured mock Dataset object that can be
     used across multiple tests, ensuring consistency in test data.
-    
+
     Args:
         dataset_id: Optional dataset ID. If None, generates a new UUID.
         tenant_id: Optional tenant ID. If None, generates a new UUID.
         indexing_technique: The indexing technique ("high_quality" or "economy").
         embedding_provider: The embedding model provider name.
         embedding_model: The embedding model name.
-    
+
     Returns:
         Mock: A configured mock Dataset object with all required attributes.
-    
+
     Example:
         >>> dataset = create_mock_dataset(indexing_technique="economy")
         >>> assert dataset.indexing_technique == "economy"
@@ -117,10 +117,10 @@ def create_mock_dataset_document(
     doc_language: str = "English",
 ) -> Mock:
     """Create a mock DatasetDocument object with configurable parameters.
-    
+
     This helper function creates a properly configured mock DatasetDocument object,
     reducing boilerplate code in individual tests.
-    
+
     Args:
         document_id: Optional document ID. If None, generates a new UUID.
         dataset_id: Optional dataset ID. If None, generates a new UUID.
@@ -128,10 +128,10 @@ def create_mock_dataset_document(
         doc_form: The document form/index type (e.g., PARAGRAPH_INDEX, QA_INDEX).
         data_source_type: The data source type ("upload_file", "notion_import", etc.).
         doc_language: The document language.
-    
+
     Returns:
         Mock: A configured mock DatasetDocument object with all required attributes.
-    
+
     Example:
         >>> doc = create_mock_dataset_document(doc_form=IndexType.QA_INDEX)
         >>> assert doc.doc_form == IndexType.QA_INDEX
@@ -155,18 +155,18 @@ def create_sample_documents(
     base_content: str = "Sample chunk content",
 ) -> list[Document]:
     """Create a list of sample Document objects for testing.
-    
+
     This helper function generates test documents with proper metadata,
     optionally including child documents for hierarchical indexing tests.
-    
+
     Args:
         count: Number of documents to create.
         include_children: Whether to add child documents to each parent.
         base_content: Base content string for documents.
-    
+
     Returns:
         list[Document]: A list of Document objects with metadata.
-    
+
     Example:
         >>> docs = create_sample_documents(count=2, include_children=True)
         >>> assert len(docs) == 2
@@ -183,7 +183,7 @@ def create_sample_documents(
                 "dataset_id": "dataset1",
             },
         )
-        
+
         # Add child documents if requested (for parent-child indexing)
         if include_children:
             doc.children = [
@@ -195,9 +195,9 @@ def create_sample_documents(
                     },
                 )
             ]
-        
+
         documents.append(doc)
-    
+
     return documents
 
 
@@ -208,19 +208,19 @@ def create_mock_process_rule(
     separator: str = "\\n\\n",
 ) -> dict[str, Any]:
     """Create a mock processing rule dictionary.
-    
+
     This helper function creates a processing rule configuration that matches
     the structure expected by the IndexingRunner.
-    
+
     Args:
         mode: Processing mode ("automatic", "custom", or "hierarchical").
         max_tokens: Maximum tokens per chunk.
         chunk_overlap: Number of overlapping tokens between chunks.
         separator: Separator string for splitting.
-    
+
     Returns:
         dict: A processing rule configuration dictionary.
-    
+
     Example:
         >>> rule = create_mock_process_rule(mode="custom", max_tokens=1000)
         >>> assert rule["mode"] == "custom"
@@ -234,9 +234,7 @@ def create_mock_process_rule(
                 "chunk_overlap": chunk_overlap,
                 "separator": separator,
             },
-            "pre_processing_rules": [
-                {"id": "remove_extra_spaces", "enabled": True}
-            ],
+            "pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}],
         },
     }
 
@@ -296,13 +294,13 @@ class TestIndexingRunnerExtract:
 
     def test_extract_upload_file_success(self, mock_dependencies, sample_dataset_document, sample_process_rule):
         """Test successful extraction from uploaded file.
-        
+
         This test verifies that the IndexingRunner can successfully extract content
         from an uploaded file and properly update document metadata. It ensures:
         - The processor's extract method is called with correct parameters
         - Document and dataset IDs are properly added to metadata
         - The document status is updated during extraction
-        
+
         Expected behavior:
         - Extract should return documents with updated metadata
         - Each document should have document_id and dataset_id in metadata
@@ -328,9 +326,9 @@ class TestIndexingRunnerExtract:
 
         # Mock the entire _extract method to avoid ExtractSetting validation
         # This is necessary because ExtractSetting uses Pydantic validation
-        with patch.object(runner, '_update_document_index_status'):
-            with patch('core.indexing_runner.select'):
-                with patch('core.indexing_runner.ExtractSetting'):
+        with patch.object(runner, "_update_document_index_status"):
+            with patch("core.indexing_runner.select"):
+                with patch("core.indexing_runner.ExtractSetting"):
                     # Act: Call the extract method
                     result = runner._extract(mock_processor, sample_dataset_document, sample_process_rule)
 
@@ -359,13 +357,11 @@ class TestIndexingRunnerExtract:
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
 
-        extracted_docs = [
-            Document(page_content="Notion content", metadata={"doc_id": "notion1", "source": "notion"})
-        ]
+        extracted_docs = [Document(page_content="Notion content", metadata={"doc_id": "notion1", "source": "notion"})]
         mock_processor.extract.return_value = extracted_docs
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, '_update_document_index_status'):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             result = runner._extract(mock_processor, sample_dataset_document, sample_process_rule)
 
@@ -396,7 +392,7 @@ class TestIndexingRunnerExtract:
         mock_processor.extract.return_value = extracted_docs
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, '_update_document_index_status'):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             result = runner._extract(mock_processor, sample_dataset_document, sample_process_rule)
 
@@ -481,9 +477,7 @@ class TestIndexingRunnerTransform:
             ),
         ]
 
-    def test_transform_with_high_quality_indexing(
-        self, mock_dependencies, sample_dataset, sample_text_docs
-    ):
+    def test_transform_with_high_quality_indexing(self, mock_dependencies, sample_dataset, sample_text_docs):
         """Test transformation with high quality indexing (embeddings)."""
         # Arrange
         runner = IndexingRunner()
@@ -509,9 +503,7 @@ class TestIndexingRunnerTransform:
         }
 
         # Act
-        result = runner._transform(
-            mock_processor, sample_dataset, sample_text_docs, "English", process_rule
-        )
+        result = runner._transform(mock_processor, sample_dataset, sample_text_docs, "English", process_rule)
 
         # Assert
         assert len(result) == 2
@@ -543,9 +535,7 @@ class TestIndexingRunnerTransform:
         process_rule = {"mode": "automatic", "rules": {}}
 
         # Act
-        result = runner._transform(
-            mock_processor, sample_dataset, sample_text_docs, "English", process_rule
-        )
+        result = runner._transform(mock_processor, sample_dataset, sample_text_docs, "English", process_rule)
 
         # Assert
         assert len(result) == 1
@@ -559,9 +549,7 @@ class TestIndexingRunnerTransform:
         runner.model_manager.get_model_instance.return_value = mock_embedding_instance
 
         mock_processor = MagicMock()
-        transformed_docs = [
-            Document(page_content="Custom chunk", metadata={"doc_id": "custom1", "doc_hash": "hash1"})
-        ]
+        transformed_docs = [Document(page_content="Custom chunk", metadata={"doc_id": "custom1", "doc_hash": "hash1"})]
         mock_processor.transform.return_value = transformed_docs
 
         process_rule = {
@@ -570,9 +558,7 @@ class TestIndexingRunnerTransform:
         }
 
         # Act
-        result = runner._transform(
-            mock_processor, sample_dataset, sample_text_docs, "Chinese", process_rule
-        )
+        result = runner._transform(mock_processor, sample_dataset, sample_text_docs, "Chinese", process_rule)
 
         # Assert
         assert len(result) == 1
@@ -673,7 +659,7 @@ class TestIndexingRunnerLoad:
         mock_dependencies["executor"].return_value = mock_executor_instance
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, '_update_document_index_status'):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             runner._load(mock_processor, sample_dataset, sample_dataset_document, sample_documents)
 
@@ -698,7 +684,7 @@ class TestIndexingRunnerLoad:
         mock_dependencies["thread"].return_value = mock_thread_instance
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, '_update_document_index_status'):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             runner._load(mock_processor, sample_dataset, sample_dataset_document, sample_documents)
 
@@ -742,7 +728,7 @@ class TestIndexingRunnerLoad:
         mock_dependencies["executor"].return_value = mock_executor_instance
 
         # Mock update_document_index_status to avoid database calls
-        with patch.object(runner, '_update_document_index_status'):
+        with patch.object(runner, "_update_document_index_status"):
             # Act
             runner._load(mock_processor, sample_dataset, sample_dataset_document, sample_documents)
 
@@ -821,9 +807,7 @@ class TestIndexingRunnerRun:
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
 
         # Mock extract, transform, load
-        mock_processor.extract.return_value = [
-            Document(page_content="Test content", metadata={"doc_id": "doc1"})
-        ]
+        mock_processor.extract.return_value = [Document(page_content="Test content", metadata={"doc_id": "doc1"})]
         mock_processor.transform.return_value = [
             Document(
                 page_content="Chunk 1",
@@ -837,14 +821,14 @@ class TestIndexingRunnerRun:
 
         # Mock all internal methods that interact with database
         with (
-            patch.object(runner, '_extract', return_value=[Document(page_content="Test", metadata={})]),
+            patch.object(runner, "_extract", return_value=[Document(page_content="Test", metadata={})]),
             patch.object(
                 runner,
-                '_transform',
+                "_transform",
                 return_value=[Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})],
             ),
-            patch.object(runner, '_load_segments'),
-            patch.object(runner, '_load'),
+            patch.object(runner, "_load_segments"),
+            patch.object(runner, "_load"),
         ):
             # Act
             runner.run([doc])
@@ -872,7 +856,7 @@ class TestIndexingRunnerRun:
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
 
         # Mock _extract to raise DocumentIsPausedError
-        with patch.object(runner, '_extract', side_effect=DocumentIsPausedError("Document paused")):
+        with patch.object(runner, "_extract", side_effect=DocumentIsPausedError("Document paused")):
             # Act & Assert
             with pytest.raises(DocumentIsPausedError):
                 runner.run([doc])
@@ -924,7 +908,7 @@ class TestIndexingRunnerRun:
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
 
         # Mock _extract to raise ObjectDeletedError
-        with patch.object(runner, '_extract', side_effect=ObjectDeletedError(state=None, msg="Object deleted")):
+        with patch.object(runner, "_extract", side_effect=ObjectDeletedError(state=None, msg="Object deleted")):
             # Act
             runner.run([doc])
 
@@ -963,14 +947,14 @@ class TestIndexingRunnerRun:
 
         # Mock all internal methods
         with (
-            patch.object(runner, '_extract', return_value=[Document(page_content="Test", metadata={})]) as mock_extract,
+            patch.object(runner, "_extract", return_value=[Document(page_content="Test", metadata={})]) as mock_extract,
             patch.object(
                 runner,
-                '_transform',
+                "_transform",
                 return_value=[Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})],
             ),
-            patch.object(runner, '_load_segments'),
-            patch.object(runner, '_load'),
+            patch.object(runner, "_load_segments"),
+            patch.object(runner, "_load"),
         ):
             # Act
             runner.run(docs)
@@ -1129,7 +1113,7 @@ class TestIndexingRunnerDocumentCleaning:
     def test_filter_string_removes_special_characters(self):
         """Test filter_string removes special control characters."""
         # Arrange
-        text = "Normal text\x00with\x08control\x1Fcharacters\x7F"
+        text = "Normal text\x00with\x08control\x1fcharacters\x7f"
 
         # Act
         result = IndexingRunner.filter_string(text)
@@ -1137,8 +1121,8 @@ class TestIndexingRunnerDocumentCleaning:
         # Assert
         assert "\x00" not in result
         assert "\x08" not in result
-        assert "\x1F" not in result
-        assert "\x7F" not in result
+        assert "\x1f" not in result
+        assert "\x7f" not in result
         assert "Normal text" in result
 
     def test_filter_string_handles_unicode_fffe(self):
@@ -1309,8 +1293,8 @@ class TestIndexingRunnerLoadSegments:
 
         # Mock update methods to avoid database calls
         with (
-            patch.object(runner, '_update_document_index_status'),
-            patch.object(runner, '_update_segments_by_document'),
+            patch.object(runner, "_update_document_index_status"),
+            patch.object(runner, "_update_segments_by_document"),
         ):
             # Act
             runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
@@ -1321,9 +1305,7 @@ class TestIndexingRunnerLoadSegments:
             user_id=sample_dataset_document.created_by,
             document_id=sample_dataset_document.id,
         )
-        mock_docstore_instance.add_documents.assert_called_once_with(
-            docs=sample_documents, save_child=False
-        )
+        mock_docstore_instance.add_documents.assert_called_once_with(docs=sample_documents, save_child=False)
 
     def test_load_segments_parent_child_index(
         self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents
@@ -1347,8 +1329,8 @@ class TestIndexingRunnerLoadSegments:
 
         # Mock update methods to avoid database calls
         with (
-            patch.object(runner, '_update_document_index_status'),
-            patch.object(runner, '_update_segments_by_document'),
+            patch.object(runner, "_update_document_index_status"),
+            patch.object(runner, "_update_segments_by_document"),
         ):
             # Act
             runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
@@ -1369,8 +1351,8 @@ class TestIndexingRunnerLoadSegments:
 
         # Mock update methods to avoid database calls
         with (
-            patch.object(runner, '_update_document_index_status'),
-            patch.object(runner, '_update_segments_by_document'),
+            patch.object(runner, "_update_document_index_status"),
+            patch.object(runner, "_update_segments_by_document"),
         ):
             # Act
             runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
@@ -1464,7 +1446,7 @@ class TestIndexingRunnerProcessChunk:
         """Test process chunk correctly counts tokens."""
         # Arrange
         from core.indexing_runner import IndexingRunner
-        
+
         runner = IndexingRunner()
         mock_embedding_instance = MagicMock()
         # Mock to return an iterable that sums to 150 tokens
@@ -1514,7 +1496,7 @@ class TestIndexingRunnerProcessChunk:
         """Test process chunk detects document pause."""
         # Arrange
         from core.indexing_runner import IndexingRunner
-        
+
         runner = IndexingRunner()
         mock_embedding_instance = MagicMock()
         mock_processor = MagicMock()
