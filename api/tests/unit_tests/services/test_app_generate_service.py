@@ -178,7 +178,7 @@ class TestAppGenerateServiceChatMode:
         mock_config.BILLING_ENABLED = False
         mock_config.APP_MAX_ACTIVE_REQUESTS = 10
         mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
-        
+
         # Mock rate limit
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
@@ -195,10 +195,10 @@ class TestAppGenerateServiceChatMode:
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = mock_generate()
-        
+
         # Mock convert_to_event_stream to pass through the generator
         mock_generator.convert_to_event_stream.side_effect = lambda x: x
-        
+
         # Mock rate_limit.generate to pass through the generator
         mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
