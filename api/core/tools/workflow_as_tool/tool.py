@@ -115,9 +115,7 @@
                     yield self.create_file_message(file)  # type: ignore
 
             # Pop return_direct first to avoid it being created as a variable
-            return_direct_flag = False
-            if isinstance(outputs, dict):
-                return_direct_flag = outputs.pop("return_direct", None) is True
+            return_direct_flag = isinstance(outputs, dict) and outputs.pop("return_direct", None) is True
 
             # Traverse `outputs` field and create variable messages from the official update
             if isinstance(outputs, dict):
