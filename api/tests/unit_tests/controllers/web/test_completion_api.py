@@ -88,6 +88,7 @@ class TestCompletionApiBasic:
         self, mock_helper, mock_generate_service, completion_api, completion_app, end_user
     ):
         """Test successful streaming completion request."""
+
         # Setup
         def mock_stream():
             yield {"type": "text", "text": "Hello"}
