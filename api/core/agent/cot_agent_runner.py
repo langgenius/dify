@@ -234,7 +234,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
                     if direct_flag:
                         final_answer = str(tool_invoke_response or "")
-                        is_final_answer_from_tool = True
                         # keep function_call_state as False to end iterations
                     else:
                         function_call_state = True
@@ -244,15 +243,6 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
 
             iteration_step += 1
-
-        yield LLMResultChunk(
-            model=model_instance.model,
-            prompt_messages=prompt_messages,
-            delta=LLMResultChunkDelta(
-                index=0, message=AssistantPromptMessage(content=final_answer), usage=llm_usage["usage"]
-            ),
-            system_fingerprint="",
-        )
 
         self.save_agent_thought(
             agent_thought_id=agent_thought_id,
@@ -264,6 +254,19 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             answer=final_answer,
             messages_ids=[],
         )
+        self.queue_manager.publish(
+            QueueAgentThoughtEvent(agent_thought_id=agent_thought_id), PublishFrom.APPLICATION_MANAGER
+        )
+
+        yield LLMResultChunk(
+            model=model_instance.model,
+            prompt_messages=prompt_messages,
+            delta=LLMResultChunkDelta(
+                index=0, message=AssistantPromptMessage(content=final_answer), usage=llm_usage["usage"]
+            ),
+            system_fingerprint="",
+        )
+
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(
