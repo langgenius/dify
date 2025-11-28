@@ -187,6 +187,19 @@ const GotoAnything: FC<Props> = ({
   }, {} as { [key: string]: SearchResult[] }),
   [searchResults])
 
+  useEffect(() => {
+    if (isCommandsMode)
+      return
+
+    if (!searchResults.length)
+      return
+
+    const currentValueExists = searchResults.some(result => `${result.type}-${result.id}` === cmdVal)
+
+    if (!currentValueExists)
+      setCmdVal(`${searchResults[0].type}-${searchResults[0].id}`)
+  }, [isCommandsMode, searchResults, cmdVal])
+
   const emptyResult = useMemo(() => {
     if (searchResults.length || !searchQuery.trim() || isLoading || isCommandsMode)
       return null
