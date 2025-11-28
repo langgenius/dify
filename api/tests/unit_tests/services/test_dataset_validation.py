@@ -616,7 +616,8 @@ class TestDatasetServicePermissionChecks:
         # Verify database query was executed
         mock_db_session.query.assert_called()
 
-        # Verify logger was called
+        mock_db_session.query.assert_called_with(DatasetPermission)
+        mock_query.filter_by.assert_called_once_with(dataset_id=dataset.id, account_id=user.id)
         mock_logger.debug.assert_called()
 
     def test_check_dataset_operator_permission_dataset_not_found_raises_error(self, factory):
