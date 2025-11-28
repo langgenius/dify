@@ -267,7 +267,7 @@ class TagServiceTestDataFactory:
         # Set core attributes
         dataset.id = dataset_id
         dataset.tenant_id = tenant_id
-        dataset.name = kwargs.get("name", "Test Dataset")
+        dataset.name = kwargs.pop("name", "Test Dataset")
 
         # Apply any additional attributes from kwargs
         for key, value in kwargs.items():
