@@ -141,8 +141,8 @@ class TagServiceTestDataFactory:
         tag.tenant_id = tenant_id
 
         # Set default optional attributes
-        tag.created_by = kwargs.get("created_by", "user-123")
-        tag.created_at = kwargs.get("created_at", datetime.now(UTC))
+        tag.created_by = kwargs.pop("created_by", "user-123")
+        tag.created_at = kwargs.pop("created_at", datetime(2023, 1, 1, 0, 0, 0, tzinfo=UTC))
 
         # Apply any additional attributes from kwargs
         for key, value in kwargs.items():
