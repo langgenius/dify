@@ -1,6 +1,14 @@
 """
 Comprehensive Integration Tests for Workflow Performance Analytics System
 
+⚠️  IMPORTANT: This test suite requires the Workflow Performance Analytics feature
+    to be merged first (PR #28883). The tests will fail with ModuleNotFoundError
+    until the following are available:
+    - models.workflow_performance (WorkflowPerformanceMetrics, WorkflowNodePerformance, etc.)
+    - services.workflow_performance_service
+    - services.workflow_cache_service
+    - services.workflow_optimization_advisor
+
 This module provides extensive integration testing for the workflow performance
 analytics system, covering interactions between WorkflowPerformanceService,
 WorkflowCacheService, and WorkflowOptimizationAdvisor.
