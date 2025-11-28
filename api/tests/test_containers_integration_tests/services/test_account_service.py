@@ -993,7 +993,11 @@ class TestAccountService:
         account.status = AccountStatus.BANNED
         from extensions.ext_database import db
 
+        db.session.add(account)
         db.session.commit()
+        
+        # Expire the account object from session to force fresh query
+        db.session.expire(account)
 
         with pytest.raises(Unauthorized):  # Unauthorized exception
             AccountService.get_user_through_email(email)
