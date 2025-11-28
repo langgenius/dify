@@ -84,6 +84,7 @@ def chat_app(tenant):
     app.enable_site = True
     app.enable_api = True
     app.created_at = datetime.utcnow()
+    app.max_active_requests = 5
     return app
 
 
@@ -98,6 +99,7 @@ def completion_app(tenant):
     app.enable_site = True
     app.enable_api = True
     app.created_at = datetime.utcnow()
+    app.max_active_requests = 5
     return app
 
 
@@ -112,6 +114,7 @@ def agent_chat_app(tenant):
     app.enable_site = True
     app.enable_api = True
     app.created_at = datetime.utcnow()
+    app.max_active_requests = 5
     return app
 
 
@@ -126,6 +129,7 @@ def advanced_chat_app(tenant):
     app.enable_site = True
     app.enable_api = True
     app.created_at = datetime.utcnow()
+    app.max_active_requests = 5
     return app
 
 
@@ -140,6 +144,7 @@ def workflow_app(tenant):
     app.enable_site = True
     app.enable_api = True
     app.created_at = datetime.utcnow()
+    app.max_active_requests = 5
     return app
 
 
@@ -661,7 +666,9 @@ class TestAppGenerateServiceQuotaManagement:
 
         mock_workflow_quota = MagicMock()
         mock_quota_type.WORKFLOW = mock_workflow_quota
-        mock_workflow_quota.consume.side_effect = QuotaExceededError("Quota exceeded")
+        mock_workflow_quota.consume.side_effect = QuotaExceededError(
+            feature="workflow", tenant_id=chat_app.tenant_id, required=1
+        )
 
         # Execute & Verify
         args = {"query": "Hello"}
