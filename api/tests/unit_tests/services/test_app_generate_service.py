@@ -23,8 +23,7 @@ Tests cover:
 import uuid
 from collections.abc import Generator
 from datetime import datetime
-from typing import Any
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -35,7 +34,6 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import (
     InvokeRateLimitError,
     QuotaExceededError,
-    WorkflowIdFormatError,
     WorkflowNotFoundError,
 )
 
@@ -174,27 +172,25 @@ class TestAppGenerateServiceChatMode:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_generate_chat_app_streaming(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_generate_chat_app_streaming(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test generating chat app response with streaming."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
-        
+
         # Mock streaming response
         def mock_generate():
             yield {"type": "message", "content": "Hello"}
             yield {"type": "message", "content": " World"}
             yield {"type": "end"}
-        
+
         mock_generator_instance.generate.return_value = mock_generate()
-        
+
         # Execute
         args = {"query": "Hello", "conversation_id": None}
         result = AppGenerateService.generate(
@@ -204,7 +200,7 @@ class TestAppGenerateServiceChatMode:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         # Verify
         assert isinstance(result, Generator)
         responses = list(result)
@@ -212,32 +208,30 @@ class TestAppGenerateServiceChatMode:
         assert responses[0]["content"] == "Hello"
         assert responses[1]["content"] == " World"
         assert responses[2]["type"] == "end"
-        
+
         # Verify rate limit was checked
         mock_rate_limit_instance.enter.assert_called_once()
 
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_generate_chat_app_blocking(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_generate_chat_app_blocking(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test generating chat app response without streaming."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
-        
+
         # Mock blocking response
         mock_generator_instance.generate.return_value = {
             "message": "Complete response",
             "conversation_id": str(uuid.uuid4()),
         }
-        
+
         # Execute
         args = {"query": "Hello", "conversation_id": None}
         result = AppGenerateService.generate(
@@ -247,7 +241,7 @@ class TestAppGenerateServiceChatMode:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=False,
         )
-        
+
         # Verify
         assert isinstance(result, dict)
         assert result["message"] == "Complete response"
@@ -256,20 +250,18 @@ class TestAppGenerateServiceChatMode:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_generate_chat_with_end_user(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, end_user
-    ):
+    def test_generate_chat_with_end_user(self, mock_config, mock_rate_limit, mock_generator, chat_app, end_user):
         """Test generating chat app response with end user."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = {"message": "Response"}
-        
+
         # Execute
         args = {"query": "Hello"}
         result = AppGenerateService.generate(
@@ -279,7 +271,7 @@ class TestAppGenerateServiceChatMode:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=False,
         )
-        
+
         # Verify
         assert result is not None
         mock_generator.assert_called_once()
@@ -302,17 +294,17 @@ class TestAppGenerateServiceCompletionMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
-        
+
         def mock_generate():
             yield {"type": "text", "text": "Generated"}
             yield {"type": "text", "text": " content"}
             yield {"type": "end"}
-        
+
         mock_generator_instance.generate.return_value = mock_generate()
-        
+
         # Execute
         args = {"inputs": {"prompt": "Write a story"}}
         result = AppGenerateService.generate(
@@ -322,7 +314,7 @@ class TestAppGenerateServiceCompletionMode:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         # Verify
         assert isinstance(result, Generator)
         responses = list(result)
@@ -340,14 +332,14 @@ class TestAppGenerateServiceCompletionMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = {
             "text": "Complete generated content",
             "usage": {"tokens": 100},
         }
-        
+
         # Execute
         args = {"inputs": {"prompt": "Write a story"}}
         result = AppGenerateService.generate(
@@ -357,7 +349,7 @@ class TestAppGenerateServiceCompletionMode:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=False,
         )
-        
+
         # Verify
         assert isinstance(result, dict)
         assert result["text"] == "Complete generated content"
@@ -379,19 +371,19 @@ class TestAppGenerateServiceAgentMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
-        
+
         def mock_generate():
             yield {"type": "agent_thought", "thought": "I need to search"}
             yield {"type": "tool_call", "tool": "search", "input": "query"}
             yield {"type": "tool_response", "output": "results"}
             yield {"type": "agent_message", "message": "Based on search..."}
             yield {"type": "end"}
-        
+
         mock_generator_instance.generate.return_value = mock_generate()
-        
+
         # Execute
         args = {"query": "Search for information", "conversation_id": None}
         result = AppGenerateService.generate(
@@ -401,7 +393,7 @@ class TestAppGenerateServiceAgentMode:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         # Verify
         responses = list(result)
         assert len(responses) == 5
@@ -434,20 +426,20 @@ class TestAppGenerateServiceWorkflowMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_workflow_service.get_draft_workflow.return_value = workflow
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
-        
+
         def mock_generate():
             yield {"type": "workflow_started"}
             yield {"type": "node_started", "node_id": "node_1"}
             yield {"type": "node_finished", "node_id": "node_1", "output": {"result": "data"}}
             yield {"type": "workflow_finished", "outputs": {"final": "result"}}
-        
+
         mock_generator_instance.generate.return_value = mock_generate()
-        
+
         # Execute
         args = {"inputs": {"input_field": "value"}}
         result = AppGenerateService.generate(
@@ -457,7 +449,7 @@ class TestAppGenerateServiceWorkflowMode:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         # Verify
         responses = list(result)
         assert len(responses) == 4
@@ -484,13 +476,13 @@ class TestAppGenerateServiceWorkflowMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_workflow_service.get_draft_workflow.return_value = workflow
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "workflow_finished"}])
-        
+
         # Execute
         root_node_id = "node_123"
         args = {"inputs": {"input_field": "value"}}
@@ -502,7 +494,7 @@ class TestAppGenerateServiceWorkflowMode:
             streaming=True,
             root_node_id=root_node_id,
         )
-        
+
         # Verify
         list(result)  # Consume generator
         mock_generator.assert_called_once()
@@ -521,9 +513,9 @@ class TestAppGenerateServiceWorkflowMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_workflow_service.get_draft_workflow.return_value = None
-        
+
         # Execute & Verify
         args = {"inputs": {"input_field": "value"}}
         with pytest.raises(WorkflowNotFoundError):
@@ -542,9 +534,7 @@ class TestAppGenerateServiceRateLimiting:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_rate_limit_enforced(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_rate_limit_enforced(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test that rate limiting is enforced."""
         # Setup
         mock_config.BILLING_ENABLED = False
@@ -552,7 +542,7 @@ class TestAppGenerateServiceRateLimiting:
         mock_rate_limit_instance.enter.side_effect = InvokeRateLimitError("Rate limit exceeded")
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         # Execute & Verify
         args = {"query": "Hello"}
         with pytest.raises(InvokeRateLimitError):
@@ -576,11 +566,11 @@ class TestAppGenerateServiceRateLimiting:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         args = {"query": "Hello"}
         result = AppGenerateService.generate(
@@ -590,29 +580,27 @@ class TestAppGenerateServiceRateLimiting:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         list(result)  # Consume generator
-        
+
         # Verify rate limit was released
         mock_rate_limit_instance.exit.assert_called_once()
 
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_concurrent_requests_within_limit(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_concurrent_requests_within_limit(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test multiple concurrent requests within rate limit."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute multiple requests
         args = {"query": "Hello"}
         for i in range(5):
@@ -624,7 +612,7 @@ class TestAppGenerateServiceRateLimiting:
                 streaming=True,
             )
             list(result)
-        
+
         # Verify rate limit was checked for each request
         assert mock_rate_limit_instance.enter.call_count == 5
 
@@ -645,15 +633,15 @@ class TestAppGenerateServiceQuotaManagement:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_workflow_quota = MagicMock()
         mock_quota_type.WORKFLOW = mock_workflow_quota
         mock_workflow_quota.consume.return_value = MagicMock()
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         args = {"query": "Hello"}
         result = AppGenerateService.generate(
@@ -663,29 +651,27 @@ class TestAppGenerateServiceQuotaManagement:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         list(result)
-        
+
         # Verify quota was consumed
         mock_workflow_quota.consume.assert_called_once_with(chat_app.tenant_id)
 
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.QuotaType")
     @patch("services.app_generate_service.dify_config")
-    def test_quota_exceeded_error(
-        self, mock_config, mock_quota_type, mock_rate_limit, chat_app, account
-    ):
+    def test_quota_exceeded_error(self, mock_config, mock_quota_type, mock_rate_limit, chat_app, account):
         """Test error when quota is exceeded."""
         # Setup
         mock_config.BILLING_ENABLED = True
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_workflow_quota = MagicMock()
         mock_quota_type.WORKFLOW = mock_workflow_quota
         mock_workflow_quota.consume.side_effect = QuotaExceededError("Quota exceeded")
-        
+
         # Execute & Verify
         args = {"query": "Hello"}
         with pytest.raises(InvokeRateLimitError) as exc_info:
@@ -696,7 +682,7 @@ class TestAppGenerateServiceQuotaManagement:
                 invoke_from=InvokeFrom.WEB_APP,
                 streaming=True,
             )
-        
+
         assert "quota limit reached" in str(exc_info.value).lower()
 
     @patch("services.app_generate_service.ChatAppGenerator")
@@ -711,11 +697,11 @@ class TestAppGenerateServiceQuotaManagement:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         args = {"query": "Hello"}
         result = AppGenerateService.generate(
@@ -725,9 +711,9 @@ class TestAppGenerateServiceQuotaManagement:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         list(result)
-        
+
         # Verify - no quota consumption should occur
         # (We can't directly verify this without mocking QuotaType, but the test passes if no error)
 
@@ -738,20 +724,18 @@ class TestAppGenerateServiceInvokeSources:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_invoke_from_web_app(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, end_user
-    ):
+    def test_invoke_from_web_app(self, mock_config, mock_rate_limit, mock_generator, chat_app, end_user):
         """Test invocation from web app."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         args = {"query": "Hello"}
         result = AppGenerateService.generate(
@@ -761,9 +745,9 @@ class TestAppGenerateServiceInvokeSources:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         list(result)
-        
+
         # Verify
         mock_generator.assert_called_once()
         call_kwargs = mock_generator.call_args[1]
@@ -772,20 +756,18 @@ class TestAppGenerateServiceInvokeSources:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_invoke_from_service_api(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_invoke_from_service_api(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test invocation from service API."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         args = {"query": "Hello"}
         result = AppGenerateService.generate(
@@ -795,9 +777,9 @@ class TestAppGenerateServiceInvokeSources:
             invoke_from=InvokeFrom.SERVICE_API,
             streaming=True,
         )
-        
+
         list(result)
-        
+
         # Verify
         call_kwargs = mock_generator.call_args[1]
         assert call_kwargs["invoke_from"] == InvokeFrom.SERVICE_API
@@ -805,20 +787,18 @@ class TestAppGenerateServiceInvokeSources:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_invoke_from_explore(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_invoke_from_explore(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test invocation from explore page."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         args = {"query": "Hello"}
         result = AppGenerateService.generate(
@@ -828,9 +808,9 @@ class TestAppGenerateServiceInvokeSources:
             invoke_from=InvokeFrom.EXPLORE,
             streaming=True,
         )
-        
+
         list(result)
-        
+
         # Verify
         call_kwargs = mock_generator.call_args[1]
         assert call_kwargs["invoke_from"] == InvokeFrom.EXPLORE
@@ -851,16 +831,16 @@ class TestAppGenerateServiceAdvancedChat:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
-        
+
         def mock_generate():
             yield {"type": "message", "content": "Response with context"}
             yield {"type": "end"}
-        
+
         mock_generator_instance.generate.return_value = mock_generate()
-        
+
         # Execute
         conversation_id = str(uuid.uuid4())
         args = {
@@ -874,7 +854,7 @@ class TestAppGenerateServiceAdvancedChat:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         # Verify
         responses = list(result)
         assert len(responses) == 2
@@ -889,20 +869,18 @@ class TestAppGenerateServiceEdgeCases:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_generate_with_empty_args(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_generate_with_empty_args(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test generation with empty arguments."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         args = {}
         result = AppGenerateService.generate(
@@ -912,7 +890,7 @@ class TestAppGenerateServiceEdgeCases:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         # Verify - should handle gracefully
         list(result)
         mock_generator.assert_called_once()
@@ -920,20 +898,18 @@ class TestAppGenerateServiceEdgeCases:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_generate_with_very_long_input(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_generate_with_very_long_input(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test generation with very long input text."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         very_long_query = "A" * 10000  # 10k characters
         args = {"query": very_long_query}
@@ -944,7 +920,7 @@ class TestAppGenerateServiceEdgeCases:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         # Verify
         list(result)
         call_kwargs = mock_generator.call_args[1]
@@ -953,20 +929,18 @@ class TestAppGenerateServiceEdgeCases:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_generate_with_special_characters(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_generate_with_special_characters(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test generation with special characters in input."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         special_query = "Test with émojis 🎉 and symbols @#$%^&*()"
         args = {"query": special_query}
@@ -977,7 +951,7 @@ class TestAppGenerateServiceEdgeCases:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         # Verify
         list(result)
         call_kwargs = mock_generator.call_args[1]
@@ -986,20 +960,18 @@ class TestAppGenerateServiceEdgeCases:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_generator_exception_handling(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_generator_exception_handling(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test handling of exceptions during generation."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.side_effect = Exception("Generation failed")
-        
+
         # Execute & Verify
         args = {"query": "Hello"}
         result = AppGenerateService.generate(
@@ -1009,10 +981,10 @@ class TestAppGenerateServiceEdgeCases:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         with pytest.raises(Exception) as exc_info:
             list(result)
-        
+
         assert "Generation failed" in str(exc_info.value)
         # Rate limit should still be released
         mock_rate_limit_instance.exit.assert_called_once()
@@ -1020,23 +992,20 @@ class TestAppGenerateServiceEdgeCases:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_generate_with_none_conversation_id(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_generate_with_none_conversation_id(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test generation with None conversation_id (new conversation)."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
-        mock_generator_instance.generate.return_value = iter([
-            {"type": "message", "content": "New conversation"},
-            {"type": "end"}
-        ])
-        
+        mock_generator_instance.generate.return_value = iter(
+            [{"type": "message", "content": "New conversation"}, {"type": "end"}]
+        )
+
         # Execute
         args = {"query": "Hello", "conversation_id": None}
         result = AppGenerateService.generate(
@@ -1046,7 +1015,7 @@ class TestAppGenerateServiceEdgeCases:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         # Verify
         list(result)
         call_kwargs = mock_generator.call_args[1]
@@ -1059,20 +1028,18 @@ class TestAppGenerateServiceMaxActiveRequests:
     @patch("services.app_generate_service.ChatAppGenerator")
     @patch("services.app_generate_service.RateLimit")
     @patch("services.app_generate_service.dify_config")
-    def test_default_max_active_requests(
-        self, mock_config, mock_rate_limit, mock_generator, chat_app, account
-    ):
+    def test_default_max_active_requests(self, mock_config, mock_rate_limit, mock_generator, chat_app, account):
         """Test default max active requests value."""
         # Setup
         mock_config.BILLING_ENABLED = False
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-        
+
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
-        
+
         # Execute
         args = {"query": "Hello"}
         result = AppGenerateService.generate(
@@ -1082,9 +1049,9 @@ class TestAppGenerateServiceMaxActiveRequests:
             invoke_from=InvokeFrom.WEB_APP,
             streaming=True,
         )
-        
+
         list(result)
-        
+
         # Verify RateLimit was initialized with app_id
         mock_rate_limit.assert_called_once()
         assert mock_rate_limit.call_args[0][0] == chat_app.id
