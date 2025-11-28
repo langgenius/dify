@@ -133,7 +133,7 @@ from models.enums import CreatorUserRole  # User role enumeration for file attri
 
 class TestFileTypeValidation:
     """Unit tests for file type validation.
-    
+
     Tests cover:
     - Valid file extensions for images, videos, audio, documents
     - Invalid/unsupported file types
@@ -209,7 +209,7 @@ class TestFileTypeValidation:
 
 class TestFileSizeLimiting:
     """Unit tests for file size limiting logic.
-    
+
     Tests cover:
     - Size limits for different file types (image, video, audio, general)
     - Files within size limits
@@ -219,10 +219,10 @@ class TestFileSizeLimiting:
 
     def test_is_file_size_within_limit_image(self):
         """Test file size validation logic for images.
-        
+
         This test validates the size limit checking algorithm for image files.
         Images have a default limit of 10MB (configurable via UPLOAD_IMAGE_FILE_SIZE_LIMIT).
-        
+
         Test cases:
         - File under limit (5MB) should pass
         - File over limit (15MB) should fail
@@ -238,11 +238,11 @@ class TestFileSizeLimiting:
         # This function determines the appropriate size limit based on file extension
         def check_size(extension: str, file_size: int) -> bool:
             """Check if file size is within allowed limit for its type.
-            
+
             Args:
                 extension: File extension (e.g., 'jpg', 'mp4')
                 file_size: Size of file in bytes
-                
+
             Returns:
                 True if file size is within limit, False otherwise
             """
@@ -256,7 +256,7 @@ class TestFileSizeLimiting:
             else:
                 # Default limit for general files (documents, etc.)
                 file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
-            
+
             # Return True if file size is within or equal to limit
             return file_size <= file_size_limit
 
@@ -343,10 +343,10 @@ class TestFileSizeLimiting:
 
 class TestVirusScanningIntegration:
     """Unit tests for virus scanning integration.
-    
+
     Note: Current implementation does not include virus scanning.
     These tests serve as placeholders for future implementation.
-    
+
     Tests cover:
     - Clean file upload (no scanning currently)
     - Future: Infected file detection
@@ -358,13 +358,13 @@ class TestVirusScanningIntegration:
         """Test that no virus scanning is currently implemented."""
         # This test documents that virus scanning is not yet implemented
         # When virus scanning is added, this test should be updated
-        
+
         # Arrange
         content = b"This could be any content"
-        
+
         # Act - No virus scanning function exists yet
         # This is a placeholder for future implementation
-        
+
         # Assert - Document current state
         assert True  # No virus scanning to test yet
 
@@ -384,7 +384,7 @@ class TestVirusScanningIntegration:
 
 class TestStoragePathGeneration:
     """Unit tests for storage path generation.
-    
+
     Tests cover:
     - Unique path generation for each upload
     - Path format validation
@@ -399,10 +399,10 @@ class TestStoragePathGeneration:
         tenant_id = str(uuid.uuid4())
         file_uuid = str(uuid.uuid4())
         extension = "txt"
-        
+
         # Act
         file_key = f"upload_files/{tenant_id}/{file_uuid}.{extension}"
-        
+
         # Assert
         assert file_key.startswith("upload_files/")
         assert tenant_id in file_key
@@ -413,7 +413,7 @@ class TestStoragePathGeneration:
         # Arrange & Act
         uuid1 = str(uuid.uuid4())
         uuid2 = str(uuid.uuid4())
-        
+
         # Assert
         assert uuid1 != uuid2
 
@@ -423,10 +423,10 @@ class TestStoragePathGeneration:
         tenant_id = str(uuid.uuid4())
         file_uuid = str(uuid.uuid4())
         extension = "pdf"
-        
+
         # Act
         file_key = f"upload_files/{tenant_id}/{file_uuid}.{extension}"
-        
+
         # Assert
         assert tenant_id in file_key
 
@@ -443,14 +443,14 @@ class TestStoragePathGeneration:
         """Test that file extension is correctly extracted and lowercased."""
         # Act
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
-        
+
         # Assert
         assert extension == expected_ext
 
 
 class TestDuplicateDetection:
     """Unit tests for duplicate file detection using hash.
-    
+
     Tests cover:
     - Hash generation for uploaded files
     - Detection of identical file content
@@ -460,13 +460,13 @@ class TestDuplicateDetection:
 
     def test_file_hash_generation(self):
         """Test that file hash is generated correctly using SHA3-256.
-        
+
         File hashing is critical for duplicate detection. The system uses SHA3-256
         to generate a unique fingerprint for each file's content. This allows:
         - Detection of duplicate uploads (same content, different names)
         - Content integrity verification
         - Efficient storage deduplication
-        
+
         SHA3-256 properties:
         - Produces 256-bit (32-byte) hash
         - Represented as 64 hexadecimal characters
@@ -477,25 +477,25 @@ class TestDuplicateDetection:
         content = b"test content for hashing"
         # Pre-calculate expected hash for verification
         expected_hash = hashlib.sha3_256(content).hexdigest()
-        
+
         # Act - Generate hash using the same algorithm
         actual_hash = hashlib.sha3_256(content).hexdigest()
-        
+
         # Assert - Verify hash properties
         assert actual_hash == expected_hash  # Hash should be deterministic
         assert len(actual_hash) == 64  # SHA3-256 produces 64 hex characters (256 bits / 4 bits per char)
         # Verify hash contains only valid hexadecimal characters
-        assert all(c in '0123456789abcdef' for c in actual_hash)
+        assert all(c in "0123456789abcdef" for c in actual_hash)
 
     def test_identical_content_same_hash(self):
         """Test that identical content produces same hash."""
         # Arrange
         content = b"identical content"
-        
+
         # Act
         hash1 = hashlib.sha3_256(content).hexdigest()
         hash2 = hashlib.sha3_256(content).hexdigest()
-        
+
         # Assert
         assert hash1 == hash2
 
@@ -504,11 +504,11 @@ class TestDuplicateDetection:
         # Arrange
         content1 = b"content one"
         content2 = b"content two"
-        
+
         # Act
         hash1 = hashlib.sha3_256(content1).hexdigest()
         hash2 = hashlib.sha3_256(content2).hexdigest()
-        
+
         # Assert
         assert hash1 != hash2
 
@@ -516,17 +516,17 @@ class TestDuplicateDetection:
         """Test that hash generation is consistent across multiple calls."""
         # Arrange
         content = b"consistent content"
-        
+
         # Act
         hashes = [hashlib.sha3_256(content).hexdigest() for _ in range(5)]
-        
+
         # Assert
         assert all(h == hashes[0] for h in hashes)
 
 
 class TestInvalidFilenameHandling:
     """Unit tests for invalid filename handling.
-    
+
     Tests cover:
     - Invalid characters in filename
     - Extremely long filenames
@@ -539,7 +539,7 @@ class TestInvalidFilenameHandling:
     )
     def test_filename_contains_invalid_characters(self, invalid_char):
         """Test detection of invalid characters in filename.
-        
+
         Security-critical test that validates rejection of dangerous filename characters.
         These characters are blocked because they:
         - / and \\ : Directory separators, could enable path traversal
@@ -548,7 +548,7 @@ class TestInvalidFilenameHandling:
         - " : Quote character, could break command-line operations
         - < and > : Redirection operators, command injection risk
         - | : Pipe operator, command injection risk
-        
+
         Blocking these characters prevents:
         - Path traversal attacks (../../etc/passwd)
         - Command injection
@@ -559,10 +559,10 @@ class TestInvalidFilenameHandling:
         filename = f"test{invalid_char}file.txt"
         # Define complete list of invalid characters
         invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
-        
+
         # Act - Check if filename contains any invalid character
         has_invalid_char = any(c in filename for c in invalid_chars)
-        
+
         # Assert - Should detect the invalid character
         assert has_invalid_char is True
 
@@ -571,10 +571,10 @@ class TestInvalidFilenameHandling:
         # Arrange
         filename = "valid_file-name_123.txt"
         invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
-        
+
         # Act
         has_invalid_char = any(c in filename for c in invalid_chars)
-        
+
         # Assert
         assert has_invalid_char is False
 
@@ -585,13 +585,13 @@ class TestInvalidFilenameHandling:
         filename = f"{long_name}.txt"
         extension = "txt"
         max_length = 200
-        
+
         # Act
         if len(filename) > max_length:
             truncated_filename = filename.split(".")[0][:max_length] + "." + extension
         else:
             truncated_filename = filename
-        
+
         # Assert
         assert len(truncated_filename) <= max_length + len(extension) + 1
         assert truncated_filename.endswith(".txt")
@@ -605,7 +605,7 @@ class TestInvalidFilenameHandling:
             "../../sensitive/file.txt",
         ]
         invalid_chars = ["/", "\\"]
-        
+
         # Act & Assert
         for filename in malicious_filenames:
             has_invalid_char = any(c in filename for c in invalid_chars)
@@ -614,7 +614,7 @@ class TestInvalidFilenameHandling:
 
 class TestBlacklistedExtensions:
     """Unit tests for blacklisted file extension handling.
-    
+
     Tests cover:
     - Blocking of blacklisted extensions
     - Case-insensitive extension checking
@@ -637,7 +637,7 @@ class TestBlacklistedExtensions:
         """Test blacklist extension checking logic."""
         # Act
         is_blocked = extension.lower() in blacklist
-        
+
         # Assert
         assert is_blocked == should_block
 
@@ -646,7 +646,7 @@ class TestBlacklistedExtensions:
         # Arrange
         extensions = ["exe", "bat", "txt", "pdf", "dll"]
         blacklist = set()
-        
+
         # Act & Assert
         for ext in extensions:
             assert ext.lower() not in blacklist
@@ -655,7 +655,7 @@ class TestBlacklistedExtensions:
         """Test that blacklist configuration is accessible."""
         # Act
         blacklist = dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST
-        
+
         # Assert
         assert isinstance(blacklist, set)
         # Blacklist can be empty or contain extensions
@@ -663,7 +663,7 @@ class TestBlacklistedExtensions:
 
 class TestUserRoleHandling:
     """Unit tests for different user role handling.
-    
+
     Tests cover:
     - Account user role assignment
     - EndUser role assignment
@@ -685,12 +685,13 @@ class TestUserRoleHandling:
         # Arrange
         user = Mock()
         user.__class__.__name__ = "Account"
-        
+
         # Act
         from models import Account
+
         is_account = isinstance(user, Account) or user.__class__.__name__ == "Account"
         role = CreatorUserRole.ACCOUNT if is_account else CreatorUserRole.END_USER
-        
+
         # Assert
         assert role == CreatorUserRole.ACCOUNT
 
@@ -699,19 +700,20 @@ class TestUserRoleHandling:
         # Arrange
         user = Mock()
         user.__class__.__name__ = "EndUser"
-        
+
         # Act
         from models import Account
+
         is_account = isinstance(user, Account) or user.__class__.__name__ == "Account"
         role = CreatorUserRole.ACCOUNT if is_account else CreatorUserRole.END_USER
-        
+
         # Assert
         assert role == CreatorUserRole.END_USER
 
 
 class TestSourceUrlGeneration:
     """Unit tests for source URL generation logic.
-    
+
     Tests cover:
     - URL format validation
     - Custom source URL preservation
@@ -723,10 +725,10 @@ class TestSourceUrlGeneration:
         # Arrange
         file_id = str(uuid.uuid4())
         base_url = "https://example.com/files"
-        
+
         # Act
         source_url = f"{base_url}/{file_id}"
-        
+
         # Assert
         assert source_url.startswith("https://")
         assert file_id in source_url
@@ -736,10 +738,10 @@ class TestSourceUrlGeneration:
         # Arrange
         custom_url = "https://custom.example.com/file/abc"
         default_url = "https://default.example.com/file/123"
-        
+
         # Act
         final_url = custom_url or default_url
-        
+
         # Assert
         assert final_url == custom_url
 
@@ -749,10 +751,10 @@ class TestSourceUrlGeneration:
         custom_url = ""
         file_id = str(uuid.uuid4())
         default_url = f"https://default.example.com/file/{file_id}"
-        
+
         # Act
         final_url = custom_url or default_url
-        
+
         # Assert
         assert final_url == default_url
         assert file_id in final_url
@@ -760,7 +762,7 @@ class TestSourceUrlGeneration:
 
 class TestFileUploadIntegration:
     """Integration-style tests for file upload error handling.
-    
+
     Tests cover:
     - Error types and messages
     - Exception hierarchy
@@ -771,7 +773,7 @@ class TestFileUploadIntegration:
         """Test that FileTooLargeError is defined and properly structured."""
         # Act
         from services.errors.file import FileTooLargeError
-        
+
         # Assert - Verify the error class exists
         assert FileTooLargeError is not None
         # Verify it can be instantiated
@@ -782,7 +784,7 @@ class TestFileUploadIntegration:
         """Test that UnsupportedFileTypeError is defined and properly structured."""
         # Act
         from services.errors.file import UnsupportedFileTypeError
-        
+
         # Assert - Verify the error class exists
         assert UnsupportedFileTypeError is not None
         # Verify it can be instantiated
@@ -793,7 +795,7 @@ class TestFileUploadIntegration:
         """Test that BlockedFileExtensionError is defined and properly structured."""
         # Act
         from services.errors.file import BlockedFileExtensionError
-        
+
         # Assert - Verify the error class exists
         assert BlockedFileExtensionError is not None
         # Verify it can be instantiated
@@ -804,7 +806,7 @@ class TestFileUploadIntegration:
         """Test that FileNotExistsError is defined and properly structured."""
         # Act
         from services.errors.file import FileNotExistsError
-        
+
         # Assert - Verify the error class exists
         assert FileNotExistsError is not None
         # Verify it can be instantiated
@@ -814,7 +816,7 @@ class TestFileUploadIntegration:
 
 class TestFileExtensionNormalization:
     """Tests for file extension extraction and normalization.
-    
+
     Tests cover:
     - Extension extraction from various filename formats
     - Case normalization (uppercase to lowercase)
@@ -835,13 +837,13 @@ class TestFileExtensionNormalization:
     )
     def test_extension_extraction_and_normalization(self, filename, expected_extension):
         """Test that file extensions are correctly extracted and normalized to lowercase.
-        
+
         This mimics the logic in FileService.upload_file where:
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
         """
         # Act - Extract and normalize extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
-        
+
         # Assert - Verify correct extraction and normalization
         assert extension == expected_extension
 
@@ -849,10 +851,10 @@ class TestFileExtensionNormalization:
         """Test handling of filenames without extensions."""
         # Arrange
         filename = "README"
-        
+
         # Act - Extract extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
-        
+
         # Assert - Should return empty string
         assert extension == ""
 
@@ -860,10 +862,10 @@ class TestFileExtensionNormalization:
         """Test handling of hidden files (starting with dot) with extensions."""
         # Arrange
         filename = ".gitignore"
-        
+
         # Act - Extract extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
-        
+
         # Assert - Should return empty string (no extension after the dot)
         assert extension == ""
 
@@ -871,17 +873,17 @@ class TestFileExtensionNormalization:
         """Test handling of hidden files with actual extensions."""
         # Arrange
         filename = ".config.json"
-        
+
         # Act - Extract extension
         extension = os.path.splitext(filename)[1].lstrip(".").lower()
-        
+
         # Assert - Should return the extension
         assert extension == "json"
 
 
 class TestFilenameValidation:
     """Tests for comprehensive filename validation logic.
-    
+
     Tests cover:
     - Special characters validation
     - Length constraints
@@ -893,7 +895,7 @@ class TestFilenameValidation:
         """Test detection of empty filenames."""
         # Arrange
         empty_filenames = ["", " ", "  ", "\t", "\n"]
-        
+
         # Act & Assert - All should be considered invalid
         for filename in empty_filenames:
             assert filename.strip() == ""
@@ -903,10 +905,10 @@ class TestFilenameValidation:
         # Arrange
         filename = "my document with spaces.pdf"
         invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
-        
+
         # Act - Check for invalid characters
         has_invalid = any(c in filename for c in invalid_chars)
-        
+
         # Assert - Spaces are allowed
         assert has_invalid is False
 
@@ -920,7 +922,7 @@ class TestFilenameValidation:
             "ファイル.jpg",  # Japanese
         ]
         invalid_chars = ["/", "\\", ":", "*", "?", '"', "<", ">", "|"]
-        
+
         # Act & Assert - Unicode should be allowed
         for filename in unicode_filenames:
             has_invalid = any(c in filename for c in invalid_chars)
@@ -930,28 +932,28 @@ class TestFilenameValidation:
         """Test filename length at various boundary conditions."""
         # Arrange
         max_length = 200
-        
+
         # Test cases: (name_length, should_truncate)
         test_cases = [
-            (50, False),   # Well under limit
+            (50, False),  # Well under limit
             (199, False),  # Just under limit
             (200, False),  # At limit
-            (201, True),   # Just over limit
-            (300, True),   # Well over limit
+            (201, True),  # Just over limit
+            (300, True),  # Well over limit
         ]
-        
+
         for name_length, should_truncate in test_cases:
             # Create filename of specified length
             base_name = "a" * name_length
             filename = f"{base_name}.txt"
             extension = "txt"
-            
+
             # Act - Apply truncation logic
             if len(filename) > max_length:
                 truncated = filename.split(".")[0][:max_length] + "." + extension
             else:
                 truncated = filename
-            
+
             # Assert
             if should_truncate:
                 assert len(truncated) <= max_length + len(extension) + 1
@@ -961,7 +963,7 @@ class TestFilenameValidation:
 
 class TestMimeTypeHandling:
     """Tests for MIME type handling and validation.
-    
+
     Tests cover:
     - Common MIME types for different file categories
     - MIME type format validation
@@ -986,7 +988,7 @@ class TestMimeTypeHandling:
     )
     def test_mime_type_category_mapping(self, extension, expected_mime_prefix):
         """Test that file extensions map to appropriate MIME type categories.
-        
+
         This validates the general category of MIME types expected for different
         file extensions, ensuring proper content type handling.
         """
@@ -1004,10 +1006,10 @@ class TestMimeTypeHandling:
             "txt": "text/plain",
             "html": "text/html",
         }
-        
+
         # Act - Get MIME type
         mime_type = mime_mappings.get(extension, "application/octet-stream")
-        
+
         # Assert - Verify MIME type starts with expected prefix
         assert mime_type.startswith(expected_mime_prefix)
 
@@ -1016,7 +1018,7 @@ class TestMimeTypeHandling:
         # Arrange
         unknown_extensions = ["xyz", "unknown", "custom"]
         fallback_mime = "application/octet-stream"
-        
+
         # Act & Assert - All unknown types should use fallback
         for ext in unknown_extensions:
             # In real implementation, unknown types would use fallback
@@ -1025,7 +1027,7 @@ class TestMimeTypeHandling:
 
 class TestStorageKeyGeneration:
     """Tests for storage key generation and uniqueness.
-    
+
     Tests cover:
     - Key format consistency
     - UUID uniqueness guarantees
@@ -1035,7 +1037,7 @@ class TestStorageKeyGeneration:
 
     def test_storage_key_components(self):
         """Test that storage keys contain all required components.
-        
+
         Storage keys should follow the format:
         upload_files/{tenant_id}/{uuid}.{extension}
         """
@@ -1043,16 +1045,16 @@ class TestStorageKeyGeneration:
         tenant_id = str(uuid.uuid4())
         file_uuid = str(uuid.uuid4())
         extension = "pdf"
-        
+
         # Act - Generate storage key
         storage_key = f"upload_files/{tenant_id}/{file_uuid}.{extension}"
-        
+
         # Assert - Verify all components are present
         assert "upload_files/" in storage_key
         assert tenant_id in storage_key
         assert file_uuid in storage_key
         assert storage_key.endswith(f".{extension}")
-        
+
         # Verify path structure
         parts = storage_key.split("/")
         assert len(parts) == 3  # upload_files, tenant_id, filename
@@ -1061,16 +1063,16 @@ class TestStorageKeyGeneration:
 
     def test_uuid_collision_probability(self):
         """Test UUID generation for collision resistance.
-        
+
         UUIDs should be unique across multiple generations to prevent
         storage key collisions.
         """
         # Arrange - Generate multiple UUIDs
         num_uuids = 1000
-        
+
         # Act - Generate UUIDs
         generated_uuids = [str(uuid.uuid4()) for _ in range(num_uuids)]
-        
+
         # Assert - All should be unique
         assert len(generated_uuids) == len(set(generated_uuids))
 
@@ -1080,10 +1082,10 @@ class TestStorageKeyGeneration:
         tenant_id = str(uuid.uuid4())
         file_uuid = str(uuid.uuid4())
         extension = "txt"
-        
+
         # Act - Generate storage key
         storage_key = f"upload_files/{tenant_id}/{file_uuid}.{extension}"
-        
+
         # Assert - Should not contain path traversal sequences
         assert "../" not in storage_key
         assert "..\\" not in storage_key
@@ -1092,7 +1094,7 @@ class TestStorageKeyGeneration:
 
 class TestFileHashingConsistency:
     """Tests for file content hashing consistency and reliability.
-    
+
     Tests cover:
     - Hash algorithm consistency (SHA3-256)
     - Deterministic hashing
@@ -1104,27 +1106,27 @@ class TestFileHashingConsistency:
         """Test that SHA3-256 algorithm produces expected hash length."""
         # Arrange
         content = b"test content"
-        
+
         # Act - Generate hash
         file_hash = hashlib.sha3_256(content).hexdigest()
-        
+
         # Assert - SHA3-256 produces 64 hex characters (256 bits / 4 bits per hex char)
         assert len(file_hash) == 64
         assert all(c in "0123456789abcdef" for c in file_hash)
 
     def test_hash_deterministic_behavior(self):
         """Test that hashing the same content always produces the same hash.
-        
+
         This is critical for duplicate detection functionality.
         """
         # Arrange
         content = b"deterministic content for testing"
-        
+
         # Act - Generate hash multiple times
         hash1 = hashlib.sha3_256(content).hexdigest()
         hash2 = hashlib.sha3_256(content).hexdigest()
         hash3 = hashlib.sha3_256(content).hexdigest()
-        
+
         # Assert - All hashes should be identical
         assert hash1 == hash2 == hash3
 
@@ -1133,13 +1135,13 @@ class TestFileHashingConsistency:
         # Arrange
         content1 = b"original content"
         content2 = b"original content "  # Added space
-        content3 = b"Original content"   # Changed case
-        
+        content3 = b"Original content"  # Changed case
+
         # Act - Generate hashes
         hash1 = hashlib.sha3_256(content1).hexdigest()
         hash2 = hashlib.sha3_256(content2).hexdigest()
         hash3 = hashlib.sha3_256(content3).hexdigest()
-        
+
         # Assert - All hashes should be different
         assert hash1 != hash2
         assert hash1 != hash3
@@ -1149,10 +1151,10 @@ class TestFileHashingConsistency:
         """Test that binary content is properly hashed."""
         # Arrange - Create binary content with various byte values
         binary_content = bytes(range(256))  # All possible byte values
-        
+
         # Act - Generate hash
         file_hash = hashlib.sha3_256(binary_content).hexdigest()
-        
+
         # Assert - Should produce valid hash
         assert len(file_hash) == 64
         assert file_hash is not None
@@ -1161,10 +1163,10 @@ class TestFileHashingConsistency:
         """Test hashing of empty content."""
         # Arrange
         empty_content = b""
-        
+
         # Act - Generate hash
         file_hash = hashlib.sha3_256(empty_content).hexdigest()
-        
+
         # Assert - Should produce valid hash even for empty content
         assert len(file_hash) == 64
         # SHA3-256 of empty string is a known value
@@ -1174,7 +1176,7 @@ class TestFileHashingConsistency:
 
 class TestConfigurationValidation:
     """Tests for configuration values and limits.
-    
+
     Tests cover:
     - Size limit configurations
     - Blacklist configurations
@@ -1192,13 +1194,13 @@ class TestConfigurationValidation:
 
     def test_upload_size_limits_reasonable_values(self):
         """Test that upload size limits are within reasonable ranges.
-        
+
         This prevents misconfiguration that could cause issues.
         """
         # Assert - Size limits should be reasonable (between 1MB and 1GB)
         min_size = 1  # 1 MB
         max_size = 1024  # 1 GB
-        
+
         assert min_size <= dify_config.UPLOAD_FILE_SIZE_LIMIT <= max_size
         assert min_size <= dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT <= max_size
         assert min_size <= dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT <= max_size
@@ -1206,7 +1208,7 @@ class TestConfigurationValidation:
 
     def test_video_size_limit_larger_than_image(self):
         """Test that video size limit is typically larger than image limit.
-        
+
         This reflects the expected configuration where videos are larger files.
         """
         # Assert - Video limit should generally be >= image limit
@@ -1216,18 +1218,18 @@ class TestConfigurationValidation:
         """Test that file extension blacklist is a set for efficient lookup."""
         # Act
         blacklist = dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST
-        
+
         # Assert - Should be a set for O(1) lookup
         assert isinstance(blacklist, set)
 
     def test_blacklist_extensions_are_lowercase(self):
         """Test that all blacklisted extensions are stored in lowercase.
-        
+
         This ensures case-insensitive comparison works correctly.
         """
         # Act
         blacklist = dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST
-        
+
         # Assert - All extensions should be lowercase
         for ext in blacklist:
             assert ext == ext.lower(), f"Extension '{ext}' is not lowercase"
@@ -1235,7 +1237,7 @@ class TestConfigurationValidation:
 
 class TestFileConstants:
     """Tests for file-related constants and their properties.
-    
+
     Tests cover:
     - Extension set completeness
     - Case-insensitive support
@@ -1289,23 +1291,22 @@ class TestFileConstants:
 
     def test_no_extension_overlap_between_categories(self):
         """Test that extensions don't appear in multiple incompatible categories.
-        
+
         While some overlap might be intentional, major categories should be distinct.
         """
         # Get lowercase versions of all extensions
         images_lower = {ext.lower() for ext in IMAGE_EXTENSIONS}
         videos_lower = {ext.lower() for ext in VIDEO_EXTENSIONS}
         audio_lower = {ext.lower() for ext in AUDIO_EXTENSIONS}
-        
+
         # Assert - Image and video shouldn't overlap
         image_video_overlap = images_lower & videos_lower
         assert len(image_video_overlap) == 0, f"Image/Video overlap: {image_video_overlap}"
-        
+
         # Assert - Image and audio shouldn't overlap
         image_audio_overlap = images_lower & audio_lower
         assert len(image_audio_overlap) == 0, f"Image/Audio overlap: {image_audio_overlap}"
-        
+
         # Assert - Video and audio shouldn't overlap
         video_audio_overlap = videos_lower & audio_lower
         assert len(video_audio_overlap) == 0, f"Video/Audio overlap: {video_audio_overlap}"
-
