@@ -1002,14 +1002,15 @@ class TestAppGenerateServiceEdgeCases:
         
         # Execute & Verify
         args = {"query": "Hello"}
+        result = AppGenerateService.generate(
+            app_model=chat_app,
+            user=account,
+            args=args,
+            invoke_from=InvokeFrom.WEB_APP,
+            streaming=True,
+        )
+        
         with pytest.raises(Exception) as exc_info:
-            result = AppGenerateService.generate(
-                app_model=chat_app,
-                user=account,
-                args=args,
-                invoke_from=InvokeFrom.WEB_APP,
-                streaming=True,
-            )
             list(result)
         
         assert "Generation failed" in str(exc_info.value)
