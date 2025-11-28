@@ -119,6 +119,13 @@ const translation = {
     confirmTip: '이 도구를 사용하는 앱은 영향을 받습니다.',
     deleteToolConfirmTitle: '이 도구를 삭제하시겠습니까?',
     deleteToolConfirmContent: '이 도구를 삭제하면 되돌릴 수 없습니다. 사용자는 더 이상 당신의 도구에 액세스할 수 없습니다.',
+    toolOutput: {
+      title: '도구 출력',
+      name: '이름',
+      reserved: '예약됨',
+      reservedParameterDuplicateTip: 'text, json, 파일은 예약된 변수입니다. 이러한 이름을 가진 변수는 출력 스키마에 나타날 수 없습니다.',
+      description: '설명',
+    },
   },
   test: {
     title: '테스트',

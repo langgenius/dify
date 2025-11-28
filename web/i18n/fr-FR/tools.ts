@@ -98,6 +98,13 @@ const translation = {
     description: 'Description',
     nameForToolCallPlaceHolder: 'Utilisé pour la reconnaissance automatique, tels que getCurrentWeather, list_pets',
     descriptionPlaceholder: 'Brève description de l’objectif de l’outil, par exemple, obtenir la température d’un endroit spécifique.',
+    toolOutput: {
+      title: 'Sortie de l\'outil',
+      name: 'Nom',
+      reserved: 'Réservé',
+      reservedParameterDuplicateTip: 'text, json et files sont des variables réservées. Les variables portant ces noms ne peuvent pas apparaître dans le schéma de sortie.',
+      description: 'Description',
+    },
   },
   test: {
     title: 'Test',
