@@ -100,7 +100,7 @@ const translation = {
     nameForToolCallPlaceHolder: '用於機器識別，例如 getCurrentWeather、list_pets',
     toolOutput: {
       title: '工具輸出',
-      name: '姓名',
+      name: '名稱',
       reserved: '已保留',
       reservedParameterDuplicateTip: 'text、json 和 files 是保留變數。這些名稱的變數不能出現在輸出結構中。',
       description: '描述',
