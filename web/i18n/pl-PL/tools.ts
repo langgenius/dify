@@ -102,7 +102,7 @@ const translation = {
     confirmTitle: 'Potwierdź, aby zapisać ?',
     toolOutput: {
       title: 'Wynik narzędzia',
-      name: 'Imię',
+      name: 'Nazwa',
       reserved: 'Zarezerwowane',
       reservedParameterDuplicateTip: 'text, json i pliki są zastrzeżonymi zmiennymi. Zmienne o tych nazwach nie mogą pojawiać się w schemacie wyjściowym.',
       description: 'Opis',
