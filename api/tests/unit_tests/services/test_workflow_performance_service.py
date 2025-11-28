@@ -7,8 +7,6 @@ Comprehensive test coverage for workflow performance tracking and analysis.
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from models.workflow_performance import (
     WorkflowNodePerformance,
     WorkflowOptimizationRecommendation,

@@ -7,8 +7,6 @@ Comprehensive test coverage for workflow caching functionality.
 from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from models.workflow_performance import WorkflowCacheEntry
 from services.workflow_cache_service import WorkflowCacheService
 

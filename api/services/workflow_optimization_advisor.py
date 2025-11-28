@@ -7,9 +7,8 @@ optimization recommendations across multiple categories.
 
 import logging
 from datetime import timedelta
-from typing import Any, Optional
 
-from sqlalchemy import and_, case, desc, func, select
+from sqlalchemy import and_, case, func, select
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -48,21 +47,11 @@ class WorkflowOptimizationAdvisor:
         recommendations = []
 
         # Run various analysis methods
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_cache_opportunities(app_id, workflow_id, days)
-        )
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_error_patterns(app_id, workflow_id, days)
-        )
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_token_usage(app_id, workflow_id, days)
-        )
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_parallel_opportunities(app_id, workflow_id, days)
-        )
-        recommendations.extend(
-            WorkflowOptimizationAdvisor._analyze_retry_patterns(app_id, workflow_id, days)
-        )
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_cache_opportunities(app_id, workflow_id, days))
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_error_patterns(app_id, workflow_id, days))
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_token_usage(app_id, workflow_id, days))
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_parallel_opportunities(app_id, workflow_id, days))
+        recommendations.extend(WorkflowOptimizationAdvisor._analyze_retry_patterns(app_id, workflow_id, days))
 
         logger.info(
             "Generated %d optimization recommendations for workflow_id=%s",
@@ -281,7 +270,7 @@ class WorkflowOptimizationAdvisor:
                 f"Total cost: ${row.total_cost:.2f}. Optimizing prompts could reduce costs significantly.",
                 category=OptimizationCategory.COST,
                 severity=OptimizationSeverity.MEDIUM if row.total_cost > 1.0 else OptimizationSeverity.LOW,
-                estimated_improvement=f"Save ~${potential_savings:.2f} ({int(30)}% cost reduction)",
+                estimated_improvement=f"Save ~${potential_savings:.2f} ({30}% cost reduction)",
                 affected_nodes=[row.node_id],
                 recommendation_steps=[
                     "Review and optimize system prompts to be more concise",
@@ -345,7 +334,7 @@ class WorkflowOptimizationAdvisor:
                     f"Parallelizing independent nodes could significantly reduce execution time.",
                     category=OptimizationCategory.PARALLELIZATION,
                     severity=OptimizationSeverity.MEDIUM,
-                    estimated_improvement=f"~{int(40)}% faster execution",
+                    estimated_improvement=f"~{40}% faster execution",
                     affected_nodes=[],
                     recommendation_steps=[
                         "Identify nodes that don't depend on each other's outputs",

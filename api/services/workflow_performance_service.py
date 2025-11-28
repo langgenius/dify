@@ -10,7 +10,6 @@ from datetime import datetime, timedelta
 from typing import Any, Optional
 
 from sqlalchemy import and_, case, desc, func, select
-from sqlalchemy.dialects.postgresql import insert
 
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -279,27 +278,22 @@ class WorkflowPerformanceService:
         cutoff_date = naive_utc_now() - timedelta(days=days)
 
         # Query aggregated metrics
-        stmt = (
-            select(
-                func.count(WorkflowPerformanceMetrics.id).label("total_runs"),
-                func.avg(WorkflowPerformanceMetrics.total_execution_time).label("avg_execution_time"),
-                func.min(WorkflowPerformanceMetrics.total_execution_time).label("min_execution_time"),
-                func.max(WorkflowPerformanceMetrics.total_execution_time).label("max_execution_time"),
-                func.sum(WorkflowPerformanceMetrics.total_tokens_used).label("total_tokens"),
-                func.sum(WorkflowPerformanceMetrics.total_tokens_cost).label("total_cost"),
-                func.avg(WorkflowPerformanceMetrics.cache_hit_rate).label("avg_cache_hit_rate"),
-                func.sum(
-                    case((WorkflowPerformanceMetrics.execution_status == "succeeded", 1), else_=0)
-                ).label("successful_runs"),
-                func.sum(
-                    case((WorkflowPerformanceMetrics.execution_status == "failed", 1), else_=0)
-                ).label("failed_runs"),
-            )
-            .where(
-                and_(
-                    WorkflowPerformanceMetrics.workflow_id == workflow_id,
-                    WorkflowPerformanceMetrics.created_at >= cutoff_date,
-                )
+        stmt = select(
+            func.count(WorkflowPerformanceMetrics.id).label("total_runs"),
+            func.avg(WorkflowPerformanceMetrics.total_execution_time).label("avg_execution_time"),
+            func.min(WorkflowPerformanceMetrics.total_execution_time).label("min_execution_time"),
+            func.max(WorkflowPerformanceMetrics.total_execution_time).label("max_execution_time"),
+            func.sum(WorkflowPerformanceMetrics.total_tokens_used).label("total_tokens"),
+            func.sum(WorkflowPerformanceMetrics.total_tokens_cost).label("total_cost"),
+            func.avg(WorkflowPerformanceMetrics.cache_hit_rate).label("avg_cache_hit_rate"),
+            func.sum(case((WorkflowPerformanceMetrics.execution_status == "succeeded", 1), else_=0)).label(
+                "successful_runs"
+            ),
+            func.sum(case((WorkflowPerformanceMetrics.execution_status == "failed", 1), else_=0)).label("failed_runs"),
+        ).where(
+            and_(
+                WorkflowPerformanceMetrics.workflow_id == workflow_id,
+                WorkflowPerformanceMetrics.created_at >= cutoff_date,
             )
         )
 

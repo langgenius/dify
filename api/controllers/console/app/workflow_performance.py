@@ -5,8 +5,7 @@ This module provides REST API endpoints for workflow performance analytics,
 caching management, and optimization recommendations.
 """
 
-from flask import request
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restful import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model

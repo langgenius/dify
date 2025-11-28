@@ -8,7 +8,7 @@ with TTL management, invalidation strategies, and performance tracking.
 import hashlib
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Any, Optional
 
 from sqlalchemy import and_, delete, func, select
