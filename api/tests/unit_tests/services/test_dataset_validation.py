@@ -69,8 +69,7 @@ from unittest.mock import MagicMock, Mock, create_autospec, patch
 import pytest
 
 from models import Account
-from models.dataset import Dataset, DatasetPermissionEnum
-from models.model import DatasetPermission
+from models.dataset import Dataset, DatasetPermission, DatasetPermissionEnum
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
 
