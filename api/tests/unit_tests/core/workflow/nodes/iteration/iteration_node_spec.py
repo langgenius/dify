@@ -240,8 +240,8 @@ class TestIterationNodeInitialization:
 
         assert node._get_description() == "This is a description"
 
-    def test_get_base_node_data(self):
-        """Test get_base_node_data returns node data."""
+    def test_node_data_property(self):
+        """Test node_data property returns node data."""
         node = IterationNode.__new__(IterationNode)
         node._node_data = IterationNodeData(
             title="Base Test",
@@ -249,7 +249,7 @@ class TestIterationNodeInitialization:
             output_selector=["y"],
         )
 
-        result = node.get_base_node_data()
+        result = node.node_data
 
         assert result == node._node_data
 
