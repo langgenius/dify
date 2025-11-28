@@ -85,6 +85,7 @@ import pytest
 from sqlalchemy.orm import Session
 
 from core.model_runtime.entities.model_entities import ModelType
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models import Account
 from models.dataset import Dataset, DatasetPermissionEnum, Pipeline
 from models.workflow import Workflow
