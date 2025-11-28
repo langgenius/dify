@@ -963,22 +963,23 @@ class TestIndexingRunnerRun:
         # Assert
         # Verify extract was called for each document
         assert mock_extract.call_count == len(docs)
+        with patch.object(runner, '_extract', return_value=[Document(page_content="Test", metadata={})]) as mock_extract, \
+             patch.object(
+                runner,
+                '_transform',
+                return_value=[Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})],
+            ) as mock_transform, \
+             patch.object(runner, '_load_segments') as mock_load_segments, \
+             patch.object(runner, '_load') as mock_load:
+            # Act
+            runner.run(docs)
 
-
-class TestIndexingRunnerRetryLogic:
-    """Unit tests for retry logic and error recovery.
-
-    Tests cover:
-    - Retry on transient failures
-    - Exponential backoff
-    - Maximum retry attempts
-    - Error state persistence
-    """
-
-    @pytest.fixture
-    def mock_dependencies(self):
-        """Mock all external dependencies."""
-        with (
+        # Assert
+        # Verify methods were called for each document
+        assert mock_extract.call_count == len(docs)
+        assert mock_transform.call_count == len(docs)
+        assert mock_load_segments.call_count == len(docs)
+        assert mock_load.call_count == len(docs)
             patch("core.indexing_runner.db") as mock_db,
             patch("core.indexing_runner.redis_client") as mock_redis,
         ):
