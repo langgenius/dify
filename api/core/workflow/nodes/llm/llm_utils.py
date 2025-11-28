@@ -140,8 +140,7 @@ def _fetch_override_credentials(
                 for cred_config in available_model_credentials:
                     if cred_config.credential_name == credential_override.credential_name:
                         model_credential_result = provider_configuration.get_custom_model_credential(
-                            model_type=ModelType.LLM, model=model,
-                            credential_id=cred_config.credential_id
+                            model_type=ModelType.LLM, model=model, credential_id=cred_config.credential_id
                         )
                         if isinstance(model_credential_result, dict):
                             if "credentials" in model_credential_result and isinstance(
@@ -150,16 +149,14 @@ def _fetch_override_credentials(
                                 return model_credential_result.get("credentials", {})
                             return model_credential_result
                 return {}
-        raise ValueError(
-            f"Credential with name '{credential_override.credential_name}' not found"
-        )
+        raise ValueError(f"Credential with name '{credential_override.credential_name}' not found")
 
     # Fallback explicit return for type-checker
     return None
 
 
 def fetch_model_config(
-    tenant_id: str, node_data_model: ModelConfig, workflow_credential_override: Optional[CredentialOverride] = None
+    tenant_id: str, node_data_model: ModelConfig, workflow_credential_override: CredentialOverride | None = None
 ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
     if not node_data_model.mode:
         raise LLMModeRequiredError("LLM mode is required.")

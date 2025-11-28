@@ -2,6 +2,7 @@
 Test cases for workflow-level credential override functionality.
 Tests the CredentialOverride class and _fetch_override_credentials function.
 """
+
 import re
 from unittest.mock import Mock, patch
 
@@ -23,7 +24,7 @@ class TestCredentialOverride:
             "model": "gpt-4",
         }
 
-        with patch('core.provider_manager.ProviderManager.get_configurations') as mock_get_configs:
+        with patch("core.provider_manager.ProviderManager.get_configurations") as mock_get_configs:
             mock_get_configs.return_value = {
                 "openai": mock_provider_config,
             }
@@ -33,7 +34,7 @@ class TestCredentialOverride:
                 tenant_id="test-tenant",
                 provider="openai",
                 model="gpt-4",
-                credential_override=CredentialOverride(credential_id="test-cred-123")
+                credential_override=CredentialOverride(credential_id="test-cred-123"),
             )
 
             assert result["openai_api_key"] == "sk-test-key-123"
@@ -47,7 +48,7 @@ class TestCredentialOverride:
             "model": "gpt-3.5-turbo",
         }
 
-        with patch('core.provider_manager.ProviderManager.get_configurations') as mock_get_configs:
+        with patch("core.provider_manager.ProviderManager.get_configurations") as mock_get_configs:
             mock_get_configs.return_value = {
                 "openai": mock_provider_config,
             }
@@ -65,7 +66,7 @@ class TestCredentialOverride:
                 tenant_id="test-tenant",
                 provider="openai",
                 model="gpt-3.5-turbo",
-                credential_override=CredentialOverride(credential_name="API Key 1 (Production)")
+                credential_override=CredentialOverride(credential_name="API Key 1 (Production)"),
             )
 
             assert result["openai_api_key"] == "sk-test-key-456"
@@ -77,7 +78,7 @@ class TestCredentialOverride:
         mock_provider_config.get_custom_model_credential.side_effect = ValueError("Credential not found")
         mock_provider_config.custom_configuration.models = []
 
-        with patch('core.provider_manager.ProviderManager.get_configurations') as mock_get_configs:
+        with patch("core.provider_manager.ProviderManager.get_configurations") as mock_get_configs:
             mock_get_configs.return_value = {
                 "openai": mock_provider_config,
             }
@@ -88,7 +89,7 @@ class TestCredentialOverride:
                     tenant_id="test-tenant",
                     provider="openai",
                     model="gpt-4",
-                    credential_override=CredentialOverride(credential_id="test-cred-123")
+                    credential_override=CredentialOverride(credential_id="test-cred-123"),
                 )
 
             # Test name not found (escape regex metacharacters in message)
@@ -97,12 +98,12 @@ class TestCredentialOverride:
                     tenant_id="test-tenant",
                     provider="openai",
                     model="gpt-3.5-turbo",
-                    credential_override=CredentialOverride(credential_name="API Key 1 (Production)")
+                    credential_override=CredentialOverride(credential_name="API Key 1 (Production)"),
                 )
 
     def test_fetch_override_credentials_fallback_to_default(self):
         """Test fallback to default credentials when override is invalid"""
-        with patch('core.provider_manager.ProviderManager.get_configurations') as mock_get_configs:
+        with patch("core.provider_manager.ProviderManager.get_configurations") as mock_get_configs:
             mock_get_configs.return_value = {
                 "openai": Mock(),  # No provider configuration
             }
@@ -112,7 +113,7 @@ class TestCredentialOverride:
                 tenant_id="test-tenant",
                 provider="openai",
                 model="gpt-4",
-                credential_override=CredentialOverride(credential_id="invalid-id")
+                credential_override=CredentialOverride(credential_id="invalid-id"),
             )
 
             # Function should handle the error gracefully and return None
@@ -122,10 +123,7 @@ class TestCredentialOverride:
         """Test handling of empty credential override"""
         # Should not raise error for empty override
         result = _fetch_override_credentials(
-                tenant_id="test-tenant",
-                provider="openai",
-                model="gpt-4",
-                credential_override=CredentialOverride()
-            )
+            tenant_id="test-tenant", provider="openai", model="gpt-4", credential_override=CredentialOverride()
+        )
 
         assert result is None

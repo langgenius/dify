@@ -11,9 +11,9 @@ from core.workflow.nodes.base.entities import VariableSelector
 
 class CredentialOverride(BaseModel):
     # Allow specifying a specific credential by ID
-    credential_id: Optional[str] = None
+    credential_id: str | None = None
     # Or allow specifying credential by name (for UI friendliness)
-    credential_name: Optional[str] = None
+    credential_name: str | None = None
 
 
 class ModelConfig(BaseModel):
@@ -21,7 +21,7 @@ class ModelConfig(BaseModel):
     name: str
     mode: LLMMode
     completion_params: dict[str, Any] = Field(default_factory=dict)
-    credential_override: Optional[CredentialOverride] = None
+    credential_override: CredentialOverride | None = None
 
 
 class ContextConfig(BaseModel):
