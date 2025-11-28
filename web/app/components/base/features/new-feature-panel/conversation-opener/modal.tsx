@@ -16,6 +16,7 @@ import type { InputVar } from '@/app/components/workflow/types'
 import { getNewVar } from '@/utils/var'
 import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
+import { checkKeys } from '@/utils/var'
 
 type OpeningSettingModalProps = {
   data: OpeningStatement
@@ -53,7 +54,10 @@ const OpeningSettingModal = ({
       return
 
     if (!ignoreVariablesCheck) {
-      const keys = getInputKeys(tempValue)
+      const keys = getInputKeys(tempValue)?.filter((key) => {
+        const { isValid } = checkKeys([key], true)
+        return isValid
+      })
       const promptKeys = promptVariables.map(item => item.key)
       const workflowVariableKeys = workflowVariables.map(item => item.variable)
       let notIncludeKeys: string[] = []

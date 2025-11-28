@@ -71,6 +71,11 @@ class TriggerProviderIdentity(BaseModel):
     icon_dark: str | None = Field(default=None, description="The dark icon of the trigger provider")
     tags: list[str] = Field(default_factory=list, description="The tags of the trigger provider")
 
+    @field_validator("tags", mode="before")
+    @classmethod
+    def validate_tags(cls, v: list[str] | None) -> list[str]:
+        return v or []
+
 
 class EventIdentity(BaseModel):
     """

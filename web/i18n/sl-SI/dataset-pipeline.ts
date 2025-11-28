@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Objavljen Knowledge Pipeline',
+      tip: 'Pojdite v Dokumente, da dodate ali upravljate z dokumenti.',
     },
     error: {
       message: 'Objava cevovoda znanja ni uspela',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Struktura',
     structureTooltip: 'Struktura kosov določa, kako so dokumenti razdeljeni in indeksirani – ponuja načine Splošno, Nadrejeno-podrejeno in Vprašanja in odgovori – in je edinstvena za vsako zbirko znanja.',
+    createdBy: 'Avtor {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'Znakov',
     backToDataSource: 'Vir podatkov',
     title: 'Dodajanje dokumentov',
+    selectOnlineDocumentTip: 'Obdelajte do {{count}} strani',
+    selectOnlineDriveTip: 'Obdelajte do {{count}} datotek, vsaka največ {{fileSize}} MB',
   },
   documentSettings: {
     title: 'Nastavitve dokumenta',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} strani',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Vse datoteke',
       searchPlaceholder: 'Iskanje datotek ...',
       allBuckets: 'Vsa vedra za shranjevanje v oblaku',
+      searchResult: 'Najdi {{searchResultsLength}} predmetov v mapi "{{folderName}}"',
     },
     resetKeywords: 'Ponastavitev ključnih besed',
     emptyFolder: 'Ta mapa je prazna',
     emptySearchResult: 'Predmeti niso bili najdeni',
     notSupportedFileType: 'Ta vrsta datoteke ni podprta',
+    notConnected: '{{name}} ni povezan',
+    notConnectedTip: 'Za sinhronizacijo z {{name}} je treba najprej vzpostaviti povezavo z {{name}}.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Potrditev',
@@ -149,6 +160,7 @@ const translation = {
   knowledgeNameAndIcon: 'Ime in ikona znanja',
   editPipelineInfo: 'Urejanje informacij o cevovodu',
   knowledgeDescriptionPlaceholder: 'Opišite, kaj je v tej bazi znanja. Podroben opis omogoča umetni inteligenci natančnejši dostop do vsebine nabora podatkov. Če je prazen, bo Dify uporabil privzeto strategijo zadetkov. (Neobvezno)',
+  configurationTip: 'Konfiguriraj {{pluginName}}',
 }
 
 export default translation

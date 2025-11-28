@@ -7,9 +7,8 @@ from core.variables import SegmentType, Variable
 from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
-from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
@@ -51,31 +50,8 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
     mapping[key] = selector
 
 
-class VariableAssignerNode(Node):
+class VariableAssignerNode(Node[VariableAssignerNodeData]):
     node_type = NodeType.VARIABLE_ASSIGNER
-
-    _node_data: VariableAssignerNodeData
-
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = VariableAssignerNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool:
         """
@@ -84,7 +60,7 @@ class VariableAssignerNode(Node):
         Returns True if this node updates any of the requested conversation variables.
         """
         # Check each item in this Variable Assigner node
-        for item in self._node_data.items:
+        for item in self.node_data.items:
             # Convert the item's variable_selector to tuple for comparison
             item_selector_tuple = tuple(item.variable_selector)
 
@@ -119,13 +95,13 @@ class VariableAssignerNode(Node):
         return var_mapping
 
     def _run(self) -> NodeRunResult:
-        inputs = self._node_data.model_dump()
+        inputs = self.node_data.model_dump()
         process_data: dict[str, Any] = {}
         # NOTE: This node has no outputs
         updated_variable_selectors: list[Sequence[str]] = []
 
         try:
-            for item in self._node_data.items:
+            for item in self.node_data.items:
                 variable = self.graph_runtime_state.variable_pool.get(item.variable_selector)
 
                 # ==================== Validation Part

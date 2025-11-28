@@ -111,9 +111,6 @@ class MockNodeFactory(DifyNodeFactory):
                 mock_config=self.mock_config,
             )
 
-            # Initialize node with provided data
-            mock_instance.init_node_data(node_data)
-
             return mock_instance
 
         # For non-mocked node types, use parent implementation

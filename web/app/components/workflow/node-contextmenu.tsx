@@ -4,7 +4,7 @@ import {
   useRef,
 } from 'react'
 import { useClickAway } from 'ahooks'
-import { useNodes } from 'reactflow'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import PanelOperatorPopup from './nodes/_base/components/panel-operator/panel-operator-popup'
 import type { Node } from './types'
 import { useStore } from './store'
@@ -16,7 +16,6 @@ const NodeContextmenu = () => {
   const { handleNodeContextmenuCancel, handlePaneContextmenuCancel } = usePanelInteractions()
   const nodeMenu = useStore(s => s.nodeMenu)
   const currentNode = nodes.find(node => node.id === nodeMenu?.nodeId) as Node
-
   useEffect(() => {
     if (nodeMenu)
       handlePaneContextmenuCancel()

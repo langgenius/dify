@@ -65,10 +65,6 @@ def init_http_node(config: dict):
         graph_runtime_state=graph_runtime_state,
     )
 
-    # Initialize node data
-    if "data" in config:
-        node.init_node_data(config["data"])
-
     return node
 
 
@@ -708,10 +704,6 @@ def test_nested_object_variable_selector(setup_http_mock):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-
-    # Initialize node data
-    if "data" in graph_config["nodes"][1]:
-        node.init_node_data(graph_config["nodes"][1]["data"])
 
     result = node._run()
     assert result.process_data is not None
