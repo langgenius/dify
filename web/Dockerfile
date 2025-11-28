@@ -26,10 +26,10 @@ WORKDIR /app/web
 COPY package.json pnpm-lock.yaml ./
 
 RUN <<EOF
-  # Use packageManager from package.json
-  corepack install
-  # Install dependencies with PNPM based on the lockfile
-  pnpm install --frozen-lockfile
+    # Use packageManager from package.json
+    corepack install
+    # Install dependencies with PNPM based on the lockfile
+    pnpm install --frozen-lockfile
 EOF
 
 # build resources
