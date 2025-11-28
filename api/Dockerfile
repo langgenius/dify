@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # check=error=true
 
+####################################################################################
 # base image
 FROM python:3.12-slim-bookworm AS base
 
@@ -11,7 +12,7 @@ ENV UV_VERSION=0.8.9
 
 RUN pip install --no-cache-dir uv==${UV_VERSION}
 
-
+####################################################################################
 FROM base AS packages
 
 # if you located in China, you can use aliyun mirror to speed up
@@ -20,14 +21,16 @@ FROM base AS packages
 RUN <<EOF
     apt-get update
     apt-get install -y --no-install-recommends \
-              g++ \
-              libmpfr-dev libmpc-dev
+        # basic environment
+        g++ \
+        libmpfr-dev libmpc-dev
 EOF
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
 RUN uv sync --locked --no-dev
 
+####################################################################################
 # production stage
 FROM base AS production
 

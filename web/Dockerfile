@@ -1,6 +1,7 @@
 # syntax=docker/dockerfile:1
 # check=error=true
 
+####################################################################################
 # base image
 FROM node:22-alpine3.21 AS base
 LABEL maintainer="takatost@gmail.com"
@@ -17,7 +18,7 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NEXT_PUBLIC_BASE_PATH=""
 
-
+####################################################################################
 # install packages
 FROM base AS packages
 
@@ -32,6 +33,7 @@ RUN <<EOF
     pnpm install --frozen-lockfile
 EOF
 
+####################################################################################
 # build resources
 FROM base AS builder
 WORKDIR /app/web
@@ -41,7 +43,7 @@ COPY . .
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm build:docker
 
-
+####################################################################################
 # production stage
 FROM base AS production
 
