@@ -93,7 +93,6 @@ class CompletionMessageApi(Resource):
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
         streaming = args_model.response_mode != "blocking"
-        args["response_mode"] = args_model.response_mode
         args["auto_generate_name"] = False
 
         try:
@@ -169,7 +168,6 @@ class ChatMessageApi(Resource):
         args = args_model.model_dump(exclude_none=True, by_alias=True)
 
         streaming = args_model.response_mode != "blocking"
-        args["response_mode"] = args_model.response_mode
         args["auto_generate_name"] = False
 
         external_trace_id = get_external_trace_id(request)
