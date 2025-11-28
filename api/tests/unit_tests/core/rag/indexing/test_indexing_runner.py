@@ -1310,12 +1310,10 @@ class TestIndexingRunnerLoadSegments:
         mock_docstore_instance.add_documents.assert_called_once_with(docs=sample_documents, save_child=False)
 
     def test_load_segments_parent_child_index(
-        self, mock_dependencies, sample_dataset, sample_dataset_document, sample_documents
-    ):
-        """Test loading segments for parent-child index."""
-        # Arrange
-        runner = IndexingRunner()
-        sample_dataset_document.doc_form = IndexType.PARENT_CHILD_INDEX
+        with patch.object(runner, '_update_document_index_status'), \
+             patch.object(runner, '_update_segments_by_document'):
+            # Act
+            runner._load_segments(sample_dataset, sample_dataset_document, sample_documents)
 
         # Add child documents
         for doc in sample_documents:
