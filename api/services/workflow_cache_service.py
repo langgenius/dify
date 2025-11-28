@@ -77,7 +77,7 @@ class WorkflowCacheService:
         node_id: str,
         node_config: dict[str, Any],
         input_data: dict[str, Any],
-    ) -> Optional[dict[str, Any]]:
+    ) -> dict[str, Any] | None:
         """
         Retrieve cached result for a node execution.
 
@@ -129,8 +129,8 @@ class WorkflowCacheService:
         input_data: dict[str, Any],
         output_data: dict[str, Any],
         execution_time: float,
-        ttl_hours: Optional[float] = None,
-        metadata: Optional[dict[str, Any]] = None,
+        ttl_hours: float | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> WorkflowCacheEntry:
         """
         Store a node execution result in cache.
@@ -207,9 +207,9 @@ class WorkflowCacheService:
 
     @staticmethod
     def invalidate_cache(
-        workflow_id: Optional[str] = None,
-        node_id: Optional[str] = None,
-        node_type: Optional[str] = None,
+        workflow_id: str | None = None,
+        node_id: str | None = None,
+        node_type: str | None = None,
     ) -> int:
         """
         Invalidate cache entries based on filters.
@@ -265,7 +265,7 @@ class WorkflowCacheService:
 
     @staticmethod
     def get_cache_statistics(
-        workflow_id: Optional[str] = None,
+        workflow_id: str | None = None,
         days: int = 7,
     ) -> dict[str, Any]:
         """
@@ -328,7 +328,7 @@ class WorkflowCacheService:
 
     @staticmethod
     def get_top_cached_nodes(
-        workflow_id: Optional[str] = None,
+        workflow_id: str | None = None,
         limit: int = 10,
     ) -> list[dict[str, Any]]:
         """

@@ -35,16 +35,16 @@ class WorkflowPerformanceService:
         successful_nodes: int = 0,
         failed_nodes: int = 0,
         cached_nodes: int = 0,
-        total_tokens_used: Optional[int] = None,
-        total_tokens_cost: Optional[float] = None,
-        peak_memory_mb: Optional[float] = None,
+        total_tokens_used: int | None = None,
+        total_tokens_cost: float | None = None,
+        peak_memory_mb: float | None = None,
         avg_node_execution_time: float = 0.0,
-        slowest_node_id: Optional[str] = None,
-        slowest_node_time: Optional[float] = None,
+        slowest_node_id: str | None = None,
+        slowest_node_time: float | None = None,
         cache_hit_rate: float = 0.0,
         execution_status: str = "succeeded",
-        error_message: Optional[str] = None,
-        extra_info: Optional[dict[str, Any]] = None,
+        error_message: str | None = None,
+        extra_info: dict[str, Any] | None = None,
     ) -> WorkflowPerformanceMetrics:
         """
         Record aggregated performance metrics for a workflow execution.
@@ -112,21 +112,21 @@ class WorkflowPerformanceService:
         node_id: str,
         node_execution_id: str,
         node_type: str,
-        node_title: Optional[str],
+        node_title: str | None,
         execution_time: float,
         start_time: datetime,
         end_time: datetime,
-        tokens_used: Optional[int] = None,
-        tokens_cost: Optional[float] = None,
-        memory_used_mb: Optional[float] = None,
+        tokens_used: int | None = None,
+        tokens_cost: float | None = None,
+        memory_used_mb: float | None = None,
         is_cached: bool = False,
-        cache_key: Optional[str] = None,
+        cache_key: str | None = None,
         retry_count: int = 0,
         status: str = "succeeded",
-        error_message: Optional[str] = None,
-        input_size_bytes: Optional[int] = None,
-        output_size_bytes: Optional[int] = None,
-        extra_info: Optional[dict[str, Any]] = None,
+        error_message: str | None = None,
+        input_size_bytes: int | None = None,
+        output_size_bytes: int | None = None,
+        extra_info: dict[str, Any] | None = None,
     ) -> WorkflowNodePerformance:
         """
         Record detailed performance metrics for a single node execution.
@@ -198,14 +198,14 @@ class WorkflowPerformanceService:
         description: str,
         category: str,
         severity: str,
-        estimated_improvement: Optional[str] = None,
-        affected_nodes: Optional[list[str]] = None,
-        recommendation_steps: Optional[list[str]] = None,
-        code_example: Optional[str] = None,
-        documentation_link: Optional[str] = None,
-        supporting_metrics: Optional[dict[str, Any]] = None,
-        sample_workflow_runs: Optional[list[str]] = None,
-        extra_info: Optional[dict[str, Any]] = None,
+        estimated_improvement: str | None = None,
+        affected_nodes: list[str] | None = None,
+        recommendation_steps: list[str] | None = None,
+        code_example: str | None = None,
+        documentation_link: str | None = None,
+        supporting_metrics: dict[str, Any] | None = None,
+        sample_workflow_runs: list[str] | None = None,
+        extra_info: dict[str, Any] | None = None,
     ) -> WorkflowOptimizationRecommendation:
         """
         Create an optimization recommendation for a workflow.
@@ -476,8 +476,8 @@ class WorkflowPerformanceService:
     def dismiss_recommendation(
         recommendation_id: str,
         dismissed_by: str,
-        reason: Optional[str] = None,
-    ) -> Optional[WorkflowOptimizationRecommendation]:
+        reason: str | None = None,
+    ) -> WorkflowOptimizationRecommendation | None:
         """
         Dismiss an optimization recommendation.
 
@@ -509,8 +509,8 @@ class WorkflowPerformanceService:
     @staticmethod
     def get_active_recommendations(
         workflow_id: str,
-        category: Optional[str] = None,
-        severity: Optional[str] = None,
+        category: str | None = None,
+        severity: str | None = None,
     ) -> list[WorkflowOptimizationRecommendation]:
         """
         Get active optimization recommendations for a workflow.
