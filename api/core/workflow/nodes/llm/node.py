@@ -5,7 +5,7 @@ import logging
 import re
 import time
 from collections.abc import Generator, Mapping, Sequence
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, Optional
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
@@ -76,6 +76,7 @@ from core.workflow.runtime import VariablePool
 
 from . import llm_utils
 from .entities import (
+    CredentialOverride,
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
     LLMNodeData,
@@ -213,6 +214,7 @@ class LLMNode(Node):
             model_instance, model_config = LLMNode._fetch_model_config(
                 node_data_model=self._node_data.model,
                 tenant_id=self.tenant_id,
+                credential_override=self._node_data.model.credential_override,
             )
 
             # fetch memory
@@ -735,9 +737,12 @@ class LLMNode(Node):
         *,
         node_data_model: ModelConfig,
         tenant_id: str,
+        credential_override: Optional[CredentialOverride] = None
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         model, model_config_with_cred = llm_utils.fetch_model_config(
-            tenant_id=tenant_id, node_data_model=node_data_model
+            tenant_id=tenant_id,
+            node_data_model=node_data_model,
+            workflow_credential_override=credential_override
         )
         completion_params = model_config_with_cred.parameters
 

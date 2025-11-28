@@ -1,5 +1,6 @@
+import logging
 from collections.abc import Sequence
-from typing import cast
+from typing import Any, Optional, cast
 
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
@@ -14,6 +15,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
+from core.provider_manager import ProviderManager
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
@@ -24,14 +26,155 @@ from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.provider_ids import ModelProviderID
 
+from .entities import CredentialOverride
 from .exc import InvalidVariableTypeError, LLMModeRequiredError, ModelNotExistError
+
+logger = logging.getLogger(__name__)
+
+
+def _fetch_override_credentials(
+    tenant_id: str, provider: str, model: str, credential_override: CredentialOverride
+) -> dict[str, Any] | None:
+    """
+    Fetch workflow-specific override credentials.
+    :param tenant_id: workspace id
+    :param provider: provider name
+    :param model: model name
+    :param credential_override: credential override configuration
+    :return: Override credentials dict or None if no override is specified or if credentials are not found
+    """
+    # Return None if no credential override is specified
+    if not credential_override.credential_id and not credential_override.credential_name:
+        return None
+
+    provider_manager = ProviderManager()
+
+    # If credential_id is specified, fetch that specific credential
+    if credential_override.credential_id:
+        # Get provider configuration to access credential methods
+        provider_configurations = provider_manager.get_configurations(tenant_id)
+        provider_configuration = provider_configurations.get(provider)
+
+        # If provider configuration is missing or clearly unusable, fall back gracefully
+        if not provider_configuration:
+            return None
+        pc = provider_configuration  # narrow Optional for type-checker
+
+        # Helper: build inline credentials from a raw token using the first secret field in schema
+        def _inline_credentials_from_token(token: str) -> dict[str, Any] | None:
+            try:
+                credential_form = (
+                    pc.provider.provider_credential_schema.credential_form_schemas
+                    if pc.provider.provider_credential_schema
+                    else []
+                )
+                # Reuse the same extraction logic as ProviderConfiguration
+                try:
+                    secret_vars = pc.extract_secret_variables(credential_form)
+                except Exception:
+                    secret_vars = []
+                target_key = secret_vars[0] if secret_vars else "api_key"
+                return {target_key: token}
+            except Exception:
+                return None
+
+        token_or_id = credential_override.credential_id
+
+        # First, try to treat value as a saved credential ID (UUID in most deployments)
+        explicit_not_found = False
+        try:
+            credentials = pc.get_provider_credential(token_or_id)
+            if isinstance(credentials, dict) and credentials:
+                return credentials
+        except ValueError:
+            explicit_not_found = True
+        except Exception:
+            # Swallow and fall back to inline handling below
+            pass
+
+        # Try model-level credential by id as well
+        try:
+            model_credential_result = pc.get_custom_model_credential(
+                model_type=ModelType.LLM, model=model, credential_id=token_or_id
+            )
+            if isinstance(model_credential_result, dict):
+                creds = model_credential_result.get("credentials", {}) if model_credential_result else {}
+                if isinstance(creds, dict) and creds:
+                    return creds
+        except ValueError:
+            explicit_not_found = True
+        except Exception:
+            pass
+
+        # Not a known saved id; interpret as a raw token provided by UI and map into provider schema
+        inline = _inline_credentials_from_token(token_or_id)
+        if inline:
+            return inline
+
+        # If provider explicitly indicated not-found, raise; otherwise, fall back to None
+        if explicit_not_found:
+            raise ValueError(f"Credential with ID {token_or_id} not found")
+        return None
+    # If credential_name is specified, find credential by name
+    elif credential_override.credential_name:
+        # Get provider configuration
+        provider_configurations = provider_manager.get_configurations(tenant_id)
+        provider_configuration = provider_configurations.get(provider)
+
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} not found")
+
+        # Search provider credentials by name
+        if provider_configuration.custom_configuration and provider_configuration.custom_configuration.provider:
+            available_credentials = provider_configuration.custom_configuration.provider.available_credentials
+            if isinstance(available_credentials, (list, tuple)):
+                for cred_config in available_credentials:
+                    if cred_config.credential_name == credential_override.credential_name:
+                        return provider_configuration.get_provider_credential(cred_config.credential_id)
+
+        # Search model credentials by name
+        if provider_configuration.custom_configuration and provider_configuration.custom_configuration.models:
+            models = provider_configuration.custom_configuration.models
+            for model_config in models:
+                available_model_credentials = model_config.available_model_credentials
+                for cred_config in available_model_credentials:
+                    if cred_config.credential_name == credential_override.credential_name:
+                        model_credential_result = provider_configuration.get_custom_model_credential(
+                            model_type=ModelType.LLM, model=model,
+                            credential_id=cred_config.credential_id
+                        )
+                        if isinstance(model_credential_result, dict):
+                            if "credentials" in model_credential_result and isinstance(
+                                model_credential_result.get("credentials"), dict
+                            ):
+                                return model_credential_result.get("credentials", {})
+                            return model_credential_result
+                return {}
+        raise ValueError(
+            f"Credential with name '{credential_override.credential_name}' not found"
+        )
+
+    # Fallback explicit return for type-checker
+    return None
 
 
 def fetch_model_config(
-    tenant_id: str, node_data_model: ModelConfig
+    tenant_id: str, node_data_model: ModelConfig, workflow_credential_override: Optional[CredentialOverride] = None
 ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
     if not node_data_model.mode:
         raise LLMModeRequiredError("LLM mode is required.")
+
+    override_credentials = None
+    if workflow_credential_override:
+        try:
+            override_credentials = _fetch_override_credentials(
+                tenant_id=tenant_id,
+                provider=node_data_model.provider,
+                model=node_data_model.name,
+                credential_override=workflow_credential_override,
+            )
+        except ValueError as e:
+            logger.warning("Failed to fetch workflow credential override: %s. Using default credentials.", e)
 
     model = ModelManager().get_model_instance(
         tenant_id=tenant_id,
@@ -39,6 +182,9 @@ def fetch_model_config(
         provider=node_data_model.provider,
         model=node_data_model.name,
     )
+
+    if override_credentials:
+        model.credentials = override_credentials
 
     model.model_type_instance = cast(LargeLanguageModel, model.model_type_instance)
 
