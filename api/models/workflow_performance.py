@@ -80,7 +80,6 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
     total_execution_time: Mapped[float] = mapped_column(
         Float, nullable=False, comment="Total execution time in seconds"
     )
-    total_execution_time: Mapped[float] = mapped_column(
         Float, nullable=False, comment="Total execution time in seconds"
     )
     node_count: Mapped[int] = mapped_column(Integer, nullable=False, comment="Number of nodes executed")
@@ -93,9 +92,6 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
     total_tokens_cost: Mapped[float | None] = mapped_column(Float, nullable=True, comment="Estimated cost in USD")
     peak_memory_mb: Mapped[float | None] = mapped_column(Float, nullable=True, comment="Peak memory usage in MB")
 
-    total_tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True, comment="Total LLM tokens consumed")
-    total_tokens_cost: Mapped[float | None] = mapped_column(Float, nullable=True, comment="Estimated cost in USD")
-    peak_memory_mb: Mapped[float | None] = mapped_column(Float, nullable=True, comment="Peak memory usage in MB")
 
     # Performance indicators
     avg_node_execution_time: Mapped[float] = mapped_column(Float, nullable=False, comment="Average node execution time")
@@ -105,9 +101,6 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
         Float, nullable=False, default=0.0, comment="Percentage of cache hits"
     )
 
-    slowest_node_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    slowest_node_time: Mapped[float | None] = mapped_column(Float, nullable=True)
-    cache_hit_rate: Mapped[float] = mapped_column(
         Float, nullable=False, default=0.0, comment="Percentage of cache hits"
     )
 
@@ -115,7 +108,6 @@ class WorkflowPerformanceMetrics(Base, DefaultFieldsMixin):
     execution_status: Mapped[str] = mapped_column(String(50), nullable=False, comment="succeeded, failed, partial")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Additional metadata
     extra_info: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
@@ -144,7 +136,6 @@ class WorkflowNodePerformance(Base, DefaultFieldsMixin):
     node_type: Mapped[str] = mapped_column(String(100), nullable=False)
     node_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
-    node_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # Execution metrics
     execution_time: Mapped[float] = mapped_column(Float, nullable=False, comment="Execution time in seconds")
@@ -156,9 +147,6 @@ class WorkflowNodePerformance(Base, DefaultFieldsMixin):
     tokens_cost: Mapped[float | None] = mapped_column(Float, nullable=True)
     memory_used_mb: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    tokens_used: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    tokens_cost: Mapped[float | None] = mapped_column(Float, nullable=True)
-    memory_used_mb: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Performance indicators
     is_cached: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
@@ -169,14 +157,11 @@ class WorkflowNodePerformance(Base, DefaultFieldsMixin):
     status: Mapped[str] = mapped_column(String(50), nullable=False, comment="succeeded, failed, skipped")
     error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    error_message: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     # Input/Output sizes for analysis
     input_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     output_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    input_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    output_size_bytes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # Additional metadata
     extra_info: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
@@ -276,7 +261,6 @@ class WorkflowCacheEntry(Base, DefaultFieldsMixin):
     original_execution_time: Mapped[float] = mapped_column(
         Float, nullable=False, comment="Original execution time in seconds"
     )
-    original_execution_time: Mapped[float] = mapped_column(
         Float, nullable=False, comment="Original execution time in seconds"
     )
     total_time_saved: Mapped[float] = mapped_column(Float, nullable=False, default=0.0, comment="Cumulative time saved")
@@ -320,16 +304,12 @@ class WorkflowPerformanceTrend(Base, DefaultFieldsMixin):
     median_value: Mapped[float | None] = mapped_column(Float, nullable=True)
     std_deviation: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    median_value: Mapped[float | None] = mapped_column(Float, nullable=True)
-    std_deviation: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Sample data
     sample_count: Mapped[int] = mapped_column(Integer, nullable=False)
     percentile_95: Mapped[float | None] = mapped_column(Float, nullable=True)
     percentile_99: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    percentile_95: Mapped[float | None] = mapped_column(Float, nullable=True)
-    percentile_99: Mapped[float | None] = mapped_column(Float, nullable=True)
 
     # Additional metadata
     extra_info: Mapped[dict[str, Any] | None] = mapped_column(JSONB, nullable=True)
