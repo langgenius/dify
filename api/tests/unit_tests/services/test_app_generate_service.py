@@ -97,6 +97,7 @@ def completion_app(tenant):
     app.tenant_id = tenant.id
     app.name = "Test Completion App"
     app.mode = AppMode.COMPLETION.value
+    app.is_agent = False
     app.enable_site = True
     app.enable_api = True
     app.created_at = datetime.utcnow()
@@ -127,6 +128,7 @@ def advanced_chat_app(tenant):
     app.tenant_id = tenant.id
     app.name = "Test Advanced Chat App"
     app.mode = AppMode.ADVANCED_CHAT.value
+    app.is_agent = False
     app.enable_site = True
     app.enable_api = True
     app.created_at = datetime.utcnow()
@@ -142,6 +144,7 @@ def workflow_app(tenant):
     app.tenant_id = tenant.id
     app.name = "Test Workflow App"
     app.mode = AppMode.WORKFLOW.value
+    app.is_agent = False
     app.enable_site = True
     app.enable_api = True
     app.created_at = datetime.utcnow()
@@ -330,6 +333,7 @@ class TestAppGenerateServiceCompletionMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
@@ -340,6 +344,12 @@ class TestAppGenerateServiceCompletionMode:
             yield {"type": "end"}
 
         mock_generator_instance.generate.return_value = mock_generate()
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"inputs": {"prompt": "Write a story"}}
@@ -370,6 +380,7 @@ class TestAppGenerateServiceCompletionMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
@@ -377,6 +388,12 @@ class TestAppGenerateServiceCompletionMode:
             "text": "Complete generated content",
             "usage": {"tokens": 100},
         }
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"inputs": {"prompt": "Write a story"}}
@@ -411,6 +428,7 @@ class TestAppGenerateServiceAgentMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
@@ -423,6 +441,12 @@ class TestAppGenerateServiceAgentMode:
             yield {"type": "end"}
 
         mock_generator_instance.generate.return_value = mock_generate()
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Search for information", "conversation_id": None}
@@ -468,6 +492,7 @@ class TestAppGenerateServiceWorkflowMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_workflow_service.get_draft_workflow.return_value = workflow
 
@@ -481,6 +506,12 @@ class TestAppGenerateServiceWorkflowMode:
             yield {"type": "workflow_finished", "outputs": {"final": "result"}}
 
         mock_generator_instance.generate.return_value = mock_generate()
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"inputs": {"input_field": "value"}}
@@ -520,12 +551,19 @@ class TestAppGenerateServiceWorkflowMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_workflow_service.get_draft_workflow.return_value = workflow
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "workflow_finished"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         root_node_id = "node_123"
@@ -559,6 +597,7 @@ class TestAppGenerateServiceWorkflowMode:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_workflow_service.get_draft_workflow.return_value = None
 
@@ -590,6 +629,7 @@ class TestAppGenerateServiceRateLimiting:
         mock_rate_limit_instance.enter.side_effect = InvokeRateLimitError("Rate limit exceeded")
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         # Execute & Verify
         args = {"query": "Hello"}
@@ -616,10 +656,17 @@ class TestAppGenerateServiceRateLimiting:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello"}
@@ -648,10 +695,17 @@ class TestAppGenerateServiceRateLimiting:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute multiple requests
         args = {"query": "Hello"}
@@ -687,6 +741,7 @@ class TestAppGenerateServiceQuotaManagement:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_workflow_quota = MagicMock()
         mock_quota_type.WORKFLOW = mock_workflow_quota
@@ -695,6 +750,12 @@ class TestAppGenerateServiceQuotaManagement:
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello"}
@@ -723,6 +784,7 @@ class TestAppGenerateServiceQuotaManagement:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_workflow_quota = MagicMock()
         mock_quota_type.WORKFLOW = mock_workflow_quota
@@ -757,10 +819,17 @@ class TestAppGenerateServiceQuotaManagement:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello"}
@@ -793,10 +862,17 @@ class TestAppGenerateServiceInvokeSources:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello"}
@@ -827,10 +903,17 @@ class TestAppGenerateServiceInvokeSources:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello"}
@@ -860,10 +943,17 @@ class TestAppGenerateServiceInvokeSources:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello"}
@@ -899,6 +989,7 @@ class TestAppGenerateServiceAdvancedChat:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
@@ -908,6 +999,12 @@ class TestAppGenerateServiceAdvancedChat:
             yield {"type": "end"}
 
         mock_generator_instance.generate.return_value = mock_generate()
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         conversation_id = str(uuid.uuid4())
@@ -946,10 +1043,17 @@ class TestAppGenerateServiceEdgeCases:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {}
@@ -977,10 +1081,17 @@ class TestAppGenerateServiceEdgeCases:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         very_long_query = "A" * 10000  # 10k characters
@@ -1010,10 +1121,17 @@ class TestAppGenerateServiceEdgeCases:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         special_query = "Test with émojis 🎉 and symbols @#$%^&*()"
@@ -1043,6 +1161,7 @@ class TestAppGenerateServiceEdgeCases:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
@@ -1077,12 +1196,19 @@ class TestAppGenerateServiceEdgeCases:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter(
             [{"type": "message", "content": "New conversation"}, {"type": "end"}]
         )
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello", "conversation_id": None}
@@ -1115,10 +1241,17 @@ class TestAppGenerateServiceMaxActiveRequests:
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
         mock_generator_instance.generate.return_value = iter([{"type": "end"}])
+
+        # Mock convert_to_event_stream to pass through
+        mock_generator.convert_to_event_stream.side_effect = lambda x: x
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello"}
