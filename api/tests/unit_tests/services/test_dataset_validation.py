@@ -779,7 +779,8 @@ class TestDatasetServicePermissionChecks:
     def test_check_dataset_operator_permission_partial_team_without_permission_raises_error(
         self, mock_db_session, factory
     ):
-        """
+        mock_db_session.query.assert_called_with(DatasetPermission)
+        mock_query.filter_by.assert_called_once_with(account_id=user.id)
         Test that user without explicit permission cannot access PARTIAL_TEAM dataset as operator.
 
         Expected behavior:
