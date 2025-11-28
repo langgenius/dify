@@ -1369,19 +1369,17 @@ class TestIntegration:
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
-    def test_single_document_processing(
-        self, dataset_id, mock_db_session, mock_dataset, mock_indexing_runner
-    ):
+    def test_single_document_processing(self, dataset_id, mock_db_session, mock_dataset, mock_indexing_runner):
         """
         Test processing a single document (minimum batch size).
-        
+
         Single document processing is a common case and should work
         without any special handling or errors.
-        
+
         Scenario:
         - Process exactly 1 document
         - Document exists and is valid
-        
+
         Expected behavior:
         - Document is processed successfully
         - Status is updated to 'parsing'
@@ -1389,15 +1387,15 @@ class TestEdgeCases:
         """
         # Arrange
         document_ids = [str(uuid.uuid4())]
-        
+
         mock_document = MagicMock(spec=Document)
         mock_document.id = document_ids[0]
         mock_document.dataset_id = dataset_id
         mock_document.indexing_status = "waiting"
         mock_document.processing_started_at = None
-        
+
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-        
+
         def mock_query_side_effect(*args):
             mock_query = MagicMock()
             if args[0] == Dataset:
@@ -1405,15 +1403,15 @@ class TestEdgeCases:
             elif args[0] == Document:
                 mock_query.where.return_value.first = lambda: mock_document
             return mock_query
-        
+
         mock_db_session.query.side_effect = mock_query_side_effect
-        
+
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
-            
+
             # Act
             _document_indexing(dataset_id, document_ids)
-            
+
             # Assert
             assert mock_document.indexing_status == "parsing"
             mock_indexing_runner.run.assert_called_once()
@@ -1425,29 +1423,29 @@ class TestEdgeCases:
     ):
         """
         Test handling documents with special characters in IDs.
-        
+
         Document IDs might contain special characters or unusual formats.
         The system should handle these without errors.
-        
+
         Scenario:
         - Document ID contains hyphens, underscores
         - Standard UUID format
-        
+
         Expected behavior:
         - Document is processed normally
         - No parsing or encoding errors
         """
         # Arrange - UUID format with standard characters
         document_ids = [str(uuid.uuid4())]
-        
+
         mock_document = MagicMock(spec=Document)
         mock_document.id = document_ids[0]
         mock_document.dataset_id = dataset_id
         mock_document.indexing_status = "waiting"
         mock_document.processing_started_at = None
-        
+
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-        
+
         def mock_query_side_effect(*args):
             mock_query = MagicMock()
             if args[0] == Dataset:
@@ -1455,33 +1453,31 @@ class TestEdgeCases:
             elif args[0] == Document:
                 mock_query.where.return_value.first = lambda: mock_document
             return mock_query
-        
+
         mock_db_session.query.side_effect = mock_query_side_effect
-        
+
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
-            
+
             # Act - Should not raise any exceptions
             _document_indexing(dataset_id, document_ids)
-            
+
             # Assert
             assert mock_document.indexing_status == "parsing"
             mock_indexing_runner.run.assert_called_once()
 
-    def test_rapid_successive_task_enqueuing(
-        self, tenant_id, dataset_id, mock_redis
-    ):
+    def test_rapid_successive_task_enqueuing(self, tenant_id, dataset_id, mock_redis):
         """
         Test rapid successive task enqueuing to the same tenant queue.
-        
+
         When multiple tasks are enqueued rapidly for the same tenant,
         the system should queue them properly without race conditions.
-        
+
         Scenario:
         - First task starts processing (task key exists)
         - Multiple tasks enqueued rapidly while first is running
         - All should be added to waiting queue
-        
+
         Expected behavior:
         - All tasks are queued (not executed immediately)
         - No tasks are lost
@@ -1489,20 +1485,20 @@ class TestEdgeCases:
         """
         # Arrange
         document_ids_list = [[str(uuid.uuid4())] for _ in range(5)]
-        
+
         # Simulate task already running
         mock_redis.get.return_value = b"1"
-        
+
         with patch.object(DocumentIndexingTaskProxy, "features") as mock_features:
             mock_features.billing.enabled = True
             mock_features.billing.subscription.plan = CloudPlan.PROFESSIONAL
-            
+
             with patch("services.document_indexing_task_proxy.priority_document_indexing_task") as mock_task:
                 # Act - Enqueue multiple tasks rapidly
                 for doc_ids in document_ids_list:
                     proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, doc_ids)
                     proxy.delay()
-                
+
                 # Assert - All tasks should be pushed to queue, none executed
                 assert mock_redis.lpush.call_count == 5
                 mock_task.delay.assert_not_called()
@@ -1512,15 +1508,15 @@ class TestEdgeCases:
     ):
         """
         Test that zero vector space limit means unlimited.
-        
+
         When vector_space.limit is 0, it indicates no limit is enforced,
         allowing unlimited document uploads.
-        
+
         Scenario:
         - Vector space limit: 0 (unlimited)
         - Current size: 1000 (any number)
         - Upload 3 documents
-        
+
         Expected behavior:
         - Upload is allowed
         - No limit errors
@@ -1535,11 +1531,11 @@ class TestEdgeCases:
             doc.indexing_status = "waiting"
             doc.processing_started_at = None
             mock_documents.append(doc)
-        
+
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-        
+
         doc_iter = iter(mock_documents)
-        
+
         def mock_query_side_effect(*args):
             mock_query = MagicMock()
             if args[0] == Dataset:
@@ -1547,22 +1543,22 @@ class TestEdgeCases:
             elif args[0] == Document:
                 mock_query.where.return_value.first = lambda: next(doc_iter, None)
             return mock_query
-        
+
         mock_db_session.query.side_effect = mock_query_side_effect
-        
+
         # Set vector space limit to 0 (unlimited)
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
         mock_feature_service.get_features.return_value.vector_space.limit = 0  # Unlimited
         mock_feature_service.get_features.return_value.vector_space.size = 1000
-        
+
         # Act
         _document_indexing(dataset_id, document_ids)
-        
+
         # Assert - All documents should be processed (no limit error)
         for doc in mock_documents:
             assert doc.indexing_status == "parsing"
-        
+
         mock_indexing_runner.run.assert_called_once()
 
     def test_negative_vector_space_values_handled_gracefully(
@@ -1570,15 +1566,15 @@ class TestEdgeCases:
     ):
         """
         Test handling of negative vector space values.
-        
+
         Negative values in vector space configuration should be treated
         as unlimited or invalid, not causing crashes.
-        
+
         Scenario:
         - Vector space limit: -1 (invalid/unlimited indicator)
         - Current size: 100
         - Upload 3 documents
-        
+
         Expected behavior:
         - Upload is allowed (negative treated as no limit)
         - No crashes or validation errors
@@ -1592,11 +1588,11 @@ class TestEdgeCases:
             doc.indexing_status = "waiting"
             doc.processing_started_at = None
             mock_documents.append(doc)
-        
+
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-        
+
         doc_iter = iter(mock_documents)
-        
+
         def mock_query_side_effect(*args):
             mock_query = MagicMock()
             if args[0] == Dataset:
@@ -1604,18 +1600,18 @@ class TestEdgeCases:
             elif args[0] == Document:
                 mock_query.where.return_value.first = lambda: next(doc_iter, None)
             return mock_query
-        
+
         mock_db_session.query.side_effect = mock_query_side_effect
-        
+
         # Set negative vector space limit
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
         mock_feature_service.get_features.return_value.vector_space.limit = -1  # Negative
         mock_feature_service.get_features.return_value.vector_space.size = 100
-        
+
         # Act
         _document_indexing(dataset_id, document_ids)
-        
+
         # Assert - Should process normally (negative treated as unlimited)
         for doc in mock_documents:
             assert doc.indexing_status == "parsing"
@@ -1629,15 +1625,15 @@ class TestPerformanceScenarios:
     ):
         """
         Test processing a large batch of documents at batch limit.
-        
+
         When processing the maximum allowed batch size, the system
         should handle it efficiently without errors.
-        
+
         Scenario:
         - Process exactly batch_upload_limit documents (e.g., 50)
         - All documents are valid
         - Billing is enabled
-        
+
         Expected behavior:
         - All documents are processed successfully
         - No timeout or memory issues
@@ -1646,7 +1642,7 @@ class TestPerformanceScenarios:
         # Arrange
         batch_limit = 50
         document_ids = [str(uuid.uuid4()) for _ in range(batch_limit)]
-        
+
         mock_documents = []
         for doc_id in document_ids:
             doc = MagicMock(spec=Document)
@@ -1655,11 +1651,11 @@ class TestPerformanceScenarios:
             doc.indexing_status = "waiting"
             doc.processing_started_at = None
             mock_documents.append(doc)
-        
+
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-        
+
         doc_iter = iter(mock_documents)
-        
+
         def mock_query_side_effect(*args):
             mock_query = MagicMock()
             if args[0] == Dataset:
@@ -1667,41 +1663,39 @@ class TestPerformanceScenarios:
             elif args[0] == Document:
                 mock_query.where.return_value.first = lambda: next(doc_iter, None)
             return mock_query
-        
+
         mock_db_session.query.side_effect = mock_query_side_effect
-        
+
         # Configure billing with sufficient limits
         mock_feature_service.get_features.return_value.billing.enabled = True
         mock_feature_service.get_features.return_value.billing.subscription.plan = CloudPlan.PROFESSIONAL
         mock_feature_service.get_features.return_value.vector_space.limit = 10000
         mock_feature_service.get_features.return_value.vector_space.size = 0
-        
+
         with patch("tasks.document_indexing_task.dify_config.BATCH_UPLOAD_LIMIT", str(batch_limit)):
             # Act
             _document_indexing(dataset_id, document_ids)
-            
+
             # Assert
             for doc in mock_documents:
                 assert doc.indexing_status == "parsing"
-            
+
             mock_indexing_runner.run.assert_called_once()
             call_args = mock_indexing_runner.run.call_args[0][0]
             assert len(call_args) == batch_limit
 
-    def test_tenant_queue_handles_burst_traffic(
-        self, tenant_id, dataset_id, mock_redis, mock_db_session, mock_dataset
-    ):
+    def test_tenant_queue_handles_burst_traffic(self, tenant_id, dataset_id, mock_redis, mock_db_session, mock_dataset):
         """
         Test tenant queue handling burst traffic scenarios.
-        
+
         When many tasks arrive in a burst for the same tenant,
         the queue should handle them efficiently without dropping tasks.
-        
+
         Scenario:
         - 20 tasks arrive rapidly
         - Concurrency limit is 3
         - Tasks should be queued and processed in batches
-        
+
         Expected behavior:
         - First 3 tasks are processed immediately
         - Remaining tasks wait in queue
@@ -1711,7 +1705,7 @@ class TestPerformanceScenarios:
         num_tasks = 20
         concurrency_limit = 3
         document_ids = [str(uuid.uuid4())]
-        
+
         # Create waiting tasks
         waiting_tasks = []
         for i in range(num_tasks):
@@ -1721,34 +1715,34 @@ class TestPerformanceScenarios:
                 "document_ids": [f"doc_{i}"],
             }
             from core.rag.pipeline.queue import TaskWrapper
-            
+
             wrapper = TaskWrapper(data=task_data)
             waiting_tasks.append(wrapper.serialize())
-        
+
         # Mock rpop to return tasks up to concurrency limit
         mock_redis.rpop.side_effect = waiting_tasks[:concurrency_limit] + [None]
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-        
+
         with patch("tasks.document_indexing_task.dify_config.TENANT_ISOLATED_TASK_CONCURRENCY", concurrency_limit):
             with patch("tasks.document_indexing_task.normal_document_indexing_task") as mock_task:
                 # Act
                 _document_indexing_with_tenant_queue(tenant_id, dataset_id, document_ids, mock_task)
-                
+
                 # Assert - Should process exactly concurrency_limit tasks
                 assert mock_task.delay.call_count == concurrency_limit
 
     def test_multiple_tenants_isolated_processing(self, mock_redis):
         """
         Test that multiple tenants process tasks in isolation.
-        
+
         When multiple tenants have tasks running simultaneously,
         they should not interfere with each other.
-        
+
         Scenario:
         - Tenant A has tasks in queue
         - Tenant B has tasks in queue
         - Both process independently
-        
+
         Expected behavior:
         - Each tenant has separate queue
         - Each tenant has separate task key
@@ -1759,15 +1753,15 @@ class TestPerformanceScenarios:
         tenant_b = str(uuid.uuid4())
         dataset_id = str(uuid.uuid4())
         document_ids = [str(uuid.uuid4())]
-        
+
         # Create queues for both tenants
         queue_a = TenantIsolatedTaskQueue(tenant_a, "document_indexing")
         queue_b = TenantIsolatedTaskQueue(tenant_b, "document_indexing")
-        
+
         # Act - Set task keys for both tenants
         queue_a.set_task_waiting_time()
         queue_b.set_task_waiting_time()
-        
+
         # Assert - Each tenant has independent queue and key
         assert queue_a._queue != queue_b._queue
         assert queue_a._task_key != queue_b._task_key
@@ -1785,15 +1779,15 @@ class TestRobustness:
     ):
         """
         Test that IndexingRunner exceptions are handled gracefully.
-        
+
         When IndexingRunner raises an unexpected exception during processing,
         the task should catch it, log it, and clean up properly.
-        
+
         Scenario:
         - Documents are prepared for indexing
         - IndexingRunner.run() raises RuntimeError
         - Task should not crash
-        
+
         Expected behavior:
         - Exception is caught and logged
         - Database session is closed
@@ -1808,11 +1802,11 @@ class TestRobustness:
             doc.indexing_status = "waiting"
             doc.processing_started_at = None
             mock_documents.append(doc)
-        
+
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-        
+
         doc_iter = iter(mock_documents)
-        
+
         def mock_query_side_effect(*args):
             mock_query = MagicMock()
             if args[0] == Dataset:
@@ -1820,18 +1814,18 @@ class TestRobustness:
             elif args[0] == Document:
                 mock_query.where.return_value.first = lambda: next(doc_iter, None)
             return mock_query
-        
+
         mock_db_session.query.side_effect = mock_query_side_effect
-        
+
         # Make IndexingRunner raise an exception
         mock_indexing_runner.run.side_effect = RuntimeError("Unexpected indexing error")
-        
+
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
-            
+
             # Act - Should not raise exception
             _document_indexing(dataset_id, document_ids)
-            
+
             # Assert - Session should be closed even after error
             assert mock_db_session.close.called
 
@@ -1840,14 +1834,14 @@ class TestRobustness:
     ):
         """
         Test that database session is always closed on successful completion.
-        
+
         Proper resource cleanup is critical. The database session must
         be closed in the finally block to prevent connection leaks.
-        
+
         Scenario:
         - Task processes successfully
         - No exceptions occur
-        
+
         Expected behavior:
         - Database session is closed
         - No connection leaks
@@ -1861,11 +1855,11 @@ class TestRobustness:
             doc.indexing_status = "waiting"
             doc.processing_started_at = None
             mock_documents.append(doc)
-        
+
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_dataset
-        
+
         doc_iter = iter(mock_documents)
-        
+
         def mock_query_side_effect(*args):
             mock_query = MagicMock()
             if args[0] == Dataset:
@@ -1873,15 +1867,15 @@ class TestRobustness:
             elif args[0] == Document:
                 mock_query.where.return_value.first = lambda: next(doc_iter, None)
             return mock_query
-        
+
         mock_db_session.query.side_effect = mock_query_side_effect
-        
+
         with patch("tasks.document_indexing_task.FeatureService.get_features") as mock_features:
             mock_features.return_value.billing.enabled = False
-            
+
             # Act
             _document_indexing(dataset_id, document_ids)
-            
+
             # Assert
             assert mock_db_session.close.called
             # Verify close is called exactly once
@@ -1890,14 +1884,14 @@ class TestRobustness:
     def test_task_proxy_handles_feature_service_failure(self, tenant_id, dataset_id, document_ids, mock_redis):
         """
         Test that task proxy handles FeatureService failures gracefully.
-        
+
         If FeatureService fails to retrieve features, the system should
         have a fallback or handle the error appropriately.
-        
+
         Scenario:
         - FeatureService.get_features() raises an exception during dispatch
         - Task enqueuing should handle the error
-        
+
         Expected behavior:
         - Exception is raised when trying to dispatch
         - System doesn't crash unexpectedly
@@ -1907,13 +1901,13 @@ class TestRobustness:
         with patch("services.document_indexing_task_proxy.FeatureService.get_features") as mock_get_features:
             # Simulate FeatureService failure
             mock_get_features.side_effect = Exception("Feature service unavailable")
-            
+
             # Create proxy instance
             proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
-            
+
             # Act & Assert - Should raise exception when trying to delay (which accesses features)
             with pytest.raises(Exception) as exc_info:
                 proxy.delay()
-            
+
             # Verify the exception message
             assert "Feature service" in str(exc_info.value) or isinstance(exc_info.value, Exception)
