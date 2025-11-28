@@ -111,7 +111,11 @@ class App(Base):
         else:
             app_model_config = self.app_model_config
             if app_model_config:
-                return app_model_config.pre_prompt
+                pre_prompt = app_model_config.pre_prompt or ""
+                # Truncate to 200 characters with ellipsis if using prompt as description
+                if len(pre_prompt) > 200:
+                    return pre_prompt[:200] + "..."
+                return pre_prompt
             else:
                 return ""
 
