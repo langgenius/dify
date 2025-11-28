@@ -254,18 +254,16 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             system_fingerprint="",
         )
 
-        # save agent thought only when final answer is NOT directly from tool
-        if not is_final_answer_from_tool:
-            self.save_agent_thought(
-                agent_thought_id=agent_thought_id,
-                tool_name="",
-                tool_input={},
-                tool_invoke_meta={},
-                thought=final_answer,
-                observation={},
-                answer=final_answer,
-                messages_ids=[],
-            )
+        self.save_agent_thought(
+            agent_thought_id=agent_thought_id,
+            tool_name="",
+            tool_input={},
+            tool_invoke_meta={},
+            thought=final_answer,
+            observation={},
+            answer=final_answer,
+            messages_ids=[],
+        )
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(
