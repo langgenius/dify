@@ -130,11 +130,8 @@ export const useToolIcon = (data?: Node['data']) => {
       return ''
     }
 
-    if (isDataSourceNode(data)) {
-      const matchedDataSource = dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)
-      const icon = resolveIconByTheme(theme, matchedDataSource?.icon, matchedDataSource?.icon_dark)
-      return icon || ''
-    }
+    if (isDataSourceNode(data))
+      return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon || ''
 
     return ''
   }, [data, dataSourceList, buildInTools, customTools, workflowTools, mcpTools, triggerPlugins, theme])
@@ -221,10 +218,8 @@ export const useGetToolIcon = () => {
       return undefined
     }
 
-    if (isDataSourceNode(data)) {
-      const matchedDataSource = dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)
-      return resolveIconByTheme(theme, matchedDataSource?.icon, matchedDataSource?.icon_dark)
-    }
+    if (isDataSourceNode(data))
+      return dataSourceList?.find(toolWithProvider => toolWithProvider.plugin_id === data.plugin_id)?.icon
 
     return undefined
   }, [workflowStore, triggerPlugins, buildInTools, customTools, workflowTools, mcpTools, theme])
