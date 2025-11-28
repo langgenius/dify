@@ -114,6 +114,13 @@ const translation = {
     importFromUrlPlaceHolder: 'https://...',
     descriptionPlaceholder: 'Deskripsi singkat tentang tujuan alat, misalnya, mendapatkan suhu untuk lokasi tertentu.',
     confirmTitle: 'Konfirmasi untuk menyimpan?',
+    toolOutput: {
+      title: 'Keluaran Alat',
+      name: 'Nama',
+      reserved: 'Dicadangkan',
+      reservedParameterDuplicateTip: 'text, json, dan file adalah variabel yang dicadangkan. Variabel dengan nama-nama ini tidak dapat muncul dalam skema keluaran.',
+      description: 'Deskripsi',
+    },
   },
   test: {
     testResult: 'Hasil Tes',
