@@ -168,6 +168,15 @@ class MCPClientWithAuthRetry(MCPClient):
 
         return self._execute_with_retry(initialize_with_retry)
 
+    def connect(self) -> "MCPClientWithAuthRetry":
+        """Initialize the client once with auth retry semantics and return self."""
+
+        def connect_with_retry() -> "MCPClientWithAuthRetry":
+            super(MCPClientWithAuthRetry, self).connect()
+            return self
+
+        return self._execute_with_retry(connect_with_retry)
+
     def list_tools(self) -> list[Tool]:
         """
         List available tools from the MCP server with auth retry.
