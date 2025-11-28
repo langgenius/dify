@@ -9,6 +9,7 @@ from abc import ABC, abstractmethod
 
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent
+from core.workflow.nodes.base.node import Node
 from core.workflow.runtime import ReadOnlyGraphRuntimeState
 
 
@@ -81,5 +82,31 @@ class GraphEngineLayer(ABC):
 
         Args:
             error: The exception that caused execution to fail, or None if successful
+        """
+        pass
+
+    def on_node_run_start(self, node: Node) -> None:  # noqa: B027
+        """
+        Called immediately before a node begins execution.
+
+        Layers can override to inject behavior (e.g., start spans) prior to node execution.
+        The node's execution ID is available via `node._node_execution_id` and will be
+        consistent with all events emitted by this node execution.
+
+        Args:
+            node: The node instance about to be executed
+        """
+        pass
+
+    def on_node_run_end(self, node: Node, error: Exception | None) -> None:  # noqa: B027
+        """
+        Called after a node finishes execution.
+
+        The node's execution ID is available via `node._node_execution_id` and matches
+        the `id` field in all events emitted by this node execution.
+
+        Args:
+            node: The node instance that just finished execution
+            error: Exception instance if the node failed, otherwise None
         """
         pass
