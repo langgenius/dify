@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: 'Nu te îngrijora — aceasta nu va afecta abonamentul tău curent, dar nu veți primi discountul educațional atunci când se reinnoiește, cu excepția cazului în care îți verifici din nou statutul.',
+      title: 'Starea ta educațională va expira la {{date}}',
     },
     stillInEducation: {
       isAboutToExpire: 'Re-verifică acum pentru a obține un nou cupon pentru anul universitar următor. Va fi salvat în contul tău și gata de utilizat la următoarea reînnoire.',

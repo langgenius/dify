@@ -92,6 +92,7 @@ const translation = {
   title: 'Anotasi',
   name: 'Balas Anotasi',
   embeddingModelSwitchTip: 'Model vektorisasi teks anotasi, model switching akan disematkan kembali, menghasilkan biaya tambahan.',
+  editBy: 'Jawaban diedit oleh {{author}}',
 }
 
 export default translation

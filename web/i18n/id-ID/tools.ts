@@ -114,6 +114,13 @@ const translation = {
     importFromUrlPlaceHolder: 'https://...',
     descriptionPlaceholder: 'Deskripsi singkat tentang tujuan alat, misalnya, mendapatkan suhu untuk lokasi tertentu.',
     confirmTitle: 'Konfirmasi untuk menyimpan?',
+    toolOutput: {
+      title: 'Keluaran Alat',
+      name: 'Nama',
+      reserved: 'Dicadangkan',
+      reservedParameterDuplicateTip: 'text, json, dan file adalah variabel yang dicadangkan. Variabel dengan nama-nama ini tidak dapat muncul dalam skema keluaran.',
+      description: 'Deskripsi',
+    },
   },
   test: {
     testResult: 'Hasil Tes',
@@ -188,6 +195,7 @@ const translation = {
       configurations: 'Konfigurasi',
       clientSecret: 'Rahasia Klien',
       clientID: 'ID Klien',
+      redirectUrlWarning: 'Silakan atur URL pengalihan OAuth Anda ke:',
     },
     operation: {
       edit: 'Mengedit',
@@ -233,6 +241,9 @@ const translation = {
       parameters: 'Parameter',
       noDescription: 'Tanpa deskripsi',
     },
+    toolsCount: 'alat {{count}}',
+    deleteConfirmTitle: 'Apakah Anda ingin menghapus {{mcp}}?',
+    toolsNum: 'alat {{count}} termasuk',
   },
   title: 'Perkakas',
   createCustomTool: 'Buat Alat Kustom',
@@ -247,6 +258,7 @@ const translation = {
   builtInPromptTitle: 'Cepat',
   toolNameUsageTip: 'Nama panggilan alat untuk penalaran dan permintaan agen',
   allTools: 'Semua alat',
+  includeToolNum: '{{num}} {{action}} termasuk',
 }
 
 export default translation

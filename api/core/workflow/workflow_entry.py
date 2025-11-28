@@ -159,7 +159,6 @@ class WorkflowEntry:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        node.init_node_data(node_config_data)
 
         try:
             # variable selector to variable mapping
@@ -303,7 +302,6 @@ class WorkflowEntry:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        node.init_node_data(node_data)
 
         try:
             # variable selector to variable mapping
@@ -421,4 +419,10 @@ class WorkflowEntry:
                 if len(variable_key_list) == 2 and variable_key_list[0] == "structured_output":
                     input_value = {variable_key_list[1]: input_value}
                     variable_key_list = variable_key_list[0:1]
+
+                    # Support for a single node to reference multiple structured_output variables
+                    current_variable = variable_pool.get([variable_node_id] + variable_key_list)
+                    if current_variable and isinstance(current_variable.value, dict):
+                        input_value = current_variable.value | input_value
+
                 variable_pool.add([variable_node_id] + variable_key_list, input_value)

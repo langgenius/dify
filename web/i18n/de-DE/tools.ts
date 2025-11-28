@@ -98,6 +98,13 @@ const translation = {
     confirmTitle: 'Bestätigen, um zu speichern?',
     nameForToolCallPlaceHolder: 'Wird für die Maschinenerkennung verwendet, z. B. getCurrentWeather, list_pets',
     descriptionPlaceholder: 'Kurze Beschreibung des Zwecks des Werkzeugs, z. B. um die Temperatur für einen bestimmten Ort zu ermitteln.',
+    toolOutput: {
+      title: 'Werkzeugausgabe',
+      name: 'Name',
+      reserved: 'Reserviert',
+      reservedParameterDuplicateTip: 'Text, JSON und Dateien sind reservierte Variablen. Variablen mit diesen Namen dürfen im Ausgabeschema nicht erscheinen.',
+      description: 'Beschreibung',
+    },
   },
   test: {
     title: 'Test',
@@ -205,6 +212,7 @@ const translation = {
       authentication: 'Authentifizierung',
       useDynamicClientRegistration: 'Dynamische Client-Registrierung verwenden',
       configurations: 'Konfigurationen',
+      redirectUrlWarning: 'Bitte konfigurieren Sie Ihre OAuth-Umleitungs-URL wie folgt:',
     },
     delete: 'MCP-Server entfernen',
     deleteConfirmTitle: 'Möchten Sie {{mcp}} entfernen?',

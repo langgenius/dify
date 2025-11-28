@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: 'Xem tài liệu {{key}}',
       removeConfirmTitle: 'Xóa cấu hình {{key}}?',
       removeConfirmContent: 'Cấu hình hiện tại đang được sử dụng, việc xóa nó sẽ tắt tính năng Theo dõi.',
+      username: 'Tên người dùng',
+      password: 'Mật khẩu',
+      clientId: 'ID Khách Hàng OAuth',
+      databricksHost: 'URL Workspace của Databricks',
+      trackingUri: 'URI theo dõi',
+      clientSecret: 'Bí mật Khách hàng OAuth',
+      personalAccessToken: 'Mã truy cập cá nhân (cũ)',
+      experimentId: 'Mã thí nghiệm',
     },
     view: 'Cảnh',
     opik: {
@@ -162,6 +170,14 @@ const translation = {
     aliyun: {
       title: 'Giám sát Đám mây',
       description: 'Nền tảng quan sát được quản lý hoàn toàn và không cần bảo trì do Alibaba Cloud cung cấp, cho phép giám sát, theo dõi và đánh giá các ứng dụng Dify ngay lập tức.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Nền tảng LLMOps mã nguồn mở cho theo dõi thử nghiệm, khả năng quan sát và đánh giá, để xây dựng ứng dụng AI/LLM với sự tự tin.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks cung cấp MLflow được quản lý hoàn toàn với quản trị mạnh mẽ và bảo mật để lưu trữ dữ liệu theo dõi.',
     },
     tencent: {
       title: 'Tencent APM',
@@ -286,6 +302,8 @@ const translation = {
       accountDesc: 'Đi đến trang tài khoản',
       docDesc: 'Mở tài liệu trợ giúp',
       communityDesc: 'Mở cộng đồng Discord',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noWorkflowNodesFound: 'Không tìm thấy nút quy trình làm việc',
@@ -326,6 +344,8 @@ const translation = {
     pressEscToClose: 'Nhấn ESC để đóng',
     tips: 'Nhấn ↑↓ để duyệt',
   },
+  noUserInputNode: 'Thiếu nút nhập liệu của người dùng',
+  notPublishedYet: 'Ứng dụng chưa được phát hành',
 }
 
 export default translation

@@ -146,6 +146,14 @@ const translation = {
       viewDocsLink: '{{key}}-Dokumentation ansehen',
       removeConfirmTitle: '{{key}}-Konfiguration entfernen?',
       removeConfirmContent: 'Die aktuelle Konfiguration wird verwendet. Das Entfernen wird die Nachverfolgungsfunktion ausschalten.',
+      password: 'Passwort',
+      databricksHost: 'Databricks-Workspace-URL',
+      clientSecret: 'OAuth-Client-Geheimnis',
+      personalAccessToken: 'Persönliches Zugriffstoken (veraltet)',
+      experimentId: 'Experiment-ID',
+      username: 'Benutzername',
+      trackingUri: 'Tracking-URI',
+      clientId: 'OAuth-Client-ID',
     },
     view: 'Ansehen',
     opik: {
@@ -159,6 +167,14 @@ const translation = {
     aliyun: {
       title: 'Cloud-Monitor',
       description: 'Die vollständig verwaltete und wartungsfreie Observability-Plattform von Alibaba Cloud ermöglicht eine sofortige Überwachung, Verfolgung und Bewertung von Dify-Anwendungen.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Open-Source-LLMOps-Plattform mit Experiment-Tracking, Observability und Evaluierungen für die sichere Entwicklung von AI/LLM-Anwendungen.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks bietet vollständig verwaltetes MLflow mit starker Governance und Sicherheit für die Speicherung von Trace-Daten.',
     },
     tencent: {
       title: 'Tencent APM',
@@ -288,6 +304,8 @@ const translation = {
       feedbackDesc: 'Offene Diskussionen zum Feedback der Gemeinschaft',
       communityDesc: 'Offene Discord-Community',
       docDesc: 'Öffnen Sie die Hilfedokumentation',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'Keine Plugins gefunden',
@@ -328,6 +346,8 @@ const translation = {
     startTyping: 'Beginnen Sie mit der Eingabe, um zu suchen',
     selectToNavigate: 'Auswählen, um zu navigieren',
   },
+  notPublishedYet: 'App ist noch nicht veröffentlicht',
+  noUserInputNode: 'Fehlender Benutzereingabeknoten',
 }
 
 export default translation

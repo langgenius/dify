@@ -114,6 +114,11 @@ const translation = {
         },
       },
       launch: '발사',
+      enableTooltip: {
+        description: '이 기능을 사용하려면 캔버스에 사용자 입력 노드를 추가하세요. (초안에 이미 있을 수 있으며, 게시 후에 적용됩니다)',
+        learnMore: '자세히 알아보기',
+      },
+      title: '웹 앱',
     },
     apiInfo: {
       title: '백엔드 서비스 API',
@@ -124,6 +129,17 @@ const translation = {
     status: {
       running: '서비스 중',
       disable: '비활성',
+    },
+    triggerInfo: {
+      title: '유발 요인',
+      explanation: '워크플로 트리거 관리',
+      triggersAdded: '{{count}} 트리거 추가됨',
+      noTriggerAdded: '트리거가 추가되지 않았습니다',
+      triggerStatusDescription: '트리거 노드 상태가 여기에 표시됩니다. (이미 초안에 존재할 수 있으며, 게시 후에 적용됩니다)',
+      learnAboutTriggers: '트리거에 대해 배우기',
+    },
+    disableTooltip: {
+      triggerMode: '트리거 노드 모드에서는 {{feature}} 기능이 지원되지 않습니다.',
     },
   },
   analysis: {

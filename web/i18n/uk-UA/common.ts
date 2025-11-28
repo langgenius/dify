@@ -65,10 +65,17 @@ const translation = {
     no: 'Ні',
     deleteConfirmTitle: 'Видалити?',
     confirmAction: 'Будь ласка, підтвердіть свої дії.',
+    noSearchResults: 'Жодного {{content}} не знайдено',
+    resetKeywords: 'Скинути ключові слова',
+    selectCount: '{{count}} вибрано',
+    searchCount: 'Знайти {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Зараз',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',
     select: 'Будь ласка, оберіть параметр',
+    search: 'Пошук...',
   },
   voice: {
     language: {
@@ -769,6 +776,13 @@ const translation = {
   },
   label: {
     optional: '(необов\'язково)',
+  },
+  noData: 'Немає даних',
+  dynamicSelect: {
+    error: 'Не вдалося завантажити параметри',
+    noData: 'Немає доступних опцій',
+    loading: 'Завантаження параметрів...',
+    selected: '{{count}} вибрано',
   },
 }
 

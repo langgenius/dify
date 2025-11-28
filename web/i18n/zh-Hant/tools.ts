@@ -98,6 +98,13 @@ const translation = {
     nameForToolCallTip: '僅支援數位、字母和下劃線。',
     confirmTip: '使用此工具的應用程式將受到影響',
     nameForToolCallPlaceHolder: '用於機器識別，例如 getCurrentWeather、list_pets',
+    toolOutput: {
+      title: '工具輸出',
+      name: '名稱',
+      reserved: '已保留',
+      reservedParameterDuplicateTip: 'text、json 和 files 是保留變數。這些名稱的變數不能出現在輸出結構中。',
+      description: '描述',
+    },
   },
   test: {
     title: '測試',
@@ -205,6 +212,7 @@ const translation = {
       configurations: '設定',
       useDynamicClientRegistration: '使用動態客戶端註冊',
       clientSecret: '客戶端密鑰',
+      redirectUrlWarning: '請將您的 OAuth 重新導向 URL 設定為：',
     },
     delete: '刪除 MCP 伺服器',
     deleteConfirmTitle: '您確定要刪除 {{mcp}} 嗎？',

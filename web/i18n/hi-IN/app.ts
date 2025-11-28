@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: '{{key}} दस्तावेज़ देखें',
       removeConfirmTitle: '{{key}} कॉन्फ़िगरेशन हटाएं?',
       removeConfirmContent: 'वर्तमान कॉन्फ़िगरेशन उपयोग में है, इसे हटाने से ट्रेसिंग सुविधा बंद हो जाएगी।',
+      password: 'पासवर्ड',
+      clientId: 'OAuth क्लाइंट आईडी',
+      clientSecret: 'OAuth क्लाइंट सीक्रेट',
+      trackingUri: 'ट्रैकिंग यूआरआई',
+      username: 'उपयोगकर्ता नाम',
+      experimentId: 'प्रयोग आईडी',
+      databricksHost: 'डेटाब्रिक्स वर्कस्पेस यूआरएल',
+      personalAccessToken: 'व्यक्तिगत एक्सेस टोकन (पुराना)',
     },
     view: 'देखना',
     opik: {
@@ -162,6 +170,14 @@ const translation = {
     aliyun: {
       title: 'क्लाउड मॉनिटर',
       description: 'अलीबाबा क्लाउड द्वारा प्रदान की गई पूरी तरह से प्रबंधित और रखरखाव-मुक्त अवलोकन प्लेटफ़ॉर्म, Dify अनुप्रयोगों की स्वचालित निगरानी, ट्रेसिंग और मूल्यांकन का सक्षम बनाता है।',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'प्रयोग ट्रैकिंग, अवलोकनीयता और मूल्यांकन के लिए ओपन-सोर्स LLMOps प्लेटफ़ॉर्म, विश्वास के साथ AI/LLM ऐप्स बनाने के लिए।',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks मजबूत शासन और सुरक्षा के साथ पूरी तरह से प्रबंधित MLflow प्रदान करता है, ट्रेस डेटा संग्रहीत करने के लिए।',
     },
     tencent: {
       title: 'टेनसेंट एपीएम',
@@ -286,6 +302,8 @@ const translation = {
       docDesc: 'सहायता दस्तावेज़ खोलें',
       communityDesc: 'ओपन डिस्कॉर्ड समुदाय',
       feedbackDesc: 'खुले समुदाय की फीडबैक चर्चाएँ',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'कोई प्लगइन नहीं मिले',
@@ -326,6 +344,8 @@ const translation = {
     selectToNavigate: 'नेविगेट करने के लिए चुनें',
     tips: 'नेविगेट करने के लिए ↑↓ दबाएँ',
   },
+  noUserInputNode: 'उपयोगकर्ता इनपुट नोड गायब है',
+  notPublishedYet: 'ऐप अभी प्रकाशित नहीं हुआ है',
 }
 
 export default translation

@@ -24,6 +24,8 @@ import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
 import TabSlider from '@/app/components/base/tab-slider'
 import { MCPAuthMethod } from '@/app/components/tools/types'
 import Switch from '@/app/components/base/switch'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
+import { API_PREFIX } from '@/config'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -97,8 +99,8 @@ const MCPModal = ({
   const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
-  const [timeout, setMcpTimeout] = React.useState(data?.timeout || 30)
-  const [sseReadTimeout, setSseReadTimeout] = React.useState(data?.sse_read_timeout || 300)
+  const [timeout, setMcpTimeout] = React.useState(data?.configuration?.timeout || 30)
+  const [sseReadTimeout, setSseReadTimeout] = React.useState(data?.configuration?.sse_read_timeout || 300)
   const [headers, setHeaders] = React.useState<HeaderItem[]>(
     Object.entries(data?.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })),
   )
@@ -116,8 +118,8 @@ const MCPModal = ({
       setUrl(data.server_url || '')
       setName(data.name || '')
       setServerIdentifier(data.server_identifier || '')
-      setMcpTimeout(data.timeout || 30)
-      setSseReadTimeout(data.sse_read_timeout || 300)
+      setMcpTimeout(data.configuration?.timeout || 30)
+      setSseReadTimeout(data.configuration?.sse_read_timeout || 300)
       setHeaders(Object.entries(data.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })))
       setAppIcon(getIcon(data))
       setIsDynamicRegistration(data.is_dynamic_registration)
@@ -313,6 +315,17 @@ const MCPModal = ({
                     />
                     <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.useDynamicClientRegistration')}</span>
                   </div>
+                  {!isDynamicRegistration && (
+                    <div className='mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3'>
+                      <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0 text-text-warning' />
+                      <div className='system-xs-regular text-text-secondary'>
+                        <div className='mb-1'>{t('tools.mcp.modal.redirectUrlWarning')}</div>
+                        <code className='system-xs-medium block break-all rounded bg-state-warning-active px-2 py-1 text-text-secondary'>
+                          {`${API_PREFIX}/mcp/oauth/callback`}
+                        </code>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>

@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Контекст',
       noData: 'Вы можете импортировать знания в качестве контекста',
-      words: 'Слова',
-      textBlocks: 'Текстовые блоки',
       selectTitle: 'Выберите справочные знания',
       selected: 'Знания выбраны',
       noDataSet: 'Знания не найдены',
@@ -398,6 +396,7 @@ const translation = {
     'both': 'Оба',
     'localUpload': 'Локальная загрузка',
     'maxNumberOfUploads': 'Максимальное количество загрузок',
+    'maxNumberTip': 'Документ < {{docLimit}}, изображение < {{imgLimit}}, аудио < {{audioLimit}}, видео < {{videoLimit}}',
     'uploadFileTypes': 'Типы файлов загрузки',
     'single-file': 'Друг за другом',
     'multi-files': 'Список файлов',

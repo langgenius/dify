@@ -83,9 +83,6 @@ def test_execute_answer():
         config=node_config,
     )
 
-    # Initialize node data
-    node.init_node_data(node_config["data"])
-
     # Mock db.session.close()
     db.session.close = MagicMock()
 

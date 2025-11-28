@@ -114,6 +114,11 @@ const translation = {
         },
       },
       launch: 'Lançar',
+      enableTooltip: {
+        description: 'Para ativar este recurso, adicione um nó de Entrada do Usuário ao canvas. (Pode já existir no rascunho, e entra em efeito após a publicação)',
+        learnMore: 'Saiba mais',
+      },
+      title: 'Aplicativo Web',
     },
     apiInfo: {
       title: 'API de Serviço de Back-end',
@@ -124,6 +129,17 @@ const translation = {
     status: {
       running: 'Em serviço',
       disable: 'Desabilitar',
+    },
+    triggerInfo: {
+      title: 'Gatilhos',
+      explanation: 'Gerenciamento de gatilho de fluxo de trabalho',
+      triggersAdded: '{{count}} gatilhos adicionados',
+      noTriggerAdded: 'Nenhum gatilho adicionado',
+      triggerStatusDescription: 'O status do nó de gatilho aparece aqui. (Pode já existir no rascunho, entra em vigor após a publicação)',
+      learnAboutTriggers: 'Saiba mais sobre Gatilhos',
+    },
+    disableTooltip: {
+      triggerMode: 'O recurso {{feature}} não é compatível no modo Nó de Gatilho.',
     },
   },
   analysis: {

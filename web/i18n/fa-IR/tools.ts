@@ -119,6 +119,13 @@ const translation = {
     confirmTip: 'برنامه‌هایی که از این ابزار استفاده می‌کنند تحت تأثیر قرار خواهند گرفت',
     deleteToolConfirmTitle: 'آیا این ابزار را حذف کنید؟',
     deleteToolConfirmContent: 'حذف ابزار غیرقابل بازگشت است. کاربران دیگر قادر به دسترسی به ابزار شما نخواهند بود.',
+    toolOutput: {
+      title: 'خروجی ابزار',
+      name: 'نام',
+      reserved: 'رزرو شده',
+      reservedParameterDuplicateTip: 'متن، JSON و فایل‌ها متغیرهای رزرو شده هستند. متغیرهایی با این نام‌ها نمی‌توانند در طرح خروجی ظاهر شوند.',
+      description: 'توضیحات',
+    },
   },
   test: {
     title: 'آزمایش',
@@ -205,6 +212,7 @@ const translation = {
       clientID: 'شناسه مشتری',
       clientSecret: 'رمز مشتری',
       useDynamicClientRegistration: 'استفاده از ثبت‌نام پویا برای مشتری',
+      redirectUrlWarning: 'لطفاً URL بازگشت OAuth خود را پیکربندی کنید به:',
     },
     delete: 'حذف سرور MCP',
     deleteConfirmTitle: 'آیا مایل به حذف {mcp} هستید؟',

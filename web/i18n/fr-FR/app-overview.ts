@@ -114,6 +114,11 @@ const translation = {
         },
       },
       launch: 'Lancer',
+      enableTooltip: {
+        description: 'Pour activer cette fonctionnalité, veuillez ajouter un nœud d\'entrée utilisateur sur le canevas. (Peut déjà exister dans le brouillon, prend effet après publication)',
+        learnMore: 'En savoir plus',
+      },
+      title: 'Application Web',
     },
     apiInfo: {
       title: 'API de service Backend',
@@ -124,6 +129,17 @@ const translation = {
     status: {
       running: 'En service',
       disable: 'Désactiver',
+    },
+    triggerInfo: {
+      title: 'Déclencheurs',
+      explanation: 'Gestion des déclencheurs de flux de travail',
+      triggersAdded: 'Déclencheurs ajoutés',
+      noTriggerAdded: 'Aucun déclencheur ajouté',
+      triggerStatusDescription: 'L\'état du nœud de déclenchement apparaît ici. (Peut déjà exister dans le brouillon, prend effet après publication)',
+      learnAboutTriggers: 'En savoir plus sur les déclencheurs',
+    },
+    disableTooltip: {
+      triggerMode: 'La fonctionnalité {{feature}} n\'est pas prise en charge en mode Nœud Déclencheur.',
     },
   },
   analysis: {
