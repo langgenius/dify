@@ -386,7 +386,7 @@ const GotoAnything: FC<Props> = ({
                           <Command.Item
                             key={`${result.type}-${result.id}`}
                             value={`${result.type}-${result.id}`}
-                            className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] aria-[selected=true]:bg-state-base-hover data-[selected=true]:bg-state-base-hover'
+                            className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt data-[selected=true]:bg-state-base-hover-alt'
                             onSelect={() => handleNavigate(result)}
                           >
                             {result.icon}
