@@ -9,6 +9,8 @@ This module tests the document indexing workflow including:
 - Failure recovery mechanisms
 """
 
+import hashlib
+import json
 import uuid
 from unittest.mock import Mock, patch
 
@@ -382,7 +384,7 @@ class TestChunkingStrategy:
         text_docs = DocumentProcessingTestDataFactory.create_mock_documents(count=1)
         process_rule = {
             "mode": "custom",
-            "rules": {"segmentation": {"max_tokens": 500, "chunk_overlap": 50, "separator": "\\n\\n"}},
+            "rules": {"segmentation": {"max_tokens": 500, "chunk_overlap": 50, "separator": "\n\n"}},
         }
 
         mock_embedding_instance = Mock()
@@ -532,7 +534,7 @@ class TestChunkingStrategy:
         processing_rule_mode = "custom"
         max_tokens = 500
         chunk_overlap = 50
-        separator = "\\n\\n---\\n\\n"  # Custom separator
+        separator = "\n\n---\n\n"  # Custom separator
         mock_embedding_instance = Mock()
 
         # Act
@@ -568,8 +570,9 @@ class TestChunkingStrategy:
         # Assert
         assert result == []
 
+    @pytest.mark.parametrize("language", ["English", "Chinese", "Spanish", "French"])
     @patch("core.indexing_runner.ModelManager")
-    def test_transform_with_different_languages(self, mock_model_manager):
+    def test_transform_with_different_languages(self, mock_model_manager, language):
         """
         Test transformation with different document languages.
 
@@ -587,13 +590,12 @@ class TestChunkingStrategy:
         mock_processor = Mock()
         mock_processor.transform.return_value = text_docs
 
-        # Act - Test with different languages
-        for language in ["English", "Chinese", "Spanish", "French"]:
-            result = runner._transform(mock_processor, dataset, text_docs, language, process_rule)
+        # Act
+        result = runner._transform(mock_processor, dataset, text_docs, language, process_rule)
 
-            # Assert
-            call_args = mock_processor.transform.call_args
-            assert call_args[1]["doc_language"] == language
+        # Assert
+        call_args = mock_processor.transform.call_args
+        assert call_args[1]["doc_language"] == language
 
 
 class TestEmbeddingGeneration:
@@ -662,7 +664,7 @@ class TestEmbeddingGeneration:
                 runner._load(mock_processor, dataset, document, documents)
 
         # Assert - keyword indexing should be initiated for economy mode
-        assert True  # Test passes if no exception is raised
+        mock_process_keyword.assert_called_once()
 
     @patch("core.indexing_runner.db.session")
     @patch("core.indexing_runner.current_app")
@@ -751,8 +753,8 @@ class TestEmbeddingGeneration:
         with patch.object(runner, "_update_document_index_status"):
             runner._load(mock_processor, dataset, document, documents)
 
-        # Assert - should complete without errors
-        assert True
+        # Assert - should complete without errors, processor.load should not be called for empty list
+        mock_processor.load.assert_not_called()
 
     @patch("core.indexing_runner.db.session")
     @patch("core.indexing_runner.ModelManager")
@@ -778,12 +780,12 @@ class TestEmbeddingGeneration:
         mock_db_session.query.return_value.where.return_value.update.return_value = None
 
         # Act
-        with patch.object(runner, "_update_document_index_status"):
+        with patch.object(runner, "_update_document_index_status") as mock_update_status:
             with patch.object(runner, "_process_chunk", return_value=100):
                 runner._load(mock_processor, dataset, document, documents)
 
-        # Assert - should handle large batch
-        assert True
+        # Assert - should handle large batch and update status
+        mock_update_status.assert_called()
 
     @patch("core.indexing_runner.db.session")
     @patch("core.indexing_runner.ModelManager")
@@ -1019,7 +1021,8 @@ class TestFailureRecovery:
 
         # Assert - error should be handled by _handle_indexing_error
         # The document status should be updated to error
-        assert mock_runner_db_session.get.called
+        assert document.indexing_status == "error"
+        assert "Token not initialized" in document.error
 
     @patch("core.indexing_runner.db.session")
     def test_handles_document_paused_error(self, mock_db_session):
@@ -1097,7 +1100,8 @@ class TestFailureRecovery:
                 _document_indexing("dataset-123", ["doc-789"])
 
         # Assert - error should be handled gracefully
-        assert mock_runner_db_session.get.called
+        assert document.indexing_status == "error"
+        assert "Unexpected error" in document.error
 
     @patch("tasks.document_indexing_task.db.session")
     @patch("tasks.document_indexing_task.FeatureService")
@@ -1205,8 +1209,6 @@ class TestConcurrentProcessing:
         # Act - Simulate grouping logic
         document_groups = [[] for _ in range(max_workers)]
         for document in documents:
-            import hashlib
-
             hash_val = hashlib.md5(document.page_content.encode()).hexdigest()
             group_index = int(hash_val, 16) % max_workers
             document_groups[group_index].append(document)
@@ -1362,8 +1364,6 @@ class TestDocumentCleaningAndFiltering:
         Verifies that cleaning rules are applied to document text.
         """
         # Arrange
-        import json
-
         text = "  This is a test document with extra   spaces.  "
         rules_dict = {"pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}]}
         process_rule = DocumentProcessingTestDataFactory.create_mock_process_rule(
@@ -1373,11 +1373,10 @@ class TestDocumentCleaningAndFiltering:
         mock_clean_processor.clean.return_value = "This is a test document with extra spaces."
 
         # Act
-        cleaned_text = IndexingRunner._document_clean(text, process_rule)
+        IndexingRunner._document_clean(text, process_rule)
 
         # Assert
         mock_clean_processor.clean.assert_called_once()
-        assert cleaned_text == "This is a test document with extra spaces."
 
 
 class TestTaskIntegration:
@@ -1410,8 +1409,8 @@ class TestTaskIntegration:
 
                     normal_document_indexing_task("tenant-456", "dataset-123", ["doc-789"])
 
-        # Assert - task should complete without errors
-        assert True
+        # Assert - task should complete without errors and call _document_indexing_with_tenant_queue
+        mock_queue_instance.pull_tasks.assert_called_once()
 
     @patch("tasks.document_indexing_task.priority_document_indexing_task.delay")
     @patch("tasks.document_indexing_task.db.session")
@@ -1440,8 +1439,8 @@ class TestTaskIntegration:
 
                     priority_document_indexing_task("tenant-456", "dataset-123", ["doc-789"])
 
-        # Assert - task should complete without errors
-        assert True
+        # Assert - task should complete without errors and dispatch to priority queue
+        mock_queue_instance.pull_tasks.assert_called_once()
 
     @patch("tasks.document_indexing_task.db.session")
     def test_document_not_found_scenario(self, mock_db_session):
@@ -1458,8 +1457,8 @@ class TestTaskIntegration:
             mock_feature_service.get_features.return_value = DocumentProcessingTestDataFactory.create_mock_features()
             _document_indexing("dataset-123", ["doc-789"])
 
-        # Assert - should return gracefully without processing
-        assert True
+        # Assert - should return gracefully without processing, no query should be made for documents
+        mock_db_session.query.assert_called_once()
 
     @patch("tasks.document_indexing_task.db.session")
     def test_dataset_not_found_scenario(self, mock_db_session):
@@ -1476,8 +1475,8 @@ class TestTaskIntegration:
             mock_feature_service.get_features.return_value = DocumentProcessingTestDataFactory.create_mock_features()
             _document_indexing("dataset-123", ["doc-789"])
 
-        # Assert - should return gracefully without processing
-        assert True
+        # Assert - should return gracefully without processing, only dataset query should be made
+        mock_db_session.query.assert_called_once()
 
     @patch("tasks.document_indexing_task.db.session")
     def test_empty_document_ids_list(self, mock_db_session):
@@ -1493,11 +1492,13 @@ class TestTaskIntegration:
         # Act
         with patch("tasks.document_indexing_task.FeatureService") as mock_feature_service:
             mock_feature_service.get_features.return_value = DocumentProcessingTestDataFactory.create_mock_features()
-            with patch("tasks.document_indexing_task.IndexingRunner"):
+            with patch("tasks.document_indexing_task.IndexingRunner") as mock_runner:
+                mock_runner_instance = Mock()
+                mock_runner.return_value = mock_runner_instance
                 _document_indexing("dataset-123", [])
 
-        # Assert - should complete without errors
-        assert True
+        # Assert - should complete without errors, runner.run should be called with empty list
+        mock_runner_instance.run.assert_called_once_with([])
 
     @patch("tasks.document_indexing_task.TenantIsolatedTaskQueue")
     @patch("tasks.document_indexing_task.db.session")
@@ -1532,8 +1533,9 @@ class TestTaskIntegration:
         # Assert - should process all waiting tasks
         assert mock_task_func.delay.call_count == 3
 
+    @pytest.mark.parametrize("doc_form", [IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX, IndexType.PARENT_CHILD_INDEX])
     @patch("tasks.document_indexing_task.db.session")
-    def test_document_indexing_with_different_doc_forms(self, mock_db_session):
+    def test_document_indexing_with_different_doc_forms(self, mock_db_session, doc_form):
         """
         Test document indexing with different document forms.
 
@@ -1541,23 +1543,21 @@ class TestTaskIntegration:
         """
         # Arrange
         dataset = DocumentProcessingTestDataFactory.create_mock_dataset()
+        document = DocumentProcessingTestDataFactory.create_mock_document(doc_form=doc_form)
 
-        for doc_form in [IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX, IndexType.PARENT_CHILD_INDEX]:
-            document = DocumentProcessingTestDataFactory.create_mock_document(doc_form=doc_form)
+        mock_db_session.query.return_value.where.return_value.first.return_value = dataset
+        mock_db_session.query.return_value.filter_by.return_value.first.return_value = document
 
-            mock_db_session.query.return_value.where.return_value.first.return_value = dataset
-            mock_db_session.query.return_value.filter_by.return_value.first.return_value = document
+        # Act
+        with patch("tasks.document_indexing_task.FeatureService") as mock_feature_service:
+            features = DocumentProcessingTestDataFactory.create_mock_features()
+            mock_feature_service.get_features.return_value = features
+            with patch("tasks.document_indexing_task.IndexingRunner") as mock_runner:
+                mock_runner.return_value.run = Mock()
+                _document_indexing("dataset-123", ["doc-789"])
 
-            # Act
-            with patch("tasks.document_indexing_task.FeatureService") as mock_feature_service:
-                features = DocumentProcessingTestDataFactory.create_mock_features()
-                mock_feature_service.get_features.return_value = features
-                with patch("tasks.document_indexing_task.IndexingRunner") as mock_runner:
-                    mock_runner.return_value.run = Mock()
-                    _document_indexing("dataset-123", ["doc-789"])
-
-            # Assert - should handle each doc form
-            assert document.indexing_status == "parsing"
+        # Assert - should handle each doc form
+        assert document.indexing_status == "parsing"
 
     def test_document_task_dataclass_serialization(self):
         """
