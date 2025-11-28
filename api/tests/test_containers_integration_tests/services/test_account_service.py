@@ -995,7 +995,7 @@ class TestAccountService:
 
         db.session.add(account)
         db.session.commit()
-        
+
         # Expire the account object from session to force fresh query
         db.session.expire(account)
 
