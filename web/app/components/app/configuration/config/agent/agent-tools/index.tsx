@@ -6,6 +6,7 @@ import { useContext } from 'use-context-selector'
 import copy from 'copy-to-clipboard'
 import { produce } from 'immer'
 import {
+  RiArrowDownSLine,
   RiDeleteBinLine,
   RiEqualizer2Line,
   RiInformation2Line,
@@ -91,6 +92,13 @@ const AgentTools: FC = () => {
   }
 
   const [isDeleting, setIsDeleting] = useState<number>(-1)
+  const [expandedProviders, setExpandedProviders] = useState<Record<string, boolean>>({})
+  const toggleProviderExpand = useCallback((providerId: string) => {
+    setExpandedProviders(prev => ({
+      ...prev,
+      [providerId]: !prev[providerId],
+    }))
+  }, [])
   const getToolValue = (tool: ToolDefaultValue) => {
     return {
       provider_id: tool.provider_id,
@@ -225,34 +233,44 @@ const AgentTools: FC = () => {
           ).map(group => (
             <div
               key={group.providerId}
-              className='space-y-1 rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2 shadow-xs'
-              onClickCapture={() => {
-                // 调试：查看 provider 及其工具数据
-                console.log('provider group', group)
-              }}
+              className='rounded-lg border border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2 shadow-xs'
             >
-              <div className='flex items-center gap-2 px-1'>
+              <div
+                className='flex cursor-pointer items-center gap-2 px-1'
+                onClick={() => toggleProviderExpand(group.providerId)}
+              >
+                <RiArrowDownSLine
+                  className={cn(
+                    'h-4 w-4 shrink-0 text-text-tertiary transition-transform',
+                    !expandedProviders[group.providerId] && '-rotate-90',
+                  )}
+                />
                 {typeof group.icon === 'string'
-                  ? <div className='h-5 w-5 rounded-md bg-cover bg-center' style={{ backgroundImage: `url(${group.icon})` }} />
-                  : <AppIcon className='rounded-md' size='xs' icon={group.icon?.content} background={group.icon?.background} />}
-                <div className='system-sm-semibold text-text-secondary'>{group.providerName}</div>
-                {group.tools.every(t => t.notAuthor) && (
-                  <Button
-                    variant='secondary'
-                    size='small'
-                    className='ml-2'
-                    onClick={() => {
-                      const first = group.tools[0]
-                      setCurrentTool(first as any)
-                      setIsShowSettingTool(true)
-                    }}
-                  >
-                    {t('tools.notAuthorized')}
-                    <Indicator className='ml-2' color='orange' />
-                  </Button>
-                )}
+                  ? <div className='h-5 w-5 shrink-0 rounded-md bg-cover bg-center' style={{ backgroundImage: `url(${group.icon})` }} />
+                  : <AppIcon className='shrink-0 rounded-md' size='xs' icon={group.icon?.content} background={group.icon?.background} />}
+                <div className='system-sm-semibold truncate text-text-secondary'>{group.providerName}</div>
+                <div className='ml-auto flex shrink-0 items-center gap-2'>
+                  <div className='system-xs-regular text-text-tertiary'>
+                    {group.tools.filter(tool => tool.enabled).length}/{group.tools.length}&nbsp;{t('appDebug.agent.tools.enabled')}
+                  </div>
+                  {group.tools.every(tool => tool.notAuthor) && (
+                    <Button
+                      variant='secondary'
+                      size='small'
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const first = group.tools[0]
+                        setCurrentTool(first as any)
+                        setIsShowSettingTool(true)
+                      }}
+                    >
+                      {t('tools.notAuthorized')}
+                      <Indicator className='ml-2' color='orange' />
+                    </Button>
+                  )}
+                </div>
               </div>
-              <div className='space-y-1'>
+              <div className={cn('space-y-1', expandedProviders[group.providerId] ? 'mt-1' : 'hidden')}>
                 {group.tools.map(item => (
                   <div
                     key={`${item.provider_id}-${item.tool_name}`}
