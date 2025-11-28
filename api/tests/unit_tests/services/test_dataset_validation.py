@@ -74,10 +74,10 @@ from models.model import DatasetPermission
 from services.dataset_service import DatasetService
 from services.errors.account import NoPermissionError
 
-
 # ============================================================================
 # TEST DATA FACTORY
 # ============================================================================
+
 
 class DatasetValidationTestDataFactory:
     """
@@ -324,6 +324,7 @@ class DatasetValidationTestDataFactory:
 # PYTEST FIXTURES
 # ============================================================================
 
+
 @pytest.fixture
 def factory():
     """
@@ -341,6 +342,7 @@ def factory():
 # ============================================================================
 # PERMISSION CHECK TESTS
 # ============================================================================
+
 
 class TestDatasetServicePermissionChecks:
     """
@@ -538,9 +540,7 @@ class TestDatasetServicePermissionChecks:
 
     @patch("services.dataset_service.logger")
     @patch("services.dataset_service.db.session")
-    def test_check_dataset_permission_partial_team_with_permission_success(
-        self, mock_db_session, mock_logger, factory
-    ):
+    def test_check_dataset_permission_partial_team_with_permission_success(self, mock_db_session, mock_logger, factory):
         """
         Test that user with explicit permission can access PARTIAL_TEAM dataset.
 
@@ -562,9 +562,7 @@ class TestDatasetServicePermissionChecks:
         )
 
         # Mock permission query to return permission record
-        mock_permission = factory.create_dataset_permission_mock(
-            dataset_id=dataset.id, account_id=user.id
-        )
+        mock_permission = factory.create_dataset_permission_mock(dataset_id=dataset.id, account_id=user.id)
         mock_query = MagicMock()
         mock_query.filter_by.return_value = mock_query
         mock_query.first.return_value = mock_permission
@@ -743,9 +741,7 @@ class TestDatasetServicePermissionChecks:
             DatasetService.check_dataset_operator_permission(user=user, dataset=dataset)
 
     @patch("services.dataset_service.db.session")
-    def test_check_dataset_operator_permission_partial_team_with_permission_success(
-        self, mock_db_session, factory
-    ):
+    def test_check_dataset_operator_permission_partial_team_with_permission_success(self, mock_db_session, factory):
         """
         Test that user with explicit permission can access PARTIAL_TEAM dataset as operator.
 
@@ -764,9 +760,7 @@ class TestDatasetServicePermissionChecks:
         )
 
         # Mock permission query to return permission records
-        mock_permission = factory.create_dataset_permission_mock(
-            dataset_id=dataset.id, account_id=user.id
-        )
+        mock_permission = factory.create_dataset_permission_mock(dataset_id=dataset.id, account_id=user.id)
         mock_query = MagicMock()
         mock_query.filter_by.return_value = mock_query
         mock_query.all.return_value = [mock_permission]  # User has permission
@@ -820,6 +814,7 @@ class TestDatasetServicePermissionChecks:
 # NAME VALIDATION TESTS
 # ============================================================================
 
+
 class TestDatasetServiceNameValidation:
     """
     Test dataset name validation operations.
@@ -848,9 +843,7 @@ class TestDatasetServiceNameValidation:
         name = "Test Dataset"
 
         # Mock existing dataset with same name
-        existing_dataset = factory.create_dataset_mock(
-            dataset_id="dataset-456", name=name, tenant_id=tenant_id
-        )
+        existing_dataset = factory.create_dataset_mock(dataset_id="dataset-456", name=name, tenant_id=tenant_id)
 
         # Configure mock database session
         mock_query = MagicMock()
@@ -970,6 +963,7 @@ class TestDatasetServiceNameValidation:
 # INDEXING TECHNIQUE CONFIGURATION TESTS
 # ============================================================================
 
+
 class TestDatasetServiceIndexingTechnique:
     """
     Test indexing technique change handling.
@@ -994,7 +988,11 @@ class TestDatasetServiceIndexingTechnique:
         """
         # Arrange
         dataset = factory.create_dataset_mock(indexing_technique="economy")
-        data = {"indexing_technique": "high_quality", "embedding_model_provider": "openai", "embedding_model": "ada-002"}
+        data = {
+            "indexing_technique": "high_quality",
+            "embedding_model_provider": "openai",
+            "embedding_model": "ada-002",
+        }
         filtered_data = {}
 
         # Act
@@ -1101,6 +1099,7 @@ class TestDatasetServiceIndexingTechnique:
 # EMBEDDING MODEL CONFIGURATION TESTS
 # ============================================================================
 
+
 class TestDatasetServiceEmbeddingConfiguration:
     """
     Test embedding model configuration operations.
@@ -1136,9 +1135,7 @@ class TestDatasetServiceEmbeddingConfiguration:
         mock_current_user.current_tenant_id = tenant_id
 
         # Create mock embedding model
-        embedding_model = factory.create_embedding_model_mock(
-            model="text-embedding-ada-002", provider="openai"
-        )
+        embedding_model = factory.create_embedding_model_mock(model="text-embedding-ada-002", provider="openai")
 
         # Create mock collection binding
         collection_binding = factory.create_collection_binding_mock(binding_id="binding-123")
@@ -1292,4 +1289,3 @@ class TestDatasetServiceEmbeddingConfiguration:
         # The exact behavior depends on assertion handling
         with pytest.raises((AssertionError, ValueError)):
             DatasetService._configure_embedding_model_for_high_quality(data, filtered_data)
-
