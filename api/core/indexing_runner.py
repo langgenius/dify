@@ -36,6 +36,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
 from libs.datetime_utils import naive_utc_now
+from models import Account, Tenant
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
@@ -89,8 +90,12 @@ class IndexingRunner:
                 text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
 
                 # transform
+                current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
+                if not current_user:
+                    raise ValueError("no current user found")
+                current_user.set_tenant_id(dataset.tenant_id)
                 documents = self._transform(
-                    index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict()
+                    index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict(), current_user=current_user
                 )
                 # save segment
                 self._load_segments(dataset, requeried_document, documents)
@@ -152,8 +157,12 @@ class IndexingRunner:
             text_docs = self._extract(index_processor, requeried_document, processing_rule.to_dict())
 
             # transform
+            current_user = db.session.query(Account).filter_by(id=requeried_document.created_by).first()
+            if not current_user:
+                raise ValueError("no current user found")
+            current_user.set_tenant_id(dataset.tenant_id)
             documents = self._transform(
-                index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict()
+                index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict(), current_user=current_user
             )
             # save segment
             self._load_segments(dataset, requeried_document, documents)
@@ -302,6 +311,7 @@ class IndexingRunner:
             text_docs = index_processor.extract(extract_setting, process_rule_mode=tmp_processing_rule["mode"])
             documents = index_processor.transform(
                 text_docs,
+                current_user=None,
                 embedding_model_instance=embedding_model_instance,
                 process_rule=processing_rule.to_dict(),
                 tenant_id=tenant_id,
@@ -724,6 +734,7 @@ class IndexingRunner:
         text_docs: list[Document],
         doc_language: str,
         process_rule: dict,
+        current_user: Account | None = None,
     ) -> list[Document]:
         # get embedding model instance
         embedding_model_instance = None
@@ -741,8 +752,10 @@ class IndexingRunner:
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
 
+
         documents = index_processor.transform(
             text_docs,
+            current_user,
             embedding_model_instance=embedding_model_instance,
             process_rule=process_rule,
             tenant_id=dataset.tenant_id,

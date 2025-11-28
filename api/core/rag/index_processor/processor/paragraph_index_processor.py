@@ -18,6 +18,7 @@ from core.rag.models.document import AttachmentDocument, Document, MultimodalGen
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
+from models.account import Account
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import Rule
@@ -34,7 +35,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
         return text_docs
 
-    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
@@ -70,9 +71,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     if document_node.metadata is not None:
                         document_node.metadata["doc_id"] = doc_id
                         document_node.metadata["doc_hash"] = hash
-                    multimodel_documents = self._get_content_files(document_node) if document_node.metadata else None
-                    if multimodel_documents:
-                        document_node.attachments = multimodel_documents
+                    multimodal_documents = self._get_content_files(document_node, current_user) if document_node.metadata else None
+                    if multimodal_documents:
+                        document_node.attachments = multimodal_documents
                     # delete Splitter character
                     page_content = remove_leading_symbols(document_node.page_content).strip()
                     if len(page_content) > 0:

@@ -20,6 +20,7 @@ from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from libs import helper
+from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
@@ -36,7 +37,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return text_docs
 
-    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
         if not process_rule:
             raise ValueError("No process rule found.")
@@ -78,7 +79,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             page_content = page_content
                         if len(page_content) > 0:
                             document_node.page_content = page_content
-                            multimodel_documents = self._get_content_files(document_node)
+                            multimodel_documents = self._get_content_files(document_node, current_user)
                             if multimodel_documents:
                                 document_node.attachments = multimodel_documents
                             # parse document to child nodes

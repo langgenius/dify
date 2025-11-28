@@ -1,9 +1,16 @@
 """Abstract interface for document loader implementations."""
 
+import cgi
+import logging
+import mimetypes
+import os
 import re
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Optional
+from urllib.parse import unquote, urlparse
+
+import requests
 
 from configs import dify_config
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -16,6 +23,7 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from extensions.ext_database import db
+from models import Account
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
@@ -32,7 +40,7 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         raise NotImplementedError
 
     @abstractmethod
@@ -108,37 +116,48 @@ class BaseIndexProcessor(ABC):
 
         return character_splitter  # type: ignore
 
-    def _get_content_files(self, document: Document) -> list[AttachmentDocument]:
+    def _get_content_files(self, document: Document, current_user: Account | None = None) -> list[AttachmentDocument]:
         """
         Get the content files from the document.
         """
         multi_model_documents = []
         text = document.page_content
-
-        # Collect all upload_file_ids including duplicates to preserve occurrence count
+        images = self._extract_markdown_images(text)
+        if not images:
+            return multi_model_documents
         upload_file_id_list = []
 
-        # For data before v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
-        matches = re.finditer(pattern, text)
-        for match in matches:
-            upload_file_id = match.group(1)
-            upload_file_id_list.append(upload_file_id)
+        for image in images:
+            # Collect all upload_file_ids including duplicates to preserve occurrence count
 
-        # For data after v0.10.0
-        pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
-        matches = re.finditer(pattern, text)
-        for match in matches:
-            upload_file_id = match.group(1)
-            upload_file_id_list.append(upload_file_id)
+            # For data before v0.10.0
+            pattern = r"/files/([a-f0-9\-]+)/image-preview(?:\?.*?)?"
+            match = re.search(pattern, image)
+            if match:
+                upload_file_id = match.group(1)
+                upload_file_id_list.append(upload_file_id)
+                continue
 
-        # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
-        # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
-        pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
-        matches = re.finditer(pattern, text)
-        for match in matches:
-            upload_file_id = match.group(1)
-            upload_file_id_list.append(upload_file_id)
+            # For data after v0.10.0
+            pattern = r"/files/([a-f0-9\-]+)/file-preview(?:\?.*?)?"
+            match = re.search(pattern, image)
+            if match:
+                upload_file_id = match.group(1)
+                upload_file_id_list.append(upload_file_id)
+                continue
+
+            # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
+            # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
+            pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
+            match = re.search(pattern, image)
+            if match:
+                upload_file_id = match.group(1)
+                upload_file_id_list.append(upload_file_id)
+                continue
+            if current_user:
+                upload_file_id = self._download_image(image.split(' ')[0], current_user)
+                if upload_file_id:
+                    upload_file_id_list.append(upload_file_id)
 
         if not upload_file_id_list:
             return multi_model_documents
@@ -166,3 +185,86 @@ class BaseIndexProcessor(ABC):
                     )
                 )
         return multi_model_documents
+
+    def _extract_markdown_images(self, text: str) -> list[str]:
+        """
+        Extract the markdown images from the text.
+        """
+        pattern = r'!\[.*?\]\((.*?)\)'
+        return re.findall(pattern, text)
+
+    def _download_image(self, image_url: str, current_user: Account) -> str | None:
+        """
+        Download the image from the URL.
+        Image size must not exceed 2MB.
+        """
+        from services.file_service import FileService
+
+        MAX_IMAGE_SIZE = dify_config.ATTACHMENT_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+        DOWNLOAD_TIMEOUT = dify_config.ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT
+
+        try:
+            # Download with timeout
+            response = requests.get(image_url, timeout=DOWNLOAD_TIMEOUT, stream=True)
+            response.raise_for_status()
+
+            # Check Content-Length header if available
+            content_length = response.headers.get('Content-Length')
+            if content_length and int(content_length) > MAX_IMAGE_SIZE:
+                logging.warning("Image from %s exceeds 2MB limit (size: %s bytes)", image_url, content_length)
+                return None
+
+            filename = None
+
+            content_disposition = response.headers.get('content-disposition')
+            if content_disposition:
+                _, params = cgi.parse_header(content_disposition)
+                if 'filename' in params:
+                    filename = params['filename']
+                    filename = unquote(filename)
+
+            if not filename:
+                parsed_url = urlparse(image_url)
+                # unquote 处理 URL 中的中文
+                path = unquote(parsed_url.path)
+                filename = os.path.basename(path)
+
+            if not filename:
+                filename = "downloaded_image_file"
+
+            name, current_ext = os.path.splitext(filename)
+
+            content_type = response.headers.get('content-type', '').split(';')[0].strip()
+
+            real_ext = mimetypes.guess_extension(content_type)
+
+            if not current_ext and real_ext or current_ext in ['.php', '.jsp', '.asp', '.html'] and real_ext:
+                filename = f"{name}{real_ext}"
+            # Download content with size limit
+            blob = b''
+            for chunk in response.iter_content(chunk_size=8192):
+                blob += chunk
+                if len(blob) > MAX_IMAGE_SIZE:
+                    logging.warning("Image from %s exceeds 2MB limit during download", image_url)
+                    return None
+
+            if not blob:
+                logging.warning("Image from %s is empty", image_url)
+                return None
+
+            upload_file = FileService(db.engine).upload_file(
+                filename=filename,
+                content=blob,
+                mimetype=content_type,
+                user=current_user,
+            )
+            return upload_file.id
+        except requests.exceptions.Timeout:
+            logging.warning("Timeout downloading image from %s after %s seconds", image_url, DOWNLOAD_TIMEOUT)
+            return None
+        except requests.exceptions.RequestException as e:
+            logging.warning("Error downloading image from %s: %s", image_url, str(e))
+            return None
+        except Exception:
+            logging.exception("Unexpected error downloading image from %s", image_url)
+            return None

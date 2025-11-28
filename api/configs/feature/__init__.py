@@ -366,6 +366,16 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
+    ATTACHMENT_IMAGE_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed image file size for attachments in megabytes",
+        default=2,
+    )
+
+    ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT: NonNegativeInt = Field(
+        description="Timeout for downloading image attachments in seconds",
+        default=60,
+    )
+
     inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
         description=(
             "Comma-separated list of file extensions that are blocked from upload. "

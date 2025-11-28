@@ -24,6 +24,7 @@ from core.rag.models.document import Document, QAStructureChunk, AttachmentDocum
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
+from models.account import Account
 from models.dataset import Dataset
 from models.dataset import Document as DatasetDocument
 from services.entities.knowledge_entities.knowledge_entities import Rule
@@ -41,7 +42,7 @@ class QAIndexProcessor(BaseIndexProcessor):
         )
         return text_docs
 
-    def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+    def transform(self, documents: list[Document], current_user: Account | None = None, **kwargs) -> list[Document]:
         preview = kwargs.get("preview")
         process_rule = kwargs.get("process_rule")
         if not process_rule:
