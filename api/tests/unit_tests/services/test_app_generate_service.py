@@ -229,18 +229,28 @@ class TestAppGenerateServiceChatMode:
         mock_config.BILLING_ENABLED = False
         mock_config.APP_MAX_ACTIVE_REQUESTS = 10
         mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
+        
+        # Mock rate limit
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
-
-        mock_generator_instance = MagicMock()
-        mock_generator.return_value = mock_generator_instance
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
         # Mock blocking response
-        mock_generator_instance.generate.return_value = {
+        response_dict = {
             "message": "Complete response",
             "conversation_id": str(uuid.uuid4()),
         }
+        
+        mock_generator_instance = MagicMock()
+        mock_generator.return_value = mock_generator_instance
+        mock_generator_instance.generate.return_value = response_dict
+        
+        # Mock convert_to_event_stream to return the dict as-is for blocking
+        mock_generator.convert_to_event_stream.return_value = response_dict
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello", "conversation_id": None}
@@ -266,13 +276,25 @@ class TestAppGenerateServiceChatMode:
         mock_config.BILLING_ENABLED = False
         mock_config.APP_MAX_ACTIVE_REQUESTS = 10
         mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
+        
+        # Mock rate limit
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
+        mock_rate_limit_instance.enter.return_value = "test_request_id"
 
+        # Mock response
+        response_dict = {"message": "Response"}
+        
         mock_generator_instance = MagicMock()
         mock_generator.return_value = mock_generator_instance
-        mock_generator_instance.generate.return_value = {"message": "Response"}
+        mock_generator_instance.generate.return_value = response_dict
+        
+        # Mock convert_to_event_stream to return the dict as-is
+        mock_generator.convert_to_event_stream.return_value = response_dict
+        
+        # Mock rate_limit.generate to pass through
+        mock_rate_limit_instance.generate.side_effect = lambda gen, request_id: gen
 
         # Execute
         args = {"query": "Hello"}
