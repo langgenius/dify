@@ -159,7 +159,7 @@ class TestWorkflowCacheService:
         mock_cache_entry.node_type = node_type
         mock_cache_entry.output_data = output_data
         mock_cache_entry.original_execution_time = execution_time
-        
+
         mock_db_session.session.execute.return_value.scalar_one.return_value = mock_cache_entry
 
         # Act
@@ -196,7 +196,7 @@ class TestWorkflowCacheService:
         mock_updated_entry.cache_key = cache_key
         mock_updated_entry.node_type = node_type
         mock_updated_entry.output_data = output_data
-        
+
         mock_db_session.session.execute.return_value.scalar_one.return_value = mock_updated_entry
 
         # Act
@@ -229,7 +229,7 @@ class TestWorkflowCacheService:
         mock_cache_entry = MagicMock(spec=WorkflowCacheEntry)
         mock_cache_entry.cache_key = cache_key
         mock_cache_entry.expires_at = naive_utc_now() + timedelta(hours=24)
-        
+
         mock_db_session.session.execute.return_value.scalar_one.return_value = mock_cache_entry
 
         # Act
