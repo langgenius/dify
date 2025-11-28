@@ -172,6 +172,10 @@ class TestAppGenerateServiceChatMode:
         """Test generating chat app response with streaming."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -215,6 +219,8 @@ class TestAppGenerateServiceChatMode:
         """Test generating chat app response without streaming."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -250,6 +256,8 @@ class TestAppGenerateServiceChatMode:
         """Test generating chat app response with end user."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -287,6 +295,8 @@ class TestAppGenerateServiceCompletionMode:
         """Test generating completion app response with streaming."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -325,6 +335,8 @@ class TestAppGenerateServiceCompletionMode:
         """Test generating completion app response without streaming."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -364,6 +376,8 @@ class TestAppGenerateServiceAgentMode:
         """Test generating agent chat response with tool usage."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -419,6 +433,8 @@ class TestAppGenerateServiceWorkflowMode:
         """Test generating workflow app response successfully."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -469,6 +485,8 @@ class TestAppGenerateServiceWorkflowMode:
         """Test generating workflow starting from specific root node."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -506,6 +524,8 @@ class TestAppGenerateServiceWorkflowMode:
         """Test generating workflow when workflow doesn't exist."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -534,6 +554,8 @@ class TestAppGenerateServiceRateLimiting:
         """Test that rate limiting is enforced."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit_instance.enter.side_effect = InvokeRateLimitError("Rate limit exceeded")
         mock_rate_limit.return_value = mock_rate_limit_instance
@@ -559,6 +581,8 @@ class TestAppGenerateServiceRateLimiting:
         """Test that rate limit is released after generation completes."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -589,6 +613,8 @@ class TestAppGenerateServiceRateLimiting:
         """Test multiple concurrent requests within rate limit."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -626,6 +652,8 @@ class TestAppGenerateServiceQuotaManagement:
         """Test that quota is consumed when billing is enabled."""
         # Setup
         mock_config.BILLING_ENABLED = True
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -660,6 +688,8 @@ class TestAppGenerateServiceQuotaManagement:
         """Test error when quota is exceeded."""
         # Setup
         mock_config.BILLING_ENABLED = True
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -692,6 +722,8 @@ class TestAppGenerateServiceQuotaManagement:
         """Test that quota is not checked when billing is disabled."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -726,6 +758,8 @@ class TestAppGenerateServiceInvokeSources:
         """Test invocation from web app."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -758,6 +792,8 @@ class TestAppGenerateServiceInvokeSources:
         """Test invocation from service API."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -789,6 +825,8 @@ class TestAppGenerateServiceInvokeSources:
         """Test invocation from explore page."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -826,6 +864,8 @@ class TestAppGenerateServiceAdvancedChat:
         """Test generating advanced chat with conversation context."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -871,6 +911,8 @@ class TestAppGenerateServiceEdgeCases:
         """Test generation with empty arguments."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -900,6 +942,8 @@ class TestAppGenerateServiceEdgeCases:
         """Test generation with very long input text."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -931,6 +975,8 @@ class TestAppGenerateServiceEdgeCases:
         """Test generation with special characters in input."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -962,6 +1008,8 @@ class TestAppGenerateServiceEdgeCases:
         """Test handling of exceptions during generation."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -994,6 +1042,8 @@ class TestAppGenerateServiceEdgeCases:
         """Test generation with None conversation_id (new conversation)."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
@@ -1030,6 +1080,8 @@ class TestAppGenerateServiceMaxActiveRequests:
         """Test default max active requests value."""
         # Setup
         mock_config.BILLING_ENABLED = False
+        mock_config.APP_MAX_ACTIVE_REQUESTS = 10
+        mock_config.APP_DEFAULT_ACTIVE_REQUESTS = 5
         mock_rate_limit_instance = MagicMock()
         mock_rate_limit.return_value = mock_rate_limit_instance
         mock_rate_limit.gen_request_key.return_value = "test_request_id"
