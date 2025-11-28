@@ -6,8 +6,6 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import exists, select
 from werkzeug.exceptions import InternalServerError, NotFound
 
-from pydantic import BaseModel, Field, field_validator
-
 from controllers.console import console_ns
 from controllers.console.app.error import (
     CompletionRequestError,
@@ -265,7 +263,7 @@ class ChatMessageListApi(Resource):
     @marshal_with(message_infinite_scroll_pagination_model)
     @edit_permission_required
     def get(self, app_model):
-        args = ChatMessagesQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = ChatMessagesQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         conversation = (
             db.session.query(Conversation)
@@ -362,11 +360,14 @@ class MessageFeedbackApi(Resource):
         elif not args.rating and not feedback:
             raise ValueError("rating cannot be None when feedback not exists")
         else:
+            rating_value = args.rating
+            if rating_value is None:
+                raise ValueError("rating is required to create feedback")
             feedback = MessageFeedback(
                 app_id=app_model.id,
                 conversation_id=message.conversation_id,
                 message_id=message.id,
-                rating=args.rating,
+                rating=rating_value,
                 from_source="admin",
                 from_account_id=current_user.id,
             )
@@ -457,7 +458,7 @@ class MessageFeedbackExportApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_model):
-        args = FeedbackExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = FeedbackExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         # Import the service function
         from services.feedback_service import FeedbackService

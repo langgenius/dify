@@ -28,7 +28,7 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 class RuleGeneratePayload(BaseModel):
     instruction: str = Field(..., description="Rule generation instruction")
-    model_config: dict[str, Any] = Field(..., description="Model configuration")
+    model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
     no_variable: bool = Field(default=False, description="Whether to exclude variables")
 
 
@@ -38,7 +38,7 @@ class RuleCodeGeneratePayload(RuleGeneratePayload):
 
 class RuleStructuredOutputPayload(BaseModel):
     instruction: str = Field(..., description="Structured output generation instruction")
-    model_config: dict[str, Any] = Field(..., description="Model configuration")
+    model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
 
 
 class InstructionGeneratePayload(BaseModel):
@@ -47,7 +47,7 @@ class InstructionGeneratePayload(BaseModel):
     current: str = Field(default="", description="Current instruction text")
     language: str = Field(default="javascript", description="Programming language (javascript/python)")
     instruction: str = Field(..., description="Instruction for generation")
-    model_config: dict[str, Any] = Field(..., description="Model configuration")
+    model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
     ideal_output: str = Field(default="", description="Expected ideal output")
 
 
@@ -85,7 +85,7 @@ class RuleGenerateApi(Resource):
             rules = LLMGenerator.generate_rule_config(
                 tenant_id=current_tenant_id,
                 instruction=args.instruction,
-                model_config=args.model_config,
+                model_config=args.model_config_data,
                 no_variable=args.no_variable,
             )
         except ProviderTokenNotInitError as ex:
@@ -119,7 +119,7 @@ class RuleCodeGenerateApi(Resource):
             code_result = LLMGenerator.generate_code(
                 tenant_id=current_tenant_id,
                 instruction=args.instruction,
-                model_config=args.model_config,
+                model_config=args.model_config_data,
                 code_language=args.code_language,
             )
         except ProviderTokenNotInitError as ex:
@@ -153,7 +153,7 @@ class RuleStructuredOutputGenerateApi(Resource):
             structured_output = LLMGenerator.generate_structured_output(
                 tenant_id=current_tenant_id,
                 instruction=args.instruction,
-                model_config=args.model_config,
+                model_config=args.model_config_data,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -205,21 +205,21 @@ class InstructionGenerateApi(Resource):
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
                             instruction=args.instruction,
-                            model_config=args.model_config,
+                            model_config=args.model_config_data,
                             no_variable=True,
                         )
                     case "agent":
                         return LLMGenerator.generate_rule_config(
                             current_tenant_id,
                             instruction=args.instruction,
-                            model_config=args.model_config,
+                            model_config=args.model_config_data,
                             no_variable=True,
                         )
                     case "code":
                         return LLMGenerator.generate_code(
                             tenant_id=current_tenant_id,
                             instruction=args.instruction,
-                            model_config=args.model_config,
+                            model_config=args.model_config_data,
                             code_language=args.language,
                         )
                     case _:
@@ -230,7 +230,7 @@ class InstructionGenerateApi(Resource):
                     flow_id=args.flow_id,
                     current=args.current,
                     instruction=args.instruction,
-                    model_config=args.model_config,
+                    model_config=args.model_config_data,
                     ideal_output=args.ideal_output,
                 )
             if args.node_id != "" and args.current != "":  # For workflow node
@@ -240,7 +240,7 @@ class InstructionGenerateApi(Resource):
                     node_id=args.node_id,
                     current=args.current,
                     instruction=args.instruction,
-                    model_config=args.model_config,
+                    model_config=args.model_config_data,
                     ideal_output=args.ideal_output,
                     workflow_service=WorkflowService(),
                 )

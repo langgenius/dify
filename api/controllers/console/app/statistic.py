@@ -54,7 +54,7 @@ class DailyMessageStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -111,7 +111,7 @@ class DailyConversationStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -167,7 +167,7 @@ class DailyTerminalsStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -224,7 +224,7 @@ class DailyTokenCostStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -284,7 +284,7 @@ class AverageSessionInteractionStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("c.created_at")
         sql_query = f"""SELECT
@@ -360,7 +360,7 @@ class UserSatisfactionRateStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("m.created_at")
         sql_query = f"""SELECT
@@ -426,7 +426,7 @@ class AverageResponseTimeStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT
@@ -482,7 +482,7 @@ class TokensPerSecondStatistic(Resource):
     @account_initialization_required
     def get(self, app_model):
         account, _ = current_account_with_tenant()
-        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = StatisticTimeRangeQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         converted_created_at = convert_datetime_to_date("created_at")
         sql_query = f"""SELECT

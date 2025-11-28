@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 from flask import abort, request
 from flask_restx import Resource, fields, marshal_with
@@ -118,11 +118,11 @@ class SyncDraftWorkflowPayload(BaseModel):
 
 
 class BaseWorkflowRunPayload(BaseModel):
-    inputs: dict[str, Any] | None = None
     files: list[dict[str, Any]] | None = None
 
 
 class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
+    inputs: dict[str, Any] | None = None
     query: str = ""
     conversation_id: str | None = None
     parent_message_id: str | None = None
@@ -742,7 +742,7 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         filters = None
         if args.q:
@@ -810,7 +810,7 @@ class PublishedAllWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         page = args.page
         limit = args.limit
         user_id = args.user_id

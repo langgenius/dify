@@ -42,7 +42,7 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 class BaseMessagePayload(BaseModel):
     inputs: dict[str, Any]
-    model_config: dict[str, Any]
+    model_config_data: dict[str, Any] = Field(..., alias="model_config")
     files: list[Any] | None = Field(default=None, description="Uploaded files")
     response_mode: Literal["blocking", "streaming"] = Field(default="blocking", description="Response mode")
     retriever_from: str = Field(default="dev", description="Retriever source")
@@ -90,7 +90,7 @@ class CompletionMessageApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, app_model):
         args_model = CompletionMessagePayload.model_validate(console_ns.payload)
-        args = args_model.model_dump(exclude_none=True)
+        args = args_model.model_dump(exclude_none=True, by_alias=True)
 
         streaming = args_model.response_mode != "blocking"
         args["response_mode"] = args_model.response_mode
@@ -166,7 +166,7 @@ class ChatMessageApi(Resource):
     @edit_permission_required
     def post(self, app_model):
         args_model = ChatMessagePayload.model_validate(console_ns.payload)
-        args = args_model.model_dump(exclude_none=True)
+        args = args_model.model_dump(exclude_none=True, by_alias=True)
 
         streaming = args_model.response_mode != "blocking"
         args["response_mode"] = args_model.response_mode

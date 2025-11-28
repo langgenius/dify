@@ -22,6 +22,10 @@ from services.plugin.plugin_service import PluginService
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
 @console_ns.route("/workspaces/current/plugin/debugging-key")
 class PluginDebuggingKeyApi(Resource):
     @setup_required
@@ -44,6 +48,9 @@ class PluginDebuggingKeyApi(Resource):
 class ParserList(BaseModel):
     page: int = Field(default=1)
     page_size: int = Field(default=256)
+
+
+reg(ParserList)
 
 
 @console_ns.route("/workspaces/current/plugin/list")
@@ -163,11 +170,6 @@ class ParserReadme(BaseModel):
     language: str = Field(default="en-US")
 
 
-def reg(cls: type[BaseModel]):
-    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-
-
-reg(ParserList)
 reg(ParserLatest)
 reg(ParserIcon)
 reg(ParserAsset)

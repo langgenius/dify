@@ -79,7 +79,7 @@ class WorkflowAppLogApi(Resource):
         """
         Get workflow app logs
         """
-        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = WorkflowAppLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()

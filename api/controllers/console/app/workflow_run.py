@@ -180,9 +180,6 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
     @console_ns.doc(
         params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
-    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
-    @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
-    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
     @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
     @console_ns.response(200, "Workflow runs retrieved successfully", advanced_chat_workflow_run_pagination_model)
     @setup_required
@@ -194,7 +191,7 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         """
         Get advanced chat app workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
@@ -232,6 +229,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
     @console_ns.response(200, "Workflow runs count retrieved successfully", workflow_run_count_model)
+    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -241,7 +239,7 @@ class AdvancedChatAppWorkflowRunCountApi(Resource):
         """
         Get advanced chat workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING if not specified
@@ -275,6 +273,7 @@ class WorkflowRunListApi(Resource):
         params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
     @console_ns.response(200, "Workflow runs retrieved successfully", workflow_run_pagination_model)
+    @console_ns.expect(console_ns.models[WorkflowRunListQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -284,7 +283,7 @@ class WorkflowRunListApi(Resource):
         """
         Get workflow run list
         """
-        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args_model = WorkflowRunListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)
@@ -322,6 +321,7 @@ class WorkflowRunCountApi(Resource):
         params={"triggered_from": "Filter by trigger source (optional): debugging or app-run. Default: debugging"}
     )
     @console_ns.response(200, "Workflow runs count retrieved successfully", workflow_run_count_model)
+    @console_ns.expect(console_ns.models[WorkflowRunCountQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -331,7 +331,7 @@ class WorkflowRunCountApi(Resource):
         """
         Get workflow runs count statistics
         """
-        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args_model = WorkflowRunCountQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         args = args_model.model_dump(exclude_none=True)
 
         # Default to DEBUGGING for workflow if not specified (backward compatibility)

@@ -53,7 +53,7 @@ class WorkflowDailyRunsStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         assert account.timezone is not None
 
@@ -93,7 +93,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         assert account.timezone is not None
 
@@ -133,7 +133,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         assert account.timezone is not None
 
@@ -173,7 +173,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         assert account.timezone is not None
 

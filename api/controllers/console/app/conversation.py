@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import NotFound
-from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -338,7 +337,7 @@ class CompletionConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         query = sa.select(Conversation).where(
             Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
@@ -444,7 +443,7 @@ class ChatConversationApi(Resource):
     @edit_permission_required
     def get(self, app_model):
         current_user, _ = current_account_with_tenant()
-        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = ChatConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         subquery = (
             db.session.query(
