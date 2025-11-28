@@ -5,6 +5,7 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import type { CredentialOverride } from '../llm/types'
 import type { RETRIEVE_TYPE } from '@/types/app'
 import type {
   DataSet,
@@ -36,7 +37,9 @@ export type MultipleRetrievalConfig = {
 }
 
 export type SingleRetrievalConfig = {
-  model: ModelConfig
+  model: ModelConfig & {
+    credential_override?: CredentialOverride
+  }
 }
 
 export enum LogicalOperator {
@@ -105,7 +108,9 @@ export type KnowledgeRetrievalNodeType = CommonNodeType & {
   _datasets?: DataSet[]
   metadata_filtering_mode?: MetadataFilteringModeEnum
   metadata_filtering_conditions?: MetadataFilteringConditions
-  metadata_model_config?: ModelConfig
+  metadata_model_config?: ModelConfig & {
+    credential_override?: CredentialOverride
+  }
 }
 
 export type HandleAddCondition = (metadataItem: MetadataInDoc) => void

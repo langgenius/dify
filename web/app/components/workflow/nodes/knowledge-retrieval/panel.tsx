@@ -48,6 +48,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     handleUpdateCondition,
     handleMetadataModelChange,
     handleMetadataCompletionParamsChange,
+    handleMetadataCredentialOverrideChange,
     availableStringVars,
     availableStringNodesWithParent,
     availableNumberVars,
@@ -142,6 +143,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           metadataModelConfig={inputs.metadata_model_config}
           handleMetadataModelChange={handleMetadataModelChange}
           handleMetadataCompletionParamsChange={handleMetadataCompletionParamsChange}
+          handleMetadataCredentialOverrideChange={handleMetadataCredentialOverrideChange}
+          readOnly={readOnly}
           availableStringVars={availableStringVars}
           availableStringNodesWithParent={availableStringNodesWithParent}
           availableNumberVars={availableNumberVars}

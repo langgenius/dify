@@ -90,6 +90,7 @@ const translation = {
   noData: 'No data',
   label: {
     optional: '(optional)',
+    noOverride: 'No override',
   },
   voice: {
     language: {

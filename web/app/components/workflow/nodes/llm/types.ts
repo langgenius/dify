@@ -1,7 +1,14 @@
 import type { CommonNodeType, Memory, ModelConfig, PromptItem, ValueSelector, Variable, VisionSetting } from '@/app/components/workflow/types'
 
+export type CredentialOverride = {
+  credential_id?: string
+  credential_name?: string
+}
+
 export type LLMNodeType = CommonNodeType & {
-  model: ModelConfig
+  model: ModelConfig & {
+    credential_override?: CredentialOverride
+  }
   prompt_template: PromptItem[] | PromptItem
   prompt_config?: {
     jinja2_variables?: Variable[]

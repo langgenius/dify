@@ -213,10 +213,11 @@ class ProviderConfiguration(BaseModel):
 
         return session.execute(stmt).scalar_one_or_none()
 
-    def _get_specific_provider_credential(self, credential_id: str) -> dict | None:
+    def _get_specific_provider_credential(self, credential_id: str, *, obfuscated: bool = True) -> dict | None:
         """
         Get a specific provider credential by ID.
         :param credential_id: Credential ID
+        :param obfuscated: whether to mask secret fields; for internal runtime use set to False to get raw
         :return:
         """
         # Extract secret variables from provider credential schema
@@ -255,12 +256,14 @@ class ProviderConfiguration(BaseModel):
                 except Exception:
                     logger.exception("Failed to decrypt credential secret variable %s", key)
 
-        return self.obfuscated_credentials(
-            credentials=credentials,
-            credential_form_schemas=self.provider.provider_credential_schema.credential_form_schemas
-            if self.provider.provider_credential_schema
-            else [],
-        )
+        if obfuscated:
+            return self.obfuscated_credentials(
+                credentials=credentials,
+                credential_form_schemas=self.provider.provider_credential_schema.credential_form_schemas
+                if self.provider.provider_credential_schema
+                else [],
+            )
+        return credentials
 
     def _check_provider_credential_name_exists(
         self, credential_name: str, session: Session, exclude_id: str | None = None
@@ -727,11 +730,12 @@ class ProviderConfiguration(BaseModel):
         return session.execute(stmt).scalar_one_or_none()
 
     def _get_specific_custom_model_credential(
-        self, model_type: ModelType, model: str, credential_id: str
+        self, model_type: ModelType, model: str, credential_id: str, *, obfuscated: bool = True
     ) -> dict | None:
         """
         Get a specific provider credential by ID.
         :param credential_id: Credential ID
+        :param obfuscated: whether to mask secret fields; for internal runtime use set to False to get raw
         :return:
         """
         model_credential_secret_variables = self.extract_secret_variables(
@@ -770,12 +774,13 @@ class ProviderConfiguration(BaseModel):
         current_credential_id = credential_record.id
         current_credential_name = credential_record.credential_name
 
-        credentials = self.obfuscated_credentials(
-            credentials=credentials,
-            credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
-            if self.provider.model_credential_schema
-            else [],
-        )
+        if obfuscated:
+            credentials = self.obfuscated_credentials(
+                credentials=credentials,
+                credential_form_schemas=self.provider.model_credential_schema.credential_form_schemas
+                if self.provider.model_credential_schema
+                else [],
+            )
 
         return {
             "current_credential_id": current_credential_id,
