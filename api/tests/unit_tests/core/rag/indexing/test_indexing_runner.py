@@ -1042,7 +1042,7 @@ class TestIndexingRunnerRun:
         """Test document status update when document is deleted."""
         # Arrange
         document_id = str(uuid.uuid4())
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.count.return_value = 0
+        mock_dependencies["db"].session.commit.assert_called_once()
         mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = None
 
         # Act & Assert
