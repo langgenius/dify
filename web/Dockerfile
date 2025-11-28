@@ -23,12 +23,14 @@ FROM base AS packages
 
 WORKDIR /app/web
 
-COPY package.json pnpm-lock.yaml /app/web/
+COPY package.json pnpm-lock.yaml ./
 
-# Use packageManager from package.json
-RUN corepack install
-
-RUN pnpm install --frozen-lockfile
+RUN <<EOF
+  # Use packageManager from package.json
+  corepack install
+  # Install dependencies with PNPM based on the lockfile
+  pnpm install --frozen-lockfile
+EOF
 
 # build resources
 FROM base AS builder
