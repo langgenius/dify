@@ -3,24 +3,27 @@ from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_database import db
-from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
+from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs.login import login_required
 from models import App
 from models.model import AppMode
 from services.workflow_app_service import WorkflowAppService
 
+# Register model for flask_restx to avoid dict type issues in Swagger
+workflow_app_log_pagination_model = build_workflow_app_log_pagination_model(console_ns)
+
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-app-logs")
 class WorkflowAppLogApi(Resource):
-    @api.doc("get_workflow_app_logs")
-    @api.doc(description="Get workflow application execution logs")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.doc(
+    @console_ns.doc("get_workflow_app_logs")
+    @console_ns.doc(description="Get workflow application execution logs")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.doc(
         params={
             "keyword": "Search keyword for filtering logs",
             "status": "Filter by execution status (succeeded, failed, stopped, partial-succeeded)",
@@ -33,12 +36,12 @@ class WorkflowAppLogApi(Resource):
             "limit": "Number of items per page (1-100)",
         }
     )
-    @api.response(200, "Workflow app logs retrieved successfully", workflow_app_log_pagination_fields)
+    @console_ns.response(200, "Workflow app logs retrieved successfully", workflow_app_log_pagination_model)
     @setup_required
     @login_required
     @account_initialization_required
     @get_app_model(mode=[AppMode.WORKFLOW])
-    @marshal_with(workflow_app_log_pagination_fields)
+    @marshal_with(workflow_app_log_pagination_model)
     def get(self, app_model: App):
         """
         Get workflow app logs

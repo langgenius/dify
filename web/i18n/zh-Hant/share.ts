@@ -71,7 +71,8 @@ const translation = {
       atLeastOne: '上傳檔案的內容不能少於一條',
     },
     execution: '執行',
-    executions: '{{num}} 執行',
+    executions: '{{num}} 次執行',
+    stopRun: '停止運行',
   },
   login: {
     backToHome: '返回首頁',

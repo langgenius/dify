@@ -1,7 +1,7 @@
 from flask_restx import Resource, fields, marshal_with, reqparse
 
 from constants import HIDDEN_VALUE
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.api_based_extension_fields import api_based_extension_fields
 from libs.login import current_account_with_tenant, login_required
@@ -9,18 +9,24 @@ from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
 from services.code_based_extension_service import CodeBasedExtensionService
 
+api_based_extension_model = console_ns.model("ApiBasedExtensionModel", api_based_extension_fields)
+
+api_based_extension_list_model = fields.List(fields.Nested(api_based_extension_model))
+
 
 @console_ns.route("/code-based-extension")
 class CodeBasedExtensionAPI(Resource):
-    @api.doc("get_code_based_extension")
-    @api.doc(description="Get code-based extension data by module name")
-    @api.expect(
-        api.parser().add_argument("module", type=str, required=True, location="args", help="Extension module name")
+    @console_ns.doc("get_code_based_extension")
+    @console_ns.doc(description="Get code-based extension data by module name")
+    @console_ns.expect(
+        console_ns.parser().add_argument(
+            "module", type=str, required=True, location="args", help="Extension module name"
+        )
     )
-    @api.response(
+    @console_ns.response(
         200,
         "Success",
-        api.model(
+        console_ns.model(
             "CodeBasedExtensionResponse",
             {"module": fields.String(description="Module name"), "data": fields.Raw(description="Extension data")},
         ),
@@ -37,21 +43,21 @@ class CodeBasedExtensionAPI(Resource):
 
 @console_ns.route("/api-based-extension")
 class APIBasedExtensionAPI(Resource):
-    @api.doc("get_api_based_extensions")
-    @api.doc(description="Get all API-based extensions for current tenant")
-    @api.response(200, "Success", fields.List(fields.Nested(api_based_extension_fields)))
+    @console_ns.doc("get_api_based_extensions")
+    @console_ns.doc(description="Get all API-based extensions for current tenant")
+    @console_ns.response(200, "Success", api_based_extension_list_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_based_extension_fields)
+    @marshal_with(api_based_extension_model)
     def get(self):
         _, tenant_id = current_account_with_tenant()
         return APIBasedExtensionService.get_all_by_tenant_id(tenant_id)
 
-    @api.doc("create_api_based_extension")
-    @api.doc(description="Create a new API-based extension")
-    @api.expect(
-        api.model(
+    @console_ns.doc("create_api_based_extension")
+    @console_ns.doc(description="Create a new API-based extension")
+    @console_ns.expect(
+        console_ns.model(
             "CreateAPIBasedExtensionRequest",
             {
                 "name": fields.String(required=True, description="Extension name"),
@@ -60,13 +66,13 @@ class APIBasedExtensionAPI(Resource):
             },
         )
     )
-    @api.response(201, "Extension created successfully", api_based_extension_fields)
+    @console_ns.response(201, "Extension created successfully", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_based_extension_fields)
+    @marshal_with(api_based_extension_model)
     def post(self):
-        args = api.payload
+        args = console_ns.payload
         _, current_tenant_id = current_account_with_tenant()
 
         extension_data = APIBasedExtension(
@@ -81,25 +87,25 @@ class APIBasedExtensionAPI(Resource):
 
 @console_ns.route("/api-based-extension/<uuid:id>")
 class APIBasedExtensionDetailAPI(Resource):
-    @api.doc("get_api_based_extension")
-    @api.doc(description="Get API-based extension by ID")
-    @api.doc(params={"id": "Extension ID"})
-    @api.response(200, "Success", api_based_extension_fields)
+    @console_ns.doc("get_api_based_extension")
+    @console_ns.doc(description="Get API-based extension by ID")
+    @console_ns.doc(params={"id": "Extension ID"})
+    @console_ns.response(200, "Success", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_based_extension_fields)
+    @marshal_with(api_based_extension_model)
     def get(self, id):
         api_based_extension_id = str(id)
         _, tenant_id = current_account_with_tenant()
 
         return APIBasedExtensionService.get_with_tenant_id(tenant_id, api_based_extension_id)
 
-    @api.doc("update_api_based_extension")
-    @api.doc(description="Update API-based extension")
-    @api.doc(params={"id": "Extension ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("update_api_based_extension")
+    @console_ns.doc(description="Update API-based extension")
+    @console_ns.doc(params={"id": "Extension ID"})
+    @console_ns.expect(
+        console_ns.model(
             "UpdateAPIBasedExtensionRequest",
             {
                 "name": fields.String(required=True, description="Extension name"),
@@ -108,18 +114,18 @@ class APIBasedExtensionDetailAPI(Resource):
             },
         )
     )
-    @api.response(200, "Extension updated successfully", api_based_extension_fields)
+    @console_ns.response(200, "Extension updated successfully", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_based_extension_fields)
+    @marshal_with(api_based_extension_model)
     def post(self, id):
         api_based_extension_id = str(id)
         _, current_tenant_id = current_account_with_tenant()
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
 
-        args = api.payload
+        args = console_ns.payload
 
         extension_data_from_db.name = args["name"]
         extension_data_from_db.api_endpoint = args["api_endpoint"]
@@ -129,10 +135,10 @@ class APIBasedExtensionDetailAPI(Resource):
 
         return APIBasedExtensionService.save(extension_data_from_db)
 
-    @api.doc("delete_api_based_extension")
-    @api.doc(description="Delete API-based extension")
-    @api.doc(params={"id": "Extension ID"})
-    @api.response(204, "Extension deleted successfully")
+    @console_ns.doc("delete_api_based_extension")
+    @console_ns.doc(description="Delete API-based extension")
+    @console_ns.doc(params={"id": "Extension ID"})
+    @console_ns.response(204, "Extension deleted successfully")
     @setup_required
     @login_required
     @account_initialization_required

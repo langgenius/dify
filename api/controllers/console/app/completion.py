@@ -5,7 +5,7 @@ from flask_restx import Resource, fields, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -17,7 +17,6 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -32,6 +31,7 @@ from libs.login import current_user, login_required
 from models import Account
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -40,11 +40,11 @@ logger = logging.getLogger(__name__)
 # define completion message api for user
 @console_ns.route("/apps/<uuid:app_id>/completion-messages")
 class CompletionMessageApi(Resource):
-    @api.doc("create_completion_message")
-    @api.doc(description="Generate completion message for debugging")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("create_completion_message")
+    @console_ns.doc(description="Generate completion message for debugging")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.model(
             "CompletionMessageRequest",
             {
                 "inputs": fields.Raw(required=True, description="Input variables"),
@@ -56,9 +56,9 @@ class CompletionMessageApi(Resource):
             },
         )
     )
-    @api.response(200, "Completion generated successfully")
-    @api.response(400, "Invalid request parameters")
-    @api.response(404, "App not found")
+    @console_ns.response(200, "Completion generated successfully")
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(404, "App not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -110,10 +110,10 @@ class CompletionMessageApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop")
 class CompletionMessageStopApi(Resource):
-    @api.doc("stop_completion_message")
-    @api.doc(description="Stop a running completion message generation")
-    @api.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
-    @api.response(200, "Task stopped successfully")
+    @console_ns.doc("stop_completion_message")
+    @console_ns.doc(description="Stop a running completion message generation")
+    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
+    @console_ns.response(200, "Task stopped successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -121,18 +121,24 @@ class CompletionMessageStopApi(Resource):
     def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.DEBUGGER,
+            user_id=current_user.id,
+            app_mode=AppMode.value_of(app_model.mode),
+        )
 
         return {"result": "success"}, 200
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages")
 class ChatMessageApi(Resource):
-    @api.doc("create_chat_message")
-    @api.doc(description="Generate chat message for debugging")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("create_chat_message")
+    @console_ns.doc(description="Generate chat message for debugging")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(
+        console_ns.model(
             "ChatMessageRequest",
             {
                 "inputs": fields.Raw(required=True, description="Input variables"),
@@ -146,9 +152,9 @@ class ChatMessageApi(Resource):
             },
         )
     )
-    @api.response(200, "Chat message generated successfully")
-    @api.response(400, "Invalid request parameters")
-    @api.response(404, "App or conversation not found")
+    @console_ns.response(200, "Chat message generated successfully")
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(404, "App or conversation not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -209,10 +215,10 @@ class ChatMessageApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop")
 class ChatMessageStopApi(Resource):
-    @api.doc("stop_chat_message")
-    @api.doc(description="Stop a running chat message generation")
-    @api.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
-    @api.response(200, "Task stopped successfully")
+    @console_ns.doc("stop_chat_message")
+    @console_ns.doc(description="Stop a running chat message generation")
+    @console_ns.doc(params={"app_id": "Application ID", "task_id": "Task ID to stop"})
+    @console_ns.response(200, "Task stopped successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -220,6 +226,12 @@ class ChatMessageStopApi(Resource):
     def post(self, app_model, task_id):
         if not isinstance(current_user, Account):
             raise ValueError("current_user must be an Account instance")
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, current_user.id)
+
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.DEBUGGER,
+            user_id=current_user.id,
+            app_mode=AppMode.value_of(app_model.mode),
+        )
 
         return {"result": "success"}, 200

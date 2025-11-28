@@ -78,8 +78,6 @@ const translation = {
       description: 'Jalankan pencarian teks lengkap dan pencarian vektor secara bersamaan, peringkatkan ulang untuk memilih kecocokan terbaik untuk kueri pengguna. Pengguna dapat memilih untuk mengatur bobot atau mengonfigurasi ke model Rerank.',
     },
     invertedIndex: {
-      title: 'Indeks Terbalik',
-      description: 'Indeks Terbalik adalah struktur yang digunakan untuk pengambilan yang efisien. Diatur berdasarkan istilah, setiap istilah menunjuk ke dokumen atau halaman web yang berisinya.',
     },
     change: 'Ubah',
     changeRetrievalMethod: 'Ubah metode pengambilan',
@@ -126,12 +124,14 @@ const translation = {
     checkName: {
       empty: 'Nama metadata tidak boleh kosong',
       invalid: 'Nama metadata hanya dapat berisi huruf kecil, angka, dan garis bawah dan harus dimulai dengan huruf kecil',
+      tooLong: 'Nama metadata tidak boleh melebihi {{max}} karakter',
     },
     batchEditMetadata: {
       editMetadata: 'Edit Metadata',
       applyToAllSelectDocument: 'Terapkan ke semua dokumen yang dipilih',
       multipleValue: 'Beberapa Nilai',
       applyToAllSelectDocumentTip: 'Secara otomatis membuat semua metadata yang diedit di atas dan baru untuk semua dokumen yang dipilih, jika tidak, mengedit metadata hanya akan berlaku untuk dokumen yang dengannya.',
+      editDocumentsNum: 'Mengedit dokumen {{num}}',
     },
     selectMetadata: {
       manageAction: 'Urus',
@@ -148,6 +148,8 @@ const translation = {
       builtInDescription: 'Metadata bawaan secara otomatis diekstrak dan dihasilkan. Itu harus diaktifkan sebelum digunakan dan tidak dapat diedit.',
       namePlaceholder: 'Nama metadata',
       builtIn: 'Bawaan',
+      values: 'Nilai {{num}}',
+      deleteContent: 'Apakah Anda yakin ingin menghapus metadata "{{name}}"',
     },
     documentMetadata: {
       metadataToolTip: 'Metadata berfungsi sebagai filter penting yang meningkatkan akurasi dan relevansi pengambilan informasi. Anda dapat memodifikasi dan menambahkan metadata untuk dokumen ini di sini.',
@@ -229,6 +231,12 @@ const translation = {
     enabled: 'Sedang Beroperasi',
     disabled: 'Dinonaktifkan',
   },
+  docAllEnabled_one: 'dokumen {{count}} diaktifkan',
+  docAllEnabled_other: 'Semua dokumen {{count}} diaktifkan',
+  partialEnabled_one: 'Total {{count}} dokumen, {{num}} tersedia',
+  partialEnabled_other: 'Total {{count}} dokumen, {{num}} tersedia',
+  documentsDisabled: '{{num}} dokumen dinonaktifkan - tidak aktif lebih dari 30 hari',
+  preprocessDocument: '{{num}} Prasekolah Dokumen',
 }
 
 export default translation

@@ -502,11 +502,11 @@ class TestAddDocumentToIndexTask:
         auto_disable_logs = []
         for _ in range(2):
             log_entry = DatasetAutoDisableLog(
-                id=fake.uuid4(),
                 tenant_id=document.tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
             )
+            log_entry.id = str(fake.uuid4())
             db.session.add(log_entry)
             auto_disable_logs.append(log_entry)
 

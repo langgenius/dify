@@ -158,14 +158,22 @@ const translation = {
     },
     inUse: '使用中',
     configProvider: {
-      title: '配置 ',
+      title: '設定 ',
       placeholder: '{{key}}を入力してください',
       project: 'プロジェクト',
+      trackingUri: 'トラッキング URI',
+      experimentId: '実験 ID',
+      username: 'ユーザー名',
+      password: 'パスワード',
       publicKey: '公開キー',
       secretKey: '秘密キー',
       viewDocsLink: '{{key}}に関するドキュメントを見る',
       removeConfirmTitle: '{{key}}の設定を削除しますか？',
       removeConfirmContent: '現在の設定は使用中です。これを削除すると、トレース機能が無効になります。',
+      clientId: 'OAuthクライアントID',
+      clientSecret: 'OAuthクライアントシークレット',
+      personalAccessToken: 'パーソナルアクセストークン（レガシー）',
+      databricksHost: 'DatabricksワークスペースのURL',
     },
     weave: {
       title: '織る',
@@ -174,6 +182,14 @@ const translation = {
     aliyun: {
       title: 'クラウドモニター',
       description: 'Alibaba Cloud が提供する完全管理型でメンテナンスフリーの可観測性プラットフォームは、Dify アプリケーションの即時監視、トレース、評価を可能にします。',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'MLflowはLLMアプリケーションの実験管理・評価・監視を行うためのオープンソースプラットフォームです。Difyアプリの実行をトレースし、デバッグや改善に役立てることができます。',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'DatabricksはフルマネージドのMLflowサービスを提供し、本番環境のトレースデータを強力なガバナンスとセキュリティの元で保存することができます。',
     },
     tencent: {
       title: 'テンセントAPM',
@@ -306,6 +322,8 @@ const translation = {
       docDesc: 'ヘルプドキュメントを開く',
       communityDesc: 'オープンDiscordコミュニティ',
       feedbackDesc: 'オープンなコミュニティフィードバックディスカッション',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: 'アプリが見つかりません',
@@ -325,6 +343,8 @@ const translation = {
     noMatchingCommands: '一致するコマンドが見つかりません',
     tryDifferentSearch: '別の検索語句をお試しください',
   },
+  notPublishedYet: 'アプリはまだ公開されていません',
+  noUserInputNode: 'ユーザー入力ノードが見つかりません',
 }
 
 export default translation

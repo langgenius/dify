@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: 'Переглянути документацію {{key}}',
       removeConfirmTitle: 'Видалити налаштування {{key}}?',
       removeConfirmContent: 'Поточне налаштування використовується, його видалення вимкне функцію Відстеження.',
+      password: 'Пароль',
+      databricksHost: 'URL робочого простору Databricks',
+      clientId: 'Ідентифікатор клієнта OAuth',
+      experimentId: 'Ідентифікатор експерименту',
+      trackingUri: 'Відстеження URI',
+      personalAccessToken: 'Персональний токен доступу (застарілий)',
+      username: 'Ім\'я користувача',
+      clientSecret: 'Секретний ключ клієнта OAuth',
     },
     view: 'Вид',
     opik: {
@@ -162,6 +170,14 @@ const translation = {
     aliyun: {
       title: 'Моніторинг Хмари',
       description: 'Повністю керовані та без обслуговування платформи спостереження, надані Alibaba Cloud, дозволяють миттєвий моніторинг, трасування та оцінку застосувань Dify.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Платформа LLMOps з відкритим кодом для відстеження експериментів, спостережуваності та оцінки, для створення додатків AI/LLM з впевненістю.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks пропонує повністю керований MLflow з сильною управлінням та безпекою для зберігання даних трасування.',
     },
     tencent: {
       title: 'Tencent APM',
@@ -286,6 +302,8 @@ const translation = {
       docDesc: 'Відкрийте документацію допомоги',
       accountDesc: 'Перейдіть на сторінку облікового запису',
       communityDesc: 'Відкрита Discord-спільнота',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'Плагінів не знайдено',
@@ -326,6 +344,8 @@ const translation = {
     startTyping: 'Почніть вводити для пошуку',
     pressEscToClose: 'Натисніть ESC, щоб закрити',
   },
+  notPublishedYet: 'Додаток ще не опублікований',
+  noUserInputNode: 'Відсутній вузол введення користувача',
 }
 
 export default translation

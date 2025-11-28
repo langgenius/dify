@@ -3,7 +3,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import { useStore } from '../../../store'
 import { BlockEnum } from '../../../types'
 import type {

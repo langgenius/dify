@@ -86,18 +86,21 @@ const ReadmePanel: FC = () => {
 
   const portalContent = showType === ReadmeShowType.drawer
     ? (
-      <div className='pointer-events-none fixed inset-0 z-[9997] flex justify-start'>
+      <div className='fixed inset-0 z-[999] flex justify-start' onClick={onClose}>
         <div
           className={cn(
             'pointer-events-auto mb-2 ml-2 mr-2 mt-16 w-[600px] max-w-[600px] justify-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0 shadow-xl',
           )}
+          onClick={(event) => {
+            event.stopPropagation()
+          }}
         >
           {children}
         </div>
       </div>
     )
     : (
-      <div className='pointer-events-none fixed inset-0 z-[9997] flex items-center justify-center p-2'>
+      <div className='fixed inset-0 z-[999] flex items-center justify-center p-2' onClick={onClose}>
         <div
           className={cn(
             'pointer-events-auto relative h-[calc(100vh-16px)] w-full max-w-[800px] rounded-2xl bg-components-panel-bg p-0 shadow-xl',

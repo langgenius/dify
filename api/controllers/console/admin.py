@@ -12,7 +12,7 @@ P = ParamSpec("P")
 R = TypeVar("R")
 from configs import dify_config
 from constants.languages import supported_language
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
 from libs.token import extract_access_token
@@ -38,10 +38,10 @@ def admin_required(view: Callable[P, R]):
 
 @console_ns.route("/admin/insert-explore-apps")
 class InsertExploreAppListApi(Resource):
-    @api.doc("insert_explore_app")
-    @api.doc(description="Insert or update an app in the explore list")
-    @api.expect(
-        api.model(
+    @console_ns.doc("insert_explore_app")
+    @console_ns.doc(description="Insert or update an app in the explore list")
+    @console_ns.expect(
+        console_ns.model(
             "InsertExploreAppRequest",
             {
                 "app_id": fields.String(required=True, description="Application ID"),
@@ -55,9 +55,9 @@ class InsertExploreAppListApi(Resource):
             },
         )
     )
-    @api.response(200, "App updated successfully")
-    @api.response(201, "App inserted successfully")
-    @api.response(404, "App not found")
+    @console_ns.response(200, "App updated successfully")
+    @console_ns.response(201, "App inserted successfully")
+    @console_ns.response(404, "App not found")
     @only_edition_cloud
     @admin_required
     def post(self):
@@ -131,10 +131,10 @@ class InsertExploreAppListApi(Resource):
 
 @console_ns.route("/admin/insert-explore-apps/<uuid:app_id>")
 class InsertExploreAppApi(Resource):
-    @api.doc("delete_explore_app")
-    @api.doc(description="Remove an app from the explore list")
-    @api.doc(params={"app_id": "Application ID to remove"})
-    @api.response(204, "App removed successfully")
+    @console_ns.doc("delete_explore_app")
+    @console_ns.doc(description="Remove an app from the explore list")
+    @console_ns.doc(params={"app_id": "Application ID to remove"})
+    @console_ns.response(204, "App removed successfully")
     @only_edition_cloud
     @admin_required
     def delete(self, app_id):

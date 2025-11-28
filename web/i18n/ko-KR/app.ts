@@ -162,6 +162,14 @@ const translation = {
       removeConfirmTitle: '{{key}} 구성을 제거하시겠습니까?',
       removeConfirmContent:
         '현재 구성이 사용 중입니다. 제거하면 추적 기능이 꺼집니다.',
+      username: '사용자 이름',
+      trackingUri: '추적 URI',
+      password: '비밀번호',
+      experimentId: '실험 ID',
+      clientId: 'OAuth 클라이언트 ID',
+      clientSecret: 'OAuth 클라이언트 비밀',
+      databricksHost: 'Databricks 작업 영역 URL',
+      personalAccessToken: '개인 액세스 토큰(레거시)',
     },
     view: '보기',
     opik: {
@@ -177,6 +185,14 @@ const translation = {
     aliyun: {
       title: '클라우드 모니터',
       description: '알리바바 클라우드에서 제공하는 완전 관리형 및 유지보수가 필요 없는 가시성 플랫폼은 Dify 애플리케이션의 모니터링, 추적 및 평가를 즉시 사용할 수 있도록 지원합니다.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: '실험 추적, 관찰 가능성 및 평가를 위한 오픈 소스 LLMOps 플랫폼으로 AI/LLM 앱을 자신있게 구축합니다.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks는 강력한 거버넌스와 보안을 갖춘 완전 관리형 MLflow를 제공하여 트레이스 데이터 저장을 지원합니다.',
     },
     tencent: {
       title: '텐센트 APM',
@@ -306,6 +322,8 @@ const translation = {
       feedbackDesc: '공개 커뮤니티 피드백 토론',
       docDesc: '도움 문서 열기',
       accountDesc: '계정 페이지로 이동',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: '앱을 찾을 수 없습니다.',
@@ -346,6 +364,8 @@ const translation = {
     selectToNavigate: '선택하여 탐색하기',
     startTyping: '검색하려면 타이핑을 시작하세요',
   },
+  noUserInputNode: '사용자 입력 노드가 없습니다',
+  notPublishedYet: '앱이 아직 출시되지 않았습니다',
 }
 
 export default translation

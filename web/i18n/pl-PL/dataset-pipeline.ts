@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Opublikowano potok wiedzy',
+      tip: 'Przejdź do Dokumenty, aby dodać lub zarządzać dokumentami.',
     },
     error: {
       message: 'Nie można opublikować potoku wiedzy',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Struktura',
     structureTooltip: 'Struktura fragmentów określa sposób dzielenia i indeksowania dokumentów — oferując tryby Ogólne, Nadrzędny-Podrzędny oraz Q&A — i jest unikatowa dla każdej bazy wiedzy.',
+    createdBy: 'Przez {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     backToDataSource: 'Źródło danych',
     characters: 'Znaków',
     title: 'Dodawanie dokumentów',
+    selectOnlineDocumentTip: 'Przetwórz do {{count}} stron',
+    selectOnlineDriveTip: 'Przetwórz do {{count}} plików, maksymalnie {{fileSize}} MB każdy',
   },
   documentSettings: {
     title: 'Ustawienia dokumentu',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} strony',
+  },
   onlineDrive: {
     breadcrumbs: {
       searchPlaceholder: 'Szukaj w plikach...',
       allFiles: 'Wszystkie pliki',
       allBuckets: 'Wszystkie zasobniki pamięci masowej w chmurze',
+      searchResult: 'Znajdź {{searchResultsLength}} elementów w folderze "{{folderName}}"',
     },
     resetKeywords: 'Resetowanie słów kluczowych',
     emptySearchResult: 'Nie znaleziono żadnych przedmiotów',
     notSupportedFileType: 'Ten typ pliku nie jest obsługiwany',
     emptyFolder: 'Ten folder jest pusty',
+    notConnected: '{{name}} nie jest połączony',
+    notConnectedTip: 'Aby zsynchronizować się z {{name}}, najpierw należy nawiązać połączenie z {{name}}.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Potwierdzenie',
@@ -149,6 +160,7 @@ const translation = {
   knowledgeNameAndIconPlaceholder: 'Podaj nazwę Bazy Wiedzy',
   editPipelineInfo: 'Edytowanie informacji o potoku',
   knowledgeDescriptionPlaceholder: 'Opisz, co znajduje się w tej Bazie wiedzy. Szczegółowy opis umożliwia sztucznej inteligencji dokładniejszy dostęp do zawartości zestawu danych. Jeśli pole jest puste, Dify użyje domyślnej strategii trafień. (Opcjonalnie)',
+  configurationTip: 'Skonfiguruj {{pluginName}}',
 }
 
 export default translation

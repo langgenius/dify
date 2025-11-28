@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-
 from core.workflow.enums import NodeExecutionType, NodeState, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.domain.graph_execution import GraphExecution
@@ -16,6 +14,7 @@ from core.workflow.graph_events import NodeRunRetryEvent, NodeRunStartedEvent
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.entities import RetryConfig
 from core.workflow.runtime import GraphRuntimeState, VariablePool
+from libs.datetime_utils import naive_utc_now
 
 
 class _StubEdgeProcessor:
@@ -75,7 +74,7 @@ def test_retry_does_not_emit_additional_start_event() -> None:
 
     execution_id = "exec-1"
     node_type = NodeType.CODE
-    start_time = datetime.utcnow()
+    start_time = naive_utc_now()
 
     start_event = NodeRunStartedEvent(
         id=execution_id,

@@ -39,9 +39,9 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
     ps.id = "id"
 
     provider_model_settings = [ps]
+
     load_balancing_model_configs = [
         LoadBalancingModelConfig(
-            id="id1",
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
@@ -51,7 +51,6 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
             enabled=True,
         ),
         LoadBalancingModelConfig(
-            id="id2",
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
@@ -61,6 +60,8 @@ def test__to_model_settings(mocker: MockerFixture, mock_provider_entity):
             enabled=True,
         ),
     ]
+    load_balancing_model_configs[0].id = "id1"
+    load_balancing_model_configs[1].id = "id2"
 
     mocker.patch(
         "core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value={"openai_api_key": "fake_key"}
@@ -101,7 +102,6 @@ def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_ent
     provider_model_settings = [ps]
     load_balancing_model_configs = [
         LoadBalancingModelConfig(
-            id="id1",
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
@@ -111,6 +111,7 @@ def test__to_model_settings_only_one_lb(mocker: MockerFixture, mock_provider_ent
             enabled=True,
         )
     ]
+    load_balancing_model_configs[0].id = "id1"
 
     mocker.patch(
         "core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value={"openai_api_key": "fake_key"}
@@ -148,7 +149,6 @@ def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_ent
     provider_model_settings = [ps]
     load_balancing_model_configs = [
         LoadBalancingModelConfig(
-            id="id1",
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
@@ -158,7 +158,6 @@ def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_ent
             enabled=True,
         ),
         LoadBalancingModelConfig(
-            id="id2",
             tenant_id="tenant_id",
             provider_name="openai",
             model_name="gpt-4",
@@ -168,6 +167,8 @@ def test__to_model_settings_lb_disabled(mocker: MockerFixture, mock_provider_ent
             enabled=True,
         ),
     ]
+    load_balancing_model_configs[0].id = "id1"
+    load_balancing_model_configs[1].id = "id2"
 
     mocker.patch(
         "core.helper.model_provider_cache.ProviderCredentialsCache.get", return_value={"openai_api_key": "fake_key"}
