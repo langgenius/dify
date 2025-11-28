@@ -58,7 +58,7 @@ class VersionApi(Resource):
             response = httpx.get(
                 check_update_url,
                 params={"current_version": args["current_version"]},
-                timeout=httpx.Timeout(connect=3, read=10),
+                timeout=httpx.Timeout(10.0, connect=3.0),
             )
         except Exception as error:
             logger.warning("Check update version error: %s.", str(error))
