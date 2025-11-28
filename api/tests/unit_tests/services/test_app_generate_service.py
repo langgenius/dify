@@ -43,128 +43,119 @@ from services.errors.app import (
 @pytest.fixture
 def tenant():
     """Create a test tenant."""
-    tenant = Tenant(
-        id=str(uuid.uuid4()),
-        name="Test Tenant",
-        created_at=datetime.utcnow(),
-    )
+    tenant = MagicMock(spec=Tenant)
+    tenant.id = str(uuid.uuid4())
+    tenant.name = "Test Tenant"
+    tenant.created_at = datetime.utcnow()
     return tenant
 
 
 @pytest.fixture
 def account(tenant):
     """Create a test account."""
-    account = Account(
-        id=str(uuid.uuid4()),
-        name="Test User",
-        email="test@example.com",
-        tenant_id=tenant.id,
-        created_at=datetime.utcnow(),
-    )
+    account = MagicMock(spec=Account)
+    account.id = str(uuid.uuid4())
+    account.name = "Test User"
+    account.email = "test@example.com"
+    account.tenant_id = tenant.id
+    account.created_at = datetime.utcnow()
     return account
 
 
 @pytest.fixture
 def end_user(tenant):
     """Create a test end user."""
-    end_user = EndUser(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant.id,
-        session_id=str(uuid.uuid4()),
-        type="browser",
-        is_anonymous=True,
-        created_at=datetime.utcnow(),
-    )
+    end_user = MagicMock(spec=EndUser)
+    end_user.id = str(uuid.uuid4())
+    end_user.tenant_id = tenant.id
+    end_user.session_id = str(uuid.uuid4())
+    end_user.type = "browser"
+    end_user.is_anonymous = True
+    end_user.created_at = datetime.utcnow()
     return end_user
 
 
 @pytest.fixture
 def chat_app(tenant):
     """Create a test chat app."""
-    app = App(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant.id,
-        name="Test Chat App",
-        mode=AppMode.CHAT.value,
-        enable_site=True,
-        enable_api=True,
-        created_at=datetime.utcnow(),
-    )
+    app = MagicMock(spec=App)
+    app.id = str(uuid.uuid4())
+    app.tenant_id = tenant.id
+    app.name = "Test Chat App"
+    app.mode = AppMode.CHAT.value
+    app.enable_site = True
+    app.enable_api = True
+    app.created_at = datetime.utcnow()
     return app
 
 
 @pytest.fixture
 def completion_app(tenant):
     """Create a test completion app."""
-    app = App(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant.id,
-        name="Test Completion App",
-        mode=AppMode.COMPLETION.value,
-        enable_site=True,
-        enable_api=True,
-        created_at=datetime.utcnow(),
-    )
+    app = MagicMock(spec=App)
+    app.id = str(uuid.uuid4())
+    app.tenant_id = tenant.id
+    app.name = "Test Completion App"
+    app.mode = AppMode.COMPLETION.value
+    app.enable_site = True
+    app.enable_api = True
+    app.created_at = datetime.utcnow()
     return app
 
 
 @pytest.fixture
 def agent_chat_app(tenant):
     """Create a test agent chat app."""
-    app = App(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant.id,
-        name="Test Agent Chat App",
-        mode=AppMode.AGENT_CHAT.value,
-        enable_site=True,
-        enable_api=True,
-        created_at=datetime.utcnow(),
-    )
+    app = MagicMock(spec=App)
+    app.id = str(uuid.uuid4())
+    app.tenant_id = tenant.id
+    app.name = "Test Agent Chat App"
+    app.mode = AppMode.AGENT_CHAT.value
+    app.enable_site = True
+    app.enable_api = True
+    app.created_at = datetime.utcnow()
     return app
 
 
 @pytest.fixture
 def advanced_chat_app(tenant):
     """Create a test advanced chat app."""
-    app = App(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant.id,
-        name="Test Advanced Chat App",
-        mode=AppMode.ADVANCED_CHAT.value,
-        enable_site=True,
-        enable_api=True,
-        created_at=datetime.utcnow(),
-    )
+    app = MagicMock(spec=App)
+    app.id = str(uuid.uuid4())
+    app.tenant_id = tenant.id
+    app.name = "Test Advanced Chat App"
+    app.mode = AppMode.ADVANCED_CHAT.value
+    app.enable_site = True
+    app.enable_api = True
+    app.created_at = datetime.utcnow()
     return app
 
 
 @pytest.fixture
 def workflow_app(tenant):
     """Create a test workflow app."""
-    app = App(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant.id,
-        name="Test Workflow App",
-        mode=AppMode.WORKFLOW.value,
-        enable_site=True,
-        enable_api=True,
-        created_at=datetime.utcnow(),
-    )
+    app = MagicMock(spec=App)
+    app.id = str(uuid.uuid4())
+    app.tenant_id = tenant.id
+    app.name = "Test Workflow App"
+    app.mode = AppMode.WORKFLOW.value
+    app.enable_site = True
+    app.enable_api = True
+    app.created_at = datetime.utcnow()
     return app
 
 
 @pytest.fixture
 def workflow(tenant, workflow_app):
     """Create a test workflow."""
-    workflow = Workflow(
-        id=str(uuid.uuid4()),
-        tenant_id=tenant.id,
-        app_id=workflow_app.id,
-        version="1.0",
-        graph={"nodes": [], "edges": []},
-        features={},
-        created_at=datetime.utcnow(),
-    )
+    workflow = MagicMock(spec=Workflow)
+    workflow.id = str(uuid.uuid4())
+    workflow.tenant_id = tenant.id
+    workflow.app_id = workflow_app.id
+    workflow.version = "1.0"
+    workflow.graph = {"nodes": [], "edges": []}
+    workflow.features = {}
+    workflow.created_at = datetime.utcnow()
     return workflow
 
 
