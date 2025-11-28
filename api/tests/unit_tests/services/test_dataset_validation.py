@@ -779,8 +779,7 @@ class TestDatasetServicePermissionChecks:
     def test_check_dataset_operator_permission_partial_team_without_permission_raises_error(
         self, mock_db_session, factory
     ):
-        mock_db_session.query.assert_called_with(DatasetPermission)
-        mock_query.filter_by.assert_called_once_with(account_id=user.id)
+        """
         Test that user without explicit permission cannot access PARTIAL_TEAM dataset as operator.
 
         Expected behavior:
@@ -1163,10 +1162,11 @@ class TestDatasetServiceEmbeddingConfiguration:
         mock_model_manager_class.assert_called_once()
 
         # Verify get_model_instance was called with correct parameters
+        # Note: model_type should be ModelType.TEXT_EMBEDDING enum value
         mock_model_manager.get_model_instance.assert_called_once_with(
             tenant_id=tenant_id,
             provider="openai",
-            model_type="text_embedding",  # ModelType.TEXT_EMBEDDING
+            model_type="text_embedding",
             model="text-embedding-ada-002",
         )
 
