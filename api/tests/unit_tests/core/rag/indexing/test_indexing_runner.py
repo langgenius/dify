@@ -836,21 +836,22 @@ class TestIndexingRunnerRun:
         # Assert - verify the methods were called
         # Since we're mocking the internal methods, we just verify no exceptions were raised
 
-    def test_run_handles_document_paused_error(self, mock_dependencies, sample_dataset_documents):
-        """Test run handles DocumentIsPausedError correctly."""
-        # Arrange
-        runner = IndexingRunner()
-        doc = sample_dataset_documents[0]
+        with patch.object(runner, '_extract', return_value=[Document(page_content="Test", metadata={})]) as mock_extract, \
+             patch.object(
+                runner,
+                '_transform',
+                return_value=[Document(page_content="Chunk", metadata={"doc_id": "c1", "doc_hash": "h1"})],
+            ) as mock_transform, \
+             patch.object(runner, '_load_segments') as mock_load_segments, \
+             patch.object(runner, '_load') as mock_load:
+            # Act
+            runner.run([doc])
 
-        # Mock database to raise paused error
-        mock_dependencies["db"].session.get.return_value = doc
-
-        mock_dataset = Mock(spec=Dataset)
-        mock_dependencies["db"].session.query.return_value.filter_by.return_value.first.return_value = mock_dataset
-
-        mock_process_rule = Mock(spec=DatasetProcessRule)
-        mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
-        mock_dependencies["db"].session.scalar.return_value = mock_process_rule
+        # Assert - verify the methods were called
+        mock_extract.assert_called_once()
+        mock_transform.assert_called_once()
+        mock_load_segments.assert_called_once()
+        mock_load.assert_called_once()
 
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
