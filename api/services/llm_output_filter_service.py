@@ -376,7 +376,6 @@ class LLMOutputFilterService:
         Returns:
             FilterResult with the processed content
         """
-        chunk = StreamChunk(content=content, index=index, is_final=is_final)
         current_content = content
         combined_metadata: dict[str, Any] = {}
         final_action = FilterAction.PASS
@@ -463,8 +462,8 @@ class LLMOutputFilterService:
             return service
 
         for filter_config in config.filters:
-            filter_type = filter_config.get("type")
-            filter_name = filter_config.get("name", filter_type)
+            filter_type = filter_config.get("type", "")
+            filter_name = filter_config.get("name") or filter_type
 
             if filter_type == "pattern":
                 patterns = filter_config.get("patterns", [])

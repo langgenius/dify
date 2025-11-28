@@ -167,7 +167,6 @@ class EmailAuthService:
             EmailValidationResult with validation details
         """
         original_email = email.strip()
-        errors: list[str] = []
 
         # Check length
         if len(original_email) > self.config.max_email_length:

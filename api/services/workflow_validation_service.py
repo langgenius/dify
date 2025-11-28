@@ -295,13 +295,13 @@ class WorkflowValidationService:
 
             # Validate against node type config
             config = cls.NODE_TYPE_CONFIGS.get(node_type)
-            if config:
+            if config and node_id:
                 cls._validate_node_against_config(node_id, node_data, config, result)
 
     @classmethod
     def _validate_node_against_config(
         cls,
-        node_id: str,
+        node_id: str | None,
         node_data: dict[str, Any],
         config: NodeTypeConfig,
         result: ValidationResult,
@@ -360,36 +360,40 @@ class WorkflowValidationService:
                 )
 
             # Track counts
-            output_counts[source] += 1
-            input_counts[target] += 1
+            if source:
+                output_counts[source] += 1
+            if target:
+                input_counts[target] += 1
 
         # Validate connection limits based on node types
-        for node_id, node_type in node_types.items():
+        for nid, node_type in node_types.items():
+            if not nid:
+                continue
             config = cls.NODE_TYPE_CONFIGS.get(node_type)
             if config:
-                if config.max_inputs >= 0 and input_counts[node_id] > config.max_inputs:
+                if config.max_inputs >= 0 and input_counts[nid] > config.max_inputs:
                     result.add_issue(
                         ValidationIssue(
                             severity=ValidationSeverity.ERROR,
                             category=ValidationCategory.CONNECTION,
-                            node_id=node_id,
+                            node_id=nid,
                             message="Node exceeds maximum input connections",
                             details={
-                                "current": input_counts[node_id],
+                                "current": input_counts[nid],
                                 "max": config.max_inputs,
                             },
                         )
                     )
 
-                if config.max_outputs >= 0 and output_counts[node_id] > config.max_outputs:
+                if config.max_outputs >= 0 and output_counts[nid] > config.max_outputs:
                     result.add_issue(
                         ValidationIssue(
                             severity=ValidationSeverity.ERROR,
                             category=ValidationCategory.CONNECTION,
-                            node_id=node_id,
+                            node_id=nid,
                             message="Node exceeds maximum output connections",
                             details={
-                                "current": output_counts[node_id],
+                                "current": output_counts[nid],
                                 "max": config.max_outputs,
                             },
                         )
