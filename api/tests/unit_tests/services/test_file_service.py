@@ -1235,7 +1235,8 @@ class TestFileServiceRetrieval:
         mock_session_maker.return_value.__exit__ = Mock(return_value=None)
 
         service = FileService(session_factory=mock_session_maker)
-        mock_extract_processor.return_value = [full_text]
+        # ExtractProcessor.load_from_upload_file returns a string when return_text=True
+        mock_extract_processor.return_value = full_text
 
         # Act
         result = service.get_file_preview(file_id)
