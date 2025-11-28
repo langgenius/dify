@@ -98,6 +98,13 @@ const translation = {
     nameForToolCallTip: '僅支援數位、字母和下劃線。',
     confirmTip: '使用此工具的應用程式將受到影響',
     nameForToolCallPlaceHolder: '用於機器識別，例如 getCurrentWeather、list_pets',
+    toolOutput: {
+      title: '工具輸出',
+      name: '名稱',
+      reserved: '已保留',
+      reservedParameterDuplicateTip: 'text、json 和 files 是保留變數。這些名稱的變數不能出現在輸出結構中。',
+      description: '描述',
+    },
   },
   test: {
     title: '測試',

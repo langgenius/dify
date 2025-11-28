@@ -119,6 +119,13 @@ const translation = {
     confirmTip: 'แอปที่ใช้เครื่องมือนี้จะได้รับผลกระทบ',
     deleteToolConfirmTitle: 'ลบเครื่องมือนี้?',
     deleteToolConfirmContent: 'การลบเครื่องมือนั้นไม่สามารถย้อนกลับได้ ผู้ใช้จะไม่สามารถเข้าถึงเครื่องมือของคุณได้อีกต่อไป',
+    toolOutput: {
+      title: 'เอาต์พุตของเครื่องมือ',
+      name: 'ชื่อ',
+      reserved: 'สงวน',
+      reservedParameterDuplicateTip: 'text, json และ files เป็นตัวแปรที่สงวนไว้ ไม่สามารถใช้ชื่อตัวแปรเหล่านี้ในโครงสร้างผลลัพธ์ได้',
+      description: 'คำอธิบาย',
+    },
   },
   test: {
     title: 'ทดสอบ',

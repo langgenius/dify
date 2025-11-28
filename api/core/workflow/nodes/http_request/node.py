@@ -34,8 +34,6 @@ logger = logging.getLogger(__name__)
 class HttpRequestNode(Node[HttpRequestNodeData]):
     node_type = NodeType.HTTP_REQUEST
 
-    _node_data: HttpRequestNodeData
-
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         return {
@@ -69,8 +67,8 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         process_data = {}
         try:
             http_executor = Executor(
-                node_data=self._node_data,
-                timeout=self._get_request_timeout(self._node_data),
+                node_data=self.node_data,
+                timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
                 max_retries=0,
             )
@@ -225,4 +223,4 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
 
     @property
     def retry(self) -> bool:
-        return self._node_data.retry_config.retry_enabled
+        return self.node_data.retry_config.retry_enabled

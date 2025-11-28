@@ -1,6 +1,7 @@
 import { useReactFlow } from 'reactflow'
 import { useKeyPress } from 'ahooks'
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
+import { ZEN_TOGGLE_EVENT } from '@/app/components/goto-anything/actions/commands/zen'
 import {
   getKeyboardKeyCodeBySystem,
   isEventTargetInputArea,
@@ -246,4 +247,16 @@ export const useShortcuts = (): void => {
       events: ['keyup'],
     },
   )
+
+  // Listen for zen toggle event from /zen command
+  useEffect(() => {
+    const handleZenToggle = () => {
+      handleToggleMaximizeCanvas()
+    }
+
+    window.addEventListener(ZEN_TOGGLE_EVENT, handleZenToggle)
+    return () => {
+      window.removeEventListener(ZEN_TOGGLE_EVENT, handleZenToggle)
+    }
+  }, [handleToggleMaximizeCanvas])
 }

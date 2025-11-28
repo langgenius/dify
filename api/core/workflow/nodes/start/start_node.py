@@ -9,8 +9,6 @@ class StartNode(Node[StartNodeData]):
     node_type = NodeType.START
     execution_type = NodeExecutionType.ROOT
 
-    _node_data: StartNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
