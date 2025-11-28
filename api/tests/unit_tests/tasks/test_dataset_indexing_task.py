@@ -1895,25 +1895,25 @@ class TestRobustness:
         have a fallback or handle the error appropriately.
         
         Scenario:
-        - FeatureService.get_features() raises an exception
-        - Task enqueuing should still work or fail gracefully
+        - FeatureService.get_features() raises an exception during dispatch
+        - Task enqueuing should handle the error
         
         Expected behavior:
-        - Exception is handled
-        - System doesn't crash
-        - Appropriate fallback behavior
+        - Exception is raised when trying to dispatch
+        - System doesn't crash unexpectedly
+        - Error is propagated appropriately
         """
         # Arrange
-        with patch.object(DocumentIndexingTaskProxy, "features") as mock_features:
+        with patch("services.document_indexing_task_proxy.FeatureService.get_features") as mock_get_features:
             # Simulate FeatureService failure
-            mock_features.side_effect = Exception("Feature service unavailable")
+            mock_get_features.side_effect = Exception("Feature service unavailable")
             
             # Create proxy instance
             proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
             
-            # Act & Assert - Should raise exception when accessing features
+            # Act & Assert - Should raise exception when trying to delay (which accesses features)
             with pytest.raises(Exception) as exc_info:
-                _ = proxy.features
+                proxy.delay()
             
             # Verify the exception message
             assert "Feature service" in str(exc_info.value) or isinstance(exc_info.value, Exception)
