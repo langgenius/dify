@@ -38,7 +38,7 @@ class WorkflowAppLogQuery(BaseModel):
     def parse_datetime(cls, value: str | None) -> datetime | None:
         if value in (None, ""):
             return None
-        return isoparse(value)
+        return isoparse(value)  # type: ignore
 
     @field_validator("detail", mode="before")
     @classmethod
