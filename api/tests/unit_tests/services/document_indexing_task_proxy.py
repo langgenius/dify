@@ -448,8 +448,10 @@ class TestDocumentIndexingTaskProxy:
         isolation queue management.
         """
         # Arrange
-        proxy = DocumentIndexingTaskProxyTestDataFactory.create_document_task_proxy()
-
+        tenant_id = "tenant-direct-queue"
+        dataset_id = "dataset-direct-queue"
+        document_ids = ["doc-direct-1", "doc-direct-2"]
+        proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
         mock_task.delay = Mock()
 
         # Act
@@ -457,7 +459,7 @@ class TestDocumentIndexingTaskProxy:
 
         # Assert
         mock_task.delay.assert_called_once_with(
-            tenant_id="tenant-123", dataset_id="dataset-456", document_ids=["doc-1", "doc-2", "doc-3"]
+            tenant_id=tenant_id, dataset_id=dataset_id, document_ids=document_ids
         )
 
     @patch("services.document_indexing_task_proxy.priority_document_indexing_task")
