@@ -68,6 +68,7 @@ from unittest.mock import MagicMock, Mock, create_autospec, patch
 
 import pytest
 
+from core.model_runtime.entities.model_entities import ModelType
 from models import Account
 from models.dataset import Dataset, DatasetPermission, DatasetPermissionEnum
 from services.dataset_service import DatasetService
@@ -1165,7 +1166,7 @@ class TestDatasetServiceEmbeddingConfiguration:
         mock_model_manager.get_model_instance.assert_called_once_with(
             tenant_id=tenant_id,
             provider="openai",
-            model_type="text_embedding",
+            model_type=ModelType.TEXT_EMBEDDING,
             model="text-embedding-ada-002",
         )
 
