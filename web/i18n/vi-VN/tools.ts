@@ -98,6 +98,13 @@ const translation = {
     description: 'Sự miêu tả',
     confirmTitle: 'Xác nhận để lưu ?',
     confirmTip: 'Các ứng dụng sử dụng công cụ này sẽ bị ảnh hưởng',
+    toolOutput: {
+      title: 'Kết quả công cụ',
+      name: 'Tên',
+      reserved: 'Đã đặt trước',
+      reservedParameterDuplicateTip: 'text, json và files là các biến được đặt trước. Các biến có tên này không thể xuất hiện trong sơ đồ đầu ra.',
+      description: 'Mô tả',
+    },
   },
   test: {
     title: 'Kiểm tra',
