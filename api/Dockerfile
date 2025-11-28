@@ -21,7 +21,6 @@ FROM base AS packages
 RUN <<EOF
     apt-get update
     apt-get install -y --no-install-recommends \
-        # basic environment
         g++ \
         libmpfr-dev libmpc-dev
 EOF
