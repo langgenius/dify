@@ -271,6 +271,10 @@ class OceanBaseVector(BaseVector):
             self._hnsw_ef_search = ef_search
         topk = kwargs.get("top_k", 10)
         try:
+            score_threshold = float(val) if (val := kwargs.get("score_threshold")) is not None else 0.0
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"Invalid score_threshold parameter: {e}") from e
+        try:
             cur = self._client.ann_search(
                 table_name=self._collection_name,
                 vec_column_name="vector",
@@ -285,14 +289,20 @@ class OceanBaseVector(BaseVector):
             raise Exception("Failed to search by vector. ", e)
         docs = []
         for _text, metadata, distance in cur:
-            metadata = json.loads(metadata)
-            metadata["score"] = 1 - distance / math.sqrt(2)
-            docs.append(
-                Document(
-                    page_content=_text,
-                    metadata=metadata,
+            score = 1 - distance / math.sqrt(2)
+            if score >= score_threshold:
+                try:
+                    metadata = json.loads(metadata)
+                except json.JSONDecodeError:
+                    logger.warning("Invalid JSON metadata: %s", metadata)
+                    metadata = {}
+                metadata["score"] = score
+                docs.append(
+                    Document(
+                        page_content=_text,
+                        metadata=metadata,
+                    )
                 )
-            )
         return docs
 
     def delete(self):
