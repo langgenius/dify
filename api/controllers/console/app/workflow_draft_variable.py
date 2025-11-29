@@ -141,6 +141,37 @@ _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS = {
     "items": fields.List(fields.Nested(_WORKFLOW_DRAFT_VARIABLE_FIELDS), attribute=_get_items),
 }
 
+# Register models for flask_restx to avoid dict type issues in Swagger
+workflow_draft_variable_without_value_model = console_ns.model(
+    "WorkflowDraftVariableWithoutValue", _WORKFLOW_DRAFT_VARIABLE_WITHOUT_VALUE_FIELDS
+)
+
+workflow_draft_variable_model = console_ns.model("WorkflowDraftVariable", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+
+workflow_draft_env_variable_model = console_ns.model("WorkflowDraftEnvVariable", _WORKFLOW_DRAFT_ENV_VARIABLE_FIELDS)
+
+workflow_draft_env_variable_list_fields_copy = _WORKFLOW_DRAFT_ENV_VARIABLE_LIST_FIELDS.copy()
+workflow_draft_env_variable_list_fields_copy["items"] = fields.List(fields.Nested(workflow_draft_env_variable_model))
+workflow_draft_env_variable_list_model = console_ns.model(
+    "WorkflowDraftEnvVariableList", workflow_draft_env_variable_list_fields_copy
+)
+
+workflow_draft_variable_list_without_value_fields_copy = _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS.copy()
+workflow_draft_variable_list_without_value_fields_copy["items"] = fields.List(
+    fields.Nested(workflow_draft_variable_without_value_model), attribute=_get_items
+)
+workflow_draft_variable_list_without_value_model = console_ns.model(
+    "WorkflowDraftVariableListWithoutValue", workflow_draft_variable_list_without_value_fields_copy
+)
+
+workflow_draft_variable_list_fields_copy = _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS.copy()
+workflow_draft_variable_list_fields_copy["items"] = fields.List(
+    fields.Nested(workflow_draft_variable_model), attribute=_get_items
+)
+workflow_draft_variable_list_model = console_ns.model(
+    "WorkflowDraftVariableList", workflow_draft_variable_list_fields_copy
+)
+
 P = ParamSpec("P")
 R = TypeVar("R")
 
@@ -176,10 +207,10 @@ class WorkflowVariableCollectionApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.doc(params={"page": "Page number (1-100000)", "limit": "Number of items per page (1-100)"})
     @console_ns.response(
-        200, "Workflow variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS
+        200, "Workflow variables retrieved successfully", workflow_draft_variable_list_without_value_model
     )
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_WITHOUT_VALUE_FIELDS)
+    @marshal_with(workflow_draft_variable_list_without_value_model)
     def get(self, app_model: App):
         """
         Get draft workflow
@@ -242,9 +273,9 @@ class NodeVariableCollectionApi(Resource):
     @console_ns.doc("get_node_variables")
     @console_ns.doc(description="Get variables for a specific node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.response(200, "Node variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @console_ns.response(200, "Node variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App, node_id: str):
         validate_node_id(node_id)
         with Session(bind=db.engine, expire_on_commit=False) as session:
@@ -275,10 +306,10 @@ class VariableApi(Resource):
     @console_ns.doc("get_variable")
     @console_ns.doc(description="Get a specific workflow variable")
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
-    @console_ns.response(200, "Variable retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @console_ns.response(200, "Variable retrieved successfully", workflow_draft_variable_model)
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @marshal_with(workflow_draft_variable_model)
     def get(self, app_model: App, variable_id: str):
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
@@ -301,10 +332,10 @@ class VariableApi(Resource):
             },
         )
     )
-    @console_ns.response(200, "Variable updated successfully", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @console_ns.response(200, "Variable updated successfully", workflow_draft_variable_model)
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @marshal_with(workflow_draft_variable_model)
     def patch(self, app_model: App, variable_id: str):
         # Request payload for file types:
         #
@@ -390,7 +421,7 @@ class VariableResetApi(Resource):
     @console_ns.doc("reset_variable")
     @console_ns.doc(description="Reset a workflow variable to its default value")
     @console_ns.doc(params={"app_id": "Application ID", "variable_id": "Variable ID"})
-    @console_ns.response(200, "Variable reset successfully", _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @console_ns.response(200, "Variable reset successfully", workflow_draft_variable_model)
     @console_ns.response(204, "Variable reset (no content)")
     @console_ns.response(404, "Variable not found")
     @_api_prerequisite
@@ -416,7 +447,7 @@ class VariableResetApi(Resource):
         if resetted is None:
             return Response("", 204)
         else:
-            return marshal(resetted, _WORKFLOW_DRAFT_VARIABLE_FIELDS)
+            return marshal(resetted, workflow_draft_variable_model)
 
 
 def _get_variable_list(app_model: App, node_id) -> WorkflowDraftVariableList:
@@ -438,10 +469,10 @@ class ConversationVariableCollectionApi(Resource):
     @console_ns.doc("get_conversation_variables")
     @console_ns.doc(description="Get conversation variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Conversation variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @console_ns.response(200, "Conversation variables retrieved successfully", workflow_draft_variable_list_model)
     @console_ns.response(404, "Draft workflow not found")
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App):
         # NOTE(QuantumGhost): Prefill conversation variables into the draft variables table
         # so their IDs can be returned to the caller.
@@ -460,9 +491,9 @@ class SystemVariableCollectionApi(Resource):
     @console_ns.doc("get_system_variables")
     @console_ns.doc(description="Get system variables for workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "System variables retrieved successfully", _WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @console_ns.response(200, "System variables retrieved successfully", workflow_draft_variable_list_model)
     @_api_prerequisite
-    @marshal_with(_WORKFLOW_DRAFT_VARIABLE_LIST_FIELDS)
+    @marshal_with(workflow_draft_variable_list_model)
     def get(self, app_model: App):
         return _get_variable_list(app_model, SYSTEM_VARIABLE_NODE_ID)
 

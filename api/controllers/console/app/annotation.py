@@ -15,6 +15,7 @@ from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     annotation_fields,
     annotation_hit_history_fields,
+    build_annotation_model,
 )
 from libs.helper import uuid_value
 from libs.login import login_required
@@ -184,7 +185,7 @@ class AnnotationApi(Resource):
             },
         )
     )
-    @console_ns.response(201, "Annotation created successfully", annotation_fields)
+    @console_ns.response(201, "Annotation created successfully", build_annotation_model(console_ns))
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -238,7 +239,11 @@ class AnnotationExportApi(Resource):
     @console_ns.doc("export_annotations")
     @console_ns.doc(description="Export all annotations for an app")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.response(200, "Annotations exported successfully", fields.List(fields.Nested(annotation_fields)))
+    @console_ns.response(
+        200,
+        "Annotations exported successfully",
+        console_ns.model("AnnotationList", {"data": fields.List(fields.Nested(build_annotation_model(console_ns)))}),
+    )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
@@ -263,7 +268,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @console_ns.doc("update_delete_annotation")
     @console_ns.doc(description="Update or delete an annotation")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_id": "Annotation ID"})
-    @console_ns.response(200, "Annotation updated successfully", annotation_fields)
+    @console_ns.response(200, "Annotation updated successfully", build_annotation_model(console_ns))
     @console_ns.response(204, "Annotation deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.expect(parser)
@@ -359,7 +364,16 @@ class AnnotationHitHistoryListApi(Resource):
         .add_argument("limit", type=int, location="args", default=20, help="Page size")
     )
     @console_ns.response(
-        200, "Hit histories retrieved successfully", fields.List(fields.Nested(annotation_hit_history_fields))
+        200,
+        "Hit histories retrieved successfully",
+        console_ns.model(
+            "AnnotationHitHistoryList",
+            {
+                "data": fields.List(
+                    fields.Nested(console_ns.model("AnnotationHitHistoryItem", annotation_hit_history_fields))
+                )
+            },
+        ),
     )
     @console_ns.response(403, "Insufficient permissions")
     @setup_required

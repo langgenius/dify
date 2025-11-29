@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'เผยแพร่ไปป์ไลน์ความรู้',
+      tip: '<CustomLink>ไปที่เอกสาร</CustomLink> เพื่อเพิ่มหรือจัดการเอกสาร',
     },
     error: {
       message: 'ไม่สามารถเผยแพร่ไปป์ไลน์ความรู้',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'โครงสร้าง',
     structureTooltip: 'โครงสร้างก้อนกําหนดวิธีการแยกและจัดทําดัชนีเอกสาร โดยเสนอโหมดทั่วไป ผู้ปกครอง-รอง และ Q&A และไม่ซ้ํากันสําหรับแต่ละฐานความรู้',
+    createdBy: 'โดย {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'อักขระ',
     backToDataSource: 'แหล่งข้อมูล',
     title: 'เพิ่มเอกสาร',
+    selectOnlineDocumentTip: 'ประมวลผลได้สูงสุด {{count}} หน้า',
+    selectOnlineDriveTip: 'ประมวลผลไฟล์ได้สูงสุด {{count}} ไฟล์ แต่ละไฟล์ไม่เกิน {{fileSize}} MB',
   },
   documentSettings: {
     title: 'การตั้งค่าเอกสาร',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} หน้า',
+  },
   onlineDrive: {
     breadcrumbs: {
       searchPlaceholder: 'ค้นหาไฟล์...',
       allFiles: 'ไฟล์ทั้งหมด',
       allBuckets: 'ที่เก็บข้อมูลบนคลาวด์ทั้งหมด',
+      searchResult: 'พบ {{searchResultsLength}} รายการในโฟลเดอร์ "{{folderName}}"',
     },
     resetKeywords: 'รีเซ็ตคีย์เวิร์ด',
     emptySearchResult: 'ไม่พบสิ่งของ',
     notSupportedFileType: 'ไม่รองรับชนิดแฟ้มนี้',
     emptyFolder: 'โฟลเดอร์นี้ว่างเปล่า',
+    notConnected: '{{name}} ไม่ได้เชื่อมต่อ',
+    notConnectedTip: 'เพื่อซิงค์กับ {{name}} ต้องสร้างการเชื่อมต่อกับ {{name}} ก่อน',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'การยืนยัน',
@@ -149,6 +160,7 @@ const translation = {
   editPipelineInfo: 'แก้ไขข้อมูลไปป์ไลน์',
   pipelineNameAndIcon: 'ชื่อและไอคอนไปป์ไลน์',
   knowledgeDescriptionPlaceholder: 'อธิบายสิ่งที่อยู่ในฐานความรู้นี้ คําอธิบายโดยละเอียดช่วยให้ AI สามารถเข้าถึงเนื้อหาของชุดข้อมูลได้แม่นยํายิ่งขึ้น หากว่างเปล่า Dify จะใช้กลยุทธ์การโจมตีเริ่มต้น (ไม่บังคับ)',
+  configurationTip: 'กำหนดค่า {{pluginName}}',
 }
 
 export default translation

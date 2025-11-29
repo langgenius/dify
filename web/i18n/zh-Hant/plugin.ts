@@ -7,6 +7,7 @@ const translation = {
     all: '都',
     bundles: '束',
     datasources: '資料來源',
+    triggers: '觸發因素',
   },
   categorySingle: {
     model: '型',
@@ -15,6 +16,7 @@ const translation = {
     tool: '工具',
     bundle: '捆',
     datasource: '資料來源',
+    trigger: '觸發器',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       viewDetail: '查看詳情',
       update: '更新',
       checkUpdate: '檢查更新',
+      back: '返回',
     },
     toolSelector: {
       uninstalledContent: '此插件是從 local/GitHub 儲存庫安裝的。請在安裝後使用。',
@@ -305,6 +308,12 @@ const translation = {
     nextUpdateTime: '下次自動更新：{{time}}',
     specifyPluginsToUpdate: '指定要更新的插件',
     changeTimezone: '要更改時區，請前往<setTimezone>設定</setTimezone>',
+  },
+  readmeInfo: {
+    title: '自述檔',
+    needHelpCheckReadme: '需要幫忙嗎？查看自述檔。',
+    noReadmeAvailable: '沒有可用的自述文件',
+    failedToFetch: '無法獲取 README',
   },
 }
 

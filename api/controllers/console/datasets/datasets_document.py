@@ -45,9 +45,11 @@ from core.plugin.impl.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from extensions.ext_database import db
+from fields.dataset_fields import dataset_fields
 from fields.document_fields import (
     dataset_and_document_fields,
     document_fields,
+    document_metadata_fields,
     document_status_fields,
     document_with_segments_fields,
 )
@@ -59,6 +61,36 @@ from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 
 logger = logging.getLogger(__name__)
+
+
+def _get_or_create_model(model_name: str, field_def):
+    existing = console_ns.models.get(model_name)
+    if existing is None:
+        existing = console_ns.model(model_name, field_def)
+    return existing
+
+
+# Register models for flask_restx to avoid dict type issues in Swagger
+dataset_model = _get_or_create_model("Dataset", dataset_fields)
+
+document_metadata_model = _get_or_create_model("DocumentMetadata", document_metadata_fields)
+
+document_fields_copy = document_fields.copy()
+document_fields_copy["doc_metadata"] = fields.List(
+    fields.Nested(document_metadata_model), attribute="doc_metadata_details"
+)
+document_model = _get_or_create_model("Document", document_fields_copy)
+
+document_with_segments_fields_copy = document_with_segments_fields.copy()
+document_with_segments_fields_copy["doc_metadata"] = fields.List(
+    fields.Nested(document_metadata_model), attribute="doc_metadata_details"
+)
+document_with_segments_model = _get_or_create_model("DocumentWithSegments", document_with_segments_fields_copy)
+
+dataset_and_document_fields_copy = dataset_and_document_fields.copy()
+dataset_and_document_fields_copy["dataset"] = fields.Nested(dataset_model)
+dataset_and_document_fields_copy["documents"] = fields.List(fields.Nested(document_model))
+dataset_and_document_model = _get_or_create_model("DatasetAndDocument", dataset_and_document_fields_copy)
 
 
 class DocumentResource(Resource):
@@ -169,9 +201,8 @@ class DatasetDocumentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id):
+    def get(self, dataset_id: str):
         current_user, current_tenant_id = current_account_with_tenant()
-        dataset_id = str(dataset_id)
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
@@ -276,7 +307,7 @@ class DatasetDocumentListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(dataset_and_document_fields)
+    @marshal_with(dataset_and_document_model)
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self, dataset_id):
@@ -370,12 +401,12 @@ class DatasetInitApi(Resource):
             },
         )
     )
-    @console_ns.response(201, "Dataset initialized successfully", dataset_and_document_fields)
+    @console_ns.response(201, "Dataset initialized successfully", dataset_and_document_model)
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(dataset_and_document_fields)
+    @marshal_with(dataset_and_document_model)
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
