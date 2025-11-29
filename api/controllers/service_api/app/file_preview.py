@@ -6,6 +6,7 @@ from flask_restx import Resource
 from pydantic import BaseModel, Field
 
 from controllers.common.schema import register_schema_model
+from controllers.common.wraps import add_security_headers
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     FileAccessDeniedError,
@@ -138,6 +139,7 @@ class FilePreviewApi(Resource):
             )
             raise FileAccessDeniedError("File access validation failed")
 
+    @add_security_headers
     def _build_file_response(self, generator, upload_file: UploadFile, as_attachment: bool = False) -> Response:
         """
         Build Flask Response object with appropriate headers for file streaming
