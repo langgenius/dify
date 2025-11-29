@@ -826,29 +826,3 @@ class PluginReadmeApi(Resource):
         return jsonable_encoder(
             {"readme": PluginService.fetch_plugin_readme(tenant_id, args.plugin_unique_identifier, args.language)}
         )
-
-
-class ParserUninstall(BaseModel):
-    plugin_installation_id: str = Field(..., description="Plugin installation ID")
-
-
-console_ns.schema_model(
-    ParserUninstall.__name__, ParserUninstall.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-
-@console_ns.route("/workspaces/current/plugin/uninstall")
-class PluginUninstallApi(Resource):
-    @console_ns.expect(console_ns.models[ParserUninstall.__name__])
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @plugin_permission_required(install_required=True)
-    def post(self):
-        _, tenant_id = current_account_with_tenant()
-        args = ParserUninstall.model_validate(console_ns.payload)
-
-        try:
-            return {"success": PluginService.uninstall(tenant_id, args.plugin_installation_id)}
-        except PluginDaemonClientSideError as e:
-            raise ValueError(e)

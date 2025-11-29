@@ -518,7 +518,7 @@ class PluginService:
 
             if plugin:
                 plugin_id = plugin.plugin_id
-                logger.info(f"Deleting credentials for plugin: {plugin_id}")
+                logger.info("Deleting credentials for plugin: %s", plugin_id)
 
                 # Delete provider credentials that match this plugin
                 credentials = db.session.scalars(
@@ -532,9 +532,9 @@ class PluginService:
                     db.session.delete(cred)
 
                 db.session.commit()
-                logger.info(f"Deleted {len(credentials)} credentials for plugin: {plugin_id}")
+                logger.info("Deleted %d credentials for plugin: %s", len(credentials), plugin_id)
         except Exception as e:
-            logger.warning(f"Failed to delete credentials: {e}")
+            logger.warning("Failed to delete credentials: %s", e)
             # Continue with uninstall even if credential deletion fails
 
         return manager.uninstall(tenant_id, plugin_installation_id)
