@@ -7,6 +7,7 @@ import cn from '@/utils/classnames'
 import { RiAlertFill } from '@remixicon/react'
 import React from 'react'
 import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
 import Icon from '../card/base/card-icon'
@@ -53,7 +54,7 @@ const Card = ({
   const { categoriesMap } = useCategories(t, true)
   const { category, type, name, org, label, brief, icon, icon_dark, verified, badges = [] } = payload
   const { theme } = useTheme()
-  const iconSrc = theme === 'dark' && icon_dark ? icon_dark : icon
+  const iconSrc = theme === Theme.dark && icon_dark ? icon_dark : icon
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
   const isPartner = badges.includes('partner')
