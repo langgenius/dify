@@ -6,6 +6,7 @@ from werkzeug.exceptions import NotFound
 
 import services
 from controllers.common.errors import UnsupportedFileTypeError
+from controllers.common.wraps import add_security_headers
 from controllers.files import files_ns
 from extensions.ext_database import db
 from services.account_service import TenantService
@@ -33,6 +34,7 @@ class ImagePreviewApi(Resource):
             415: "Unsupported file type",
         }
     )
+    @add_security_headers
     def get(self, file_id):
         file_id = str(file_id)
 
@@ -77,6 +79,7 @@ class FilePreviewApi(Resource):
             415: "Unsupported file type",
         }
     )
+    @add_security_headers
     def get(self, file_id):
         file_id = str(file_id)
 
@@ -149,6 +152,7 @@ class WorkspaceWebappLogoApi(Resource):
             415: "Unsupported file type",
         }
     )
+    @add_security_headers
     def get(self, workspace_id):
         workspace_id = str(workspace_id)
 
