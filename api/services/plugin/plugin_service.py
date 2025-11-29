@@ -505,9 +505,10 @@ class PluginService:
 
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
+        from sqlalchemy import select
+
         from extensions.ext_database import db
         from models.provider import ProviderCredential
-        from sqlalchemy import select
 
         manager = PluginInstaller()
 
