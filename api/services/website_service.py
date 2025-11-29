@@ -26,6 +26,7 @@ class CrawlOptions:
     prompt: str | None = None
     max_depth: int | None = None
     use_sitemap: bool = True
+    crawl_entire_domain: bool = False
 
     def get_include_paths(self) -> list[str]:
         """Get list of include paths from comma-separated string."""
@@ -74,6 +75,7 @@ class WebsiteCrawlApiRequest:
             prompt=self.options.get("prompt"),
             max_depth=self.options.get("max_depth"),
             use_sitemap=self.options.get("use_sitemap", True),
+            crawl_entire_domain=self.options.get("crawl_entire_domain", False),
         )
         return CrawlRequest(url=self.url, provider=self.provider, options=options)
 
@@ -195,6 +197,14 @@ class WebsiteService:
         # Add optional prompt for Firecrawl v2 crawl-params compatibility
         if request.options.prompt:
             params["prompt"] = request.options.prompt
+
+        # Add maxDiscoveryDepth if max_depth is provided
+        if request.options.max_depth is not None:
+            params["maxDiscoveryDepth"] = request.options.max_depth
+
+        # Add crawlEntireDomain if crawl_entire_domain is True
+        if request.options.crawl_entire_domain:
+            params["crawlEntireDomain"] = True
 
         job_id = firecrawl_app.crawl_url(request.url, params)
         website_crawl_time_cache_key = f"website_crawl_{job_id}"
