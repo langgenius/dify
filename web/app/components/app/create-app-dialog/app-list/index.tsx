@@ -16,7 +16,6 @@ import ExploreContext from '@/context/explore-context'
 import type { App } from '@/models/explore'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
 import { importDSL } from '@/service/apps'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
@@ -28,6 +27,7 @@ import Input from '@/app/components/base/input'
 import { AppModeEnum } from '@/types/app'
 import { DSLImportMode } from '@/models/app'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useQueryState } from 'nuqs'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -62,9 +62,8 @@ const Apps = ({
   }
 
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
-  const [currCategory, setCurrCategory] = useTabSearchParams({
-    defaultTab: allCategoriesEn,
-    disableSearchParams: true,
+  const [currCategory, setCurrCategory] = useQueryState('category', {
+    defaultValue: allCategoriesEn,
   })
 
   const {

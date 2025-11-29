@@ -12,6 +12,7 @@ import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { DatasetAttr } from '@/types/feature'
 import { Instrument_Serif } from 'next/font/google'
 import cn from '@/utils/classnames'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -86,25 +87,27 @@ const LocaleLayout = async ({
         className='color-scheme h-full select-auto'
         {...datasetMap}
       >
-        <ThemeProvider
-          attribute='data-theme'
-          defaultTheme='system'
-          enableSystem
-          disableTransitionOnChange
-          enableColorScheme={false}
-        >
-          <BrowserInitializer>
-            <SentryInitializer>
-              <TanstackQueryInitializer>
-                <I18nServer>
-                  <GlobalPublicStoreProvider>
-                    {children}
-                  </GlobalPublicStoreProvider>
-                </I18nServer>
-              </TanstackQueryInitializer>
-            </SentryInitializer>
-          </BrowserInitializer>
-        </ThemeProvider>
+        <NuqsAdapter>
+          <ThemeProvider
+            attribute='data-theme'
+            defaultTheme='system'
+            enableSystem
+            disableTransitionOnChange
+            enableColorScheme={false}
+          >
+            <BrowserInitializer>
+              <SentryInitializer>
+                <TanstackQueryInitializer>
+                  <I18nServer>
+                    <GlobalPublicStoreProvider>
+                      {children}
+                    </GlobalPublicStoreProvider>
+                  </I18nServer>
+                </TanstackQueryInitializer>
+              </SentryInitializer>
+            </BrowserInitializer>
+          </ThemeProvider>
+        </NuqsAdapter>
         <RoutePrefixHandle />
       </body>
     </html>
