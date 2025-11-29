@@ -4,6 +4,7 @@ from urllib.parse import quote
 from flask import Response
 from flask_restx import Resource, reqparse
 
+from controllers.common.wraps import add_security_headers
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     FileAccessDeniedError,
@@ -135,6 +136,7 @@ class FilePreviewApi(Resource):
             )
             raise FileAccessDeniedError("File access validation failed")
 
+    @add_security_headers
     def _build_file_response(self, generator, upload_file: UploadFile, as_attachment: bool = False) -> Response:
         """
         Build Flask Response object with appropriate headers for file streaming
