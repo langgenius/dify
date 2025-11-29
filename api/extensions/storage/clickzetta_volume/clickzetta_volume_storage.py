@@ -45,7 +45,6 @@ class ClickZettaVolumeConfig(BaseModel):
         This method will first try to use CLICKZETTA_VOLUME_* environment variables,
         then fall back to CLICKZETTA_* environment variables (for vector DB config).
         """
-        import os
 
         # Helper function to get environment variable with fallback
         def get_env_with_fallback(volume_key: str, fallback_key: str, default: str | None = None) -> str:

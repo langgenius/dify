@@ -1030,8 +1030,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return <Loading />
 
   return (
-    <div className='relative grow overflow-x-auto'>
-      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+    <div className='relative mt-2 grow overflow-x-auto'>
+      <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
             <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>

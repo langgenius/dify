@@ -7,6 +7,7 @@ import { produce } from 'immer'
 import { v4 as uuidV4 } from 'uuid'
 import { usePathname } from 'next/navigation'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import type { Node } from '@/app/components/workflow/types'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
@@ -17,6 +18,7 @@ import { handleStream, ssePost } from '@/service/base'
 import { stopWorkflowRun } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { VersionHistory } from '@/types/workflow'
 import { noop } from 'lodash-es'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -151,7 +153,7 @@ export const useWorkflowRun = () => {
       getNodes,
       setNodes,
     } = store.getState()
-    const newNodes = produce(getNodes(), (draft) => {
+    const newNodes = produce(getNodes(), (draft: Node[]) => {
       draft.forEach((node) => {
         node.data.selected = false
         node.data._runningStatus = undefined
@@ -323,7 +325,15 @@ export const useWorkflowRun = () => {
       else
         ttsUrl = `/apps/${resolvedParams.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
+    // Lazy initialization: Only create AudioPlayer when TTS is actually needed
+    // This prevents opening audio channel unnecessarily
+    let player: AudioPlayer | null = null
+    const getOrCreatePlayer = () => {
+      if (!player)
+        player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
+
+      return player
+    }
 
     const clearAbortController = () => {
       abortControllerRef.current = null
@@ -470,11 +480,16 @@ export const useWorkflowRun = () => {
       onTTSChunk: (messageId: string, audio: string) => {
         if (!audio || audio === '')
           return
-        player.playAudioWithAudio(audio, true)
-        AudioPlayerManager.getInstance().resetMsgId(messageId)
+        const audioPlayer = getOrCreatePlayer()
+        if (audioPlayer) {
+          audioPlayer.playAudioWithAudio(audio, true)
+          AudioPlayerManager.getInstance().resetMsgId(messageId)
+        }
       },
       onTTSEnd: (messageId: string, audio: string) => {
-        player.playAudioWithAudio(audio, false)
+        const audioPlayer = getOrCreatePlayer()
+        if (audioPlayer)
+          audioPlayer.playAudioWithAudio(audio, false)
       },
       onError: wrappedOnError,
       onCompleted: wrappedOnCompleted,

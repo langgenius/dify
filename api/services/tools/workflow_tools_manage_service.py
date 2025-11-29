@@ -14,7 +14,6 @@ from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurati
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
-from libs.uuid_utils import uuidv7
 from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
@@ -67,7 +66,6 @@ class WorkflowToolManageService:
 
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
             workflow_tool_provider = WorkflowToolProvider(
-                id=str(uuidv7()),
                 tenant_id=tenant_id,
                 user_id=user_id,
                 app_id=workflow_app_id,
@@ -191,6 +189,9 @@ class WorkflowToolManageService:
             select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
         ).all()
 
+        # Create a mapping from provider_id to app_id
+        provider_id_to_app_id = {provider.id: provider.app_id for provider in db_tools}
+
         tools: list[WorkflowToolProviderController] = []
         for provider in db_tools:
             try:
@@ -204,8 +205,11 @@ class WorkflowToolManageService:
         result = []
 
         for tool in tools:
+            workflow_app_id = provider_id_to_app_id.get(tool.provider_id)
             user_tool_provider = ToolTransformService.workflow_provider_to_user_provider(
-                provider_controller=tool, labels=labels.get(tool.provider_id, [])
+                provider_controller=tool,
+                labels=labels.get(tool.provider_id, []),
+                workflow_app_id=workflow_app_id,
             )
             ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_tool_provider)
             user_tool_provider.tools = [
@@ -293,6 +297,10 @@ class WorkflowToolManageService:
         if len(workflow_tools) == 0:
             raise ValueError(f"Tool {db_tool.id} not found")
 
+        tool_entity = workflow_tools[0].entity
+        # get output schema from workflow tool entity
+        output_schema = tool_entity.output_schema
+
         return {
             "name": db_tool.name,
             "label": db_tool.label,
@@ -301,6 +309,7 @@ class WorkflowToolManageService:
             "icon": json.loads(db_tool.icon),
             "description": db_tool.description,
             "parameters": jsonable_encoder(db_tool.parameter_configurations),
+            "output_schema": output_schema,
             "tool": ToolTransformService.convert_tool_entity_to_api_entity(
                 tool=tool.get_tools(db_tool.tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool),

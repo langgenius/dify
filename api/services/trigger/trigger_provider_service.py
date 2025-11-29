@@ -181,19 +181,21 @@ class TriggerProviderService:
 
                     # Create provider record
                     subscription = TriggerSubscription(
-                        id=subscription_id or str(uuid.uuid4()),
                         tenant_id=tenant_id,
                         user_id=user_id,
                         name=name,
                         endpoint_id=endpoint_id,
                         provider_id=str(provider_id),
-                        parameters=parameters,
-                        properties=properties_encrypter.encrypt(dict(properties)),
-                        credentials=credential_encrypter.encrypt(dict(credentials)) if credential_encrypter else {},
+                        parameters=dict(parameters),
+                        properties=dict(properties_encrypter.encrypt(dict(properties))),
+                        credentials=dict(credential_encrypter.encrypt(dict(credentials)))
+                        if credential_encrypter
+                        else {},
                         credential_type=credential_type.value,
                         credential_expires_at=credential_expires_at,
                         expires_at=expires_at,
                     )
+                    subscription.id = subscription_id or str(uuid.uuid4())
 
                     session.add(subscription)
                     session.commit()
@@ -473,7 +475,7 @@ class TriggerProviderService:
                 oauth_params = encrypter.decrypt(dict(tenant_client.oauth_params))
                 return oauth_params
 
-            is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
+            is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
             if not is_verified:
                 return None
 
@@ -497,7 +499,8 @@ class TriggerProviderService:
         """
         Check if system OAuth client exists for a trigger provider.
         """
-        is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
+        provider_controller = TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
+        is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
         if not is_verified:
             return False
         with Session(db.engine, expire_on_commit=False) as session:

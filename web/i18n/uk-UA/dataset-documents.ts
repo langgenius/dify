@@ -81,6 +81,10 @@ const translation = {
     },
     addUrl: 'Додати URL-адресу',
     learnMore: 'Дізнатися більше',
+    sort: {
+      uploadTime: 'Час завантаження',
+      hitCount: 'Кількість отримань',
+    },
   },
   metadata: {
     title: 'Метадані',

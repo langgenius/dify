@@ -7,6 +7,7 @@ from typing import Any, cast
 from sqlalchemy import exists, select
 from sqlalchemy.orm import Session, sessionmaker
 
+from configs import dify_config
 from core.app.app_config.entities import VariableEntityType
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -14,7 +15,7 @@ from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
 from core.variables.variables import VariableUnion
-from core.workflow.entities import VariablePool, WorkflowNodeExecution
+from core.workflow.entities import WorkflowNodeExecution
 from core.workflow.enums import ErrorStrategy, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, NodeRunSucceededEvent
@@ -23,8 +24,10 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
+from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
+from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -35,8 +38,9 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow, WorkflowNodeExecutionModel, WorkflowNodeExecutionTriggeredFrom, WorkflowType
 from repositories.factory import DifyAPIRepositoryFactory
+from services.billing_service import BillingService
 from services.enterprise.plugin_manager_service import PluginCredentialType
-from services.errors.app import IsDraftWorkflowError, WorkflowHashNotEqualError
+from services.errors.app import IsDraftWorkflowError, TriggerNodeLimitExceededError, WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
 from .errors.workflow_service import DraftWorkflowDeletionError, WorkflowInUseError
@@ -271,6 +275,21 @@ class WorkflowService:
 
         # validate graph structure
         self.validate_graph_structure(graph=draft_workflow.graph_dict)
+
+        # billing check
+        if dify_config.BILLING_ENABLED:
+            limit_info = BillingService.get_info(app_model.tenant_id)
+            if limit_info["subscription"]["plan"] == CloudPlan.SANDBOX:
+                # Check trigger node count limit for SANDBOX plan
+                trigger_node_count = sum(
+                    1
+                    for _, node_data in draft_workflow.walk_nodes()
+                    if (node_type_str := node_data.get("type"))
+                    and isinstance(node_type_str, str)
+                    and NodeType(node_type_str).is_trigger_node
+                )
+                if trigger_node_count > 2:
+                    raise TriggerNodeLimitExceededError(count=trigger_node_count, limit=2)
 
         # create new workflow
         workflow = Workflow.new(

@@ -100,6 +100,13 @@ const translation = {
     nameForToolCallPlaceHolder: 'Służy do rozpoznawania maszyn, takich jak getCurrentWeather, list_pets',
     confirmTip: 'Będzie to miało wpływ na aplikacje korzystające z tego narzędzia',
     confirmTitle: 'Potwierdź, aby zapisać ?',
+    toolOutput: {
+      title: 'Wynik narzędzia',
+      name: 'Nazwa',
+      reserved: 'Zarezerwowane',
+      reservedParameterDuplicateTip: 'text, json i pliki są zastrzeżonymi zmiennymi. Zmienne o tych nazwach nie mogą pojawiać się w schemacie wyjściowym.',
+      description: 'Opis',
+    },
   },
   test: {
     title: 'Test',
@@ -209,6 +216,7 @@ const translation = {
       clientSecret: 'Tajny klucz klienta',
       useDynamicClientRegistration: 'Użyj dynamicznej rejestracji klienta',
       clientID: 'ID klienta',
+      redirectUrlWarning: 'Proszę skonfigurować swój adres URL przekierowania OAuth na:',
     },
     delete: 'Usuń serwer MCP',
     deleteConfirmTitle: 'Usunąć {mcp}?',

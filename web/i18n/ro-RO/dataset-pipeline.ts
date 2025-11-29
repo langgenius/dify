@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Fluxul de cunoștințe publicat',
+      tip: 'Accesați Documente pentru a adăuga sau a gestiona documente.',
     },
     error: {
       message: 'Nu s-a reușit publicarea canalului de cunoștințe',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Structură',
     structureTooltip: 'Structura de bucăți determină modul în care documentele sunt împărțite și indexate - oferind modurile General, Părinte-Copil și Întrebări și răspunsuri - și este unică pentru fiecare bază de cunoștințe.',
+    createdBy: 'De {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'Caractere',
     backToDataSource: 'Sursa datelor',
     title: 'Adăugarea documentelor',
+    selectOnlineDocumentTip: 'Procesează până la {{count}} pagini',
+    selectOnlineDriveTip: 'Procesează până la {{count}} fișiere, maximum {{fileSize}} MB fiecare',
   },
   documentSettings: {
     title: 'Setări document',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} pagini',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Toate fișierele',
       allBuckets: 'Toate gălețile de stocare în cloud',
       searchPlaceholder: 'Căutați fișiere...',
+      searchResult: 'Găsește {{searchResultsLength}} articole în folderul "{{folderName}}"',
     },
     resetKeywords: 'Resetați cuvintele cheie',
     emptyFolder: 'Acest folder este gol',
     notSupportedFileType: 'Acest tip de fișier nu este acceptat',
     emptySearchResult: 'Nu au fost găsite obiecte',
+    notConnected: '{{name}} nu este conectat',
+    notConnectedTip: 'Pentru a sincroniza cu {{name}}, trebuie mai întâi să se stabilească conexiunea cu {{name}}.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{pluginName}} al/a lui {{credentialName}}',
+  },
   conversion: {
     confirm: {
       title: 'Confirmare',
@@ -149,6 +160,7 @@ const translation = {
   knowledgeNameAndIconPlaceholder: 'Vă rugăm să introduceți numele bazei de cunoștințe',
   knowledgeDescriptionPlaceholder: 'Descrieți ce este în această bază de cunoștințe. O descriere detaliată permite AI să acceseze mai precis conținutul setului de date. Dacă este gol, Dify va folosi strategia implicită de accesare. (Opțional)',
   inputField: 'Câmp de intrare',
+  configurationTip: 'Configurează {{pluginName}}',
 }
 
 export default translation

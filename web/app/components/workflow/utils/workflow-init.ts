@@ -242,6 +242,11 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         ...(node.data as IfElseNodeType).cases.map(item => ({ id: item.case_id, name: '' })),
         { id: 'false', name: '' },
       ])
+      // delete conditions and logical_operator if cases is not empty
+      if (nodeData.cases.length > 0 && nodeData.conditions && nodeData.logical_operator) {
+        delete nodeData.conditions
+        delete nodeData.logical_operator
+      }
     }
 
     if (node.data.type === BlockEnum.QuestionClassifier) {

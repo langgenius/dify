@@ -19,7 +19,6 @@ const translation = {
   intro5: 'bağımsız bir ChatGPT dizin eklentisi olarak oluşturulabilir',
   intro6: ' ve yayınlanabilir.',
   unavailable: 'Kullanılamıyor',
-  unavailableTip: 'Yerleştirme modeli mevcut değil, varsayılan yerleştirme modelinin yapılandırılması gerekiyor',
   datasets: 'BİLGİ',
   datasetsApi: 'API ERİŞİMİ',
   retrieval: {
@@ -37,8 +36,6 @@ const translation = {
       recommend: 'Önerilir',
     },
     invertedIndex: {
-      title: 'Ters Dizine Kayıt',
-      description: 'Ters Dizine Kayıt, verimli geri alım için kullanılan bir yapıdır. Terimlere göre düzenlenir ve her terim, onu içeren belgelere veya web sayfalarına işaret eder.',
     },
     change: 'Değiştir',
     changeRetrievalMethod: 'Geri alma yöntemini değiştir',
@@ -237,6 +234,10 @@ const translation = {
     enabled: 'Hizmette',
     title: 'Servis API\'si',
   },
+  docAllEnabled_one: '{{count}} belgesi etkinleştirildi',
+  docAllEnabled_other: 'Tüm {{count}} belgeleri etkinleştirildi',
+  partialEnabled_one: 'Toplam {{count}} belge, {{num}} mevcut',
+  partialEnabled_other: 'Toplam {{count}} belge, {{num}} mevcut',
 }
 
 export default translation

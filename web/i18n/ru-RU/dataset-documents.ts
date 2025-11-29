@@ -81,6 +81,10 @@ const translation = {
       ok: 'ОК',
     },
     learnMore: 'Подробнее',
+    sort: {
+      uploadTime: 'Время загрузки',
+      hitCount: 'Количество извлечений',
+    },
   },
   metadata: {
     title: 'Метаданные',

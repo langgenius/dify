@@ -119,6 +119,13 @@ const translation = {
     confirmTip: 'Aplikacije, ki uporabljajo to orodje, bodo vplivane',
     deleteToolConfirmTitle: 'Izbrisati to orodje?',
     deleteToolConfirmContent: 'Brisanje orodja je nepovratno. Uporabniki ne bodo več imeli dostopa do vašega orodja.',
+    toolOutput: {
+      title: 'Izhod orodja',
+      name: 'Ime',
+      reserved: 'Rezervirano',
+      reservedParameterDuplicateTip: 'text, json in datoteke so rezervirane spremenljivke. Spremenljivke s temi imeni se ne smejo pojaviti v izhodni shemi.',
+      description: 'Opis',
+    },
   },
   test: {
     title: 'Test',
@@ -205,6 +212,7 @@ const translation = {
       useDynamicClientRegistration: 'Uporabi dinamično registracijo odjemalca',
       clientID: 'ID odjemalca',
       clientSecretPlaceholder: 'Skrivnost odjemalca',
+      redirectUrlWarning: 'Prosimo, nastavite URL za preusmeritev OAuth na:',
     },
     delete: 'Odstrani strežnik MCP',
     deleteConfirmTitle: 'Odstraniti {mcp}?',

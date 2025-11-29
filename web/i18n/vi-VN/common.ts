@@ -65,10 +65,17 @@ const translation = {
     yes: 'Vâng',
     deleteConfirmTitle: 'Xóa?',
     confirmAction: 'Vui lòng xác nhận hành động của bạn.',
+    noSearchResults: 'Không tìm thấy {{content}} nào',
+    resetKeywords: 'Đặt lại từ khóa',
+    selectCount: '{{count}} Đã chọn',
+    searchCount: 'Tìm {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Bây giờ',
   },
   placeholder: {
     input: 'Vui lòng nhập',
     select: 'Vui lòng chọn',
+    search: 'Tìm kiếm...',
   },
   voice: {
     language: {
@@ -768,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '(tùy chọn)',
+  },
+  noData: 'Không có dữ liệu',
+  dynamicSelect: {
+    error: 'Tải tùy chọn thất bại',
+    noData: 'Không có tùy chọn nào',
+    loading: 'Đang tải tùy chọn...',
+    selected: '{{count}} đã chọn',
   },
 }
 

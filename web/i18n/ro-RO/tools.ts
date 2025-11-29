@@ -98,6 +98,13 @@ const translation = {
     confirmTitle: 'Confirmați pentru a salva?',
     customDisclaimerPlaceholder: 'Vă rugăm să introduceți declinarea responsabilității personalizate',
     nameForToolCallTip: 'Acceptă doar numere, litere și caractere de subliniere.',
+    toolOutput: {
+      title: 'Ieșire instrument',
+      name: 'Nume',
+      reserved: 'Rezervat',
+      reservedParameterDuplicateTip: 'text, json și fișiere sunt variabile rezervate. Variabilele cu aceste nume nu pot apărea în schema de ieșire.',
+      description: 'Descriere',
+    },
   },
   test: {
     title: 'Testează',
@@ -205,6 +212,7 @@ const translation = {
       clientID: 'ID client',
       useDynamicClientRegistration: 'Utilizați înregistrarea dinamică a clientului',
       clientSecret: 'Secretul Clientului',
+      redirectUrlWarning: 'Vă rugăm să configurați URL-ul de redirecționare OAuth astfel:',
     },
     delete: 'Eliminare Server MCP',
     deleteConfirmTitle: 'Ștergeți {mcp}?',

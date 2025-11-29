@@ -17,7 +17,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import type { Plan } from '@/app/components/billing/type'
+import type { Plan, UsageResetInfo } from '@/app/components/billing/type'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
@@ -40,6 +40,7 @@ type ProviderContextState = {
     type: Plan
     usage: UsagePlanInfo
     total: UsagePlanInfo
+    reset: UsageResetInfo
   }
   isFetchedPlan: boolean
   enableBilling: boolean

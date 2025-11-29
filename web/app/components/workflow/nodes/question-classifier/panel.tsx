@@ -89,19 +89,14 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           config={inputs.vision?.configs}
           onConfigChange={handleVisionResolutionChange}
         />
-        <Field
-          title={t(`${i18nPrefix}.class`)}
-          required
-        >
-          <ClassList
-            nodeId={id}
-            list={inputs.classes}
-            onChange={handleTopicsChange}
-            readonly={readOnly}
-            filterVar={filterVar}
-            handleSortTopic={handleSortTopic}
-          />
-        </Field>
+        <ClassList
+          nodeId={id}
+          list={inputs.classes}
+          onChange={handleTopicsChange}
+          readonly={readOnly}
+          filterVar={filterVar}
+          handleSortTopic={handleSortTopic}
+        />
         <Split />
       </div>
       <FieldCollapse

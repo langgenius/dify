@@ -123,6 +123,11 @@ const translation = {
     noHistory: 'No History',
     tagBound: 'Number of apps using this tag',
   },
+  publishLimit: {
+    startNodeTitlePrefix: 'Upgrade to',
+    startNodeTitleSuffix: 'unlock unlimited triggers per workflow',
+    startNodeDesc: 'You’ve reached the limit of 2 triggers per workflow for this plan. Upgrade to publish this workflow.',
+  },
   env: {
     envPanelTitle: 'Environment Variables',
     envDescription: 'Environment variables can be used to store private information and credentials. They are read-only and can be separated from the DSL file during export.',
@@ -378,6 +383,7 @@ const translation = {
     userInputField: 'User Input Field',
     changeBlock: 'Change Node',
     helpLink: 'View Docs',
+    openWorkflow: 'Open Workflow',
     about: 'About',
     createdBy: 'Created By ',
     nextStep: 'Next Step',
