@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 from mimetypes import guess_type
 
 from pydantic import BaseModel
+from sqlalchemy import select
 from yarl import URL
 
 from configs import dify_config
@@ -25,7 +26,9 @@ from core.plugin.entities.plugin_daemon import (
 from core.plugin.impl.asset import PluginAssetManager
 from core.plugin.impl.debugging import PluginDebuggingClient
 from core.plugin.impl.plugin import PluginInstaller
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models.provider import ProviderCredential
 from models.provider_ids import GenericProviderID
 from services.errors.plugin import PluginInstallationForbiddenError
 from services.feature_service import FeatureService, PluginInstallationScope
@@ -505,10 +508,6 @@ class PluginService:
 
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
-        from extensions.ext_database import db
-        from models.provider import ProviderCredential
-        from sqlalchemy import select
-
         manager = PluginInstaller()
 
         # Get plugin info before uninstalling to delete associated credentials
