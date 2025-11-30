@@ -264,15 +264,21 @@ class OceanBaseVector(BaseVector):
 
     def get_ids_by_metadata_field(self, key: str, value: str) -> list[str]:
         try:
+            import re
+
             from sqlalchemy import text
 
-            cur = self._client.get(
-                table_name=self._collection_name,
-                ids=None,
-                where_clause=[text(f"metadata->>'$.{key}' = '{value}'")],
-                output_column_name=["id"],
-            )
-            ids = [row[0] for row in cur]
+            # Validate key to prevent injection in JSON path
+            if not re.match(r"^[a-zA-Z0-9_.]+$", key):
+                raise ValueError(f"Invalid characters in metadata key: {key}")
+
+            # Use parameterized query to prevent SQL injection
+            sql = text(f"SELECT id FROM `{self._collection_name}` WHERE metadata->>'$.{key}' = :value")
+
+            with self._client.engine.connect() as conn:
+                result = conn.execute(sql, {"value": value})
+                ids = [row[0] for row in result]
+
             logger.debug(
                 "Found %d documents with metadata field '%s'='%s' in collection '%s'",
                 len(ids),
@@ -349,11 +355,20 @@ class OceanBaseVector(BaseVector):
 
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
+            # Build parameterized query to prevent SQL injection
+            from sqlalchemy import text
+
             document_ids_filter = kwargs.get("document_ids_filter")
+            params = {"query": query}
             where_clause = ""
+
             if document_ids_filter:
-                document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
-                where_clause = f" AND metadata->>'$.document_id' IN ({document_ids})"
+                # Create parameterized placeholders for document IDs
+                placeholders = ", ".join(f":doc_id_{i}" for i in range(len(document_ids_filter)))
+                where_clause = f" AND metadata->>'$.document_id' IN ({placeholders})"
+                # Add document IDs to parameters
+                for i, doc_id in enumerate(document_ids_filter):
+                    params[f"doc_id_{i}"] = doc_id
 
             full_sql = f"""SELECT text, metadata, MATCH (text) AGAINST (:query) AS score
             FROM {self._collection_name}
@@ -364,9 +379,7 @@ class OceanBaseVector(BaseVector):
 
             with self._client.engine.connect() as conn:
                 with conn.begin():
-                    from sqlalchemy import text
-
-                    result = conn.execute(text(full_sql), {"query": query})
+                    result = conn.execute(text(full_sql), params)
                     rows = result.fetchall()
 
                     return self._process_search_results(rows, score_threshold=score_threshold)
@@ -379,13 +392,22 @@ class OceanBaseVector(BaseVector):
             raise Exception(f"Full-text search failed for collection '{self._collection_name}'") from e
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        from sqlalchemy import text
+
         document_ids_filter = kwargs.get("document_ids_filter")
         _where_clause = None
         if document_ids_filter:
+            # Validate document IDs to prevent SQL injection
+            # Document IDs should be alphanumeric with hyphens and underscores
+            import re
+
+            for doc_id in document_ids_filter:
+                if not isinstance(doc_id, str) or not re.match(r"^[a-zA-Z0-9_-]+$", doc_id):
+                    raise ValueError(f"Invalid document ID format: {doc_id}")
+
+            # Safe to use in query after validation
             document_ids = ", ".join(f"'{id}'" for id in document_ids_filter)
             where_clause = f"metadata->>'$.document_id' in ({document_ids})"
-            from sqlalchemy import text
-
             _where_clause = [text(where_clause)]
         ef_search = kwargs.get("ef_search", self._hnsw_ef_search)
         if ef_search != self._hnsw_ef_search:
