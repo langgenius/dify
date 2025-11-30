@@ -32,23 +32,9 @@ class ParserPostDefault(BaseModel):
     model_settings: list[Inner]
 
 
-console_ns.schema_model(
-    ParserGetDefault.__name__, ParserGetDefault.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserPostDefault.__name__, ParserPostDefault.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-
 class ParserDeleteModels(BaseModel):
     model: str
     model_type: ModelType
-
-
-console_ns.schema_model(
-    ParserDeleteModels.__name__, ParserDeleteModels.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
 
 
 class LoadBalancingPayload(BaseModel):
@@ -119,33 +105,19 @@ class ParserParameter(BaseModel):
     model: str
 
 
-console_ns.schema_model(
-    ParserPostModels.__name__, ParserPostModels.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
-console_ns.schema_model(
-    ParserGetCredentials.__name__,
-    ParserGetCredentials.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
 
-console_ns.schema_model(
-    ParserCreateCredential.__name__,
-    ParserCreateCredential.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserUpdateCredential.__name__,
-    ParserUpdateCredential.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserDeleteCredential.__name__,
-    ParserDeleteCredential.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserParameter.__name__, ParserParameter.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+reg(ParserGetDefault)
+reg(ParserPostDefault)
+reg(ParserDeleteModels)
+reg(ParserPostModels)
+reg(ParserGetCredentials)
+reg(ParserCreateCredential)
+reg(ParserUpdateCredential)
+reg(ParserDeleteCredential)
+reg(ParserParameter)
 
 
 @console_ns.route("/workspaces/current/default-model")
