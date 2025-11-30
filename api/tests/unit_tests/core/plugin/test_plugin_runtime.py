@@ -192,6 +192,7 @@ class TestPluginRuntimeSandboxIsolation:
 
     def test_isolated_plugin_execution_via_http(self, plugin_client, mock_config):
         """Test that plugin execution is isolated via HTTP communication."""
+
         # Arrange
         class TestResponse(BaseModel):
             result: str
@@ -347,9 +348,7 @@ class TestPluginRuntimeErrorHandling:
             "error_type": "InvokeRateLimitError",
             "args": {"description": "Rate limit exceeded"},
         }
-        error_message = json.dumps(
-            {"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)}
-        )
+        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -367,9 +366,7 @@ class TestPluginRuntimeErrorHandling:
             "error_type": "InvokeAuthorizationError",
             "args": {"description": "Invalid credentials"},
         }
-        error_message = json.dumps(
-            {"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)}
-        )
+        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -387,9 +384,7 @@ class TestPluginRuntimeErrorHandling:
             "error_type": "InvokeBadRequestError",
             "args": {"description": "Invalid parameters"},
         }
-        error_message = json.dumps(
-            {"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)}
-        )
+        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -407,9 +402,7 @@ class TestPluginRuntimeErrorHandling:
             "error_type": "InvokeConnectionError",
             "args": {"description": "Connection to external service failed"},
         }
-        error_message = json.dumps(
-            {"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)}
-        )
+        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -427,9 +420,7 @@ class TestPluginRuntimeErrorHandling:
             "error_type": "InvokeServerUnavailableError",
             "args": {"description": "Service temporarily unavailable"},
         }
-        error_message = json.dumps(
-            {"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)}
-        )
+        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -447,9 +438,7 @@ class TestPluginRuntimeErrorHandling:
             "error_type": "CredentialsValidateFailedError",
             "message": "Invalid API key format",
         }
-        error_message = json.dumps(
-            {"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)}
-        )
+        error_message = json.dumps({"error_type": "PluginInvokeError", "message": json.dumps(invoke_error)})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -511,9 +500,7 @@ class TestPluginRuntimeErrorHandling:
         # Arrange
         mock_response = MagicMock()
         mock_response.status_code = 200
-        error_message = json.dumps(
-            {"error_type": "PluginDaemonNotFoundError", "message": "Resource not found"}
-        )
+        error_message = json.dumps({"error_type": "PluginDaemonNotFoundError", "message": "Resource not found"})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -531,9 +518,7 @@ class TestPluginRuntimeErrorHandling:
         invoke_error_message = json.dumps(
             {"error_type": "UnknownInvokeError", "message": "Generic plugin execution error"}
         )
-        error_message = json.dumps(
-            {"error_type": "PluginInvokeError", "message": invoke_error_message}
-        )
+        error_message = json.dumps({"error_type": "PluginInvokeError", "message": invoke_error_message})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -547,9 +532,7 @@ class TestPluginRuntimeErrorHandling:
         # Arrange
         mock_response = MagicMock()
         mock_response.status_code = 200
-        error_message = json.dumps(
-            {"error_type": "UnknownErrorType", "message": "Unknown error occurred"}
-        )
+        error_message = json.dumps({"error_type": "UnknownErrorType", "message": "Unknown error occurred"})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -612,6 +595,7 @@ class TestPluginRuntimeCommunication:
 
     def test_request_response_communication(self, plugin_client, mock_config):
         """Test basic request/response communication pattern."""
+
         # Arrange
         class TestModel(BaseModel):
             value: str
@@ -634,6 +618,7 @@ class TestPluginRuntimeCommunication:
 
     def test_streaming_response_communication(self, plugin_client, mock_config):
         """Test streaming response communication pattern."""
+
         # Arrange
         class StreamModel(BaseModel):
             chunk: str
@@ -707,6 +692,7 @@ class TestPluginRuntimeCommunication:
 
     def test_request_with_model_parsing(self, plugin_client, mock_config):
         """Test request with direct model parsing (without daemon response wrapper)."""
+
         # Arrange
         class DirectModel(BaseModel):
             status: str
@@ -727,6 +713,7 @@ class TestPluginRuntimeCommunication:
 
     def test_streaming_with_model_parsing(self, plugin_client, mock_config):
         """Test streaming with direct model parsing."""
+
         # Arrange
         class StreamItem(BaseModel):
             id: int
@@ -744,9 +731,7 @@ class TestPluginRuntimeCommunication:
             mock_stream.return_value.__enter__.return_value = mock_response
 
             # Act
-            results = list(
-                plugin_client._stream_request_with_model("POST", "plugin/test-tenant/stream", StreamItem)
-            )
+            results = list(plugin_client._stream_request_with_model("POST", "plugin/test-tenant/stream", StreamItem))
 
             # Assert
             assert len(results) == 2
@@ -757,6 +742,7 @@ class TestPluginRuntimeCommunication:
 
     def test_streaming_skips_empty_lines(self, plugin_client, mock_config):
         """Test that streaming properly skips empty lines."""
+
         # Arrange
         class StreamModel(BaseModel):
             value: str
@@ -1186,9 +1172,7 @@ class TestPluginRuntimeAdvancedScenarios:
         with patch("httpx.request", return_value=mock_response) as mock_request:
             # Act
             for i in range(5):
-                result = plugin_client._request_with_plugin_daemon_response(
-                    "GET", f"plugin/test-tenant/test/{i}", bool
-                )
+                result = plugin_client._request_with_plugin_daemon_response("GET", f"plugin/test-tenant/test/{i}", bool)
                 assert result is True
 
             # Assert
@@ -1196,23 +1180,18 @@ class TestPluginRuntimeAdvancedScenarios:
 
     def test_request_with_complex_nested_data(self, plugin_client, mock_config):
         """Test request with complex nested data structures."""
+
         # Arrange
         class ComplexModel(BaseModel):
             nested: dict[str, Any]
             items: list[dict[str, Any]]
 
         complex_data = {
-            "nested": {
-                "level1": {
-                    "level2": {
-                        "level3": "deep_value"
-                    }
-                }
-            },
+            "nested": {"level1": {"level2": {"level3": "deep_value"}}},
             "items": [
                 {"id": 1, "name": "item1"},
                 {"id": 2, "name": "item2"},
-            ]
+            ],
         }
 
         mock_response = MagicMock()
@@ -1232,6 +1211,7 @@ class TestPluginRuntimeAdvancedScenarios:
 
     def test_streaming_with_multiple_chunk_types(self, plugin_client, mock_config):
         """Test streaming with different chunk types in sequence."""
+
         # Arrange
         class MultiTypeModel(BaseModel):
             type: str
@@ -1312,6 +1292,7 @@ class TestPluginRuntimeAdvancedScenarios:
 
     def test_streaming_with_large_chunks(self, plugin_client, mock_config):
         """Test streaming with large data chunks."""
+
         # Arrange
         class LargeChunkModel(BaseModel):
             chunk_id: int
@@ -1320,8 +1301,7 @@ class TestPluginRuntimeAdvancedScenarios:
         # Create large chunks (simulating large data transfer)
         large_data = "x" * 10000  # 10KB of data
         stream_data = [
-            f'{{"code": 0, "message": "", "data": {{"chunk_id": {i}, "data": "{large_data}"}}}}'
-            for i in range(10)
+            f'{{"code": 0, "message": "", "data": {{"chunk_id": {i}, "data": "{large_data}"}}}}' for i in range(10)
         ]
 
         mock_response = MagicMock()
@@ -1389,7 +1369,7 @@ class TestPluginRuntimeSecurityAndValidation:
         sensitive_data = {
             "api_key": "secret-api-key",
             "password": "secret-password",
-            "credentials": {"token": "secret-token"}
+            "credentials": {"token": "secret-token"},
         }
 
         mock_response = MagicMock()
@@ -1403,7 +1383,7 @@ class TestPluginRuntimeSecurityAndValidation:
                 "plugin/test-tenant/validate",
                 bool,
                 data=sensitive_data,
-                headers={"Content-Type": "application/json"}
+                headers={"Content-Type": "application/json"},
             )
 
             # Assert - Verify data was sent
@@ -1415,9 +1395,7 @@ class TestPluginRuntimeSecurityAndValidation:
         # Arrange
         mock_response = MagicMock()
         mock_response.status_code = 200
-        error_message = json.dumps(
-            {"error_type": "PluginDaemonUnauthorizedError", "message": "Invalid API key"}
-        )
+        error_message = json.dumps({"error_type": "PluginDaemonUnauthorizedError", "message": "Invalid API key"})
         mock_response.json.return_value = {"code": -1, "message": error_message, "data": None}
 
         with patch("httpx.request", return_value=mock_response):
@@ -1431,7 +1409,7 @@ class TestPluginRuntimeSecurityAndValidation:
         # Arrange
         invalid_params = {
             "page": -1,  # Invalid negative page
-            "limit": 0,   # Invalid zero limit
+            "limit": 0,  # Invalid zero limit
         }
 
         mock_response = MagicMock()
@@ -1458,10 +1436,7 @@ class TestPluginRuntimeSecurityAndValidation:
         with patch("httpx.request", return_value=mock_response) as mock_request:
             # Act
             plugin_client._request(
-                "POST",
-                "plugin/test-tenant/test",
-                headers={"Content-Type": "application/json"},
-                data={"key": "value"}
+                "POST", "plugin/test-tenant/test", headers={"Content-Type": "application/json"}, data={"key": "value"}
             )
 
             # Assert
@@ -1495,6 +1470,7 @@ class TestPluginRuntimePerformanceScenarios:
 
     def test_high_volume_streaming(self, plugin_client, mock_config):
         """Test streaming with high volume of chunks."""
+
         # Arrange
         class StreamChunk(BaseModel):
             index: int
@@ -1502,8 +1478,7 @@ class TestPluginRuntimePerformanceScenarios:
 
         # Generate 100 chunks
         stream_data = [
-            f'{{"code": 0, "message": "", "data": {{"index": {i}, "value": "chunk_{i}"}}}}'
-            for i in range(100)
+            f'{{"code": 0, "message": "", "data": {{"index": {i}, "value": "chunk_{i}"}}}}' for i in range(100)
         ]
 
         mock_response = MagicMock()
@@ -1527,6 +1502,7 @@ class TestPluginRuntimePerformanceScenarios:
 
     def test_streaming_memory_efficiency(self, plugin_client, mock_config):
         """Test that streaming processes chunks one at a time (memory efficient)."""
+
         # Arrange
         class ChunkModel(BaseModel):
             data: str
@@ -1538,10 +1514,7 @@ class TestPluginRuntimePerformanceScenarios:
             processed_chunks.append(chunk.data)
             return chunk
 
-        stream_data = [
-            f'{{"code": 0, "message": "", "data": {{"data": "chunk_{i}"}}}}'
-            for i in range(10)
-        ]
+        stream_data = [f'{{"code": 0, "message": "", "data": {{"data": "chunk_{i}"}}}}' for i in range(10)]
 
         mock_response = MagicMock()
         mock_response.iter_lines.return_value = [line.encode("utf-8") for line in stream_data]
@@ -1620,11 +1593,8 @@ class TestPluginToolManagerAdvanced:
             "simple_string": "value",
             "number": 42,
             "boolean": True,
-            "nested_object": {
-                "key1": "value1",
-                "key2": ["item1", "item2"]
-            },
-            "array": [1, 2, 3, 4, 5]
+            "nested_object": {"key1": "value1", "key2": ["item1", "item2"]},
+            "array": [1, 2, 3, 4, 5],
         }
 
         stream_data = [
@@ -1789,10 +1759,10 @@ class TestPluginInstallerAdvanced:
                     "created_at": "2024-01-01T00:00:00Z",
                     "resource": {"memory": 256},
                     "plugins": {},
-                    "meta": {}
+                    "meta": {},
                 },
-                "verification": None
-            }
+                "verification": None,
+            },
         }
 
         with patch("httpx.request", return_value=mock_response):
@@ -1810,19 +1780,12 @@ class TestPluginInstallerAdvanced:
         mock_response.json.return_value = {
             "code": 0,
             "message": "",
-            "data": {
-                "content": "# Plugin README\n\nThis is a test plugin.",
-                "language": "en"
-            }
+            "data": {"content": "# Plugin README\n\nThis is a test plugin.", "language": "en"},
         }
 
         with patch("httpx.request", return_value=mock_response):
             # Act
-            result = installer.fetch_plugin_readme(
-                "test-tenant",
-                "test-org/test-plugin",
-                "en"
-            )
+            result = installer.fetch_plugin_readme("test-tenant", "test-org/test-plugin", "en")
 
             # Assert
             assert "Plugin README" in result
@@ -1833,22 +1796,16 @@ class TestPluginInstallerAdvanced:
         # Arrange
         mock_response = MagicMock()
         mock_response.status_code = 404
-        
+
         def raise_for_status():
-            raise httpx.HTTPStatusError(
-                "Not Found", request=MagicMock(), response=mock_response
-            )
-        
+            raise httpx.HTTPStatusError("Not Found", request=MagicMock(), response=mock_response)
+
         mock_response.raise_for_status = raise_for_status
 
         with patch("httpx.request", return_value=mock_response):
             # Act & Assert - Should raise HTTPStatusError for 404
             with pytest.raises(httpx.HTTPStatusError):
-                installer.fetch_plugin_readme(
-                    "test-tenant",
-                    "test-org/test-plugin",
-                    "en"
-                )
+                installer.fetch_plugin_readme("test-tenant", "test-org/test-plugin", "en")
 
     def test_list_plugins_with_pagination(self, installer, mock_config):
         """Test plugin listing with pagination."""
@@ -1861,7 +1818,7 @@ class TestPluginInstallerAdvanced:
             "data": {
                 "list": [],
                 "total": 50,
-            }
+            },
         }
 
         with patch("httpx.request", return_value=mock_response):
@@ -1884,11 +1841,7 @@ class TestPluginInstallerAdvanced:
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "code": 0,
-            "message": "",
-            "data": [True, False]
-        }
+        mock_response.json.return_value = {"code": 0, "message": "", "data": [True, False]}
 
         with patch("httpx.request", return_value=mock_response):
             # Act
