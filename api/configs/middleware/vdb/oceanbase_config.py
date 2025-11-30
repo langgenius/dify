@@ -51,7 +51,7 @@ class OceanBaseVectorConfig(BaseSettings):
     )
 
     OCEANBASE_BATCH_SIZE: PositiveInt = Field(
-        description="Batch size for insert operations. Larger batches improve performance but use more memory. "
-        "Default is 1 for OceanBase due to query complexity constraints",
-        default=1,
+        description="Batch size for insert operations. Smaller batches prevent timeout when using hybrid search "
+        "(vector + fulltext indexes). Default is 50",
+        default=50,
     )
