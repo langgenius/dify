@@ -368,7 +368,7 @@ class BaseAgentRunner(AppRunner):
         if answer:
             agent_thought.answer = answer
 
-        if messages_ids is not None and len(messages_ids) > 0:
+        if len(messages_ids) > 0:
             agent_thought.message_files = json.dumps(messages_ids)
 
         if llm_usage:
