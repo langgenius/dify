@@ -452,9 +452,9 @@ describe('fetchWithRetry extended', () => {
   })
 
   it('should retry specified number of times', async () => {
-    let attempts = 0
+    let _attempts = 0
     const failingPromise = () => {
-      attempts++
+      _attempts++
       return Promise.reject(new Error('fail'))
     }
 
