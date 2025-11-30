@@ -1,6 +1,7 @@
 import flask_login
 from flask import make_response, request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 
 import services
 from configs import dify_config
@@ -40,6 +41,54 @@ from services.errors.account import AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkspacesLimitExceededError
 from services.feature_service import FeatureService
 
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class LoginPayload(BaseModel):
+    email: str = Field(..., description="Email address")
+    password: str = Field(..., description="Password")
+    remember_me: bool = Field(default=False, description="Remember me flag")
+    invite_token: str | None = Field(default=None, description="Invitation token")
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return email(value)
+
+
+class EmailPayload(BaseModel):
+    email: str = Field(...)
+    language: str | None = Field(default=None)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return email(value)
+
+
+class EmailCodeLoginPayload(BaseModel):
+    email: str = Field(...)
+    code: str = Field(...)
+    token: str = Field(...)
+    language: str | None = Field(default=None)
+
+    @field_validator("email")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return email(value)
+
+
+console_ns.schema_model(
+    LoginPayload.__name__, LoginPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+console_ns.schema_model(
+    EmailPayload.__name__, EmailPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+console_ns.schema_model(
+    EmailCodeLoginPayload.__name__,
+    EmailCodeLoginPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
 
 @console_ns.route("/login")
 class LoginApi(Resource):
@@ -47,41 +96,35 @@ class LoginApi(Resource):
 
     @setup_required
     @email_password_login_enabled
+    @console_ns.expect(console_ns.models[LoginPayload.__name__])
     def post(self):
         """Authenticate user and login."""
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=email, required=True, location="json")
-            .add_argument("password", type=str, required=True, location="json")
-            .add_argument("remember_me", type=bool, required=False, default=False, location="json")
-            .add_argument("invite_token", type=str, required=False, default=None, location="json")
-        )
-        args = parser.parse_args()
+        args = LoginPayload.model_validate(console_ns.payload)
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args.email):
             raise AccountInFreezeError()
 
-        is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
+        is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args.email)
         if is_login_error_rate_limit:
             raise EmailPasswordLoginLimitError()
 
-        invitation = args["invite_token"]
+        invitation = args.invite_token
         if invitation:
-            invitation = RegisterService.get_invitation_if_token_valid(None, args["email"], invitation)
+            invitation = RegisterService.get_invitation_if_token_valid(None, args.email, invitation)
 
         try:
             if invitation:
                 data = invitation.get("data", {})
                 invitee_email = data.get("email") if data else None
-                if invitee_email != args["email"]:
+                if invitee_email != args.email:
                     raise InvalidEmailError()
-                account = AccountService.authenticate(args["email"], args["password"], args["invite_token"])
+                account = AccountService.authenticate(args.email, args.password, args.invite_token)
             else:
-                account = AccountService.authenticate(args["email"], args["password"])
+                account = AccountService.authenticate(args.email, args.password)
         except services.errors.account.AccountLoginError:
             raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
-            AccountService.add_login_error_rate_limit(args["email"])
+            AccountService.add_login_error_rate_limit(args.email)
             raise AuthenticationFailedError()
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
@@ -97,7 +140,7 @@ class LoginApi(Resource):
                 }
 
         token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
-        AccountService.reset_login_error_rate_limit(args["email"])
+        AccountService.reset_login_error_rate_limit(args.email)
 
         # Create response with cookies instead of returning tokens in body
         response = make_response({"result": "success"})
@@ -134,25 +177,21 @@ class LogoutApi(Resource):
 class ResetPasswordSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
+    @console_ns.expect(console_ns.models[EmailPayload.__name__])
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=email, required=True, location="json")
-            .add_argument("language", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = EmailPayload.model_validate(console_ns.payload)
 
-        if args["language"] is not None and args["language"] == "zh-Hans":
+        if args.language is not None and args.language == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
         try:
-            account = AccountService.get_user_through_email(args["email"])
+            account = AccountService.get_user_through_email(args.email)
         except AccountRegisterError:
             raise AccountInFreezeError()
 
         token = AccountService.send_reset_password_email(
-            email=args["email"],
+            email=args.email,
             account=account,
             language=language,
             is_allow_register=FeatureService.get_system_features().is_allow_register,
@@ -164,30 +203,26 @@ class ResetPasswordSendEmailApi(Resource):
 @console_ns.route("/email-code-login")
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
+    @console_ns.expect(console_ns.models[EmailPayload.__name__])
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=email, required=True, location="json")
-            .add_argument("language", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = EmailPayload.model_validate(console_ns.payload)
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
 
-        if args["language"] is not None and args["language"] == "zh-Hans":
+        if args.language is not None and args.language == "zh-Hans":
             language = "zh-Hans"
         else:
             language = "en-US"
         try:
-            account = AccountService.get_user_through_email(args["email"])
+            account = AccountService.get_user_through_email(args.email)
         except AccountRegisterError:
             raise AccountInFreezeError()
 
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
-                token = AccountService.send_email_code_login_email(email=args["email"], language=language)
+                token = AccountService.send_email_code_login_email(email=args.email, language=language)
             else:
                 raise AccountNotFound()
         else:
@@ -199,30 +234,24 @@ class EmailCodeLoginSendEmailApi(Resource):
 @console_ns.route("/email-code-login/validity")
 class EmailCodeLoginApi(Resource):
     @setup_required
+    @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=str, required=True, location="json")
-            .add_argument("code", type=str, required=True, location="json")
-            .add_argument("token", type=str, required=True, location="json")
-            .add_argument("language", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = EmailCodeLoginPayload.model_validate(console_ns.payload)
 
-        user_email = args["email"]
-        language = args["language"]
+        user_email = args.email
+        language = args.language
 
-        token_data = AccountService.get_email_code_login_data(args["token"])
+        token_data = AccountService.get_email_code_login_data(args.token)
         if token_data is None:
             raise InvalidTokenError()
 
-        if token_data["email"] != args["email"]:
+        if token_data["email"] != args.email:
             raise InvalidEmailError()
 
-        if token_data["code"] != args["code"]:
+        if token_data["code"] != args.code:
             raise EmailCodeError()
 
-        AccountService.revoke_email_code_login_token(args["token"])
+        AccountService.revoke_email_code_login_token(args.token)
         try:
             account = AccountService.get_user_through_email(user_email)
         except AccountRegisterError:
@@ -255,7 +284,7 @@ class EmailCodeLoginApi(Resource):
             except WorkspacesLimitExceededError:
                 raise WorkspacesLimitExceeded()
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
-        AccountService.reset_login_error_rate_limit(args["email"])
+        AccountService.reset_login_error_rate_limit(args.email)
 
         # Create response with cookies instead of returning tokens in body
         response = make_response({"result": "success"})

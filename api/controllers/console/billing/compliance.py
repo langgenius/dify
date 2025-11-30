@@ -1,5 +1,6 @@
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field
 
 from libs.helper import extract_remote_ip
 from libs.login import current_account_with_tenant, login_required
@@ -7,6 +8,10 @@ from services.billing_service import BillingService
 
 from .. import console_ns
 from ..wraps import account_initialization_required, only_edition_cloud, setup_required
+
+
+class ComplianceDownloadQuery(BaseModel):
+    doc_name: str = Field(..., description="Compliance document name")
 
 
 @console_ns.route("/compliance/download")
@@ -17,8 +22,7 @@ class ComplianceApi(Resource):
     @only_edition_cloud
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument("doc_name", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = ComplianceDownloadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
 
         ip_address = extract_remote_ip(request)
         device_info = request.headers.get("User-Agent", "Unknown device")
