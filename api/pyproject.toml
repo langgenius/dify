@@ -172,6 +172,7 @@ dev = [
     # "locust>=2.40.4",  # Temporarily removed due to compatibility issues. Uncomment when resolved.
     "sseclient-py>=1.8.0",
     "pytest-timeout>=2.4.0",
+    "pyrefly>=0.43.1",
 ]
 
 ############################################################
