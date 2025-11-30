@@ -65,3 +65,32 @@ class FileApi(Resource):
             raise UnsupportedFileTypeError()
 
         return upload_file, 201
+
+
+@service_api_ns.route("/files/<uuid:file_id>")
+class FileDeleteApi(Resource):
+    @service_api_ns.doc("delete_file")
+    @service_api_ns.doc(description="Delete an uploaded file by ID")
+    @service_api_ns.doc(
+        params={"file_id": "File identifier"},
+        responses={
+            204: "File deleted successfully",
+            401: "Unauthorized - invalid API token",
+            404: "File not found",
+        },
+    )
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
+    def delete(self, app_model: App, end_user: EndUser, file_id):
+        """Delete an uploaded file.
+
+        Deletes the specified file from both storage and database.
+
+        Args:
+            file_id: UUID of the file to delete
+
+        Returns:
+            Empty response with 204 status on success
+        """
+        file_id = str(file_id)
+        FileService(db.engine).delete_file(file_id)
+        return "", 204
