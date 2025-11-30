@@ -43,7 +43,10 @@ class ForgotPasswordCheckPayload(BaseModel):
     code: str = Field(...)
     token: str = Field(...)
 
-
+    @field_validator("email", mode="before")
+    @classmethod
+    def validate_email(cls, value: str) -> str:
+        return email(value)
 class ForgotPasswordResetPayload(BaseModel):
     token: str = Field(...)
     new_password: str = Field(...)
