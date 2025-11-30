@@ -114,7 +114,7 @@ class AccountDeletionFeedbackPayload(BaseModel):
     email: str
     feedback: str
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)
@@ -138,7 +138,7 @@ class ChangeEmailSendPayload(BaseModel):
     phase: str | None = None
     token: str | None = None
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)
@@ -149,7 +149,7 @@ class ChangeEmailValidityPayload(BaseModel):
     code: str
     token: str
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)
@@ -168,7 +168,7 @@ class ChangeEmailResetPayload(BaseModel):
 class CheckEmailUniquePayload(BaseModel):
     email: str
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)

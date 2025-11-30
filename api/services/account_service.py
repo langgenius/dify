@@ -1259,7 +1259,7 @@ class RegisterService:
         return f"member_invite:token:{token}"
 
     @classmethod
-    def setup(cls, email: str, name: str, password: str, ip_address: str, language: str):
+    def setup(cls, email: str, name: str, password: str, ip_address: str, language: str | None):
         """
         Setup dify
 
@@ -1267,6 +1267,7 @@ class RegisterService:
         :param name: username
         :param password: password
         :param ip_address: ip address
+        :param language: language
         """
         try:
             account = AccountService.create_account(
@@ -1414,7 +1415,7 @@ class RegisterService:
         return data is not None
 
     @classmethod
-    def revoke_token(cls, workspace_id: str, email: str, token: str):
+    def revoke_token(cls, workspace_id: str | None, email: str | None, token: str):
         if workspace_id and email:
             email_hash = sha256(email.encode()).hexdigest()
             cache_key = f"member_invite_token:{workspace_id}, {email_hash}:{token}"
@@ -1423,7 +1424,9 @@ class RegisterService:
             redis_client.delete(cls._get_invitation_token_key(token))
 
     @classmethod
-    def get_invitation_if_token_valid(cls, workspace_id: str | None, email: str, token: str) -> dict[str, Any] | None:
+    def get_invitation_if_token_valid(
+        cls, workspace_id: str | None, email: str | None, token: str
+    ) -> dict[str, Any] | None:
         invitation_data = cls.get_invitation_by_token(token, workspace_id, email)
         if not invitation_data:
             return None
