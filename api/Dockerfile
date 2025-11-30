@@ -19,11 +19,15 @@ RUN apt-get update \
           # basic environment
           g++ \
           # for building gmpy2
-          libmpfr-dev libmpc-dev
+          libmpfr-dev libmpc-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Install Python dependencies
 COPY pyproject.toml uv.lock ./
-RUN uv sync --locked --no-dev
+# Export without hashes because we'll build local wheels (hashes would mismatch)
+RUN uv export --locked --no-dev --format requirements.txt --no-hashes --output-file /tmp/requirements.txt \
+    && pip wheel --no-cache-dir -r /tmp/requirements.txt -w /wheels \
+    && uv cache prune --ci
 
 # production stage
 FROM base AS production
@@ -54,10 +58,10 @@ RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
     chown -R dify:dify /app
 
-RUN \
-    apt-get update \
+RUN set -eux; \
+    apt-get update; \
     # Install dependencies
-    && apt-get install -y --no-install-recommends \
+    apt-get install -y --no-install-recommends \
         # basic environment
         curl nodejs \
         # for gmpy2 \
@@ -69,30 +73,31 @@ RUN \
         # install a package to improve the accuracy of guessing mime type and file extension
         media-types \
         # install libmagic to support the use of python-magic guess MIMETYPE
-        libmagic1 \
-    && apt-get autoremove -y \
-    && rm -rf /var/lib/apt/lists/*
+        libmagic1; \
+    apt-get autoremove -y; \
+    rm -rf /var/lib/apt/lists/*
 
-# Copy Python environment and packages
-ENV VIRTUAL_ENV=/app/api/.venv
-COPY --from=packages --chown=dify:dify ${VIRTUAL_ENV} ${VIRTUAL_ENV}
-ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
-
-# Download nltk data
-RUN mkdir -p /usr/local/share/nltk_data && NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')" \
-    && chmod -R 755 /usr/local/share/nltk_data
+# Install Python packages from prebuilt wheels (no virtualenv to avoid copying ~1.8GB layer)
+COPY --from=packages /tmp/requirements.txt /tmp/requirements.txt
+COPY --from=packages /wheels /wheels
+RUN pip install --no-cache-dir --no-index --find-links /wheels -r /tmp/requirements.txt \
+    && rm -rf /wheels /tmp/requirements.txt
 
 ENV TIKTOKEN_CACHE_DIR=/app/api/.tiktoken_cache
 
-RUN python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')" \
-    && chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
+# Pre-fetch NLTK data and warm tiktoken cache before copying source to maximize layer reuse
+RUN set -eux; \
+    mkdir -p /usr/local/share/nltk_data; \
+    NLTK_DATA=/usr/local/share/nltk_data python -c "import nltk; nltk.download('punkt'); nltk.download('averaged_perceptron_tagger'); nltk.download('stopwords')"; \
+    chmod -R 755 /usr/local/share/nltk_data; \
+    python -c "import tiktoken; tiktoken.encoding_for_model('gpt2')"; \
+    chown -R dify:dify ${TIKTOKEN_CACHE_DIR}
 
 # Copy source code
 COPY --chown=dify:dify . /app/api/
 
 # Prepare entrypoint script
 COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh /entrypoint.sh
-
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
