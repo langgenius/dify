@@ -12,6 +12,7 @@ import type { App } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
@@ -21,7 +22,6 @@ import {
 } from '@/models/app'
 import { useImportDSL } from '@/hooks/use-import-dsl'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
-import { useQueryState } from 'nuqs'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -51,8 +51,9 @@ const Apps = ({
     handleSearch()
   }
 
-  const [currCategory, setCurrCategory] = useQueryState('category', {
-    defaultValue: allCategoriesEn,
+  const [currCategory, setCurrCategory] = useTabSearchParams({
+    defaultTab: allCategoriesEn,
+    disableSearchParams: false,
   })
 
   const {

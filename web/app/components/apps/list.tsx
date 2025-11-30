@@ -25,6 +25,7 @@ import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import Input from '@/app/components/base/input'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import TagFilter from '@/app/components/base/tag-management/filter'
@@ -34,7 +35,6 @@ import Empty from './empty'
 import Footer from './footer'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AppModeEnum } from '@/types/app'
-import { useQueryState } from 'nuqs'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
@@ -73,8 +73,8 @@ const List = () => {
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [activeTab, setActiveTab] = useQueryState('category', {
-    defaultValue: 'all',
+  const [activeTab, setActiveTab] = useTabSearchParams({
+    defaultTab: 'all',
   })
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)

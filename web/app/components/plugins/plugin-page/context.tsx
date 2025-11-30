@@ -11,10 +11,10 @@ import {
   useContextSelector,
 } from 'use-context-selector'
 import type { FilterState } from './filter-management'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { noop } from 'lodash-es'
 import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useQueryState } from 'nuqs'
 
 export type PluginPageContextValue = {
   containerRef: RefObject<HTMLDivElement | null>
@@ -68,8 +68,8 @@ export const PluginPageContextProvider = ({
   const options = useMemo(() => {
     return enable_marketplace ? tabs : tabs.filter(tab => tab.value !== PLUGIN_PAGE_TABS_MAP.marketplace)
   }, [tabs, enable_marketplace])
-  const [activeTab, setActiveTab] = useQueryState('category', {
-    defaultValue: options[0].value,
+  const [activeTab, setActiveTab] = useTabSearchParams({
+    defaultTab: options[0].value,
   })
 
   return (

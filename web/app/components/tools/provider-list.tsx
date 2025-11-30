@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { Collection } from './types'
 import Marketplace from './marketplace'
 import cn from '@/utils/classnames'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import Input from '@/app/components/base/input'
@@ -21,7 +22,6 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { ToolTypeEnum } from '../workflow/block-selector/types'
 import { useMarketplace } from './marketplace/hooks'
 import { useTags } from '@/app/components/plugins/hooks'
-import { useQueryState } from 'nuqs'
 
 const getToolType = (type: string) => {
   switch (type) {
@@ -45,8 +45,8 @@ const ProviderList = () => {
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const [activeTab, setActiveTab] = useQueryState('category', {
-    defaultValue: 'builtin',
+  const [activeTab, setActiveTab] = useTabSearchParams({
+    defaultTab: 'builtin',
   })
   const options = [
     { value: 'builtin', text: t('tools.type.builtIn') },
