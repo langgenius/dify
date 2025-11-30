@@ -505,7 +505,39 @@ class PluginService:
 
     @staticmethod
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
+        from sqlalchemy import select
+
+        from extensions.ext_database import db
+        from models.provider import ProviderCredential
+
         manager = PluginInstaller()
+
+        # Get plugin info before uninstalling to delete associated credentials
+        try:
+            plugins = manager.list_plugins(tenant_id)
+            plugin = next((p for p in plugins if p.installation_id == plugin_installation_id), None)
+
+            if plugin:
+                plugin_id = plugin.plugin_id
+                logger.info("Deleting credentials for plugin: %s", plugin_id)
+
+                # Delete provider credentials that match this plugin
+                credentials = db.session.scalars(
+                    select(ProviderCredential).where(
+                        ProviderCredential.tenant_id == tenant_id,
+                        ProviderCredential.provider_name.like(f"{plugin_id}/%"),
+                    )
+                ).all()
+
+                for cred in credentials:
+                    db.session.delete(cred)
+
+                db.session.commit()
+                logger.info("Deleted %d credentials for plugin: %s", len(credentials), plugin_id)
+        except Exception as e:
+            logger.warning("Failed to delete credentials: %s", e)
+            # Continue with uninstall even if credential deletion fails
+
         return manager.uninstall(tenant_id, plugin_installation_id)
 
     @staticmethod
