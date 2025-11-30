@@ -1,6 +1,6 @@
 from urllib.parse import quote
 
-from flask import Response
+from flask import Response, request
 from flask_restx import Resource
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
@@ -51,7 +51,7 @@ class ToolFileApi(Resource):
     def get(self, file_id, extension):
         file_id = str(file_id)
 
-        args = ToolFileQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        args = ToolFileQuery.model_validate(request.args.to_dict())
         if not verify_tool_file_signature(file_id=file_id, timestamp=args.timestamp, nonce=args.nonce, sign=args.sign):
             raise Forbidden("Invalid request.")
 
