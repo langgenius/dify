@@ -464,6 +464,5 @@ class OceanBaseVectorFactory(AbstractVectorFactory):
                 password=(dify_config.OCEANBASE_VECTOR_PASSWORD or ""),
                 database=dify_config.OCEANBASE_VECTOR_DATABASE or "",
                 enable_hybrid_search=dify_config.OCEANBASE_ENABLE_HYBRID_SEARCH or False,
-                batch_size=dify_config.OCEANBASE_BATCH_SIZE or 1000,
             ),
         )
