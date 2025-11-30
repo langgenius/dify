@@ -76,18 +76,17 @@ class AnnotationFilePayload(BaseModel):
         return uuid_value(value)
 
 
-def reg_model(model: type[BaseModel]) -> None:
+def reg(model: type[BaseModel]) -> None:
     console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
-for _model in [
-    AnnotationReplyPayload,
-    AnnotationSettingUpdatePayload,
-    AnnotationListQuery,
-    CreateAnnotationPayload,
-    UpdateAnnotationPayload,
-]:
-    reg_model(_model)
+reg(AnnotationReplyPayload)
+reg(AnnotationSettingUpdatePayload)
+reg(AnnotationListQuery)
+reg(CreateAnnotationPayload)
+reg(UpdateAnnotationPayload)
+reg(AnnotationReplyStatusQuery)
+reg(AnnotationFilePayload)
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")
