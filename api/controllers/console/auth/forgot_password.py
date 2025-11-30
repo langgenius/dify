@@ -47,6 +47,8 @@ class ForgotPasswordCheckPayload(BaseModel):
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)
+
+
 class ForgotPasswordResetPayload(BaseModel):
     token: str = Field(...)
     new_password: str = Field(...)

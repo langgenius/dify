@@ -49,6 +49,7 @@ class EmailRegisterValidityPayload(BaseModel):
     def validate_email(cls, value: str) -> str:
         return email(value)
 
+
 class EmailRegisterResetPayload(BaseModel):
     token: str = Field(...)
     new_password: str = Field(...)
