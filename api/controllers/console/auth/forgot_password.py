@@ -32,7 +32,7 @@ class ForgotPasswordSendPayload(BaseModel):
     email: str = Field(...)
     language: str | None = Field(default=None)
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)

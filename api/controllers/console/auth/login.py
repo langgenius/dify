@@ -50,7 +50,7 @@ class LoginPayload(BaseModel):
     remember_me: bool = Field(default=False, description="Remember me flag")
     invite_token: str | None = Field(default=None, description="Invitation token")
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)
@@ -60,7 +60,7 @@ class EmailPayload(BaseModel):
     email: str = Field(...)
     language: str | None = Field(default=None)
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)
@@ -72,7 +72,7 @@ class EmailCodeLoginPayload(BaseModel):
     token: str = Field(...)
     language: str | None = Field(default=None)
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)

@@ -31,7 +31,7 @@ class EmailRegisterSendPayload(BaseModel):
     email: str = Field(..., description="Email address")
     language: str | None = Field(default=None, description="Language code")
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str) -> str:
         return email(value)

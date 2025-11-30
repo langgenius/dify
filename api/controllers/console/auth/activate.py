@@ -19,7 +19,7 @@ class ActivateCheckQuery(BaseModel):
     email: str | None = Field(default=None)
     token: str
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str | None) -> str | None:
         if value is None:
@@ -35,7 +35,7 @@ class ActivatePayload(BaseModel):
     interface_language: str = Field(...)
     timezone: str = Field(...)
 
-    @field_validator("email")
+    @field_validator("email", mode="before")
     @classmethod
     def validate_email(cls, value: str | None) -> str | None:
         if value is None:

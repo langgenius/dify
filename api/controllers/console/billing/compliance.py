@@ -14,8 +14,17 @@ class ComplianceDownloadQuery(BaseModel):
     doc_name: str = Field(..., description="Compliance document name")
 
 
+console_ns.schema_model(
+    ComplianceDownloadQuery.__name__,
+    ComplianceDownloadQuery.model_json_schema(ref_template="#/definitions/{model}"),
+)
+
+
 @console_ns.route("/compliance/download")
 class ComplianceApi(Resource):
+    @console_ns.expect(console_ns.models[ComplianceDownloadQuery.__name__])
+    @console_ns.doc("download_compliance_document")
+    @console_ns.doc(description="Get compliance document download link")
     @setup_required
     @login_required
     @account_initialization_required

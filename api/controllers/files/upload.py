@@ -8,16 +8,17 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 import services
-from controllers.common.errors import (
-    FileTooLargeError,
-    UnsupportedFileTypeError,
-)
-from controllers.console.wraps import setup_required
-from controllers.files import files_ns
-from controllers.inner_api.plugin.wraps import get_user
 from core.file.helpers import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager
 from fields.file_fields import build_file_model
+
+from ..common.errors import (
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+)
+from ..console.wraps import setup_required
+from ..files import files_ns
+from ..inner_api.plugin.wraps import get_user
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -38,6 +39,7 @@ files_ns.schema_model(
 @files_ns.route("/upload/for-plugin")
 class PluginUploadFileApi(Resource):
     @setup_required
+    @files_ns.expect(files_ns.models[PluginUploadQuery.__name__])
     @files_ns.doc("upload_plugin_file")
     @files_ns.doc(description="Upload a file for plugin usage with signature verification")
     @files_ns.doc(
@@ -69,7 +71,7 @@ class PluginUploadFileApi(Resource):
 
         file: FileStorage | None = request.files.get("file")
         if file is None:
-            raise Forbidden("Invalid request.")
+            raise Forbidden("File is required.")
 
         timestamp = args.timestamp
         nonce = args.nonce

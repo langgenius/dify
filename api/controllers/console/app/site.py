@@ -1,3 +1,5 @@
+from typing import Literal
+
 from flask_restx import Resource, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import NotFound
@@ -33,7 +35,7 @@ class AppSiteUpdatePayload(BaseModel):
     copyright: str | None = Field(default=None)
     privacy_policy: str | None = Field(default=None)
     custom_disclaimer: str | None = Field(default=None)
-    customize_token_strategy: str | None = Field(default=None)
+    customize_token_strategy: Literal["must", "allow", "not_allow"] | None = Field(default=None)
     prompt_public: bool | None = Field(default=None)
     show_workflow_steps: bool | None = Field(default=None)
     use_icon_as_answer_icon: bool | None = Field(default=None)
