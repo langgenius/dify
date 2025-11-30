@@ -298,6 +298,8 @@ const translation = {
       accountDesc: 'ไปที่หน้าบัญชี',
       docDesc: 'เปิดเอกสารช่วยเหลือ',
       communityDesc: 'เปิดชุมชน Discord',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'ไม่พบปลั๊กอิน',

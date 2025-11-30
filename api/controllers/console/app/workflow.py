@@ -1,10 +1,11 @@
 import json
 import logging
 from collections.abc import Sequence
-from typing import cast
+from typing import Any
 
 from flask import abort, request
-from flask_restx import Resource, fields, inputs, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal_with
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -49,6 +50,7 @@ from services.workflow_service import DraftWorkflowDeletionError, WorkflowInUseE
 
 logger = logging.getLogger(__name__)
 LISTENING_RETRY_IN = 2000
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -107,6 +109,104 @@ if workflow_run_node_execution_model is None:
     workflow_run_node_execution_model = console_ns.model("WorkflowRunNodeExecution", workflow_run_node_execution_fields)
 
 
+class SyncDraftWorkflowPayload(BaseModel):
+    graph: dict[str, Any]
+    features: dict[str, Any]
+    hash: str | None = None
+    environment_variables: list[dict[str, Any]] = Field(default_factory=list)
+    conversation_variables: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class BaseWorkflowRunPayload(BaseModel):
+    files: list[dict[str, Any]] | None = None
+
+
+class AdvancedChatWorkflowRunPayload(BaseWorkflowRunPayload):
+    inputs: dict[str, Any] | None = None
+    query: str = ""
+    conversation_id: str | None = None
+    parent_message_id: str | None = None
+
+    @field_validator("conversation_id", "parent_message_id")
+    @classmethod
+    def validate_uuid(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class IterationNodeRunPayload(BaseModel):
+    inputs: dict[str, Any] | None = None
+
+
+class LoopNodeRunPayload(BaseModel):
+    inputs: dict[str, Any] | None = None
+
+
+class DraftWorkflowRunPayload(BaseWorkflowRunPayload):
+    inputs: dict[str, Any]
+
+
+class DraftWorkflowNodeRunPayload(BaseWorkflowRunPayload):
+    inputs: dict[str, Any]
+    query: str = ""
+
+
+class PublishWorkflowPayload(BaseModel):
+    marked_name: str | None = Field(default=None, max_length=20)
+    marked_comment: str | None = Field(default=None, max_length=100)
+
+
+class DefaultBlockConfigQuery(BaseModel):
+    q: str | None = None
+
+
+class ConvertToWorkflowPayload(BaseModel):
+    name: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+
+
+class WorkflowListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, le=99999)
+    limit: int = Field(default=10, ge=1, le=100)
+    user_id: str | None = None
+    named_only: bool = False
+
+
+class WorkflowUpdatePayload(BaseModel):
+    marked_name: str | None = Field(default=None, max_length=20)
+    marked_comment: str | None = Field(default=None, max_length=100)
+
+
+class DraftWorkflowTriggerRunPayload(BaseModel):
+    node_id: str
+
+
+class DraftWorkflowTriggerRunAllPayload(BaseModel):
+    node_ids: list[str]
+
+
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(SyncDraftWorkflowPayload)
+reg(AdvancedChatWorkflowRunPayload)
+reg(IterationNodeRunPayload)
+reg(LoopNodeRunPayload)
+reg(DraftWorkflowRunPayload)
+reg(DraftWorkflowNodeRunPayload)
+reg(PublishWorkflowPayload)
+reg(DefaultBlockConfigQuery)
+reg(ConvertToWorkflowPayload)
+reg(WorkflowListQuery)
+reg(WorkflowUpdatePayload)
+reg(DraftWorkflowTriggerRunPayload)
+reg(DraftWorkflowTriggerRunAllPayload)
+
+
 # TODO(QuantumGhost): Refactor existing node run API to handle file parameter parsing
 # at the controller level rather than in the workflow logic. This would improve separation
 # of concerns and make the code more maintainable.
@@ -158,18 +258,7 @@ class DraftWorkflowApi(Resource):
     @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
     @console_ns.doc("sync_draft_workflow")
     @console_ns.doc(description="Sync draft workflow configuration")
-    @console_ns.expect(
-        console_ns.model(
-            "SyncDraftWorkflowRequest",
-            {
-                "graph": fields.Raw(required=True, description="Workflow graph configuration"),
-                "features": fields.Raw(required=True, description="Workflow features configuration"),
-                "hash": fields.String(description="Workflow hash for validation"),
-                "environment_variables": fields.List(fields.Raw, required=True, description="Environment variables"),
-                "conversation_variables": fields.List(fields.Raw, description="Conversation variables"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[SyncDraftWorkflowPayload.__name__])
     @console_ns.response(
         200,
         "Draft workflow synced successfully",
@@ -193,36 +282,23 @@ class DraftWorkflowApi(Resource):
 
         content_type = request.headers.get("Content-Type", "")
 
+        payload_data: dict[str, Any] | None = None
         if "application/json" in content_type:
-            parser = (
-                reqparse.RequestParser()
-                .add_argument("graph", type=dict, required=True, nullable=False, location="json")
-                .add_argument("features", type=dict, required=True, nullable=False, location="json")
-                .add_argument("hash", type=str, required=False, location="json")
-                .add_argument("environment_variables", type=list, required=True, location="json")
-                .add_argument("conversation_variables", type=list, required=False, location="json")
-            )
-            args = parser.parse_args()
+            payload_data = request.get_json(silent=True)
+            if not isinstance(payload_data, dict):
+                return {"message": "Invalid JSON data"}, 400
         elif "text/plain" in content_type:
             try:
-                data = json.loads(request.data.decode("utf-8"))
-                if "graph" not in data or "features" not in data:
-                    raise ValueError("graph or features not found in data")
-
-                if not isinstance(data.get("graph"), dict) or not isinstance(data.get("features"), dict):
-                    raise ValueError("graph or features is not a dict")
-
-                args = {
-                    "graph": data.get("graph"),
-                    "features": data.get("features"),
-                    "hash": data.get("hash"),
-                    "environment_variables": data.get("environment_variables"),
-                    "conversation_variables": data.get("conversation_variables"),
-                }
+                payload_data = json.loads(request.data.decode("utf-8"))
             except json.JSONDecodeError:
+                return {"message": "Invalid JSON data"}, 400
+            if not isinstance(payload_data, dict):
                 return {"message": "Invalid JSON data"}, 400
         else:
             abort(415)
+
+        args_model = SyncDraftWorkflowPayload.model_validate(payload_data)
+        args = args_model.model_dump()
         workflow_service = WorkflowService()
 
         try:
@@ -258,17 +334,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
     @console_ns.doc("run_advanced_chat_draft_workflow")
     @console_ns.doc(description="Run draft workflow for advanced chat application")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AdvancedChatWorkflowRunRequest",
-            {
-                "query": fields.String(required=True, description="User query"),
-                "inputs": fields.Raw(description="Input variables"),
-                "files": fields.List(fields.Raw, description="File uploads"),
-                "conversation_id": fields.String(description="Conversation ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[AdvancedChatWorkflowRunPayload.__name__])
     @console_ns.response(200, "Workflow run started successfully")
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(403, "Permission denied")
@@ -283,16 +349,8 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, location="json")
-            .add_argument("query", type=str, required=True, location="json", default="")
-            .add_argument("files", type=list, location="json")
-            .add_argument("conversation_id", type=uuid_value, location="json")
-            .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
-        )
-
-        args = parser.parse_args()
+        args_model = AdvancedChatWorkflowRunPayload.model_validate(console_ns.payload or {})
+        args = args_model.model_dump(exclude_none=True)
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -322,15 +380,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
     @console_ns.doc("run_advanced_chat_draft_iteration_node")
     @console_ns.doc(description="Run draft workflow iteration node for advanced chat")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "IterationNodeRunRequest",
-            {
-                "task_id": fields.String(required=True, description="Task ID"),
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[IterationNodeRunPayload.__name__])
     @console_ns.response(200, "Iteration node run started successfully")
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
@@ -344,8 +394,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         Run draft workflow iteration node
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = IterationNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate_single_iteration(
@@ -369,15 +418,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
     @console_ns.doc("run_workflow_draft_iteration_node")
     @console_ns.doc(description="Run draft workflow iteration node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "WorkflowIterationNodeRunRequest",
-            {
-                "task_id": fields.String(required=True, description="Task ID"),
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[IterationNodeRunPayload.__name__])
     @console_ns.response(200, "Workflow iteration node run started successfully")
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
@@ -391,8 +432,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         Run draft workflow iteration node
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = IterationNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate_single_iteration(
@@ -416,15 +456,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
     @console_ns.doc("run_advanced_chat_draft_loop_node")
     @console_ns.doc(description="Run draft workflow loop node for advanced chat")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "LoopNodeRunRequest",
-            {
-                "task_id": fields.String(required=True, description="Task ID"),
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[LoopNodeRunPayload.__name__])
     @console_ns.response(200, "Loop node run started successfully")
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
@@ -438,8 +470,7 @@ class AdvancedChatDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = LoopNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -463,15 +494,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
     @console_ns.doc("run_workflow_draft_loop_node")
     @console_ns.doc(description="Run draft workflow loop node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "WorkflowLoopNodeRunRequest",
-            {
-                "task_id": fields.String(required=True, description="Task ID"),
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[LoopNodeRunPayload.__name__])
     @console_ns.response(200, "Workflow loop node run started successfully")
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
@@ -485,8 +508,7 @@ class WorkflowDraftRunLoopNodeApi(Resource):
         Run draft workflow loop node
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument("inputs", type=dict, location="json")
-        args = parser.parse_args()
+        args = LoopNodeRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate_single_loop(
@@ -510,15 +532,7 @@ class DraftWorkflowRunApi(Resource):
     @console_ns.doc("run_draft_workflow")
     @console_ns.doc(description="Run draft workflow")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "DraftWorkflowRunRequest",
-            {
-                "inputs": fields.Raw(required=True, description="Input variables"),
-                "files": fields.List(fields.Raw, description="File uploads"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[DraftWorkflowRunPayload.__name__])
     @console_ns.response(200, "Draft workflow run started successfully")
     @console_ns.response(403, "Permission denied")
     @setup_required
@@ -531,12 +545,7 @@ class DraftWorkflowRunApi(Resource):
         Run draft workflow
         """
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("files", type=list, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = DraftWorkflowRunPayload.model_validate(console_ns.payload or {}).model_dump(exclude_none=True)
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
@@ -588,14 +597,7 @@ class DraftWorkflowNodeRunApi(Resource):
     @console_ns.doc("run_draft_workflow_node")
     @console_ns.doc(description="Run draft workflow node")
     @console_ns.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "DraftWorkflowNodeRunRequest",
-            {
-                "inputs": fields.Raw(description="Input variables"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[DraftWorkflowNodeRunPayload.__name__])
     @console_ns.response(200, "Node run started successfully", workflow_run_node_execution_model)
     @console_ns.response(403, "Permission denied")
     @console_ns.response(404, "Node not found")
@@ -610,15 +612,10 @@ class DraftWorkflowNodeRunApi(Resource):
         Run draft workflow node
         """
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("query", type=str, required=False, location="json", default="")
-            .add_argument("files", type=list, location="json", default=[])
-        )
-        args = parser.parse_args()
+        args_model = DraftWorkflowNodeRunPayload.model_validate(console_ns.payload or {})
+        args = args_model.model_dump(exclude_none=True)
 
-        user_inputs = args.get("inputs")
+        user_inputs = args_model.inputs
         if user_inputs is None:
             raise ValueError("missing inputs")
 
@@ -641,13 +638,6 @@ class DraftWorkflowNodeRunApi(Resource):
         )
 
         return workflow_node_execution
-
-
-parser_publish = (
-    reqparse.RequestParser()
-    .add_argument("marked_name", type=str, required=False, default="", location="json")
-    .add_argument("marked_comment", type=str, required=False, default="", location="json")
-)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflows/publish")
@@ -674,7 +664,7 @@ class PublishedWorkflowApi(Resource):
         # return workflow, if not found, return None
         return workflow
 
-    @console_ns.expect(parser_publish)
+    @console_ns.expect(console_ns.models[PublishWorkflowPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -686,13 +676,7 @@ class PublishedWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        args = parser_publish.parse_args()
-
-        # Validate name and comment length
-        if args.marked_name and len(args.marked_name) > 20:
-            raise ValueError("Marked name cannot exceed 20 characters")
-        if args.marked_comment and len(args.marked_comment) > 100:
-            raise ValueError("Marked comment cannot exceed 100 characters")
+        args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
         with Session(db.engine) as session:
@@ -741,9 +725,6 @@ class DefaultBlockConfigsApi(Resource):
         return workflow_service.get_default_block_configs()
 
 
-parser_block = reqparse.RequestParser().add_argument("q", type=str, location="args")
-
-
 @console_ns.route("/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>")
 class DefaultBlockConfigApi(Resource):
     @console_ns.doc("get_default_block_config")
@@ -751,7 +732,7 @@ class DefaultBlockConfigApi(Resource):
     @console_ns.doc(params={"app_id": "Application ID", "block_type": "Block type"})
     @console_ns.response(200, "Default block configuration retrieved successfully")
     @console_ns.response(404, "Block type not found")
-    @console_ns.expect(parser_block)
+    @console_ns.expect(console_ns.models[DefaultBlockConfigQuery.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -761,14 +742,12 @@ class DefaultBlockConfigApi(Resource):
         """
         Get default block config
         """
-        args = parser_block.parse_args()
-
-        q = args.get("q")
+        args = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         filters = None
-        if q:
+        if args.q:
             try:
-                filters = json.loads(args.get("q", ""))
+                filters = json.loads(args.q)
             except json.JSONDecodeError:
                 raise ValueError("Invalid filters")
 
@@ -777,18 +756,9 @@ class DefaultBlockConfigApi(Resource):
         return workflow_service.get_default_block_config(node_type=block_type, filters=filters)
 
 
-parser_convert = (
-    reqparse.RequestParser()
-    .add_argument("name", type=str, required=False, nullable=True, location="json")
-    .add_argument("icon_type", type=str, required=False, nullable=True, location="json")
-    .add_argument("icon", type=str, required=False, nullable=True, location="json")
-    .add_argument("icon_background", type=str, required=False, nullable=True, location="json")
-)
-
-
 @console_ns.route("/apps/<uuid:app_id>/convert-to-workflow")
 class ConvertToWorkflowApi(Resource):
-    @console_ns.expect(parser_convert)
+    @console_ns.expect(console_ns.models[ConvertToWorkflowPayload.__name__])
     @console_ns.doc("convert_to_workflow")
     @console_ns.doc(description="Convert application to workflow mode")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -808,10 +778,8 @@ class ConvertToWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        if request.data:
-            args = parser_convert.parse_args()
-        else:
-            args = {}
+        payload = console_ns.payload or {}
+        args = ConvertToWorkflowPayload.model_validate(payload).model_dump(exclude_none=True)
 
         # convert to workflow mode
         workflow_service = WorkflowService()
@@ -823,18 +791,9 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
-parser_workflows = (
-    reqparse.RequestParser()
-    .add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
-    .add_argument("limit", type=inputs.int_range(1, 100), required=False, default=10, location="args")
-    .add_argument("user_id", type=str, required=False, location="args")
-    .add_argument("named_only", type=inputs.boolean, required=False, default=False, location="args")
-)
-
-
 @console_ns.route("/apps/<uuid:app_id>/workflows")
 class PublishedAllWorkflowApi(Resource):
-    @console_ns.expect(parser_workflows)
+    @console_ns.expect(console_ns.models[WorkflowListQuery.__name__])
     @console_ns.doc("get_all_published_workflows")
     @console_ns.doc(description="Get all published workflows for an application")
     @console_ns.doc(params={"app_id": "Application ID"})
@@ -851,16 +810,15 @@ class PublishedAllWorkflowApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        args = parser_workflows.parse_args()
-        page = args["page"]
-        limit = args["limit"]
-        user_id = args.get("user_id")
-        named_only = args.get("named_only", False)
+        args = WorkflowListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        page = args.page
+        limit = args.limit
+        user_id = args.user_id
+        named_only = args.named_only
 
         if user_id:
             if user_id != current_user.id:
                 raise Forbidden()
-            user_id = cast(str, user_id)
 
         workflow_service = WorkflowService()
         with Session(db.engine) as session:
@@ -886,15 +844,7 @@ class WorkflowByIdApi(Resource):
     @console_ns.doc("update_workflow_by_id")
     @console_ns.doc(description="Update workflow by ID")
     @console_ns.doc(params={"app_id": "Application ID", "workflow_id": "Workflow ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "UpdateWorkflowRequest",
-            {
-                "environment_variables": fields.List(fields.Raw, description="Environment variables"),
-                "conversation_variables": fields.List(fields.Raw, description="Conversation variables"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[WorkflowUpdatePayload.__name__])
     @console_ns.response(200, "Workflow updated successfully", workflow_model)
     @console_ns.response(404, "Workflow not found")
     @console_ns.response(403, "Permission denied")
@@ -909,25 +859,14 @@ class WorkflowByIdApi(Resource):
         Update workflow attributes
         """
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("marked_name", type=str, required=False, location="json")
-            .add_argument("marked_comment", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
-
-        # Validate name and comment length
-        if args.marked_name and len(args.marked_name) > 20:
-            raise ValueError("Marked name cannot exceed 20 characters")
-        if args.marked_comment and len(args.marked_comment) > 100:
-            raise ValueError("Marked comment cannot exceed 100 characters")
+        args = WorkflowUpdatePayload.model_validate(console_ns.payload or {})
 
         # Prepare update data
         update_data = {}
-        if args.get("marked_name") is not None:
-            update_data["marked_name"] = args["marked_name"]
-        if args.get("marked_comment") is not None:
-            update_data["marked_comment"] = args["marked_comment"]
+        if args.marked_name is not None:
+            update_data["marked_name"] = args.marked_name
+        if args.marked_comment is not None:
+            update_data["marked_comment"] = args.marked_comment
 
         if not update_data:
             return {"message": "No valid fields to update"}, 400
@@ -1040,11 +979,8 @@ class DraftWorkflowTriggerRunApi(Resource):
         Poll for trigger events and execute full workflow when event arrives
         """
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument(
-            "node_id", type=str, required=True, location="json", nullable=False
-        )
-        args = parser.parse_args()
-        node_id = args["node_id"]
+        args = DraftWorkflowTriggerRunPayload.model_validate(console_ns.payload or {})
+        node_id = args.node_id
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.get_draft_workflow(app_model)
         if not draft_workflow:
@@ -1172,14 +1108,7 @@ class DraftWorkflowTriggerRunAllApi(Resource):
     @console_ns.doc("draft_workflow_trigger_run_all")
     @console_ns.doc(description="Full workflow debug when the start node is a trigger")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "DraftWorkflowTriggerRunAllRequest",
-            {
-                "node_ids": fields.List(fields.String, required=True, description="Node IDs"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[DraftWorkflowTriggerRunAllPayload.__name__])
     @console_ns.response(200, "Workflow executed successfully")
     @console_ns.response(403, "Permission denied")
     @console_ns.response(500, "Internal server error")
@@ -1194,11 +1123,8 @@ class DraftWorkflowTriggerRunAllApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        parser = reqparse.RequestParser().add_argument(
-            "node_ids", type=list, required=True, location="json", nullable=False
-        )
-        args = parser.parse_args()
-        node_ids = args["node_ids"]
+        args = DraftWorkflowTriggerRunAllPayload.model_validate(console_ns.payload or {})
+        node_ids = args.node_ids
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.get_draft_workflow(app_model)
         if not draft_workflow:

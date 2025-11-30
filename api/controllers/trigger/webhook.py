@@ -1,7 +1,7 @@
 import logging
 import time
 
-from flask import jsonify
+from flask import jsonify, request
 from werkzeug.exceptions import NotFound, RequestEntityTooLarge
 
 from controllers.trigger import bp
@@ -28,8 +28,14 @@ def _prepare_webhook_execution(webhook_id: str, is_debug: bool = False):
         webhook_data = WebhookService.extract_and_validate_webhook_data(webhook_trigger, node_config)
         return webhook_trigger, workflow, node_config, webhook_data, None
     except ValueError as e:
-        # Fall back to raw extraction for error reporting
-        webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
+        # Provide minimal context for error reporting without risking another parse failure
+        webhook_data = {
+            "method": request.method,
+            "headers": dict(request.headers),
+            "query_params": dict(request.args),
+            "body": {},
+            "files": {},
+        }
         return webhook_trigger, workflow, node_config, webhook_data, str(e)
 
 
