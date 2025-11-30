@@ -1,5 +1,6 @@
 import base64
 
+from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest

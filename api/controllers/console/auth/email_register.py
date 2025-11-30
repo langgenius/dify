@@ -15,14 +15,16 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import AccountInFreezeError, EmailSendIpLimitError
-from controllers.console.wraps import email_password_login_enabled, email_register_enabled, setup_required
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
+from services.errors.account import AccountNotFoundError, AccountRegisterError
+
+from ..error import AccountInFreezeError, EmailSendIpLimitError
+from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -56,7 +58,6 @@ class EmailRegisterResetPayload(BaseModel):
 
 for model in (EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload):
     console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
-from services.errors.account import AccountNotFoundError, AccountRegisterError
 
 
 @console_ns.route("/email-register/send-email")
