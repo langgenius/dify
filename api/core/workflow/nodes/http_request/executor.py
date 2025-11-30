@@ -355,7 +355,6 @@ class Executor:
             response: httpx.Response = _METHOD_MAP[method_lc](**request_args, max_retries=self.max_retries)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
-        # FIXME: fix type ignore, this maybe httpx type issue
         return response
 
     def invoke(self) -> Response:
