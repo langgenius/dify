@@ -141,7 +141,7 @@
     "uuid": "^10.0.0",
     "zod": "^3.25.76",
     "zundo": "^2.3.0",
-    "zustand": "^4.5.7"
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",
