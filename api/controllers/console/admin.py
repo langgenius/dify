@@ -72,7 +72,7 @@ class InsertExploreAppListApi(Resource):
             .add_argument("category", type=str, required=True, nullable=False, location="json")
             .add_argument("position", type=int, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         app = db.session.execute(select(App).where(App.id == args["app_id"])).scalar_one_or_none()
         if not app:

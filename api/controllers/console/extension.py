@@ -36,7 +36,7 @@ class CodeBasedExtensionAPI(Resource):
     @account_initialization_required
     def get(self):
         parser = reqparse.RequestParser().add_argument("module", type=str, required=True, location="args")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return {"module": args["module"], "data": CodeBasedExtensionService.get_code_based_extension(args["module"])}
 

@@ -44,7 +44,7 @@ class RemoteFileUploadApi(Resource):
     @console_ns.expect(parser_upload)
     @marshal_with(file_fields_with_signed_url)
     def post(self):
-        args = parser_upload.parse_args()
+        args = parser_upload.parse_args(strict=True)
 
         url = args["url"]
 

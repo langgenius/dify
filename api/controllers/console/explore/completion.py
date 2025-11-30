@@ -57,7 +57,7 @@ class CompletionApi(InstalledAppResource):
             .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
             .add_argument("retriever_from", type=str, required=False, default="explore_app", location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         streaming = args["response_mode"] == "streaming"
         args["auto_generate_name"] = False
@@ -138,7 +138,7 @@ class ChatApi(InstalledAppResource):
             .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
             .add_argument("retriever_from", type=str, required=False, default="explore_app", location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         args["auto_generate_name"] = False
 

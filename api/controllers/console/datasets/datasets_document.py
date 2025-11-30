@@ -343,7 +343,7 @@ class DatasetDocumentListApi(Resource):
             .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
             .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         knowledge_config = KnowledgeConfig.model_validate(args)
 
         if not dataset.indexing_technique and not knowledge_config.indexing_technique:
@@ -433,7 +433,7 @@ class DatasetInitApi(Resource):
             .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
             .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         knowledge_config = KnowledgeConfig.model_validate(args)
         if knowledge_config.indexing_technique == "high_quality":
@@ -1082,7 +1082,7 @@ class DocumentRetryApi(DocumentResource):
         parser = reqparse.RequestParser().add_argument(
             "document_ids", type=list, required=True, nullable=False, location="json"
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         retry_documents = []
@@ -1131,7 +1131,7 @@ class DocumentRenameApi(DocumentResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_operator_permission(current_user, dataset)
         parser = reqparse.RequestParser().add_argument("name", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             document = DocumentService.rename_document(dataset_id, document_id, args["name"])

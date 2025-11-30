@@ -73,7 +73,7 @@ class CompletionMessageApi(Resource):
             .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
             .add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         streaming = args["response_mode"] != "blocking"
         args["auto_generate_name"] = False
@@ -172,7 +172,7 @@ class ChatMessageApi(Resource):
             .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
             .add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         streaming = args["response_mode"] != "blocking"
         args["auto_generate_name"] = False

@@ -37,7 +37,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
             )
             .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # validate model load balancing credentials
         model_load_balancing_service = ModelLoadBalancingService()
@@ -92,7 +92,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
             )
             .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # validate model load balancing config credentials
         model_load_balancing_service = ModelLoadBalancingService()

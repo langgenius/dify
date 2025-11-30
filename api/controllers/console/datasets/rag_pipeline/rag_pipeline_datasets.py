@@ -34,7 +34,7 @@ class CreateRagPipelineDatasetApi(Resource):
             help="yaml_content is required.",
         )
 
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         current_user, current_tenant_id = current_account_with_tenant()
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:

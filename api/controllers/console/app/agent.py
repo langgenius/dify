@@ -31,6 +31,6 @@ class AgentLogApi(Resource):
     @get_app_model(mode=[AppMode.AGENT_CHAT])
     def get(self, app_model):
         """Get agent logs"""
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         return AgentService.get_agent_logs(app_model, args["conversation_id"], args["message_id"])

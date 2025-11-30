@@ -126,7 +126,7 @@ class MessageListApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        args = message_list_parser.parse_args()
+        args = message_list_parser.parse_args(strict=True)
 
         try:
             return MessageService.pagination_by_first_id(
@@ -159,7 +159,7 @@ class MessageFeedbackApi(Resource):
         """
         message_id = str(message_id)
 
-        args = message_feedback_parser.parse_args()
+        args = message_feedback_parser.parse_args(strict=True)
 
         try:
             MessageService.create_feedback(
@@ -192,7 +192,7 @@ class AppGetFeedbacksApi(Resource):
 
         Returns paginated list of all feedback submitted for messages in this app.
         """
-        args = feedback_list_parser.parse_args()
+        args = feedback_list_parser.parse_args(strict=True)
         feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=args["page"], limit=args["limit"])
         return {"data": feedbacks}
 

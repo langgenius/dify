@@ -89,7 +89,7 @@ class CustomizedPipelineTemplateApi(Resource):
                 nullable=True,
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         pipeline_template_info = PipelineTemplateInfoEntity.model_validate(args)
         RagPipelineService.update_customized_pipeline_template(template_id, pipeline_template_info)
         return 200
@@ -148,7 +148,7 @@ class PublishCustomizedPipelineTemplateApi(Resource):
                 nullable=True,
             )
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
         rag_pipeline_service = RagPipelineService()
         rag_pipeline_service.publish_customized_pipeline_template(pipeline_id, args)
         return {"result": "success"}

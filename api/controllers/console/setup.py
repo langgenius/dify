@@ -79,7 +79,7 @@ class SetupApi(Resource):
             .add_argument("password", type=valid_password, required=True, location="json")
             .add_argument("language", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # setup
         RegisterService.setup(

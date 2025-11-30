@@ -88,17 +88,17 @@ class TestMetadataBugCompleteValidation:
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             with pytest.raises(BadRequest):
-                parser.parse_args()
+                parser.parse_args(strict=True)
 
         # Test with just name being null
         with app.test_request_context(json={"type": "string", "name": None}, content_type="application/json"):
             with pytest.raises(BadRequest):
-                parser.parse_args()
+                parser.parse_args(strict=True)
 
         # Test with just type being null
         with app.test_request_context(json={"type": None, "name": "test"}, content_type="application/json"):
             with pytest.raises(BadRequest):
-                parser.parse_args()
+                parser.parse_args(strict=True)
 
     def test_5_fixed_api_accepts_valid_values(self, app):
         """Test that fixed API still accepts valid non-null values."""
@@ -109,7 +109,7 @@ class TestMetadataBugCompleteValidation:
         )
 
         with app.test_request_context(json={"type": "string", "name": "valid_name"}, content_type="application/json"):
-            args = parser.parse_args()
+            args = parser.parse_args(strict=True)
             assert args["type"] == "string"
             assert args["name"] == "valid_name"
 
@@ -124,7 +124,7 @@ class TestMetadataBugCompleteValidation:
 
         with app.test_request_context(json={"type": None, "name": None}, content_type="application/json"):
             # This would pass in the buggy version
-            args = buggy_parser.parse_args()
+            args = buggy_parser.parse_args(strict=True)
             assert args["type"] is None
             assert args["name"] is None
 

@@ -154,7 +154,7 @@ class WorkflowRunApi(Resource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        args = workflow_run_parser.parse_args()
+        args = workflow_run_parser.parse_args(strict=True)
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
@@ -209,7 +209,7 @@ class WorkflowRunByIdApi(Resource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        args = workflow_run_parser.parse_args()
+        args = workflow_run_parser.parse_args(strict=True)
 
         # Add workflow_id to args for AppGenerateService
         args["workflow_id"] = workflow_id
@@ -295,7 +295,7 @@ class WorkflowAppLogApi(Resource):
 
         Returns paginated workflow execution logs with filtering options.
         """
-        args = workflow_log_parser.parse_args()
+        args = workflow_log_parser.parse_args(strict=True)
 
         args.status = WorkflowExecutionStatus(args.status) if args.status else None
         if args.created_at__before:

@@ -78,7 +78,7 @@ def get_user_tenant(view: Callable[P, R] | None = None):
                 .add_argument("user_id", type=str, required=True, location="json")
             )
 
-            p = parser.parse_args()
+            p = parser.parse_args(strict=True)
 
             user_id = cast(str, p.get("user_id"))
             tenant_id = cast(str, p.get("tenant_id"))

@@ -70,7 +70,7 @@ class MCPAppApi(Resource):
         Raises:
             ValidationError: Invalid request format or parameters
         """
-        args = mcp_request_parser.parse_args()
+        args = mcp_request_parser.parse_args(strict=True)
         request_id: Union[int, str] | None = args.get("id")
         mcp_request = self._parse_mcp_request(args)
 

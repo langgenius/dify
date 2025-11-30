@@ -61,7 +61,7 @@ class AppImportApi(Resource):
     def post(self):
         # Check user role first
         current_user, _ = current_account_with_tenant()
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         # Create service with session
         with Session(db.engine) as session:
