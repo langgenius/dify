@@ -50,7 +50,7 @@ class TraceAppConfigApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
             trace_config = OpsService.get_tracing_app_config(app_id=app_id, tracing_provider=args.tracing_provider)
@@ -121,7 +121,7 @@ class TraceAppConfigApi(Resource):
     @account_initialization_required
     def delete(self, app_id):
         """Delete an existing trace app configuration"""
-        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
             result = OpsService.delete_tracing_app_config(app_id=app_id, tracing_provider=args.tracing_provider)

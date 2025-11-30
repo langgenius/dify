@@ -51,7 +51,6 @@ console_ns.schema_model(
     WorkflowDraftVariableUpdatePayload.__name__,
     WorkflowDraftVariableUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 def _convert_values_to_json_serializable_object(value: Segment):
@@ -222,7 +221,7 @@ class WorkflowVariableCollectionApi(Resource):
         """
         Get draft workflow
         """
-        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = WorkflowDraftVariableListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()

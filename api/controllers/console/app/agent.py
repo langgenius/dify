@@ -44,6 +44,6 @@ class AgentLogApi(Resource):
     @get_app_model(mode=[AppMode.AGENT_CHAT])
     def get(self, app_model):
         """Get agent logs"""
-        args = AgentLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = AgentLogQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         return AgentService.get_agent_logs(app_model, args.conversation_id, args.message_id)

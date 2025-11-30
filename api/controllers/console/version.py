@@ -45,7 +45,7 @@ class VersionApi(Resource):
     )
     def get(self):
         """Check for application version updates"""
-        args = VersionQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = VersionQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         check_update_url = dify_config.CHECK_UPDATE_URL
 
         result = {

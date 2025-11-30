@@ -22,7 +22,7 @@ class ComplianceApi(Resource):
     @only_edition_cloud
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        args = ComplianceDownloadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = ComplianceDownloadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         ip_address = extract_remote_ip(request)
         device_info = request.headers.get("User-Agent", "Unknown device")

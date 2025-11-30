@@ -2,13 +2,12 @@ import os
 
 from flask import session
 from flask_restx import Resource, fields
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
 from extensions.ext_database import db
-from libs.helper import StrLen
 from models.model import DifySetup
 from services.account_service import TenantService
 
@@ -21,11 +20,6 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 class InitValidatePayload(BaseModel):
     password: str = Field(..., max_length=30)
-
-    @field_validator("password")
-    @classmethod
-    def validate_password(cls, value: str) -> str:
-        return StrLen(30)(value)
 
 
 console_ns.schema_model(

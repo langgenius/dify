@@ -193,7 +193,7 @@ class AnnotationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def get(self, app_id):
-        args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         page = args.page
         limit = args.limit
         keyword = args.keyword

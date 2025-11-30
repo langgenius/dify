@@ -78,16 +78,13 @@ class EmailCodeLoginPayload(BaseModel):
         return email(value)
 
 
-console_ns.schema_model(
-    LoginPayload.__name__, LoginPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    EmailPayload.__name__, EmailPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    EmailCodeLoginPayload.__name__,
-    EmailCodeLoginPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(LoginPayload)
+reg(EmailPayload)
+reg(EmailCodeLoginPayload)
 
 
 @console_ns.route("/login")

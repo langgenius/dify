@@ -7,7 +7,7 @@ from controllers.console import console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.helper import StrLen, email, extract_remote_ip, timezone
+from libs.helper import email, extract_remote_ip, timezone
 from models import AccountStatus
 from services.account_service import AccountService, RegisterService
 
@@ -31,9 +31,9 @@ class ActivatePayload(BaseModel):
     workspace_id: str | None = Field(default=None)
     email: str | None = Field(default=None)
     token: str
-    name: str = Field(...)
+    name: str = Field(..., max_length=30)
     interface_language: str = Field(...)
-    timezone_value: str = Field(..., alias="timezone")
+    timezone: str = Field(...)
 
     @field_validator("email")
     @classmethod
@@ -42,17 +42,12 @@ class ActivatePayload(BaseModel):
             return value
         return email(value)
 
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, value: str) -> str:
-        return StrLen(30)(value)
-
     @field_validator("interface_language")
     @classmethod
     def validate_lang(cls, value: str) -> str:
         return supported_language(value)
 
-    @field_validator("timezone_value")
+    @field_validator("timezone")
     @classmethod
     def validate_tz(cls, value: str) -> str:
         return timezone(value)
@@ -79,7 +74,7 @@ class ActivateCheckApi(Resource):
         ),
     )
     def get(self):
-        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         workspaceId = args.workspace_id
         reg_email = args.email
@@ -98,17 +93,6 @@ class ActivateCheckApi(Resource):
             }
         else:
             return {"is_valid": False}
-
-
-active_parser = (
-    reqparse.RequestParser()
-    .add_argument("workspace_id", type=str, required=False, nullable=True, location="json")
-    .add_argument("email", type=email, required=False, nullable=True, location="json")
-    .add_argument("token", type=str, required=True, nullable=False, location="json")
-    .add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
-    .add_argument("interface_language", type=supported_language, required=True, nullable=False, location="json")
-    .add_argument("timezone", type=timezone, required=True, nullable=False, location="json")
-)
 
 
 @console_ns.route("/activate")
@@ -141,7 +125,7 @@ class ActivateApi(Resource):
         account.name = args.name
 
         account.interface_language = args.interface_language
-        account.timezone = args.timezone_value
+        account.timezone = args.timezone
         account.interface_theme = "light"
         account.status = AccountStatus.ACTIVE
         account.initialized_at = naive_utc_now()

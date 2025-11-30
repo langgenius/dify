@@ -48,7 +48,7 @@ class Subscription(Resource):
     @only_edition_cloud
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        args = SubscriptionQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore[arg-type]
+        args = SubscriptionQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         BillingService.is_tenant_owner_or_admin(current_user)
         return BillingService.get_subscription(args.plan, args.interval, current_user.email, current_tenant_id)
 
