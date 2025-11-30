@@ -84,9 +84,9 @@ class PartnerTenants(Resource):
     @only_edition_cloud
     def put(self, partner_key: str):
         current_user, _ = current_account_with_tenant()
-        args = PartnerTenantsPayload.model_validate(console_ns.payload)
 
         try:
+            args = PartnerTenantsPayload.model_validate(console_ns.payload or {})
             click_id = args.click_id
             decoded_partner_key = base64.b64decode(partner_key).decode("utf-8")
         except Exception:
