@@ -167,7 +167,7 @@ const PluginPage = ({
       id='marketplace-container'
       ref={containerRef}
       style={{ scrollbarGutter: 'stable' }}
-      className={cn('relative flex grow flex-col overflow-y-auto border-t border-divider-subtle focus:outline-none ', isPluginsTab
+      className={cn('relative flex grow flex-col overflow-y-auto border-t border-divider-subtle', isPluginsTab
         ? 'rounded-t-xl bg-components-panel-bg'
         : 'bg-background-body',
       )}
