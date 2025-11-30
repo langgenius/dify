@@ -11,6 +11,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from enums.quota_type import QuotaType, unlimited
+from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
@@ -19,6 +20,7 @@ from services.workflow_service import WorkflowService
 
 class AppGenerateService:
     @classmethod
+    @trace_span(AppGenerateHandler)
     def generate(
         cls,
         app_model: App,

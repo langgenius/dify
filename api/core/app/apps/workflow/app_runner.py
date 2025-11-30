@@ -18,6 +18,7 @@ from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import VariableLoader
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_redis import redis_client
+from extensions.otel import WorkflowAppRunnerHandler, trace_span
 from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 from models.workflow import Workflow
@@ -56,6 +57,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         self._workflow_execution_repository = workflow_execution_repository
         self._workflow_node_execution_repository = workflow_node_execution_repository
 
+    @trace_span(WorkflowAppRunnerHandler)
     def run(self):
         """
         Run application
