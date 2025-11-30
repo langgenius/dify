@@ -384,6 +384,47 @@ class CompletionConversationApi(Resource):
 
         return conversations
 
+    @api.doc("clear_completion_conversations")
+    @api.doc(description="Clear completion conversations and related data")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser().add_argument(
+            "conversation_ids",
+            type=list,
+            location="json",
+            required=False,
+            help="Optional list of conversation IDs to clear. If not provided, all conversations will be cleared.",
+        )
+    )
+    @api.response(202, "Clearing task queued successfully")
+    @api.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.COMPLETION)
+    @edit_permission_required
+    def delete(self, app_model):
+        from services.errors.conversation import ConversationClearInProgressError
+
+        current_user, _ = current_account_with_tenant()
+        parser = reqparse.RequestParser()
+        parser.add_argument("conversation_ids", type=list, location="json", required=False, default=None)
+        args = parser.parse_args()
+
+        # Convert conversation IDs to strings if provided and non-empty
+        conversation_ids_raw = args.get("conversation_ids")
+        conversation_ids = (
+            [str(id) for id in conversation_ids_raw] if conversation_ids_raw and len(conversation_ids_raw) > 0 else None
+        )
+
+        try:
+            result = ConversationService.clear_conversations(
+                app_model=app_model, user=current_user, conversation_ids=conversation_ids
+            )
+            return result, 202
+        except ConversationClearInProgressError as e:
+            return {"message": str(e), "code": "task_in_progress"}, 409
+
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
 class CompletionConversationDetailApi(Resource):
@@ -535,6 +576,47 @@ class ChatConversationApi(Resource):
         conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
 
         return conversations
+
+    @api.doc("clear_chat_conversations")
+    @api.doc(description="Clear chat conversations and related data")
+    @api.doc(params={"app_id": "Application ID"})
+    @api.expect(
+        api.parser().add_argument(
+            "conversation_ids",
+            type=list,
+            location="json",
+            required=False,
+            help="Optional list of conversation IDs to clear. If not provided, all conversations will be cleared.",
+        )
+    )
+    @api.response(202, "Clearing task queued successfully")
+    @api.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def delete(self, app_model):
+        from services.errors.conversation import ConversationClearInProgressError
+
+        current_user, _ = current_account_with_tenant()
+        parser = reqparse.RequestParser()
+        parser.add_argument("conversation_ids", type=list, location="json", required=False, default=None)
+        args = parser.parse_args()
+
+        # Convert conversation IDs to strings if provided and non-empty
+        conversation_ids_raw = args.get("conversation_ids")
+        conversation_ids = (
+            [str(id) for id in conversation_ids_raw] if conversation_ids_raw and len(conversation_ids_raw) > 0 else None
+        )
+
+        try:
+            result = ConversationService.clear_conversations(
+                app_model=app_model, user=current_user, conversation_ids=conversation_ids
+            )
+            return result, 202
+        except ConversationClearInProgressError as e:
+            return {"message": str(e), "code": "task_in_progress"}, 409
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")

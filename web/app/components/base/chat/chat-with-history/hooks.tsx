@@ -167,6 +167,17 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [appId, conversationIdInfo, setConversationIdInfo, userId])
 
   const [newConversationId, setNewConversationId] = useState('')
+
+  // Reset newConversationId when conversations are cleared
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === CONVERSATION_ID_INFO && e.newValue === '{}')
+        setNewConversationId('')
+    }
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
+
   const chatShouldReloadKey = useMemo(() => {
     if (currentConversationId === newConversationId)
       return ''
@@ -184,11 +195,86 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     () => fetchConversations(isInstalledApp, appId, undefined, false, 100),
     { revalidateOnFocus: false, revalidateOnReconnect: false },
   )
+
+  // Track the last time we checked for conversation list updates
+  // Initialize to 0 so we pick up any existing updates on first mount
+  const lastCheckedTimeRef = useRef<number>(0)
+
+  // Listen for conversation list updates from any source (logs page, other tabs, etc.)
+  useEffect(() => {
+    const checkForConversationUpdates = () => {
+      const updatedTimestamp = localStorage.getItem('conversations_updated')
+
+      if (updatedTimestamp) {
+        const timestamp = Number.parseInt(updatedTimestamp, 10)
+        // If conversations were updated after our last check
+        if (timestamp > lastCheckedTimeRef.current) {
+          lastCheckedTimeRef.current = Date.now()
+          // Clear current conversation ID to prevent 404 errors when conversations are deleted
+          handleConversationIdInfoChange('')
+          // Refresh conversation lists
+          mutateAppPinnedConversationData()
+          mutateAppConversationData()
+        }
+      }
+    }
+
+    // Check when page becomes visible (tab switching)
+    const handleVisibilityChange = () => {
+      if (!document.hidden)
+        checkForConversationUpdates()
+    }
+
+    // Check immediately on mount
+    checkForConversationUpdates()
+
+    // Listen for visibility changes (when user switches tabs)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    // Also listen for storage events (for cross-tab sync)
+    const handleStorageEvent = (e: StorageEvent) => {
+      if (e.key === 'conversations_updated')
+        checkForConversationUpdates()
+    }
+    window.addEventListener('storage', handleStorageEvent)
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+      window.removeEventListener('storage', handleStorageEvent)
+    }
+  }, [mutateAppPinnedConversationData, mutateAppConversationData, handleConversationIdInfoChange])
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(
     chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null,
     () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId),
-    { revalidateOnFocus: false, revalidateOnReconnect: false },
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      onError: (error) => {
+        // Handle 404 errors for deleted conversations
+        if ((error?.status === 404 || error?.message?.includes('Conversation Not Exists')) && appId)
+          handleConversationIdInfoChange('')
+      },
+    },
   )
+
+  // Validate if currentConversationId exists in the conversation list
+  // If not found, clear it from localStorage to prevent 404 errors
+  useEffect(() => {
+    if (!currentConversationId || !appConversationData || !appPinnedConversationData)
+      return
+
+    const allConversations = [
+      ...(appPinnedConversationData?.data || []),
+      ...(appConversationData?.data || []),
+    ]
+
+    const conversationExists = allConversations.some(
+      (conv: ConversationItem) => conv.id === currentConversationId,
+    )
+
+    if (!conversationExists)
+      handleConversationIdInfoChange('')
+  }, [currentConversationId, appConversationData, appPinnedConversationData, handleConversationIdInfoChange])
 
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
@@ -509,10 +595,34 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
       }))
       onSuccess()
     }
+    catch (error: any) {
+      // Handle case where conversation was deleted after being shown in UI
+      if (error.status === 404 || error.message?.includes('Conversation Not Exists') || error.message?.includes('NOT FOUND')) {
+        notify({
+          type: 'error',
+          message: t('common.actionMsg.modifiedUnsuccessfully'),
+        })
+        // Remove the deleted conversation from the local list
+        setOriginConversationList(produce((draft) => {
+          const index = originConversationList.findIndex(item => item.id === conversationId)
+          if (index !== -1)
+            draft.splice(index, 1)
+        }))
+        // Refresh the conversation lists to sync with server
+        handleUpdateConversationList()
+      }
+      else {
+        // Handle other errors
+        notify({
+          type: 'error',
+          message: t('common.actionMsg.modifyFailed'),
+        })
+      }
+    }
     finally {
       setConversationRenaming(false)
     }
-  }, [isInstalledApp, appId, notify, t, conversationRenaming, originConversationList])
+  }, [isInstalledApp, appId, notify, t, conversationRenaming, originConversationList, handleUpdateConversationList])
 
   const handleNewConversationCompleted = useCallback((newConversationId: string) => {
     setNewConversationId(newConversationId)
