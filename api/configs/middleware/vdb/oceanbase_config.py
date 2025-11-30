@@ -52,6 +52,6 @@ class OceanBaseVectorConfig(BaseSettings):
 
     OCEANBASE_BATCH_SIZE: PositiveInt = Field(
         description="Batch size for insert operations. Larger batches improve performance but use more memory. "
-        "Default is 1000",
-        default=1000,
+        "Default is 1 for OceanBase due to query complexity constraints",
+        default=1,
     )
