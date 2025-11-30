@@ -32,7 +32,6 @@ class OceanBaseVectorConfig(BaseModel):
     password: str
     database: str
     enable_hybrid_search: bool = False
-    batch_size: int = 1000  # Batch size for insert operations
 
     @model_validator(mode="before")
     @classmethod
@@ -206,35 +205,24 @@ class OceanBaseVector(BaseVector):
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         ids = self._get_uuids(documents)
-        insert_data_list = []
         for id, doc, emb in zip(ids, documents, embeddings):
-            insert_data = {
-                "id": id,
-                "vector": emb,
-                "text": doc.page_content,
-                "metadata": doc.metadata,
-            }
-            insert_data_list.append(insert_data)
-
-        # Batch insert for better performance
-        total_count = len(insert_data_list)
-        batch_size = self._config.batch_size
-
-        for i in range(0, total_count, batch_size):
-            batch_data = insert_data_list[i : i + batch_size]
             try:
                 self._client.insert(
                     table_name=self._collection_name,
-                    data=batch_data,
+                    data={
+                        "id": id,
+                        "vector": emb,
+                        "text": doc.page_content,
+                        "metadata": doc.metadata,
+                    },
                 )
             except Exception as e:
                 logger.exception(
-                    "Failed to insert batch starting at entity: %s/%s for collection '%s'",
-                    i,
-                    total_count,
+                    "Failed to insert document with id '%s' in collection '%s'",
+                    id,
                     self._collection_name,
                 )
-                raise Exception(f"Failed to insert batch at position {i}/{total_count}") from e
+                raise Exception(f"Failed to insert document with id '{id}'") from e
 
     def text_exists(self, id: str) -> bool:
         try:

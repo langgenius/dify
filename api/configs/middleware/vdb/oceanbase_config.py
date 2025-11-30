@@ -49,9 +49,3 @@ class OceanBaseVectorConfig(BaseSettings):
         ),
         default="ik",
     )
-
-    OCEANBASE_BATCH_SIZE: PositiveInt = Field(
-        description="Batch size for insert operations. Smaller batches prevent timeout when using hybrid search "
-        "(vector + fulltext indexes). Default is 50",
-        default=50,
-    )
