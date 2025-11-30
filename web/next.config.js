@@ -95,6 +95,7 @@ const remoteImageURLs = [hasSetWebPrefix ? new URL(`${process.env.NEXT_PUBLIC_WE
 const nextConfig = {
   basePath: process.env.NEXT_PUBLIC_BASE_PATH || '',
   transpilePackages: ['echarts', 'zrender'],
+  reactCompiler: true,
   turbopack: {
     rules: codeInspectorPlugin({
       bundler: 'turbopack'
@@ -114,6 +115,7 @@ const nextConfig = {
     })),
   },
   experimental: {
+    turbopackFileSystemCacheForDev: true,
     optimizePackageImports: [
       '@heroicons/react'
     ],
