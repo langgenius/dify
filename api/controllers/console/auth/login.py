@@ -104,13 +104,14 @@ class LoginApi(Resource):
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args.email)
         if is_login_error_rate_limit:
             raise EmailPasswordLoginLimitError()
-
+        
+        # TODO: why invitation is re-assigned with different type?
         invitation = args.invite_token
         if invitation:
-            invitation = RegisterService.get_invitation_if_token_valid(None, args.email, invitation)
+            invitation = RegisterService.get_invitation_if_token_valid(None, args.email, invitation) # type: ignore
 
         try:
-            if invitation:
+            if isinstance(invitation, dict):
                 data = invitation.get("data", {})
                 invitee_email = data.get("email") if data else None
                 if invitee_email != args.email:
