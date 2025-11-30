@@ -208,6 +208,34 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleSystemPromptChange = useCallback((newSystemPrompt: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.system_prompt = newSystemPrompt
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleUserPromptTemplateChange = useCallback((newUserPromptTemplate: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.user_prompt_template = newUserPromptTemplate
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleCompletionPromptChange = useCallback((newCompletionPrompt: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.completion_prompt = newCompletionPrompt
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleChatPromptChange = useCallback((newChatPrompt: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.chat_prompt = newChatPrompt
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleReasoningModeChange = useCallback((newReasoningMode: ReasoningModeType) => {
     const newInputs = produce(inputs, (draft) => {
       draft.reasoning_mode = newReasoningMode
@@ -245,6 +273,11 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
+    // Custom prompt handlers
+    handleSystemPromptChange,
+    handleUserPromptTemplateChange,
+    handleCompletionPromptChange,
+    handleChatPromptChange,
   }
 }
 

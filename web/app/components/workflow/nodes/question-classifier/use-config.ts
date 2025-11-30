@@ -163,6 +163,20 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleSystemPromptChange = useCallback((systemPrompt: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.system_prompt = systemPrompt
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleCompletionPromptChange = useCallback((completionPrompt: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.completion_prompt = completionPrompt
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string
   }, [])
@@ -198,6 +212,9 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     handleSortTopic,
+    // Custom prompt handlers
+    handleSystemPromptChange,
+    handleCompletionPromptChange,
   }
 }
 

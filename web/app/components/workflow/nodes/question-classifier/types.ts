@@ -15,4 +15,7 @@ export type QuestionClassifierNodeType = CommonNodeType & {
     enabled: boolean
     configs?: VisionSetting
   }
+  // Custom prompts (DSL v0.6.0+)
+  system_prompt?: string
+  completion_prompt?: string
 }
