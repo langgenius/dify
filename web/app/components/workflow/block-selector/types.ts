@@ -1,3 +1,6 @@
+import type { PluginMeta as WorkflowPluginMeta } from '../../plugins/types'
+import type { AgentToolActivationCondition } from '@/app/components/workflow/nodes/agent/types'
+
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
@@ -56,7 +59,7 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
   paramSchemas: Record<string, any>[]
   output_schema?: Record<string, any>
   credential_id?: string
-  meta?: PluginMeta
+  meta?: WorkflowPluginMeta
   plugin_id?: string
   provider_icon?: Collection['icon']
   plugin_unique_identifier?: string
@@ -86,6 +89,7 @@ export type ToolValue = {
   enabled?: boolean
   extra?: Record<string, any>
   credential_id?: string
+  activation_condition?: AgentToolActivationCondition
 }
 
 export type DataSourceItem = {
