@@ -120,6 +120,26 @@ class OpsTraceProviderConfigMap(collections.UserDict[str, dict[str, Any]]):
                     "other_keys": ["endpoint", "app_name"],
                     "trace_instance": AliyunDataTrace,
                 }
+            case TracingProviderEnum.MLFLOW:
+                from core.ops.entities.config_entity import MLflowConfig
+                from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace
+
+                return {
+                    "config_class": MLflowConfig,
+                    "secret_keys": ["password"],
+                    "other_keys": ["tracking_uri", "experiment_id", "username"],
+                    "trace_instance": MLflowDataTrace,
+                }
+            case TracingProviderEnum.DATABRICKS:
+                from core.ops.entities.config_entity import DatabricksConfig
+                from core.ops.mlflow_trace.mlflow_trace import MLflowDataTrace
+
+                return {
+                    "config_class": DatabricksConfig,
+                    "secret_keys": ["personal_access_token", "client_secret"],
+                    "other_keys": ["host", "client_id", "experiment_id"],
+                    "trace_instance": MLflowDataTrace,
+                }
 
             case TracingProviderEnum.TENCENT:
                 from core.ops.entities.config_entity import TencentConfig
@@ -274,6 +294,8 @@ class OpsTraceManager:
             raise ValueError("App not found")
 
         tenant_id = app.tenant_id
+        if trace_config_data.tracing_config is None:
+            raise ValueError("Tracing config cannot be None.")
         decrypt_tracing_config = cls.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )

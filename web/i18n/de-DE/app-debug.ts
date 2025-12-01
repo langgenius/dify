@@ -326,6 +326,7 @@ const translation = {
     'both': 'Beide',
     'uploadFileTypes': 'Dateitypen hochladen',
     'maxNumberOfUploads': 'Maximale Anzahl von Uploads',
+    'maxNumberTip': 'Dokument < {{docLimit}}, Bild < {{imgLimit}}, Audio < {{audioLimit}}, Video < {{videoLimit}}',
     'number': 'Zahl',
     'editModalTitle': 'Eingabefeld bearbeiten',
     'required': 'Erforderlich',

@@ -3,7 +3,7 @@ from flask_restx import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -130,7 +130,7 @@ parser_datasource = (
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>")
 class DatasourceAuth(Resource):
-    @api.expect(parser_datasource)
+    @console_ns.expect(parser_datasource)
     @setup_required
     @login_required
     @account_initialization_required
@@ -176,7 +176,7 @@ parser_datasource_delete = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/delete")
 class DatasourceAuthDeleteApi(Resource):
-    @api.expect(parser_datasource_delete)
+    @console_ns.expect(parser_datasource_delete)
     @setup_required
     @login_required
     @account_initialization_required
@@ -209,7 +209,7 @@ parser_datasource_update = (
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update")
 class DatasourceAuthUpdateApi(Resource):
-    @api.expect(parser_datasource_update)
+    @console_ns.expect(parser_datasource_update)
     @setup_required
     @login_required
     @account_initialization_required
@@ -267,7 +267,7 @@ parser_datasource_custom = (
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/custom-client")
 class DatasourceAuthOauthCustomClient(Resource):
-    @api.expect(parser_datasource_custom)
+    @console_ns.expect(parser_datasource_custom)
     @setup_required
     @login_required
     @account_initialization_required
@@ -306,7 +306,7 @@ parser_default = reqparse.RequestParser().add_argument("id", type=str, required=
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/default")
 class DatasourceAuthDefaultApi(Resource):
-    @api.expect(parser_default)
+    @console_ns.expect(parser_default)
     @setup_required
     @login_required
     @account_initialization_required
@@ -334,7 +334,7 @@ parser_update_name = (
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update-name")
 class DatasourceUpdateProviderNameApi(Resource):
-    @api.expect(parser_update_name)
+    @console_ns.expect(parser_update_name)
     @setup_required
     @login_required
     @account_initialization_required

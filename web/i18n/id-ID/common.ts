@@ -71,13 +71,21 @@ const translation = {
     confirmAction: 'Silakan konfirmasi tindakan Anda.',
     yes: 'Ya',
     no: 'Tidak',
+    noSearchResults: 'Tidak ada {{content}} yang ditemukan',
+    resetKeywords: 'Atur ulang kata kunci',
+    selectCount: '{{count}} Dipilih',
+    searchCount: 'Temukan {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Sekarang',
   },
   errorMsg: {
     urlError: 'URL harus dimulai dengan http:// atau https://',
+    fieldRequired: '{{field}} wajib diisi',
   },
   placeholder: {
     select: 'Silakan pilih',
     input: 'Silakan masuk',
+    search: 'Cari...',
   },
   voice: {
     language: {
@@ -132,6 +140,7 @@ const translation = {
       presence_penalty: 'Penalti kehadiran',
       presence_penaltyTip: 'Berapa banyak yang harus menghukum token baru berdasarkan apakah mereka muncul dalam teks sejauh ini.\nMeningkatkan kemungkinan model untuk membicarakan topik baru.',
       temperatureTip: 'Mengontrol keacakan: Menurunkan menghasilkan lebih sedikit penyelesaian acak. Saat suhu mendekati nol, model akan menjadi deterministik dan berulang.',
+      setToCurrentModelMaxTokenTip: 'Token maksimum diperbarui menjadi 80% dari token maksimum model saat ini {{maxToken}}.',
     },
     tone: {
       Precise: 'Tepat',
@@ -214,6 +223,11 @@ const translation = {
       verifyEmail: 'Memverifikasi email Anda saat ini',
       unAvailableEmail: 'Email ini tidak tersedia untuk sementara.',
       authTip: 'Setelah email Anda diubah, akun Google atau GitHub yang ditautkan ke email lama Anda tidak akan dapat lagi masuk ke akun ini.',
+      content1: 'Jika Anda melanjutkan, kami akan mengirim kode verifikasi ke <email>{{email}}</email> untuk autentikasi ulang.',
+      content2: 'Email Anda saat ini adalah <email>{{email}}</email>. Kode verifikasi telah dikirim ke alamat email ini.',
+      content4: 'Kami baru saja mengirimkan kode verifikasi sementara kepada Anda ke <email>{{email}}</email>.',
+      changeTo: 'Ubah ke {{email}}',
+      resendCount: 'Kirim ulang dalam {{count}} detik',
     },
     account: 'Rekening',
     langGeniusAccount: 'Data akun',
@@ -249,6 +263,7 @@ const translation = {
     password: 'Kata sandi',
     deleteTip: 'Harap dicatat, setelah dikonfirmasi, sebagai Pemilik Ruang Kerja apa pun, ruang kerja Anda akan dijadwalkan dalam antrean untuk penghapusan permanen, dan semua data pengguna Anda akan diantri untuk penghapusan permanen.',
     workspaceIcon: 'Ikon Ruang Kerja',
+    showAppLength: 'Tampilkan {{length}} aplikasi',
   },
   members: {
     transferModal: {
@@ -265,6 +280,10 @@ const translation = {
       transferLabel: 'Mentransfer kepemilikan ruang kerja ke',
       resend: 'Kirim Ulang',
       transferPlaceholder: 'Pilih anggota ruang kerja...',
+      warning: 'Anda akan mentransfer kepemilikan “{{workspace}}”. Ini akan berlaku segera dan tidak dapat dibatalkan.',
+      sendTip: 'Jika Anda melanjutkan, kami akan mengirim kode verifikasi ke <email>{{email}}</email> untuk autentikasi ulang.',
+      verifyContent: 'Email Anda saat ini adalah <email>{{email}}</email>.',
+      resendCount: 'Kirim ulang dalam {{count}} detik',
     },
     lastActive: 'TERAKHIR AKTIF',
     owner: 'Pemilik',
@@ -305,6 +324,7 @@ const translation = {
     editorTip: 'Dapat membangun & mengedit aplikasi',
     admin: 'Admin',
     normalTip: 'Hanya dapat menggunakan aplikasi, tidak dapat membuat aplikasi',
+    invitedAsRole: 'Diundang sebagai pengguna {{role}}',
   },
   feedback: {
     subtitle: 'Tolong beri tahu kami apa yang salah dengan tanggapan ini',
@@ -417,6 +437,7 @@ const translation = {
     },
     item: {
       freeQuota: 'KUOTA GRATIS',
+      deleteDesc: '{{modelName}} sedang digunakan sebagai model penalaran sistem. Beberapa fungsi tidak akan tersedia setelah dihapus. Harap konfirmasi.',
     },
     encrypted: {
       back: 'Teknologi.',
@@ -507,6 +528,11 @@ const translation = {
     getFreeTokens: 'Dapatkan Token gratis',
     parametersInvalidRemoved: 'Beberapa parameter tidak valid dan telah dihapus',
     installDataSourceProvider: 'Pasang penyedia sumber data',
+    noModelFound: 'Tidak ditemukan model untuk {{model}}',
+    modelsNum: 'Model {{num}}',
+    showModelsNum: 'Tampilkan {{num}} Model',
+    featureSupported: '{{feature}} didukung',
+    apiKeyRateLimit: 'Batas kecepatan tercapai, tersedia setelah {{seconds}} detik',
   },
   dataSource: {
     notion: {
@@ -579,6 +605,8 @@ const translation = {
   about: {
     changeLog: 'Log perubahan',
     updateNow: 'Perbarui sekarang',
+    nowAvailable: 'Dify {{version}} kini tersedia.',
+    latestAvailable: 'Dify {{version}} adalah versi terbaru yang tersedia.',
   },
   appMenus: {
     logs: 'Log',
@@ -637,6 +665,7 @@ const translation = {
     thought: 'Pikiran',
     renameConversation: 'Ganti Nama Percakapan',
     conversationNamePlaceholder: 'Silakan masukkan nama percakapan',
+    inputPlaceholder: 'Bicaralah dengan {{botName}}',
   },
   promptEditor: {
     context: {
@@ -647,6 +676,7 @@ const translation = {
       modal: {
         footer: 'Anda dapat mengelola konteks di bagian Konteks di bawah.',
         add: 'Tambahkan Konteks',
+        title: '{{num}} Pengetahuan dalam Konteks',
       },
     },
     history: {
@@ -692,6 +722,7 @@ const translation = {
     uploadFromComputerReadError: 'Pembacaan gambar gagal, silakan coba lagi.',
     pasteImageLinkInvalid: 'Tautan gambar tidak valid',
     pasteImageLinkInputPlaceholder: 'Tempel tautan gambar di sini',
+    uploadFromComputerLimit: 'Unggah gambar tidak boleh lebih dari {{size}} MB',
   },
   fileUploader: {
     fileExtensionNotSupport: 'Ekstensi file tidak didukung',
@@ -702,6 +733,7 @@ const translation = {
     pasteFileLinkInputPlaceholder: 'Masukkan URL...',
     uploadFromComputerReadError: 'Pembacaan file gagal, silakan coba lagi.',
     fileExtensionBlocked: 'Tipe file ini diblokir karena alasan keamanan',
+    uploadFromComputerLimit: 'Unggahan {{type}} tidak boleh melebihi {{size}}',
   },
   tag: {
     noTag: 'Tidak ada tag',
@@ -721,6 +753,7 @@ const translation = {
   license: {
     unlimited: 'Unlimited',
     expiring: 'Kedaluwarsa dalam satu hari',
+    expiring_plural: 'Kedaluwarsa dalam {{count}} hari',
   },
   pagination: {
     perPage: 'Item per halaman',
@@ -737,6 +770,13 @@ const translation = {
   you: 'Kamu',
   label: {
     optional: '(opsional)',
+  },
+  noData: 'Tidak ada data',
+  dynamicSelect: {
+    error: 'Gagal memuat opsi',
+    noData: 'Tidak ada opsi yang tersedia',
+    loading: 'Memuat opsi...',
+    selected: '{{count}} dipilih',
   },
 }
 

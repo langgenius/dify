@@ -183,6 +183,14 @@ const translation = {
       viewDocsLink: '查看 {{key}} 的文档',
       removeConfirmTitle: '删除 {{key}} 配置？',
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
+      clientSecret: 'OAuth 客户端密钥',
+      trackingUri: '跟踪 URI',
+      password: '密码',
+      databricksHost: 'Databricks 工作区 URL',
+      username: '用户名',
+      clientId: 'OAuth 客户端 ID',
+      experimentId: '实验编号',
+      personalAccessToken: '个人访问令牌（旧版）',
     },
     weave: {
       title: '编织',
@@ -191,6 +199,14 @@ const translation = {
     aliyun: {
       title: '云监控',
       description: '阿里云提供的全托管免运维可观测平台，一键开启Dify应用的监控追踪和评估',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: '开源LLMOps平台，提供实验跟踪、可观测性和评估功能，帮助您自信地构建AI/LLM应用。',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks提供完全托管的MLflow，具有强大的治理和安全功能，用于存储跟踪数据。',
     },
     tencent: {
       title: '腾讯云 APM',
@@ -308,6 +324,8 @@ const translation = {
       communityDesc: '打开 Discord 社区',
       docDesc: '打开帮助文档',
       feedbackDesc: '打开社区反馈讨论',
+      zenTitle: '专注模式',
+      zenDesc: '切换画布专注模式',
     },
     emptyState: {
       noAppsFound: '未找到应用',

@@ -12,8 +12,8 @@ const translation = {
     resetsIn: '{{count,number}}日後にリセット',
   },
   triggerLimitModal: {
-    title: 'アップグレードして、各ワークフローのトリガーを制限なく使用',
-    description: 'このプランでは、各ワークフローのトリガー数は最大2個までです。公開するにはアップグレードしてください。',
+    title: 'アップグレードして、より多くのトリガーイベントを利用できるようになります',
+    description: 'このプランでは、ワークフローのトリガーイベント数の上限に達しています。',
     dismiss: '閉じる',
     upgrade: 'アップグレード',
     usageTitle: 'TRIGGER EVENTS',
@@ -81,8 +81,8 @@ const translation = {
       'top-priority': '最優先',
     },
     triggerEvents: {
-      sandbox: '{{count,number}} トリガーイベント数',
-      professional: '{{count,number}} トリガーイベント数/月',
+      sandbox: '{{count,number}}のトリガーイベント数',
+      professional: '{{count,number}}のトリガーイベント数/月',
       unlimited: '無制限のトリガーイベント数',
       tooltip: 'プラグイントリガー、タイマートリガー、または Webhook トリガーによって自動的にワークフローを起動するイベントの回数です。',
     },
@@ -157,11 +157,7 @@ const translation = {
       price: '無料',
       btnText: 'コミュニティ版を始めましょう',
       includesTitle: '無料機能：',
-      features: [
-        'パブリックリポジトリの全コア機能',
-        'シングルワークスペース',
-        'Dify オープンソースライセンス準拠',
-      ],
+      features: ['パブリックリポジトリで公開されているすべてのコア機能', '単一ワークスペース', 'Dify オープンソースライセンスに準拠'],
     },
     premium: {
       name: 'プレミアム',
@@ -172,12 +168,7 @@ const translation = {
       btnText: 'プレミアム版を取得',
       includesTitle: 'コミュニティ版機能に加えて：',
       comingSoon: 'Microsoft Azure & Google Cloud 近日対応',
-      features: [
-        'クラウドプロバイダーによる自己管理',
-        'シングルワークスペース',
-        'Web アプリのロゴ＆ブランドカスタマイズ',
-        '優先メール/チャットサポート',
-      ],
+      features: ['複数のクラウドプロバイダーでのセルフマネージド導入', '単一ワークスペース', 'Webアプリのロゴとブランディングをカスタマイズ', '優先メール/チャットサポート'],
     },
     enterprise: {
       name: 'エンタープライズ',
@@ -187,17 +178,7 @@ const translation = {
       priceTip: '年間契約専用',
       btnText: '営業に相談',
       includesTitle: '<highlight>プレミアム</highlight>版機能に加えて：',
-      features: [
-        'エンタープライズ向け拡張ソリューション',
-        '商用ライセンス認可',
-        '企業専用機能',
-        'マルチワークスペース管理',
-        'シングルサインオン（SSO）',
-        'Dify パートナーによる SLA 保証',
-        '高度なセキュリティ管理',
-        '公式メンテナンス＆アップデート',
-        'プロフェッショナル技術支援',
-      ],
+      features: ['エンタープライズ向けのスケーラブルなデプロイソリューション', '商用ライセンス認可', 'エンタープライズ専用機能', '複数ワークスペースとエンタープライズ管理', 'シングルサインオン（SSO）', 'Dify パートナーによる交渉済み SLA', '高度なセキュリティと制御', 'Dify 公式による更新とメンテナンス', 'プロフェッショナルな技術サポート'],
     },
   },
   vectorSpace: {

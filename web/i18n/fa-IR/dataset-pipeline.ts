@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'خط لوله دانش منتشر شد',
+      tip: 'برای افزودن یا مدیریت اسناد، به اسناد بروید.',
     },
     error: {
       message: 'انتشار پایپ لاین دانش ناموفق است',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'ساختار',
     structureTooltip: 'ساختار Chunk نحوه تقسیم و نمایه سازی اسناد را تعیین می کند - حالت های عمومی، والد-فرزند و پرسش و پاسخ را ارائه می دهد - و برای هر پایگاه دانش منحصر به فرد است.',
+    createdBy: 'توسط {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     backToDataSource: 'منبع داده',
     characters: 'کاراکتر',
     title: 'اسناد را اضافه کنید',
+    selectOnlineDocumentTip: 'پردازش تا {{count}} صفحه',
+    selectOnlineDriveTip: 'پردازش تا {{count}} فایل، حداکثر {{fileSize}} مگابایت برای هر فایل',
   },
   documentSettings: {
     title: 'تنظیمات سند',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} صفحه',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'همه فایل ها',
       searchPlaceholder: 'فایل های جستجو...',
       allBuckets: 'همه سطل های ذخیره سازی ابری',
+      searchResult: 'یافتن {{searchResultsLength}} مورد در پوشه «{{folderName}}»',
     },
     emptyFolder: 'این پوشه خالی است',
     resetKeywords: 'بازنشانی کلمات کلیدی',
     emptySearchResult: 'هیچ موردی یافت نشد',
     notSupportedFileType: 'این نوع فایل پشتیبانی نمی شود',
+    notConnected: '{{name}} متصل نیست',
+    notConnectedTip: 'برای همگام‌سازی با {{name}}، ابتدا باید اتصال به {{name}} برقرار شود.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{pluginName}} {{credentialName}}',
+  },
   conversion: {
     confirm: {
       title: 'تایید',
@@ -149,6 +160,7 @@ const translation = {
   editPipelineInfo: 'ویرایش اطلاعات خط لوله',
   knowledgeNameAndIconPlaceholder: 'لطفا نام پایگاه دانش را وارد کنید',
   knowledgeDescriptionPlaceholder: 'آنچه در این پایگاه دانش وجود دارد را شرح دهید. توضیحات دقیق به هوش مصنوعی اجازه می دهد تا با دقت بیشتری به محتوای مجموعه داده دسترسی داشته باشد. اگر خالی باشد، Dify از استراتژی ضربه پیش فرض استفاده می کند. (اختیاری)',
+  configurationTip: 'پیکربندی {{pluginName}}',
 }
 
 export default translation
