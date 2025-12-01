@@ -10,7 +10,6 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
-from controllers.console import api
 from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
@@ -42,7 +41,7 @@ parser_upload = reqparse.RequestParser().add_argument("url", type=str, required=
 
 @console_ns.route("/remote-files/upload")
 class RemoteFileUploadApi(Resource):
-    @api.expect(parser_upload)
+    @console_ns.expect(parser_upload)
     @marshal_with(file_fields_with_signed_url)
     def post(self):
         args = parser_upload.parse_args()

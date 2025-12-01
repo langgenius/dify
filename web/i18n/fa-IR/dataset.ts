@@ -36,8 +36,6 @@ const translation = {
       recommend: 'توصیه',
     },
     invertedIndex: {
-      title: 'فهرست معکوس',
-      description: 'فهرست معکوس یک ساختار برای بازیابی کارآمد است. توسط اصطلاحات سازماندهی شده، هر اصطلاح به اسناد یا صفحات وب حاوی آن اشاره می‌کند.',
     },
     change: 'تغییر',
     changeRetrievalMethod: 'تغییر روش بازیابی',
@@ -236,6 +234,10 @@ const translation = {
     enabled: 'در حال خدمت',
     title: 'رابط برنامه‌نویسی سرویس',
   },
+  docAllEnabled_one: 'سند {{count}} فعال شد',
+  docAllEnabled_other: 'تمام اسناد {{count}} فعال شدند',
+  partialEnabled_one: 'مجموعاً {{count}} سند، {{num}} موجود',
+  partialEnabled_other: 'مجموع {{count}} سند، {{num}} موجود',
 }
 
 export default translation

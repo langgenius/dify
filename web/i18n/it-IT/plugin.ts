@@ -7,6 +7,7 @@ const translation = {
     models: 'Modelli',
     all: 'Tutto',
     datasources: 'Fonti dei dati',
+    triggers: 'Trigger',
   },
   categorySingle: {
     bundle: 'Fascio',
@@ -15,6 +16,7 @@ const translation = {
     extension: 'Estensione',
     tool: 'Strumento',
     datasource: 'Origine dati',
+    trigger: 'Innescare',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       viewDetail: 'vedi dettagli',
       checkUpdate: 'Controlla l\'aggiornamento',
       info: 'Informazioni sul plugin',
+      back: 'Indietro',
     },
     toolSelector: {
       paramsTip1: 'Controlla i parametri di inferenza LLM.',
@@ -305,6 +308,12 @@ const translation = {
     changeTimezone: 'Per cambiare il fuso orario, vai su <setTimezone>Impostazioni</setTimezone>',
     excludeUpdate: 'I seguenti {{num}} plugin non si aggiorneranno automaticamente',
     updateTimeTitle: 'Tempo di aggiornamento',
+  },
+  readmeInfo: {
+    title: 'LEGGIMI',
+    needHelpCheckReadme: 'Hai bisogno di aiuto? Controlla il README.',
+    noReadmeAvailable: 'Nessun README disponibile',
+    failedToFetch: 'Impossibile recuperare il README',
   },
 }
 

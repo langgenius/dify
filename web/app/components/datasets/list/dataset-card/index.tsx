@@ -85,6 +85,9 @@ const DatasetCard = ({
   }, [t, dataset.document_count, dataset.total_available_documents])
 
   const { formatTimeFromNow } = useFormatTimeFromNow()
+  const editTimeText = useMemo(() => {
+    return `${t('datasetDocuments.segment.editedAt')} ${formatTimeFromNow(dataset.updated_at * 1000)}`
+  }, [t, dataset.updated_at, formatTimeFromNow])
 
   const openRenameModal = useCallback(() => {
     setShowRenameModal(true)
@@ -192,6 +195,11 @@ const DatasetCard = ({
               title={dataset.name}
             >
               {dataset.name}
+            </div>
+            <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
+              <div className='truncate' title={dataset.author_name}>{dataset.author_name}</div>
+              <div>·</div>
+              <div className='truncate' title={editTimeText}>{editTimeText}</div>
             </div>
             <div className='system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary'>
               {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
