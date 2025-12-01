@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'С начала квартала',
       yearToDate: 'С начала года',
       allTime: 'Все время',
+      last30days: 'Последние 30 дней',
+      custom: 'Кастомный',
     },
     annotation: {
       all: 'Все',

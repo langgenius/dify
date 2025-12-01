@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'カスタムツールを作成する',
   customToolTip: 'Dify カスタムツールの詳細',
   type: {
-    all: 'すべて',
     builtIn: 'ツール',
     custom: 'カスタム',
     workflow: 'ワークフロー',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: '資格情報を構成した後、ワークスペース内のすべてのメンバーがアプリケーションのオーケストレーション時にこのツールを使用できます。',
   },
   includeToolNum: '{{num}}個のツールが含まれています',
-  addTool: 'ツールを追加する',
   addToolModal: {
     type: 'タイプ',
     category: 'カテゴリー',
-    add: '追加',
     added: '追加済',
-    manageInTools: 'ツールリストに移動して管理する',
     custom: {
       title: 'カスタムツールはありません',
       tip: 'カスタムツールを作成する',
@@ -209,6 +205,7 @@ const translation = {
       useDynamicClientRegistration: '動的クライアント登録を使用する',
       clientSecretPlaceholder: 'クライアントシークレット',
       clientSecret: 'クライアントシークレット',
+      redirectUrlWarning: 'OAuthリダイレクトURLを次のように設定してください：',
     },
     delete: 'MCP サーバーを削除',
     deleteConfirmTitle: '{{mcp}} を削除しますか？',

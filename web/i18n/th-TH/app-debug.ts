@@ -104,8 +104,6 @@ const translation = {
       selected: 'เลือกความรู้',
       title: 'ความรู้',
       toCreate: 'ไปที่สร้าง',
-      words: 'นิรุกติ',
-      textBlocks: 'บล็อกข้อความ',
       noData: 'คุณสามารถนําเข้าความรู้เป็นบริบทได้',
       selectTitle: 'เลือกข้อมูลอ้างอิง ความรู้',
     },
@@ -323,7 +321,6 @@ const translation = {
     timeoutExceeded: 'ผลลัพธ์จะไม่แสดงเนื่องจากหมดเวลา โปรดดูบันทึกเพื่อรวบรวมผลลัพธ์ที่สมบูรณ์',
   },
   variableTable: {
-    optional: 'เสริม',
     key: 'ปุ่มตัวแปร',
     typeString: 'เชือก',
     typeSelect: 'เลือก',

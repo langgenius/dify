@@ -11,9 +11,9 @@ from core.helper import encrypter
 from core.helper.name_generator import generate_incremental_name
 from core.helper.provider_cache import NoOpProviderCredentialCache
 from core.model_runtime.entities.provider_entities import FormType
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.datasource import PluginDatasourceManager
 from core.plugin.impl.oauth import OAuthHandler
-from core.tools.entities.tool_entities import CredentialType
 from core.tools.utils.encryption import ProviderConfigCache, ProviderConfigEncrypter, create_provider_encrypter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -338,7 +338,7 @@ class DatasourceProviderService:
                     key: value if value != HIDDEN_VALUE else original_params.get(key, UNKNOWN_VALUE)
                     for key, value in client_params.items()
                 }
-                tenant_oauth_client_params.client_params = encrypter.encrypt(new_params)
+                tenant_oauth_client_params.client_params = dict(encrypter.encrypt(new_params))
 
             if enabled is not None:
                 tenant_oauth_client_params.enabled = enabled
@@ -374,7 +374,7 @@ class DatasourceProviderService:
 
     def get_tenant_oauth_client(
         self, tenant_id: str, datasource_provider_id: DatasourceProviderID, mask: bool = False
-    ) -> dict[str, Any] | None:
+    ) -> Mapping[str, Any] | None:
         """
         get tenant oauth client
         """
@@ -390,7 +390,7 @@ class DatasourceProviderService:
         if tenant_oauth_client_params:
             encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
             if mask:
-                return encrypter.mask_tool_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
+                return encrypter.mask_plugin_credentials(encrypter.decrypt(tenant_oauth_client_params.client_params))
             else:
                 return encrypter.decrypt(tenant_oauth_client_params.client_params)
         return None
@@ -434,7 +434,7 @@ class DatasourceProviderService:
             )
             if tenant_oauth_client_params:
                 encrypter, _ = self.get_oauth_encrypter(tenant_id, datasource_provider_id)
-                return encrypter.decrypt(tenant_oauth_client_params.client_params)
+                return dict(encrypter.decrypt(tenant_oauth_client_params.client_params))
 
             provider_controller = self.provider_manager.fetch_datasource_provider(
                 tenant_id=tenant_id, provider_id=str(datasource_provider_id)

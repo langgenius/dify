@@ -19,6 +19,7 @@ import PlanBadge from './plan-badge'
 import LicenseNav from './license-env'
 import { Plan } from '../billing/type'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const navClassName = `
   flex items-center relative px-3 h-8 rounded-xl
@@ -38,7 +39,7 @@ const Header = () => {
     if (isFreePlan)
       setShowPricingModal()
     else
-      setShowAccountSettingModal({ payload: 'billing' })
+      setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
   if (isMobile) {

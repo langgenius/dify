@@ -140,7 +140,27 @@ class MessageCycleManager:
         if not self._application_generate_entity.app_config.additional_features:
             raise ValueError("Additional features not found")
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
-            self._task_state.metadata.retriever_resources = event.retriever_resources
+            merged_resources = [r for r in self._task_state.metadata.retriever_resources or [] if r]
+            existing_ids = {(r.dataset_id, r.document_id) for r in merged_resources if r.dataset_id and r.document_id}
+
+            # Add new unique resources from the event
+            for resource in event.retriever_resources or []:
+                if not resource:
+                    continue
+
+                is_duplicate = (
+                    resource.dataset_id
+                    and resource.document_id
+                    and (resource.dataset_id, resource.document_id) in existing_ids
+                )
+
+                if not is_duplicate:
+                    merged_resources.append(resource)
+
+            for i, resource in enumerate(merged_resources, 1):
+                resource.position = i
+
+            self._task_state.metadata.retriever_resources = merged_resources
 
     def message_file_to_stream_response(self, event: QueueMessageFileEvent) -> MessageFileStreamResponse | None:
         """

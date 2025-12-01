@@ -8,6 +8,7 @@ from sqlalchemy import select
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
@@ -41,7 +42,7 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
             if features.billing.enabled:
                 vector_space = features.vector_space
                 count = len(document_ids)
-                if features.billing.subscription.plan == "sandbox" and count > 1:
+                if features.billing.subscription.plan == CloudPlan.SANDBOX and count > 1:
                     raise ValueError("Your current plan does not support batch upload, please upgrade your plan.")
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if count > batch_upload_limit:

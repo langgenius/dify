@@ -8,6 +8,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.enums import NodeState
 
 from .node_execution import NodeExecution
@@ -41,7 +42,7 @@ class GraphExecutionState(BaseModel):
     completed: bool = Field(default=False)
     aborted: bool = Field(default=False)
     paused: bool = Field(default=False)
-    pause_reason: str | None = Field(default=None)
+    pause_reason: PauseReason | None = Field(default=None)
     error: GraphExecutionErrorState | None = Field(default=None)
     exceptions_count: int = Field(default=0)
     node_executions: list[NodeExecutionState] = Field(default_factory=list[NodeExecutionState])
@@ -106,7 +107,7 @@ class GraphExecution:
     completed: bool = False
     aborted: bool = False
     paused: bool = False
-    pause_reason: str | None = None
+    pause_reason: PauseReason | None = None
     error: Exception | None = None
     node_executions: dict[str, NodeExecution] = field(default_factory=dict[str, NodeExecution])
     exceptions_count: int = 0
@@ -130,7 +131,7 @@ class GraphExecution:
         self.aborted = True
         self.error = RuntimeError(f"Aborted: {reason}")
 
-    def pause(self, reason: str | None = None) -> None:
+    def pause(self, reason: PauseReason) -> None:
         """Pause the graph execution without marking it complete."""
         if self.completed:
             raise RuntimeError("Cannot pause execution that has completed")

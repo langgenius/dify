@@ -19,7 +19,6 @@ const translation = {
   intro5: 'peut être créé',
   intro6: 'comme un plug-in d\'index ChatGPT autonome à publier',
   unavailable: 'Indisponible',
-  unavailableTip: 'Le modèle d\'embedding n\'est pas disponible, le modèle d\'embedding par défaut doit être configuré',
   datasets: 'CONNAISSANCE',
   datasetsApi: 'API',
   retrieval: {

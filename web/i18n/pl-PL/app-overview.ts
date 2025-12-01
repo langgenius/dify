@@ -125,6 +125,7 @@ const translation = {
         },
       },
       launch: 'Uruchomić',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API usługi w tle',
@@ -135,6 +136,10 @@ const translation = {
     status: {
       running: 'W usłudze',
       disable: 'Wyłącz',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'Funkcja {{feature}} nie jest obsługiwana w trybie węzła wyzwalającego.',
     },
   },
   analysis: {

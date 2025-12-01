@@ -77,7 +77,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
           setWebAppPassport(shareCode!, access_token)
           redirectOrFinish()
         }
-        catch (error) {
+        catch {
           await webAppLogout(shareCode!)
           proceedToAuth()
         }

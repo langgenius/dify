@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Trimestrul curent',
       yearToDate: 'Anul curent',
       allTime: 'Tot timpul',
+      custom: 'Personalizat',
+      last30days: 'Ultimele 30 de zile',
     },
     annotation: {
       all: 'Toate',

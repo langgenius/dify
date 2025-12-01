@@ -2,7 +2,6 @@ const translation = {
   title: 'Narzędzia',
   createCustomTool: 'Utwórz niestandardowe narzędzie',
   type: {
-    all: 'Wszystkie',
     builtIn: 'Wbudowane',
     custom: 'Niestandardowe',
     workflow: 'Przepływ pracy',
@@ -21,7 +20,6 @@ const translation = {
       'Po skonfigurowaniu poświadczeń wszyscy członkowie w przestrzeni roboczej mogą używać tego narzędzia podczas projektowania aplikacji.',
   },
   includeToolNum: '{{num}} narzędzi zawarte',
-  addTool: 'Dodaj narzędzie',
   createTool: {
     title: 'Utwórz niestandardowe narzędzie',
     editAction: 'Konfiguruj',
@@ -145,11 +143,9 @@ const translation = {
   notAuthorized: 'Narzędzie nieautoryzowane',
   howToGet: 'Jak uzyskać',
   addToolModal: {
-    manageInTools: 'Zarządzanie w Narzędziach',
     added: 'Dodane',
     type: 'typ',
     category: 'kategoria',
-    add: 'dodawać',
     custom: {
       title: 'Brak dostępnego narzędzia niestandardowego',
       tip: 'Utwórz narzędzie niestandardowe',
@@ -213,6 +209,7 @@ const translation = {
       clientSecret: 'Tajny klucz klienta',
       useDynamicClientRegistration: 'Użyj dynamicznej rejestracji klienta',
       clientID: 'ID klienta',
+      redirectUrlWarning: 'Proszę skonfigurować swój adres URL przekierowania OAuth na:',
     },
     delete: 'Usuń serwer MCP',
     deleteConfirmTitle: 'Usunąć {mcp}?',

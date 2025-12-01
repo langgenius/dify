@@ -199,6 +199,7 @@ def test__convert_to_knowledge_retrieval_node_for_chatbot():
     node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
         new_app_mode=new_app_mode, dataset_config=dataset_config, model_config=model_config
     )
+    assert node is not None
 
     assert node["data"]["type"] == "knowledge-retrieval"
     assert node["data"]["query_variable_selector"] == ["sys", "query"]
@@ -231,6 +232,7 @@ def test__convert_to_knowledge_retrieval_node_for_workflow_app():
     node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
         new_app_mode=new_app_mode, dataset_config=dataset_config, model_config=model_config
     )
+    assert node is not None
 
     assert node["data"]["type"] == "knowledge-retrieval"
     assert node["data"]["query_variable_selector"] == ["start", dataset_config.retrieve_config.query_variable]

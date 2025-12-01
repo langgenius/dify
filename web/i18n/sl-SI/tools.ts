@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Ustvari prilagojeno orodje',
   customToolTip: 'Izvedite več o prilagojenih orodjih Dify',
   type: {
-    all: 'Vsa',
     builtIn: 'Vgrajena',
     custom: 'Prilagojena',
     workflow: 'Potek dela',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'Po konfiguraciji poverilnic bodo vsi člani znotraj delovnega prostora lahko uporabljali to orodje pri orkestraciji aplikacij.',
   },
   includeToolNum: 'Vključeno {{num}} orodij',
-  addTool: 'Dodaj orodje',
   addToolModal: {
     type: 'tip',
     category: 'kategorija',
-    add: 'dodaj',
     added: 'dodano',
-    manageInTools: 'Upravljaj v Orodjih',
     custom: {
       title: 'Žiadne prispôsobené nástroje nie sú k dispozícii',
       tip: 'Vytvorte prispôsobený nástroj',
@@ -209,6 +205,7 @@ const translation = {
       useDynamicClientRegistration: 'Uporabi dinamično registracijo odjemalca',
       clientID: 'ID odjemalca',
       clientSecretPlaceholder: 'Skrivnost odjemalca',
+      redirectUrlWarning: 'Prosimo, nastavite URL za preusmeritev OAuth na:',
     },
     delete: 'Odstrani strežnik MCP',
     deleteConfirmTitle: 'Odstraniti {mcp}?',

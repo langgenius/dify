@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Crea Strumento Personalizzato',
   customToolTip: 'Scopri di più sugli strumenti personalizzati di Dify',
   type: {
-    all: 'Tutti',
     builtIn: 'Integrato',
     custom: 'Personalizzato',
     workflow: 'Flusso di lavoro',
@@ -22,13 +21,10 @@ const translation = {
       'Dopo aver configurato le credenziali, tutti i membri all\'interno del workspace possono utilizzare questo strumento durante l\'orchestrazione delle applicazioni.',
   },
   includeToolNum: '{{num}} strumenti inclusi',
-  addTool: 'Aggiungi Strumento',
   addToolModal: {
     type: 'tipo',
     category: 'categoria',
-    add: 'aggiungi',
     added: 'aggiunto',
-    manageInTools: 'Gestisci in Strumenti',
     custom: {
       title: 'Nessuno strumento personalizzato disponibile',
       tip: 'Crea uno strumento personalizzato',
@@ -219,6 +215,7 @@ const translation = {
       clientSecretPlaceholder: 'Segreto del Cliente',
       authentication: 'Autenticazione',
       configurations: 'Configurazioni',
+      redirectUrlWarning: 'Si prega di configurare il vostro URL di reindirizzamento OAuth su:',
     },
     delete: 'Rimuovi Server MCP',
     deleteConfirmTitle: 'Vuoi rimuovere {mcp}?',

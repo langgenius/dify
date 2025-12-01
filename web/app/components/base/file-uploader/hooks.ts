@@ -11,6 +11,7 @@ import type { FileEntity } from './types'
 import { useFileStore } from './store'
 import {
   fileUpload,
+  getFileUploadErrorMessage,
   getSupportFileType,
   isAllowedFileExtension,
 } from './utils'
@@ -172,8 +173,9 @@ export const useFile = (fileConfig: FileUpload) => {
         onSuccessCallback: (res) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
-        onErrorCallback: () => {
-          notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerUploadError') })
+        onErrorCallback: (error?: any) => {
+          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+          notify({ type: 'error', message: errorMessage })
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
       }, !!params.token)
@@ -279,8 +281,9 @@ export const useFile = (fileConfig: FileUpload) => {
           onSuccessCallback: (res) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
-          onErrorCallback: () => {
-            notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerUploadError') })
+          onErrorCallback: (error?: any) => {
+            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+            notify({ type: 'error', message: errorMessage })
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
         }, !!params.token)
@@ -302,9 +305,23 @@ export const useFile = (fileConfig: FileUpload) => {
     const text = e.clipboardData?.getData('text/plain')
     if (file && !text) {
       e.preventDefault()
+
+      const allowedFileTypes = fileConfig.allowed_file_types || []
+      const fileType = getSupportFileType(file.name, file.type, allowedFileTypes?.includes(SupportUploadFileTypes.custom))
+      const isFileTypeAllowed = allowedFileTypes.includes(fileType)
+
+      // Check if file type is in allowed list
+      if (!isFileTypeAllowed || !fileConfig.enabled) {
+        notify({
+          type: 'error',
+          message: t('common.fileUploader.fileExtensionNotSupport'),
+        })
+        return
+      }
+
       handleLocalFileUpload(file)
     }
-  }, [handleLocalFileUpload])
+  }, [handleLocalFileUpload, fileConfig, notify, t])
 
   const [isDragActive, setIsDragActive] = useState(false)
   const handleDragFileEnter = useCallback((e: React.DragEvent<HTMLElement>) => {

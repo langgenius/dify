@@ -100,7 +100,10 @@ const RunOnce: FC<IRunOnceProps> = ({
             : promptConfig.prompt_variables.map(item => (
               <div className='mt-4 w-full' key={item.key}>
                 {item.type !== 'checkbox' && (
-                  <label className='system-md-semibold flex h-6 items-center text-text-secondary'>{item.name}</label>
+                  <div className='system-md-semibold flex h-6 items-center gap-1 text-text-secondary'>
+                    <div className='truncate'>{item.name}</div>
+                    {!item.required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
+                  </div>
                 )}
                 <div className='mt-1'>
                   {item.type === 'select' && (
@@ -115,7 +118,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   {item.type === 'string' && (
                     <Input
                       type="text"
-                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      placeholder={item.name}
                       value={inputs[item.key]}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                       maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
@@ -124,7 +127,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   {item.type === 'paragraph' && (
                     <Textarea
                       className='h-[104px] sm:text-xs'
-                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      placeholder={item.name}
                       value={inputs[item.key]}
                       onChange={(e: ChangeEvent<HTMLTextAreaElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                     />
@@ -132,7 +135,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                   {item.type === 'number' && (
                     <Input
                       type="number"
-                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      placeholder={item.name}
                       value={inputs[item.key]}
                       onChange={(e: ChangeEvent<HTMLInputElement>) => { handleInputsChange({ ...inputsRef.current, [item.key]: e.target.value }) }}
                     />

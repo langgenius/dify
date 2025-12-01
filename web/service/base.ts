@@ -155,7 +155,7 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (
+export const handleStream = (
   response: Response,
   onData: IOnData,
   onCompleted?: IOnCompleted,

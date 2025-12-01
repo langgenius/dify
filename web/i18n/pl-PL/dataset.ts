@@ -20,8 +20,6 @@ const translation = {
   intro5: 'może być utworzona',
   intro6: ' jako samodzielny wtyczka indeksująca ChatGPT do publikacji',
   unavailable: 'Niedostępny',
-  unavailableTip:
-    'Model osadzający jest niedostępny, domyślny model osadzający musi być skonfigurowany',
   datasets: 'WIEDZA',
   datasetsApi: 'DOSTĘP DO API',
   retrieval: {

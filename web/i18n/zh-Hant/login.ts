@@ -95,7 +95,7 @@ const translation = {
   changePasswordBtn: '設置密碼',
   enterYourName: '請輸入您的使用者名',
   backToLogin: '返回登錄',
-  noLoginMethodTip: '請聯繫系統管理員以添加身份驗證方法。',
+  noLoginMethodTip: '請聯繫系統管理員以新增身份驗證方法。',
   withSSO: '繼續使用 SSO',
   back: '返回',
   resetPasswordDesc: '輸入您用於註冊 Dify 的電子郵件，我們將向您發送一封密碼重置電子郵件。',
@@ -108,7 +108,7 @@ const translation = {
   licenseLostTip: '無法連接 Dify 許可證伺服器。請聯繫您的管理員以繼續使用 Dify。',
   webapp: {
     noLoginMethod: '未為網絡應用程序配置身份驗證方法',
-    noLoginMethodTip: '請聯絡系統管理員以添加身份驗證方法。',
+    noLoginMethodTip: '請聯絡系統管理員以新增身份驗證方法。',
     disabled: '網頁應用程序身份驗證已被禁用。請聯繫系統管理員以啟用它。您可以嘗試直接使用應用程序。',
     login: '登入',
   },

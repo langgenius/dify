@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Создать пользовательский инструмент',
   customToolTip: 'Узнать больше о пользовательских инструментах Dify',
   type: {
-    all: 'Все',
     builtIn: 'Встроенные',
     custom: 'Пользовательские',
     workflow: 'Рабочий процесс',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'После настройки учетных данных все участники рабочего пространства смогут использовать этот инструмент при оркестровке приложений.',
   },
   includeToolNum: 'Включено {{num}} инструментов',
-  addTool: 'Добавить инструмент',
   addToolModal: {
     type: 'тип',
     category: 'категория',
-    add: 'добавить',
     added: 'добавлено',
-    manageInTools: 'Управлять в инструментах',
     custom: {
       title: 'Нет доступного пользовательского инструмента',
       tip: 'Создать пользовательский инструмент',
@@ -209,6 +205,7 @@ const translation = {
       useDynamicClientRegistration: 'Использовать динамическую регистрацию клиентов',
       clientSecret: 'Секрет клиента',
       authentication: 'Аутентификация',
+      redirectUrlWarning: 'Пожалуйста, настройте ваш URL перенаправления OAuth на:',
     },
     delete: 'Удалить MCP сервер',
     deleteConfirmTitle: 'Вы действительно хотите удалить {mcp}?',

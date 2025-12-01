@@ -67,6 +67,8 @@ const translation = {
       quarterToDate: 'तिमाही तक तिथि',
       yearToDate: 'वर्ष तक तिथि',
       allTime: 'सभी समय',
+      last30days: 'पिछले 30 दिन',
+      custom: 'कस्टम',
     },
     annotation: {
       all: 'सभी',

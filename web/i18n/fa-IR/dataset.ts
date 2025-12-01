@@ -19,7 +19,6 @@ const translation = {
   intro5: 'به عنوان یک افزونه مستقل ChatGPT برای انتشار',
   intro6: 'ایجاد شود',
   unavailable: 'در دسترس نیست',
-  unavailableTip: 'مدل جاسازی در دسترس نیست، نیاز است مدل جاسازی پیش‌فرض پیکربندی شود',
   datasets: 'دانش',
   datasetsApi: 'دسترسی API',
   retrieval: {

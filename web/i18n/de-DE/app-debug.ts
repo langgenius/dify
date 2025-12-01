@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Kontext',
       noData: 'Sie können Wissen als Kontext importieren',
-      words: 'Wörter',
-      textBlocks: 'Textblöcke',
       selectTitle: 'Wählen Sie Referenzwissen',
       selected: 'Wissen ausgewählt',
       noDataSet: 'Kein Wissen gefunden',
@@ -259,7 +257,6 @@ const translation = {
   variableTable: {
     key: 'Variablenschlüssel',
     name: 'Name des Benutzereingabefelds',
-    optional: 'Optional',
     type: 'Eingabetyp',
     action: 'Aktionen',
     typeString: 'String',

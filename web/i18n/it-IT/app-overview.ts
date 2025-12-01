@@ -127,6 +127,7 @@ const translation = {
         },
       },
       launch: 'Lanciare',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API del servizio backend',
@@ -137,6 +138,10 @@ const translation = {
     status: {
       running: 'In servizio',
       disable: 'Disabilita',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'La funzionalità {{feature}} non è supportata in modalità Nodo Trigger.',
     },
   },
   analysis: {

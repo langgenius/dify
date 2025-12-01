@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Lansa',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API serviciu backend',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'În service',
       disable: 'Dezactivat',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'Funcționalitatea {{feature}} nu este suportată în modul Nod Trigger.',
     },
   },
   analysis: {

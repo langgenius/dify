@@ -16,6 +16,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import type { RetrievalConfig } from '@/types/app'
 import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -277,7 +278,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               </div>
               <div className='mt-2 w-full text-xs leading-6 text-text-tertiary'>
                 {t('datasetSettings.form.embeddingModelTip')}
-                <span className='cursor-pointer text-text-accent' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+                <span className='cursor-pointer text-text-accent' onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
               </div>
             </div>
           </div>

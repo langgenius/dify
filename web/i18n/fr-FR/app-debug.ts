@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Contexte',
       noData: 'Vous pouvez importer des Connaissances comme contexte',
-      words: 'Mots',
-      textBlocks: 'Blocs de texte',
       selectTitle: 'Sélectionnez la connaissance de référence',
       selected: 'Connaissance sélectionnée',
       noDataSet: 'Aucune connaissance trouvée',
@@ -259,7 +257,6 @@ const translation = {
   variableTable: {
     key: 'Clé Variable',
     name: 'Nom du champ d\'entrée de l\'utilisateur',
-    optional: 'Facultatif',
     type: 'Type d\'Entrée',
     action: 'Actions',
     typeString: 'Chaîne',

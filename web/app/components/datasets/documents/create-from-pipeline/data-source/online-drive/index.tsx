@@ -15,6 +15,7 @@ import { useShallow } from 'zustand/react/shallow'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
 import { useDocLink } from '@/context/i18n'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 type OnlineDriveProps = {
   nodeId: string
@@ -180,7 +181,7 @@ const OnlineDrive = ({
 
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
-      payload: 'data-source',
+      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
   }, [setShowAccountSettingModal])
 

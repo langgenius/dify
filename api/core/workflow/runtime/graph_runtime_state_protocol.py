@@ -3,6 +3,7 @@ from typing import Any, Protocol
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.variables.segments import Segment
+from core.workflow.system_variable import SystemVariableReadOnlyView
 
 
 class ReadOnlyVariablePool(Protocol):
@@ -29,6 +30,9 @@ class ReadOnlyGraphRuntimeState(Protocol):
     modifying the graph runtime state while still allowing observation.
     All methods return defensive copies to ensure immutability.
     """
+
+    @property
+    def system_variable(self) -> SystemVariableReadOnlyView: ...
 
     @property
     def variable_pool(self) -> ReadOnlyVariablePool:

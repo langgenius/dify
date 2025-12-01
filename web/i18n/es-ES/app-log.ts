@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'Trimestre hasta la fecha',
       yearToDate: 'Año hasta la fecha',
       allTime: 'Todo el tiempo',
+      custom: 'Personalizado',
+      last30days: 'Últimos 30 días',
     },
     annotation: {
       all: 'Todos',

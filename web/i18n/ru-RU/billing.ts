@@ -78,7 +78,7 @@ const translation = {
     apiRateLimit: 'Ограничение скорости API',
     self: 'Самостоятельно размещенный',
     teamMember_other: '{{count,number}} Члены команды',
-    apiRateLimitUnit: '{{count,number}}/день',
+    apiRateLimitUnit: '{{count,number}}',
     unlimitedApiRate: 'Нет ограничений на количество запросов к API',
     freeTrialTip: 'бесплатная пробная версия из 200 вызовов OpenAI.',
     freeTrialTipSuffix: 'Кредитная карта не требуется',

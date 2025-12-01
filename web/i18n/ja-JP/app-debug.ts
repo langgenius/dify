@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'コンテキスト',
       noData: 'コンテキストとして知識をインポートできます',
-      words: '単語',
-      textBlocks: 'テキストブロック',
       selectTitle: '参照する知識を選択',
       selected: '選択された知識',
       noDataSet: '知識が見つかりません',
@@ -340,7 +338,6 @@ const translation = {
   variableTable: {
     key: '変数キー',
     name: 'ユーザー入力フィールド名',
-    optional: 'オプション',
     type: '入力タイプ',
     action: 'アクション',
     typeString: '文字列',

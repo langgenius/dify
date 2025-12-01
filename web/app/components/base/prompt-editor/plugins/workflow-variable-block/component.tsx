@@ -2,6 +2,7 @@ import {
   memo,
   useCallback,
   useEffect,
+  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -18,7 +19,7 @@ import {
   DELETE_WORKFLOW_VARIABLE_BLOCK_COMMAND,
   UPDATE_WORKFLOW_NODES_MAP,
 } from './index'
-import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
@@ -65,25 +66,33 @@ const WorkflowVariableBlockComponent = ({
   )()
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const node = localWorkflowNodesMap![variables[isRagVar ? 1 : 0]]
-  const isEnv = isENV(variables)
-  const isChatVar = isConversationVar(variables)
+
   const isException = isExceptionVariable(varName, node?.type)
-  let variableValid = true
-  if (isEnv) {
-    if (environmentVariables)
-      variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else if (isChatVar) {
-    if (conversationVariables)
-      variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
-  }
-  else if (isRagVar) {
-    if (ragVariables)
-      variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
-  }
-  else {
-    variableValid = !!node
-  }
+  const variableValid = useMemo(() => {
+    let variableValid = true
+    const isEnv = isENV(variables)
+    const isChatVar = isConversationVar(variables)
+    const isGlobal = isGlobalVar(variables)
+    if (isGlobal)
+      return true
+
+    if (isEnv) {
+      if (environmentVariables)
+        variableValid = environmentVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+    }
+    else if (isChatVar) {
+      if (conversationVariables)
+        variableValid = conversationVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}`)
+    }
+    else if (isRagVar) {
+      if (ragVariables)
+        variableValid = ragVariables.some(v => v.variable === `${variables?.[0] ?? ''}.${variables?.[1] ?? ''}.${variables?.[2] ?? ''}`)
+    }
+    else {
+      variableValid = !!node
+    }
+    return variableValid
+  }, [variables, node, environmentVariables, conversationVariables, isRagVar, ragVariables])
 
   const reactflow = useReactFlow()
   const store = useStoreApi()

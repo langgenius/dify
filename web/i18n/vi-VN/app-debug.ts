@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Ngữ cảnh',
       noData: 'Bạn có thể nhập dữ liệu làm ngữ cảnh',
-      words: 'Từ',
-      textBlocks: 'Khối văn bản',
       selectTitle: 'Chọn kiến thức tham khảo',
       selected: 'Kiến thức đã chọn',
       noDataSet: 'Không tìm thấy kiến thức',
@@ -255,7 +253,6 @@ const translation = {
   variableTable: {
     key: 'Khóa biến',
     name: 'Tên trường nhập liệu người dùng',
-    optional: 'Tùy chọn',
     type: 'Loại nhập liệu',
     action: 'Hành động',
     typeString: 'Chuỗi',

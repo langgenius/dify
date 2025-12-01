@@ -9,7 +9,7 @@ import {
   useMarketplaceCollectionsAndPlugins,
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
-import { PluginType } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { useAllToolProviders } from '@/service/use-tools'
 
@@ -49,7 +49,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
 
       if (searchPluginText) {
         queryPluginsWithDebounced({
-          category: PluginType.tool,
+          category: PluginCategoryEnum.tool,
           query: searchPluginText,
           tags: filterPluginTags,
           exclude,
@@ -59,7 +59,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
         return
       }
       queryPlugins({
-        category: PluginType.tool,
+        category: PluginCategoryEnum.tool,
         query: searchPluginText,
         tags: filterPluginTags,
         exclude,
@@ -70,8 +70,8 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     else {
       if (isSuccess) {
         queryMarketplaceCollectionsAndPlugins({
-          category: PluginType.tool,
-          condition: getMarketplaceListCondition(PluginType.tool),
+          category: PluginCategoryEnum.tool,
+          condition: getMarketplaceListCondition(PluginCategoryEnum.tool),
           exclude,
           type: 'plugin',
         })
@@ -95,7 +95,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
         pageRef.current++
 
         queryPlugins({
-          category: PluginType.tool,
+          category: PluginCategoryEnum.tool,
           query: searchPluginText,
           tags: filterPluginTags,
           exclude,

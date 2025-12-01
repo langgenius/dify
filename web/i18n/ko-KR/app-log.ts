@@ -66,6 +66,8 @@ const translation = {
       quarterToDate: '분기 초부터 오늘까지',
       yearToDate: '연 초부터 오늘까지',
       allTime: '모든 기간',
+      last30days: '최근 30일',
+      custom: '사용자 정의',
     },
     annotation: {
       all: '모두',

@@ -32,41 +32,48 @@ class AppAnnotationService:
 
         if not app:
             raise NotFound("App not found")
+
+        answer = args.get("answer") or args.get("content")
+        if answer is None:
+            raise ValueError("Either 'answer' or 'content' must be provided")
+
         if args.get("message_id"):
             message_id = str(args["message_id"])
-            # get message info
             message = db.session.query(Message).where(Message.id == message_id, Message.app_id == app.id).first()
 
             if not message:
                 raise NotFound("Message Not Exists.")
 
+            question = args.get("question") or message.query or ""
+
             annotation: MessageAnnotation | None = message.annotation
-            # save the message annotation
             if annotation:
-                annotation.content = args["answer"]
-                annotation.question = args["question"]
+                annotation.content = answer
+                annotation.question = question
             else:
                 annotation = MessageAnnotation(
                     app_id=app.id,
                     conversation_id=message.conversation_id,
                     message_id=message.id,
-                    content=args["answer"],
-                    question=args["question"],
+                    content=answer,
+                    question=question,
                     account_id=current_user.id,
                 )
         else:
-            annotation = MessageAnnotation(
-                app_id=app.id, content=args["answer"], question=args["question"], account_id=current_user.id
-            )
+            question = args.get("question")
+            if not question:
+                raise ValueError("'question' is required when 'message_id' is not provided")
+
+            annotation = MessageAnnotation(app_id=app.id, content=answer, question=question, account_id=current_user.id)
         db.session.add(annotation)
         db.session.commit()
-        # if annotation reply is enabled , add annotation to index
+
         annotation_setting = db.session.query(AppAnnotationSetting).where(AppAnnotationSetting.app_id == app_id).first()
         assert current_tenant_id is not None
         if annotation_setting:
             add_annotation_to_index_task.delay(
                 annotation.id,
-                args["question"],
+                annotation.question,
                 current_tenant_id,
                 app_id,
                 annotation_setting.collection_binding_id,

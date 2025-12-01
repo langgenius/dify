@@ -38,7 +38,7 @@ const translation = {
   newApp: {
     learnMore: '了解更多',
     startFromBlank: '创建空白应用',
-    startFromTemplate: '从应用模版创建',
+    startFromTemplate: '从应用模板创建',
     foundResult: '{{count}} 个结果',
     foundResults: '{{count}} 个结果',
     noAppsFound: '未找到应用',
@@ -80,7 +80,7 @@ const translation = {
     Confirm: '确认',
     import: '导入',
     nameNotEmpty: '名称不能为空',
-    appTemplateNotSelected: '请选择应用模版',
+    appTemplateNotSelected: '请选择应用模板',
     appTypeRequired: '请选择应用类型',
     appCreated: '应用已创建',
     caution: '注意',
@@ -95,7 +95,7 @@ const translation = {
   },
   newAppFromTemplate: {
     byCategories: '分类',
-    searchAllTemplate: '搜索所有模版...',
+    searchAllTemplate: '搜索所有模板...',
     sidebar: {
       Recommended: '推荐',
       Agent: 'Agent',
@@ -253,6 +253,8 @@ const translation = {
     notSetDesc: '当前任何人都无法访问 Web 应用。请设置访问权限。',
   },
   noAccessPermission: '没有权限访问 web 应用',
+  noUserInputNode: '缺少用户输入节点',
+  notPublishedYet: '应用暂未发布',
   maxActiveRequests: '最大活跃请求数',
   maxActiveRequestsPlaceholder: '0 表示不限制',
   maxActiveRequestsTip: '当前应用的最大活跃请求数（0 表示不限制）',

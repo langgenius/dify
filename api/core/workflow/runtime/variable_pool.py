@@ -153,7 +153,11 @@ class VariablePool(BaseModel):
             return None
 
         node_id, name = self._selector_to_keys(selector)
-        segment: Segment | None = self.variable_dictionary[node_id].get(name)
+        node_map = self.variable_dictionary.get(node_id)
+        if node_map is None:
+            return None
+
+        segment: Segment | None = node_map.get(name)
 
         if segment is None:
             return None

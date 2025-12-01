@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'از ابتدای فصل تاکنون',
       yearToDate: 'از ابتدای سال تاکنون',
       allTime: 'همه زمان‌ها',
+      last30days: '۳۰ روز گذشته',
+      custom: 'سفارشی',
     },
     annotation: {
       all: 'همه',

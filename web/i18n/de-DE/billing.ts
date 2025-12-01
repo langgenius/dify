@@ -83,7 +83,7 @@ const translation = {
     cloud: 'Cloud-Dienst',
     apiRateLimitTooltip: 'Die API-Datenbeschränkung gilt für alle Anfragen, die über die Dify-API gemacht werden, einschließlich Textgenerierung, Chat-Konversationen, Workflow-Ausführungen und Dokumentenverarbeitung.',
     getStarted: 'Loslegen',
-    apiRateLimitUnit: '{{count,number}}/Tag',
+    apiRateLimitUnit: '{{count,number}}',
     documentsTooltip: 'Vorgabe für die Anzahl der Dokumente, die aus der Wissensdatenquelle importiert werden.',
     apiRateLimit: 'API-Datenlimit',
     documents: '{{count,number}} Wissensdokumente',

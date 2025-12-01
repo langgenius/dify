@@ -62,7 +62,7 @@ jobs:
           compose-file: |
             docker/docker-compose.middleware.yaml
           services: |
-            db
+            db_postgres
             redis
             sandbox
             ssrf_proxy

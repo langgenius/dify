@@ -76,7 +76,7 @@ const translation = {
     priceTip: 'por espacio de trabajo/',
     teamMember_one: '{{count, número}} Miembro del Equipo',
     getStarted: 'Comenzar',
-    apiRateLimitUnit: '{{count, número}}/día',
+    apiRateLimitUnit: '{{count, número}}',
     freeTrialTipSuffix: 'No se requiere tarjeta de crédito',
     unlimitedApiRate: 'Sin límite de tasa de API',
     apiRateLimit: 'Límite de tasa de API',

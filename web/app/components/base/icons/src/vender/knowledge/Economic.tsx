@@ -11,7 +11,7 @@ const Icon = (
     ref,
     ...props
   }: React.SVGProps<SVGSVGElement> & {
-    ref?: React.RefObject<React.MutableRefObject<HTMLOrSVGElement>>;
+    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>;
   },
 ) => <IconBase {...props} ref={ref} data={data as IconData} />
 

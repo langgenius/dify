@@ -146,8 +146,8 @@ const Form = () => {
       return
     }
     if (retrievalConfig.weights) {
-      retrievalConfig.weights.vector_setting.embedding_provider_name = currentDataset?.embedding_model_provider || ''
-      retrievalConfig.weights.vector_setting.embedding_model_name = currentDataset?.embedding_model || ''
+      retrievalConfig.weights.vector_setting.embedding_provider_name = embeddingModel.provider || ''
+      retrievalConfig.weights.vector_setting.embedding_model_name = embeddingModel.model || ''
     }
     try {
       setLoading(true)

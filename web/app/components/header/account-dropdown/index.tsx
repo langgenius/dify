@@ -33,6 +33,7 @@ import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
 import { useLogout } from '@/service/use-common'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 export default function AppSelector() {
   const itemClassName = `
@@ -122,7 +123,7 @@ export default function AppSelector() {
                     <MenuItem>
                       <div className={cn(itemClassName,
                         'data-[active]:bg-state-base-hover',
-                      )} onClick={() => setShowAccountSettingModal({ payload: 'members' })}>
+                      )} onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}>
                         <RiSettings3Line className='size-4 shrink-0 text-text-tertiary' />
                         <div className='system-md-regular grow px-1 text-text-secondary'>{t('common.userProfile.settings')}</div>
                       </div>

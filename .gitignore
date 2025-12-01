@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# *db files
+*.db
+
 # Distribution / packaging
 .Python
 build/
@@ -183,6 +186,8 @@ docker/volumes/couchbase/*
 docker/volumes/oceanbase/*
 docker/volumes/plugin_daemon/*
 docker/volumes/matrixone/*
+docker/volumes/mysql/*
+docker/volumes/seekdb/*
 !docker/volumes/oceanbase/init.d
 
 docker/nginx/conf.d/default.conf
@@ -236,3 +241,6 @@ scripts/stress-test/reports/
 # mcp
 .playwright-mcp/
 .serena/
+
+# settings
+*.local.json

@@ -81,6 +81,7 @@ const translation = {
       ok: 'V redu',
     },
     learnMore: 'Izvedi več',
+    sort: {},
   },
   metadata: {
     title: 'Metapodatki',

@@ -1,7 +1,4 @@
-from datetime import datetime
-
-import pytz
-from flask import jsonify
+from flask import abort, jsonify
 from flask_restx import Resource, reqparse
 from sqlalchemy.orm import sessionmaker
 
@@ -9,6 +6,7 @@ from controllers.console import api, console_ns
 from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
+from libs.datetime_utils import parse_time_range
 from libs.helper import DatetimeString
 from libs.login import current_account_with_tenant, login_required
 from models.enums import WorkflowRunTriggeredFrom
@@ -43,23 +41,11 @@ class WorkflowDailyRunsStatistic(Resource):
         args = parser.parse_args()
 
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        start_date = None
-        end_date = None
-
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_date = start_datetime_timezone.astimezone(utc_timezone)
-
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_date = end_datetime_timezone.astimezone(utc_timezone)
+        try:
+            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
         response_data = self._workflow_run_repo.get_daily_runs_statistics(
             tenant_id=app_model.tenant_id,
@@ -100,23 +86,11 @@ class WorkflowDailyTerminalsStatistic(Resource):
         args = parser.parse_args()
 
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        start_date = None
-        end_date = None
-
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_date = start_datetime_timezone.astimezone(utc_timezone)
-
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_date = end_datetime_timezone.astimezone(utc_timezone)
+        try:
+            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
         response_data = self._workflow_run_repo.get_daily_terminals_statistics(
             tenant_id=app_model.tenant_id,
@@ -157,23 +131,11 @@ class WorkflowDailyTokenCostStatistic(Resource):
         args = parser.parse_args()
 
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        start_date = None
-        end_date = None
-
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_date = start_datetime_timezone.astimezone(utc_timezone)
-
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_date = end_datetime_timezone.astimezone(utc_timezone)
+        try:
+            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
         response_data = self._workflow_run_repo.get_daily_token_cost_statistics(
             tenant_id=app_model.tenant_id,
@@ -214,23 +176,11 @@ class WorkflowAverageAppInteractionStatistic(Resource):
         args = parser.parse_args()
 
         assert account.timezone is not None
-        timezone = pytz.timezone(account.timezone)
-        utc_timezone = pytz.utc
 
-        start_date = None
-        end_date = None
-
-        if args["start"]:
-            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
-            start_datetime = start_datetime.replace(second=0)
-            start_datetime_timezone = timezone.localize(start_datetime)
-            start_date = start_datetime_timezone.astimezone(utc_timezone)
-
-        if args["end"]:
-            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
-            end_datetime = end_datetime.replace(second=0)
-            end_datetime_timezone = timezone.localize(end_datetime)
-            end_date = end_datetime_timezone.astimezone(utc_timezone)
+        try:
+            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
 
         response_data = self._workflow_run_repo.get_average_app_interaction_statistics(
             tenant_id=app_model.tenant_id,

@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'زمینه',
       noData: 'شما می‌توانید دانش را به عنوان زمینه وارد کنید',
-      words: 'کلمات',
-      textBlocks: 'بلوک‌های متن',
       selectTitle: 'انتخاب دانش مرجع',
       selected: 'دانش انتخاب شده',
       noDataSet: 'هیچ دانشی یافت نشد',
@@ -588,7 +586,6 @@ const translation = {
     typeString: 'رشته',
     name: 'نام فیلد ورودی کاربر',
     type: 'نوع ورودی',
-    optional: 'اختیاری',
   },
   varKeyError: {},
   otherError: {

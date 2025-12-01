@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 import app
 from configs import dify_config
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_mail import mail
 from libs.email_i18n import EmailType, get_email_i18n_service
@@ -45,7 +46,7 @@ def mail_clean_document_notify_task():
         for tenant_id, tenant_dataset_auto_disable_logs in dataset_auto_disable_logs_map.items():
             features = FeatureService.get_features(tenant_id)
             plan = features.billing.subscription.plan
-            if plan != "sandbox":
+            if plan != CloudPlan.SANDBOX:
                 knowledge_details = []
                 # check tenant
                 tenant = db.session.query(Tenant).where(Tenant.id == tenant_id).first()

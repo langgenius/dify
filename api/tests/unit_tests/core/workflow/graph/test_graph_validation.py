@@ -64,6 +64,15 @@ class _TestNode(Node):
         )
         self.data = dict(data)
 
+        node_type_value = data.get("type")
+        if isinstance(node_type_value, NodeType):
+            self.node_type = node_type_value
+        elif isinstance(node_type_value, str):
+            try:
+                self.node_type = NodeType(node_type_value)
+            except ValueError:
+                pass
+
     def _run(self):
         raise NotImplementedError
 
@@ -179,3 +188,22 @@ def test_graph_promotes_fail_branch_nodes_to_branch_execution_type(
     graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
 
     assert graph.nodes["branch"].execution_type == NodeExecutionType.BRANCH
+
+
+def test_graph_validation_blocks_start_and_trigger_coexistence(
+    graph_init_dependencies: tuple[_SimpleNodeFactory, dict[str, object]],
+) -> None:
+    node_factory, graph_config = graph_init_dependencies
+    graph_config["nodes"] = [
+        {"id": "start", "data": {"type": NodeType.START, "title": "Start", "execution_type": NodeExecutionType.ROOT}},
+        {
+            "id": "trigger",
+            "data": {"type": NodeType.TRIGGER_WEBHOOK, "title": "Webhook", "execution_type": NodeExecutionType.ROOT},
+        },
+    ]
+    graph_config["edges"] = []
+
+    with pytest.raises(GraphValidationError) as exc_info:
+        Graph.init(graph_config=graph_config, node_factory=node_factory)
+
+    assert any(issue.code == "TRIGGER_START_NODE_CONFLICT" for issue in exc_info.value.issues)

@@ -6,9 +6,11 @@ This module tests the iteration node's ability to:
 2. Preserve nested array structure when flatten_output=False
 """
 
+from .test_database_utils import skip_if_database_unavailable
 from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 
+@skip_if_database_unavailable()
 def test_iteration_with_flatten_output_enabled():
     """
     Test iteration node with flatten_output=True (default behavior).
@@ -37,6 +39,7 @@ def test_iteration_with_flatten_output_enabled():
     )
 
 
+@skip_if_database_unavailable()
 def test_iteration_with_flatten_output_disabled():
     """
     Test iteration node with flatten_output=False.
@@ -65,6 +68,7 @@ def test_iteration_with_flatten_output_disabled():
     )
 
 
+@skip_if_database_unavailable()
 def test_iteration_flatten_output_comparison():
     """
     Run both flatten_output configurations in parallel to verify the difference.

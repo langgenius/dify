@@ -55,7 +55,7 @@ const translation = {
     },
     stillInEducation: {
       title: '仍在接受教育嗎？',
-      expired: '立即重新驗證，以獲得即將到來的學年新優惠券。我們會將其添加到您的帳戶中，您可以用於下一次升級。',
+      expired: '立即重新驗證，以獲得即將到來的學年新優惠券。我們會將其新增到您的帳戶中，您可以用於下一次升級。',
       isAboutToExpire: '現在重新驗證以獲得即將到來的學年新優惠券。它將保存在您的帳戶中，並在下次續訂時隨時可以使用。',
     },
     alreadyGraduated: {

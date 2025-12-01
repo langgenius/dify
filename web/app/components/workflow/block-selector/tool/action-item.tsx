@@ -10,13 +10,20 @@ import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
+import { basePath } from '@/utils/var'
+
+const normalizeProviderIcon = (icon: ToolWithProvider['icon']) => {
+  if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
+    return `${basePath}${icon}`
+  return icon
+}
 
 type Props = {
   provider: ToolWithProvider
   payload: Tool
   disabled?: boolean
   isAdded?: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
 }
 
 const ToolItem: FC<Props> = ({
@@ -64,6 +71,9 @@ const ToolItem: FC<Props> = ({
             provider_id: provider.id,
             provider_type: provider.type,
             provider_name: provider.name,
+            plugin_id: provider.plugin_id,
+            plugin_unique_identifier: provider.plugin_unique_identifier,
+            provider_icon: normalizeProviderIcon(provider.icon),
             tool_name: payload.name,
             tool_label: payload.label[language],
             tool_description: payload.description[language],

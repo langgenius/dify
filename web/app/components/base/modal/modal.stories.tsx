@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import Modal from './modal'
 
 const meta = {
-  title: 'Base/Dialog/RichModal',
+  title: 'Base/Feedback/RichModal',
   component: Modal,
   parameters: {
     layout: 'fullscreen',

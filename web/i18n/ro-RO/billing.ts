@@ -82,7 +82,7 @@ const translation = {
     documentsTooltip: 'Cota pe numărul de documente importate din Sursele de Date de Cunoștințe.',
     getStarted: 'Întrebați-vă',
     cloud: 'Serviciu de cloud',
-    apiRateLimitUnit: '{{count,number}}/zi',
+    apiRateLimitUnit: '{{count,number}}',
     comparePlanAndFeatures: 'Compară planurile și caracteristicile',
     documentsRequestQuota: '{{count,number}}/min Limita de rată a cererilor de cunoștințe',
     documents: '{{count,number}} Documente de Cunoaștere',
@@ -106,7 +106,7 @@ const translation = {
     professional: {
       name: 'Professional',
       description: 'Pentru persoane fizice și echipe mici pentru a debloca mai multă putere la un preț accesibil.',
-      for: 'Pentru dezvoltatori independenți / echipe mici',
+      for: 'Pentru dezvoltatori independenți/echipe mici',
     },
     team: {
       name: 'Echipă',

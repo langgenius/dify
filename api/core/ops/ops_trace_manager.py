@@ -14,7 +14,7 @@ from flask import current_app
 from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
+from core.helper.encrypter import batch_decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
     OPS_FILE_PATH,
     TracingProviderEnum,
@@ -141,6 +141,8 @@ provider_config_map = OpsTraceProviderConfigMap()
 
 class OpsTraceManager:
     ops_trace_instances_cache: LRUCache = LRUCache(maxsize=128)
+    decrypted_configs_cache: LRUCache = LRUCache(maxsize=128)
+    _decryption_cache_lock = threading.RLock()
 
     @classmethod
     def encrypt_tracing_config(
@@ -161,7 +163,7 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["other_keys"],
         )
 
-        new_config = {}
+        new_config: dict[str, Any] = {}
         # Encrypt necessary keys
         for key in secret_keys:
             if key in tracing_config:
@@ -191,20 +193,41 @@ class OpsTraceManager:
         :param tracing_config: tracing config
         :return:
         """
-        config_class, secret_keys, other_keys = (
-            provider_config_map[tracing_provider]["config_class"],
-            provider_config_map[tracing_provider]["secret_keys"],
-            provider_config_map[tracing_provider]["other_keys"],
+        config_json = json.dumps(tracing_config, sort_keys=True)
+        decrypted_config_key = (
+            tenant_id,
+            tracing_provider,
+            config_json,
         )
-        new_config = {}
-        for key in secret_keys:
-            if key in tracing_config:
-                new_config[key] = decrypt_token(tenant_id, tracing_config[key])
 
-        for key in other_keys:
-            new_config[key] = tracing_config.get(key, "")
+        # First check without lock for performance
+        cached_config = cls.decrypted_configs_cache.get(decrypted_config_key)
+        if cached_config is not None:
+            return dict(cached_config)
 
-        return config_class(**new_config).model_dump()
+        with cls._decryption_cache_lock:
+            # Second check (double-checked locking) to prevent race conditions
+            cached_config = cls.decrypted_configs_cache.get(decrypted_config_key)
+            if cached_config is not None:
+                return dict(cached_config)
+
+            config_class, secret_keys, other_keys = (
+                provider_config_map[tracing_provider]["config_class"],
+                provider_config_map[tracing_provider]["secret_keys"],
+                provider_config_map[tracing_provider]["other_keys"],
+            )
+            new_config: dict[str, Any] = {}
+            keys_to_decrypt = [key for key in secret_keys if key in tracing_config]
+            if keys_to_decrypt:
+                decrypted_values = batch_decrypt_token(tenant_id, [tracing_config[key] for key in keys_to_decrypt])
+                new_config.update(zip(keys_to_decrypt, decrypted_values))
+
+            for key in other_keys:
+                new_config[key] = tracing_config.get(key, "")
+
+            decrypted_config = config_class(**new_config).model_dump()
+            cls.decrypted_configs_cache[decrypted_config_key] = decrypted_config
+            return dict(decrypted_config)
 
     @classmethod
     def obfuscated_decrypt_token(cls, tracing_provider: str, decrypt_tracing_config: dict):
@@ -219,7 +242,7 @@ class OpsTraceManager:
             provider_config_map[tracing_provider]["secret_keys"],
             provider_config_map[tracing_provider]["other_keys"],
         )
-        new_config = {}
+        new_config: dict[str, Any] = {}
         for key in secret_keys:
             if key in decrypt_tracing_config:
                 new_config[key] = obfuscated_token(decrypt_tracing_config[key])
@@ -596,6 +619,8 @@ class TraceTask:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
             file_list.append(file_url)
 
+        streaming_metrics = self._extract_streaming_metrics(message_data)
+
         metadata = {
             "conversation_id": message_data.conversation_id,
             "ls_provider": message_data.model_provider,
@@ -628,6 +653,9 @@ class TraceTask:
             metadata=metadata,
             message_file_data=message_file_data,
             conversation_mode=conversation_mode,
+            gen_ai_server_time_to_first_token=streaming_metrics.get("gen_ai_server_time_to_first_token"),
+            llm_streaming_time_to_generate=streaming_metrics.get("llm_streaming_time_to_generate"),
+            is_streaming_request=streaming_metrics.get("is_streaming_request", False),
         )
 
         return message_trace_info
@@ -852,6 +880,24 @@ class TraceTask:
         )
 
         return generate_name_trace_info
+
+    def _extract_streaming_metrics(self, message_data) -> dict:
+        if not message_data.message_metadata:
+            return {}
+
+        try:
+            metadata = json.loads(message_data.message_metadata)
+            usage = metadata.get("usage", {})
+            time_to_first_token = usage.get("time_to_first_token")
+            time_to_generate = usage.get("time_to_generate")
+
+            return {
+                "gen_ai_server_time_to_first_token": time_to_first_token,
+                "llm_streaming_time_to_generate": time_to_generate,
+                "is_streaming_request": time_to_first_token is not None,
+            }
+        except (json.JSONDecodeError, AttributeError):
+            return {}
 
 
 trace_manager_timer: threading.Timer | None = None

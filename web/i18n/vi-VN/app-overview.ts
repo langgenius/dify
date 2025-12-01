@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Phóng',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API dịch vụ backend',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'Đang hoạt động',
       disable: 'Đã tắt',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'Tính năng {{feature}} không được hỗ trợ trong chế độ Nút Kích hoạt.',
     },
   },
   analysis: {

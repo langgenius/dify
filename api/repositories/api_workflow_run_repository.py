@@ -38,6 +38,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 
+from core.workflow.entities.workflow_pause import WorkflowPauseEntity
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
@@ -248,6 +249,116 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Note:
             This method performs hard deletion without backup. Use with caution
             and ensure proper data retention policies are followed.
+        """
+        ...
+
+    def create_workflow_pause(
+        self,
+        workflow_run_id: str,
+        state_owner_user_id: str,
+        state: str,
+    ) -> WorkflowPauseEntity:
+        """
+        Create a new workflow pause state.
+
+        Creates a pause state for a workflow run, storing the current execution
+        state and marking the workflow as paused. This is used when a workflow
+        needs to be suspended and later resumed.
+
+        Args:
+            workflow_run_id: Identifier of the workflow run to pause
+            state_owner_user_id: User ID who owns the pause state for file storage
+            state: Serialized workflow execution state (JSON string)
+
+        Returns:
+            WorkflowPauseEntity representing the created pause state
+
+        Raises:
+            ValueError: If workflow_run_id is invalid or workflow run doesn't exist
+            RuntimeError: If workflow is already paused or in invalid state
+        """
+        # NOTE: we may get rid of the `state_owner_user_id` in parameter list.
+        # However, removing it would require an extra for `Workflow` model
+        # while creating pause.
+        ...
+
+    def resume_workflow_pause(
+        self,
+        workflow_run_id: str,
+        pause_entity: WorkflowPauseEntity,
+    ) -> WorkflowPauseEntity:
+        """
+        Resume a paused workflow.
+
+        Marks a paused workflow as resumed, set the `resumed_at` field of WorkflowPauseEntity
+        and returning the workflow to running status. Returns the pause entity
+        that was resumed.
+
+        The returned `WorkflowPauseEntity` model has `resumed_at` set.
+
+        NOTE: this method does not delete the correspond `WorkflowPauseEntity` record and associated states.
+        It's the callers responsibility to clear the correspond state with `delete_workflow_pause`.
+
+        Args:
+            workflow_run_id: Identifier of the workflow run to resume
+            pause_entity: The pause entity to resume
+
+        Returns:
+            WorkflowPauseEntity representing the resumed pause state
+
+        Raises:
+            ValueError: If workflow_run_id is invalid
+            RuntimeError: If workflow is not paused or already resumed
+        """
+        ...
+
+    def delete_workflow_pause(
+        self,
+        pause_entity: WorkflowPauseEntity,
+    ) -> None:
+        """
+        Delete a workflow pause state.
+
+        Permanently removes the pause state for a workflow run, including
+        the stored state file. Used for cleanup operations when a paused
+        workflow is no longer needed.
+
+        Args:
+            pause_entity: The pause entity to delete
+
+        Raises:
+            ValueError: If pause_entity is invalid
+            RuntimeError: If workflow is not paused
+
+        Note:
+            This operation is irreversible. The stored workflow state will be
+            permanently deleted along with the pause record.
+        """
+        ...
+
+    def prune_pauses(
+        self,
+        expiration: datetime,
+        resumption_expiration: datetime,
+        limit: int | None = None,
+    ) -> Sequence[str]:
+        """
+        Clean up expired and old pause states.
+
+        Removes pause states that have expired (created before expiration time)
+        and pause states that were resumed more than resumption_duration ago.
+        This is used for maintenance and cleanup operations.
+
+        Args:
+            expiration: Remove pause states created before this time
+            resumption_expiration: Remove pause states resumed before this time
+            limit: maximum number of records deleted in one call
+
+        Returns:
+            a list of ids for pause records that were pruned
+
+        Raises:
+            ValueError: If parameters are invalid
         """
         ...
 

@@ -125,6 +125,7 @@ const translation = {
         },
       },
       launch: 'लॉन्च',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'बैकएंड सेवा एपीआई',
@@ -135,6 +136,10 @@ const translation = {
     status: {
       running: 'सेवा में',
       disable: 'अक्षम करें',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'ट्रिगर नोड मोड में {{feature}} फ़ीचर समर्थित नहीं है।',
     },
   },
   analysis: {

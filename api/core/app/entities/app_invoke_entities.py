@@ -32,6 +32,10 @@ class InvokeFrom(StrEnum):
     # https://docs.dify.ai/en/guides/application-publishing/launch-your-webapp-quickly/README
     WEB_APP = "web-app"
 
+    # TRIGGER indicates that this invocation is from a trigger.
+    # this is used for plugin trigger and webhook trigger.
+    TRIGGER = "trigger"
+
     # EXPLORE indicates that this invocation is from
     # the workflow (or chatflow) explore page.
     EXPLORE = "explore"
@@ -39,6 +43,9 @@ class InvokeFrom(StrEnum):
     # the workflow (or chatflow) edit page.
     DEBUGGER = "debugger"
     PUBLISHED = "published"
+
+    # VALIDATION indicates that this invocation is from validation.
+    VALIDATION = "validation"
 
     @classmethod
     def value_of(cls, value: str):
@@ -65,6 +72,8 @@ class InvokeFrom(StrEnum):
             return "dev"
         elif self == InvokeFrom.EXPLORE:
             return "explore_app"
+        elif self == InvokeFrom.TRIGGER:
+            return "trigger"
         elif self == InvokeFrom.SERVICE_API:
             return "api"
 
@@ -104,6 +113,11 @@ class AppGenerateEntity(BaseModel):
 
     inputs: Mapping[str, Any]
     files: Sequence[File]
+
+    # Unique identifier of the user initiating the execution.
+    # This corresponds to `Account.id` for platform users or `EndUser.id` for end users.
+    #
+    # Note: The `user_id` field does not indicate whether the user is a platform user or an end user.
     user_id: str
 
     # extras
@@ -129,7 +143,7 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     app_config: EasyUIBasedAppConfig = None  # type: ignore
     model_conf: ModelConfigWithCredentialsEntity
 
-    query: str | None = None
+    query: str = ""
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())

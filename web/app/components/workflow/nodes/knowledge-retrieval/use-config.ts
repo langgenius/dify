@@ -32,7 +32,7 @@ import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
 } from './utils'
-import { RETRIEVE_TYPE } from '@/types/app'
+import { AppModeEnum, RETRIEVE_TYPE } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
@@ -344,7 +344,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       draft.metadata_model_config = {
         provider: model.provider,
         name: model.modelId,
-        mode: model.mode || 'chat',
+        mode: model.mode || AppModeEnum.CHAT,
         completion_params: draft.metadata_model_config?.completion_params || { temperature: 0.7 },
       }
     })

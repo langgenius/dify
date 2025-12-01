@@ -13,7 +13,7 @@ const translation = {
     permissionsOnlyMe: '只有我',
     permissionsAllMember: '所有團隊成員',
     indexMethod: '索引模式',
-    indexMethodHighQuality: '高質量',
+    indexMethodHighQuality: '高品質',
     indexMethodHighQualityTip: '使用 Embedding 模型進行處理，以在使用者查詢時提供更高的準確度。',
     indexMethodEconomy: '經濟',
     indexMethodEconomyTip: '每個區塊使用 10 個關鍵字進行檢索，不會消耗 tokens，但可能會降低檢索的準確度。',

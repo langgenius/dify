@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Запуску',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'API сервісу Backend',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'У роботі',
       disable: 'Вимкнути',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'Функція {{feature}} не підтримується в режимі вузла тригера.',
     },
   },
   analysis: {

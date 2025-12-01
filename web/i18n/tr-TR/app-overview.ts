@@ -114,6 +114,7 @@ const translation = {
         },
       },
       launch: 'Başlat',
+      enableTooltip: {},
     },
     apiInfo: {
       title: 'Arka Uç Servis API\'si',
@@ -124,6 +125,10 @@ const translation = {
     status: {
       running: 'Hizmette',
       disable: 'Devre Dışı',
+    },
+    triggerInfo: {},
+    disableTooltip: {
+      triggerMode: 'Trigger Düğümü modunda {{feature}} özelliği desteklenmiyor.',
     },
   },
   analysis: {

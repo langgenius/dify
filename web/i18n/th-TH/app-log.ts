@@ -65,6 +65,8 @@ const translation = {
       quarterToDate: 'ไตรมาสจนถึงปัจจุบัน',
       yearToDate: 'ปีจนถึงปัจจุบัน',
       allTime: 'ตลอดเวลา',
+      last30days: '30 วันที่ผ่านมา',
+      custom: 'กำหนดเอง',
     },
     annotation: {
       all: 'ทั้งหมด',

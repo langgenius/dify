@@ -19,7 +19,6 @@ const translation = {
   intro5: 'se puede crear',
   intro6: ' como un complemento independiente de ChatGPT para publicar',
   unavailable: 'No disponible',
-  unavailableTip: 'El modelo de incrustación no está disponible, es necesario configurar el modelo de incrustación predeterminado',
   datasets: 'CONOCIMIENTO',
   datasetsApi: 'ACCESO A LA API',
   retrieval: {

@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Контекст',
       noData: 'Вы можете импортировать знания в качестве контекста',
-      words: 'Слова',
-      textBlocks: 'Текстовые блоки',
       selectTitle: 'Выберите справочные знания',
       selected: 'Знания выбраны',
       noDataSet: 'Знания не найдены',
@@ -327,7 +325,6 @@ const translation = {
   variableTable: {
     key: 'Ключ переменной',
     name: 'Имя поля пользовательского ввода',
-    optional: 'Необязательно',
     type: 'Тип ввода',
     action: 'Действия',
     typeString: 'Строка',
