@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(необов\'язково & приховано)',
     goTo: 'Перейти до',
     startNode: 'Початковий вузол',
+    openWorkflow: 'Відкрити робочий процес',
   },
   nodes: {
     common: {

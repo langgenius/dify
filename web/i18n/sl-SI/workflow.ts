@@ -381,6 +381,7 @@ const translation = {
     optional_and_hidden: '(neobvezno in skrito)',
     goTo: 'Pojdi na',
     startNode: 'Začetni vozel',
+    openWorkflow: 'Odpri delovni tok',
   },
   nodes: {
     common: {
