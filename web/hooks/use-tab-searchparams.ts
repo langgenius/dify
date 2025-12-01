@@ -40,7 +40,7 @@ export const useTabSearchParams = ({
     setTab(newActiveTab)
     if (disableSearchParams)
       return
-    router[`${routingBehavior}`](`${pathName}?${searchParamName}=${encodeURIComponent(newActiveTab)}`)
+    router[`${routingBehavior}`](`${pathName}?${searchParamName}=${encodeURIComponent(newActiveTab)}`, { scroll: false })
   }
 
   return [activeTab, setActiveTab] as const
