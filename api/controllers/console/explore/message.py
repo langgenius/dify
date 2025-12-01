@@ -75,13 +75,7 @@ class MessageListApi(InstalledAppResource):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
-        raw_args = {
-            "conversation_id": request.args.get("conversation_id"),
-            "first_id": request.args.get("first_id"),
-            "limit": request.args.get("limit", default=20, type=int),
-        }
-        args = MessageListQuery.model_validate(raw_args)
+        args = MessageListQuery.model_validate(request.args.to_dict())
 
         try:
             return MessageService.pagination_by_first_id(
@@ -139,7 +133,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
 
         message_id = str(message_id)
 
-        args = MoreLikeThisQuery.model_validate({"response_mode": request.args.get("response_mode")})
+        args = MoreLikeThisQuery.model_validate(request.args.to_dict())
 
         streaming = args.response_mode == "streaming"
 

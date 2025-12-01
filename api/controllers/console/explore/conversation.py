@@ -30,7 +30,7 @@ class ConversationListQuery(BaseModel):
 
 
 class ConversationRenamePayload(BaseModel):
-    name: str | None = None
+    name: str
     auto_generate: bool = False
 
 
