@@ -36,6 +36,7 @@ from services.entities.knowledge_entities.knowledge_entities import ChildChunkUp
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
+from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs
 
 
 class SegmentListQuery(BaseModel):
@@ -72,6 +73,10 @@ class ChildChunkUpdatePayload(BaseModel):
     content: str
 
 
+class ChildChunkBatchUpdatePayload(BaseModel):
+    chunks: list[ChildChunkUpdateArgs]
+
+
 register_schema_models(
     console_ns,
     SegmentListQuery,
@@ -80,6 +85,7 @@ register_schema_models(
     BatchImportPayload,
     ChildChunkCreatePayload,
     ChildChunkUpdatePayload,
+    ChildChunkBatchUpdatePayload,
 )
 
 
@@ -107,16 +113,7 @@ class DatasetDocumentSegmentListApi(Resource):
         if not document:
             raise NotFound("Document not found.")
 
-        args = SegmentListQuery.model_validate(
-            {
-                "limit": request.args.get("limit", default=20, type=int),
-                "status": request.args.getlist("status"),
-                "hit_count_gte": request.args.get("hit_count_gte", type=int),
-                "enabled": request.args.get("enabled", default="all"),
-                "keyword": request.args.get("keyword"),
-                "page": request.args.get("page", default=1, type=int),
-            }
-        )
+        args = SegmentListQuery.model_validate(request.args.to_dict())
 
         page = args.page
         limit = min(args.limit, 100)
@@ -619,13 +616,9 @@ class ChildChunkAddApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
         # validate args
-        chunks_payload = console_ns.payload or {}
+        payload = ChildChunkBatchUpdatePayload.model_validate(console_ns.payload or {})
         try:
-            chunks_data = chunks_payload.get("chunks")
-            if not isinstance(chunks_data, list):
-                raise ValueError("chunks must be a list")
-            chunks = [ChildChunkUpdateArgs.model_validate(chunk) for chunk in chunks_data]
-            child_chunks = SegmentService.update_child_chunks(chunks, segment, document, dataset)
+            child_chunks = SegmentService.update_child_chunks(payload.chunks, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunks, child_chunk_fields)}, 200
