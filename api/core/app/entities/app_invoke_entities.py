@@ -275,7 +275,7 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     start_node_id: str | None = None
 
 
-from core.ops.ops_trace_manager import TraceQueueManager  # noqa: F401
+from core.ops.ops_trace_manager import TraceQueueManager
 
 AppGenerateEntity.model_rebuild()
 EasyUIBasedAppGenerateEntity.model_rebuild()
