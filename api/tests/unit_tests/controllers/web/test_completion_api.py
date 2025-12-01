@@ -3,7 +3,7 @@ Comprehensive Unit Tests for Web Completion API
 
 ⚠️  IMPORTANT: This test file is incomplete and requires fixture implementation.
     The tests reference undefined fixtures: completion_api, completion_app, end_user, chat_app
-    
+
     Use test_completion_api_simple.py instead, which provides working tests for the same functionality.
     This file is kept for reference but skipped until fixtures are properly implemented.
 
