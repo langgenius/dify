@@ -81,6 +81,14 @@ const translation = {
   login: {
     backToHome: 'Back to Home',
   },
+  serviceConnection: {
+    title: 'Connect the required services to start',
+    description: 'You need to configure {{count}} connections before you can use this app',
+    connect: 'Connect',
+    addApiKey: 'Add API Key',
+    connected: 'Connected',
+    continue: 'Continue',
+  },
 }
 
 export default translation

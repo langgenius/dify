@@ -24,6 +24,10 @@ import cn from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
 import { formatBooleanInputs } from '@/utils/model-config'
 import Avatar from '../../avatar'
+import ServiceConnectionPanel from '@/app/components/base/service-connection-panel'
+import type { AuthType, ServiceConnectionItem as ServiceConnectionItemType } from '@/app/components/base/service-connection-panel'
+import { Notion } from '@/app/components/base/icons/src/public/common'
+import { Google } from '@/app/components/base/icons/src/public/plugins'
 
 const ChatWrapper = () => {
   const {
@@ -167,6 +171,53 @@ const ChatWrapper = () => {
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
+  // Demo: Service connection state
+  const [serviceConnections, setServiceConnections] = useState<ServiceConnectionItemType[]>([
+    {
+      id: 'notion',
+      name: 'Notion Page Search',
+      icon: <Notion className="h-6 w-6" />,
+      authType: 'oauth',
+      status: 'pending',
+    },
+    {
+      id: 'gmail',
+      name: 'Gmail Tools',
+      icon: <img src="https://www.gstatic.com/images/branding/product/1x/gmail_2020q4_32dp.png" alt="Gmail" className="h-6 w-6" />,
+      authType: 'oauth',
+      status: 'pending',
+    },
+    {
+      id: 'youtube',
+      name: 'YouTube Data Upload',
+      icon: <img src="https://www.youtube.com/s/desktop/f506bd45/img/favicon_32x32.png" alt="YouTube" className="h-6 w-6" />,
+      authType: 'oauth',
+      status: 'pending',
+    },
+    {
+      id: 'google-serp',
+      name: 'Google SerpApi Search',
+      icon: <Google className="h-6 w-6" />,
+      authType: 'api_key',
+      status: 'pending',
+    },
+  ])
+
+  const [showServiceConnection, setShowServiceConnection] = useState(true)
+
+  const handleServiceConnect = useCallback((serviceId: string, _authType: AuthType) => {
+    // Demo: 模拟连接成功
+    setServiceConnections(prev => prev.map(service =>
+      service.id === serviceId
+        ? { ...service, status: 'connected' as const }
+        : service,
+    ))
+  }, [])
+
+  const handleServiceContinue = useCallback(() => {
+    setShowServiceConnection(false)
+  }, [])
+
   const chatNode = useMemo(() => {
     if (allInputsHidden || !inputsForms.length)
       return null
@@ -252,6 +303,23 @@ const ChatWrapper = () => {
       imageUrl={appData.site.icon_url}
     />
     : null
+
+  // 如果需要显示服务连接面板，则显示面板而非聊天界面
+  if (showServiceConnection) {
+    return (
+      <div className={cn(
+        'flex h-full items-center justify-center overflow-auto bg-chatbot-bg',
+        isMobile && 'px-4 py-8',
+      )}>
+        <ServiceConnectionPanel
+          services={serviceConnections}
+          onConnect={handleServiceConnect}
+          onContinue={handleServiceContinue}
+          className={cn(isMobile && 'max-w-full')}
+        />
+      </div>
+    )
+  }
 
   return (
     <div
