@@ -840,8 +840,8 @@ class TestErrorHandling:
 class TestPluginCategoryDetection:
     """Test automatic plugin category detection."""
 
-    def test_tool_category_detection(self):
-        """Test that plugins with tool providers are categorized as Tool."""
+    def test_category_defaults_to_extension_without_tool_provider(self):
+        """Test that plugins without tool providers default to Extension category."""
         # Arrange: Create declaration - category is auto-detected based on provider presence
         # The model_validator in PluginDeclaration automatically sets category based on which provider is present
         # Since we're not providing a tool provider entity, it defaults to Extension
