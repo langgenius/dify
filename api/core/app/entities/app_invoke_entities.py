@@ -10,6 +10,9 @@ from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
 
+if TYPE_CHECKING:
+    from core.ops.ops_trace_manager import TraceQueueManager
+
 
 class InvokeFrom(StrEnum):
     """
@@ -128,7 +131,7 @@ class AppGenerateEntity(BaseModel):
     extras: dict[str, Any] = Field(default_factory=dict)
 
     # tracing instance
-    trace_manager: Optional[Any] = None
+    trace_manager: Optional["TraceQueueManager"] = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -271,6 +274,8 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     original_document_id: str | None = None
     start_node_id: str | None = None
 
+
+from core.ops.ops_trace_manager import TraceQueueManager  # noqa: F401
 
 AppGenerateEntity.model_rebuild()
 EasyUIBasedAppGenerateEntity.model_rebuild()
