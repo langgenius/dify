@@ -19,7 +19,7 @@ class _SampleNode(Node[_SampleNodeData]):
 
     @classmethod
     def version(cls) -> str:
-        return "sample-test"
+        return "1"
 
     def _run(self):
         raise NotImplementedError
