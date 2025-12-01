@@ -3,7 +3,7 @@ from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config
-from libs.helper import email, extract_remote_ip
+from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models.model import DifySetup, db
 from services.account_service import RegisterService, TenantService
@@ -17,15 +17,10 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class SetupRequestPayload(BaseModel):
-    email: str = Field(..., description="Admin email address")
+    email: EmailStr = Field(..., description="Admin email address")
     name: str = Field(..., max_length=30, description="Admin name (max 30 characters)")
     password: str = Field(..., description="Admin password")
     language: str | None = Field(default=None, description="Admin language")
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
     @field_validator("password")
     @classmethod

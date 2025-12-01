@@ -1,7 +1,7 @@
 import flask_login
 from flask import make_response, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 
 import services
 from configs import dify_config
@@ -24,7 +24,7 @@ from controllers.console.error import (
 )
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
-from libs.helper import email, extract_remote_ip
+from libs.helper import EmailStr, extract_remote_ip
 from libs.login import current_account_with_tenant
 from libs.token import (
     clear_access_token_from_cookie,
@@ -45,37 +45,22 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class LoginPayload(BaseModel):
-    email: str = Field(..., description="Email address")
+    email: EmailStr = Field(..., description="Email address")
     password: str = Field(..., description="Password")
     remember_me: bool = Field(default=False, description="Remember me flag")
     invite_token: str | None = Field(default=None, description="Invitation token")
 
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
-
 
 class EmailPayload(BaseModel):
-    email: str = Field(...)
+    email: EmailStr = Field(...)
     language: str | None = Field(default=None)
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 class EmailCodeLoginPayload(BaseModel):
-    email: str = Field(...)
+    email: EmailStr = Field(...)
     code: str = Field(...)
     token: str = Field(...)
     language: str | None = Field(default=None)
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 def reg(cls: type[BaseModel]):

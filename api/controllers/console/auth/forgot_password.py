@@ -19,7 +19,7 @@ from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import email_password_login_enabled, setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from libs.helper import email, extract_remote_ip
+from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models import Account
 from services.account_service import AccountService, TenantService
@@ -29,24 +29,14 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class ForgotPasswordSendPayload(BaseModel):
-    email: str = Field(...)
+    email: EmailStr = Field(...)
     language: str | None = Field(default=None)
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 class ForgotPasswordCheckPayload(BaseModel):
-    email: str = Field(...)
+    email: EmailStr = Field(...)
     code: str = Field(...)
     token: str = Field(...)
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 class ForgotPasswordResetPayload(BaseModel):

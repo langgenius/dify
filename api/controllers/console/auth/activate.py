@@ -7,7 +7,7 @@ from controllers.console import console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.helper import email, extract_remote_ip, timezone
+from libs.helper import EmailStr, extract_remote_ip, timezone
 from models import AccountStatus
 from services.account_service import AccountService, RegisterService
 
@@ -16,31 +16,17 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 class ActivateCheckQuery(BaseModel):
     workspace_id: str | None = Field(default=None)
-    email: str | None = Field(default=None)
+    email: EmailStr | None = Field(default=None)
     token: str
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return email(value)
 
 
 class ActivatePayload(BaseModel):
     workspace_id: str | None = Field(default=None)
-    email: str | None = Field(default=None)
+    email: EmailStr | None = Field(default=None)
     token: str
     name: str = Field(..., max_length=30)
     interface_language: str = Field(...)
     timezone: str = Field(...)
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return email(value)
 
     @field_validator("interface_language")
     @classmethod

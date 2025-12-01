@@ -16,7 +16,7 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
 )
 from extensions.ext_database import db
-from libs.helper import email, extract_remote_ip
+from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
@@ -30,24 +30,14 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
 class EmailRegisterSendPayload(BaseModel):
-    email: str = Field(..., description="Email address")
+    email: EmailStr = Field(..., description="Email address")
     language: str | None = Field(default=None, description="Language code")
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 class EmailRegisterValidityPayload(BaseModel):
-    email: str = Field(...)
+    email: EmailStr = Field(...)
     code: str = Field(...)
     token: str = Field(...)
-
-    @field_validator("email", mode="before")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 class EmailRegisterResetPayload(BaseModel):
