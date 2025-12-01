@@ -34,7 +34,7 @@ class DatasetCreatePayload(BaseModel):
     indexing_technique: Literal["high_quality", "economy"] | None = None
     permission: DatasetPermissionEnum | None = DatasetPermissionEnum.ONLY_ME
     external_knowledge_api_id: str | None = None
-    provider: str | None = "vendor"
+    provider: str = "vendor"
     external_knowledge_id: str | None = None
     retrieval_model: RetrievalModel | None = None
     embedding_model: str | None = None
@@ -164,24 +164,24 @@ class DatasetListApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id):
         """Resource for creating datasets."""
-        payload_dict = service_api_ns.payload or {}
-        payload = DatasetCreatePayload.model_validate(payload_dict)
+        payload = DatasetCreatePayload.model_validate(service_api_ns.payload or {})
 
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
         if embedding_model_provider and embedding_model:
             DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
 
-        retrieval_model = payload_dict.get("retrieval_model")
+        retrieval_model = payload.retrieval_model
         if (
             retrieval_model
-            and retrieval_model.get("reranking_model")
-            and retrieval_model.get("reranking_model").get("reranking_provider_name")
+            and retrieval_model.reranking_model
+            and retrieval_model.reranking_model.reranking_provider_name
+            and retrieval_model.reranking_model.reranking_model_name
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                retrieval_model.get("reranking_model").get("reranking_provider_name"),
-                retrieval_model.get("reranking_model").get("reranking_model_name"),
+                retrieval_model.reranking_model.reranking_provider_name,
+                retrieval_model.reranking_model.reranking_model_name,
             )
 
         try:
@@ -292,24 +292,25 @@ class DatasetApi(DatasetApiResource):
             update_data["retrieval_model"] = payload.retrieval_model.model_dump()
 
         # check embedding model setting
-        embedding_model_provider = payload_dict.get("embedding_model_provider")
-        embedding_model = payload_dict.get("embedding_model")
-        if payload_dict.get("indexing_technique") == "high_quality" or embedding_model_provider:
+        embedding_model_provider = payload.embedding_model_provider
+        embedding_model = payload.embedding_model
+        if payload.indexing_technique == "high_quality" or embedding_model_provider:
             if embedding_model_provider and embedding_model:
                 DatasetService.check_embedding_model_setting(
                     dataset.tenant_id, embedding_model_provider, embedding_model
                 )
 
-        retrieval_model = payload_dict.get("retrieval_model")
+        retrieval_model = payload.retrieval_model
         if (
             retrieval_model
-            and retrieval_model.get("reranking_model")
-            and retrieval_model.get("reranking_model").get("reranking_provider_name")
+            and retrieval_model.reranking_model
+            and retrieval_model.reranking_model.reranking_provider_name
+            and retrieval_model.reranking_model.reranking_model_name
         ):
             DatasetService.check_reranking_model_setting(
                 dataset.tenant_id,
-                retrieval_model.get("reranking_model").get("reranking_provider_name"),
-                retrieval_model.get("reranking_model").get("reranking_model_name"),
+                retrieval_model.reranking_model.reranking_provider_name,
+                retrieval_model.reranking_model.reranking_model_name,
             )
 
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
