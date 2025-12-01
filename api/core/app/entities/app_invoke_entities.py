@@ -4,9 +4,6 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
-if TYPE_CHECKING:
-    from core.ops.ops_trace_manager import TraceQueueManager
-
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
@@ -130,8 +127,8 @@ class AppGenerateEntity(BaseModel):
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = Field(default_factory=dict)
 
-    # tracing instance; use forward ref to avoid circular import at import time
-    trace_manager: Optional["TraceQueueManager"] = None
+    # tracing instance
+    trace_manager: Optional[Any] = None
 
 
 class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
@@ -275,23 +272,12 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     start_node_id: str | None = None
 
 
-# NOTE: Avoid importing heavy tracing modules at import time to prevent circular imports.
-# Forward reference to TraceQueueManager is kept as a string; we rebuild with a stub now to
-# avoid Pydantic forward-ref errors in test contexts, and with the real class at app startup.
-
-
-# Minimal stub to satisfy Pydantic model_rebuild in environments where the real type is not importable yet.
-class _TraceQueueManagerStub:
-    pass
-
-
-_ns = {"TraceQueueManager": _TraceQueueManagerStub}
-AppGenerateEntity.model_rebuild(_types_namespace=_ns)
-EasyUIBasedAppGenerateEntity.model_rebuild(_types_namespace=_ns)
-ConversationAppGenerateEntity.model_rebuild(_types_namespace=_ns)
-ChatAppGenerateEntity.model_rebuild(_types_namespace=_ns)
-CompletionAppGenerateEntity.model_rebuild(_types_namespace=_ns)
-AgentChatAppGenerateEntity.model_rebuild(_types_namespace=_ns)
-AdvancedChatAppGenerateEntity.model_rebuild(_types_namespace=_ns)
-WorkflowAppGenerateEntity.model_rebuild(_types_namespace=_ns)
-RagPipelineGenerateEntity.model_rebuild(_types_namespace=_ns)
+AppGenerateEntity.model_rebuild()
+EasyUIBasedAppGenerateEntity.model_rebuild()
+ConversationAppGenerateEntity.model_rebuild()
+ChatAppGenerateEntity.model_rebuild()
+CompletionAppGenerateEntity.model_rebuild()
+AgentChatAppGenerateEntity.model_rebuild()
+AdvancedChatAppGenerateEntity.model_rebuild()
+WorkflowAppGenerateEntity.model_rebuild()
+RagPipelineGenerateEntity.model_rebuild()
