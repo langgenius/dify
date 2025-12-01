@@ -61,21 +61,23 @@ class PipelineTemplateDetailApi(Resource):
         return pipeline_template, 200
 
 
+class Payload(BaseModel):
+    name: str = Field(min_length=1, max_length=40)
+    description: str = Field(default="")
+    icon_info: dict[str, object] | None = None
+
+
+register_schema_models(console_ns, Payload)
+
+
 @console_ns.route("/rag/pipeline/customized/templates/<string:template_id>")
 class CustomizedPipelineTemplateApi(Resource):
-    class Payload(BaseModel):
-        name: str = Field(min_length=1, max_length=40)
-        description: str = Field(default="")
-        icon_info: dict[str, object] | None = None
-
-    register_schema_models(console_ns, Payload)
-
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
     def patch(self, template_id: str):
-        payload = self.Payload.model_validate(console_ns.payload or {})
+        payload = Payload.model_validate(console_ns.payload or {})
         pipeline_template_info = PipelineTemplateInfoEntity.model_validate(payload.model_dump())
         RagPipelineService.update_customized_pipeline_template(template_id, pipeline_template_info)
         return 200
@@ -105,20 +107,14 @@ class CustomizedPipelineTemplateApi(Resource):
 
 @console_ns.route("/rag/pipelines/<string:pipeline_id>/customized/publish")
 class PublishCustomizedPipelineTemplateApi(Resource):
-    class Payload(BaseModel):
-        name: str = Field(min_length=1, max_length=40)
-        description: str = Field(default="")
-        icon_info: dict[str, object] | None = None
-
-    register_schema_models(console_ns, Payload)
-
+    @console_ns.expect(console_ns.models[Payload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
     @enterprise_license_required
     @knowledge_pipeline_publish_enabled
     def post(self, pipeline_id: str):
-        payload = self.Payload.model_validate(console_ns.payload or {})
+        payload = Payload.model_validate(console_ns.payload or {})
         rag_pipeline_service = RagPipelineService()
         rag_pipeline_service.publish_customized_pipeline_template(pipeline_id, payload.model_dump())
         return {"result": "success"}

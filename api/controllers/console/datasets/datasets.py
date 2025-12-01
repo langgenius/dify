@@ -349,7 +349,7 @@ class DatasetListApi(Resource):
 
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
-    @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
     @console_ns.response(201, "Dataset created successfully")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -435,7 +435,7 @@ class DatasetApi(Resource):
 
     @console_ns.doc("update_dataset")
     @console_ns.doc(description="Update dataset details")
-    @console_ns.expect(console_ns.models[DatasetUpdatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasetUpdatePayload.__name__])
     @console_ns.response(200, "Dataset updated successfully", dataset_detail_model)
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
@@ -574,7 +574,7 @@ class DatasetIndexingEstimateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.expect(console_ns.models[IndexingEstimatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[IndexingEstimatePayload.__name__])
     def post(self):
         payload = IndexingEstimatePayload.model_validate(console_ns.payload or {})
         args = payload.model_dump()

@@ -88,7 +88,7 @@ class ChatAudioApi(InstalledAppResource):
     endpoint="installed_app_text",
 )
 class ChatTextApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[TextToAudioPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[TextToAudioPayload.__name__])
     def post(self, installed_app):
         app_model = installed_app.app
         try:

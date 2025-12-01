@@ -331,7 +331,7 @@ class DatasetDocumentListApi(Resource):
     @marshal_with(dataset_and_document_model)
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[KnowledgeConfig.__name__], validate=True)
+    @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id = str(dataset_id)
@@ -396,7 +396,7 @@ class DatasetDocumentListApi(Resource):
 class DatasetInitApi(Resource):
     @console_ns.doc("init_dataset")
     @console_ns.doc(description="Initialize dataset with documents")
-    @console_ns.expect(console_ns.models[KnowledgeConfig.__name__], validate=True)
+    @console_ns.expect(console_ns.models[KnowledgeConfig.__name__])
     @console_ns.response(201, "Dataset initialized successfully", dataset_and_document_model)
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -1052,7 +1052,7 @@ class DocumentRetryApi(DocumentResource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DocumentRetryPayload.__name__])
     def post(self, dataset_id):
         """retry document."""
         payload = DocumentRetryPayload.model_validate(console_ns.payload or {})
@@ -1094,7 +1094,7 @@ class DocumentRenameApi(DocumentResource):
     @login_required
     @account_initialization_required
     @marshal_with(document_fields)
-    @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DocumentRenamePayload.__name__])
     def post(self, dataset_id, document_id):
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         current_user, _ = current_account_with_tenant()

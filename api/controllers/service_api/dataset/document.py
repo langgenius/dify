@@ -80,7 +80,7 @@ for m in [ProcessRule, RetrievalModel, DocumentTextCreatePayload, DocumentTextUp
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
 
-    @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__])
     @service_api_ns.doc("create_document_by_text")
     @service_api_ns.doc(description="Create a new document by providing text content")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -170,7 +170,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for update documents."""
 
-    @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
     @service_api_ns.doc("update_document_by_text")
     @service_api_ns.doc(description="Update an existing document by providing text content")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})

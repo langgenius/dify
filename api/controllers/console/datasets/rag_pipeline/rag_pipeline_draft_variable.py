@@ -190,7 +190,7 @@ class RagPipelineVariableApi(Resource):
 
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
-    @console_ns.expect(console_ns.models[WorkflowDraftVariablePatchPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[WorkflowDraftVariablePatchPayload.__name__])
     def patch(self, pipeline: Pipeline, variable_id: str):
         # Request payload for file types:
         #

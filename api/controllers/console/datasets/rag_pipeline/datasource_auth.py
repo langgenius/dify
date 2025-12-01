@@ -166,7 +166,7 @@ class DatasourceOAuthCallback(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>")
 class DatasourceAuth(Resource):
-    @console_ns.expect(console_ns.models[DatasourceCredentialPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasourceCredentialPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -207,7 +207,7 @@ class DatasourceAuth(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/delete")
 class DatasourceAuthDeleteApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceCredentialDeletePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasourceCredentialDeletePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -232,7 +232,7 @@ class DatasourceAuthDeleteApi(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update")
 class DatasourceAuthUpdateApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceCredentialUpdatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasourceCredentialUpdatePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -283,7 +283,7 @@ class DatasourceHardCodeAuthListApi(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/custom-client")
 class DatasourceAuthOauthCustomClient(Resource):
-    @console_ns.expect(console_ns.models[DatasourceCustomClientPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasourceCustomClientPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -319,7 +319,7 @@ class DatasourceAuthOauthCustomClient(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/default")
 class DatasourceAuthDefaultApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceDefaultPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasourceDefaultPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -340,7 +340,7 @@ class DatasourceAuthDefaultApi(Resource):
 
 @console_ns.route("/auth/plugin/datasource/<path:provider_id>/update-name")
 class DatasourceUpdateProviderNameApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceUpdateNamePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasourceUpdateNamePayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required

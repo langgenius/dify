@@ -61,7 +61,7 @@ register_schema_models(
 
 @service_api_ns.route("/conversations")
 class ConversationApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationListQuery.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[ConversationListQuery.__name__])
     @service_api_ns.doc("list_conversations")
     @service_api_ns.doc(description="List all conversations for the current user")
     @service_api_ns.doc(
@@ -131,7 +131,7 @@ class ConversationDetailApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/name")
 class ConversationRenameApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationRenamePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[ConversationRenamePayload.__name__])
     @service_api_ns.doc("rename_conversation")
     @service_api_ns.doc(description="Rename a conversation or auto-generate a name")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})
@@ -162,7 +162,7 @@ class ConversationRenameApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables")
 class ConversationVariablesApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationVariablesQuery.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[ConversationVariablesQuery.__name__])
     @service_api_ns.doc("list_conversation_variables")
     @service_api_ns.doc(description="List all variables for a conversation")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})
@@ -200,7 +200,7 @@ class ConversationVariablesApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables/<uuid:variable_id>")
 class ConversationVariableDetailApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ConversationVariableUpdatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[ConversationVariableUpdatePayload.__name__])
     @service_api_ns.doc("update_conversation_variable")
     @service_api_ns.doc(description="Update a conversation variable's value")
     @service_api_ns.doc(params={"c_id": "Conversation ID", "variable_id": "Variable ID"})

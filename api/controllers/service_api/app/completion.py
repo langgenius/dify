@@ -63,7 +63,7 @@ register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayl
 
 @service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[CompletionRequestPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[CompletionRequestPayload.__name__])
     @service_api_ns.doc("create_completion")
     @service_api_ns.doc(description="Create a completion for the given prompt")
     @service_api_ns.doc(
@@ -157,7 +157,7 @@ class CompletionStopApi(Resource):
 
 @service_api_ns.route("/chat-messages")
 class ChatApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[ChatRequestPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[ChatRequestPayload.__name__])
     @service_api_ns.doc("create_chat_message")
     @service_api_ns.doc(description="Send a message in a chat conversation")
     @service_api_ns.doc(

@@ -31,7 +31,7 @@ register_schema_models(service_api_ns, AnnotationCreatePayload, AnnotationReplyA
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>")
 class AnnotationReplyActionApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[AnnotationReplyActionPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[AnnotationReplyActionPayload.__name__])
     @service_api_ns.doc("annotation_reply_action")
     @service_api_ns.doc(description="Enable or disable annotation reply feature")
     @service_api_ns.doc(params={"action": "Action to perform: 'enable' or 'disable'"})
@@ -126,7 +126,7 @@ class AnnotationListApi(Resource):
             "page": page,
         }
 
-    @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
     @service_api_ns.doc("create_annotation")
     @service_api_ns.doc(description="Create a new annotation")
     @service_api_ns.doc(
@@ -146,7 +146,7 @@ class AnnotationListApi(Resource):
 
 @service_api_ns.route("/apps/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
     @service_api_ns.doc("update_annotation")
     @service_api_ns.doc(description="Update an existing annotation")
     @service_api_ns.doc(params={"annotation_id": "Annotation ID"})

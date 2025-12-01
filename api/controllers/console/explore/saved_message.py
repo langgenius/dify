@@ -37,7 +37,7 @@ class SavedMessageListApi(InstalledAppResource):
     }
 
     @marshal_with(saved_message_infinite_scroll_pagination_fields)
-    @console_ns.expect(console_ns.models[SavedMessageListQuery.__name__], validate=True)
+    @console_ns.expect(console_ns.models[SavedMessageListQuery.__name__])
     def get(self, installed_app):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
@@ -58,7 +58,7 @@ class SavedMessageListApi(InstalledAppResource):
             args.limit,
         )
 
-    @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[SavedMessageCreatePayload.__name__])
     def post(self, installed_app):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app

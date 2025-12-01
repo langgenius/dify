@@ -37,7 +37,7 @@ register_schema_model(mcp_ns, MCPRequestPayload)
 
 @mcp_ns.route("/server/<string:server_code>/mcp")
 class MCPAppApi(Resource):
-    @mcp_ns.expect(mcp_ns.models[MCPRequestPayload.__name__], validate=True)
+    @mcp_ns.expect(mcp_ns.models[MCPRequestPayload.__name__])
     @mcp_ns.doc("handle_mcp_request")
     @mcp_ns.doc(description="Handle Model Context Protocol (MCP) requests for a specific server")
     @mcp_ns.doc(params={"server_code": "Unique identifier for the MCP server"})

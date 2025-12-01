@@ -231,7 +231,7 @@ class DraftRagPipelineApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/iteration/nodes/<string:node_id>/run")
 class RagPipelineDraftRunIterationNodeApi(Resource):
-    @console_ns.expect(console_ns.models[NodeRunPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[NodeRunPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -266,7 +266,7 @@ class RagPipelineDraftRunIterationNodeApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/loop/nodes/<string:node_id>/run")
 class RagPipelineDraftRunLoopNodeApi(Resource):
-    @console_ns.expect(console_ns.models[NodeRunPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[NodeRunPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -301,7 +301,7 @@ class RagPipelineDraftRunLoopNodeApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/run")
 class DraftRagPipelineRunApi(Resource):
-    @console_ns.expect(console_ns.models[DraftWorkflowRunPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DraftWorkflowRunPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -333,7 +333,7 @@ class DraftRagPipelineRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/run")
 class PublishedRagPipelineRunApi(Resource):
-    @console_ns.expect(console_ns.models[PublishedWorkflowRunPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[PublishedWorkflowRunPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -449,7 +449,7 @@ class PublishedRagPipelineRunApi(Resource):
 #
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/published/datasource/nodes/<string:node_id>/run")
 class RagPipelinePublishedDatasourceNodeRunApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -482,7 +482,7 @@ class RagPipelinePublishedDatasourceNodeRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/nodes/<string:node_id>/run")
 class RagPipelineDraftDatasourceNodeRunApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasourceNodeRunPayload.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -515,7 +515,7 @@ class RagPipelineDraftDatasourceNodeRunApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/nodes/<string:node_id>/run")
 class RagPipelineDraftNodeRunApi(Resource):
-    @console_ns.expect(console_ns.models[NodeRunRequiredPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[NodeRunRequiredPayload.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -953,7 +953,7 @@ class RagPipelineTransformApi(Resource):
 
 @console_ns.route("/rag/pipelines/<uuid:pipeline_id>/workflows/draft/datasource/variables-inspect")
 class RagPipelineDatasourceVariableApi(Resource):
-    @console_ns.expect(console_ns.models[DatasourceVariablesPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[DatasourceVariablesPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required

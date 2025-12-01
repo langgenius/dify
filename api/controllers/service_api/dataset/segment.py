@@ -71,7 +71,7 @@ register_schema_models(
 class SegmentApi(DatasetApiResource):
     """Resource for segments."""
 
-    @service_api_ns.expect(service_api_ns.models[SegmentCreatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[SegmentCreatePayload.__name__])
     @service_api_ns.doc("create_segments")
     @service_api_ns.doc(description="Create segments in a document")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
@@ -131,7 +131,7 @@ class SegmentApi(DatasetApiResource):
         else:
             return {"error": "Segments is required"}, 400
 
-    @service_api_ns.expect(service_api_ns.models[SegmentListQuery.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[SegmentListQuery.__name__])
     @service_api_ns.doc("list_segments")
     @service_api_ns.doc(description="List segments in a document")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
@@ -234,7 +234,7 @@ class DatasetSegmentApi(DatasetApiResource):
         SegmentService.delete_segment(segment, document, dataset)
         return 204
 
-    @service_api_ns.expect(service_api_ns.models[SegmentUpdatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[SegmentUpdatePayload.__name__])
     @service_api_ns.doc("update_segment")
     @service_api_ns.doc(description="Update a specific segment")
     @service_api_ns.doc(
@@ -322,7 +322,7 @@ class DatasetSegmentApi(DatasetApiResource):
 class ChildChunkApi(DatasetApiResource):
     """Resource for child chunks."""
 
-    @service_api_ns.expect(service_api_ns.models[ChildChunkCreatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[ChildChunkCreatePayload.__name__])
     @service_api_ns.doc("create_child_chunk")
     @service_api_ns.doc(description="Create a new child chunk for a segment")
     @service_api_ns.doc(
@@ -383,7 +383,7 @@ class ChildChunkApi(DatasetApiResource):
 
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
 
-    @service_api_ns.expect(service_api_ns.models[ChildChunkListQuery.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[ChildChunkListQuery.__name__])
     @service_api_ns.doc("list_child_chunks")
     @service_api_ns.doc(description="List child chunks for a segment")
     @service_api_ns.doc(
@@ -500,7 +500,7 @@ class DatasetChildChunkApi(DatasetApiResource):
 
         return 204
 
-    @service_api_ns.expect(service_api_ns.models[ChildChunkUpdatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[ChildChunkUpdatePayload.__name__])
     @service_api_ns.doc("update_child_chunk")
     @service_api_ns.doc(description="Update a specific child chunk")
     @service_api_ns.doc(

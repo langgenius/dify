@@ -35,7 +35,7 @@ class FilePreviewApi(Resource):
     Files can only be accessed if they belong to messages within the requesting app's context.
     """
 
-    @service_api_ns.expect(service_api_ns.models[FilePreviewQuery.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[FilePreviewQuery.__name__])
     @service_api_ns.doc("preview_file")
     @service_api_ns.doc(description="Preview or download a file uploaded via Service API")
     @service_api_ns.doc(params={"file_id": "UUID of the file to preview"})

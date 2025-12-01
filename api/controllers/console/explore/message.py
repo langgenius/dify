@@ -67,7 +67,7 @@ register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, Mor
 )
 class MessageListApi(InstalledAppResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
-    @console_ns.expect(console_ns.models[MessageListQuery.__name__], validate=True)
+    @console_ns.expect(console_ns.models[MessageListQuery.__name__])
     def get(self, installed_app):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
@@ -102,7 +102,7 @@ class MessageListApi(InstalledAppResource):
     endpoint="installed_app_message_feedback",
 )
 class MessageFeedbackApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
     def post(self, installed_app, message_id):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
@@ -130,7 +130,7 @@ class MessageFeedbackApi(InstalledAppResource):
     endpoint="installed_app_more_like_this",
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[MoreLikeThisQuery.__name__], validate=True)
+    @console_ns.expect(console_ns.models[MoreLikeThisQuery.__name__])
     def get(self, installed_app, message_id):
         current_user, _ = current_account_with_tenant()
         app_model = installed_app.app

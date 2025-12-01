@@ -187,7 +187,7 @@ class DatasetListApi(DatasetApiResource):
         response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
         return response, 200
 
-    @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
     @service_api_ns.doc("create_dataset")
     @service_api_ns.doc(description="Create a new dataset")
     @service_api_ns.doc(
@@ -300,7 +300,7 @@ class DatasetApi(DatasetApiResource):
 
         return data, 200
 
-    @service_api_ns.expect(service_api_ns.models[DatasetUpdatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[DatasetUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset")
     @service_api_ns.doc(description="Update an existing dataset")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -506,7 +506,7 @@ class DatasetTagsApi(DatasetApiResource):
 
         return tags, 200
 
-    @service_api_ns.expect(service_api_ns.models[TagCreatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[TagCreatePayload.__name__])
     @service_api_ns.doc("create_dataset_tag")
     @service_api_ns.doc(description="Add a knowledge type tag")
     @service_api_ns.doc(
@@ -530,7 +530,7 @@ class DatasetTagsApi(DatasetApiResource):
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
         return response, 200
 
-    @service_api_ns.expect(service_api_ns.models[TagUpdatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[TagUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset_tag")
     @service_api_ns.doc(description="Update a knowledge type tag")
     @service_api_ns.doc(
@@ -558,7 +558,7 @@ class DatasetTagsApi(DatasetApiResource):
 
         return response, 200
 
-    @service_api_ns.expect(service_api_ns.models[TagDeletePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[TagDeletePayload.__name__])
     @service_api_ns.doc("delete_dataset_tag")
     @service_api_ns.doc(description="Delete a knowledge type tag")
     @service_api_ns.doc(
@@ -580,7 +580,7 @@ class DatasetTagsApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/tags/binding")
 class DatasetTagBindingApi(DatasetApiResource):
-    @service_api_ns.expect(service_api_ns.models[TagBindingPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[TagBindingPayload.__name__])
     @service_api_ns.doc("bind_dataset_tags")
     @service_api_ns.doc(description="Bind tags to a dataset")
     @service_api_ns.doc(
@@ -605,7 +605,7 @@ class DatasetTagBindingApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/tags/unbinding")
 class DatasetTagUnbindingApi(DatasetApiResource):
-    @service_api_ns.expect(service_api_ns.models[TagUnbindingPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[TagUnbindingPayload.__name__])
     @service_api_ns.doc("unbind_dataset_tag")
     @service_api_ns.doc(description="Unbind a tag from a dataset")
     @service_api_ns.doc(

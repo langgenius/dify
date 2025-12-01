@@ -29,7 +29,7 @@ register_schema_models(console_ns, WebsiteCrawlPayload, WebsiteCrawlStatusQuery)
 class WebsiteCrawlApi(Resource):
     @console_ns.doc("crawl_website")
     @console_ns.doc(description="Crawl website content")
-    @console_ns.expect(console_ns.models[WebsiteCrawlPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[WebsiteCrawlPayload.__name__])
     @console_ns.response(200, "Website crawl initiated successfully")
     @console_ns.response(400, "Invalid crawl parameters")
     @setup_required
@@ -57,7 +57,7 @@ class WebsiteCrawlStatusApi(Resource):
     @console_ns.doc("get_crawl_status")
     @console_ns.doc(description="Get website crawl status")
     @console_ns.doc(params={"job_id": "Crawl job ID", "provider": "Crawl provider (firecrawl/watercrawl/jinareader)"})
-    @console_ns.expect(console_ns.models[WebsiteCrawlStatusQuery.__name__], validate=True)
+    @console_ns.expect(console_ns.models[WebsiteCrawlStatusQuery.__name__])
     @console_ns.response(200, "Crawl status retrieved successfully")
     @console_ns.response(404, "Crawl job not found")
     @console_ns.response(400, "Invalid provider")

@@ -44,7 +44,7 @@ register_schema_model(console_ns, WorkflowRunPayload)
 
 @console_ns.route("/installed-apps/<uuid:installed_app_id>/workflows/run")
 class InstalledAppWorkflowRunApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[WorkflowRunPayload.__name__])
     def post(self, installed_app: InstalledApp):
         """
         Run workflow

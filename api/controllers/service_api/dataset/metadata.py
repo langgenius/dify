@@ -27,7 +27,7 @@ register_schema_models(service_api_ns, MetadataArgs, MetadataOperationData)
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata")
 class DatasetMetadataCreateServiceApi(DatasetApiResource):
-    @service_api_ns.expect(service_api_ns.models[MetadataArgs.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[MetadataArgs.__name__])
     @service_api_ns.doc("create_dataset_metadata")
     @service_api_ns.doc(description="Create metadata for a dataset")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -73,7 +73,7 @@ class DatasetMetadataCreateServiceApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/metadata/<uuid:metadata_id>")
 class DatasetMetadataServiceApi(DatasetApiResource):
-    @service_api_ns.expect(service_api_ns.models[MetadataUpdatePayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[MetadataUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset_metadata")
     @service_api_ns.doc(description="Update metadata name")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "metadata_id": "Metadata ID"})
@@ -169,7 +169,7 @@ class DatasetMetadataBuiltInFieldActionServiceApi(DatasetApiResource):
 
 @service_api_ns.route("/datasets/<uuid:dataset_id>/documents/metadata")
 class DocumentMetadataEditServiceApi(DatasetApiResource):
-    @service_api_ns.expect(service_api_ns.models[MetadataOperationData.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[MetadataOperationData.__name__])
     @service_api_ns.doc("update_documents_metadata")
     @service_api_ns.doc(description="Update metadata for multiple documents")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})

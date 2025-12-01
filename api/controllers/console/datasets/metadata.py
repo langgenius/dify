@@ -32,7 +32,7 @@ class DatasetMetadataCreateApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @marshal_with(dataset_metadata_fields)
-    @console_ns.expect(console_ns.models[MetadataArgs.__name__], validate=True)
+    @console_ns.expect(console_ns.models[MetadataArgs.__name__])
     def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
@@ -65,7 +65,7 @@ class DatasetMetadataApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @marshal_with(dataset_metadata_fields)
-    @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
     def patch(self, dataset_id, metadata_id):
         current_user, _ = current_account_with_tenant()
         payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
@@ -136,7 +136,7 @@ class DocumentMetadataEditApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    @console_ns.expect(console_ns.models[MetadataOperationData.__name__], validate=True)
+    @console_ns.expect(console_ns.models[MetadataOperationData.__name__])
     def post(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)

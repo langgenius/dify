@@ -256,7 +256,7 @@ class DatasetDocumentSegmentAddApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[SegmentCreatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[SegmentCreatePayload.__name__])
     def post(self, dataset_id, document_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -307,7 +307,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[SegmentUpdatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[SegmentUpdatePayload.__name__])
     def patch(self, dataset_id, document_id, segment_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -414,7 +414,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[BatchImportPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[BatchImportPayload.__name__])
     def post(self, dataset_id, document_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -481,7 +481,7 @@ class ChildChunkAddApi(Resource):
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[ChildChunkCreatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ChildChunkCreatePayload.__name__])
     def post(self, dataset_id, document_id, segment_id):
         current_user, current_tenant_id = current_account_with_tenant()
 
@@ -695,7 +695,7 @@ class ChildChunkUpdateApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_rate_limit_check("knowledge")
-    @console_ns.expect(console_ns.models[ChildChunkUpdatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ChildChunkUpdatePayload.__name__])
     def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
         current_user, current_tenant_id = current_account_with_tenant()
 

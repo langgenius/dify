@@ -31,7 +31,7 @@ class EnterpriseWorkspace(Resource):
     @enterprise_inner_api_only
     @inner_api_ns.doc("create_enterprise_workspace")
     @inner_api_ns.doc(description="Create a new enterprise workspace with owner assignment")
-    @inner_api_ns.expect(inner_api_ns.models[WorkspaceCreatePayload.__name__], validate=True)
+    @inner_api_ns.expect(inner_api_ns.models[WorkspaceCreatePayload.__name__])
     @inner_api_ns.doc(
         responses={
             200: "Workspace created successfully",
@@ -72,7 +72,7 @@ class EnterpriseWorkspaceNoOwnerEmail(Resource):
     @enterprise_inner_api_only
     @inner_api_ns.doc("create_enterprise_workspace_ownerless")
     @inner_api_ns.doc(description="Create a new enterprise workspace without initial owner assignment")
-    @inner_api_ns.expect(inner_api_ns.models[WorkspaceOwnerlessPayload.__name__], validate=True)
+    @inner_api_ns.expect(inner_api_ns.models[WorkspaceOwnerlessPayload.__name__])
     @inner_api_ns.doc(
         responses={
             200: "Workspace created successfully",

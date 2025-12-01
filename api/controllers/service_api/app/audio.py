@@ -98,7 +98,7 @@ register_schema_model(service_api_ns, TextToAudioPayload)
 
 @service_api_ns.route("/text-to-audio")
 class TextApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[TextToAudioPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[TextToAudioPayload.__name__])
     @service_api_ns.doc("text_to_audio")
     @service_api_ns.doc(description="Convert text to audio using text-to-speech")
     @service_api_ns.doc(

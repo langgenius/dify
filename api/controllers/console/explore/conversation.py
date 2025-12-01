@@ -43,7 +43,7 @@ register_schema_models(console_ns, ConversationListQuery, ConversationRenamePayl
 )
 class ConversationListApi(InstalledAppResource):
     @marshal_with(conversation_infinite_scroll_pagination_fields)
-    @console_ns.expect(console_ns.models[ConversationListQuery.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ConversationListQuery.__name__])
     def get(self, installed_app):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
@@ -107,7 +107,7 @@ class ConversationApi(InstalledAppResource):
 )
 class ConversationRenameApi(InstalledAppResource):
     @marshal_with(simple_conversation_fields)
-    @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ConversationRenamePayload.__name__])
     def post(self, installed_app, c_id):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)

@@ -159,7 +159,7 @@ class ExternalApiTemplateListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__])
     def post(self):
         current_user, current_tenant_id = current_account_with_tenant()
         payload = ExternalKnowledgeApiPayload.model_validate(console_ns.payload or {})
@@ -201,7 +201,7 @@ class ExternalApiTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ExternalKnowledgeApiPayload.__name__])
     def patch(self, external_knowledge_api_id):
         current_user, current_tenant_id = current_account_with_tenant()
         external_knowledge_api_id = str(external_knowledge_api_id)
@@ -254,7 +254,7 @@ class ExternalApiUseCheckApi(Resource):
 class ExternalDatasetCreateApi(Resource):
     @console_ns.doc("create_external_dataset")
     @console_ns.doc(description="Create external knowledge dataset")
-    @console_ns.expect(console_ns.models[ExternalDatasetCreatePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ExternalDatasetCreatePayload.__name__])
     @console_ns.response(201, "External dataset created successfully", dataset_detail_model)
     @console_ns.response(400, "Invalid parameters")
     @console_ns.response(403, "Permission denied")
@@ -289,7 +289,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
     @console_ns.doc("test_external_knowledge_retrieval")
     @console_ns.doc(description="Test external knowledge retrieval for dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.expect(console_ns.models[ExternalHitTestingPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ExternalHitTestingPayload.__name__])
     @console_ns.response(200, "External hit testing completed successfully")
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(400, "Invalid parameters")
@@ -330,7 +330,7 @@ class BedrockRetrievalApi(Resource):
     # this api is only for internal testing
     @console_ns.doc("bedrock_retrieval_test")
     @console_ns.doc(description="Bedrock retrieval test (internal use only)")
-    @console_ns.expect(console_ns.models[BedrockRetrievalPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[BedrockRetrievalPayload.__name__])
     @console_ns.response(200, "Bedrock retrieval test completed")
     def post(self):
         payload = BedrockRetrievalPayload.model_validate(console_ns.payload or {})

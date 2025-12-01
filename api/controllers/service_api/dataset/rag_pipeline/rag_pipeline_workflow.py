@@ -102,7 +102,7 @@ class DatasourceNodeRunApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__])
     def post(self, tenant_id: str, dataset_id: str, node_id: str):
         """Resource for getting datasource plugins."""
         payload = DatasourceNodeRunPayload.model_validate(service_api_ns.payload or {})
@@ -159,7 +159,7 @@ class PipelineRunApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
-    @service_api_ns.expect(service_api_ns.models[PipelineRunApiEntity.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[PipelineRunApiEntity.__name__])
     def post(self, tenant_id: str, dataset_id: str):
         """Resource for running a rag pipeline."""
         payload = PipelineRunApiEntity.model_validate(service_api_ns.payload or {})

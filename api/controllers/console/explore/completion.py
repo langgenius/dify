@@ -66,7 +66,7 @@ register_schema_models(console_ns, CompletionMessagePayload, ChatMessagePayload)
     endpoint="installed_app_completion",
 )
 class CompletionApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__])
     def post(self, installed_app):
         app_model = installed_app.app
         if app_model.mode != AppMode.COMPLETION:
@@ -139,7 +139,7 @@ class CompletionStopApi(InstalledAppResource):
     endpoint="installed_app_chat_completion",
 )
 class ChatApi(InstalledAppResource):
-    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
     def post(self, installed_app):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)

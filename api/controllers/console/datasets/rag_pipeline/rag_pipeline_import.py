@@ -45,7 +45,7 @@ class RagPipelineImportApi(Resource):
     @account_initialization_required
     @edit_permission_required
     @marshal_with(pipeline_import_fields)
-    @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__])
     def post(self):
         # Check user role first
         current_user, _ = current_account_with_tenant()

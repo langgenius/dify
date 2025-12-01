@@ -93,7 +93,7 @@ def build_message_infinite_scroll_pagination_model(api_or_ns: Namespace):
 
 @service_api_ns.route("/messages")
 class MessageListApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[MessageListQuery.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[MessageListQuery.__name__])
     @service_api_ns.doc("list_messages")
     @service_api_ns.doc(description="List messages in a conversation")
     @service_api_ns.doc(
@@ -130,7 +130,7 @@ class MessageListApi(Resource):
 
 @service_api_ns.route("/messages/<uuid:message_id>/feedbacks")
 class MessageFeedbackApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[MessageFeedbackPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[MessageFeedbackPayload.__name__])
     @service_api_ns.doc("create_message_feedback")
     @service_api_ns.doc(description="Submit feedback for a message")
     @service_api_ns.doc(params={"message_id": "Message ID"})
@@ -167,7 +167,7 @@ class MessageFeedbackApi(Resource):
 
 @service_api_ns.route("/app/feedbacks")
 class AppGetFeedbacksApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[FeedbackListQuery.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[FeedbackListQuery.__name__])
     @service_api_ns.doc("get_app_feedbacks")
     @service_api_ns.doc(description="Get all feedbacks for the application")
     @service_api_ns.doc(

@@ -19,7 +19,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @console_ns.doc("test_dataset_retrieval")
     @console_ns.doc(description="Test dataset knowledge retrieval")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.expect(console_ns.models[HitTestingPayload.__name__], validate=True)
+    @console_ns.expect(console_ns.models[HitTestingPayload.__name__])
     @console_ns.response(200, "Hit testing completed successfully")
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(400, "Invalid parameters")

@@ -30,6 +30,7 @@ register_schema_model(console_ns, RagPipelineDatasetImportPayload)
 
 @console_ns.route("/rag/pipeline/dataset")
 class CreateRagPipelineDatasetApi(Resource):
+    @console_ns.expect(console_ns.models[RagPipelineDatasetImportPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required

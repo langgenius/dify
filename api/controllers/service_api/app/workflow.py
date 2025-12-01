@@ -120,7 +120,7 @@ class WorkflowRunDetailApi(Resource):
 
 @service_api_ns.route("/workflows/run")
 class WorkflowRunApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__])
     @service_api_ns.doc("run_workflow")
     @service_api_ns.doc(description="Execute a workflow")
     @service_api_ns.doc(
@@ -176,7 +176,7 @@ class WorkflowRunApi(Resource):
 
 @service_api_ns.route("/workflows/<string:workflow_id>/run")
 class WorkflowRunByIdApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__])
     @service_api_ns.doc("run_workflow_by_id")
     @service_api_ns.doc(description="Execute a specific workflow by ID")
     @service_api_ns.doc(params={"workflow_id": "Workflow ID to execute"})
@@ -271,7 +271,7 @@ class WorkflowTaskStopApi(Resource):
 
 @service_api_ns.route("/workflows/logs")
 class WorkflowAppLogApi(Resource):
-    @service_api_ns.expect(service_api_ns.models[WorkflowLogQuery.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[WorkflowLogQuery.__name__])
     @service_api_ns.doc("get_workflow_logs")
     @service_api_ns.doc(description="Get workflow execution logs")
     @service_api_ns.doc(
