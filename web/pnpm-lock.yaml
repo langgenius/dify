@@ -94,8 +94,8 @@ importers:
         specifier: ^0.37.0
         version: 0.37.0
       '@lexical/text':
-        specifier: ^0.36.2
-        version: 0.36.2
+        specifier: ^0.38.2
+        version: 0.38.2
       '@lexical/utils':
         specifier: ^0.37.0
         version: 0.37.0
@@ -2086,6 +2086,9 @@ packages:
 
   '@lexical/text@0.36.2':
     resolution: {integrity: sha512-IbbqgRdMAD6Uk9b2+qSVoy+8RVcczrz6OgXvg39+EYD+XEC7Rbw7kDTWzuNSJJpP7vxSO8YDZSaIlP5gNH3qKA==}
+
+  '@lexical/text@0.38.2':
+    resolution: {integrity: sha512-+juZxUugtC4T37aE3P0l4I9tsWbogDUnTI/mgYk4Ht9g+gLJnhQkzSA8chIyfTxbj5i0A8yWrUUSw+/xA7lKUQ==}
 
   '@lexical/utils@0.36.2':
     resolution: {integrity: sha512-P9+t2Ob10YNGYT/PWEER+1EqH8SAjCNRn+7SBvKbr0IdleGF2JvzbJwAWaRwZs1c18P11XdQZ779dGvWlfwBIw==}
@@ -10366,6 +10369,10 @@ snapshots:
       lexical: 0.37.0
 
   '@lexical/text@0.36.2':
+    dependencies:
+      lexical: 0.37.0
+
+  '@lexical/text@0.38.2':
     dependencies:
       lexical: 0.37.0
 
