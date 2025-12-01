@@ -461,10 +461,8 @@ class TestPluginValidation:
         """Test fetching readme when it doesn't exist (404 error)."""
         # Arrange: Mock HTTP 404 error - the actual implementation catches HTTPError from requests library
         mock_error = HTTPError("404 Not Found")
-        
-        with patch.object(
-            plugin_installer, "_request_with_plugin_daemon_response", side_effect=mock_error
-        ):
+
+        with patch.object(plugin_installer, "_request_with_plugin_daemon_response", side_effect=mock_error):
             # Act: Fetch non-existent readme
             result = plugin_installer.fetch_plugin_readme("test-tenant", "test-org/test-plugin/1.0.0", "en_US")
 
@@ -600,9 +598,7 @@ class TestDependencyResolution:
             plugin_installer, "_request_with_plugin_daemon_response", return_value=mock_missing
         ) as mock_request:
             # Act: Fetch missing dependencies
-            result = plugin_installer.fetch_missing_dependencies(
-                "test-tenant", ["plugin1/1.0.0", "plugin2/2.0.0"]
-            )
+            result = plugin_installer.fetch_missing_dependencies("test-tenant", ["plugin1/1.0.0", "plugin2/2.0.0"])
 
             # Assert: Verify missing dependencies were identified
             assert len(result) == 2
@@ -915,7 +911,7 @@ class TestPluginResourceRequirements:
     def test_default_resource_requirements(self):
         """
         Test that plugin resource requirements can be created with default values.
-        
+
         Resource requirements define the memory and permissions needed for a plugin to run.
         This test verifies that a basic resource requirement with only memory can be created.
         """
@@ -929,7 +925,7 @@ class TestPluginResourceRequirements:
     def test_resource_requirements_with_tool_permission(self):
         """
         Test plugin resource requirements with tool permissions enabled.
-        
+
         Tool permissions allow a plugin to provide tool functionality.
         This test verifies that tool permissions can be properly configured.
         """
@@ -950,7 +946,7 @@ class TestPluginResourceRequirements:
     def test_resource_requirements_with_model_permissions(self):
         """
         Test plugin resource requirements with model permissions.
-        
+
         Model permissions allow a plugin to provide various AI model capabilities
         including LLM, text embedding, rerank, TTS, speech-to-text, and moderation.
         """
@@ -983,7 +979,7 @@ class TestPluginResourceRequirements:
     def test_resource_requirements_with_storage_permission(self):
         """
         Test plugin resource requirements with storage permissions.
-        
+
         Storage permissions allow a plugin to persist data with size limits.
         The size must be between 1KB (1024 bytes) and 1GB (1073741824 bytes).
         """
@@ -1002,7 +998,7 @@ class TestPluginResourceRequirements:
     def test_resource_requirements_with_endpoint_permission(self):
         """
         Test plugin resource requirements with endpoint permissions.
-        
+
         Endpoint permissions allow a plugin to expose HTTP endpoints.
         """
         # Arrange & Act: Create resource requirements with endpoint permissions
@@ -1019,7 +1015,7 @@ class TestPluginResourceRequirements:
     def test_resource_requirements_with_node_permission(self):
         """
         Test plugin resource requirements with node permissions.
-        
+
         Node permissions allow a plugin to provide custom workflow nodes.
         """
         # Arrange & Act: Create resource requirements with node permissions
@@ -1040,7 +1036,7 @@ class TestPluginInstallationSources:
     def test_marketplace_installation_source(self):
         """
         Test plugin installation from marketplace source.
-        
+
         Marketplace is the official plugin distribution channel where
         verified and community plugins are available for installation.
         """
@@ -1054,7 +1050,7 @@ class TestPluginInstallationSources:
     def test_github_installation_source(self):
         """
         Test plugin installation from GitHub source.
-        
+
         GitHub source allows installing plugins directly from GitHub repositories,
         useful for development and testing unreleased versions.
         """
@@ -1068,7 +1064,7 @@ class TestPluginInstallationSources:
     def test_package_installation_source(self):
         """
         Test plugin installation from package source.
-        
+
         Package source allows installing plugins from local .difypkg files,
         useful for private or custom plugins.
         """
@@ -1082,7 +1078,7 @@ class TestPluginInstallationSources:
     def test_remote_installation_source(self):
         """
         Test plugin installation from remote source.
-        
+
         Remote source allows installing plugins from custom remote URLs.
         """
         # Arrange & Act: Use remote as installation source
@@ -1104,7 +1100,7 @@ class TestPluginBundleOperations:
     def test_upload_bundle_with_marketplace_dependencies(self, plugin_installer):
         """
         Test uploading a bundle with marketplace dependencies.
-        
+
         Marketplace dependencies reference plugins available in the official marketplace
         by organization, plugin name, and version.
         """
@@ -1133,7 +1129,7 @@ class TestPluginBundleOperations:
     def test_upload_bundle_with_github_dependencies(self, plugin_installer):
         """
         Test uploading a bundle with GitHub dependencies.
-        
+
         GitHub dependencies reference plugins hosted on GitHub repositories
         with specific releases and package files.
         """
@@ -1165,7 +1161,7 @@ class TestPluginBundleOperations:
     def test_upload_bundle_with_package_dependencies(self, plugin_installer):
         """
         Test uploading a bundle with package dependencies.
-        
+
         Package dependencies include the full plugin manifest and unique identifier,
         allowing for self-contained plugin bundles.
         """
@@ -1208,7 +1204,7 @@ class TestPluginBundleOperations:
     def test_upload_bundle_with_mixed_dependencies(self, plugin_installer):
         """
         Test uploading a bundle with multiple dependency types.
-        
+
         Real-world plugin bundles often have dependencies from various sources:
         marketplace plugins, GitHub repositories, and packaged plugins.
         """
@@ -1251,7 +1247,7 @@ class TestPluginTaskStatusTransitions:
     def test_task_status_pending(self, plugin_installer):
         """
         Test plugin installation task in pending status.
-        
+
         Pending status indicates the task has been created but not yet started.
         No plugins have been processed yet.
         """
@@ -1278,7 +1274,7 @@ class TestPluginTaskStatusTransitions:
     def test_task_status_running(self, plugin_installer):
         """
         Test plugin installation task in running status.
-        
+
         Running status indicates the task is actively installing plugins.
         Some plugins may be completed while others are still in progress.
         """
@@ -1306,7 +1302,7 @@ class TestPluginTaskStatusTransitions:
     def test_task_status_success(self, plugin_installer):
         """
         Test plugin installation task in success status.
-        
+
         Success status indicates all plugins in the task have been
         successfully installed without errors.
         """
@@ -1333,7 +1329,7 @@ class TestPluginTaskStatusTransitions:
     def test_task_status_failed(self, plugin_installer):
         """
         Test plugin installation task in failed status.
-        
+
         Failed status indicates the task encountered errors during installation.
         Some plugins may have been installed before the failure occurred.
         """
@@ -1363,7 +1359,7 @@ class TestPluginI18nSupport:
     def test_plugin_with_multiple_languages(self):
         """
         Test plugin declaration with multiple language support.
-        
+
         Plugins should support multiple languages for descriptions and labels
         to provide localized experiences for users worldwide.
         """
@@ -1395,13 +1391,13 @@ class TestPluginI18nSupport:
     def test_plugin_readme_language_variants(self):
         """
         Test fetching plugin README in different languages.
-        
+
         Plugins can provide README files in multiple languages to help
         users understand the plugin in their preferred language.
         """
         # Arrange: Create plugin installer instance
         plugin_installer = PluginInstaller()
-        
+
         # Mock README responses for different languages
         english_readme = PluginReadmeResponse(
             content="# English README\n\nThis is the English version.", language="en_US"
