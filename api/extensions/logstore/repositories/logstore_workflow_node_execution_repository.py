@@ -11,7 +11,7 @@ import os
 import time
 from collections.abc import Sequence
 from datetime import datetime
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker

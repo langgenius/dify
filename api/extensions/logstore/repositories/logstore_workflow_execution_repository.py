@@ -2,7 +2,7 @@ import json
 import logging
 import os
 import time
-from typing import Optional, Union
+from typing import Union
 
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
