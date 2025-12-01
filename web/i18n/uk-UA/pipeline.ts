@@ -33,7 +33,7 @@ const translation = {
   },
   ragToolSuggestions: {
     title: 'Пропозиції щодо RAG',
-    noRecommendationPluginsInstalled: 'No recommendation plugins installed',
+    noRecommendationPlugins: 'Немає рекомендованих плагінів, більше шукайте в <CustomLink>Marketplace</CustomLink>',
   },
 }
 

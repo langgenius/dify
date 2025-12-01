@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Опубліковано портфель знань',
+      tip: '<CustomLink>Перейти до Документів</CustomLink> для додавання або керування документами.',
     },
     error: {
       message: 'Не вдалося опублікувати конвеєр знань',
@@ -54,6 +55,7 @@ const translation = {
     errorTip: 'Не вдалося експортувати DSL пайплайну',
   },
   details: {
+    createdBy: 'Автор: {{author}}',
     structure: 'Структура',
     structureTooltip: 'Структура фрагментів визначає, як документи розділяються та індексуються (пропонуючи режими «Загальні», «Батьки-дочірні елементи» та «Запитання й відповіді»), і є унікальною для кожної бази знань.',
   },
@@ -112,23 +114,32 @@ const translation = {
     characters: 'Символів',
     backToDataSource: 'Джерело даних',
     title: 'Додати документи',
+    selectOnlineDocumentTip: 'Обробити до {{count}} сторінок',
+    selectOnlineDriveTip: 'Обробити до {{count}} файлів, максимум {{fileSize}} МБ кожен',
   },
   documentSettings: {
     title: 'Параметри документа',
   },
-  onlineDocument: { },
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} сторінки',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Всі файли',
       searchPlaceholder: 'Пошук файлів...',
       allBuckets: 'Усі сегменти хмарного сховища',
+      searchResult: 'Знайдено {{searchResultsLength}} елементів у папці "{{folderName}}"',
     },
     emptyFolder: 'Ця папка порожня',
     emptySearchResult: 'Предметів не знайдено',
     resetKeywords: 'Скидання ключових слів',
     notSupportedFileType: 'Цей тип файлу не підтримується',
+    notConnected: '{{name}} не підключено',
+    notConnectedTip: 'Для синхронізації з {{name}} спочатку потрібно встановити з\'єднання з {{name}}.',
   },
-  credentialSelector: { },
+  credentialSelector: {
+    name: '{{pluginName}} від {{credentialName}}',
+  },
   conversion: {
     confirm: {
       title: 'Підтвердження',
