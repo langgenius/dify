@@ -1,12 +1,21 @@
 import logging
 import os
 import time
+from collections.abc import Sequence
 from typing import Any
 
 import sqlalchemy as sa
-from aliyun.log import GetLogsRequest, IndexConfig, IndexKeyConfig, IndexLineConfig, LogClient, LogItem, PutLogsRequest
-from aliyun.log.auth import AUTH_VERSION_4
-from aliyun.log.logexception import LogException
+from aliyun.log import (  # type: ignore[import-untyped]
+    GetLogsRequest,
+    IndexConfig,
+    IndexKeyConfig,
+    IndexLineConfig,
+    LogClient,
+    LogItem,
+    PutLogsRequest,
+)
+from aliyun.log.auth import AUTH_VERSION_4  # type: ignore[import-untyped]
+from aliyun.log.logexception import LogException  # type: ignore[import-untyped]
 from dotenv import load_dotenv
 from sqlalchemy.orm import DeclarativeBase
 
@@ -113,7 +122,7 @@ class AliyunLogStore:
         region: str = os.environ.get("ALIYUN_SLS_REGION", "")
 
         self.project_name: str = os.environ.get("ALIYUN_SLS_PROJECT_NAME", "")
-        self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 3650))
+        self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 30))
         self.log_enabled: bool = os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
 
         self.client = LogClient(endpoint, access_key_id, access_key_secret, auth_version=AUTH_VERSION_4, region=region)
@@ -159,7 +168,7 @@ class AliyunLogStore:
 
     def is_logstore_exist(self, logstore_name: str) -> bool:
         try:
-            res = self.client.get_logstore(self.project_name, logstore_name)
+            _ = self.client.get_logstore(self.project_name, logstore_name)
             return True
         except Exception as e:
             if e.args[0] == "LogStoreNotExist":
@@ -196,7 +205,7 @@ class AliyunLogStore:
 
     def is_index_exist(self, logstore_name: str) -> bool:
         try:
-            res = self.client.get_index_config(self.project_name, logstore_name)
+            _ = self.client.get_index_config(self.project_name, logstore_name)
             return True
         except Exception as e:
             if e.args[0] == "IndexConfigNotExist":
@@ -482,7 +491,7 @@ class AliyunLogStore:
                     len(required_keys),
                 )
 
-    def put_log(self, logstore: str, contents: list[tuple[str, str]]) -> None:
+    def put_log(self, logstore: str, contents: Sequence[tuple[str, str]]) -> None:
         log_item = LogItem(contents=contents)
         request = PutLogsRequest(project=self.project_name, logstore=logstore, logitems=[log_item])
 
@@ -547,7 +556,8 @@ class AliyunLogStore:
         try:
             response = self.client.get_logs(request)
             result = []
-            for log in response.get_logs():
+            logs = response.get_logs() if response else []
+            for log in logs:
                 result.append(log.get_contents())
 
             # Log result count if SQLALCHEMY_ECHO is enabled
@@ -625,7 +635,8 @@ class AliyunLogStore:
             response = self.client.get_logs(request)
 
             result = []
-            for log in response.get_logs():
+            logs = response.get_logs() if response else []
+            for log in logs:
                 result.append(log.get_contents())
 
             # Log result count if SQLALCHEMY_ECHO is enabled
