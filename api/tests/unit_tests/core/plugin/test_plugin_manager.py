@@ -59,8 +59,8 @@ class TestPluginDiscovery:
         """Create a mock PluginEntity for testing."""
         return PluginEntity(
             id="entity-123",
-            created_at=datetime.datetime.now(),
-            updated_at=datetime.datetime.now(),
+            created_at=datetime.datetime(2023, 1, 1, 0, 0, 0),
+            updated_at=datetime.datetime(2023, 1, 1, 0, 0, 0),
             tenant_id="test-tenant",
             endpoints_setups=0,
             endpoints_active=0,
