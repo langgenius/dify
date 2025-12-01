@@ -863,8 +863,8 @@ class TestPluginCategoryDetection:
         # Assert: Verify category defaults to Extension when no provider is specified
         assert declaration.category == PluginCategory.Extension
 
-    def test_model_category_detection(self):
-        """Test that plugins with model providers are categorized as Model."""
+    def test_category_defaults_to_extension_without_model_provider(self):
+        """Test that plugins without model providers default to Extension category."""
         # Arrange: Create declaration - without a model provider entity, defaults to Extension
         # The category is auto-detected in the model_validator based on provider presence
         declaration = PluginDeclaration(
