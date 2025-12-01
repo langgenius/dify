@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(tùy chọn & ẩn)',
     goTo: 'Đi tới',
     startNode: 'Nút Bắt đầu',
+    openWorkflow: 'Mở quy trình làm việc',
   },
   nodes: {
     common: {

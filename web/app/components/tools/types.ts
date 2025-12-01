@@ -77,6 +77,8 @@ export type Collection = {
     timeout?: number
     sse_read_timeout?: number
   }
+  // Workflow
+  workflow_app_id?: string
 }
 
 export type ToolParameter = {

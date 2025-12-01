@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(isteğe bağlı ve gizli)',
     goTo: 'Git',
     startNode: 'Başlangıç Düğümü',
+    openWorkflow: 'İş Akışını Aç',
   },
   nodes: {
     common: {
