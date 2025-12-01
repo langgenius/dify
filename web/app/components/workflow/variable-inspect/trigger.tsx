@@ -95,7 +95,11 @@ const VariableInspectTrigger: FC = () => {
             className={cn('system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent hover:text-text-accent',
               nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
             )}
-            onClick={handleClearAll}
+            onClick={() => {
+              if (getNodesReadOnly())
+                return
+              handleClearAll()
+            }}
           >
             {t('workflow.debug.variableInspect.trigger.clear')}
           </div>

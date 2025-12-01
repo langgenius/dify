@@ -98,6 +98,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Eventos de Gatilho Ilimitados',
       tooltip: 'O número de eventos que iniciam automaticamente fluxos de trabalho através de disparadores de Plugin, Agendamento ou Webhook.',
+      sandbox: '{{count,number}} Acionar Eventos',
+      professional: '{{count,number}} Eventos de disparo/mês',
     },
     workflowExecution: {
       tooltip: 'Prioridade e velocidade da fila de execução de fluxo de trabalho.',
@@ -107,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Eventos de Gatilho/fluxo de trabalho ilimitados',
+      limited: 'Até {{count}} Acionadores/workflow',
+    },
+    title: {
+      plans: 'planos',
+      description: 'Selecione o plano que melhor se adapta às necessidades da sua equipe.',
     },
   },
   plans: {
@@ -129,16 +136,14 @@ const translation = {
       name: 'Empresa',
       description: 'Obtenha capacidades completas e suporte para sistemas críticos em larga escala.',
       includesTitle: 'Tudo no plano Equipe, além de:',
-      features: {
-      },
+      features: ['Soluções de Implantação Escaláveis de Nível Empresarial', 'Autorização de Licença Comercial', 'Recursos Exclusivos para Empresas', 'Múltiplos Espaços de Trabalho e Gestão Empresarial', 'SSO', 'SLAs negociados pelos parceiros da Dify', 'Segurança e Controles Avançados', 'Atualizações e Manutenção pela Dify Oficialmente', 'Suporte Técnico Profissional'],
       btnText: 'Contate Vendas',
       priceTip: 'Faturamento Anual Apenas',
       price: 'Custom',
       for: 'Para equipes de grande porte',
     },
     community: {
-      features: {
-      },
+      features: ['Todos os Recursos Principais Lançados no Repositório Público', 'Espaço de Trabalho Único', 'Está em conformidade com a Licença de Código Aberto Dify'],
       name: 'Comunidade',
       description: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
       includesTitle: 'Recursos Gratuitos:',
@@ -147,8 +152,7 @@ const translation = {
       for: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
     },
     premium: {
-      features: {
-      },
+      features: ['Confiabilidade Autogerenciada por Diversos Provedores de Nuvem', 'Espaço de Trabalho Único', 'Personalização de Logo e Marca do WebApp', 'Suporte Prioritário por E-mail e Chat'],
       includesTitle: 'Tudo da Comunidade, além de:',
       for: 'Para organizações e equipes de médio porte',
       price: 'Escalável',
@@ -184,6 +188,7 @@ const translation = {
     buildApps: 'Desenvolver Apps',
     perMonth: 'por mês',
     triggerEvents: 'Eventos de Gatilho',
+    resetsIn: 'Reinicia em {{count,number}} dias',
   },
   teamMembers: 'Membros da equipe',
   triggerLimitModal: {

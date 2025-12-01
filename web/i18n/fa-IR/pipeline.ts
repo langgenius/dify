@@ -28,10 +28,12 @@ const translation = {
       viewDetails: 'مشاهده جزئیات',
       loading: 'پردازش... لطفاً منتظر بمانید',
       error: 'خطا در حین اجرا رخ داد',
+      footerTip: 'در حالت اجرای آزمایشی، پیش‌نمایش تا {{count}} بخش',
     },
   },
   ragToolSuggestions: {
     title: 'پیشنهاداتی برای RAG',
+    noRecommendationPlugins: 'هیچ افزونه‌ای پیشنهادی وجود ندارد، برای یافتن بیشتر به <CustomLink>بازار</CustomLink> مراجعه کنید',
   },
 }
 

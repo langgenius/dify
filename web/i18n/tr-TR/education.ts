@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: 'Endişelenmeyin — bu mevcut aboneliğinizi etkilemeyecek, ancak durumunuzu tekrar doğrulamazsanız yenilendiğinde eğitim indirimi almayacaksınız.',
+      title: 'Eğitim durumunuz {{date}} tarihinde sona erecektir',
     },
     stillInEducation: {
       title: 'Hala eğitimde misin?',

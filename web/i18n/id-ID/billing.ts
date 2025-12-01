@@ -8,6 +8,7 @@ const translation = {
     annotationQuota: 'Kuota Anotasi',
     perMonth: 'per bulan',
     triggerEvents: 'Pemicu Acara',
+    resetsIn: 'Diatur ulang dalam {{count,number}} hari',
   },
   upgradeBtn: {
     encourage: 'Tingkatkan Sekarang',
@@ -42,9 +43,12 @@ const translation = {
     },
     messageRequest: {
       tooltip: 'Kredit pesan disediakan untuk membantu Anda mencoba berbagai model OpenAI dengan mudah di Dify. Kredit digunakan berdasarkan jenis model. Setelah habis, Anda dapat beralih ke kunci API OpenAI Anda sendiri.',
+      title: 'kredit pesan {{count,number}}',
+      titlePerMonth: '{{count,number}} kredit pesan/bulan',
     },
     annotatedResponse: {
       tooltip: 'Pengeditan manual dan anotasi respons memberikan kemampuan menjawab pertanyaan berkualitas tinggi yang dapat disesuaikan untuk aplikasi. (Hanya berlaku di aplikasi Chat)',
+      title: 'Batas Kuota Anotasi {{count,number}}',
     },
     mostPopular: 'Populer',
     free: 'Bebas',
@@ -93,6 +97,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Peristiwa Pemicu Tak Terbatas',
       tooltip: 'Jumlah peristiwa yang secara otomatis memulai alur kerja melalui pemicu Plugin, Jadwal, atau Webhook.',
+      sandbox: '{{count,number}} Memicu Peristiwa',
+      professional: '{{count,number}} Pemicu Peristiwa/bulan',
     },
     workflowExecution: {
       priority: 'Eksekusi Alur Kerja Prioritas',
@@ -102,7 +108,21 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Pemicu/alur kerja tanpa batas',
+      limited: 'Hingga {{count}} Pemicu/alur kerja',
     },
+    title: {
+      plans: 'rencana',
+      description: 'Pilih paket yang paling sesuai dengan kebutuhan tim Anda.',
+    },
+    teamWorkspace: 'Ruang Kerja Tim {{count,number}}',
+    teamMember_one: 'Anggota Tim {{count,number}}',
+    teamMember_other: 'Anggota Tim {{count,number}}',
+    buildApps: 'Aplikasi {{count,number}}',
+    documents: '{{count,number}} Dokumen Pengetahuan',
+    vectorSpace: '{{size}} Penyimpanan Data Pengetahuan',
+    documentsRequestQuota: '{{count,number}} Permintaan Pengetahuan/menit',
+    apiRateLimitUnit: '{{count,number}}',
+    logsHistory: '{{days}} Riwayat log',
   },
   plans: {
     sandbox: {
@@ -121,8 +141,7 @@ const translation = {
       for: 'Untuk Tim Berukuran Menengah',
     },
     community: {
-      features: {
-      },
+      features: ['Semua Fitur Inti Dirilis di Bawah Repositori Publik', 'Ruang Kerja Tunggal', 'Mematuhi Lisensi Sumber Terbuka Dify'],
       price: 'Bebas',
       for: 'Untuk Pengguna Individu, Tim Kecil, atau Proyek Non-Komersial',
       name: 'Masyarakat',
@@ -131,8 +150,7 @@ const translation = {
       includesTitle: 'Fitur Gratis:',
     },
     premium: {
-      features: {
-      },
+      features: ['Keandalan yang Dikelola Sendiri oleh Berbagai Penyedia Cloud', 'Ruang Kerja Tunggal', 'Kostumisasi Logo & Merek WebApp', 'Dukungan Email & Obrolan Prioritas'],
       name: 'Premi',
       price: 'Scalable',
       priceTip: 'Berdasarkan Cloud Marketplace',
@@ -143,8 +161,7 @@ const translation = {
       btnText: 'Dapatkan Premium di',
     },
     enterprise: {
-      features: {
-      },
+      features: ['Solusi Penerapan Skala Besar Kelas Perusahaan', 'Otorisasi Lisensi Komersial', 'Fitur Eksklusif Perusahaan', 'Beberapa Ruang Kerja & Manajemen Perusahaan', 'SSO', 'SLA yang dinegosiasikan oleh Mitra Dify', 'Keamanan & Kontrol Lanjutan', 'Pembaruan dan Pemeliharaan oleh Dify Secara Resmi', 'Dukungan Teknis Profesional'],
       includesTitle: 'Semuanya mulai dari Premium, ditambah:',
       btnText: 'Hubungi Sales',
       price: 'Adat',

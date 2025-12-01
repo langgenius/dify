@@ -234,6 +234,10 @@ const translation = {
     disabled: 'Vô hiệu hóa',
     title: 'Giao diện lập trình dịch vụ',
   },
+  docAllEnabled_one: 'Tài liệu {{count}} đã được kích hoạt',
+  docAllEnabled_other: 'Tất cả các tài liệu {{count}} đã được kích hoạt',
+  partialEnabled_one: 'Tổng cộng {{count}} tài liệu, {{num}} có sẵn',
+  partialEnabled_other: 'Tổng cộng {{count}} tài liệu, {{num}} có sẵn',
 }
 
 export default translation

@@ -56,6 +56,8 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
   paramSchemas: Record<string, any>[]
   output_schema?: Record<string, any>
   credential_id?: string
+  use_end_user_credentials?: boolean
+  end_user_credential_type?: string
   meta?: PluginMeta
   plugin_id?: string
   provider_icon?: Collection['icon']
@@ -86,6 +88,8 @@ export type ToolValue = {
   enabled?: boolean
   extra?: Record<string, any>
   credential_id?: string
+  use_end_user_credentials?: boolean
+  end_user_credential_type?: string
 }
 
 export type DataSourceItem = {

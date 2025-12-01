@@ -98,6 +98,8 @@ const translation = {
     triggerEvents: {
       unlimited: '無限觸發事件',
       tooltip: '透過插件、排程或 Webhook 觸發器自動啟動工作流程的事件數量。',
+      sandbox: '{{count,number}} 觸發事件',
+      professional: '{{count,number}} 觸發事件/月',
     },
     workflowExecution: {
       standard: '標準工作流程執行',
@@ -107,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: '無限觸發器/工作流程',
+      limited: '最多 {{count}} 個觸發器/工作流程',
+    },
+    title: {
+      plans: '計劃',
+      description: '選擇最適合您團隊需求的方案。',
     },
   },
   plans: {
@@ -129,16 +136,14 @@ const translation = {
       name: 'Enterprise',
       description: '獲得大規模關鍵任務系統的完整功能和支援。',
       includesTitle: 'Team 計劃中的一切，加上：',
-      features: {
-      },
+      features: ['企業級可擴展部署解決方案', '商業許可授權', '專屬企業功能', '多工作區與企業管理', '單一登入', '由 Dify 合作夥伴協商的服務水平協議', '進階安全與控制', 'Dify 官方的更新與維護', '專業技術支援'],
       price: '自訂',
       btnText: '聯繫銷售',
       priceTip: '年度計費のみ',
       for: '適用於大規模團隊',
     },
     community: {
-      features: {
-      },
+      features: ['所有核心功能已在公共存儲庫中釋出', '單一工作區', '符合 Dify 開源授權'],
       includesTitle: '免費功能：',
       btnText: '開始使用社區',
       name: '社區',
@@ -147,8 +152,7 @@ const translation = {
       price: '免費',
     },
     premium: {
-      features: {
-      },
+      features: ['由各雲端服務提供商自主管理的可靠性', '單一工作區', 'WebApp 標誌與品牌自訂', '優先電子郵件與聊天支援'],
       for: '適用於中型組織和團隊',
       comingSoon: '微軟 Azure 與 Google Cloud 支持即將推出',
       priceTip: '根據雲端市場',
@@ -184,6 +188,7 @@ const translation = {
     teamMembers: '團隊成員',
     perMonth: '每月',
     triggerEvents: '觸發事件',
+    resetsIn: '{{count,number}} 天後重置',
   },
   teamMembers: '團隊成員',
   triggerLimitModal: {

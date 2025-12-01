@@ -325,6 +325,22 @@ const BasePanel: FC<BasePanelProps> = ({
       },
     })
   }, [handleNodeDataUpdateWithSyncDraft, id])
+  const handleEndUserCredentialChange = useCallback((enabled: boolean) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        use_end_user_credentials: enabled,
+      },
+    })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
+  const handleEndUserCredentialTypeChange = useCallback((type: string) => {
+    handleNodeDataUpdateWithSyncDraft({
+      id,
+      data: {
+        end_user_credential_type: type,
+      },
+    })
+  }, [handleNodeDataUpdateWithSyncDraft, id])
 
   const { setShowAccountSettingModal } = useModalContext()
 
@@ -365,6 +381,10 @@ const BasePanel: FC<BasePanelProps> = ({
     return !pluginDetail ? null : <ReadmeEntrance pluginDetail={pluginDetail as any} className='mt-auto' />
   }, [data.type, currToolCollection, currentDataSource, currentTriggerPlugin])
 
+  const selectedNode = useMemo(() => ({
+    id,
+    data,
+  }) as Node, [id, data])
   if (logParams.showSpecialResultPanel) {
     return (
       <div className={cn(
@@ -516,6 +536,11 @@ const BasePanel: FC<BasePanelProps> = ({
             needsToolAuth && (
               <PluginAuth
                 className='px-4 pb-2'
+                showConnectGuide
+                endUserCredentialEnabled={data.use_end_user_credentials}
+                endUserCredentialType={data.end_user_credential_type}
+                onEndUserCredentialChange={handleEndUserCredentialChange}
+                onEndUserCredentialTypeChange={handleEndUserCredentialTypeChange}
                 pluginPayload={{
                   provider: currToolCollection?.name || '',
                   providerType: currToolCollection?.type || '',
@@ -628,7 +653,7 @@ const BasePanel: FC<BasePanelProps> = ({
                   <div className='system-xs-regular mb-2 text-text-tertiary'>
                     {t('workflow.panel.addNextStep')}
                   </div>
-                  <NextStep selectedNode={{ id, data } as Node} />
+                  <NextStep selectedNode={selectedNode} />
                 </div>
               )
             }

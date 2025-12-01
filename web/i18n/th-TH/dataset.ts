@@ -233,6 +233,10 @@ const translation = {
     disabled: 'ถูกปิดใช้งาน',
     title: 'บริการ API',
   },
+  docAllEnabled_one: '{{count}} เอกสารถูกเปิดใช้งาน',
+  docAllEnabled_other: 'เอกสาร {{count}} ทั้งหมดเปิดใช้งานแล้ว',
+  partialEnabled_one: 'รวม {{count}} เอกสาร, {{num}} ใช้งานได้',
+  partialEnabled_other: 'รวม {{count}} เอกสาร, {{num}} ใช้งานได้',
 }
 
 export default translation

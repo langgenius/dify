@@ -234,6 +234,10 @@ const translation = {
     title: 'Сервисный API',
     disabled: 'Отключено',
   },
+  docAllEnabled_one: 'Документ {{count}} включен',
+  docAllEnabled_other: 'Все документы {{count}} включены',
+  partialEnabled_one: 'Всего {{count}} документов, доступно {{num}}',
+  partialEnabled_other: 'Всего {{count}} документов, доступно {{num}}',
 }
 
 export default translation

@@ -42,6 +42,10 @@ type Props = {
   onSave?: (value: Record<string, any>) => void
   credentialId?: string
   onAuthorizationItemClick?: (id: string) => void
+  useEndUserCredentialEnabled?: boolean
+  endUserCredentialType?: string
+  onEndUserCredentialChange?: (enabled: boolean) => void
+  onEndUserCredentialTypeChange?: (type: string) => void
 }
 
 const SettingBuiltInTool: FC<Props> = ({
@@ -56,6 +60,10 @@ const SettingBuiltInTool: FC<Props> = ({
   onSave,
   credentialId,
   onAuthorizationItemClick,
+  useEndUserCredentialEnabled,
+  endUserCredentialType,
+  onEndUserCredentialChange,
+  onEndUserCredentialTypeChange,
 }) => {
   const { locale } = useContext(I18n)
   const language = getLanguage(locale)
@@ -220,6 +228,10 @@ const SettingBuiltInTool: FC<Props> = ({
                     }}
                     credentialId={credentialId}
                     onAuthorizationItemClick={onAuthorizationItemClick}
+                    useEndUserCredentialEnabled={useEndUserCredentialEnabled}
+                    endUserCredentialType={endUserCredentialType}
+                    onEndUserCredentialChange={onEndUserCredentialChange}
+                    onEndUserCredentialTypeChange={onEndUserCredentialTypeChange}
                   />
                 )
               }

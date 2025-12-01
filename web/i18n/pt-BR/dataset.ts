@@ -234,6 +234,10 @@ const translation = {
     title: 'API de Serviço',
     disabled: 'Desativado',
   },
+  docAllEnabled_one: '{{count}} documento habilitado',
+  docAllEnabled_other: 'Todos os documentos {{count}} ativados',
+  partialEnabled_one: 'Total de {{count}} documentos, {{num}} disponíveis',
+  partialEnabled_other: 'Total de {{count}} documentos, {{num}} disponíveis',
 }
 
 export default translation

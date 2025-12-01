@@ -234,6 +234,10 @@ const translation = {
     enabled: 'در حال خدمت',
     title: 'رابط برنامه‌نویسی سرویس',
   },
+  docAllEnabled_one: 'سند {{count}} فعال شد',
+  docAllEnabled_other: 'تمام اسناد {{count}} فعال شدند',
+  partialEnabled_one: 'مجموعاً {{count}} سند، {{num}} موجود',
+  partialEnabled_other: 'مجموع {{count}} سند، {{num}} موجود',
 }
 
 export default translation

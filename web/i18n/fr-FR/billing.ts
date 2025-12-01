@@ -98,6 +98,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Événements Déclencheurs Illimités',
       tooltip: 'Le nombre d\'événements qui déclenchent automatiquement des flux de travail via des déclencheurs Plugin, Planification ou Webhook.',
+      sandbox: '{{count,number}} Déclencher des événements',
+      professional: '{{count,number}} Déclenchements par mois',
     },
     workflowExecution: {
       priority: 'Exécution du flux de travail prioritaire',
@@ -107,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Déclencheurs/workflows illimités',
+      limited: 'Jusqu\'à {{count}} déclencheurs/workflow',
+    },
+    title: {
+      plans: 'plans',
+      description: 'Sélectionnez le plan qui correspond le mieux aux besoins de votre équipe.',
     },
   },
   plans: {
@@ -129,16 +136,14 @@ const translation = {
       name: 'Entreprise',
       description: 'Obtenez toutes les capacités et le support pour les systèmes à grande échelle et critiques pour la mission.',
       includesTitle: 'Tout ce qui est inclus dans le plan Équipe, plus :',
-      features: {
-      },
+      features: ['Solutions de déploiement évolutives de niveau entreprise', 'Autorisation de licence commerciale', 'Fonctionnalités exclusives pour les entreprises', 'Espaces de travail multiples et gestion d\'entreprise', 'SSO', 'Accords sur les SLA négociés par les partenaires Dify', 'Sécurité et Contrôles Avancés', 'Mises à jour et maintenance par Dify Officiellement', 'Assistance technique professionnelle'],
       for: 'Pour les équipes de grande taille',
       btnText: 'Contacter les ventes',
       priceTip: 'Facturation Annuel Seulement',
       price: 'Personnalisé',
     },
     community: {
-      features: {
-      },
+      features: ['Toutes les fonctionnalités principales publiées dans le dépôt public', 'Espace de travail unique', 'Conforme à la licence open source Dify'],
       name: 'Communauté',
       btnText: 'Commencez avec la communauté',
       for: 'Pour les utilisateurs individuels, les petites équipes ou les projets non commerciaux',
@@ -147,8 +152,7 @@ const translation = {
       description: 'Pour les utilisateurs individuels, les petites équipes ou les projets non commerciaux',
     },
     premium: {
-      features: {
-      },
+      features: ['Fiabilité autonome par divers fournisseurs de cloud', 'Espace de travail unique', 'Personnalisation du logo et de l\'identité visuelle de l\'application web', 'Assistance prioritaire par e-mail et chat'],
       for: 'Pour les organisations et les équipes de taille moyenne',
       includesTitle: 'Tout de la communauté, en plus :',
       name: 'Premium',
@@ -184,6 +188,7 @@ const translation = {
     documentsUploadQuota: 'Quota de téléchargement de documents',
     perMonth: 'par mois',
     triggerEvents: 'Événements déclencheurs',
+    resetsIn: 'Réinitialisations dans {{count,number}} jours',
   },
   teamMembers: 'Membres de l\'équipe',
   triggerLimitModal: {

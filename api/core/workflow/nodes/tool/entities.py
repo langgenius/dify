@@ -3,7 +3,7 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from core.tools.entities.tool_entities import ToolProviderType
+from core.tools.entities.tool_entities import ToolAuthType, ToolProviderType
 from core.workflow.nodes.base.entities import BaseNodeData
 
 
@@ -16,6 +16,7 @@ class ToolEntity(BaseModel):
     tool_configurations: dict[str, Any]
     credential_id: str | None = None
     plugin_unique_identifier: str | None = None  # redundancy
+    auth_type: ToolAuthType = ToolAuthType.WORKSPACE  # OAuth authentication level
 
     @field_validator("tool_configurations", mode="before")
     @classmethod

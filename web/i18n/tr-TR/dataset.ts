@@ -234,6 +234,10 @@ const translation = {
     enabled: 'Hizmette',
     title: 'Servis API\'si',
   },
+  docAllEnabled_one: '{{count}} belgesi etkinleştirildi',
+  docAllEnabled_other: 'Tüm {{count}} belgeleri etkinleştirildi',
+  partialEnabled_one: 'Toplam {{count}} belge, {{num}} mevcut',
+  partialEnabled_other: 'Toplam {{count}} belge, {{num}} mevcut',
 }
 
 export default translation

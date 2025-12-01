@@ -98,6 +98,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Evenimente de declanșare nelimitate',
       tooltip: 'Numărul de evenimente care pornesc automat fluxuri de lucru prin declanșatoare Plugin, Programare sau Webhook.',
+      sandbox: '{{count,number}} Evenimente Declanșatoare',
+      professional: '{{count,number}} Evenimente declanșatoare/lună',
     },
     workflowExecution: {
       faster: 'Executarea mai rapidă a fluxului de lucru',
@@ -107,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Declanșatori/workflow nelimitați',
+      limited: 'Până la {{count}} declanșatori/workflow',
+    },
+    title: {
+      plans: 'planuri',
+      description: 'Selectați planul care se potrivește cel mai bine nevoilor echipei dvs.',
     },
   },
   plans: {
@@ -129,16 +136,14 @@ const translation = {
       name: 'Întreprindere',
       description: 'Obțineți capacități și asistență complete pentru sisteme critice la scară largă.',
       includesTitle: 'Tot ce este în planul Echipă, plus:',
-      features: {
-      },
+      features: ['Soluții de implementare scalabile la nivel de întreprindere', 'Autorizație de licență comercială', 'Funcții Exclusive pentru Afaceri', 'Mai multe spații de lucru și managementul întreprinderii', 'SSO', 'SLA-uri negociate de partenerii Dify', 'Securitate și Control Avansate', 'Actualizări și întreținere de către Dify Oficial', 'Asistență Tehnică Profesională'],
       for: 'Pentru echipe de mari dimensiuni',
       price: 'Personalizat',
       priceTip: 'Facturare anuală doar',
       btnText: 'Contactați Vânzări',
     },
     community: {
-      features: {
-      },
+      features: ['Toate Funcțiile Principale Lansate în Repositorul Public', 'Spațiu de lucru unic', 'Respectă Licența Open Source Dify'],
       description: 'Pentru utilizatori individuali, echipe mici sau proiecte necomerciale',
       btnText: 'Începe cu Comunitatea',
       price: 'Gratuit',
@@ -147,8 +152,7 @@ const translation = {
       includesTitle: 'Funcții gratuite:',
     },
     premium: {
-      features: {
-      },
+      features: ['Fiabilitate autogestionată de diferiți furnizori de cloud', 'Spațiu de lucru unic', 'Personalizare logo și branding pentru aplicația web', 'Asistență prioritară prin e-mail și chat'],
       btnText: 'Obține Premium în',
       description: 'Pentru organizații și echipe de dimensiuni medii',
       includesTitle: 'Totul din Comunitate, plus:',
@@ -184,6 +188,7 @@ const translation = {
     documentsUploadQuota: 'Cota de încărcare a documentelor',
     triggerEvents: 'Evenimente declanșatoare',
     perMonth: 'pe lună',
+    resetsIn: 'Se resetează în {{count,number}} zile',
   },
   teamMembers: 'Membrii echipei',
   triggerLimitModal: {

@@ -3,10 +3,14 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { RiArrowDownSLine } from '@remixicon/react'
+import {
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Authorize from './authorize'
 import Authorized from './authorized'
+import CredentialConfigHeader from './credential-config-header'
+import EndUserCredentialSection from './end-user-credential-section'
 import type {
   Credential,
   PluginPayload,
@@ -20,11 +24,19 @@ type PluginAuthInAgentProps = {
   pluginPayload: PluginPayload
   credentialId?: string
   onAuthorizationItemClick?: (id: string) => void
+  useEndUserCredentialEnabled?: boolean
+  endUserCredentialType?: string
+  onEndUserCredentialChange?: (enabled: boolean) => void
+  onEndUserCredentialTypeChange?: (type: string) => void
 }
 const PluginAuthInAgent = ({
   pluginPayload,
   credentialId,
   onAuthorizationItemClick,
+  useEndUserCredentialEnabled,
+  endUserCredentialType,
+  onEndUserCredentialChange,
+  onEndUserCredentialTypeChange,
 }: PluginAuthInAgentProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -36,7 +48,10 @@ const PluginAuthInAgent = ({
     disabled,
     invalidPluginCredentialInfo,
     notAllowCustomCredential,
+    hasOAuthClientConfigured,
   } = usePluginAuth(pluginPayload, true)
+
+  const configuredDisabled = !!useEndUserCredentialEnabled
 
   const extraAuthorizationItems: Credential[] = [
     {
@@ -94,42 +109,87 @@ const PluginAuthInAgent = ({
     )
   }, [credentialId, credentials, t])
 
+  const shouldShowAuthorizeCard = !credentials.length && (canOAuth || canApiKey || hasOAuthClientConfigured)
+
   return (
-    <>
-      {
-        !isAuthorized && (
-          <Authorize
-            pluginPayload={pluginPayload}
-            canOAuth={canOAuth}
-            canApiKey={canApiKey}
-            disabled={disabled}
-            onUpdate={invalidPluginCredentialInfo}
-            notAllowCustomCredential={notAllowCustomCredential}
-          />
-        )
-      }
-      {
-        isAuthorized && (
-          <Authorized
-            pluginPayload={pluginPayload}
-            credentials={credentials}
-            canOAuth={canOAuth}
-            canApiKey={canApiKey}
-            disabled={disabled}
-            disableSetDefault
-            onItemClick={handleAuthorizationItemClick}
-            extraAuthorizationItems={extraAuthorizationItems}
-            showItemSelectedIcon
-            renderTrigger={renderTrigger}
-            isOpen={isOpen}
-            onOpenChange={setIsOpen}
-            selectedCredentialId={credentialId || '__workspace_default__'}
-            onUpdate={invalidPluginCredentialInfo}
-            notAllowCustomCredential={notAllowCustomCredential}
-          />
-        )
-      }
-    </>
+    <div className='border-components-panel-border bg-components-panel-bg'>
+      <div className={cn(configuredDisabled && 'pointer-events-none opacity-50')}>
+        <CredentialConfigHeader
+          pluginPayload={pluginPayload}
+          canOAuth={canOAuth}
+          canApiKey={canApiKey}
+          hasOAuthClientConfigured={hasOAuthClientConfigured}
+          disabled={disabled || configuredDisabled}
+          onCredentialAdded={invalidPluginCredentialInfo}
+        />
+      </div>
+      <div className={cn(configuredDisabled && 'pointer-events-none opacity-50')}>
+        {
+          !isAuthorized && shouldShowAuthorizeCard && (
+            <div className='rounded-xl bg-background-section px-4 py-4'>
+              <div className='flex w-full justify-center'>
+                <div className='w-full max-w-[520px]'>
+                  <Authorize
+                    pluginPayload={pluginPayload}
+                    canOAuth={canOAuth}
+                    canApiKey={canApiKey}
+                    disabled={disabled || configuredDisabled}
+                    onUpdate={invalidPluginCredentialInfo}
+                    notAllowCustomCredential={notAllowCustomCredential}
+                    theme='secondary'
+                    showDivider={!!(canOAuth && canApiKey)}
+                  />
+                </div>
+              </div>
+            </div>
+          )
+        }
+        {
+          !isAuthorized && !shouldShowAuthorizeCard && (
+            <Authorize
+              pluginPayload={pluginPayload}
+              canOAuth={canOAuth}
+              canApiKey={canApiKey}
+              disabled={disabled || configuredDisabled}
+              onUpdate={invalidPluginCredentialInfo}
+              notAllowCustomCredential={notAllowCustomCredential}
+            />
+          )
+        }
+        {
+          isAuthorized && (
+            <Authorized
+              pluginPayload={pluginPayload}
+              credentials={credentials}
+              canOAuth={canOAuth}
+              canApiKey={canApiKey}
+              disabled={disabled || configuredDisabled}
+              disableSetDefault
+              onItemClick={handleAuthorizationItemClick}
+              extraAuthorizationItems={extraAuthorizationItems}
+              showItemSelectedIcon
+              renderTrigger={renderTrigger}
+              isOpen={isOpen}
+              onOpenChange={setIsOpen}
+              selectedCredentialId={credentialId || '__workspace_default__'}
+              onUpdate={invalidPluginCredentialInfo}
+              notAllowCustomCredential={notAllowCustomCredential}
+            />
+          )
+        }
+      </div>
+      <EndUserCredentialSection
+        pluginPayload={pluginPayload}
+        canOAuth={canOAuth}
+        canApiKey={canApiKey}
+        disabled={disabled}
+        useEndUserCredentialEnabled={useEndUserCredentialEnabled}
+        endUserCredentialType={endUserCredentialType}
+        onEndUserCredentialChange={onEndUserCredentialChange}
+        onEndUserCredentialTypeChange={onEndUserCredentialTypeChange}
+        onCredentialAdded={invalidPluginCredentialInfo}
+      />
+    </div>
   )
 }
 

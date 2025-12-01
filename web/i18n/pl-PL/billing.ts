@@ -105,6 +105,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Nieograniczone zdarzenia wyzwalające',
       tooltip: 'Liczba zdarzeń, które automatycznie uruchamiają przepływy pracy za pomocą wtyczki, harmonogramu lub wyzwalaczy Webhook.',
+      sandbox: '{{count,number}} Wyzwalacze zdarzeń',
+      professional: '{{count,number}} Wywołania zdarzeń/miesiąc',
     },
     workflowExecution: {
       standard: 'Standardowe wykonywanie przepływu pracy',
@@ -114,6 +116,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Nieograniczone wyzwalacze/przepływ pracy',
+      limited: 'Do {{count}} wyzwalaczy/przepływów pracy',
+    },
+    title: {
+      plans: 'plany',
+      description: 'Wybierz plan, który najlepiej odpowiada potrzebom Twojego zespołu.',
     },
   },
   plans: {
@@ -139,16 +146,14 @@ const translation = {
       description:
         'Uzyskaj pełne możliwości i wsparcie dla systemów o kluczowym znaczeniu dla misji.',
       includesTitle: 'Wszystko w planie Zespołowym, plus:',
-      features: {
-      },
+      features: ['Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej', 'Autoryzacja licencji komercyjnej', 'Ekskluzywne funkcje dla przedsiębiorstw', 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem', 'SSO', 'Negocjowane umowy SLA przez partnerów Dify', 'Zaawansowane zabezpieczenia i kontrola', 'Aktualizacje i konserwacja przez Dify oficjalnie', 'Profesjonalne wsparcie techniczne'],
       priceTip: 'Tylko roczne fakturowanie',
       btnText: 'Skontaktuj się z działem sprzedaży',
       for: 'Dla dużych zespołów',
       price: 'Niestety, nie mogę przetłumaczyć tego tekstu bez konkretnego zdania do przetłumaczenia.',
     },
     community: {
-      features: {
-      },
+      features: ['Wszystkie podstawowe funkcje udostępnione w publicznym repozytorium', 'Pojedyncza przestrzeń robocza', 'Zgodne z licencją Dify Open Source'],
       includesTitle: 'Darmowe funkcje:',
       name: 'Społeczność',
       price: 'Darmowy',
@@ -157,8 +162,7 @@ const translation = {
       for: 'Dla użytkowników indywidualnych, małych zespołów lub projektów niekomercyjnych',
     },
     premium: {
-      features: {
-      },
+      features: ['Niezawodność zarządzana samodzielnie przez różnych dostawców chmury', 'Pojedyncza przestrzeń robocza', 'Dostosowywanie logo i marki aplikacji webowej', 'Priorytetowe wsparcie e-mail i czat'],
       description: 'Dla średnich organizacji i zespołów',
       for: 'Dla średnich organizacji i zespołów',
       name: 'Premium',
@@ -194,6 +198,7 @@ const translation = {
     vectorSpaceTooltip: 'Dokumenty z trybem indeksowania o wysokiej jakości będą zużywać zasoby magazynu danych wiedzy. Gdy magazyn danych wiedzy osiągnie limit, nowe dokumenty nie będą przesyłane.',
     perMonth: 'miesięcznie',
     triggerEvents: 'Wydarzenia wyzwalające',
+    resetsIn: 'Resetuje się za {{count,number}} dni',
   },
   teamMembers: 'Członkowie zespołu',
   triggerLimitModal: {

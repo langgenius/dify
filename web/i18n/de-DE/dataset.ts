@@ -234,6 +234,10 @@ const translation = {
     enabled: 'Im Dienst',
     disabled: 'Behindert',
   },
+  docAllEnabled_one: '{{count}} Dokument aktiviert',
+  docAllEnabled_other: 'Alle {{count}} Dokumente aktiviert',
+  partialEnabled_one: 'Insgesamt {{count}} Dokumente, {{num}} verfügbar',
+  partialEnabled_other: 'Insgesamt {{count}} Dokumente, {{num}} verfügbar',
 }
 
 export default translation

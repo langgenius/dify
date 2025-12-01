@@ -26,12 +26,12 @@ import {
   RiBugLine,
   RiCloseLine,
   RiHardDrive3Line,
-  RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Verified from '../base/badges/verified'
 import { AutoUpdateLine } from '../../base/icons/src/vender/system'
 import DeprecationNotice from '../base/deprecation-notice'
 import Icon from '../card/base/card-icon'
@@ -219,7 +219,7 @@ const DetailHeader = ({
         <div className="ml-3 w-0 grow">
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
-            {verified && !isReadmeView && <RiVerifiedBadgeLine className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" />}
+            {verified && !isReadmeView && <Verified className='ml-0.5 h-4 w-4' text={t('plugin.marketplace.verifiedTip')} />}
             {version && <PluginVersionPicker
               disabled={!isFromMarketplace || isReadmeView}
               isShow={isShow}
