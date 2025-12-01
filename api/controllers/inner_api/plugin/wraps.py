@@ -4,7 +4,6 @@ from typing import ParamSpec, TypeVar, cast
 
 from flask import current_app, request
 from flask_login import user_logged_in
-from flask_restx import reqparse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -15,6 +14,11 @@ from models.model import DefaultEndUserSessionID, EndUser
 
 P = ParamSpec("P")
 R = TypeVar("R")
+
+
+class TenantUserPayload(BaseModel):
+    tenant_id: str
+    user_id: str
 
 
 def get_user(tenant_id: str, user_id: str | None) -> EndUser:
@@ -71,17 +75,10 @@ def get_user_tenant(view: Callable[P, R] | None = None):
     def decorator(view_func: Callable[P, R]):
         @wraps(view_func)
         def decorated_view(*args: P.args, **kwargs: P.kwargs):
-            # fetch json body
-            parser = (
-                reqparse.RequestParser()
-                .add_argument("tenant_id", type=str, required=True, location="json")
-                .add_argument("user_id", type=str, required=True, location="json")
-            )
+            payload = TenantUserPayload.model_validate(request.get_json(silent=True) or {})
 
-            p = parser.parse_args()
-
-            user_id = cast(str, p.get("user_id"))
-            tenant_id = cast(str, p.get("tenant_id"))
+            user_id = cast(str, payload.user_id)
+            tenant_id = cast(str, payload.tenant_id)
 
             if not tenant_id:
                 raise ValueError("tenant_id is required")
