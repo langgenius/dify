@@ -2,7 +2,7 @@ from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, NotFound
 
 from configs import dify_config
@@ -17,9 +17,11 @@ from models.provider_ids import DatasourceProviderID
 from services.datasource_provider_service import DatasourceProviderService
 from services.plugin.oauth_service import OAuthProxyService
 
+
 class DatasourceCredentialPayload(BaseModel):
     name: str | None = Field(default=None, max_length=100)
     credentials: dict[str, Any]
+
 
 class DatasourceCredentialDeletePayload(BaseModel):
     credential_id: str
@@ -29,6 +31,7 @@ class DatasourceCredentialUpdatePayload(BaseModel):
     credential_id: str
     name: str | None = Field(default=None, max_length=100)
     credentials: dict[str, Any] | None = None
+
 
 class DatasourceCustomClientPayload(BaseModel):
     client_params: dict[str, Any] | None = None
@@ -42,6 +45,7 @@ class DatasourceDefaultPayload(BaseModel):
 class DatasourceUpdateNamePayload(BaseModel):
     credential_id: str
     name: str = Field(max_length=100)
+
 
 register_schema_models(
     console_ns,

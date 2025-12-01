@@ -125,7 +125,7 @@ class RagPipelineExportApi(Resource):
     @edit_permission_required
     def get(self, pipeline: Pipeline):
         # Add include_secret params
-        query = IncludeSecretQuery.model_validate(request.args.to_dict(flat=True))
+        query = IncludeSecretQuery.model_validate(request.args.to_dict())
 
         with Session(db.engine) as session:
             export_service = RagPipelineDslService(session)

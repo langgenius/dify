@@ -14,25 +14,6 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
-from controllers.console.app.error import (
-    ProviderModelCurrentlyNotSupportError,
-    ProviderNotInitializeError,
-    ProviderQuotaExceededError,
-)
-from controllers.console.datasets.error import (
-    ArchivedDocumentImmutableError,
-    DocumentAlreadyFinishedError,
-    DocumentIndexingError,
-    IndexingEstimateError,
-    InvalidActionError,
-    InvalidMetadataError,
-)
-from controllers.console.wraps import (
-    account_initialization_required,
-    cloud_edition_billing_rate_limit_check,
-    cloud_edition_billing_resource_check,
-    setup_required,
-)
 from core.errors.error import (
     LLMBadRequestError,
     ModelCurrentlyNotSupportError,
@@ -61,6 +42,26 @@ from models import DatasetProcessRule, Document, DocumentSegment, UploadFile
 from models.dataset import DocumentPipelineExecutionLog
 from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
+
+from ..app.error import (
+    ProviderModelCurrentlyNotSupportError,
+    ProviderNotInitializeError,
+    ProviderQuotaExceededError,
+)
+from ..datasets.error import (
+    ArchivedDocumentImmutableError,
+    DocumentAlreadyFinishedError,
+    DocumentIndexingError,
+    IndexingEstimateError,
+    InvalidActionError,
+    InvalidMetadataError,
+)
+from ..wraps import (
+    account_initialization_required,
+    cloud_edition_billing_rate_limit_check,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
 
 logger = logging.getLogger(__name__)
 

@@ -4,7 +4,7 @@ from typing import Literal
 from uuid import UUID
 
 from flask import request
-from flask_restx import Api, Namespace, Resource, fields
+from flask_restx import Namespace, Resource, fields
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 

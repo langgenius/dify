@@ -2,7 +2,7 @@ from typing import Literal
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns

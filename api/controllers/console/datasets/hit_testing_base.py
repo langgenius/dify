@@ -2,7 +2,7 @@ import logging
 from typing import Any
 
 from flask_restx import marshal
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class HitTestingPayload(BaseModel):
-    query: str
+    query: str = Field(max_length=250)
     retrieval_model: dict[str, Any] | None = None
     external_retrieval_model: dict[str, Any] | None = None
 

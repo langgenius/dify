@@ -10,8 +10,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_model
-from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
@@ -26,6 +24,9 @@ from models import DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
+
+from .. import console_ns
+from ..wraps import account_initialization_required, setup_required
 
 
 class NotionEstimatePayload(BaseModel):

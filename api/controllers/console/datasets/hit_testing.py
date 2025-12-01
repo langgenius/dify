@@ -1,14 +1,15 @@
 from flask_restx import Resource
 
 from controllers.common.schema import register_schema_model
-from controllers.console import console_ns
-from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
-from controllers.console.wraps import (
+from libs.login import login_required
+
+from .. import console_ns
+from ..datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
+from ..wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     setup_required,
 )
-from libs.login import login_required
 
 register_schema_model(console_ns, HitTestingPayload)
 

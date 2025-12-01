@@ -9,9 +9,7 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 def register_schema_model(namespace: Namespace, model: type[BaseModel]) -> None:
     """Register a single BaseModel with a namespace for Swagger documentation."""
 
-    namespace.schema_model(
-        model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-    )
+    namespace.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
 def register_schema_models(namespace: Namespace, *models: type[BaseModel]) -> None:
