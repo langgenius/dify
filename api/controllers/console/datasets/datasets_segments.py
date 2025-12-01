@@ -112,7 +112,10 @@ class DatasetDocumentSegmentListApi(Resource):
         if not document:
             raise NotFound("Document not found.")
 
-        args = SegmentListQuery.model_validate(request.args.to_dict())
+        args = SegmentListQuery.model_validate({
+            **request.args.to_dict(),
+            "status": request.args.getlist("status"),
+        })
 
         page = args.page
         limit = min(args.limit, 100)
