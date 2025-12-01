@@ -36,7 +36,6 @@ from services.entities.knowledge_entities.knowledge_entities import ChildChunkUp
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
 from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
-from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs
 
 
 class SegmentListQuery(BaseModel):
