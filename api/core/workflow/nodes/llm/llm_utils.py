@@ -150,7 +150,7 @@ def _fetch_override_credentials(
 
 
 def fetch_model_config(
-    tenant_id: str, node_data_model: ModelConfig, workflow_credential_override: Optional[CredentialOverride] = None
+    tenant_id: str, node_data_model: ModelConfig, workflow_credential_override: CredentialOverride | None = None
 ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
     if not node_data_model.mode:
         raise LLMModeRequiredError("LLM mode is required.")

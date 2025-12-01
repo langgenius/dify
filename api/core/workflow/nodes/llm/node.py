@@ -710,7 +710,7 @@ class LLMNode(Node[LLMNodeData]):
 
     @staticmethod
     def _fetch_model_config(
-        *, node_data_model: ModelConfig, tenant_id: str, credential_override: Optional[CredentialOverride] = None
+        *, node_data_model: ModelConfig, tenant_id: str, credential_override: CredentialOverride | None = None
     ) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
         model, model_config_with_cred = llm_utils.fetch_model_config(
             tenant_id=tenant_id, node_data_model=node_data_model, workflow_credential_override=credential_override
