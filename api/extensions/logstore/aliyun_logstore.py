@@ -10,6 +10,8 @@ from aliyun.log.logexception import LogException
 from dotenv import load_dotenv
 from sqlalchemy.orm import DeclarativeBase
 
+from configs import dify_config
+
 logger = logging.getLogger(__name__)
 
 
@@ -115,6 +117,13 @@ class AliyunLogStore:
         self.log_enabled: bool = os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
 
         self.client = LogClient(endpoint, access_key_id, access_key_secret, auth_version=AUTH_VERSION_4, region=region)
+
+        # Append Dify identification to the existing user agent
+        # This preserves the Python SDK version info while adding Dify version
+        original_user_agent = self.client._user_agent  # pyright: ignore[reportPrivateUsage]
+        dify_version = dify_config.project.version
+        enhanced_user_agent = f"Dify,Dify-{dify_version},{original_user_agent}"
+        self.client.set_user_agent(enhanced_user_agent)
 
     def init_project_logstore(self):
         """
@@ -348,7 +357,7 @@ class AliyunLogStore:
                 if existing_key.lower() == lower_name and existing_key != required_name:
                     wrong_case_key = existing_key
                     break
-            
+
             if wrong_case_key:
                 # Field exists but with wrong case (e.g., 'Status' when we need 'status')
                 # Remove the wrong-case key, will be added back with correct case later

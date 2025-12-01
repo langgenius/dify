@@ -8,6 +8,8 @@ creating necessary projects, logstores, and indexes if they don't exist.
 import logging
 import os
 
+from dotenv import load_dotenv
+
 from dify_app import DifyApp
 
 logger = logging.getLogger(__name__)
@@ -20,6 +22,9 @@ def is_enabled() -> bool:
     Returns:
         True if all required Aliyun SLS environment variables are set, False otherwise
     """
+    # Load environment variables from .env file
+    load_dotenv()
+
     required_vars = [
         "ALIYUN_SLS_ACCESS_KEY_ID",
         "ALIYUN_SLS_ACCESS_KEY_SECRET",
