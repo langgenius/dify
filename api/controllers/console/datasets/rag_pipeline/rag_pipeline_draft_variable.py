@@ -98,7 +98,7 @@ class RagPipelineVariableCollectionApi(Resource):
         Get draft workflow
         """
         pagination = _create_pagination_parser()
-        query = pagination.model_validate(request.args.to_dict(flat=True))
+        query = pagination.model_validate(request.args.to_dict())
 
         # fetch draft workflow by app_model
         rag_pipeline_service = RagPipelineService()

@@ -114,7 +114,7 @@ class MessageListApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        query_args = MessageListQuery.model_validate(request.args.to_dict(flat=True))
+        query_args = MessageListQuery.model_validate(request.args.to_dict())
         conversation_id = str(query_args.conversation_id)
         first_id = str(query_args.first_id) if query_args.first_id else None
 
@@ -182,7 +182,7 @@ class AppGetFeedbacksApi(Resource):
 
         Returns paginated list of all feedback submitted for messages in this app.
         """
-        query_args = FeedbackListQuery.model_validate(request.args.to_dict(flat=True))
+        query_args = FeedbackListQuery.model_validate(request.args.to_dict())
         feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=query_args.page, limit=query_args.limit)
         return {"data": feedbacks}
 

@@ -82,7 +82,7 @@ class ConversationApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        query_args = ConversationListQuery.model_validate(request.args.to_dict(flat=True))
+        query_args = ConversationListQuery.model_validate(request.args.to_dict())
         last_id = str(query_args.last_id) if query_args.last_id else None
 
         try:
@@ -187,7 +187,7 @@ class ConversationVariablesApi(Resource):
 
         conversation_id = str(c_id)
 
-        query_args = ConversationVariablesQuery.model_validate(request.args.to_dict(flat=True))
+        query_args = ConversationVariablesQuery.model_validate(request.args.to_dict())
         last_id = str(query_args.last_id) if query_args.last_id else None
 
         try:

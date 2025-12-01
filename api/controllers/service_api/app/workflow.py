@@ -287,7 +287,7 @@ class WorkflowAppLogApi(Resource):
 
         Returns paginated workflow execution logs with filtering options.
         """
-        args = WorkflowLogQuery.model_validate(request.args.to_dict(flat=True))
+        args = WorkflowLogQuery.model_validate(request.args.to_dict())
 
         status = WorkflowExecutionStatus(args.status) if args.status else None
         created_at_before = isoparse(args.created_at__before) if args.created_at__before else None

@@ -58,7 +58,7 @@ class FilePreviewApi(Resource):
         file_id = str(file_id)
 
         # Parse query parameters
-        args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))
+        args = FilePreviewQuery.model_validate(request.args.to_dict())
 
         # Validate file ownership and get file objects
         _, upload_file = self._validate_file_ownership(file_id, app_model.id)

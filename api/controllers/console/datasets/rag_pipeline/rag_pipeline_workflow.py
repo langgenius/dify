@@ -643,7 +643,7 @@ class DefaultRagPipelineBlockConfigApi(Resource):
         """
         Get default block config
         """
-        query = DefaultBlockConfigQuery.model_validate(request.args.to_dict(flat=True))
+        query = DefaultBlockConfigQuery.model_validate(request.args.to_dict())
 
         filters = None
         if query.q:
@@ -761,7 +761,7 @@ class PublishedRagPipelineSecondStepApi(Resource):
         """
         Get second step parameters of rag pipeline
         """
-        query = NodeIdQuery.model_validate(request.args.to_dict(flat=True))
+        query = NodeIdQuery.model_validate(request.args.to_dict())
         node_id = query.node_id
         rag_pipeline_service = RagPipelineService()
         variables = rag_pipeline_service.get_second_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=False)
@@ -781,7 +781,7 @@ class PublishedRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        query = NodeIdQuery.model_validate(request.args.to_dict(flat=True))
+        query = NodeIdQuery.model_validate(request.args.to_dict())
         node_id = query.node_id
         rag_pipeline_service = RagPipelineService()
         variables = rag_pipeline_service.get_first_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=False)
@@ -801,7 +801,7 @@ class DraftRagPipelineFirstStepApi(Resource):
         """
         Get first step parameters of rag pipeline
         """
-        query = NodeIdQuery.model_validate(request.args.to_dict(flat=True))
+        query = NodeIdQuery.model_validate(request.args.to_dict())
         node_id = query.node_id
         rag_pipeline_service = RagPipelineService()
         variables = rag_pipeline_service.get_first_step_parameters(pipeline=pipeline, node_id=node_id, is_draft=True)
@@ -821,7 +821,7 @@ class DraftRagPipelineSecondStepApi(Resource):
         """
         Get second step parameters of rag pipeline
         """
-        query = NodeIdQuery.model_validate(request.args.to_dict(flat=True))
+        query = NodeIdQuery.model_validate(request.args.to_dict())
         node_id = query.node_id
 
         rag_pipeline_service = RagPipelineService()
