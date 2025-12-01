@@ -56,7 +56,7 @@
     "@lexical/list": "^0.36.2",
     "@lexical/react": "^0.36.2",
     "@lexical/selection": "^0.37.0",
-    "@lexical/text": "^0.36.2",
+    "@lexical/text": "^0.38.2",
     "@lexical/utils": "^0.37.0",
     "@monaco-editor/react": "^4.7.0",
     "@octokit/core": "^6.1.6",
