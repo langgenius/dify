@@ -159,7 +159,7 @@ class Vector:
                 from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStoreFactory
 
                 return LindormVectorStoreFactory
-            case VectorType.OCEANBASE:
+            case VectorType.OCEANBASE | VectorType.SEEKDB:
                 from core.rag.datasource.vdb.oceanbase.oceanbase_vector import OceanBaseVectorFactory
 
                 return OceanBaseVectorFactory
