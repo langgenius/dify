@@ -2,7 +2,7 @@ from typing import Any, Literal, cast
 
 from flask import request
 from flask_restx import marshal
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -20,7 +20,6 @@ from core.provider_manager import ProviderManager
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import build_dataset_tag_fields
 from libs.login import current_user
-from libs.validators import validate_description_length
 from models.account import Account
 from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
@@ -29,15 +28,9 @@ from services.entities.knowledge_entities.knowledge_entities import RetrievalMod
 from services.tag_service import TagService
 
 
-def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
-
-
 class DatasetCreatePayload(BaseModel):
-    name: str
-    description: str = ""
+    name: str = Field(..., min_length=1, max_length=40)
+    description: str = Field(default="", description="Dataset description (max 400 chars)", max_length=400)
     indexing_technique: Literal["high_quality", "economy"] | None = None
     permission: DatasetPermissionEnum | None = DatasetPermissionEnum.ONLY_ME
     external_knowledge_api_id: str | None = None
@@ -47,20 +40,10 @@ class DatasetCreatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
 
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, value: str) -> str:
-        return _validate_name(value)
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def validate_description(cls, value: Any) -> str:
-        return validate_description_length(value or "")
-
 
 class DatasetUpdatePayload(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=40)
+    description: str | None = Field(default=None, description="Dataset description (max 400 chars)", max_length=400)
     indexing_technique: Literal["high_quality", "economy"] | None = None
     permission: DatasetPermissionEnum | None = None
     embedding_model: str | None = None
@@ -71,28 +54,9 @@ class DatasetUpdatePayload(BaseModel):
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
 
-    @field_validator("name")
-    @classmethod
-    def validate_optional_name(cls, value: str | None) -> str | None:
-        return _validate_name(value) if value is not None else value
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def validate_optional_description(cls, value: Any) -> Any:
-        if value is None:
-            return value
-        return validate_description_length(value)
-
 
 class TagNamePayload(BaseModel):
-    name: str
-
-    @field_validator("name")
-    @classmethod
-    def validate_tag_name(cls, value: str) -> str:
-        if not value or not 1 <= len(value) <= 50:
-            raise ValueError("Name must be between 1 to 50 characters.")
-        return value
+    name: str = Field(..., min_length=1, max_length=50)
 
 
 class TagCreatePayload(TagNamePayload):

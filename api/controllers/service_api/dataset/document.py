@@ -109,8 +109,6 @@ class DocumentAddByTextApi(DatasetApiResource):
         if not dataset.indexing_technique and not args["indexing_technique"]:
             raise ValueError("indexing_technique is required.")
 
-        text = payload.text
-        name = payload.name
         embedding_model_provider = payload.embedding_model_provider
         embedding_model = payload.embedding_model
         if embedding_model_provider and embedding_model:

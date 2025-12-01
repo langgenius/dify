@@ -28,11 +28,11 @@ class BaseMail(Resource):
     @inner_api_ns.expect(inner_api_ns.models[InnerMailPayload.__name__])
     def post(self):
         args = InnerMailPayload.model_validate(inner_api_ns.payload or {})
-        send_inner_email_task.delay(  # type: ignore
+        send_inner_email_task.delay(
             to=args.to,
             subject=args.subject,
             body=args.body,
-            substitutions=args.substitutions,
+            substitutions=args.substitutions,  # type: ignore
         )
         return {"message": "success"}, 200
 

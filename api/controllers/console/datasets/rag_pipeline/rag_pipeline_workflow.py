@@ -671,14 +671,8 @@ class PublishedAllRagPipelineApi(Resource):
         """
         current_user, _ = current_account_with_tenant()
 
-        query = WorkflowListQuery.model_validate(
-            {
-                "page": request.args.get("page", type=int, default=1),
-                "limit": request.args.get("limit", type=int, default=10),
-                "user_id": request.args.get("user_id"),
-                "named_only": request.args.get("named_only"),
-            }
-        )
+        query = WorkflowListQuery.model_validate(request.args.to_dict())
+
         page = query.page
         limit = query.limit
         user_id = query.user_id
@@ -687,7 +681,6 @@ class PublishedAllRagPipelineApi(Resource):
         if user_id:
             if user_id != current_user.id:
                 raise Forbidden()
-            user_id = cast(str, user_id)
 
         rag_pipeline_service = RagPipelineService()
         with Session(db.engine) as session:

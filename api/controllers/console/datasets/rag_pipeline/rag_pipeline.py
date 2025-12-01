@@ -22,18 +22,6 @@ from services.rag_pipeline.rag_pipeline import RagPipelineService
 logger = logging.getLogger(__name__)
 
 
-def _validate_name(name: str) -> str:
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
-
-
-def _validate_description_length(description: str) -> str:
-    if len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
-    return description
-
-
 @console_ns.route("/rag/pipeline/templates")
 class PipelineTemplateListApi(Resource):
     @setup_required
@@ -62,8 +50,8 @@ class PipelineTemplateDetailApi(Resource):
 
 
 class Payload(BaseModel):
-    name: str = Field(min_length=1, max_length=40)
-    description: str = Field(default="")
+    name: str = Field(..., min_length=1, max_length=40)
+    description: str = Field(default="", max_length=400)
     icon_info: dict[str, object] | None = None
 
 

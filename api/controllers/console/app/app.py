@@ -31,7 +31,6 @@ from fields.app_fields import (
 from fields.workflow_fields import workflow_partial_fields as _workflow_partial_fields_dict
 from libs.helper import AppIconUrlField, TimestampField
 from libs.login import current_account_with_tenant, login_required
-from libs.validators import validate_description_length
 from models import App, Workflow
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
@@ -76,50 +75,29 @@ class AppListQuery(BaseModel):
 
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
-    description: str | None = Field(default=None, description="App description (max 400 chars)")
+    description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
-    @field_validator("description")
-    @classmethod
-    def validate_description(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_description_length(value)
-
 
 class UpdateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
-    description: str | None = Field(default=None, description="App description (max 400 chars)")
+    description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
     max_active_requests: int | None = Field(default=None, description="Maximum active requests")
 
-    @field_validator("description")
-    @classmethod
-    def validate_description(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_description_length(value)
-
 
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
-    description: str | None = Field(default=None, description="Description for the copied app")
+    description: str | None = Field(default=None, description="Description for the copied app", max_length=400)
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("description")
-    @classmethod
-    def validate_description(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_description_length(value)
 
 
 class AppExportQuery(BaseModel):

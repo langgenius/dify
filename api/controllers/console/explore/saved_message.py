@@ -15,6 +15,19 @@ from libs.login import current_account_with_tenant
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
+
+class SavedMessageListQuery(BaseModel):
+    last_id: UUID | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class SavedMessageCreatePayload(BaseModel):
+    message_id: UUID
+
+
+register_schema_models(console_ns, SavedMessageListQuery, SavedMessageCreatePayload)
+
+
 feedback_fields = {"rating": fields.String}
 
 message_fields = {
@@ -44,12 +57,7 @@ class SavedMessageListApi(InstalledAppResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        args = SavedMessageListQuery.model_validate(
-            {
-                "last_id": request.args.get("last_id"),
-                "limit": request.args.get("limit", default=20, type=int),
-            }
-        )
+        args = SavedMessageListQuery.model_validate(request.args.to_dict())
 
         return SavedMessageService.pagination_by_last_id(
             app_model,
@@ -91,15 +99,3 @@ class SavedMessageApi(InstalledAppResource):
         SavedMessageService.delete(app_model, current_user, message_id)
 
         return {"result": "success"}, 204
-
-
-class SavedMessageListQuery(BaseModel):
-    last_id: UUID | None = None
-    limit: int = Field(default=20, ge=1, le=100)
-
-
-class SavedMessageCreatePayload(BaseModel):
-    message_id: UUID
-
-
-register_schema_models(console_ns, SavedMessageListQuery, SavedMessageCreatePayload)

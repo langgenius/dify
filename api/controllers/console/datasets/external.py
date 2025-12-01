@@ -1,6 +1,6 @@
 from flask import request
 from flask_restx import Resource, fields, marshal
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -73,33 +73,17 @@ except KeyError:
     dataset_detail_model = _build_dataset_detail_model()
 
 
-def _validate_name(name: str) -> str:
-    if not name or len(name) < 1 or len(name) > 100:
-        raise ValueError("Name must be between 1 to 100 characters.")
-    return name
-
-
 class ExternalKnowledgeApiPayload(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=40)
     settings: dict[str, object]
-
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, value: str) -> str:
-        return _validate_name(value)
 
 
 class ExternalDatasetCreatePayload(BaseModel):
     external_knowledge_api_id: str
     external_knowledge_id: str
-    name: str
-    description: str | None = None
+    name: str = Field(..., min_length=1, max_length=40)
+    description: str | None = Field(None, max_length=400)
     external_retrieval_model: dict[str, object] | None = None
-
-    @field_validator("name")
-    @classmethod
-    def validate_dataset_name(cls, value: str) -> str:
-        return _validate_name(value)
 
 
 class ExternalHitTestingPayload(BaseModel):
@@ -312,6 +296,8 @@ class ExternalKnowledgeHitTestingApi(Resource):
         HitTestingService.hit_testing_args_check(payload.model_dump())
 
         try:
+            assert payload.external_retrieval_model is not None
+            assert payload.metadata_filtering_conditions is not None
             response = HitTestingService.external_retrieve(
                 dataset=dataset,
                 query=payload.query,

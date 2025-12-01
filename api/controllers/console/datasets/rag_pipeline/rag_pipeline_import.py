@@ -50,7 +50,6 @@ class RagPipelineImportApi(Resource):
         # Check user role first
         current_user, _ = current_account_with_tenant()
         payload = RagPipelineImportPayload.model_validate(console_ns.payload or {})
-        args = payload.model_dump()
 
         # Create service with session
         with Session(db.engine) as session:

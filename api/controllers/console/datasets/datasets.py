@@ -2,7 +2,7 @@ from typing import Any, cast
 
 from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -50,7 +50,6 @@ from fields.dataset_fields import (
 )
 from fields.document_fields import document_status_fields
 from libs.login import current_account_with_tenant, login_required
-from libs.validators import validate_description_length
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
@@ -109,12 +108,6 @@ related_app_list_copy["data"] = fields.List(fields.Nested(app_detail_kernel_mode
 related_app_list_model = _get_or_create_model("RelatedAppList", related_app_list_copy)
 
 
-def _validate_name(name: str) -> str:
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
-
-
 def _validate_indexing_technique(value: str | None) -> str | None:
     if value is None:
         return value
@@ -124,23 +117,13 @@ def _validate_indexing_technique(value: str | None) -> str | None:
 
 
 class DatasetCreatePayload(BaseModel):
-    name: str
-    description: str = ""
+    name: str = Field(..., min_length=1, max_length=40)
+    description: str = Field("", max_length=400)
     indexing_technique: str | None = None
     permission: DatasetPermissionEnum | None = DatasetPermissionEnum.ONLY_ME
     provider: str = "vendor"
     external_knowledge_api_id: str | None = None
     external_knowledge_id: str | None = None
-
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, value: str) -> str:
-        return _validate_name(value)
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def validate_description(cls, value: Any) -> str:
-        return validate_description_length(value or "")
 
     @field_validator("indexing_technique")
     @classmethod
@@ -156,8 +139,8 @@ class DatasetCreatePayload(BaseModel):
 
 
 class DatasetUpdatePayload(BaseModel):
-    name: str | None = None
-    description: str | None = None
+    name: str | None = Field(None, min_length=1, max_length=40)
+    description: str | None = Field(None, max_length=400)
     permission: DatasetPermissionEnum | None = None
     indexing_technique: str | None = None
     embedding_model: str | None = None
@@ -168,18 +151,6 @@ class DatasetUpdatePayload(BaseModel):
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
     icon_info: dict[str, Any] | None = None
-
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, value: str | None) -> str | None:
-        return _validate_name(value) if value is not None else value
-
-    @field_validator("description", mode="before")
-    @classmethod
-    def validate_description(cls, value: Any) -> Any:
-        if value is None:
-            return value
-        return validate_description_length(value)
 
     @field_validator("indexing_technique")
     @classmethod
@@ -451,22 +422,21 @@ class DatasetApi(Resource):
 
         payload = DatasetUpdatePayload.model_validate(console_ns.payload or {})
         payload_data = payload.model_dump(exclude_unset=True)
-        payload_raw = console_ns.payload or {}
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check embedding model setting
         if (
-            payload_raw.get("indexing_technique") == "high_quality"
-            and payload_raw.get("embedding_model_provider") is not None
-            and payload_raw.get("embedding_model") is not None
+            payload.indexing_technique == "high_quality"
+            and payload.embedding_model_provider is not None
+            and payload.embedding_model is not None
         ):
             DatasetService.check_embedding_model_setting(
-                dataset.tenant_id, payload_raw.get("embedding_model_provider"), payload_raw.get("embedding_model")
+                dataset.tenant_id, payload.embedding_model_provider, payload.embedding_model
             )
 
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
-            current_user, dataset, payload_data.get("permission"), payload_data.get("partial_member_list")
+            current_user, dataset, payload.permission, payload.partial_member_list
         )
 
         dataset = DatasetService.update_dataset(dataset_id_str, payload_data, current_user)
@@ -477,15 +447,10 @@ class DatasetApi(Resource):
         result_data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         tenant_id = current_tenant_id
 
-        if (
-            payload_data.get("partial_member_list")
-            and payload_data.get("permission") == DatasetPermissionEnum.PARTIAL_TEAM
-        ):
-            DatasetPermissionService.update_partial_member_list(
-                tenant_id, dataset_id_str, payload_data.get("partial_member_list")
-            )
+        if payload.partial_member_list is not None and payload.permission == DatasetPermissionEnum.PARTIAL_TEAM:
+            DatasetPermissionService.update_partial_member_list(tenant_id, dataset_id_str, payload.partial_member_list)
         # clear partial member list when permission is only_me or all_team_members
-        elif payload_data.get("permission") in {DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM}:
+        elif payload.permission in {DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM}:
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
 
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
