@@ -296,8 +296,6 @@ class ExternalKnowledgeHitTestingApi(Resource):
         HitTestingService.hit_testing_args_check(payload.model_dump())
 
         try:
-            assert payload.external_retrieval_model is not None
-            assert payload.metadata_filtering_conditions is not None
             response = HitTestingService.external_retrieve(
                 dataset=dataset,
                 query=payload.query,
