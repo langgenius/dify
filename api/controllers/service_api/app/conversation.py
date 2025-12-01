@@ -37,7 +37,7 @@ class ConversationListQuery(BaseModel):
 
 
 class ConversationRenamePayload(BaseModel):
-    name: str | None = Field(default=None, description="New conversation name")
+    name: str = Field(description="New conversation name")
     auto_generate: bool = Field(default=False, description="Auto-generate conversation name")
 
 
