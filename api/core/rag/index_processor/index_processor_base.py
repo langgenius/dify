@@ -13,6 +13,7 @@ from urllib.parse import unquote, urlparse
 import requests
 
 from configs import dify_config
+from core.helper import ssrf_proxy
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.models.document import AttachmentDocument, Document
@@ -205,7 +206,7 @@ class BaseIndexProcessor(ABC):
 
         try:
             # Download with timeout
-            response = requests.get(image_url, timeout=DOWNLOAD_TIMEOUT, stream=True)
+            response = ssrf_proxy.get(image_url, timeout=DOWNLOAD_TIMEOUT, stream=True)
             response.raise_for_status()
 
             # Check Content-Length header if available
