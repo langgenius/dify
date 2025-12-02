@@ -85,8 +85,8 @@ importers:
         specifier: ^0.36.2
         version: 0.36.2
       '@lexical/list':
-        specifier: ^0.36.2
-        version: 0.36.2
+        specifier: ^0.38.2
+        version: 0.38.2
       '@lexical/react':
         specifier: ^0.36.2
         version: 0.36.2(react-dom@19.1.1(react@19.1.1))(react@19.1.1)(yjs@13.6.27)
@@ -94,8 +94,8 @@ importers:
         specifier: ^0.37.0
         version: 0.37.0
       '@lexical/text':
-        specifier: ^0.36.2
-        version: 0.36.2
+        specifier: ^0.38.2
+        version: 0.38.2
       '@lexical/utils':
         specifier: ^0.37.0
         version: 0.37.0
@@ -163,8 +163,8 @@ importers:
         specifier: ^5.6.0
         version: 5.6.0
       echarts-for-react:
-        specifier: ^3.0.2
-        version: 3.0.2(echarts@5.6.0)(react@19.1.1)
+        specifier: ^3.0.5
+        version: 3.0.5(echarts@5.6.0)(react@19.1.1)
       elkjs:
         specifier: ^0.9.3
         version: 0.9.3
@@ -347,10 +347,10 @@ importers:
         version: 3.25.76
       zundo:
         specifier: ^2.3.0
-        version: 2.3.0(zustand@4.5.7(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1))
+        version: 2.3.0(zustand@5.0.9(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1)(use-sync-external-store@1.6.0(react@19.1.1)))
       zustand:
-        specifier: ^4.5.7
-        version: 4.5.7(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1)
+        specifier: ^5.0.9
+        version: 5.0.9(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1)(use-sync-external-store@1.6.0(react@19.1.1))
     devDependencies:
       '@antfu/eslint-config':
         specifier: ^5.4.1
@@ -2009,6 +2009,9 @@ packages:
   '@lexical/clipboard@0.37.0':
     resolution: {integrity: sha512-hRwASFX/ilaI5r8YOcZuQgONFshRgCPfdxfofNL7uruSFYAO6LkUhsjzZwUgf0DbmCJmbBADFw15FSthgCUhGA==}
 
+  '@lexical/clipboard@0.38.2':
+    resolution: {integrity: sha512-dDShUplCu8/o6BB9ousr3uFZ9bltR+HtleF/Tl8FXFNPpZ4AXhbLKUoJuucRuIr+zqT7RxEv/3M6pk/HEoE6NQ==}
+
   '@lexical/code@0.36.2':
     resolution: {integrity: sha512-dfS62rNo3uKwNAJQ39zC+8gYX0k8UAoW7u+JPIqx+K2VPukZlvpsPLNGft15pdWBkHc7Pv+o9gJlB6gGv+EBfA==}
 
@@ -2027,6 +2030,9 @@ packages:
   '@lexical/extension@0.37.0':
     resolution: {integrity: sha512-Z58f2tIdz9bn8gltUu5cVg37qROGha38dUZv20gI2GeNugXAkoPzJYEcxlI1D/26tkevJ/7VaFUr9PTk+iKmaA==}
 
+  '@lexical/extension@0.38.2':
+    resolution: {integrity: sha512-qbUNxEVjAC0kxp7hEMTzktj0/51SyJoIJWK6Gm790b4yNBq82fEPkksfuLkRg9VQUteD0RT1Nkjy8pho8nNamw==}
+
   '@lexical/hashtag@0.36.2':
     resolution: {integrity: sha512-WdmKtzXFcahQT3ShFDeHF6LCR5C8yvFCj3ImI09rZwICrYeonbMrzsBUxS1joBz0HQ+ufF9Tx+RxLvGWx6WxzQ==}
 
@@ -2039,6 +2045,9 @@ packages:
   '@lexical/html@0.37.0':
     resolution: {integrity: sha512-oTsBc45eL8/lmF7fqGR+UCjrJYP04gumzf5nk4TczrxWL2pM4GIMLLKG1mpQI2H1MDiRLzq3T/xdI7Gh74z7Zw==}
 
+  '@lexical/html@0.38.2':
+    resolution: {integrity: sha512-pC5AV+07bmHistRwgG3NJzBMlIzSdxYO6rJU4eBNzyR4becdiLsI4iuv+aY7PhfSv+SCs7QJ9oc4i5caq48Pkg==}
+
   '@lexical/link@0.36.2':
     resolution: {integrity: sha512-Zb+DeHA1po8VMiOAAXsBmAHhfWmQttsUkI5oiZUmOXJruRuQ2rVr01NoxHpoEpLwHOABVNzD3PMbwov+g3c7lg==}
 
@@ -2047,6 +2056,9 @@ packages:
 
   '@lexical/list@0.37.0':
     resolution: {integrity: sha512-AOC6yAA3mfNvJKbwo+kvAbPJI+13yF2ISA65vbA578CugvJ08zIVgM+pSzxquGhD0ioJY3cXVW7+gdkCP1qu5g==}
+
+  '@lexical/list@0.38.2':
+    resolution: {integrity: sha512-OQm9TzatlMrDZGxMxbozZEHzMJhKxAbH1TOnOGyFfzpfjbnFK2y8oLeVsfQZfZRmiqQS4Qc/rpFnRP2Ax5dsbA==}
 
   '@lexical/mark@0.36.2':
     resolution: {integrity: sha512-n0MNXtGH+1i43hglgHjpQV0093HmIiFR7Budg2BJb8ZNzO1KZRqeXAHlA5ZzJ698FkAnS4R5bqG9tZ0JJHgAuA==}
@@ -2078,20 +2090,32 @@ packages:
   '@lexical/selection@0.37.0':
     resolution: {integrity: sha512-Lix1s2r71jHfsTEs4q/YqK2s3uXKOnyA3fd1VDMWysO+bZzRwEO5+qyDvENZ0WrXSDCnlibNFV1HttWX9/zqyw==}
 
+  '@lexical/selection@0.38.2':
+    resolution: {integrity: sha512-eMFiWlBH6bEX9U9sMJ6PXPxVXTrihQfFeiIlWLuTpEIDF2HRz7Uo1KFRC/yN6q0DQaj7d9NZYA6Mei5DoQuz5w==}
+
   '@lexical/table@0.36.2':
     resolution: {integrity: sha512-96rNNPiVbC65i+Jn1QzIsehCS7UVUc69ovrh9Bt4+pXDebZSdZai153Q7RUq8q3AQ5ocK4/SA2kLQfMu0grj3Q==}
 
   '@lexical/table@0.37.0':
     resolution: {integrity: sha512-g7S8ml8kIujEDLWlzYKETgPCQ2U9oeWqdytRuHjHGi/rjAAGHSej5IRqTPIMxNP3VVQHnBoQ+Y9hBtjiuddhgQ==}
 
+  '@lexical/table@0.38.2':
+    resolution: {integrity: sha512-uu0i7yz0nbClmHOO5ZFsinRJE6vQnFz2YPblYHAlNigiBedhqMwSv5bedrzDq8nTTHwych3mC63tcyKIrM+I1g==}
+
   '@lexical/text@0.36.2':
     resolution: {integrity: sha512-IbbqgRdMAD6Uk9b2+qSVoy+8RVcczrz6OgXvg39+EYD+XEC7Rbw7kDTWzuNSJJpP7vxSO8YDZSaIlP5gNH3qKA==}
+
+  '@lexical/text@0.38.2':
+    resolution: {integrity: sha512-+juZxUugtC4T37aE3P0l4I9tsWbogDUnTI/mgYk4Ht9g+gLJnhQkzSA8chIyfTxbj5i0A8yWrUUSw+/xA7lKUQ==}
 
   '@lexical/utils@0.36.2':
     resolution: {integrity: sha512-P9+t2Ob10YNGYT/PWEER+1EqH8SAjCNRn+7SBvKbr0IdleGF2JvzbJwAWaRwZs1c18P11XdQZ779dGvWlfwBIw==}
 
   '@lexical/utils@0.37.0':
     resolution: {integrity: sha512-CFp4diY/kR5RqhzQSl/7SwsMod1sgLpI1FBifcOuJ6L/S6YywGpEB4B7aV5zqW21A/jU2T+2NZtxSUn6S+9gMg==}
+
+  '@lexical/utils@0.38.2':
+    resolution: {integrity: sha512-y+3rw15r4oAWIEXicUdNjfk8018dbKl7dWHqGHVEtqzAYefnEYdfD2FJ5KOTXfeoYfxi8yOW7FvzS4NZDi8Bfw==}
 
   '@lexical/yjs@0.36.2':
     resolution: {integrity: sha512-gZ66Mw+uKXTO8KeX/hNKAinXbFg3gnNYraG76lBXCwb/Ka3q34upIY9FUeGOwGVaau3iIDQhE49I+6MugAX2FQ==}
@@ -4586,10 +4610,10 @@ packages:
   duplexer@0.1.2:
     resolution: {integrity: sha512-jtD6YG370ZCIi/9GTaJKQxWTZD045+4R4hTk/x1UyoqadyJ9x9CgSi1RlVDQF8U2sxLLSnFkCaMihqljHIWgMg==}
 
-  echarts-for-react@3.0.2:
-    resolution: {integrity: sha512-DRwIiTzx8JfwPOVgGttDytBqdp5VzCSyMRIxubgU/g2n9y3VLUmF2FK7Icmg/sNVkv4+rktmrLN9w22U2yy3fA==}
+  echarts-for-react@3.0.5:
+    resolution: {integrity: sha512-YpEI5Ty7O/2nvCfQ7ybNa+S90DwE8KYZWacGvJW4luUqywP7qStQ+pxDlYOmr4jGDu10mhEkiAuMKcUlT4W5vg==}
     peerDependencies:
-      echarts: ^3.0.0 || ^4.0.0 || ^5.0.0
+      echarts: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0
       react: ^15.0.0 || >=16.0.0
 
   echarts@5.6.0:
@@ -8445,6 +8469,24 @@ packages:
       react:
         optional: true
 
+  zustand@5.0.9:
+    resolution: {integrity: sha512-ALBtUj0AfjJt3uNRQoL1tL2tMvj6Gp/6e39dnfT6uzpelGru8v1tPOGBzayOWbPJvujM8JojDk3E1LxeFisBNg==}
+    engines: {node: '>=12.20.0'}
+    peerDependencies:
+      '@types/react': ~19.1.17
+      immer: '>=9.0.6'
+      react: '>=18.0.0'
+      use-sync-external-store: '>=1.2.0'
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      immer:
+        optional: true
+      react:
+        optional: true
+      use-sync-external-store:
+        optional: true
+
   zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
 
@@ -10200,6 +10242,14 @@ snapshots:
       '@lexical/utils': 0.37.0
       lexical: 0.37.0
 
+  '@lexical/clipboard@0.38.2':
+    dependencies:
+      '@lexical/html': 0.38.2
+      '@lexical/list': 0.38.2
+      '@lexical/selection': 0.38.2
+      '@lexical/utils': 0.38.2
+      lexical: 0.37.0
+
   '@lexical/code@0.36.2':
     dependencies:
       '@lexical/utils': 0.36.2
@@ -10234,6 +10284,12 @@ snapshots:
       '@preact/signals-core': 1.12.1
       lexical: 0.37.0
 
+  '@lexical/extension@0.38.2':
+    dependencies:
+      '@lexical/utils': 0.38.2
+      '@preact/signals-core': 1.12.1
+      lexical: 0.37.0
+
   '@lexical/hashtag@0.36.2':
     dependencies:
       '@lexical/text': 0.36.2
@@ -10258,6 +10314,12 @@ snapshots:
       '@lexical/utils': 0.37.0
       lexical: 0.37.0
 
+  '@lexical/html@0.38.2':
+    dependencies:
+      '@lexical/selection': 0.38.2
+      '@lexical/utils': 0.38.2
+      lexical: 0.37.0
+
   '@lexical/link@0.36.2':
     dependencies:
       '@lexical/extension': 0.36.2
@@ -10276,6 +10338,13 @@ snapshots:
       '@lexical/extension': 0.37.0
       '@lexical/selection': 0.37.0
       '@lexical/utils': 0.37.0
+      lexical: 0.37.0
+
+  '@lexical/list@0.38.2':
+    dependencies:
+      '@lexical/extension': 0.38.2
+      '@lexical/selection': 0.38.2
+      '@lexical/utils': 0.38.2
       lexical: 0.37.0
 
   '@lexical/mark@0.36.2':
@@ -10351,6 +10420,10 @@ snapshots:
     dependencies:
       lexical: 0.37.0
 
+  '@lexical/selection@0.38.2':
+    dependencies:
+      lexical: 0.37.0
+
   '@lexical/table@0.36.2':
     dependencies:
       '@lexical/clipboard': 0.36.2
@@ -10365,7 +10438,18 @@ snapshots:
       '@lexical/utils': 0.37.0
       lexical: 0.37.0
 
+  '@lexical/table@0.38.2':
+    dependencies:
+      '@lexical/clipboard': 0.38.2
+      '@lexical/extension': 0.38.2
+      '@lexical/utils': 0.38.2
+      lexical: 0.37.0
+
   '@lexical/text@0.36.2':
+    dependencies:
+      lexical: 0.37.0
+
+  '@lexical/text@0.38.2':
     dependencies:
       lexical: 0.37.0
 
@@ -10381,6 +10465,13 @@ snapshots:
       '@lexical/list': 0.37.0
       '@lexical/selection': 0.37.0
       '@lexical/table': 0.37.0
+      lexical: 0.37.0
+
+  '@lexical/utils@0.38.2':
+    dependencies:
+      '@lexical/list': 0.38.2
+      '@lexical/selection': 0.38.2
+      '@lexical/table': 0.38.2
       lexical: 0.37.0
 
   '@lexical/yjs@0.36.2(yjs@13.6.27)':
@@ -13098,7 +13189,7 @@ snapshots:
 
   duplexer@0.1.2: {}
 
-  echarts-for-react@3.0.2(echarts@5.6.0)(react@19.1.1):
+  echarts-for-react@3.0.5(echarts@5.6.0)(react@19.1.1):
     dependencies:
       echarts: 5.6.0
       fast-deep-equal: 3.1.3
@@ -17931,9 +18022,9 @@ snapshots:
     dependencies:
       tslib: 2.3.0
 
-  zundo@2.3.0(zustand@4.5.7(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1)):
+  zundo@2.3.0(zustand@5.0.9(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1)(use-sync-external-store@1.6.0(react@19.1.1))):
     dependencies:
-      zustand: 4.5.7(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1)
+      zustand: 5.0.9(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1)(use-sync-external-store@1.6.0(react@19.1.1))
 
   zustand@4.5.7(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1):
     dependencies:
@@ -17942,5 +18033,12 @@ snapshots:
       '@types/react': 19.1.17
       immer: 10.1.3
       react: 19.1.1
+
+  zustand@5.0.9(@types/react@19.1.17)(immer@10.1.3)(react@19.1.1)(use-sync-external-store@1.6.0(react@19.1.1)):
+    optionalDependencies:
+      '@types/react': 19.1.17
+      immer: 10.1.3
+      react: 19.1.1
+      use-sync-external-store: 1.6.0(react@19.1.1)
 
   zwitch@2.0.4: {}
