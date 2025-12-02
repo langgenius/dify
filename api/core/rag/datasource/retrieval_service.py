@@ -512,7 +512,10 @@ class RetrievalService:
                             records.append(record)
                         else:
                             if attachment_info:
-                                segment_file_map[segment.id].append(attachment_info)
+                                attachment_infos = segment_file_map.get(segment.id, [])
+                                if attachment_info not in attachment_infos:
+                                    attachment_infos.append(attachment_info)
+                                segment_file_map[segment.id] = attachment_infos
 
             # Add child chunks information to records
             for record in records:
