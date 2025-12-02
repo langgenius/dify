@@ -12,6 +12,8 @@ import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
 import { useDatasetList } from '@/service/knowledge/use-dataset'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -120,7 +122,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
               <div
                 key={item.id}
                 className={cn(
-                  'flex h-10 cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 shadow-xs hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+                  'flex h-10 cursor-pointer items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 shadow-xs hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
                   selected.some(i => i.id === item.id) && 'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover hover:shadow-xs',
                   !item.embedding_available && 'hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg hover:shadow-xs',
                 )}
@@ -130,7 +132,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   toggleSelect(item)
                 }}
               >
-                <div className='mr-1 flex items-center overflow-hidden'>
+                <div className='mr-1 flex grow items-center overflow-hidden'>
                   <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
                     <AppIcon
                       size='tiny'
@@ -145,6 +147,11 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     <span className='ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs font-normal leading-[18px] text-text-tertiary'>{t('dataset.unavailable')}</span>
                   )}
                 </div>
+                {item.is_multimodal && (
+                  <div className='mr-1 shrink-0'>
+                    <FeatureIcon feature={ModelFeatureEnum.vision} />
+                  </div>
+                )}
                 {
                   item.indexing_technique && (
                     <Badge
