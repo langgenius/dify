@@ -379,6 +379,7 @@ const translation = {
     optional_and_hidden: '（可選且隱藏）',
     goTo: '前往',
     startNode: '起始節點',
+    openWorkflow: '打開工作流程',
   },
   nodes: {
     common: {

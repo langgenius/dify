@@ -119,6 +119,13 @@ const translation = {
     confirmTip: 'Bu aracı kullanan uygulamalar etkilenecek',
     deleteToolConfirmTitle: 'Bu Aracı silmek istiyor musunuz?',
     deleteToolConfirmContent: 'Aracın silinmesi geri alınamaz. Kullanıcılar artık aracınıza erişemeyecek.',
+    toolOutput: {
+      title: 'Araç Çıktısı',
+      name: 'İsim',
+      reserved: 'Ayrılmış',
+      reservedParameterDuplicateTip: 'text, json ve dosyalar ayrılmış değişkenlerdir. Bu isimlere sahip değişkenler çıktı şemasında yer alamaz.',
+      description: 'Açıklama',
+    },
   },
   test: {
     title: 'Test',
