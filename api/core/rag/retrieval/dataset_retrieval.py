@@ -547,7 +547,7 @@ class DatasetRetrieval:
         doc_ids_filter = []
         for document in all_documents:
             if document.provider == "dify":
-                doc_id = document.metadata.get("document_id")
+                doc_id = document.metadata.get("doc_id")
                 if doc_id and doc_id not in doc_ids_filter:
                     doc_ids_filter.append(doc_id)
                     retrieval_resource_list.append(document)
