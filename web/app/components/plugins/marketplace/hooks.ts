@@ -23,11 +23,10 @@ import {
   getMarketplaceCollectionsAndPlugins,
   getMarketplacePluginsByCollectionId,
 } from './utils'
+import { SCROLL_BOTTOM_THRESHOLD } from './constants'
 import i18n from '@/i18n-config/i18next-config'
 import { postMarketplace } from '@/service/base'
 import type { PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
-
-const SCROLL_BOTTOM_THRESHOLD = 100
 
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [queryParams, setQueryParams] = useState<CollectionsAndPluginsSearchParams>()

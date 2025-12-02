@@ -8,11 +8,10 @@ import {
   useMarketplaceCollectionsAndPlugins,
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
+import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { useAllToolProviders } from '@/service/use-tools'
-
-const SCROLL_BOTTOM_THRESHOLD = 100
 
 export const useMarketplace = (searchPluginText: string, filterPluginTags: string[]) => {
   const { data: toolProvidersData, isSuccess } = useAllToolProviders()
