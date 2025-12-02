@@ -11,6 +11,7 @@ import BlockIcon from '../../block-icon'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
 
 const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
@@ -49,7 +50,7 @@ const ToolItem: FC<Props> = ({
     return normalizeProviderIcon(provider.icon_dark) ?? provider.icon_dark
   }, [provider.icon_dark])
   const providerIcon = useMemo(() => {
-    if (theme === 'dark' && normalizedIconDark)
+    if (theme === Theme.dark && normalizedIconDark)
       return normalizedIconDark
     return normalizedIcon
   }, [theme, normalizedIcon, normalizedIconDark])

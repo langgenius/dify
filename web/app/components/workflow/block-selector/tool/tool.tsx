@@ -15,6 +15,7 @@ import BlockIcon from '../../block-icon'
 import { useTranslation } from 'react-i18next'
 import { useHover } from 'ahooks'
 import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 import McpToolNotSupportTooltip from '../../nodes/_base/components/mcp-tool-not-support-tooltip'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { basePath } from '@/utils/var'
@@ -72,7 +73,7 @@ const Tool: FC<Props> = ({
     return normalizeProviderIcon(payload.icon_dark) ?? payload.icon_dark
   }, [payload.icon_dark])
   const providerIcon = useMemo<ToolWithProvider['icon']>(() => {
-    if (theme === 'dark' && normalizedIconDark)
+    if (theme === Theme.dark && normalizedIconDark)
       return normalizedIconDark
     return normalizedIcon
   }, [theme, normalizedIcon, normalizedIconDark])
