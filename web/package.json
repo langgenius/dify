@@ -2,7 +2,7 @@
   "name": "dify-web",
   "version": "1.10.1",
   "private": true,
-  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c",
+  "packageManager": "pnpm@10.24.0+sha512.01ff8ae71b4419903b65c60fb2dc9d34cf8bb6e06d03bde112ef38f7a34d6904c424ba66bea5cdcf12890230bf39f9580473140ed9c946fef328b6e5238a345a",
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -53,10 +53,10 @@
     "@hookform/resolvers": "^3.10.0",
     "@lexical/code": "^0.36.2",
     "@lexical/link": "^0.36.2",
-    "@lexical/list": "^0.36.2",
+    "@lexical/list": "^0.38.2",
     "@lexical/react": "^0.36.2",
     "@lexical/selection": "^0.37.0",
-    "@lexical/text": "^0.36.2",
+    "@lexical/text": "^0.38.2",
     "@lexical/utils": "^0.37.0",
     "@monaco-editor/react": "^4.7.0",
     "@octokit/core": "^6.1.6",
@@ -79,7 +79,7 @@
     "decimal.js": "^10.6.0",
     "dompurify": "^3.3.0",
     "echarts": "^5.6.0",
-    "echarts-for-react": "^3.0.2",
+    "echarts-for-react": "^3.0.5",
     "elkjs": "^0.9.3",
     "emoji-mart": "^5.6.0",
     "fast-deep-equal": "^3.1.3",
@@ -141,7 +141,7 @@
     "uuid": "^10.0.0",
     "zod": "^3.25.76",
     "zundo": "^2.3.0",
-    "zustand": "^4.5.7"
+    "zustand": "^5.0.9"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^5.4.1",

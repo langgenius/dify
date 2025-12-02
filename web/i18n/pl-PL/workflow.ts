@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(opcjonalne i ukryte)',
     goTo: 'Idź do',
     startNode: 'Węzeł początkowy',
+    openWorkflow: 'Otwórz przepływ pracy',
   },
   nodes: {
     common: {
