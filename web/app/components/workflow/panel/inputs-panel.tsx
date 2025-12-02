@@ -32,10 +32,7 @@ type Props = {
 const InputsPanel = ({ onRun }: Props) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
-  const { inputs } = useStore(s => ({
-    inputs: s.inputs,
-    setInputs: s.setInputs,
-  }))
+  const inputs = useStore(s => s.inputs)
   const fileSettings = useHooksStore(s => s.configsMap?.fileSettings)
   const nodes = useNodes<StartNodeType>()
   const files = useStore(s => s.files)
