@@ -214,8 +214,12 @@ export const searchAnything = async (
   actionItem?: ActionItem,
   dynamicActions?: Record<string, ActionItem>,
 ): Promise<SearchResult[]> => {
+  const trimmedQuery = query.trim()
+
   if (actionItem) {
-    const searchTerm = query.replace(actionItem.key, '').replace(actionItem.shortcut, '').trim()
+    const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const prefixPattern = new RegExp(`^(${escapeRegExp(actionItem.key)}|${escapeRegExp(actionItem.shortcut)})\\s*`)
+    const searchTerm = trimmedQuery.replace(prefixPattern, '').trim()
     try {
       return await actionItem.search(query, searchTerm, locale)
     }
@@ -225,10 +229,12 @@ export const searchAnything = async (
     }
   }
 
-  if (query.startsWith('@') || query.startsWith('/'))
+  if (trimmedQuery.startsWith('@') || trimmedQuery.startsWith('/'))
     return []
 
   const globalSearchActions = Object.values(dynamicActions || Actions)
+    // Exclude slash commands from general search results
+    .filter(action => action.key !== '/')
 
   // Use Promise.allSettled to handle partial failures gracefully
   const searchPromises = globalSearchActions.map(async (action) => {

@@ -386,6 +386,7 @@ const translation = {
     optional_and_hidden: '(वैकल्पिक और छिपा हुआ)',
     goTo: 'जाओ',
     startNode: 'प्रारंभ नोड',
+    openWorkflow: 'वर्कफ़्लो खोलें',
   },
   nodes: {
     common: {
