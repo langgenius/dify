@@ -26,6 +26,7 @@ from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.variables import (
     ArrayFileSegment,
+    FileSegment,
     StringSegment,
 )
 from core.variables.segments import ArrayObjectSegment
@@ -120,7 +121,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         return "1"
 
     def _run(self) -> NodeRunResult:
-        if not self._node_data.query_variable_selector and not self._node_data.attachments_variable_selector:
+        if not self._node_data.query_variable_selector and not self._node_data.query_attachment_selector:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs={},
@@ -142,16 +143,18 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             query = variable.value
             variables["query"] = query
 
-        if self._node_data.attachments_variable_selector:
-            variable = self.graph_runtime_state.variable_pool.get(self._node_data.attachments_variable_selector)
-            if not isinstance(variable, ArrayFileSegment):
+        if self._node_data.query_attachment_selector:
+            variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_attachment_selector)
+            if not isinstance(variable, ArrayFileSegment) and not isinstance(variable, FileSegment):
                 return NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs={},
-                    error="Attachments variable is not array file type.",
+                    error="Attachments variable is not array file or file type.",
                 )
-            attachments = variable.value
-            variables["attachments"] = attachments
+            if isinstance(variable, ArrayFileSegment):
+                variables["attachments"] = variable.value
+            else:
+                variables["attachments"] = [variable.value]
 
         # TODO(-LAN-): Move this check outside.
         # check rate limit
@@ -344,7 +347,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
                 metadata_filter_document_ids=metadata_filter_document_ids,
                 metadata_condition=metadata_condition,
-                attachment_ids=[attachment.id for attachment in attachments] if attachments else None,
+                attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
             )
         usage = self._merge_usage(usage, dataset_retrieval.llm_usage)
 
@@ -410,7 +413,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                                 "doc_metadata": document.doc_metadata,
                             },
                             "title": document.name,
-                            "files": [file.model_dump() for file in record.files] if record.files else None,
+                            "files": [file for file in record.files] if record.files else None,
                         }
                         if segment.answer:
                             source["content"] = f"question:{segment.get_sign_content()} \nanswer:{segment.answer}"
@@ -687,6 +690,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
 
         variable_mapping = {}
         variable_mapping[node_id + ".query"] = typed_node_data.query_variable_selector
+        variable_mapping[node_id + ".queryAttachment"] = typed_node_data.query_attachment_selector
         return variable_mapping
 
     def get_model_config(self, model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
