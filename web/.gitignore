@@ -54,3 +54,4 @@ package-lock.json
 # mise
 mise.toml
 
+complexity-report.csv

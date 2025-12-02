@@ -1,5 +1,6 @@
 // https://www.sonarsource.com/blog/5-clean-code-tips-for-reducing-cognitive-complexity/
 const fs = require('fs');
+const path = require('path');
 const { Linter } = require('eslint');
 const sonarPlugin = require('eslint-plugin-sonarjs');
 const tsParser = require('@typescript-eslint/parser');
@@ -59,7 +60,7 @@ function getFileComplexity(filePath) {
     return {
       file: filePath,
       totalComplexity: totalFileComplexity,
-      maxFileComplexity: functionComplexities[maxFileComplexityIndex],
+      maxComplexityInfo: functionComplexities[maxFileComplexityIndex],
       details: functionComplexities
     };
 
@@ -69,11 +70,59 @@ function getFileComplexity(filePath) {
   }
 }
 
-// const targetFile = './app/components/share/text-generation/run-once/index.tsx'; // "totalComplexity": 22
-const targetFile = './app/components/share/text-generation/index.tsx'; // 90, max: 41
-// const targetFile = './app/components/workflow/nodes/_base/components/workflow-panel/index.tsx'; // 33
-// const targetFile = './app/components/app/configuration/index.tsx'; // 111, max: 26
+function collectTsxFiles(baseDir) {
+  const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+  const files = [];
 
+  entries.forEach((entry) => {
+    const fullPath = path.join(baseDir, entry.name);
 
-const result = getFileComplexity(targetFile);
-console.log(JSON.stringify(result, null, 2));
+    if (entry.isDirectory()) {
+      if (
+        entry.name === 'node_modules' ||
+        entry.name.startsWith('.') ||
+        entry.name === '__test__' ||
+        entry.name === '__tests__'
+      ) {
+        return;
+      }
+      files.push(...collectTsxFiles(fullPath));
+    } else if (
+      entry.isFile() &&
+      entry.name.endsWith('.tsx') &&
+      !entry.name.endsWith('.spec.tsx') &&
+      !entry.name.endsWith('.test.tsx')
+    ) {
+      files.push(fullPath);
+    }
+  });
+
+  return files;
+}
+
+function writeCsv(results, outputPath) {
+  const header = 'File,Total Complexity,Max Complexity,Max Complexity Line';
+  const rows = results.map(({ file, totalComplexity, maxComplexityInfo }) => {
+    const maxScore = maxComplexityInfo?.score ?? 0;
+    const maxLine = maxComplexityInfo?.line ?? '';
+    const targetFile = JSON.stringify(path.relative(process.cwd(), file));
+    return `${targetFile},${totalComplexity},${maxScore},${maxLine}`;
+  });
+
+  fs.writeFileSync(outputPath, [header, ...rows].join('\n'), 'utf8');
+}
+
+function main() {
+  const projectRoot = process.cwd();
+  const tsxFiles = collectTsxFiles(projectRoot);
+  const results = tsxFiles
+    .map(getFileComplexity)
+    .filter((item) => item && item.totalComplexity > 0)
+    .sort((a, b) => b.maxComplexityInfo?.score - a.maxComplexityInfo?.score);
+
+  const outputPath = path.join(projectRoot, 'complexity-report.csv');
+  writeCsv(results, outputPath);
+  console.log(`CSV report written to ${outputPath}`);
+}
+
+main();
