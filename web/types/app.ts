@@ -312,6 +312,7 @@ export type SiteConfig = {
   icon_url: string | null
 
   show_workflow_steps: boolean
+  show_reasoning: boolean
   use_icon_as_answer_icon: boolean
 }
 
