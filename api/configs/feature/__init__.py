@@ -553,7 +553,10 @@ class LoggingConfig(BaseSettings):
 
     LOG_FORMAT: str = Field(
         description="Format string for log messages",
-        default="%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s",
+        default=(
+            "%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] "
+            "[%(filename)s:%(lineno)d] %(trace_id)s - %(message)s"
+        ),
     )
 
     LOG_DATEFORMAT: str | None = Field(
