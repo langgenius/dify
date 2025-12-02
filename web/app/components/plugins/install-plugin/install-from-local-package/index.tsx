@@ -11,8 +11,6 @@ import ReadyToInstallPackage from './ready-to-install'
 import ReadyToInstallBundle from '../install-bundle/ready-to-install'
 import useHideLogic from '../hooks/use-hide-logic'
 import cn from '@/utils/classnames'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -56,7 +54,6 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   }, [isBundle, step, t])
 
   const { getIconUrl } = useGetIcon()
-  const { theme } = useTheme()
 
   const handlePackageUploaded = useCallback(async (result: {
     uniqueIdentifier: string
@@ -67,9 +64,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       uniqueIdentifier,
     } = result
     const icon = await getIconUrl(manifest!.icon)
-    const iconDark = theme === Theme.dark && manifest.icon_dark
-      ? await getIconUrl(manifest.icon_dark)
-      : manifest.icon_dark
+    const iconDark = manifest.icon_dark ? await getIconUrl(manifest.icon_dark) : undefined
     setUniqueIdentifier(uniqueIdentifier)
     setManifest({
       ...manifest,
@@ -77,7 +72,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       icon_dark: iconDark,
     })
     setStep(InstallStep.readyToInstall)
-  }, [getIconUrl, theme])
+  }, [getIconUrl])
 
   const handleBundleUploaded = useCallback((result: Dependency[]) => {
     setDependencies(result)
