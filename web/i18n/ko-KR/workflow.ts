@@ -395,6 +395,7 @@ const translation = {
     optional_and_hidden: '(선택 사항 및 숨김)',
     goTo: '로 이동',
     startNode: '시작 노드',
+    openWorkflow: '워크플로 열기',
   },
   nodes: {
     common: {

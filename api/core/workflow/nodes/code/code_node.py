@@ -9,9 +9,8 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.variables.segments import ArrayFileSegment
 from core.variables.types import SegmentType
-from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.entities import CodeNodeData
 
@@ -22,31 +21,8 @@ from .exc import (
 )
 
 
-class CodeNode(Node):
+class CodeNode(Node[CodeNodeData]):
     node_type = NodeType.CODE
-
-    _node_data: CodeNodeData
-
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = CodeNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -70,12 +46,12 @@ class CodeNode(Node):
 
     def _run(self) -> NodeRunResult:
         # Get code language
-        code_language = self._node_data.code_language
-        code = self._node_data.code
+        code_language = self.node_data.code_language
+        code = self.node_data.code
 
         # Get variables
         variables = {}
-        for variable_selector in self._node_data.variables:
+        for variable_selector in self.node_data.variables:
             variable_name = variable_selector.variable
             variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
             if isinstance(variable, ArrayFileSegment):
@@ -91,7 +67,7 @@ class CodeNode(Node):
             )
 
             # Transform result
-            result = self._transform_result(result=result, output_schema=self._node_data.outputs)
+            result = self._transform_result(result=result, output_schema=self.node_data.outputs)
         except (CodeExecutionError, CodeNodeError) as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
@@ -428,7 +404,7 @@ class CodeNode(Node):
 
     @property
     def retry(self) -> bool:
-        return self._node_data.retry_config.retry_enabled
+        return self.node_data.retry_config.retry_enabled
 
     @staticmethod
     def _convert_boolean_to_int(value: bool | int | float | None) -> int | float | None:
