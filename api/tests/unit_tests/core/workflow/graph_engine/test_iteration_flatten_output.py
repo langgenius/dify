@@ -13,9 +13,10 @@ from .test_table_runner import TableTestRunner, WorkflowTestCase
 
 def _create_iteration_mock_config():
     """Helper to create a mock config for iteration tests."""
+
     def code_inner_handler(node):
         pool = node.graph_runtime_state.variable_pool
-        item_seg = pool.get(['iteration_node', 'item'])
+        item_seg = pool.get(["iteration_node", "item"])
         if item_seg is not None:
             item = item_seg.to_object()
             return {"result": [item, item * 2]}
@@ -23,13 +24,12 @@ def _create_iteration_mock_config():
         # it doesn't simulate iteration with different values as the comment suggests.
         return {"result": [1, 2]}
 
-    return (MockConfigBuilder()
-           .with_node_output("code_node", {"result": [1, 2, 3]})
-           .with_node_config(NodeMockConfig(
-               node_id="code_inner_node",
-               custom_handler=code_inner_handler
-           ))
-           .build())
+    return (
+        MockConfigBuilder()
+        .with_node_output("code_node", {"result": [1, 2, 3]})
+        .with_node_config(NodeMockConfig(node_id="code_inner_node", custom_handler=code_inner_handler))
+        .build()
+    )
 
 
 @skip_if_database_unavailable()
