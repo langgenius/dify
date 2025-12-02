@@ -36,7 +36,7 @@ from factories.variable_factory import TypeMismatchError, build_segment_with_typ
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
 
-from ._workflow_exc import NodeNotFoundError, WorkflowDataError
+from ._workflow_exc import NodeNotFoundError
 
 if TYPE_CHECKING:
     from .model import AppMode, UploadFile
