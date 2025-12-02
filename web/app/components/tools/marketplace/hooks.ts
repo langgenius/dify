@@ -12,6 +12,8 @@ import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { useAllToolProviders } from '@/service/use-tools'
 
+const SCROLL_BOTTOM_THRESHOLD = 100
+
 export const useMarketplace = (searchPluginText: string, filterPluginTags: string[]) => {
   const { data: toolProvidersData, isSuccess } = useAllToolProviders()
   const exclude = useMemo(() => {
@@ -81,7 +83,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
       scrollHeight,
       clientHeight,
     } = target
-    if (scrollTop + clientHeight >= scrollHeight - 5 && scrollTop > 0) {
+    if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0) {
       const searchPluginText = searchPluginTextRef.current
       const filterPluginTags = filterPluginTagsRef.current
       if (hasNextPage && (!!searchPluginText || !!filterPluginTags.length))

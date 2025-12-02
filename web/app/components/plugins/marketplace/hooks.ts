@@ -27,6 +27,8 @@ import i18n from '@/i18n-config/i18next-config'
 import { postMarketplace } from '@/service/base'
 import type { PluginsFromMarketplaceResponse } from '@/app/components/plugins/types'
 
+const SCROLL_BOTTOM_THRESHOLD = 100
+
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [queryParams, setQueryParams] = useState<CollectionsAndPluginsSearchParams>()
   const [marketplaceCollectionsOverride, setMarketplaceCollections] = useState<MarketplaceCollection[]>()
@@ -243,7 +245,7 @@ export const useMarketplaceContainerScroll = (
       scrollHeight,
       clientHeight,
     } = target
-    if (scrollTop + clientHeight >= scrollHeight - 5 && scrollTop > 0)
+    if (scrollTop + clientHeight >= scrollHeight - SCROLL_BOTTOM_THRESHOLD && scrollTop > 0)
       callback()
   }, [callback])
 
