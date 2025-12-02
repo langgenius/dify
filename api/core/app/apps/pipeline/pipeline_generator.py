@@ -163,7 +163,7 @@ class PipelineGenerator(BaseAppGenerator):
                     datasource_type=datasource_type,
                     datasource_info=json.dumps(datasource_info),
                     datasource_node_id=start_node_id,
-                    input_data=inputs,
+                    input_data=dict(inputs),
                     pipeline_id=pipeline.id,
                     created_by=user.id,
                 )

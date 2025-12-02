@@ -99,8 +99,8 @@ const MCPModal = ({
   const [appIcon, setAppIcon] = useState<AppIconSelection>(() => getIcon(data))
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [serverIdentifier, setServerIdentifier] = React.useState(data?.server_identifier || '')
-  const [timeout, setMcpTimeout] = React.useState(data?.timeout || 30)
-  const [sseReadTimeout, setSseReadTimeout] = React.useState(data?.sse_read_timeout || 300)
+  const [timeout, setMcpTimeout] = React.useState(data?.configuration?.timeout || 30)
+  const [sseReadTimeout, setSseReadTimeout] = React.useState(data?.configuration?.sse_read_timeout || 300)
   const [headers, setHeaders] = React.useState<HeaderItem[]>(
     Object.entries(data?.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })),
   )
@@ -118,8 +118,8 @@ const MCPModal = ({
       setUrl(data.server_url || '')
       setName(data.name || '')
       setServerIdentifier(data.server_identifier || '')
-      setMcpTimeout(data.timeout || 30)
-      setSseReadTimeout(data.sse_read_timeout || 300)
+      setMcpTimeout(data.configuration?.timeout || 30)
+      setSseReadTimeout(data.configuration?.sse_read_timeout || 300)
       setHeaders(Object.entries(data.masked_headers || {}).map(([key, value]) => ({ id: uuid(), key, value })))
       setAppIcon(getIcon(data))
       setIsDynamicRegistration(data.is_dynamic_registration)

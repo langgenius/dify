@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Quản lý thanh toán và đăng ký',
   buyPermissionDeniedTip: 'Vui lòng liên hệ với quản trị viên doanh nghiệp của bạn để đăng ký',
   plansCommon: {
-    title: 'Chọn một kế hoạch phù hợp với bạn',
     yearlyTip: 'Nhận 2 tháng miễn phí khi đăng ký hàng năm!',
     mostPopular: 'Phổ biến nhất',
     planRange: {
@@ -96,6 +95,26 @@ const translation = {
     startBuilding: 'Bắt đầu xây dựng',
     taxTipSecond: 'Nếu khu vực của bạn không có yêu cầu thuế áp dụng, sẽ không có thuế xuất hiện trong quá trình thanh toán của bạn và bạn sẽ không bị tính bất kỳ khoản phí bổ sung nào trong suốt thời gian đăng ký.',
     taxTip: 'Tất cả giá đăng ký (hàng tháng/hàng năm) chưa bao gồm các loại thuế áp dụng (ví dụ: VAT, thuế bán hàng).',
+    triggerEvents: {
+      unlimited: 'Sự kiện Kích hoạt Không giới hạn',
+      tooltip: 'Số lượng sự kiện tự động kích hoạt quy trình làm việc thông qua Plugin, Lịch trình hoặc Webhook.',
+      sandbox: '{{count,number}} Kích hoạt Sự kiện',
+      professional: '{{count,number}} Sự kiện kích hoạt/tháng',
+    },
+    workflowExecution: {
+      faster: 'Thực hiện quy trình làm việc nhanh hơn',
+      priority: 'Thực thi Quy trình Làm việc Ưu tiên',
+      tooltip: 'Ưu tiên và tốc độ hàng đợi thực thi quy trình làm việc.',
+      standard: 'Thực thi Quy trình Làm việc Chuẩn',
+    },
+    startNodes: {
+      unlimited: 'Kích hoạt/quy trình làm việc không giới hạn',
+      limited: 'Tối đa {{count}} kích hoạt/quy trình',
+    },
+    title: {
+      plans: 'kế hoạch',
+      description: 'Chọn gói phù hợp nhất với nhu cầu của đội bạn.',
+    },
   },
   plans: {
     sandbox: {
@@ -117,28 +136,14 @@ const translation = {
       name: 'Doanh nghiệp',
       description: 'Nhận toàn bộ khả năng và hỗ trợ cho các hệ thống quan trọng cho nhiệm vụ quy mô lớn.',
       includesTitle: 'Tất cả trong kế hoạch Nhóm, cộng thêm:',
-      features: {
-        4: 'SSO',
-        8: 'Hỗ trợ kỹ thuật chuyên nghiệp',
-        1: 'Ủy quyền giấy phép thương mại',
-        6: 'Bảo mật & Kiểm soát nâng cao',
-        3: 'Nhiều không gian làm việc & quản lý doanh nghiệp',
-        5: 'SLA được đàm phán bởi Dify Partners',
-        0: 'Giải pháp triển khai có thể mở rộng cấp doanh nghiệp',
-        7: 'Cập nhật và bảo trì bởi Dify chính thức',
-        2: 'Các tính năng dành riêng cho doanh nghiệp',
-      },
+      features: ['Giải pháp triển khai mở rộng cấp doanh nghiệp', 'Giấy phép thương mại', 'Tính năng Doanh nghiệp Độc quyền', 'Nhiều Không Gian Làm Việc & Quản Lý Doanh Nghiệp', 'Đăng nhập một lần', 'Các SLA đã được đàm phán bởi các Đối tác Dify', 'Bảo mật & Kiểm soát Nâng cao', 'Cập nhật và Bảo trì bởi Dify chính thức', 'Hỗ trợ Kỹ thuật Chuyên nghiệp'],
       price: 'Tùy chỉnh',
       for: 'Dành cho các đội lớn',
       priceTip: 'Chỉ thanh toán hàng năm',
       btnText: 'Liên hệ với Bộ phận Bán hàng',
     },
     community: {
-      features: {
-        0: 'Tất cả các tính năng cốt lõi được phát hành trong kho lưu trữ công cộng',
-        2: 'Tuân thủ Giấy phép nguồn mở Dify',
-        1: 'Không gian làm việc đơn',
-      },
+      features: ['Tất cả các Tính năng Cốt lõi được Phát hành Dưới Kho Lưu trữ Công khai', 'Không gian làm việc đơn', 'Tuân thủ Giấy phép Mã nguồn mở Dify'],
       description: 'Dành cho người dùng cá nhân, nhóm nhỏ hoặc các dự án phi thương mại',
       name: 'Cộng đồng',
       btnText: 'Bắt đầu với Cộng đồng',
@@ -147,12 +152,7 @@ const translation = {
       includesTitle: 'Tính năng miễn phí:',
     },
     premium: {
-      features: {
-        1: 'Không gian làm việc đơn',
-        3: 'Hỗ trợ email & trò chuyện ưu tiên',
-        0: 'Độ tin cậy tự quản lý của các nhà cung cấp đám mây khác nhau',
-        2: 'Logo WebApp & Tùy chỉnh thương hiệu',
-      },
+      features: ['Độ tin cậy tự quản lý bởi các nhà cung cấp đám mây khác nhau', 'Không gian làm việc đơn', 'Tùy chỉnh Logo & Thương hiệu WebApp', 'Hỗ trợ Email & Trò chuyện Ưu tiên'],
       comingSoon: 'Hỗ trợ Microsoft Azure & Google Cloud Sẽ Đến Sớm',
       priceTip: 'Dựa trên Thị trường Đám mây',
       btnText: 'Nhận Premium trong',
@@ -186,8 +186,18 @@ const translation = {
     teamMembers: 'Các thành viên trong nhóm',
     vectorSpace: 'Lưu trữ dữ liệu kiến thức',
     buildApps: 'Xây dựng ứng dụng',
+    triggerEvents: 'Các sự kiện kích hoạt',
+    perMonth: 'mỗi tháng',
+    resetsIn: 'Đặt lại sau {{count,number}} ngày',
   },
   teamMembers: 'Các thành viên trong nhóm',
+  triggerLimitModal: {
+    upgrade: 'Nâng cấp',
+    dismiss: 'Đóng',
+    usageTitle: 'SỰ KIỆN KÍCH HOẠT',
+    description: 'Bạn đã đạt đến giới hạn kích hoạt sự kiện quy trình cho gói này.',
+    title: 'Nâng cấp để mở khóa thêm nhiều sự kiện kích hoạt',
+  },
 }
 
 export default translation

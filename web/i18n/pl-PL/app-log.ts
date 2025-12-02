@@ -20,6 +20,7 @@ const translation = {
       tokens: 'TOKENY',
       user: 'UŻYTKOWNIK KOŃCOWY LUB KONTO',
       version: 'WERSJA',
+      triggered_from: 'URUCHOMIONE PRZEZ',
     },
     pagination: {
       previous: 'Poprzedni',
@@ -101,6 +102,15 @@ const translation = {
     finalProcessing: 'Końcowa obróbka',
   },
   dateFormat: 'DD/MM/RRRR',
+  triggerBy: {
+    debugging: 'Debugowanie',
+    appRun: 'Aplikacja internetowa',
+    webhook: 'Webhook',
+    schedule: 'Harmonogram',
+    plugin: 'Wtyczka',
+    ragPipelineRun: 'Pipeline RAG',
+    ragPipelineDebugging: 'Debugowanie RAG',
+  },
 }
 
 export default translation

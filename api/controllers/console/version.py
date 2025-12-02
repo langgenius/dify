@@ -7,7 +7,7 @@ from packaging import version
 
 from configs import dify_config
 
-from . import api, console_ns
+from . import console_ns
 
 logger = logging.getLogger(__name__)
 
@@ -18,13 +18,13 @@ parser = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/version")
 class VersionApi(Resource):
-    @api.doc("check_version_update")
-    @api.doc(description="Check for application version updates")
-    @api.expect(parser)
-    @api.response(
+    @console_ns.doc("check_version_update")
+    @console_ns.doc(description="Check for application version updates")
+    @console_ns.expect(parser)
+    @console_ns.response(
         200,
         "Success",
-        api.model(
+        console_ns.model(
             "VersionResponse",
             {
                 "version": fields.String(description="Latest version number"),
@@ -58,7 +58,7 @@ class VersionApi(Resource):
             response = httpx.get(
                 check_update_url,
                 params={"current_version": args["current_version"]},
-                timeout=httpx.Timeout(connect=3, read=10),
+                timeout=httpx.Timeout(timeout=10.0, connect=3.0),
             )
         except Exception as error:
             logger.warning("Check update version error: %s.", str(error))

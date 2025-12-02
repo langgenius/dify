@@ -5,8 +5,7 @@ import sqlalchemy as sa
 from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 
-from models.base import TypeBase
-
+from .base import TypeBase
 from .engine import db
 from .model import Message
 from .types import StringUUID
@@ -19,7 +18,9 @@ class SavedMessage(TypeBase):
         sa.Index("saved_message_message_idx", "app_id", "message_id", "created_by_role", "created_by"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_by_role: Mapped[str] = mapped_column(String(255), nullable=False, server_default=sa.text("'end_user'"))
@@ -43,7 +44,9 @@ class PinnedConversation(TypeBase):
         sa.Index("pinned_conversation_conversation_idx", "app_id", "conversation_id", "created_by_role", "created_by"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     conversation_id: Mapped[str] = mapped_column(StringUUID)
     created_by_role: Mapped[str] = mapped_column(

@@ -81,7 +81,10 @@ const translation = {
     learnMore: 'Pelajari lebih lanjut',
     addUrl: 'Tambahkan URL',
     title: 'Dokumen',
-    sort: {},
+    sort: {
+      uploadTime: 'Waktu Unggah',
+      hitCount: 'Jumlah Pengambilan',
+    },
   },
   metadata: {
     placeholder: {
