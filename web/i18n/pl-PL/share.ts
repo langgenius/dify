@@ -75,9 +75,9 @@ const translation = {
       atLeastOne:
         'Proszę wprowadź co najmniej jeden wiersz w załadowanym pliku.',
     },
-    executions: '{{num}} EGZEKUCJI',
-    execution: 'WYKONANIE',
-    stopRun: 'Zatrzymaj bieg',
+    execution: 'Uruchom',
+    executions: '{{num}} uruchomień',
+    stopRun: 'Zatrzymaj wykonanie',
   },
   login: {
     backToHome: 'Powrót do strony głównej',

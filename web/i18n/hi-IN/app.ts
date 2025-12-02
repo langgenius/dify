@@ -302,6 +302,8 @@ const translation = {
       docDesc: 'सहायता दस्तावेज़ खोलें',
       communityDesc: 'ओपन डिस्कॉर्ड समुदाय',
       feedbackDesc: 'खुले समुदाय की फीडबैक चर्चाएँ',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'कोई प्लगइन नहीं मिले',

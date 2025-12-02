@@ -1,5 +1,6 @@
-from flask import abort, jsonify
-from flask_restx import Resource, reqparse
+from flask import abort, jsonify, request
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import sessionmaker
 
 from controllers.console import console_ns
@@ -7,11 +8,30 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from libs.datetime_utils import parse_time_range
-from libs.helper import DatetimeString
 from libs.login import current_account_with_tenant, login_required
 from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
 from repositories.factory import DifyAPIRepositoryFactory
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class WorkflowStatisticQuery(BaseModel):
+    start: str | None = Field(default=None, description="Start date and time (YYYY-MM-DD HH:MM)")
+    end: str | None = Field(default=None, description="End date and time (YYYY-MM-DD HH:MM)")
+
+    @field_validator("start", "end", mode="before")
+    @classmethod
+    def blank_to_none(cls, value: str | None) -> str | None:
+        if value == "":
+            return None
+        return value
+
+
+console_ns.schema_model(
+    WorkflowStatisticQuery.__name__,
+    WorkflowStatisticQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route("/apps/<uuid:app_id>/workflow/statistics/daily-conversations")
@@ -24,9 +44,7 @@ class WorkflowDailyRunsStatistic(Resource):
     @console_ns.doc("get_workflow_daily_runs_statistic")
     @console_ns.doc(description="Get workflow daily runs statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(
-        params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"}
-    )
+    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
     @console_ns.response(200, "Daily runs statistics retrieved successfully")
     @get_app_model
     @setup_required
@@ -35,17 +53,12 @@ class WorkflowDailyRunsStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
-        args = parser.parse_args()
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         assert account.timezone is not None
 
         try:
-            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -71,9 +84,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
     @console_ns.doc("get_workflow_daily_terminals_statistic")
     @console_ns.doc(description="Get workflow daily terminals statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(
-        params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"}
-    )
+    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
     @console_ns.response(200, "Daily terminals statistics retrieved successfully")
     @get_app_model
     @setup_required
@@ -82,17 +93,12 @@ class WorkflowDailyTerminalsStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
-        args = parser.parse_args()
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         assert account.timezone is not None
 
         try:
-            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -118,9 +124,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
     @console_ns.doc("get_workflow_daily_token_cost_statistic")
     @console_ns.doc(description="Get workflow daily token cost statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(
-        params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"}
-    )
+    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
     @console_ns.response(200, "Daily token cost statistics retrieved successfully")
     @get_app_model
     @setup_required
@@ -129,17 +133,12 @@ class WorkflowDailyTokenCostStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
-        args = parser.parse_args()
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         assert account.timezone is not None
 
         try:
-            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 
@@ -165,9 +164,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     @console_ns.doc("get_workflow_average_app_interaction_statistic")
     @console_ns.doc(description="Get workflow average app interaction statistics")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.doc(
-        params={"start": "Start date and time (YYYY-MM-DD HH:MM)", "end": "End date and time (YYYY-MM-DD HH:MM)"}
-    )
+    @console_ns.expect(console_ns.models[WorkflowStatisticQuery.__name__])
     @console_ns.response(200, "Average app interaction statistics retrieved successfully")
     @setup_required
     @login_required
@@ -176,17 +173,12 @@ class WorkflowAverageAppInteractionStatistic(Resource):
     def get(self, app_model):
         account, _ = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-            .add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
-        )
-        args = parser.parse_args()
+        args = WorkflowStatisticQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         assert account.timezone is not None
 
         try:
-            start_date, end_date = parse_time_range(args["start"], args["end"], account.timezone)
+            start_date, end_date = parse_time_range(args.start, args.end, account.timezone)
         except ValueError as e:
             abort(400, description=str(e))
 

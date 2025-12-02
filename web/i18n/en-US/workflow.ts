@@ -387,6 +387,7 @@ const translation = {
     userInputField: 'User Input Field',
     changeBlock: 'Change Node',
     helpLink: 'View Docs',
+    openWorkflow: 'Open Workflow',
     about: 'About',
     createdBy: 'Created By ',
     nextStep: 'Next Step',

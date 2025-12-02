@@ -24,7 +24,7 @@ export const ReadmeEntrance = ({
     if (pluginDetail)
       setCurrentPluginDetail(pluginDetail, showType)
   }
-  if (!pluginDetail || BUILTIN_TOOLS_ARRAY.includes(pluginDetail.id))
+  if (!pluginDetail || !pluginDetail?.plugin_unique_identifier || BUILTIN_TOOLS_ARRAY.includes(pluginDetail.id))
     return null
 
   return (

@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Faturalandırma ve abonelikleri yönet',
   buyPermissionDeniedTip: 'Abone olmak için lütfen işletme yöneticinize başvurun',
   plansCommon: {
-    title: 'Size uygun bir plan seçin',
     yearlyTip: 'Yıllık abonelikle 2 ay ücretsiz!',
     mostPopular: 'En Popüler',
     planRange: {
@@ -99,6 +98,8 @@ const translation = {
     triggerEvents: {
       unlimited: 'Sınırsız Tetikleme Olayları',
       tooltip: 'Eklenti, Zamanlama veya Webhook tetikleyicileri aracılığıyla iş akışlarını otomatik olarak başlatan etkinliklerin sayısı.',
+      sandbox: '{{count,number}} Tetikleyici Olaylar',
+      professional: '{{count,number}} Tetikleme Etkinlikleri/ay',
     },
     workflowExecution: {
       faster: 'Daha Hızlı İş Akışı Yürütme',
@@ -108,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Sınırsız Tetikleyiciler/iş akışı',
+      limited: 'Maksimum {{count}} Tetikleyici/iş akışı',
+    },
+    title: {
+      plans: 'planlar',
+      description: 'Ekibinizin ihtiyaçlarına en uygun planı seçin.',
     },
   },
   plans: {
@@ -130,28 +136,14 @@ const translation = {
       name: 'Kurumsal',
       description: 'Büyük ölçekli kritik sistemler için tam yetenekler ve destek.',
       includesTitle: 'Takım plandaki her şey, artı:',
-      features: {
-        4: 'SSO',
-        2: 'Özel Kurumsal Özellikler',
-        1: 'Ticari Lisans Yetkilendirmesi',
-        3: 'Çoklu Çalışma Alanları ve Kurumsal Yönetim',
-        8: 'Profesyonel Teknik Destek',
-        6: 'Gelişmiş Güvenlik ve Kontroller',
-        7: 'Resmi olarak Dify tarafından Güncellemeler ve Bakım',
-        0: 'Kurumsal Düzeyde Ölçeklenebilir Dağıtım Çözümleri',
-        5: 'Dify Partners tarafından müzakere edilen SLA\'lar',
-      },
+      features: ['Kurumsal Düzeyde Ölçeklenebilir Dağıtım Çözümleri', 'Ticari Lisans Yetkilendirmesi', 'Özel Kurumsal Özellikler', 'Birden Fazla Çalışma Alanı ve Kurumsal Yönetim', 'SSO', 'Dify Ortakları tarafından Müzakere Edilen SLA\'lar', 'Gelişmiş Güvenlik ve Kontroller', 'Dify Resmi Tarafından Güncellemeler ve Bakım', 'Profesyonel Teknik Destek'],
       priceTip: 'Yıllık Faturalama Sadece',
       for: 'Büyük boyutlu Takımlar için',
       btnText: 'Satış ile İletişime Geç',
       price: 'Özel',
     },
     community: {
-      features: {
-        1: 'Tek Çalışma Alanı',
-        2: 'Dify Açık Kaynak Lisansı ile uyumludur',
-        0: 'Genel depo altında yayınlanan tüm temel özellikler',
-      },
+      features: ['Tüm Temel Özellikler Açık Depoda Yayınlandı', 'Tek Çalışma Alanı', 'Dify Açık Kaynak Lisansına uygundur'],
       price: 'Ücretsiz',
       includesTitle: 'Ücretsiz Özellikler:',
       name: 'Topluluk',
@@ -160,12 +152,7 @@ const translation = {
       description: 'Bireysel Kullanıcılar, Küçük Ekipler veya Ticari Olmayan Projeler İçin',
     },
     premium: {
-      features: {
-        1: 'Tek Çalışma Alanı',
-        3: 'Öncelikli E-posta ve Sohbet Desteği',
-        2: 'WebApp Logosu ve Marka Özelleştirmesi',
-        0: 'Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendini Yöneten Güvenilirlik',
-      },
+      features: ['Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendine Yönetilen Güvenilirlik', 'Tek Çalışma Alanı', 'Web Uygulama Logo ve Marka Özelleştirmesi', 'Öncelikli E-posta ve Sohbet Desteği'],
       name: 'Premium',
       includesTitle: 'Topluluktan her şey, artı:',
       for: 'Orta Büyüklükteki Organizasyonlar ve Ekipler için',
@@ -201,6 +188,7 @@ const translation = {
     documentsUploadQuota: 'Belgeler Yükleme Kotası',
     triggerEvents: 'Tetikleyici Olaylar',
     perMonth: 'ayda',
+    resetsIn: '{{count,number}} gün içinde sıfırlanır',
   },
   teamMembers: 'Ekip Üyeleri',
   triggerLimitModal: {

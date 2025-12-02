@@ -65,6 +65,12 @@ const translation = {
     deleteConfirmTitle: '¿Eliminar?',
     yes: 'Sí',
     no: 'No',
+    noSearchResults: 'No se encontraron {{content}}',
+    resetKeywords: 'Restablecer palabras clave',
+    selectCount: '{{count}} Seleccionado',
+    searchCount: 'Encuentra {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Ahora',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',
@@ -73,6 +79,7 @@ const translation = {
   placeholder: {
     input: 'Por favor ingresa',
     select: 'Por favor selecciona',
+    search: 'Buscar...',
   },
   voice: {
     language: {
@@ -768,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '(opcional)',
+  },
+  noData: 'Sin datos',
+  dynamicSelect: {
+    error: 'Error al cargar las opciones',
+    noData: 'No hay opciones disponibles',
+    loading: 'Cargando opciones...',
+    selected: '{{count}} seleccionado',
   },
 }
 
