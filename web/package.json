@@ -179,6 +179,7 @@
     "@types/semver": "^7.7.1",
     "@types/sortablejs": "^1.15.8",
     "@types/uuid": "^10.0.0",
+    "@typescript-eslint/parser": "^8.48.0",
     "autoprefixer": "^10.4.21",
     "babel-loader": "^10.0.0",
     "bing-translate-api": "^4.1.0",
