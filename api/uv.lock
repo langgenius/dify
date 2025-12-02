@@ -292,6 +292,22 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/32/eb/5e82e419c3061823f3feae9b5681588762929dc4da0176667297c2784c1a/alibabacloud_tea_xml-0.0.3.tar.gz", hash = "sha256:979cb51fadf43de77f41c69fc69c12529728919f849723eb0cd24eb7b048a90c", size = 3466, upload-time = "2025-07-01T08:04:55.144Z" }
 
 [[package]]
+name = "aliyun-log-python-sdk"
+version = "0.9.37"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "dateparser" },
+    { name = "elasticsearch" },
+    { name = "jmespath" },
+    { name = "lz4" },
+    { name = "protobuf" },
+    { name = "python-dateutil" },
+    { name = "requests" },
+    { name = "six" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/90/70/291d494619bb7b0cbcc00689ad995945737c2c9e0bff2733e0aa7dbaee14/aliyun_log_python_sdk-0.9.37.tar.gz", hash = "sha256:ea65c9cca3a7377cef87d568e897820338328a53a7acb1b02f1383910e103f68", size = 152549, upload-time = "2025-11-27T07:56:06.098Z" }
+
+[[package]]
 name = "aliyun-python-sdk-core"
 version = "2.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1294,6 +1310,21 @@ wheels = [
 ]
 
 [[package]]
+name = "dateparser"
+version = "1.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+    { name = "pytz" },
+    { name = "regex" },
+    { name = "tzlocal" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/a9/30/064144f0df1749e7bb5faaa7f52b007d7c2d08ec08fed8411aba87207f68/dateparser-1.2.2.tar.gz", hash = "sha256:986316f17cb8cdc23ea8ce563027c5ef12fc725b6fb1d137c14ca08777c5ecf7", size = 329840, upload-time = "2025-06-26T09:29:23.211Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/87/22/f020c047ae1346613db9322638186468238bcfa8849b4668a22b97faad65/dateparser-1.2.2-py3-none-any.whl", hash = "sha256:5a5d7211a09013499867547023a2a0c91d5a27d15dd4dbcea676ea9fe66f2482", size = 315453, upload-time = "2025-06-26T09:29:21.412Z" },
+]
+
+[[package]]
 name = "decorator"
 version = "5.2.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1340,6 +1371,7 @@ name = "dify-api"
 version = "1.10.1"
 source = { virtual = "." }
 dependencies = [
+    { name = "aliyun-log-python-sdk" },
     { name = "apscheduler" },
     { name = "arize-phoenix-otel" },
     { name = "azure-identity" },
@@ -1535,6 +1567,7 @@ vdb = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aliyun-log-python-sdk", specifier = "~=0.9.11" },
     { name = "apscheduler", specifier = ">=3.11.0" },
     { name = "arize-phoenix-otel", specifier = "~=0.9.2" },
     { name = "azure-identity", specifier = "==1.16.1" },
