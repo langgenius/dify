@@ -72,6 +72,13 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleQueryAttachmentChange = useCallback((newVar: ValueSelector | string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.query_attachment_selector = newVar as ValueSelector
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const {
     currentProvider,
     currentModel,
@@ -274,8 +281,16 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       setRerankModelOpen(true)
   }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, updateDatasetsDetail])
 
-  const filterVar = useCallback((varPayload: Var) => {
+  const filterStringVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string
+  }, [])
+
+  const filterNumberVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.number
+  }, [])
+
+  const filterFileVar = useCallback((varPayload: Var) => {
+    return varPayload.type === VarType.file || varPayload.type === VarType.arrayFile
   }, [])
 
   const handleMetadataFilterModeChange = useCallback((newMode: MetadataFilteringModeEnum) => {
@@ -361,10 +376,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const filterStringVar = useCallback((varPayload: Var) => {
-    return [VarType.string].includes(varPayload.type)
-  }, [])
-
   const {
     availableVars: availableStringVars,
     availableNodesWithParent: availableStringNodesWithParent,
@@ -372,10 +383,6 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     onlyLeafNodeVar: false,
     filterVar: filterStringVar,
   })
-
-  const filterNumberVar = useCallback((varPayload: Var) => {
-    return [VarType.number].includes(varPayload.type)
-  }, [])
 
   const {
     availableVars: availableNumberVars,
@@ -389,7 +396,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     readOnly,
     inputs,
     handleQueryVarChange,
-    filterVar,
+    handleQueryAttachmentChange,
+    filterStringVar,
+    filterFileVar,
     handleRetrievalModeChange,
     handleMultipleRetrievalConfigChange,
     handleModelChanged,

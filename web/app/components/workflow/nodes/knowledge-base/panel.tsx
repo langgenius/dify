@@ -52,9 +52,9 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     if (!data.chunk_structure) return false
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:
-        return variable.schemaType === 'general_structure'
+        return variable.schemaType === 'general_structure' || variable.schemaType === 'multimodal_general_structure'
       case ChunkStructureEnum.parent_child:
-        return variable.schemaType === 'parent_child_structure'
+        return variable.schemaType === 'parent_child_structure' || variable.schemaType === 'multimodal_parent_child_structure'
       case ChunkStructureEnum.question_answer:
         return variable.schemaType === 'qa_structure'
       default:
@@ -67,10 +67,10 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
     let placeholder = ''
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:
-        placeholder = 'general_structure'
+        placeholder = '(multimodal_)general_structure'
         break
       case ChunkStructureEnum.parent_child:
-        placeholder = 'parent_child_structure'
+        placeholder = '(multimodal_)parent_child_structure'
         break
       case ChunkStructureEnum.question_answer:
         placeholder = 'qa_structure'

@@ -236,6 +236,14 @@ const translation = {
       apiReference: 'API 文档',
     },
   },
+  cornerLabel: {
+    unavailable: '不可用',
+    pipeline: '流水线',
+  },
+  multimodal: '多模态',
+  imageUploader: {
+    tip: '支持 {{supportTypes}} (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)',
+  },
 }
 
 export default translation
