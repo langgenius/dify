@@ -221,6 +221,7 @@ class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
                 error=str(e),
+                error_type=type(e).__name__,
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
