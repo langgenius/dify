@@ -529,10 +529,11 @@ class TestMessageService:
             feedbacks.append(feedback)
 
         # Get all feedbacks
-        result = MessageService.get_all_messages_feedbacks(app, page=1, limit=10)
+        result, total = MessageService.get_all_messages_feedbacks(app, page=1, limit=10)
 
         # Verify results
         assert len(result) == 3
+        assert total == 3
 
         # Verify feedbacks are ordered by created_at desc
         for i in range(len(result) - 1):
@@ -557,12 +558,14 @@ class TestMessageService:
             )
 
         # Get feedbacks with pagination
-        result_page_1 = MessageService.get_all_messages_feedbacks(app, page=1, limit=3)
-        result_page_2 = MessageService.get_all_messages_feedbacks(app, page=2, limit=3)
+        result_page_1, total_1 = MessageService.get_all_messages_feedbacks(app, page=1, limit=3)
+        result_page_2, total_2 = MessageService.get_all_messages_feedbacks(app, page=2, limit=3)
 
         # Verify pagination results
         assert len(result_page_1) == 3
         assert len(result_page_2) == 2
+        assert total_1 == 5
+        assert total_2 == 5
 
         # Verify no overlap between pages
         page_1_ids = {feedback["id"] for feedback in result_page_1}
