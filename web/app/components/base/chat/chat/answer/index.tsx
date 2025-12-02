@@ -4,10 +4,15 @@ import type {
 } from 'react'
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiThumbDownLine,
+  RiThumbUpLine,
+} from '@remixicon/react'
 import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import Operation from './operation'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
@@ -22,6 +27,30 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 import cn from '@/utils/classnames'
 import { FileList } from '@/app/components/base/file-uploader'
 import ContentSwitch from '../content-switch'
+
+const VoteDisplay: FC<{ feedback?: { rating: 'like' | 'dislike' | null } }> = ({ feedback }) => {
+  const { t } = useTranslation()
+
+  if (!feedback?.rating) return null
+
+  return (
+    <div className='mt-2 flex items-center gap-1 text-xs text-text-secondary'>
+      <span className='mr-1'>{t('common.feedback.userVote')}</span>
+      <div className='flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
+        {feedback.rating === 'like' && (
+          <ActionButton state={ActionButtonState.Active}>
+            <RiThumbUpLine className='h-4 w-4' />
+          </ActionButton>
+        )}
+        {feedback.rating === 'dislike' && (
+          <ActionButton state={ActionButtonState.Destructive}>
+            <RiThumbDownLine className='h-4 w-4' />
+          </ActionButton>
+        )}
+      </div>
+    </div>
+  )
+}
 
 type AnswerProps = {
   item: ChatItem
@@ -205,6 +234,7 @@ const Answer: FC<AnswerProps> = ({
                 />
               )
             }
+            <VoteDisplay feedback={item.feedback} />
             <SuggestedQuestions item={item} />
             {
               !!citation?.length && !responding && (
