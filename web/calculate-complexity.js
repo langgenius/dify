@@ -49,7 +49,7 @@ function getFileComplexity(filePath) {
 
           functionComplexities.push({
             line: msg.line,
-            // functionName: extractFunctionName(code, msg.line), // 可选：尝试获取函数名
+            // functionName: extractFunctionName(code, msg.line),
             score: score,
             // message: msg.message
           });
