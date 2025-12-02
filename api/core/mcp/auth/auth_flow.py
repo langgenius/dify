@@ -93,6 +93,9 @@ def build_oauth_authorization_server_metadata_discovery_urls(auth_server_url: st
     # Include the path component if present in the issuer URL
     if path:
         urls.append(urljoin(base, f".well-known/oauth-authorization-server{path}"))
+        # Also try root-level discovery as fallback (some servers like Atlassian MCP
+        # don't follow RFC 8414 path suffix convention)
+        urls.append(urljoin(base, ".well-known/oauth-authorization-server"))
     else:
         urls.append(urljoin(base, ".well-known/oauth-authorization-server"))
 
