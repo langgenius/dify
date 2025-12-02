@@ -93,16 +93,6 @@ export const exportAppConfig = ({ appID, include = false, workflowID }: { appID:
   return get<{ data: string }>(`apps/${appID}/export?${params.toString()}`)
 }
 
-// TODO: delete
-export const importApp = ({ data, name, description, icon_type, icon, icon_background }: { data: string; name?: string; description?: string; icon_type?: AppIconType; icon?: string; icon_background?: string }): Promise<AppDetailResponse> => {
-  return post<AppDetailResponse>('apps/import', { body: { data, name, description, icon_type, icon, icon_background } })
-}
-
-// TODO: delete
-export const importAppFromUrl = ({ url, name, description, icon, icon_background }: { url: string; name?: string; description?: string; icon?: string; icon_background?: string }): Promise<AppDetailResponse> => {
-  return post<AppDetailResponse>('apps/import/url', { body: { url, name, description, icon, icon_background } })
-}
-
 export const importDSL = ({ mode, yaml_content, yaml_url, app_id, name, description, icon_type, icon, icon_background }: { mode: DSLImportMode; yaml_content?: string; yaml_url?: string; app_id?: string; name?: string; description?: string; icon_type?: AppIconType; icon?: string; icon_background?: string }): Promise<DSLImportResponse> => {
   return post<DSLImportResponse>('apps/imports', { body: { mode, yaml_content, yaml_url, app_id, name, description, icon, icon_type, icon_background } })
 }
