@@ -26,6 +26,7 @@ import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
 import Button from '@/app/components/base/button'
+import HumanInputInfo from './human-input-info'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
@@ -167,7 +168,12 @@ const WorkflowPreview = () => {
           )}
           {currentTab === 'RESULT' && (
             <>
-              {/* human input form position */}
+              {/* human input form position TODO */}
+              <HumanInputInfo
+                nodeTitle="Human Input Required"
+                nodeID="human-input-node-id"
+                formData={{}}
+              />
               <ResultText
                 isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
                 outputs={workflowRunningData?.resultText}
