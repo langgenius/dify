@@ -324,8 +324,8 @@ class AppListApi(Resource):
                 NodeType.TRIGGER_PLUGIN,
             }
             for workflow in draft_workflows:
-                for node_type in trigger_node_types:
-                    if next(workflow.walk_nodes(node_type), None):
+                for _, node_data in workflow.walk_nodes():
+                    if node_data.get("type") in trigger_node_types:
                         draft_trigger_app_ids.add(str(workflow.app_id))
                         break
 
