@@ -146,7 +146,6 @@ class RuleStructuredOutputGenerateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        
         args = RuleStructuredOutputPayload.model_validate(console_ns.payload)
         _, current_tenant_id = current_account_with_tenant()
 
@@ -267,7 +266,6 @@ class InstructionGenerationTemplateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        
         args = InstructionTemplatePayload.model_validate(console_ns.payload)
         match args.type:
             case "prompt":

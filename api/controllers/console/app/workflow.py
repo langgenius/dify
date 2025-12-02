@@ -545,7 +545,9 @@ class DraftWorkflowRunApi(Resource):
         Run draft workflow
         """
         current_user, _ = current_account_with_tenant()
-        args = DraftWorkflowRunPayload.model_validate(console_ns.payload or {}).model_dump(strict=True, exclude_none=True)
+        args = DraftWorkflowRunPayload.model_validate(console_ns.payload or {}).model_dump(
+            strict=True, exclude_none=True
+        )
 
         external_trace_id = get_external_trace_id(request)
         if external_trace_id:
