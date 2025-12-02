@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(opțional și ascuns)',
     goTo: 'Du-te la',
     startNode: 'Nod de start',
+    openWorkflow: 'Deschide fluxul de lucru',
   },
   nodes: {
     common: {

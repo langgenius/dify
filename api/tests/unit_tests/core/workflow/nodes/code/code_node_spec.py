@@ -471,8 +471,8 @@ class TestCodeNodeInitialization:
 
         assert node._get_description() is None
 
-    def test_get_base_node_data(self):
-        """Test get_base_node_data returns node data."""
+    def test_node_data_property(self):
+        """Test node_data property returns node data."""
         node = CodeNode.__new__(CodeNode)
         node._node_data = CodeNodeData(
             title="Base Test",
@@ -482,7 +482,7 @@ class TestCodeNodeInitialization:
             outputs={},
         )
 
-        result = node.get_base_node_data()
+        result = node.node_data
 
         assert result == node._node_data
         assert result.title == "Base Test"
