@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   RiBook2Line,
   RiFileEditLine,
@@ -37,6 +37,7 @@ const PlanComp: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const router = useRouter()
+  const path = usePathname()
   const { userProfile } = useAppContext()
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
   const isAboutToExpire = allowRefreshEducationVerify
@@ -72,11 +73,15 @@ const PlanComp: FC<Props> = ({
       localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
       if (unmountedRef.current) return
       router.push(`/education-apply?token=${res.token}`)
-      setShowAccountSettingModal(null)
     }).catch(() => {
       setShowModal(true)
     })
   }
+  useEffect(() => {
+    // setShowAccountSettingModal would prevent navigation
+    if (path.startsWith('/education-apply'))
+      setShowAccountSettingModal(null)
+  }, [path, setShowAccountSettingModal])
   return (
     <div className='relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn'>
       <div className='p-6 pb-2'>
