@@ -51,10 +51,10 @@ const useSingleRunFormParams = ({
         return {
           type: item.type,
           output_variable_name: item.output_variable_name,
-          placeholder: item.placeholder?.type === 'const' ? item.placeholder.value : '',
+          placeholder: item.placeholder?.type === 'constant' ? item.placeholder.value : '',
         }
       })
-      return res
+    return res
   }, [inputs.form_content, inputs.inputs])
 
   const getDependentVars = () => {

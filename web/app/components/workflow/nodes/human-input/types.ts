@@ -40,11 +40,11 @@ export type DeliveryMethod = {
   id: string
   type: DeliveryMethodType
   enabled: boolean
-  config?: EmailConfig | {}
+  config?: EmailConfig | {} | null
 }
 
 export type FormInputItemPlaceholder = {
-  type: 'variable' | 'const',
+  type: 'variable' | 'constant',
   selector: ValueSelector
   value: string
 }

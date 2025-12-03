@@ -33,7 +33,7 @@ const ComponentUI: FC<Props> = ({
     type: InputVarType.textInput,
     output_variable_name: varName,
     placeholder: {
-      type: 'const',
+      type: 'constant',
       selector: [],
       value: '',
     },

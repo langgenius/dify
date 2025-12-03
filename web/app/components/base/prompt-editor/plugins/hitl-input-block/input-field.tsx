@@ -22,7 +22,7 @@ type Props = {
 const defaultPayload: FormInputItem = {
   type: InputVarType.paragraph,
   output_variable_name: '',
-  placeholder: { type: 'const', selector: [], value: '' },
+  placeholder: { type: 'constant', selector: [], value: '' },
 }
 const InputField: React.FC<Props> = ({
   nodeId,
@@ -41,12 +41,12 @@ const InputField: React.FC<Props> = ({
     return (value: any) => {
       const nextValue = produce(tempPayload, (draft) => {
         if (!draft.placeholder)
-          draft.placeholder = { type: 'const', selector: [], value: '' }
+          draft.placeholder = { type: 'constant', selector: [], value: '' }
         draft.placeholder[key] = value
         if(key === 'selector')
           draft.placeholder.type = 'variable'
         else if(key === 'value')
-          draft.placeholder.type = 'const'
+          draft.placeholder.type = 'constant'
       })
       setTempPayload(nextValue)
     }
@@ -75,7 +75,7 @@ const InputField: React.FC<Props> = ({
         <PrePopulate
           isVariable={placeholderConfig?.type === 'variable'}
           onIsVariableChange={(isVariable) => {
-            handlePlaceholderChange('type')(isVariable ? 'variable' : 'const')
+            handlePlaceholderChange('type')(isVariable ? 'variable' : 'constant')
           }}
           nodeId={nodeId}
           valueSelector={placeholderConfig?.selector}

@@ -773,11 +773,11 @@ export const useWorkflowRun = () => {
         onTTSChunk: (messageId: string, audio: string) => {
           if (!audio || audio === '')
             return
-          player.playAudioWithAudio(audio, true)
+          player?.playAudioWithAudio(audio, true)
           AudioPlayerManager.getInstance().resetMsgId(messageId)
         },
         onTTSEnd: (messageId: string, audio: string) => {
-          player.playAudioWithAudio(audio, false)
+          player?.playAudioWithAudio(audio, false)
         },
         onWorkflowSuspended: (params) => {
           handleWorkflowSuspended()

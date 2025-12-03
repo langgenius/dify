@@ -1,6 +1,6 @@
 import type { NodeDefault } from '../../types'
 import type { HumanInputNodeType } from './types'
-import { DeliveryMethodType, UserActionButtonType } from './types'
+// import { DeliveryMethodType, UserActionButtonType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
@@ -16,40 +16,8 @@ const metaData = genNodeMetaData({
 const nodeDefault: NodeDefault<HumanInputNodeType> = {
   metaData,
   defaultValue: {
-    delivery_methods: [
-      {
-        id: 'webapp-method',
-        type: DeliveryMethodType.WebApp,
-        enabled: true,
-      },
-      {
-        id: 'email-method',
-        type: DeliveryMethodType.Email,
-        enabled: false,
-      },
-    ],
-    user_actions: [
-      {
-        id: 'approve-action',
-        title: 'Post to X',
-        button_style: UserActionButtonType.Primary,
-      },
-      {
-        id: 'regenerate-action',
-        title: 'regenerate',
-        button_style: UserActionButtonType.Default,
-      },
-      {
-        id: 'thinking-action',
-        title: 'thinking',
-        button_style: UserActionButtonType.Accent,
-      },
-      {
-        id: 'cancel-action',
-        title: 'cancel',
-        button_style: UserActionButtonType.Ghost,
-      },
-    ],
+    delivery_methods: [],
+    user_actions: [],
     timeout: 3,
     timeout_unit: 'day',
   },

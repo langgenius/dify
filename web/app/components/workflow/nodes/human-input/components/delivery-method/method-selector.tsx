@@ -99,6 +99,7 @@ const MethodSelector: FC<Props> = ({
                   id: uuid4(),
                   type: DeliveryMethodType.Email,
                   enabled: false,
+                  config: null,
                 })
               }}
             >
