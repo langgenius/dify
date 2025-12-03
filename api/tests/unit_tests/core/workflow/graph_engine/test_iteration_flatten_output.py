@@ -7,7 +7,29 @@ This module tests the iteration node's ability to:
 """
 
 from .test_database_utils import skip_if_database_unavailable
+from .test_mock_config import MockConfigBuilder, NodeMockConfig
 from .test_table_runner import TableTestRunner, WorkflowTestCase
+
+
+def _create_iteration_mock_config():
+    """Helper to create a mock config for iteration tests."""
+
+    def code_inner_handler(node):
+        pool = node.graph_runtime_state.variable_pool
+        item_seg = pool.get(["iteration_node", "item"])
+        if item_seg is not None:
+            item = item_seg.to_object()
+            return {"result": [item, item * 2]}
+        # This fallback is likely unreachable, but if it is,
+        # it doesn't simulate iteration with different values as the comment suggests.
+        return {"result": [1, 2]}
+
+    return (
+        MockConfigBuilder()
+        .with_node_output("code_node", {"result": [1, 2, 3]})
+        .with_node_config(NodeMockConfig(node_id="code_inner_node", custom_handler=code_inner_handler))
+        .build()
+    )
 
 
 @skip_if_database_unavailable()
@@ -27,7 +49,8 @@ def test_iteration_with_flatten_output_enabled():
         inputs={},
         expected_outputs={"output": [1, 2, 2, 4, 3, 6]},
         description="Iteration with flatten_output=True flattens nested arrays",
-        use_auto_mock=False,  # Run code nodes directly
+        use_auto_mock=True,  # Use auto-mock to avoid sandbox service
+        mock_config=_create_iteration_mock_config(),
     )
 
     result = runner.run_test_case(test_case)
@@ -56,7 +79,8 @@ def test_iteration_with_flatten_output_disabled():
         inputs={},
         expected_outputs={"output": [[1, 2], [2, 4], [3, 6]]},
         description="Iteration with flatten_output=False preserves nested structure",
-        use_auto_mock=False,  # Run code nodes directly
+        use_auto_mock=True,  # Use auto-mock to avoid sandbox service
+        mock_config=_create_iteration_mock_config(),
     )
 
     result = runner.run_test_case(test_case)
@@ -81,14 +105,16 @@ def test_iteration_flatten_output_comparison():
             inputs={},
             expected_outputs={"output": [1, 2, 2, 4, 3, 6]},
             description="flatten_output=True: Flattened output",
-            use_auto_mock=False,  # Run code nodes directly
+            use_auto_mock=True,  # Use auto-mock to avoid sandbox service
+            mock_config=_create_iteration_mock_config(),
         ),
         WorkflowTestCase(
             fixture_path="iteration_flatten_output_disabled_workflow",
             inputs={},
             expected_outputs={"output": [[1, 2], [2, 4], [3, 6]]},
             description="flatten_output=False: Nested output",
-            use_auto_mock=False,  # Run code nodes directly
+            use_auto_mock=True,  # Use auto-mock to avoid sandbox service
+            mock_config=_create_iteration_mock_config(),
         ),
     ]
 
