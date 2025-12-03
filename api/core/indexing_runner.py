@@ -36,7 +36,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
 from libs.datetime_utils import naive_utc_now
-from models import Account, Tenant
+from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
