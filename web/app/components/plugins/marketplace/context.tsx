@@ -41,8 +41,6 @@ import { useInstalledPluginList } from '@/service/use-plugins'
 import { debounce, noop } from 'lodash-es'
 
 export type MarketplaceContextValue = {
-  intersected: boolean
-  setIntersected: (intersected: boolean) => void
   searchPluginText: string
   handleSearchPluginTextChange: (text: string) => void
   filterPluginTags: string[]
@@ -67,8 +65,6 @@ export type MarketplaceContextValue = {
 }
 
 export const MarketplaceContext = createContext<MarketplaceContextValue>({
-  intersected: true,
-  setIntersected: noop,
   searchPluginText: '',
   handleSearchPluginTextChange: noop,
   filterPluginTags: [],
@@ -121,7 +117,6 @@ export const MarketplaceContextProvider = ({
   const hasValidTags = !!tagsFromSearchParams.length
   const hasValidCategory = getValidCategoryKeys(searchParams?.category)
   const categoryFromSearchParams = hasValidCategory || PLUGIN_TYPE_SEARCH_MAP.all
-  const [intersected, setIntersected] = useState(true)
   const [searchPluginText, setSearchPluginText] = useState(queryFromSearchParams)
   const searchPluginTextRef = useRef(searchPluginText)
   const [filterPluginTags, setFilterPluginTags] = useState<string[]>(tagsFromSearchParams)
@@ -300,8 +295,6 @@ export const MarketplaceContextProvider = ({
   return (
     <MarketplaceContext.Provider
       value={{
-        intersected,
-        setIntersected,
         searchPluginText,
         handleSearchPluginTextChange,
         filterPluginTags,
