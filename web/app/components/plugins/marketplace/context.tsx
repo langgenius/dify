@@ -50,7 +50,7 @@ export type MarketplaceContextValue = {
   activePluginType: string
   handleActivePluginTypeChange: (type: string) => void
   page: number
-  handlePageChange: (page: number) => void
+  handlePageChange: () => void
   plugins?: Plugin[]
   pluginsTotal?: number
   resetPlugins: () => void
@@ -128,8 +128,6 @@ export const MarketplaceContextProvider = ({
   const filterPluginTagsRef = useRef(filterPluginTags)
   const [activePluginType, setActivePluginType] = useState(categoryFromSearchParams)
   const activePluginTypeRef = useRef(activePluginType)
-  const [page, setPage] = useState(1)
-  const pageRef = useRef(page)
   const [sort, setSort] = useState(DEFAULT_SORT)
   const sortRef = useRef(sort)
   const {
@@ -149,7 +147,11 @@ export const MarketplaceContextProvider = ({
     queryPluginsWithDebounced,
     cancelQueryPluginsWithDebounced,
     isLoading: isPluginsLoading,
+    fetchNextPage: fetchNextPluginsPage,
+    hasNextPage: hasNextPluginsPage,
+    page: pluginsPage,
   } = useMarketplacePlugins()
+  const page = Math.max(pluginsPage || 0, 1)
 
   useEffect(() => {
     if (queryFromSearchParams || hasValidTags || hasValidCategory) {
@@ -160,7 +162,6 @@ export const MarketplaceContextProvider = ({
         sortBy: sortRef.current.sortBy,
         sortOrder: sortRef.current.sortOrder,
         type: getMarketplaceListFilterType(activePluginTypeRef.current),
-        page: pageRef.current,
       })
       const url = new URL(window.location.href)
       if (searchParams?.language)
@@ -221,7 +222,6 @@ export const MarketplaceContextProvider = ({
         sortOrder: sortRef.current.sortOrder,
         exclude,
         type: getMarketplaceListFilterType(activePluginTypeRef.current),
-        page: pageRef.current,
       })
     }
     else {
@@ -233,7 +233,6 @@ export const MarketplaceContextProvider = ({
         sortOrder: sortRef.current.sortOrder,
         exclude,
         type: getMarketplaceListFilterType(activePluginTypeRef.current),
-        page: pageRef.current,
       })
     }
   }, [exclude, queryPluginsWithDebounced, queryPlugins, handleUpdateSearchParams])
@@ -252,8 +251,6 @@ export const MarketplaceContextProvider = ({
   const handleSearchPluginTextChange = useCallback((text: string) => {
     setSearchPluginText(text)
     searchPluginTextRef.current = text
-    setPage(1)
-    pageRef.current = 1
 
     handleQuery(true)
   }, [handleQuery])
@@ -261,8 +258,6 @@ export const MarketplaceContextProvider = ({
   const handleFilterPluginTagsChange = useCallback((tags: string[]) => {
     setFilterPluginTags(tags)
     filterPluginTagsRef.current = tags
-    setPage(1)
-    pageRef.current = 1
 
     handleQuery()
   }, [handleQuery])
@@ -270,8 +265,6 @@ export const MarketplaceContextProvider = ({
   const handleActivePluginTypeChange = useCallback((type: string) => {
     setActivePluginType(type)
     activePluginTypeRef.current = type
-    setPage(1)
-    pageRef.current = 1
 
     handleQuery()
   }, [handleQuery])
@@ -279,20 +272,14 @@ export const MarketplaceContextProvider = ({
   const handleSortChange = useCallback((sort: PluginsSort) => {
     setSort(sort)
     sortRef.current = sort
-    setPage(1)
-    pageRef.current = 1
 
     handleQueryPlugins()
   }, [handleQueryPlugins])
 
   const handlePageChange = useCallback(() => {
-    if (pluginsTotal && plugins && pluginsTotal > plugins.length) {
-      setPage(pageRef.current + 1)
-      pageRef.current++
-
-      handleQueryPlugins()
-    }
-  }, [handleQueryPlugins, plugins, pluginsTotal])
+    if (hasNextPluginsPage)
+      fetchNextPluginsPage()
+  }, [fetchNextPluginsPage, hasNextPluginsPage])
 
   const handleMoreClick = useCallback((searchParams: SearchParamsFromCollection) => {
     setSearchPluginText(searchParams?.query || '')
@@ -305,9 +292,6 @@ export const MarketplaceContextProvider = ({
       sortBy: searchParams?.sort_by || DEFAULT_SORT.sortBy,
       sortOrder: searchParams?.sort_order || DEFAULT_SORT.sortOrder,
     }
-    setPage(1)
-    pageRef.current = 1
-
     handleQueryPlugins()
   }, [handleQueryPlugins])
 
