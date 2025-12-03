@@ -2,12 +2,11 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import useSWR from 'swr'
-import { usePathname } from 'next/navigation'
 import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import List from './list'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import EmptyElement from './empty-element'
@@ -30,7 +29,6 @@ export type QueryParam = {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [queryParams, setQueryParams] = useState<QueryParam>({
@@ -171,7 +169,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {(total && total > APP_PAGE_LIMIT)
           ? <Pagination
             current={currPage}
-            onChange={handlePageChange}
+            onChange={setCurrPage}
             total={total}
             limit={limit}
             onLimitChange={setLimit}

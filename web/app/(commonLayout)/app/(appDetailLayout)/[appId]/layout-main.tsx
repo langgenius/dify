@@ -109,7 +109,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       const localeMode = localStorage.getItem('app-detail-collapse-or-expand') || 'expand'
       const mode = isMobile ? 'collapse' : 'expand'
       setAppSidebarExpand(isMobile ? mode : localeMode)
-      // TODO: consider screen size and mode
+      // Future consideration: adjust sidebar based on screen size and app mode
       // if ((appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === 'workflow') && (pathname).endsWith('workflow'))
       //   setAppSidebarExpand('collapse')
     }
