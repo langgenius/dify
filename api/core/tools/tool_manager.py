@@ -711,8 +711,7 @@ class ToolManager:
                 # Batch get labels for all API providers
                 if api_provider_controllers:
                     controllers = cast(
-                        list[ToolProviderController],
-                        [item["controller"] for item in api_provider_controllers]
+                        list[ToolProviderController], [item["controller"] for item in api_provider_controllers]
                     )
                     labels = ToolLabelManager.get_tools_labels(controllers)
 
