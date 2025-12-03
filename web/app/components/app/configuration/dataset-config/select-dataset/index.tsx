@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef, useState } from 'react'
-import { useGetState, useInfiniteScroll } from 'ahooks'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useInfiniteScroll } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
-import { fetchDatasets } from '@/service/datasets'
 import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
+import { useInfiniteDatasets } from '@/service/use-datasets'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -28,49 +28,69 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [selected, setSelected] = React.useState<DataSet[]>([])
-  const [loaded, setLoaded] = React.useState(false)
-  const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
-  const [hasInitialized, setHasInitialized] = React.useState(false)
-  const hasNoData = !datasets || datasets?.length === 0
+  const [selected, setSelected] = useState<DataSet[]>([])
   const canSelectMulti = true
+  const { formatIndexingTechniqueAndMethod } = useKnowledge()
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteDatasets({ page: 1 }, { enabled: isShow })
+  const pages = data?.pages || []
+  const datasets = useMemo(() => {
+    return pages.flatMap(page => page.data.filter(item => item.indexing_technique || item.provider === 'external'))
+  }, [pages])
+  const hasNoData = !isLoading && datasets.length === 0
 
   const listRef = useRef<HTMLDivElement>(null)
-  const [page, setPage, getPage] = useGetState(1)
-  const [isNoMore, setIsNoMore] = useState(false)
-  const { formatIndexingTechniqueAndMethod } = useKnowledge()
+  const isNoMore = hasNextPage === false
 
   useInfiniteScroll(
     async () => {
-      if (!isNoMore) {
-        const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
-        setPage(getPage() + 1)
-        setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
-        setDataSets(newList)
-        setLoaded(true)
-
-        // Initialize selected datasets based on selectedIds and available datasets
-        if (!hasInitialized) {
-          if (selectedIds.length > 0) {
-            const validSelectedDatasets = selectedIds
-              .map(id => newList.find(item => item.id === id))
-              .filter(Boolean) as DataSet[]
-            setSelected(validSelectedDatasets)
-          }
-          setHasInitialized(true)
-        }
-      }
+      if (!hasNextPage || isFetchingNextPage)
+        return { list: [] }
+      await fetchNextPage()
       return { list: [] }
     },
     {
       target: listRef,
-      isNoMore: () => {
-        return isNoMore
-      },
-      reloadDeps: [isNoMore],
+      isNoMore: () => isNoMore,
+      reloadDeps: [isNoMore, isFetchingNextPage],
     },
   )
+
+  const prevSelectedIdsRef = useRef<string[]>([])
+  useEffect(() => {
+    const prevSelectedIds = prevSelectedIdsRef.current
+    const idsChanged = selectedIds.length !== prevSelectedIds.length
+      || selectedIds.some((id, idx) => id !== prevSelectedIds[idx])
+
+    if (idsChanged) {
+      const nextSelected = selectedIds
+        .map(id => datasets.find(item => item.id === id) || selected.find(item => item.id === id))
+        .filter(Boolean) as DataSet[]
+      setSelected(nextSelected)
+      prevSelectedIdsRef.current = selectedIds
+      return
+    }
+
+    if (!selectedIds.length)
+      return
+
+    const missingIds = selectedIds.filter(id => !selected.some(item => item.id === id))
+    if (!missingIds.length)
+      return
+    const additions = missingIds
+      .map(id => datasets.find(item => item.id === id))
+      .filter(Boolean) as DataSet[]
+
+    if (additions.length) {
+      setSelected((prev) => {
+        const merged = [...prev]
+        additions.forEach((item) => {
+          if (!merged.find(existing => existing.id === item.id))
+            merged.push(item)
+        })
+        return merged
+      })
+    }
+  }, [datasets, selectedIds, selected])
 
   const toggleSelect = (dataSet: DataSet) => {
     const isSelected = selected.some(item => item.id === dataSet.id)
@@ -96,13 +116,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       className='w-[400px]'
       title={t('appDebug.feature.dataSet.selectTitle')}
     >
-      {!loaded && (
+      {(isLoading && datasets.length === 0) && (
         <div className='flex h-[200px]'>
           <Loading type='area' />
         </div>
       )}
 
-      {(loaded && hasNoData) && (
+      {(!isLoading && hasNoData) && (
         <div className='mt-6 flex h-[128px] items-center justify-center space-x-1  rounded-lg border text-[13px]'
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
@@ -114,7 +134,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         </div>
       )}
 
-      {datasets && datasets?.length > 0 && (
+      {datasets.length > 0 && (
         <>
           <div ref={listRef} className='mt-7 max-h-[286px] space-y-1 overflow-y-auto'>
             {datasets.map(item => (
@@ -164,7 +184,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           </div>
         </>
       )}
-      {loaded && (
+      {!isLoading && (
         <div className='mt-8 flex items-center justify-between'>
           <div className='text-sm  font-medium text-text-secondary'>
             {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}

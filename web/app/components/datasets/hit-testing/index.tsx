@@ -2,8 +2,6 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
-import { omit } from 'lodash-es'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import { RiApps2Line, RiFocus2Line, RiHistoryLine } from '@remixicon/react'
@@ -18,13 +16,13 @@ import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Pagination from '@/app/components/base/pagination'
 import FloatRightContainer from '@/app/components/base/float-right-container'
-import { fetchTestingRecords } from '@/service/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
+import { useDatasetTestingRecords } from '@/service/use-datasets'
 
 const limit = 10
 
@@ -55,11 +53,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const [text, setText] = useState('')
 
   const [currPage, setCurrPage] = React.useState<number>(0)
-  const { data: recordsRes, error, mutate: recordsMutate } = useSWR({
-    action: 'fetchTestingRecords',
-    datasetId,
-    params: { limit, page: currPage + 1 },
-  }, apiParams => fetchTestingRecords(omit(apiParams, 'action')))
+  const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 })
 
   const total = recordsRes?.total || 0
 
@@ -117,7 +111,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           setHitResult={setHitResult}
           setExternalHitResult={setExternalHitResult}
           onSubmit={showRightPanel}
-          onUpdateList={recordsMutate}
+          onUpdateList={recordsRefetch}
           loading={submitLoading}
           setLoading={setSubmitLoading}
           setText={setText}
@@ -128,7 +122,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           isEconomy={currentDataset?.indexing_technique === 'economy'}
         />
         <div className='mb-3 mt-6 text-base font-semibold text-text-primary'>{t('datasetHitTesting.records')}</div>
-        {(!recordsRes && !error)
+        {(isRecordsLoading && !recordsRes)
           ? (
             <div className='flex-1'><Loading type='app' /></div>
           )
