@@ -106,7 +106,7 @@ class RetrievalService:
                         )
                     )
 
-            concurrent.futures.wait(futures, timeout=300, return_when=concurrent.futures.ALL_COMPLETED)
+            concurrent.futures.wait(futures, timeout=3600, return_when=concurrent.futures.ALL_COMPLETED)
 
         if exceptions:
             raise ValueError(";\n".join(exceptions))

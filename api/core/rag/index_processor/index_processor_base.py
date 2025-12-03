@@ -23,6 +23,7 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
+from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from models import Account
 from models.dataset import Dataset, DatasetProcessRule
@@ -152,8 +153,12 @@ class BaseIndexProcessor(ABC):
             pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
             match = re.search(pattern, image)
             if match:
-                upload_file_id = match.group(1)
-                upload_file_id_list.append(upload_file_id)
+                if current_user:
+                    tool_file_id = match.group(1)
+                    tool_file_extension = match.group(2)
+                    tool_file_sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=tool_file_extension)
+                    upload_file_id = self._download_image(tool_file_sign_url, current_user)
+                    upload_file_id_list.append(upload_file_id)
                 continue
             if current_user:
                 upload_file_id = self._download_image(image.split(' ')[0], current_user)

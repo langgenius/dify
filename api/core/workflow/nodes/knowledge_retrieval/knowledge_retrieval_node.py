@@ -689,8 +689,10 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         typed_node_data = KnowledgeRetrievalNodeData.model_validate(node_data)
 
         variable_mapping = {}
-        variable_mapping[node_id + ".query"] = typed_node_data.query_variable_selector
-        variable_mapping[node_id + ".queryAttachment"] = typed_node_data.query_attachment_selector
+        if typed_node_data.query_variable_selector:
+            variable_mapping[node_id + ".query"] = typed_node_data.query_variable_selector
+        if typed_node_data.query_attachment_selector:
+            variable_mapping[node_id + ".queryAttachment"] = typed_node_data.query_attachment_selector
         return variable_mapping
 
     def get_model_config(self, model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
