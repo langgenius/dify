@@ -1776,7 +1776,7 @@ class DocumentService:
                             knowledge_config.data_source.info_list.data_source_type,
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
-                            data_source_info,
+                            data_source_info, 
                             created_from,
                             position,
                             account,

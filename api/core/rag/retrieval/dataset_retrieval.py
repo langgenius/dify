@@ -21,6 +21,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCre
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
+from core.file import File, FileTransferMethod, FileType
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -56,10 +57,12 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
+from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from libs.json_in_md_parser import parse_and_check_json_markdown
-from models.dataset import ChildChunk, Dataset, DatasetMetadata, DatasetQuery, DocumentSegment
+from models import UploadFile
+from models.dataset import ChildChunk, Dataset, DatasetMetadata, DatasetQuery, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
@@ -103,7 +106,8 @@ class DatasetRetrieval:
         message_id: str,
         memory: TokenBufferMemory | None = None,
         inputs: Mapping[str, Any] | None = None,
-    ) -> str | None:
+        vision_enabled: bool = False,
+    ) -> tuple[str | None, list[File] | None]:
         """
         Retrieve dataset.
         :param app_id: app_id
@@ -122,7 +126,7 @@ class DatasetRetrieval:
         """
         dataset_ids = config.dataset_ids
         if len(dataset_ids) == 0:
-            return None
+            return None, []
         retrieve_config = config.retrieve_config
 
         # check model is support tool calling
@@ -140,7 +144,7 @@ class DatasetRetrieval:
         )
 
         if not model_schema:
-            return None
+            return None, []
 
         planning_strategy = PlanningStrategy.REACT_ROUTER
         features = model_schema.features
@@ -217,6 +221,7 @@ class DatasetRetrieval:
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
         document_context_list: list[DocumentContext] = []
+        context_files: list[File] = []
         retrieval_resource_list: list[RetrievalSourceMetadata] = []
         # deal with external documents
         for item in external_documents:
@@ -252,6 +257,31 @@ class DatasetRetrieval:
                                 score=record.score,
                             )
                         )
+                    if vision_enabled:
+                        attachments_with_bindings = db.session.execute(
+                                    select(SegmentAttachmentBinding, UploadFile)
+                                    .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+                                    .where(
+                                        SegmentAttachmentBinding.segment_id == segment.id,
+                                    )
+                                ).all()
+                        if attachments_with_bindings:
+                            for _, upload_file in attachments_with_bindings:
+                                attchment_info = File(
+                                id=upload_file.id,
+                                filename=upload_file.name,
+                                extension="." + upload_file.extension,
+                                mime_type=upload_file.mime_type,
+                                tenant_id=segment.tenant_id,
+                                type=FileType.IMAGE,
+                                transfer_method=FileTransferMethod.LOCAL_FILE,
+                                remote_url=upload_file.source_url,
+                                related_id=upload_file.id,
+                                size=upload_file.size,
+                                storage_key=upload_file.key,
+                                url=sign_upload_file(upload_file.id, upload_file.extension),
+                                )
+                                context_files.append(attchment_info)
                 if show_retrieve_source:
                     for record in records:
                         segment = record.segment
@@ -292,8 +322,8 @@ class DatasetRetrieval:
             hit_callback.return_retriever_resource_info(retrieval_resource_list)
         if document_context_list:
             document_context_list = sorted(document_context_list, key=lambda x: x.score or 0.0, reverse=True)
-            return str("\n".join([document_context.content for document_context in document_context_list]))
-        return ""
+            return str("\n".join([document_context.content for document_context in document_context_list])), context_files
+        return "" , context_files
 
     def single_retrieve(
         self,
@@ -683,31 +713,24 @@ class DatasetRetrieval:
             return
         dataset_queries = []
         for dataset_id in dataset_ids:
+            contents = []
             if query:
-                content = {"content_type": QueryType.TEXT_QUERY, "content": query}
+                contents.append({"content_type": QueryType.TEXT_QUERY, "content": query})
+            if attachment_ids:
+                for attachment_id in attachment_ids:
+                    contents.append({"content_type": QueryType.IMAGE_QUERY, "content": attachment_id})
+            if contents:
                 dataset_query = DatasetQuery(
                     dataset_id=dataset_id,
-                    content=json.dumps(content),
+                    content=json.dumps(contents),
                     source="app",
                     source_app_id=app_id,
                     created_by_role=user_from,
                     created_by=user_id,
                 )
                 dataset_queries.append(dataset_query)
-            if attachment_ids:
-                for attachment_id in attachment_ids:
-                    content = {"content_type": QueryType.IMAGE_QUERY, "content": attachment_id}
-                    dataset_query = DatasetQuery(
-                        dataset_id=dataset_id,
-                        content=json.dumps(content),
-                        source="app",
-                        source_app_id=app_id,
-                        created_by_role=user_from,
-                        created_by=user_id,
-                    )
-                    dataset_queries.append(dataset_query)
-        if dataset_queries:
-            db.session.add_all(dataset_queries)
+            if dataset_queries:
+                db.session.add_all(dataset_queries)
         db.session.commit()
 
     def _retriever(
