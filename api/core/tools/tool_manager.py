@@ -2,7 +2,7 @@ import json
 import logging
 import mimetypes
 import time
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union, cast
@@ -710,9 +710,9 @@ class ToolManager:
 
                 # Batch get labels for all API providers
                 if api_provider_controllers:
-                    controllers = cast(
-                        list[ToolProviderController], [item["controller"] for item in api_provider_controllers]
-                    )
+                    controllers: Sequence[ToolProviderController] = [
+                        item["controller"] for item in api_provider_controllers
+                    ]
                     labels = ToolLabelManager.get_tools_labels(controllers)
 
                     for item in api_provider_controllers:
@@ -736,8 +736,10 @@ class ToolManager:
                 workflow_provider_controllers: list[WorkflowToolProviderController] = []
                 for workflow_provider in workflow_providers:
                     try:
-                        workflow_controller = ToolTransformService.workflow_provider_to_controller(
-                            db_provider=workflow_provider
+                        workflow_controller: WorkflowToolProviderController = (
+                            ToolTransformService.workflow_provider_to_controller(
+                                db_provider=workflow_provider
+                            )
                         )
                         workflow_provider_controllers.append(workflow_controller)
                     except Exception:
@@ -746,9 +748,11 @@ class ToolManager:
 
                 # Batch get labels for workflow providers
                 if workflow_provider_controllers:
-                    labels = ToolLabelManager.get_tools_labels(
-                        [cast(ToolProviderController, controller) for controller in workflow_provider_controllers]
-                    )
+                    workflow_controllers: Sequence[ToolProviderController] = [
+                        cast(ToolProviderController, controller)
+                        for controller in workflow_provider_controllers
+                    ]
+                    labels = ToolLabelManager.get_tools_labels(workflow_controllers)
 
                     for provider_controller in workflow_provider_controllers:
                         provider_labels = labels.get(provider_controller.provider_id, [])
