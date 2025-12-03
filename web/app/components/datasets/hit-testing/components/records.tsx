@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import useTimestamp from '@/hooks/use-timestamp'
-import type { Attachment, HitTestingRecord } from '@/models/datasets'
+import type { Attachment, HitTestingRecord, Query } from '@/models/datasets'
 import { RiApps2Line, RiArrowDownLine, RiFocus2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import ImageList from '../../common/image-list'
@@ -30,8 +30,12 @@ const Records = ({
     })
   }, [records, sortTimeOrder])
 
-  const getImageList = (images: Attachment[]) => {
-    return images.map(image => ({
+  const getImageList = (queries: Query[]) => {
+    const imageQueries = queries
+      .filter(query => query.content_type === 'image_query')
+      .map(query => query.file_info)
+      .filter(Boolean) as Attachment[]
+    return imageQueries.map(image => ({
       name: image.name,
       mimeType: image.mime_type,
       sourceUrl: image.source_url,
@@ -68,8 +72,7 @@ const Records = ({
             const { id, source, created_at, queries } = record
             const SourceIcon = record.source === 'app' ? RiApps2Line : RiFocus2Line
             const content = queries.find(query => query.content_type === 'text_query')?.content || ''
-            const imageQueries = queries.filter(query => query.content_type === 'image_query')?.map(query => query.file_info!)
-            const images = getImageList(imageQueries)
+            const images = getImageList(queries)
             return (
               <tr
                 key={id}
