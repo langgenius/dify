@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   useRouter,
 } from 'next/navigation'
-import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import {
@@ -19,8 +18,6 @@ import AppCard from './app-card'
 import NewAppCard from './new-app-card'
 import useAppsQueryState from './hooks/use-apps-query-state'
 import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
-import type { AppListResponse } from '@/models/app'
-import { fetchAppList } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
@@ -35,6 +32,7 @@ import Empty from './empty'
 import Footer from './footer'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AppModeEnum } from '@/types/app'
+import { useInfiniteAppList } from '@/service/use-apps'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
@@ -42,30 +40,6 @@ const TagManagementModal = dynamic(() => import('@/app/components/base/tag-manag
 const CreateFromDSLModal = dynamic(() => import('@/app/components/app/create-from-dsl-modal'), {
   ssr: false,
 })
-
-const getKey = (
-  pageIndex: number,
-  previousPageData: AppListResponse,
-  activeTab: string,
-  isCreatedByMe: boolean,
-  tags: string[],
-  keywords: string,
-) => {
-  if (!pageIndex || previousPageData.has_more) {
-    const params: any = { url: 'apps', params: { page: pageIndex + 1, limit: 30, name: keywords, is_created_by_me: isCreatedByMe } }
-
-    if (activeTab !== 'all')
-      params.params.mode = activeTab
-    else
-      delete params.params.mode
-
-    if (tags.length)
-      params.params.tag_ids = tags
-
-    return params
-  }
-  return null
-}
 
 const List = () => {
   const { t } = useTranslation()
@@ -102,16 +76,24 @@ const List = () => {
     enabled: isCurrentWorkspaceEditor,
   })
 
-  const { data, isLoading, error, setSize, mutate } = useSWRInfinite(
-    (pageIndex: number, previousPageData: AppListResponse) => getKey(pageIndex, previousPageData, activeTab, isCreatedByMe, tagIDs, searchKeywords),
-    fetchAppList,
-    {
-      revalidateFirstPage: true,
-      shouldRetryOnError: false,
-      dedupingInterval: 500,
-      errorRetryCount: 3,
-    },
-  )
+  const appListQueryParams = {
+    page: 1,
+    limit: 30,
+    name: searchKeywords,
+    tag_ids: tagIDs,
+    is_created_by_me: isCreatedByMe,
+    ...(activeTab !== 'all' ? { mode: activeTab as AppModeEnum } : {}),
+  }
+
+  const {
+    data,
+    isLoading,
+    isFetchingNextPage,
+    fetchNextPage,
+    hasNextPage,
+    error,
+    refetch,
+  } = useInfiniteAppList(appListQueryParams, { enabled: !isCurrentWorkspaceDatasetOperator })
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
@@ -126,9 +108,9 @@ const List = () => {
   useEffect(() => {
     if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
-      mutate()
+      refetch()
     }
-  }, [mutate, t])
+  }, [refetch])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -136,7 +118,9 @@ const List = () => {
   }, [router, isCurrentWorkspaceDatasetOperator])
 
   useEffect(() => {
-    const hasMore = data?.at(-1)?.has_more ?? true
+    if (isCurrentWorkspaceDatasetOperator)
+      return
+    const hasMore = hasNextPage ?? true
     let observer: IntersectionObserver | undefined
 
     if (error) {
@@ -151,8 +135,8 @@ const List = () => {
       const dynamicMargin = Math.max(100, Math.min(containerHeight * 0.2, 200)) // Clamps to 100-200px range, using 20% of container height as the base value
 
       observer = new IntersectionObserver((entries) => {
-        if (entries[0].isIntersecting && !isLoading && !error && hasMore)
-          setSize((size: number) => size + 1)
+        if (entries[0].isIntersecting && !isLoading && !isFetchingNextPage && !error && hasMore)
+          fetchNextPage()
       }, {
         root: containerRef.current,
         rootMargin: `${dynamicMargin}px`,
@@ -161,7 +145,7 @@ const List = () => {
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, data, error])
+  }, [isLoading, isFetchingNextPage, fetchNextPage, error, hasNextPage, isCurrentWorkspaceDatasetOperator])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
@@ -184,6 +168,9 @@ const List = () => {
     setIsCreatedByMe(newValue)
     setQuery(prev => ({ ...prev, isCreatedByMe: newValue }))
   }, [isCreatedByMe, setQuery])
+
+  const pages = data?.pages ?? []
+  const hasAnyApp = (pages[0]?.total ?? 0) > 0
 
   return (
     <>
@@ -217,17 +204,17 @@ const List = () => {
             />
           </div>
         </div>
-        {(data && data[0].total > 0)
+        {hasAnyApp
           ? <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
             {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} onSuccess={mutate} selectedAppType={activeTab} />}
-            {data.map(({ data: apps }) => apps.map(app => (
-              <AppCard key={app.id} app={app} onRefresh={mutate} />
+              && <NewAppCard ref={newAppCardRef} onSuccess={refetch} selectedAppType={activeTab} />}
+            {pages.map(({ data: apps }) => apps.map(app => (
+              <AppCard key={app.id} app={app} onRefresh={refetch} />
             )))}
           </div>
           : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
             {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={mutate} selectedAppType={activeTab} />}
+              && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={refetch} selectedAppType={activeTab} />}
             <Empty />
           </div>}
 
@@ -261,7 +248,7 @@ const List = () => {
           onSuccess={() => {
             setShowCreateFromDSLModal(false)
             setDroppedDSLFile(undefined)
-            mutate()
+            refetch()
           }}
           droppedFile={droppedDSLFile}
         />
