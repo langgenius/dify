@@ -46,6 +46,7 @@ def fake_features(monkeypatch):
 @pytest.fixture
 def fake_lock(monkeypatch):
     """Patch redis_client.lock to always raise LockNotOwnedError on enter."""
+
     def _fake_lock(name, timeout=None, *args, **kwargs):
         return FakeLock()
 
@@ -56,6 +57,7 @@ def fake_lock(monkeypatch):
 # ---------------------------------------------------------------------------
 # 1. Knowledge Pipeline document creation (save_document_with_dataset_id)
 # ---------------------------------------------------------------------------
+
 
 def test_save_document_with_dataset_id_ignores_lock_not_owned(
     monkeypatch,
@@ -113,6 +115,7 @@ def test_save_document_with_dataset_id_ignores_lock_not_owned(
 # 2. Single-segment creation (add_segment)
 # ---------------------------------------------------------------------------
 
+
 def test_add_segment_ignores_lock_not_owned(
     monkeypatch,
     fake_current_user,
@@ -154,6 +157,7 @@ def test_add_segment_ignores_lock_not_owned(
 # ---------------------------------------------------------------------------
 # 3. Multi-segment creation (multi_create_segment)
 # ---------------------------------------------------------------------------
+
 
 def test_multi_create_segment_ignores_lock_not_owned(
     monkeypatch,
