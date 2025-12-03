@@ -1,5 +1,6 @@
-import pytest
 from types import SimpleNamespace
+
+import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.tools.__base.tool_runtime import ToolRuntime
