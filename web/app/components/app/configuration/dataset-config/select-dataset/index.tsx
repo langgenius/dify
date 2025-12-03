@@ -31,7 +31,10 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const [selected, setSelected] = useState<DataSet[]>([])
   const canSelectMulti = true
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
-  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteDatasets({ page: 1 }, { enabled: isShow })
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteDatasets(
+    { page: 1 },
+    { enabled: isShow, staleTime: 0, refetchOnMount: 'always' },
+  )
   const pages = data?.pages || []
   const datasets = useMemo(() => {
     return pages.flatMap(page => page.data.filter(item => item.indexing_technique || item.provider === 'external'))
@@ -56,43 +59,39 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   )
 
   const prevSelectedIdsRef = useRef<string[]>([])
+  const hasUserModifiedSelectionRef = useRef(false)
+  useEffect(() => {
+    if (isShow)
+      hasUserModifiedSelectionRef.current = false
+  }, [isShow])
   useEffect(() => {
     const prevSelectedIds = prevSelectedIdsRef.current
     const idsChanged = selectedIds.length !== prevSelectedIds.length
       || selectedIds.some((id, idx) => id !== prevSelectedIds[idx])
 
-    if (idsChanged) {
-      const nextSelected = selectedIds
-        .map(id => datasets.find(item => item.id === id) || selected.find(item => item.id === id))
-        .filter(Boolean) as DataSet[]
-      setSelected(nextSelected)
+    if (!selectedIds.length && (!hasUserModifiedSelectionRef.current || idsChanged)) {
+      setSelected([])
       prevSelectedIdsRef.current = selectedIds
+      hasUserModifiedSelectionRef.current = false
       return
     }
 
-    if (!selectedIds.length)
+    if (!idsChanged && hasUserModifiedSelectionRef.current)
       return
 
-    const missingIds = selectedIds.filter(id => !selected.some(item => item.id === id))
-    if (!missingIds.length)
-      return
-    const additions = missingIds
-      .map(id => datasets.find(item => item.id === id))
-      .filter(Boolean) as DataSet[]
-
-    if (additions.length) {
-      setSelected((prev) => {
-        const merged = [...prev]
-        additions.forEach((item) => {
-          if (!merged.find(existing => existing.id === item.id))
-            merged.push(item)
-        })
-        return merged
-      })
-    }
-  }, [datasets, selectedIds, selected])
+    setSelected((prev) => {
+      const prevMap = new Map(prev.map(item => [item.id, item]))
+      const nextSelected = selectedIds
+        .map(id => datasets.find(item => item.id === id) || prevMap.get(id))
+        .filter(Boolean) as DataSet[]
+      return nextSelected
+    })
+    prevSelectedIdsRef.current = selectedIds
+    hasUserModifiedSelectionRef.current = false
+  }, [datasets, selectedIds])
 
   const toggleSelect = (dataSet: DataSet) => {
+    hasUserModifiedSelectionRef.current = true
     const isSelected = selected.some(item => item.id === dataSet.id)
     if (isSelected) {
       setSelected(selected.filter(item => item.id !== dataSet.id))

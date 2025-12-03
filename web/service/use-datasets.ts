@@ -38,11 +38,17 @@ const normalizeDatasetsParams = (params: Partial<FetchDatasetsParams['params']> 
   }
 }
 
+type UseInfiniteDatasetsOptions = {
+  enabled?: boolean
+  refetchOnMount?: boolean | 'always'
+  staleTime?: number
+  refetchOnReconnect?: boolean
+  refetchOnWindowFocus?: boolean
+}
+
 export const useInfiniteDatasets = (
   params: Partial<FetchDatasetsParams['params']>,
-  options?: {
-    enabled?: boolean
-  },
+  options?: UseInfiniteDatasetsOptions,
 ) => {
   const normalizedParams = normalizeDatasetsParams(params)
   const buildUrl = (pageParam: number | undefined) => {
@@ -58,6 +64,8 @@ export const useInfiniteDatasets = (
     queryFn: ({ pageParam = normalizedParams.page }) => get<DataSetListResponse>(buildUrl(pageParam as number | undefined)),
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
+    staleTime: 0,
+    refetchOnMount: 'always',
     ...options,
   })
 }
