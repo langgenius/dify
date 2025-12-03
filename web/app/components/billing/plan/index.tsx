@@ -25,6 +25,8 @@ import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/con
 import { useEducationVerify } from '@/service/use-education'
 import { useModalContextSelector } from '@/context/modal-context'
 import { Enterprise, Professional, Sandbox, Team } from './assets'
+import { Loading } from '../../base/icons/src/public/thought'
+import { useUnmountedRef } from 'ahooks'
 
 type Props = {
   loc: string
@@ -61,11 +63,14 @@ const PlanComp: FC<Props> = ({
   })()
 
   const [showModal, setShowModal] = React.useState(false)
-  const { mutateAsync } = useEducationVerify()
+  const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
+    if (isPending) return
     mutateAsync().then((res) => {
       localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+      if (unmountedRef.current) return
       router.push(`/education-apply?token=${res.token}`)
       setShowAccountSettingModal(null)
     }).catch(() => {
@@ -96,9 +101,10 @@ const PlanComp: FC<Props> = ({
           </div>
           <div className='flex shrink-0 items-center gap-1'>
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
-              <Button variant='ghost' onClick={handleVerify}>
+              <Button variant='ghost' onClick={handleVerify} disabled={isPending} >
                 <RiGraduationCapLine className='mr-1 h-4 w-4' />
                 {t('education.toVerified')}
+                {isPending && <Loading className='ml-1 animate-spin-slow' />}
               </Button>
             )}
             {(plan.type as any) !== SelfHostedPlan.enterprise && (
