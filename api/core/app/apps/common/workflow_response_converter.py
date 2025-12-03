@@ -314,7 +314,7 @@ class WorkflowResponseConverter:
                 )
         except Exception:
             # metadata fetch may fail, for example, the plugin daemon is down or plugin is uninstalled.
-            logger.warning('failed to fetch icon for %s', event.provider_id)
+            logger.warning("failed to fetch icon for %s", event.provider_id)
 
         return response
 
