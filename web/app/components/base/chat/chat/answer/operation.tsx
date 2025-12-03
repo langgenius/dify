@@ -103,37 +103,22 @@ const Operation: FC<OperationProps> = ({
       setUserLocalFeedback(nextFeedback)
   }
 
-  const handleUserLikeClick = () => {
-    if (displayUserFeedback?.rating === 'like') {
-      handleFeedback(null, undefined, 'user')
+  const handleLikeClick = (target: 'user' | 'admin') => {
+    const currentRating = target === 'admin' ? adminLocalFeedback?.rating : displayUserFeedback?.rating
+    if (currentRating === 'like') {
+      handleFeedback(null, undefined, target)
       return
     }
-    handleFeedback('like', undefined, 'user')
+    handleFeedback('like', undefined, target)
   }
 
-  const handleUserDislikeClick = () => {
-    if (displayUserFeedback?.rating === 'dislike') {
-      handleFeedback(null, undefined, 'user')
+  const handleDislikeClick = (target: 'user' | 'admin') => {
+    const currentRating = target === 'admin' ? adminLocalFeedback?.rating : displayUserFeedback?.rating
+    if (currentRating === 'dislike') {
+      handleFeedback(null, undefined, target)
       return
     }
-    setFeedbackTarget('user')
-    setIsShowFeedbackModal(true)
-  }
-
-  const handleAdminLikeClick = () => {
-    if (adminLocalFeedback?.rating === 'like') {
-      handleFeedback(null, undefined, 'admin')
-      return
-    }
-    handleFeedback('like', undefined, 'admin')
-  }
-
-  const handleAdminDislikeClick = () => {
-    if (adminLocalFeedback?.rating === 'dislike') {
-      handleFeedback(null, undefined, 'admin')
-      return
-    }
-    setFeedbackTarget('admin')
+    setFeedbackTarget(target)
     setIsShowFeedbackModal(true)
   }
 
@@ -241,14 +226,14 @@ const Operation: FC<OperationProps> = ({
               <>
                 <ActionButton
                   state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
-                  onClick={handleUserLikeClick}
+                  onClick={() => handleLikeClick('user')}
                   title={t('appLog.table.header.userRate') || 'User feedback'}
                 >
                   <RiThumbUpLine className='h-4 w-4' />
                 </ActionButton>
                 <ActionButton
                   state={displayUserFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
-                  onClick={handleUserDislikeClick}
+                  onClick={() => handleDislikeClick('user')}
                   title={t('appLog.table.header.userRate') || 'User feedback'}
                 >
                   <RiThumbDownLine className='h-4 w-4' />
@@ -304,7 +289,7 @@ const Operation: FC<OperationProps> = ({
                 >
                   <ActionButton
                     state={adminLocalFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
-                    onClick={handleAdminLikeClick}
+                    onClick={() => handleLikeClick('admin')}
                   >
                     <RiThumbUpLine className='h-4 w-4' />
                   </ActionButton>
@@ -315,7 +300,7 @@ const Operation: FC<OperationProps> = ({
                 >
                   <ActionButton
                     state={adminLocalFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
-                    onClick={handleAdminDislikeClick}
+                    onClick={() => handleDislikeClick('admin')}
                   >
                     <RiThumbDownLine className='h-4 w-4' />
                   </ActionButton>
