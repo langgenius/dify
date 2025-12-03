@@ -55,6 +55,13 @@ class ChatConversationQuery(BaseConversationQuery):
     )
 
 
+class ClearConversationsPayload(BaseModel):
+    conversation_ids: list[str] | None = Field(
+        default=None,
+        description="Optional list of conversation IDs to clear. If not provided, all conversations will be cleared.",
+    )
+
+
 console_ns.schema_model(
     CompletionConversationQuery.__name__,
     CompletionConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
@@ -62,6 +69,10 @@ console_ns.schema_model(
 console_ns.schema_model(
     ChatConversationQuery.__name__,
     ChatConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    ClearConversationsPayload.__name__,
+    ClearConversationsPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
 # Register models for flask_restx to avoid dict type issues in Swagger
@@ -384,20 +395,12 @@ class CompletionConversationApi(Resource):
 
         return conversations
 
-    @api.doc("clear_completion_conversations")
-    @api.doc(description="Clear completion conversations and related data")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser().add_argument(
-            "conversation_ids",
-            type=list,
-            location="json",
-            required=False,
-            help="Optional list of conversation IDs to clear. If not provided, all conversations will be cleared.",
-        )
-    )
-    @api.response(202, "Clearing task queued successfully")
-    @api.response(403, "Insufficient permissions")
+    @console_ns.doc("clear_completion_conversations")
+    @console_ns.doc(description="Clear completion conversations and related data")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[ClearConversationsPayload.__name__])
+    @console_ns.response(202, "Clearing task queued successfully")
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -407,14 +410,13 @@ class CompletionConversationApi(Resource):
         from services.errors.conversation import ConversationClearInProgressError
 
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_ids", type=list, location="json", required=False, default=None)
-        args = parser.parse_args()
+        args = ClearConversationsPayload.model_validate(console_ns.payload or {})
 
         # Convert conversation IDs to strings if provided and non-empty
-        conversation_ids_raw = args.get("conversation_ids")
         conversation_ids = (
-            [str(id) for id in conversation_ids_raw] if conversation_ids_raw and len(conversation_ids_raw) > 0 else None
+            [str(id) for id in args.conversation_ids]
+            if args.conversation_ids and len(args.conversation_ids) > 0
+            else None
         )
 
         try:
@@ -577,20 +579,12 @@ class ChatConversationApi(Resource):
 
         return conversations
 
-    @api.doc("clear_chat_conversations")
-    @api.doc(description="Clear chat conversations and related data")
-    @api.doc(params={"app_id": "Application ID"})
-    @api.expect(
-        api.parser().add_argument(
-            "conversation_ids",
-            type=list,
-            location="json",
-            required=False,
-            help="Optional list of conversation IDs to clear. If not provided, all conversations will be cleared.",
-        )
-    )
-    @api.response(202, "Clearing task queued successfully")
-    @api.response(403, "Insufficient permissions")
+    @console_ns.doc("clear_chat_conversations")
+    @console_ns.doc(description="Clear chat conversations and related data")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[ClearConversationsPayload.__name__])
+    @console_ns.response(202, "Clearing task queued successfully")
+    @console_ns.response(403, "Insufficient permissions")
     @setup_required
     @login_required
     @account_initialization_required
@@ -600,14 +594,13 @@ class ChatConversationApi(Resource):
         from services.errors.conversation import ConversationClearInProgressError
 
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_ids", type=list, location="json", required=False, default=None)
-        args = parser.parse_args()
+        args = ClearConversationsPayload.model_validate(console_ns.payload or {})
 
         # Convert conversation IDs to strings if provided and non-empty
-        conversation_ids_raw = args.get("conversation_ids")
         conversation_ids = (
-            [str(id) for id in conversation_ids_raw] if conversation_ids_raw and len(conversation_ids_raw) > 0 else None
+            [str(id) for id in args.conversation_ids]
+            if args.conversation_ids and len(args.conversation_ids) > 0
+            else None
         )
 
         try:
