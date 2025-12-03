@@ -32,9 +32,9 @@ services:
           "-h",
           "db_postgres",
           "-U",
-          "${PGUSER:-postgres}",
+          "${DB_USERNAME:-postgres}",
           "-d",
-          "${POSTGRES_DB:-dify}",
+          "${DB_DATABASE:-dify}",
         ]
       interval: 1s
       timeout: 3s
@@ -67,7 +67,7 @@ services:
           "ping",
           "-u",
           "root",
-          "-p${MYSQL_PASSWORD:-difyai123456}",
+          "-p${DB_PASSWORD:-difyai123456}",
         ]
       interval: 1s
       timeout: 3s
