@@ -67,7 +67,6 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         // Track login success event
         trackEvent('user_login_success', {
           method: 'email_password',
-          time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
           is_invite: isInvite,
         })
 

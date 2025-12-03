@@ -8,7 +8,7 @@ import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import type { QueryParam } from './index'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
-import { trackEvent } from '../../base/amplitude/utils'
+import { trackEvent } from '@/app/components/base/amplitude/utils'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()

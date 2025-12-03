@@ -87,7 +87,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate, defaultAppMode }:
       // Track app creation success
       trackEvent('create_app', {
         app_mode: appMode,
-        time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
         description,
       })
 

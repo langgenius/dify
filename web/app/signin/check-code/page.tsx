@@ -48,7 +48,6 @@ export default function CheckCode() {
         // Track login success event
         trackEvent('user_login_success', {
           method: 'email_code',
-          time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
           is_invite: !!invite_token,
         })
 

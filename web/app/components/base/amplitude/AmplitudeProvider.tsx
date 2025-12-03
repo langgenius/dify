@@ -12,11 +12,11 @@ export type IAmplitudeProps = {
 }
 
 const AmplitudeProvider: FC<IAmplitudeProps> = ({
-  apiKey = '702e89332ab88a7f14e665f417244e9d',
+  apiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY ?? '',
   sessionReplaySampleRate = 1,
 }) => {
   useEffect(() => {
-    // // Only enable in non-CE edition
+    // Only enable in non-CE edition
     if (IS_CE_EDITION) {
       console.warn('[Amplitude] Amplitude is disabled in CE edition')
       return
@@ -39,7 +39,7 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
       sampleRate: sessionReplaySampleRate,
     })
     amplitude.add(sessionReplay)
-  }, [apiKey, sessionReplaySampleRate])
+  }, [])
 
   // This is a client component that renders nothing
   return null

@@ -160,32 +160,27 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   }, [currentWorkspace?.id])
   // #endregion Zendesk conversation fields
 
-  // #region Amplitude user tracking
   useEffect(() => {
-    // Report user info to Amplitude when loaded
+    // Report user and workspace info to Amplitude when loaded
     if (userProfile?.id) {
       setUserId(userProfile.email)
-      setUserProperties({
+      const properties: Record<string, any> = {
         email: userProfile.email,
         name: userProfile.name,
         has_password: userProfile.is_password_set,
-      })
-    }
-  }, [userProfile?.id, userProfile?.email, userProfile?.name, userProfile?.is_password_set])
+      }
 
-  useEffect(() => {
-    // Report workspace info to Amplitude when loaded
-    if (currentWorkspace?.id && userProfile?.id) {
-      setUserProperties({
-        workspace_id: currentWorkspace.id,
-        workspace_name: currentWorkspace.name,
-        workspace_plan: currentWorkspace.plan,
-        workspace_status: currentWorkspace.status,
-        workspace_role: currentWorkspace.role,
-      })
+      if (currentWorkspace?.id) {
+        properties.workspace_id = currentWorkspace.id
+        properties.workspace_name = currentWorkspace.name
+        properties.workspace_plan = currentWorkspace.plan
+        properties.workspace_status = currentWorkspace.status
+        properties.workspace_role = currentWorkspace.role
+      }
+
+      setUserProperties(properties)
     }
-  }, [currentWorkspace?.id, currentWorkspace?.name, currentWorkspace?.plan, currentWorkspace?.status, currentWorkspace?.role, userProfile?.id])
-  // #endregion Amplitude user tracking
+  }, [userProfile, currentWorkspace])
 
   return (
     <AppContext.Provider value={{

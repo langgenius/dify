@@ -148,8 +148,7 @@ const Apps = ({
         app_mode: mode,
         template_id: currApp?.app.id,
         template_name: currApp?.app.name,
-        time: new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }),
-        has_description: description,
+        description,
       })
 
       setIsShowCreateModal(false)
