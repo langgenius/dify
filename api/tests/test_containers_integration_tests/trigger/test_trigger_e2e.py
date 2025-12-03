@@ -18,7 +18,7 @@ from core.trigger.debug.events import PluginTriggerDebugEvent
 from core.workflow.enums import NodeType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
-from models.enums import AppTriggerStatus, AppTriggerType
+from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from models.model import App
 from models.trigger import AppTrigger, WorkflowSchedulePlan, WorkflowTriggerLog, WorkflowWebhookTrigger
 from models.workflow import Workflow
@@ -192,6 +192,31 @@ def test_webhook_trigger_creates_trigger_log(
 
     db_session_with_containers.add_all([webhook_trigger, app_trigger])
     db_session_with_containers.commit()
+
+    def _fake_trigger_workflow_async(session, user, trigger_data):
+        log = WorkflowTriggerLog(
+            tenant_id=trigger_data.tenant_id,
+            app_id=trigger_data.app_id,
+            workflow_id=trigger_data.workflow_id,
+            root_node_id=trigger_data.root_node_id,
+            trigger_metadata=trigger_data.trigger_metadata.model_dump_json() if trigger_data.trigger_metadata else "{}",
+            trigger_type=trigger_data.trigger_type,
+            workflow_run_id=None,
+            outputs=None,
+            trigger_data=trigger_data.model_dump_json(),
+            inputs=json.dumps(dict(trigger_data.inputs)),
+            status=WorkflowTriggerStatus.SUCCEEDED,
+            error="",
+            queue_name="triggered_workflow_dispatcher",
+            celery_task_id="celery-test",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=account.id,
+        )
+        session.add(log)
+        session.commit()
+        return SimpleNamespace(workflow_trigger_log_id=log.id, task_id=None, status="queued", queue="test")
+
+    monkeypatch.setattr("services.trigger.webhook_service.AsyncWorkflowService.trigger_workflow_async", _fake_trigger_workflow_async)
 
     response = test_client_with_containers.post(f"/triggers/webhook/{webhook_trigger.webhook_id}", json={"foo": "bar"})
 
