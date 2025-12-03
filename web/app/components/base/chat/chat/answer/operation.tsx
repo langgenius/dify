@@ -11,7 +11,10 @@ import {
   RiThumbDownLine,
   RiThumbUpLine,
 } from '@remixicon/react'
-import type { ChatItem } from '../../types'
+import type {
+  ChatItem,
+  Feedback,
+} from '../../types'
 import { useChatContext } from '../context'
 import copy from 'copy-to-clipboard'
 import Toast from '@/app/components/base/toast'
@@ -88,6 +91,25 @@ const Operation: FC<OperationProps> = ({
 
   const shouldShowUserFeedbackBar = !isOpeningStatement && config?.supportFeedback && !!onFeedback && !config?.supportAnnotation
   const shouldShowAdminFeedbackBar = !isOpeningStatement && config?.supportFeedback && !!onFeedback && !!config?.supportAnnotation
+
+  const userFeedbackLabel = t('appLog.table.header.userRate') || 'User feedback'
+  const adminFeedbackLabel = t('appLog.table.header.adminRate') || 'Admin feedback'
+  const feedbackTooltipClassName = 'max-w-[260px]'
+
+  const buildFeedbackTooltip = (feedbackData?: Feedback | null, label = userFeedbackLabel) => {
+    if (!feedbackData?.rating)
+      return label
+
+    const ratingLabel = feedbackData.rating === 'like'
+      ? (t('appLog.detail.operation.like') || 'like')
+      : (t('appLog.detail.operation.dislike') || 'dislike')
+    const feedbackText = feedbackData.content?.trim()
+
+    if (feedbackText)
+      return `${label}: ${ratingLabel} - ${feedbackText}`
+
+    return `${label}: ${ratingLabel}`
+  }
 
   const handleFeedback = async (rating: 'like' | 'dislike' | null, content?: string, target: 'user' | 'admin' = 'user') => {
     if (!config?.supportFeedback || !onFeedback)
@@ -209,8 +231,8 @@ const Operation: FC<OperationProps> = ({
           )}>
             {hasUserFeedback ? (
               <Tooltip
-                popupContent={t('appLog.table.header.userRate') || 'User feedback'}
-                popupClassName='max-w-[180px]'
+                popupContent={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
+                popupClassName={feedbackTooltipClassName}
               >
                 <ActionButton
                   state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Destructive}
@@ -247,8 +269,8 @@ const Operation: FC<OperationProps> = ({
             {/* User Feedback Display */}
             {displayUserFeedback?.rating && (
               <Tooltip
-                popupContent={t('appLog.table.header.userRate') || 'User feedback'}
-                popupClassName='max-w-[180px]'
+                popupContent={buildFeedbackTooltip(displayUserFeedback, userFeedbackLabel)}
+                popupClassName={feedbackTooltipClassName}
               >
                 {displayUserFeedback.rating === 'like' ? (
                   <ActionButton state={ActionButtonState.Active}>
@@ -266,8 +288,8 @@ const Operation: FC<OperationProps> = ({
             {displayUserFeedback?.rating && <div className='mx-1 h-3 w-[0.5px] bg-components-actionbar-border' />}
             {hasAdminFeedback ? (
               <Tooltip
-                popupContent={t('appLog.table.header.adminRate') || 'Admin feedback'}
-                popupClassName='max-w-[180px]'
+                popupContent={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
+                popupClassName={feedbackTooltipClassName}
               >
                 <ActionButton
                   state={adminLocalFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Destructive}
@@ -281,8 +303,8 @@ const Operation: FC<OperationProps> = ({
             ) : (
               <>
                 <Tooltip
-                  popupContent={t('appLog.table.header.adminRate') || 'Admin feedback'}
-                  popupClassName='max-w-[180px]'
+                  popupContent={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
+                  popupClassName={feedbackTooltipClassName}
                 >
                   <ActionButton
                     state={adminLocalFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
@@ -292,8 +314,8 @@ const Operation: FC<OperationProps> = ({
                   </ActionButton>
                 </Tooltip>
                 <Tooltip
-                  popupContent={t('appLog.table.header.adminRate') || 'Admin feedback'}
-                  popupClassName='max-w-[180px]'
+                  popupContent={buildFeedbackTooltip(adminLocalFeedback, adminFeedbackLabel)}
+                  popupClassName={feedbackTooltipClassName}
                 >
                   <ActionButton
                     state={adminLocalFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
