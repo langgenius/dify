@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(ตัวเลือก & ซ่อน)',
     goTo: 'ไปที่',
     startNode: 'เริ่มต้นโหนด',
+    openWorkflow: 'เปิดเวิร์กโฟลว์',
   },
   nodes: {
     common: {

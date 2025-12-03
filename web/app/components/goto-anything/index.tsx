@@ -177,18 +177,42 @@ const GotoAnything: FC<Props> = ({
     }
   }, [router])
 
+  const dedupedResults = useMemo(() => {
+    const seen = new Set<string>()
+    return searchResults.filter((result) => {
+      const key = `${result.type}-${result.id}`
+      if (seen.has(key))
+        return false
+      seen.add(key)
+      return true
+    })
+  }, [searchResults])
+
   // Group results by type
-  const groupedResults = useMemo(() => searchResults.reduce((acc, result) => {
+  const groupedResults = useMemo(() => dedupedResults.reduce((acc, result) => {
     if (!acc[result.type])
       acc[result.type] = []
 
     acc[result.type].push(result)
     return acc
   }, {} as { [key: string]: SearchResult[] }),
-  [searchResults])
+  [dedupedResults])
+
+  useEffect(() => {
+    if (isCommandsMode)
+      return
+
+    if (!dedupedResults.length)
+      return
+
+    const currentValueExists = dedupedResults.some(result => `${result.type}-${result.id}` === cmdVal)
+
+    if (!currentValueExists)
+      setCmdVal(`${dedupedResults[0].type}-${dedupedResults[0].id}`)
+  }, [isCommandsMode, dedupedResults, cmdVal])
 
   const emptyResult = useMemo(() => {
-    if (searchResults.length || !searchQuery.trim() || isLoading || isCommandsMode)
+    if (dedupedResults.length || !searchQuery.trim() || isLoading || isCommandsMode)
       return null
 
     const isCommandSearch = searchMode !== 'general'
@@ -233,7 +257,7 @@ const GotoAnything: FC<Props> = ({
         </div>
       </div>
     )
-  }, [searchResults, searchQuery, Actions, searchMode, isLoading, isError, isCommandsMode])
+  }, [dedupedResults, searchQuery, Actions, searchMode, isLoading, isError, isCommandsMode])
 
   const defaultUI = useMemo(() => {
     if (searchQuery.trim())
@@ -386,7 +410,7 @@ const GotoAnything: FC<Props> = ({
                           <Command.Item
                             key={`${result.type}-${result.id}`}
                             value={`${result.type}-${result.id}`}
-                            className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] aria-[selected=true]:bg-state-base-hover data-[selected=true]:bg-state-base-hover'
+                            className='flex cursor-pointer items-center gap-3 rounded-md p-3 will-change-[background-color] hover:bg-state-base-hover aria-[selected=true]:bg-state-base-hover-alt data-[selected=true]:bg-state-base-hover-alt'
                             onSelect={() => handleNavigate(result)}
                           >
                             {result.icon}
@@ -417,14 +441,14 @@ const GotoAnything: FC<Props> = ({
             {/* Always show footer to prevent height jumping */}
             <div className='border-t border-divider-subtle bg-components-panel-bg-blur px-4 py-2 text-xs text-text-tertiary'>
               <div className='flex min-h-[16px] items-center justify-between'>
-                {(!!searchResults.length || isError) ? (
+                {(!!dedupedResults.length || isError) ? (
                   <>
                     <span>
                       {isError ? (
                         <span className='text-red-500'>{t('app.gotoAnything.someServicesUnavailable')}</span>
                       ) : (
                         <>
-                          {t('app.gotoAnything.resultCount', { count: searchResults.length })}
+                          {t('app.gotoAnything.resultCount', { count: dedupedResults.length })}
                           {searchMode !== 'general' && (
                             <span className='ml-2 opacity-60'>
                               {t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
