@@ -201,6 +201,7 @@
     "lodash": "^4.17.21",
     "magicast": "^0.3.5",
     "postcss": "^8.5.6",
+    "react-scan": "^0.4.3",
     "sass": "^1.93.2",
     "storybook": "9.1.13",
     "tailwindcss": "^3.4.18",
