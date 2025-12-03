@@ -72,7 +72,7 @@ def clear_conversations_task(
 
         with Session() as session:
             # Get conversations to delete
-            conversation_query = session.query(Conversation).filter(Conversation.app_id == app_id)
+            conversation_query = session.query(Conversation).where(Conversation.app_id == app_id)
 
             # Filter by conversation mode - handle chat modes which include chat, agent-chat, advanced-chat
             if conversation_mode == "chat":
