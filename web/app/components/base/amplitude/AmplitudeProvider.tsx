@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import { IS_CE_EDITION } from '@/config'
+import { IS_CLOUD_EDITION } from '@/config'
 
 export type IAmplitudeProps = {
   apiKey?: string
@@ -16,11 +16,9 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
   sessionReplaySampleRate = 1,
 }) => {
   useEffect(() => {
-    // Only enable in non-CE edition
-    if (IS_CE_EDITION) {
-      console.warn('[Amplitude] Amplitude is disabled in CE edition')
+    // Only enable in Saas edition
+    if (!IS_CLOUD_EDITION)
       return
-    }
 
     // Initialize Amplitude
     amplitude.init(apiKey, {
