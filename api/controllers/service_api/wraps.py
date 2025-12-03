@@ -321,7 +321,7 @@ def validate_and_get_api_token(scope: str | None = None):
         result = session.execute(update_stmt)
         api_token = session.scalar(stmt)
 
-        if result.rowcount and result.rowcount > 0:
+        if hasattr(result, "rowcount") and result.rowcount > 0:
             session.commit()
 
         if not api_token:
