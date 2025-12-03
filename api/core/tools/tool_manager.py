@@ -5,7 +5,7 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast, TypedDict
 
 import sqlalchemy as sa
 from sqlalchemy import select
@@ -66,6 +66,9 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+class ApiProviderControllerItem(TypedDict):
+    provider: ApiToolProvider
+    controller: ApiToolProviderController
 
 class ToolManager:
     _builtin_provider_lock = Lock()
@@ -694,18 +697,22 @@ class ToolManager:
                 ).all()
 
                 # Batch create controllers
-                api_provider_controllers: list[dict[str, Union[ApiToolProvider, ApiToolProviderController]]] = []
+                api_provider_controllers: list[ApiProviderControllerItem] = []
                 for api_provider in db_api_providers:
                     try:
                         controller = ToolTransformService.api_provider_to_controller(api_provider)
-                        api_provider_controllers.append({"provider": api_provider, "controller": controller})
+                        api_provider_controllers.append({
+                            "provider": api_provider,
+                            "controller": controller
+                        })
                     except Exception:
                         # Skip invalid providers but continue processing others
                         logger.warning("Failed to create controller for API provider %s", api_provider.id)
 
                 # Batch get labels for all API providers
                 if api_provider_controllers:
-                    labels = ToolLabelManager.get_tools_labels([x["controller"] for x in api_provider_controllers])
+                    controllers = [item["controller"] for item in api_provider_controllers]
+                    labels = ToolLabelManager.get_tools_labels(controllers)
 
                     for item in api_provider_controllers:
                         provider_controller = item["controller"]
