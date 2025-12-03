@@ -5,7 +5,7 @@ import time
 from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
-from typing import TYPE_CHECKING, Any, Literal, Optional, Union, cast, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union, cast
 
 import sqlalchemy as sa
 from sqlalchemy import select
@@ -66,9 +66,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
 class ApiProviderControllerItem(TypedDict):
     provider: ApiToolProvider
     controller: ApiToolProviderController
+
 
 class ToolManager:
     _builtin_provider_lock = Lock()
@@ -701,10 +703,7 @@ class ToolManager:
                 for api_provider in db_api_providers:
                     try:
                         controller = ToolTransformService.api_provider_to_controller(api_provider)
-                        api_provider_controllers.append({
-                            "provider": api_provider,
-                            "controller": controller
-                        })
+                        api_provider_controllers.append({"provider": api_provider, "controller": controller})
                     except Exception:
                         # Skip invalid providers but continue processing others
                         logger.warning("Failed to create controller for API provider %s", api_provider.id)
