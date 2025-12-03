@@ -11,6 +11,7 @@ import { getIcon } from '@/app/components/datasets/common/retrieval-method-info'
 import ModifyExternalRetrievalModal from '@/app/components/datasets/hit-testing/modify-external-retrieval-modal'
 import cn from '@/utils/classnames'
 import type {
+  Attachment,
   ExternalKnowledgeBaseHitTestingRequest,
   ExternalKnowledgeBaseHitTestingResponse,
   HitTestingRequest,
@@ -75,7 +76,11 @@ const QueryInput = ({
   }, [queries])
 
   const images = useMemo(() => {
-    return queries.filter(query => query.content_type === 'image_query').map(query => query.file_info!).map(item => ({
+    const imageQueries = queries
+      .filter(query => query.content_type === 'image_query')
+      .map(query => query.file_info)
+      .filter(Boolean) as Attachment[]
+    return imageQueries.map(item => ({
       id: uuid4(),
       name: item.name,
       size: item.size,

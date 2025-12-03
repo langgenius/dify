@@ -52,6 +52,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     availableStringNodesWithParent,
     availableNumberVars,
     availableNumberNodesWithParent,
+    showImageQueryVarSelector,
   } = useConfig(id, data)
 
   const metadataList = useMemo(() => {
@@ -76,16 +77,18 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           />
         </Field>
 
-        <Field title={t(`${i18nPrefix}.queryAttachment`)}>
-          <VarReferencePicker
-            nodeId={id}
-            readonly={readOnly}
-            isShowNodeName
-            value={inputs.query_attachment_selector}
-            onChange={handleQueryAttachmentChange}
-            filterVar={filterFileVar}
-          />
-        </Field>
+        {showImageQueryVarSelector && (
+          <Field title={t(`${i18nPrefix}.queryAttachment`)}>
+            <VarReferencePicker
+              nodeId={id}
+              readonly={readOnly}
+              isShowNodeName
+              value={inputs.query_attachment_selector}
+              onChange={handleQueryAttachmentChange}
+              filterVar={filterFileVar}
+            />
+          </Field>
+        )}
 
         <Field
           title={t(`${i18nPrefix}.knowledge`)}
