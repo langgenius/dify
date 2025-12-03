@@ -25,12 +25,19 @@ def memory_span_exporter():
 @pytest.fixture
 def tracer_provider_with_memory_exporter(memory_span_exporter):
     """Provide a TracerProvider configured with memory exporter."""
+    import opentelemetry.trace as trace_api
+    
+    trace_api._TRACER_PROVIDER = None
+    trace_api._TRACER_PROVIDER_SET_ONCE._done = False
+    
     provider = TracerProvider()
     processor = SimpleSpanProcessor(memory_span_exporter)
     provider.add_span_processor(processor)
     set_tracer_provider(provider)
+    
     yield provider
-    set_tracer_provider(None)
+    
+    provider.force_flush()
 
 
 @pytest.fixture
