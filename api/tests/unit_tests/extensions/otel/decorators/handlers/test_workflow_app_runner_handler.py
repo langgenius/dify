@@ -34,9 +34,7 @@ class TestWorkflowAppRunnerHandler:
         required_entity_fields = ["user_id", "stream", "app_config"]
         entity_fields = WorkflowAppGenerateEntity.model_fields
         for field in required_entity_fields:
-            assert (
-                field in entity_fields
-            ), f"Handler expects WorkflowAppGenerateEntity.{field} but field is missing"
+            assert field in entity_fields, f"Handler expects WorkflowAppGenerateEntity.{field} but field is missing"
 
         required_config_fields = ["app_id", "tenant_id", "workflow_id"]
         config_fields = WorkflowUIBasedAppConfig.model_fields

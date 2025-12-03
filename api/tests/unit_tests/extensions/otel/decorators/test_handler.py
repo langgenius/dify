@@ -256,4 +256,3 @@ class TestSpanHandlerWrapper:
         assert len(spans) == 1
         assert "my_function" in spans[0].name
         assert spans[0].status.status_code == StatusCode.OK
-

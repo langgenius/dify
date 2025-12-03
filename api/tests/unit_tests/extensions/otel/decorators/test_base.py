@@ -117,4 +117,3 @@ class TestTraceSpanWithMemoryExporter:
         events = spans[0].events
         assert len(events) > 0
         assert any("exception" in event.name.lower() for event in events)
-

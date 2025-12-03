@@ -90,4 +90,3 @@ class TestAppGenerateHandler:
         assert attrs[DifySpanAttributes.WORKFLOW_ID] == test_workflow_id
         assert attrs[DifySpanAttributes.USER_TYPE] == "Account"
         assert attrs[DifySpanAttributes.STREAMING] is False
-

@@ -87,4 +87,3 @@ def reset_handler_instances():
     _HANDLER_INSTANCES[SpanHandler] = SpanHandler()
     yield
     _HANDLER_INSTANCES.clear()
-
