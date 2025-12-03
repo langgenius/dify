@@ -102,6 +102,7 @@ class CompletionAppRunner(AppRunner):
 
         # get context from datasets
         context = None
+        context_files = []
         if app_config.dataset and app_config.dataset.dataset_ids:
             hit_callback = DatasetIndexToolCallbackHandler(
                 queue_manager,
@@ -116,7 +117,7 @@ class CompletionAppRunner(AppRunner):
                 query = inputs.get(dataset_config.retrieve_config.query_variable, "")
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
-            context = dataset_retrieval.retrieve(
+            context, context_files = dataset_retrieval.retrieve(
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
@@ -130,6 +131,7 @@ class CompletionAppRunner(AppRunner):
                 hit_callback=hit_callback,
                 message_id=message.id,
                 inputs=inputs,
+                vision_enabled=application_generate_entity.app_config.app_model_config_dict.get("file_upload", {}).get("enabled", False),
             )
 
         # reorganize all inputs and template to prompt messages
@@ -144,6 +146,7 @@ class CompletionAppRunner(AppRunner):
             query=query,
             context=context,
             image_detail_config=image_detail_config,
+            context_files=context_files,
         )
 
         # check hosting moderation
