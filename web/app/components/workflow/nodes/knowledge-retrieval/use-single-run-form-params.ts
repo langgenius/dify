@@ -1,12 +1,14 @@
 import type { RefObject } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
+import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 import type { DataSet } from '@/models/datasets'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import { findVariableWhenOnLLMVision } from '../utils'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
@@ -20,8 +22,10 @@ type Params = {
   toVarInputs: (variables: Variable[]) => InputVar[]
 }
 const useSingleRunFormParams = ({
+  id,
   payload,
   runInputData,
+  runInputDataRef,
   setRunInputData,
 }: Params) => {
   const { t } = useTranslation()
@@ -31,17 +35,29 @@ const useSingleRunFormParams = ({
 
   const setQuery = useCallback((newQuery: string) => {
     setRunInputData({
-      ...runInputData,
+      ...runInputDataRef.current,
       query: newQuery,
     })
-  }, [runInputData, setRunInputData])
+  }, [runInputDataRef, setRunInputData])
 
   const setQueryAttachment = useCallback((newQueryAttachment: string) => {
     setRunInputData({
-      ...runInputData,
+      ...runInputDataRef.current,
       queryAttachment: newQueryAttachment,
     })
-  }, [runInputData, setRunInputData])
+  }, [runInputDataRef, setRunInputData])
+
+  const filterFileVar = useCallback((varPayload: Var) => {
+    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+  }, [])
+
+  // Get all variables from previous nodes that are file or array of file
+  const {
+    availableVars: availableFileVars,
+  } = useAvailableVarList(id, {
+    onlyLeafNodeVar: false,
+    filterVar: filterFileVar,
+  })
 
   const forms = useMemo(() => {
     const datasetIds = payload.dataset_ids
@@ -64,12 +80,13 @@ const useSingleRunFormParams = ({
       },
     ]
     if (hasMultiModalDatasets) {
+      const currentVariable = findVariableWhenOnLLMVision(payload.query_attachment_selector, availableFileVars)
       inputFields.push(
         {
           inputs: [{
             label: t(`${i18nPrefix}.queryAttachment`)!,
             variable: 'queryAttachment',
-            type: InputVarType.singleFile,
+            type: currentVariable?.formType as InputVarType,
             required: false,
           }],
           values: { queryAttachment },
