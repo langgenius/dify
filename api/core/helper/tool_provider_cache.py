@@ -53,6 +53,6 @@ class ToolProviderListCache:
         else:
             # Invalidate all caches for this tenant
             pattern = f"tool_providers:tenant_id:{tenant_id}:*"
-            keys = redis_client.keys(pattern)
+            keys = list(redis_client.scan_iter(pattern))
             if keys:
                 redis_client.delete(*keys)
