@@ -122,7 +122,7 @@ class AliyunLogStore:
         region: str = os.environ.get("ALIYUN_SLS_REGION", "")
 
         self.project_name: str = os.environ.get("ALIYUN_SLS_PROJECT_NAME", "")
-        self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 30))
+        self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 90))
         self.log_enabled: bool = os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
 
         self.client = LogClient(endpoint, access_key_id, access_key_secret, auth_version=AUTH_VERSION_4, region=region)

@@ -13,6 +13,7 @@ Key Features:
 """
 
 import logging
+import os
 import time
 from collections.abc import Sequence
 from datetime import datetime
@@ -63,7 +64,6 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.created_by = data.get("created_by") or ""
 
     # Numeric fields with defaults
-    model.elapsed_time = float(data.get("elapsed_time", 0))
     model.total_tokens = int(data.get("total_tokens", 0))
     model.total_steps = int(data.get("total_steps", 0))
     model.exceptions_count = int(data.get("exceptions_count", 0))
@@ -72,17 +72,17 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     model.graph = data.get("graph")
     model.inputs = data.get("inputs")
     model.outputs = data.get("outputs")
-    model.error = data.get("error")
+    model.error = data.get("error_message") or data.get("error")
 
     # Handle datetime fields
-    created_at = data.get("created_at")
-    if created_at:
-        if isinstance(created_at, str):
-            model.created_at = datetime.fromisoformat(created_at)
-        elif isinstance(created_at, (int, float)):
-            model.created_at = datetime.fromtimestamp(created_at)
+    started_at = data.get("started_at") or data.get("created_at")
+    if started_at:
+        if isinstance(started_at, str):
+            model.created_at = datetime.fromisoformat(started_at)
+        elif isinstance(started_at, (int, float)):
+            model.created_at = datetime.fromtimestamp(started_at)
         else:
-            model.created_at = created_at
+            model.created_at = started_at
     else:
         # Provide default created_at if missing
         model.created_at = datetime.now()
@@ -95,6 +95,13 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
             model.finished_at = datetime.fromtimestamp(finished_at)
         else:
             model.finished_at = finished_at
+
+    # Compute elapsed_time from started_at and finished_at
+    # LogStore doesn't store elapsed_time, it's computed in WorkflowExecution domain entity
+    if model.finished_at and model.created_at:
+        model.elapsed_time = (model.finished_at - model.created_at).total_seconds()
+    else:
+        model.elapsed_time = float(data.get("elapsed_time", 0))
 
     return model
 
@@ -119,6 +126,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
         logger.info("LogstoreAPIWorkflowRunRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
+
+        # Control flag for dual-read (fallback to PostgreSQL when LogStore returns no results)
+        # Set to True to enable fallback for safe migration from PostgreSQL to LogStore
+        # Set to False for new deployments without legacy data in PostgreSQL
+        self._enable_dual_read = os.environ.get("LOGSTORE_DUAL_READ_ENABLED", "true").lower() == "true"
 
     def get_paginated_workflow_runs(
         self,
@@ -215,6 +227,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Get a specific workflow run by ID with tenant and app isolation.
 
         Uses query syntax to get raw logs and selects the one with max log_version in code.
+        Falls back to PostgreSQL if not found in LogStore (for data consistency during migration).
         """
         logger.info("get_workflow_run_by_id: tenant_id=%s, app_id=%s, run_id=%s", tenant_id, app_id, run_id)
         # Build query string using LogStore query syntax
@@ -235,6 +248,16 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             )
 
             if not results:
+                # Fallback to PostgreSQL for records created before LogStore migration
+                if self._enable_dual_read:
+                    logger.info(
+                        "WorkflowRun not found in LogStore, falling back to PostgreSQL: "
+                        "run_id=%s, tenant_id=%s, app_id=%s",
+                        run_id,
+                        tenant_id,
+                        app_id,
+                    )
+                    return self._fallback_get_workflow_run_by_id_with_tenant(run_id, tenant_id, app_id)
                 return None
 
             # If multiple results, select the one with max log_version
@@ -246,7 +269,30 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         except Exception:
             logger.exception("Failed to get workflow run by ID from LogStore: run_id=%s", run_id)
+            # Try PostgreSQL fallback on any error (only if dual-read is enabled)
+            if self._enable_dual_read:
+                try:
+                    return self._fallback_get_workflow_run_by_id_with_tenant(run_id, tenant_id, app_id)
+                except Exception:
+                    logger.exception(
+                        "PostgreSQL fallback also failed: run_id=%s, tenant_id=%s, app_id=%s", run_id, tenant_id, app_id
+                    )
             raise
+
+    def _fallback_get_workflow_run_by_id_with_tenant(
+        self, run_id: str, tenant_id: str, app_id: str
+    ) -> WorkflowRun | None:
+        """Fallback to PostgreSQL query for records not in LogStore (with tenant isolation)."""
+        from sqlalchemy import select
+        from sqlalchemy.orm import Session
+
+        from extensions.ext_database import db
+
+        with Session(db.engine) as session:
+            stmt = select(WorkflowRun).where(
+                WorkflowRun.id == run_id, WorkflowRun.tenant_id == tenant_id, WorkflowRun.app_id == app_id
+            )
+            return session.scalar(stmt)
 
     def get_workflow_run_by_id_without_tenant(
         self,
@@ -255,6 +301,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
         Get a specific workflow run by ID without tenant/app context.
         Uses query syntax to get raw logs and selects the one with max log_version.
+        Falls back to PostgreSQL if not found in LogStore (controlled by LOGSTORE_DUAL_READ_ENABLED).
         """
         logger.info("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
         # Build query string using LogStore query syntax
@@ -275,6 +322,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             )
 
             if not results:
+                # Fallback to PostgreSQL for records created before LogStore migration
+                if self._enable_dual_read:
+                    logger.info("WorkflowRun not found in LogStore, falling back to PostgreSQL: run_id=%s", run_id)
+                    return self._fallback_get_workflow_run_by_id(run_id)
                 return None
 
             # If multiple results, select the one with max log_version
@@ -286,7 +337,24 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         except Exception:
             logger.exception("Failed to get workflow run without tenant: run_id=%s", run_id)
+            # Try PostgreSQL fallback on any error (only if dual-read is enabled)
+            if self._enable_dual_read:
+                try:
+                    return self._fallback_get_workflow_run_by_id(run_id)
+                except Exception:
+                    logger.exception("PostgreSQL fallback also failed: run_id=%s", run_id)
             raise
+
+    def _fallback_get_workflow_run_by_id(self, run_id: str) -> WorkflowRun | None:
+        """Fallback to PostgreSQL query for records not in LogStore."""
+        from sqlalchemy import select
+        from sqlalchemy.orm import Session
+
+        from extensions.ext_database import db
+
+        with Session(db.engine) as session:
+            stmt = select(WorkflowRun).where(WorkflowRun.id == run_id)
+            return session.scalar(stmt)
 
     def get_workflow_runs_count(
         self,

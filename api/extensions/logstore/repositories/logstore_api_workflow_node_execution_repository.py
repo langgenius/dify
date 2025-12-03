@@ -34,7 +34,7 @@ def _dict_to_workflow_node_execution_model(data: dict[str, Any]) -> WorkflowNode
         The returned model is not attached to any SQLAlchemy session.
         Relationship fields (like offload_data) are not loaded from LogStore.
     """
-    logger.info("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
+    logger.debug("_dict_to_workflow_node_execution_model: data keys=%s", list(data.keys())[:5])
     # Create model instance without session
     model = WorkflowNodeExecutionModel()
 
@@ -106,7 +106,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Args:
             session_maker: SQLAlchemy sessionmaker (unused, for compatibility with factory pattern)
         """
-        logger.info("LogstoreAPIWorkflowNodeExecutionRepository.__init__: initializing")
+        logger.debug("LogstoreAPIWorkflowNodeExecutionRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
 
     def get_node_last_execution(
@@ -122,7 +122,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Uses query syntax to get raw logs and selects the one with max log_version.
         Returns the most recent execution ordered by created_at.
         """
-        logger.info(
+        logger.debug(
             "get_node_last_execution: tenant_id=%s, app_id=%s, workflow_id=%s, node_id=%s",
             tenant_id,
             app_id,
@@ -194,7 +194,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Uses query syntax to get raw logs and selects the one with max log_version for each node execution.
         Ordered by index DESC for trace visualization.
         """
-        logger.info(
+        logger.debug(
             "[LogStore] get_executions_by_workflow_run: tenant_id=%s, app_id=%s, workflow_run_id=%s",
             tenant_id,
             app_id,
@@ -259,7 +259,7 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Get a workflow node execution by its ID.
         Uses query syntax to get raw logs and selects the one with max log_version.
         """
-        logger.info("get_execution_by_id: execution_id=%s, tenant_id=%s", execution_id, tenant_id)
+        logger.debug("get_execution_by_id: execution_id=%s, tenant_id=%s", execution_id, tenant_id)
         # Build query string using LogStore query syntax
         if tenant_id:
             query = f"id: {execution_id} and tenant_id: {tenant_id}"
