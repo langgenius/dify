@@ -149,7 +149,7 @@ const Operation: FC<OperationProps> = ({
       width += (hasAdminFeedback ? 28 : 60) + 8 + (hasUserFeedback ? 28 : 0)
 
     return width
-  }, [adminLocalFeedback?.rating, config?.annotation_reply?.enabled, config?.supportAnnotation, config?.supportFeedback, config?.text_to_speech?.enabled, displayUserFeedback?.rating, hasAdminFeedback, hasUserFeedback, isOpeningStatement, shouldShowAdminFeedbackBar, shouldShowUserFeedbackBar, showPromptLog])
+  }, [config?.annotation_reply?.enabled, config?.supportAnnotation, config?.text_to_speech?.enabled, hasAdminFeedback, hasUserFeedback, isOpeningStatement, shouldShowAdminFeedbackBar, shouldShowUserFeedbackBar, showPromptLog])
 
   const positionRight = useMemo(() => operationWidth < maxSize, [operationWidth, maxSize])
 
