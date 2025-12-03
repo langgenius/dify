@@ -1628,7 +1628,7 @@ dev = [
     { name = "celery-types", specifier = ">=0.23.0" },
     { name = "coverage", specifier = "~=7.2.4" },
     { name = "dotenv-linter", specifier = "~=0.5.0" },
-    { name = "faker", specifier = "~=32.1.0" },
+    { name = "faker", specifier = "~=38.2.0" },
     { name = "hypothesis", specifier = ">=6.131.15" },
     { name = "import-linter", specifier = ">=2.3" },
     { name = "lxml-stubs", specifier = "~=0.5.1" },
@@ -1859,15 +1859,14 @@ wheels = [
 
 [[package]]
 name = "faker"
-version = "32.1.0"
+version = "38.2.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "python-dateutil" },
-    { name = "typing-extensions" },
+    { name = "tzdata" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/1c/2a/dd2c8f55d69013d0eee30ec4c998250fb7da957f5fe860ed077b3df1725b/faker-32.1.0.tar.gz", hash = "sha256:aac536ba04e6b7beb2332c67df78485fc29c1880ff723beac6d1efd45e2f10f5", size = 1850193, upload-time = "2024-11-12T22:04:34.812Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/64/27/022d4dbd4c20567b4c294f79a133cc2f05240ea61e0d515ead18c995c249/faker-38.2.0.tar.gz", hash = "sha256:20672803db9c7cb97f9b56c18c54b915b6f1d8991f63d1d673642dc43f5ce7ab", size = 1941469, upload-time = "2025-11-19T16:37:31.892Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/7e/fa/4a82dea32d6262a96e6841cdd4a45c11ac09eecdff018e745565410ac70e/Faker-32.1.0-py3-none-any.whl", hash = "sha256:c77522577863c264bdc9dad3a2a750ad3f7ee43ff8185072e482992288898814", size = 1889123, upload-time = "2024-11-12T22:04:32.298Z" },
+    { url = "https://files.pythonhosted.org/packages/17/93/00c94d45f55c336434a15f98d906387e87ce28f9918e4444829a8fda432d/faker-38.2.0-py3-none-any.whl", hash = "sha256:35fe4a0a79dee0dc4103a6083ee9224941e7d3594811a50e3969e547b0d2ee65", size = 1980505, upload-time = "2025-11-19T16:37:30.208Z" },
 ]
 
 [[package]]

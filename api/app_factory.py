@@ -1,6 +1,8 @@
 import logging
 import time
 
+from opentelemetry.trace import get_current_span
+
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
 from dify_app import DifyApp
@@ -26,8 +28,25 @@ def create_flask_app_with_configs() -> DifyApp:
         # add an unique identifier to each request
         RecyclableContextVar.increment_thread_recycles()
 
+    # add after request hook for injecting X-Trace-Id header from OpenTelemetry span context
+    @dify_app.after_request
+    def add_trace_id_header(response):
+        try:
+            span = get_current_span()
+            ctx = span.get_span_context() if span else None
+            if ctx and ctx.is_valid:
+                trace_id_hex = format(ctx.trace_id, "032x")
+                # Avoid duplicates if some middleware added it
+                if "X-Trace-Id" not in response.headers:
+                    response.headers["X-Trace-Id"] = trace_id_hex
+        except Exception:
+            # Never break the response due to tracing header injection
+            logger.warning("Failed to add trace ID to response header", exc_info=True)
+        return response
+
     # Capture the decorator's return value to avoid pyright reportUnusedFunction
     _ = before_request
+    _ = add_trace_id_header
 
     return dify_app
 
@@ -51,6 +70,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_compress,
         ext_database,
+        ext_forward_refs,
         ext_hosting_provider,
         ext_import_modules,
         ext_logging,
@@ -75,6 +95,7 @@ def initialize_extensions(app: DifyApp):
         ext_warnings,
         ext_import_modules,
         ext_orjson,
+        ext_forward_refs,
         ext_set_secretkey,
         ext_compress,
         ext_code_based_extension,
