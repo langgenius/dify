@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -257,6 +258,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       allInternal,
       allExternal,
     } = getSelectedDatasetsMode(newDatasets)
+    const noMultiModalDatasets = newDatasets.every(d => !d.is_multimodal)
     const newInputs = produce(inputs, (draft) => {
       draft.dataset_ids = newDatasets.map(d => d.id)
 
@@ -268,6 +270,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
         })
         draft.multiple_retrieval_config = newMultipleRetrievalConfig
       }
+
+      if (noMultiModalDatasets)
+        draft.query_attachment_selector = []
     })
     updateDatasetsDetail(newDatasets)
     setInputs(newInputs)
@@ -392,6 +397,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     filterVar: filterNumberVar,
   })
 
+  const showImageQueryVarSelector = useMemo(() => {
+    return selectedDatasets.some(d => d.is_multimodal)
+  }, [selectedDatasets])
+
   return {
     readOnly,
     inputs,
@@ -419,6 +428,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     availableStringNodesWithParent,
     availableNumberVars,
     availableNumberNodesWithParent,
+    showImageQueryVarSelector,
   }
 }
 
