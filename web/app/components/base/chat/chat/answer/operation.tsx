@@ -215,7 +215,6 @@ const Operation: FC<OperationProps> = ({
                 <ActionButton
                   state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Destructive}
                   onClick={() => handleFeedback(null, undefined, 'user')}
-                  title={t('appLog.table.header.userRate') || 'User feedback'}
                 >
                   {displayUserFeedback?.rating === 'like'
                     ? <RiThumbUpLine className='h-4 w-4' />
@@ -227,14 +226,12 @@ const Operation: FC<OperationProps> = ({
                 <ActionButton
                   state={displayUserFeedback?.rating === 'like' ? ActionButtonState.Active : ActionButtonState.Default}
                   onClick={() => handleLikeClick('user')}
-                  title={t('appLog.table.header.userRate') || 'User feedback'}
                 >
                   <RiThumbUpLine className='h-4 w-4' />
                 </ActionButton>
                 <ActionButton
                   state={displayUserFeedback?.rating === 'dislike' ? ActionButtonState.Destructive : ActionButtonState.Default}
                   onClick={() => handleDislikeClick('user')}
-                  title={t('appLog.table.header.userRate') || 'User feedback'}
                 >
                   <RiThumbDownLine className='h-4 w-4' />
                 </ActionButton>
@@ -254,11 +251,11 @@ const Operation: FC<OperationProps> = ({
                 popupClassName='max-w-[180px]'
               >
                 {displayUserFeedback.rating === 'like' ? (
-                  <ActionButton state={ActionButtonState.Active} title={displayUserFeedback.content ? `User liked this response: ${displayUserFeedback.content}` : 'User liked this response'}>
+                  <ActionButton state={ActionButtonState.Active}>
                     <RiThumbUpLine className='h-4 w-4' />
                   </ActionButton>
                 ) : (
-                  <ActionButton state={ActionButtonState.Destructive} title={displayUserFeedback.content ? `User disliked this response: ${displayUserFeedback.content}` : 'User disliked this response'}>
+                  <ActionButton state={ActionButtonState.Destructive}>
                     <RiThumbDownLine className='h-4 w-4' />
                   </ActionButton>
                 )}
