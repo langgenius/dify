@@ -186,44 +186,6 @@ const Operation: FC<OperationProps> = ({
         )}
         style={(!hasWorkflowProcess && positionRight) ? { left: contentWidth + 8 } : {}}
       >
-        {showPromptLog && !isOpeningStatement && (
-          <div className='hidden group-hover:block'>
-            <Log logItem={item} />
-          </div>
-        )}
-        {!isOpeningStatement && (
-          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
-            {(config?.text_to_speech?.enabled) && (
-              <NewAudioButton
-                id={id}
-                value={content}
-                voice={config?.text_to_speech?.voice}
-              />
-            )}
-            <ActionButton onClick={() => {
-              copy(content)
-              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-            }}>
-              <RiClipboardLine className='h-4 w-4' />
-            </ActionButton>
-            {!noChatInput && (
-              <ActionButton onClick={() => onRegenerate?.(item)}>
-                <RiResetLeftLine className='h-4 w-4' />
-              </ActionButton>
-            )}
-            {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
-              <AnnotationCtrlButton
-                appId={config?.appId || ''}
-                messageId={id}
-                cached={!!annotation?.id}
-                query={question}
-                answer={content}
-                onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)}
-                onEdit={() => setIsShowReplyModal(true)}
-              />
-            )}
-          </div>
-        )}
         {shouldShowUserFeedbackBar && (
           <div className={cn(
             'ml-1 items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm',
@@ -325,6 +287,44 @@ const Operation: FC<OperationProps> = ({
                   </ActionButton>
                 </Tooltip>
               </>
+            )}
+          </div>
+        )}
+        {showPromptLog && !isOpeningStatement && (
+          <div className='hidden group-hover:block'>
+            <Log logItem={item} />
+          </div>
+        )}
+        {!isOpeningStatement && (
+          <div className='ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex'>
+            {(config?.text_to_speech?.enabled) && (
+              <NewAudioButton
+                id={id}
+                value={content}
+                voice={config?.text_to_speech?.voice}
+              />
+            )}
+            <ActionButton onClick={() => {
+              copy(content)
+              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+            }}>
+              <RiClipboardLine className='h-4 w-4' />
+            </ActionButton>
+            {!noChatInput && (
+              <ActionButton onClick={() => onRegenerate?.(item)}>
+                <RiResetLeftLine className='h-4 w-4' />
+              </ActionButton>
+            )}
+            {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
+              <AnnotationCtrlButton
+                appId={config?.appId || ''}
+                messageId={id}
+                cached={!!annotation?.id}
+                query={question}
+                answer={content}
+                onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content, index)}
+                onEdit={() => setIsShowReplyModal(true)}
+              />
             )}
           </div>
         )}
