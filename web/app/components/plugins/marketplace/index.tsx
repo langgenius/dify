@@ -4,7 +4,8 @@ import IntersectionLine from './intersection-line'
 import SearchBoxWrapper from './search-box/search-box-wrapper'
 import PluginTypeSwitch from './plugin-type-switch'
 import ListWrapper from './list/list-wrapper'
-import type { SearchParams } from './types'
+import type { MarketplaceCollection, SearchParams } from './types'
+import type { Plugin } from '@/app/components/plugins/types'
 import { getMarketplaceCollectionsAndPlugins } from './utils'
 import { TanstackQueryInitializer } from '@/context/query-client'
 
@@ -30,8 +31,8 @@ const Marketplace = async ({
   scrollContainerId,
   showSearchParams = true,
 }: MarketplaceProps) => {
-  let marketplaceCollections: any = []
-  let marketplaceCollectionPluginsMap = {}
+  let marketplaceCollections: MarketplaceCollection[] = []
+  let marketplaceCollectionPluginsMap: Record<string, Plugin[]> = {}
   if (!shouldExclude) {
     const marketplaceCollectionsAndPluginsData = await getMarketplaceCollectionsAndPlugins()
     marketplaceCollections = marketplaceCollectionsAndPluginsData.marketplaceCollections
