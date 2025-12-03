@@ -1,7 +1,9 @@
 import base64
 import hashlib
 import hmac
+import operator
 import os
+import re
 import time
 import urllib.parse
 
@@ -80,3 +82,97 @@ def verify_file_signature(*, upload_file_id: str, timestamp: str, nonce: str, si
 
     current_time = int(time.time())
     return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
+
+
+def _generate_signed_url(upload_file_id: str, sign_type: str, base_url: str) -> str:
+    """
+    Generate a signed URL for file preview.
+
+    Args:
+        upload_file_id: The file ID
+        sign_type: Type of signature (e.g., "image-preview", "file-preview")
+        base_url: Base URL path (e.g., "/files/{id}/file-preview")
+
+    Returns:
+        Signed URL with timestamp, nonce, and signature parameters
+    """
+    nonce = os.urandom(16).hex()
+    timestamp = str(int(time.time()))
+    data_to_sign = f"{sign_type}|{upload_file_id}|{timestamp}|{nonce}"
+    secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+    sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+    encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+    params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+    return f"{base_url}?{params}"
+
+
+def sign_file_urls_in_text(text: str) -> str:
+    """
+    Core function to sign file URLs in text content.
+    This is the core implementation reused by both DocumentSegment.get_sign_content()
+    and sign_file_urls_in_content() to avoid code duplication.
+
+    Args:
+        text: Text content that may contain file URLs
+
+    Returns:
+        Text with signed file URLs
+    """
+    signed_urls: list[tuple[int, int, str]] = []
+
+    # For image-preview and file-preview URLs (combined pattern)
+    pattern = r"/files/([a-f0-9\-]+)/(image-preview|file-preview)(?:\?.*?)?"
+    matches = re.finditer(pattern, text)
+    for match in matches:
+        upload_file_id = match.group(1)
+        sign_type = match.group(2)
+        base_url = f"/files/{upload_file_id}/{sign_type}"
+        signed_url = _generate_signed_url(upload_file_id, sign_type, base_url)
+        signed_urls.append((match.start(), match.end(), signed_url))
+
+    # For tools directory - direct file formats (e.g., .png, .jpg, etc.)
+    # Match URL including any query parameters up to common URL boundaries (space, parenthesis, quotes)
+    pattern = r"/files/tools/([a-f0-9\-]+)\.([a-zA-Z0-9]+)(?:\?[^\s\)\"\']*)?"
+    matches = re.finditer(pattern, text)
+    for match in matches:
+        upload_file_id = match.group(1)
+        file_extension = match.group(2)
+        base_url = f"/files/tools/{upload_file_id}.{file_extension}"
+        signed_url = _generate_signed_url(upload_file_id, "file-preview", base_url)
+        signed_urls.append((match.start(), match.end(), signed_url))
+
+    # Sort by start position to handle replacements correctly
+    signed_urls.sort(key=operator.itemgetter(0))
+
+    # Rebuild the string from parts for efficiency
+    new_text_parts = []
+    last_pos = 0
+    for start, end, signed_url in signed_urls:
+        new_text_parts.append(text[last_pos:start])
+        new_text_parts.append(signed_url)
+        last_pos = end
+    new_text_parts.append(text[last_pos:])
+
+    return "".join(new_text_parts)
+
+
+def sign_file_urls_in_content(content: str) -> str:
+    """
+    Sign file URLs in content text.
+    This function signs file preview URLs (file-preview, image-preview, and tools/*)
+    found in the content text by adding timestamp, nonce, and signature parameters.
+
+    This function reuses the core implementation from sign_file_urls_in_text()
+    which is also used by DocumentSegment.get_sign_content() to maintain consistency.
+
+    Args:
+        content: Text content that may contain file URLs
+
+    Returns:
+        Content with signed file URLs
+    """
+    if not content:
+        return content
+
+    return sign_file_urls_in_text(content)
