@@ -29,15 +29,15 @@ class AppGenerateHandler(SpanHandler):
 
             app_model = arguments.get("app_model")
             user = arguments.get("user")
-            invoke_from_args = arguments.get("args", {})
+            args_dict = arguments.get("args", {})
             streaming = arguments.get("streaming", True)
 
-            if not app_model or not user or not isinstance(invoke_from_args, dict):
+            if not app_model or not user or not isinstance(args_dict, dict):
                 return wrapped(*args, **kwargs)
             app_id = getattr(app_model, "id", None) or "unknown"
             tenant_id = getattr(app_model, "tenant_id", None) or "unknown"
             user_id = getattr(user, "id", None) or "unknown"
-            workflow_id = invoke_from_args.get("workflow_id") or "unknown"
+            workflow_id = args_dict.get("workflow_id") or "unknown"
 
             attributes: dict[str, AttributeValue] = {
                 DifySpanAttributes.APP_ID: app_id,
