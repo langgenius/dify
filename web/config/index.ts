@@ -77,6 +77,9 @@ const EDITION = getStringConfig(
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 export const IS_CLOUD_EDITION = EDITION === 'CLOUD'
 
+export const IS_DEV = process.env.NODE_ENV === 'development'
+export const IS_PROD = process.env.NODE_ENV === 'production'
+
 export const SUPPORT_MAIL_LOGIN = !!(
   process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN
   || globalThis.document?.body?.getAttribute('data-public-support-mail-login')
