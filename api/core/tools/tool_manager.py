@@ -694,24 +694,26 @@ class ToolManager:
                 ).all()
 
                 # Batch create controllers
-                api_provider_controllers: list[dict[str, Any]] = []
-                for provider in db_api_providers:
+                api_provider_controllers: list[dict[str, Union[ApiToolProvider, ApiToolProviderController]]] = []
+                for api_provider in db_api_providers:
                     try:
-                        controller = ToolTransformService.api_provider_to_controller(provider)
-                        api_provider_controllers.append({"provider": provider, "controller": controller})
+                        controller = ToolTransformService.api_provider_to_controller(api_provider)
+                        api_provider_controllers.append({"provider": api_provider, "controller": controller})
                     except Exception:
                         # Skip invalid providers but continue processing others
-                        logger.warning("Failed to create controller for API provider %s", provider.id)
+                        logger.warning("Failed to create controller for API provider %s", api_provider.id)
 
                 # Batch get labels for all API providers
                 if api_provider_controllers:
                     labels = ToolLabelManager.get_tools_labels([x["controller"] for x in api_provider_controllers])
 
-                    for api_provider_controller in api_provider_controllers:
-                        provider_labels = labels.get(api_provider_controller["controller"].provider_id, [])
+                    for item in api_provider_controllers:
+                        provider_controller = item["controller"]
+                        db_provider = item["provider"]
+                        provider_labels = labels.get(provider_controller.provider_id, [])
                         user_provider = ToolTransformService.api_provider_to_user_provider(
-                            provider_controller=api_provider_controller["controller"],
-                            db_provider=api_provider_controller["provider"],
+                            provider_controller=provider_controller,
+                            db_provider=db_provider,
                             decrypt_credentials=False,
                             labels=provider_labels,
                         )
@@ -726,8 +728,10 @@ class ToolManager:
                 workflow_provider_controllers: list[WorkflowToolProviderController] = []
                 for workflow_provider in workflow_providers:
                     try:
-                        controller = ToolTransformService.workflow_provider_to_controller(db_provider=workflow_provider)
-                        workflow_provider_controllers.append(controller)
+                        workflow_controller = ToolTransformService.workflow_provider_to_controller(
+                            db_provider=workflow_provider
+                        )
+                        workflow_provider_controllers.append(workflow_controller)
                     except Exception:
                         # app has been deleted
                         continue
