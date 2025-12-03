@@ -737,9 +737,7 @@ class ToolManager:
                 for workflow_provider in workflow_providers:
                     try:
                         workflow_controller: WorkflowToolProviderController = (
-                            ToolTransformService.workflow_provider_to_controller(
-                                db_provider=workflow_provider
-                            )
+                            ToolTransformService.workflow_provider_to_controller(db_provider=workflow_provider)
                         )
                         workflow_provider_controllers.append(workflow_controller)
                     except Exception:
@@ -749,8 +747,7 @@ class ToolManager:
                 # Batch get labels for workflow providers
                 if workflow_provider_controllers:
                     workflow_controllers: Sequence[ToolProviderController] = [
-                        cast(ToolProviderController, controller)
-                        for controller in workflow_provider_controllers
+                        cast(ToolProviderController, controller) for controller in workflow_provider_controllers
                     ]
                     labels = ToolLabelManager.get_tools_labels(workflow_controllers)
 
