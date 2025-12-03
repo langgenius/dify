@@ -655,9 +655,10 @@ class ToolManager:
         else:
             filters.append(typ)
 
-        with db.session.no_autoflush:
+        # Use a single session for all database operations to reduce connection overhead
+        with Session(db.engine) as session:
             if "builtin" in filters:
-                builtin_providers = cls.list_builtin_providers(tenant_id)
+                builtin_providers = list(cls.list_builtin_providers(tenant_id))
 
                 # key: provider name, value: provider
                 db_builtin_providers = {
@@ -688,57 +689,66 @@ class ToolManager:
 
             # get db api providers
             if "api" in filters:
-                db_api_providers = db.session.scalars(
+                db_api_providers = session.scalars(
                     select(ApiToolProvider).where(ApiToolProvider.tenant_id == tenant_id)
                 ).all()
 
-                api_provider_controllers: list[dict[str, Any]] = [
-                    {"provider": provider, "controller": ToolTransformService.api_provider_to_controller(provider)}
-                    for provider in db_api_providers
-                ]
+                # Batch create controllers
+                api_provider_controllers: list[dict[str, Any]] = []
+                for provider in db_api_providers:
+                    try:
+                        controller = ToolTransformService.api_provider_to_controller(provider)
+                        api_provider_controllers.append({"provider": provider, "controller": controller})
+                    except Exception:
+                        # Skip invalid providers but continue processing others
+                        logger.warning("Failed to create controller for API provider %s", provider.id)
 
-                # get labels
-                labels = ToolLabelManager.get_tools_labels([x["controller"] for x in api_provider_controllers])
+                # Batch get labels for all API providers
+                if api_provider_controllers:
+                    labels = ToolLabelManager.get_tools_labels([x["controller"] for x in api_provider_controllers])
 
-                for api_provider_controller in api_provider_controllers:
-                    user_provider = ToolTransformService.api_provider_to_user_provider(
-                        provider_controller=api_provider_controller["controller"],
-                        db_provider=api_provider_controller["provider"],
-                        decrypt_credentials=False,
-                        labels=labels.get(api_provider_controller["controller"].provider_id, []),
-                    )
-                    result_providers[f"api_provider.{user_provider.name}"] = user_provider
+                    for api_provider_controller in api_provider_controllers:
+                        provider_labels = labels.get(api_provider_controller["controller"].provider_id, [])
+                        user_provider = ToolTransformService.api_provider_to_user_provider(
+                            provider_controller=api_provider_controller["controller"],
+                            db_provider=api_provider_controller["provider"],
+                            decrypt_credentials=False,
+                            labels=provider_labels,
+                        )
+                        result_providers[f"api_provider.{user_provider.name}"] = user_provider
 
             if "workflow" in filters:
                 # get workflow providers
-                workflow_providers = db.session.scalars(
+                workflow_providers = session.scalars(
                     select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
                 ).all()
 
                 workflow_provider_controllers: list[WorkflowToolProviderController] = []
                 for workflow_provider in workflow_providers:
                     try:
-                        workflow_provider_controllers.append(
-                            ToolTransformService.workflow_provider_to_controller(db_provider=workflow_provider)
-                        )
+                        controller = ToolTransformService.workflow_provider_to_controller(db_provider=workflow_provider)
+                        workflow_provider_controllers.append(controller)
                     except Exception:
                         # app has been deleted
-                        pass
+                        continue
 
-                labels = ToolLabelManager.get_tools_labels(
-                    [cast(ToolProviderController, controller) for controller in workflow_provider_controllers]
-                )
-
-                for provider_controller in workflow_provider_controllers:
-                    user_provider = ToolTransformService.workflow_provider_to_user_provider(
-                        provider_controller=provider_controller,
-                        labels=labels.get(provider_controller.provider_id, []),
+                # Batch get labels for workflow providers
+                if workflow_provider_controllers:
+                    labels = ToolLabelManager.get_tools_labels(
+                        [cast(ToolProviderController, controller) for controller in workflow_provider_controllers]
                     )
-                    result_providers[f"workflow_provider.{user_provider.name}"] = user_provider
+
+                    for provider_controller in workflow_provider_controllers:
+                        provider_labels = labels.get(provider_controller.provider_id, [])
+                        user_provider = ToolTransformService.workflow_provider_to_user_provider(
+                            provider_controller=provider_controller,
+                            labels=provider_labels,
+                        )
+                        result_providers[f"workflow_provider.{user_provider.name}"] = user_provider
+
             if "mcp" in filters:
-                with Session(db.engine) as session:
-                    mcp_service = MCPToolManageService(session=session)
-                    mcp_providers = mcp_service.list_providers(tenant_id=tenant_id, for_list=True)
+                mcp_service = MCPToolManageService(session=session)
+                mcp_providers = mcp_service.list_providers(tenant_id=tenant_id, for_list=True)
                 for mcp_provider in mcp_providers:
                     result_providers[f"mcp_provider.{mcp_provider.name}"] = mcp_provider
 

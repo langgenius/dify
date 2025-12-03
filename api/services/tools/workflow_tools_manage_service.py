@@ -6,6 +6,7 @@ from typing import Any
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from core.helper.tool_provider_cache import ToolProviderListCache
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -88,6 +89,10 @@ class WorkflowToolManageService:
             ToolLabelManager.update_tool_labels(
                 ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
             )
+
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
+
         return {"result": "success"}
 
     @classmethod
@@ -175,6 +180,9 @@ class WorkflowToolManageService:
                 ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
             )
 
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
+
         return {"result": "success"}
 
     @classmethod
@@ -236,6 +244,9 @@ class WorkflowToolManageService:
         ).delete()
 
         db.session.commit()
+
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
 
         return {"result": "success"}
 
