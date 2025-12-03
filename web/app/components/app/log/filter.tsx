@@ -185,7 +185,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
           onCancel={() => setShowConfirm(false)}
           confirmText={t('common.operation.confirm')}
           cancelText={t('common.operation.cancel')}
-          confirmLoading={isClearing}
+          isLoading={isClearing}
         />
       )}
     </div>
