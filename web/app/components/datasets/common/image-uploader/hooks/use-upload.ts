@@ -167,7 +167,7 @@ export const useUpload = () => {
         },
       })
     }
-  }, [fileStore, Toast, t, handleUpdateFile])
+  }, [fileStore, t, handleUpdateFile])
 
   const handleLocalFileUpload = useCallback((file: File) => {
     const reader = new FileReader()
