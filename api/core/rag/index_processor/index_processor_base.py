@@ -161,8 +161,10 @@ class BaseIndexProcessor(ABC):
                     upload_file_id_list.append(upload_file_id)
                 continue
             if current_user:
+                print("download image file")
                 upload_file_id = self._download_image(image.split(' ')[0], current_user)
                 if upload_file_id:
+                    print("download image file success")
                     upload_file_id_list.append(upload_file_id)
 
         if not upload_file_id_list:
@@ -211,7 +213,7 @@ class BaseIndexProcessor(ABC):
 
         try:
             # Download with timeout
-            response = ssrf_proxy.get(image_url, timeout=DOWNLOAD_TIMEOUT, stream=True)
+            response = ssrf_proxy.get(image_url, timeout=DOWNLOAD_TIMEOUT)
             response.raise_for_status()
 
             # Check Content-Length header if available
