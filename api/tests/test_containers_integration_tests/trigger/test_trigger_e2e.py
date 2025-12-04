@@ -490,3 +490,413 @@ def test_plugin_single_step_debug_flow(
     event = poller.poll()
     assert event is not None
     assert event.workflow_args["inputs"]["echo"] == "pong"
+
+
+def test_schedule_trigger_creates_trigger_log(
+    db_session_with_containers: Session,
+    tenant_and_account: tuple[Tenant, Account],
+    app_model: App,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Schedule trigger execution should create WorkflowTriggerLog in database."""
+    from tasks import workflow_schedule_tasks
+
+    tenant, account = tenant_and_account
+
+    # Create published workflow with schedule trigger node
+    schedule_node_id = "schedule-node"
+    graph = {
+        "nodes": [
+            {
+                "id": schedule_node_id,
+                "data": {
+                    "type": NodeType.TRIGGER_SCHEDULE.value,
+                    "title": "schedule",
+                    "mode": "cron",
+                    "cron_expression": "0 9 * * *",
+                    "timezone": "UTC",
+                },
+            },
+            {"id": "answer-1", "data": {"type": NodeType.ANSWER.value, "title": "answer"}},
+        ],
+        "edges": [{"source": schedule_node_id, "target": "answer-1", "sourceHandle": "success"}],
+    }
+    published_workflow = Workflow.new(
+        tenant_id=tenant.id,
+        app_id=app_model.id,
+        type="workflow",
+        version=Workflow.version_from_datetime(naive_utc_now()),
+        graph=json.dumps(graph),
+        features=json.dumps({}),
+        created_by=account.id,
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    db_session_with_containers.add(published_workflow)
+    app_model.workflow_id = published_workflow.id
+    db_session_with_containers.commit()
+
+    # Create schedule plan
+    plan = WorkflowSchedulePlan(
+        app_id=app_model.id,
+        node_id=schedule_node_id,
+        tenant_id=tenant.id,
+        cron_expression="0 9 * * *",
+        timezone="UTC",
+        next_run_at=naive_utc_now() - timedelta(minutes=1),
+    )
+    app_trigger = AppTrigger(
+        tenant_id=tenant.id,
+        app_id=app_model.id,
+        node_id=schedule_node_id,
+        trigger_type=AppTriggerType.TRIGGER_SCHEDULE,
+        status=AppTriggerStatus.ENABLED,
+        title="schedule",
+    )
+    db_session_with_containers.add_all([plan, app_trigger])
+    db_session_with_containers.commit()
+
+    # Mock AsyncWorkflowService to create WorkflowTriggerLog
+    def _fake_trigger_workflow_async(session: Session, user: Any, trigger_data: Any) -> SimpleNamespace:
+        log = WorkflowTriggerLog(
+            tenant_id=trigger_data.tenant_id,
+            app_id=trigger_data.app_id,
+            workflow_id=published_workflow.id,
+            root_node_id=trigger_data.root_node_id,
+            trigger_metadata="{}",
+            trigger_type=AppTriggerType.TRIGGER_SCHEDULE,
+            workflow_run_id=None,
+            outputs=None,
+            trigger_data=trigger_data.model_dump_json(),
+            inputs=json.dumps(dict(trigger_data.inputs)),
+            status=WorkflowTriggerStatus.SUCCEEDED,
+            error="",
+            queue_name="schedule_executor",
+            celery_task_id="celery-schedule-test",
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=account.id,
+        )
+        session.add(log)
+        session.commit()
+        return SimpleNamespace(workflow_trigger_log_id=log.id, task_id=None, status="queued", queue="test")
+
+    monkeypatch.setattr(
+        workflow_schedule_tasks.AsyncWorkflowService,
+        "trigger_workflow_async",
+        _fake_trigger_workflow_async,
+    )
+
+    # Mock quota to avoid rate limiting
+    from enums import quota_type
+
+    monkeypatch.setattr(quota_type.QuotaType.TRIGGER, "consume", lambda _tenant_id: quota_type.unlimited())
+
+    # Execute schedule trigger
+    workflow_schedule_tasks.run_schedule_trigger(plan.id)
+
+    # Verify WorkflowTriggerLog was created
+    db_session_with_containers.expire_all()
+    logs = db_session_with_containers.query(WorkflowTriggerLog).filter_by(app_id=app_model.id).all()
+    assert logs, "Schedule trigger should create WorkflowTriggerLog"
+    assert logs[0].trigger_type == AppTriggerType.TRIGGER_SCHEDULE
+    assert logs[0].root_node_id == schedule_node_id
+
+
+@pytest.mark.parametrize(
+    ("mode", "frequency", "visual_config", "cron_expression", "expected_cron"),
+    [
+        # Visual mode: hourly
+        ("visual", "hourly", {"on_minute": 30}, None, "30 * * * *"),
+        # Visual mode: daily
+        ("visual", "daily", {"time": "3:00 PM"}, None, "0 15 * * *"),
+        # Visual mode: weekly
+        ("visual", "weekly", {"time": "9:00 AM", "weekdays": ["mon", "wed", "fri"]}, None, "0 9 * * 1,3,5"),
+        # Visual mode: monthly
+        ("visual", "monthly", {"time": "10:30 AM", "monthly_days": [1, 15]}, None, "30 10 1,15 * *"),
+        # Cron mode: direct expression
+        ("cron", None, None, "*/5 * * * *", "*/5 * * * *"),
+    ],
+)
+def test_schedule_visual_cron_conversion(
+    mode: str,
+    frequency: str | None,
+    visual_config: dict[str, Any] | None,
+    cron_expression: str | None,
+    expected_cron: str,
+) -> None:
+    """Schedule visual config should correctly convert to cron expression."""
+    from services.trigger.schedule_service import ScheduleService
+
+    node_config: dict[str, Any] = {
+        "id": "schedule-node",
+        "data": {
+            "type": NodeType.TRIGGER_SCHEDULE.value,
+            "mode": mode,
+            "timezone": "UTC",
+        },
+    }
+
+    if mode == "visual":
+        node_config["data"]["frequency"] = frequency
+        node_config["data"]["visual_config"] = visual_config
+    else:
+        node_config["data"]["cron_expression"] = cron_expression
+
+    config = ScheduleService.to_schedule_config(node_config)
+
+    assert config.cron_expression == expected_cron, f"Expected {expected_cron}, got {config.cron_expression}"
+    assert config.timezone == "UTC"
+    assert config.node_id == "schedule-node"
+
+
+def test_plugin_trigger_full_chain_with_db_verification(
+    test_client_with_containers: FlaskClient,
+    db_session_with_containers: Session,
+    tenant_and_account: tuple[Tenant, Account],
+    app_model: App,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Plugin trigger should create WorkflowTriggerLog and WorkflowPluginTrigger records."""
+    from models.trigger import TriggerSubscription, WorkflowPluginTrigger
+
+    tenant, account = tenant_and_account
+
+    # Create published workflow with plugin trigger node
+    plugin_node_id = "plugin-trigger-node"
+    provider_id = "langgenius/test-provider/test-provider"
+    subscription_id = "sub-plugin-test"
+    endpoint_id = "2cc7fa12-3f7b-4f6a-9c8d-1234567890ab"
+
+    graph = {
+        "nodes": [
+            {
+                "id": plugin_node_id,
+                "data": {
+                    "type": NodeType.TRIGGER_PLUGIN.value,
+                    "title": "plugin",
+                    "plugin_id": "test-plugin",
+                    "plugin_unique_identifier": "test-plugin",
+                    "provider_id": provider_id,
+                    "event_name": "test_event",
+                    "subscription_id": subscription_id,
+                    "parameters": {},
+                },
+            },
+            {"id": "answer-1", "data": {"type": NodeType.ANSWER.value, "title": "answer"}},
+        ],
+        "edges": [{"source": plugin_node_id, "target": "answer-1", "sourceHandle": "success"}],
+    }
+    published_workflow = Workflow.new(
+        tenant_id=tenant.id,
+        app_id=app_model.id,
+        type="workflow",
+        version=Workflow.version_from_datetime(naive_utc_now()),
+        graph=json.dumps(graph),
+        features=json.dumps({}),
+        created_by=account.id,
+        environment_variables=[],
+        conversation_variables=[],
+        rag_pipeline_variables=[],
+    )
+    db_session_with_containers.add(published_workflow)
+    app_model.workflow_id = published_workflow.id
+    db_session_with_containers.commit()
+
+    # Create trigger subscription
+    subscription = TriggerSubscription(
+        tenant_id=tenant.id,
+        user_id=account.id,
+        provider_id=provider_id,
+        endpoint_id=endpoint_id,
+        credentials=json.dumps({"token": "test-secret"}),
+        credential_type="api-key",
+    )
+    db_session_with_containers.add(subscription)
+    db_session_with_containers.commit()
+
+    # Update subscription_id to match the created subscription
+    graph["nodes"][0]["data"]["subscription_id"] = subscription.id
+    published_workflow.graph = json.dumps(graph)
+    db_session_with_containers.commit()
+
+    # Create WorkflowPluginTrigger
+    plugin_trigger = WorkflowPluginTrigger(
+        app_id=app_model.id,
+        tenant_id=tenant.id,
+        node_id=plugin_node_id,
+        provider_id=provider_id,
+        event_name="test_event",
+        subscription_id=subscription.id,
+    )
+    app_trigger = AppTrigger(
+        tenant_id=tenant.id,
+        app_id=app_model.id,
+        node_id=plugin_node_id,
+        trigger_type=AppTriggerType.TRIGGER_PLUGIN,
+        status=AppTriggerStatus.ENABLED,
+        title="plugin",
+    )
+    db_session_with_containers.add_all([plugin_trigger, app_trigger])
+    db_session_with_containers.commit()
+
+    # Track dispatched data
+    dispatched_data: list[dict[str, Any]] = []
+
+    def _fake_process_endpoint(_endpoint_id: str, _request: Any) -> Response:
+        dispatch_data = {
+            "user_id": "end-user",
+            "tenant_id": tenant.id,
+            "endpoint_id": _endpoint_id,
+            "provider_id": provider_id,
+            "subscription_id": subscription.id,
+            "timestamp": int(time.time()),
+            "events": ["test_event"],
+            "request_id": f"req-{_endpoint_id}",
+        }
+        dispatched_data.append(dispatch_data)
+        return Response("ok", status=202)
+
+    monkeypatch.setattr(
+        "services.trigger.trigger_service.TriggerService.process_endpoint",
+        staticmethod(_fake_process_endpoint),
+    )
+
+    response = test_client_with_containers.post(f"/triggers/plugin/{endpoint_id}", json={"test": "data"})
+
+    assert response.status_code == 202
+    assert dispatched_data, "Plugin trigger should dispatch event data"
+    assert dispatched_data[0]["subscription_id"] == subscription.id
+    assert dispatched_data[0]["events"] == ["test_event"]
+
+    # Verify database records exist
+    db_session_with_containers.expire_all()
+    plugin_triggers = (
+        db_session_with_containers.query(WorkflowPluginTrigger)
+        .filter_by(app_id=app_model.id, node_id=plugin_node_id)
+        .all()
+    )
+    assert plugin_triggers, "WorkflowPluginTrigger record should exist"
+    assert plugin_triggers[0].provider_id == provider_id
+    assert plugin_triggers[0].event_name == "test_event"
+
+
+def test_plugin_debug_via_http_endpoint(
+    test_client_with_containers: FlaskClient,
+    db_session_with_containers: Session,
+    tenant_and_account: tuple[Tenant, Account],
+    app_model: App,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Plugin single-step debug via HTTP endpoint should dispatch debug event and be pollable."""
+    from models.trigger import TriggerSubscription
+
+    tenant, account = tenant_and_account
+
+    provider_id = "langgenius/debug-provider/debug-provider"
+    subscription_id = "sub-debug-test"
+    endpoint_id = "3cc7fa12-3f7b-4f6a-9c8d-1234567890ab"
+    event_name = "debug_event"
+
+    # Create subscription
+    subscription = TriggerSubscription(
+        tenant_id=tenant.id,
+        user_id=account.id,
+        provider_id=provider_id,
+        endpoint_id=endpoint_id,
+        credentials=json.dumps({"token": "debug-secret"}),
+        credential_type="api-key",
+    )
+    db_session_with_containers.add(subscription)
+    db_session_with_containers.commit()
+
+    # Create plugin trigger node config
+    node_id = "plugin-debug-node"
+    node_config = {
+        "id": node_id,
+        "data": {
+            "type": NodeType.TRIGGER_PLUGIN.value,
+            "title": "plugin-debug",
+            "plugin_id": "debug-plugin",
+            "plugin_unique_identifier": "debug-plugin",
+            "provider_id": provider_id,
+            "event_name": event_name,
+            "subscription_id": subscription.id,
+            "parameters": {},
+        },
+    }
+
+    # Start listening with poller
+    from core.trigger.debug.events import build_plugin_pool_key
+
+    poller = PluginTriggerDebugEventPoller(
+        tenant_id=tenant.id,
+        user_id=account.id,
+        app_id=app_model.id,
+        node_config=node_config,
+        node_id=node_id,
+    )
+    assert poller.poll() is None, "First poll should return None (waiting)"
+
+    # Track debug events dispatched
+    debug_events: list[dict[str, Any]] = []
+    original_dispatch = TriggerDebugEventBus.dispatch
+
+    def _tracking_dispatch(**kwargs: Any) -> int:
+        debug_events.append(kwargs)
+        return original_dispatch(**kwargs)
+
+    monkeypatch.setattr(TriggerDebugEventBus, "dispatch", staticmethod(_tracking_dispatch))
+
+    # Mock process_endpoint to trigger debug event dispatch
+    def _fake_process_endpoint(_endpoint_id: str, _request: Any) -> Response:
+        # Simulate what happens inside process_endpoint + dispatch_triggered_workflows_async
+        pool_key = build_plugin_pool_key(
+            tenant_id=tenant.id,
+            provider_id=provider_id,
+            subscription_id=subscription.id,
+            name=event_name,
+        )
+        TriggerDebugEventBus.dispatch(
+            tenant_id=tenant.id,
+            event=PluginTriggerDebugEvent(
+                timestamp=int(time.time()),
+                user_id="end-user",
+                name=event_name,
+                request_id=f"req-{_endpoint_id}",
+                subscription_id=subscription.id,
+                provider_id=provider_id,
+            ),
+            pool_key=pool_key,
+        )
+        return Response("ok", status=202)
+
+    monkeypatch.setattr(
+        "services.trigger.trigger_service.TriggerService.process_endpoint",
+        staticmethod(_fake_process_endpoint),
+    )
+
+    # Call HTTP endpoint
+    response = test_client_with_containers.post(f"/triggers/plugin/{endpoint_id}", json={"debug": "payload"})
+
+    assert response.status_code == 202
+    assert debug_events, "Debug event should be dispatched via HTTP endpoint"
+    assert debug_events[0]["event"].name == event_name
+
+    # Mock invoke_trigger_event for poller
+    from core.plugin.entities.request import TriggerInvokeEventResponse
+
+    monkeypatch.setattr(
+        "services.trigger.trigger_service.TriggerService.invoke_trigger_event",
+        staticmethod(
+            lambda **_kwargs: TriggerInvokeEventResponse(
+                variables={"http_debug": "success"},
+                cancelled=False,
+            )
+        ),
+    )
+
+    # Second poll should receive the event
+    event = poller.poll()
+    assert event is not None, "Poller should receive debug event after HTTP trigger"
+    assert event.workflow_args["inputs"]["http_debug"] == "success"

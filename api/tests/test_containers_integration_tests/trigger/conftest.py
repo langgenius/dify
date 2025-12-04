@@ -83,13 +83,22 @@ def app_model(
     yield app
 
     # Cleanup - delete related records first
-    from models.trigger import AppTrigger, WorkflowSchedulePlan, WorkflowTriggerLog, WorkflowWebhookTrigger
+    from models.trigger import (
+        AppTrigger,
+        TriggerSubscription,
+        WorkflowPluginTrigger,
+        WorkflowSchedulePlan,
+        WorkflowTriggerLog,
+        WorkflowWebhookTrigger,
+    )
     from models.workflow import Workflow
 
     db_session_with_containers.query(WorkflowTriggerLog).filter_by(app_id=app.id).delete()
     db_session_with_containers.query(WorkflowSchedulePlan).filter_by(app_id=app.id).delete()
     db_session_with_containers.query(WorkflowWebhookTrigger).filter_by(app_id=app.id).delete()
+    db_session_with_containers.query(WorkflowPluginTrigger).filter_by(app_id=app.id).delete()
     db_session_with_containers.query(AppTrigger).filter_by(app_id=app.id).delete()
+    db_session_with_containers.query(TriggerSubscription).filter_by(tenant_id=tenant.id).delete()
     db_session_with_containers.query(Workflow).filter_by(app_id=app.id).delete()
     db_session_with_containers.query(App).filter_by(id=app.id).delete()
     db_session_with_containers.commit()
