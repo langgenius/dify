@@ -22,7 +22,7 @@ const Records = ({
 
   const handleSortTime = useCallback(() => {
     setTimeOrder(prev => prev === 'asc' ? 'desc' : 'asc')
-  }, [sortTimeOrder])
+  }, [])
 
   const sortedRecords = useMemo(() => {
     return [...records].sort((a, b) => {

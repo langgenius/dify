@@ -93,7 +93,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
         provider: data.embedding_model_provider ?? '',
         model: data.embedding_model ?? '',
       },
-      rerankingEnable: !!data.retrieval_model.reranking_enable,
+      rerankingEnable: !!data.retrieval_model?.reranking_enable,
       rerankModel: {
         rerankingProviderName: data.retrieval_model?.reranking_model?.reranking_provider_name ?? '',
         rerankingModelName: data.retrieval_model?.reranking_model?.reranking_model_name ?? '',
@@ -102,7 +102,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
       embeddingModelList,
       rerankModelList,
     })
-  }, [data.embedding_model_provider, data.embedding_model, data.retrieval_model.reranking_enable, data.retrieval_model.reranking_model, data.indexing_technique, embeddingModelList, rerankModelList])
+  }, [data.embedding_model_provider, data.embedding_model, data.retrieval_model?.reranking_enable, data.retrieval_model?.reranking_model, data.indexing_technique, embeddingModelList, rerankModelList])
 
   return (
     <div>
