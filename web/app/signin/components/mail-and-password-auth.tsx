@@ -12,6 +12,7 @@ import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 import type { ResponseError } from '@/service/fetch'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -63,6 +64,12 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         body: loginData,
       })
       if (res.result === 'success') {
+        // Track login success event
+        trackEvent('user_login_success', {
+          method: 'email_password',
+          is_invite: isInvite,
+        })
+
         if (isInvite) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
