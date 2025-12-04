@@ -158,7 +158,7 @@ export const useUpload = () => {
           handleUpdateFile({ ...uploadingFile, progress })
         },
         onSuccessCallback: (res) => {
-          handleUpdateFile({ ...uploadingFile, id: res.id, progress: 100 })
+          handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: any) => {
           const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)

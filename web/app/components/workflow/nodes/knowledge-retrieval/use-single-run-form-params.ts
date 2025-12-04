@@ -95,7 +95,7 @@ const useSingleRunFormParams = ({
       )
     }
     return inputFields
-  }, [query, setQuery, t, datasetsDetail, payload.dataset_ids, queryAttachment, setQueryAttachment])
+  }, [query, setQuery, t, datasetsDetail, payload.dataset_ids, payload.query_attachment_selector, availableFileVars, queryAttachment, setQueryAttachment])
 
   const getDependentVars = () => {
     return [payload.query_variable_selector, payload.query_attachment_selector]

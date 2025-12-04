@@ -198,7 +198,7 @@ const QueryInput = ({
         {t('datasetHitTesting.input.testing')}
       </Button>
     )
-  }, [isExternal, externalRetrievalTestingOnSubmit, onSubmit, text, loading, t])
+  }, [isExternal, externalRetrievalTestingOnSubmit, onSubmit, text, loading, t, images, isAllUploaded])
 
   return (
     <div className={cn('relative flex h-80 shrink-0 flex-col overflow-hidden rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
