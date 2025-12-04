@@ -2,7 +2,7 @@ import json
 import logging
 import mimetypes
 import time
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Mapping
 from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Literal, Optional, TypedDict, Union, cast
@@ -746,15 +746,15 @@ class ToolManager:
 
                 # Batch get labels for workflow providers
                 if workflow_provider_controllers:
-                    workflow_controllers: Sequence[ToolProviderController] = [
+                    workflow_controllers: list[ToolProviderController] = [
                         cast(ToolProviderController, controller) for controller in workflow_provider_controllers
                     ]
                     labels = ToolLabelManager.get_tools_labels(workflow_controllers)
 
-                    for provider_controller in workflow_provider_controllers:
-                        provider_labels = labels.get(provider_controller.provider_id, [])
+                    for workflow_provider_controller in workflow_provider_controllers:
+                        provider_labels = labels.get(workflow_provider_controller.provider_id, [])
                         user_provider = ToolTransformService.workflow_provider_to_user_provider(
-                            provider_controller=provider_controller,
+                            provider_controller=workflow_provider_controller,
                             labels=provider_labels,
                         )
                         result_providers[f"workflow_provider.{user_provider.name}"] = user_provider
