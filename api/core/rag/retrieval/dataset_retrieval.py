@@ -7,8 +7,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import Float, and_, or_, select, text
-from sqlalchemy import cast as sqlalchemy_cast
+from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
@@ -259,27 +258,27 @@ class DatasetRetrieval:
                         )
                     if vision_enabled:
                         attachments_with_bindings = db.session.execute(
-                                    select(SegmentAttachmentBinding, UploadFile)
-                                    .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
-                                    .where(
-                                        SegmentAttachmentBinding.segment_id == segment.id,
-                                    )
-                                ).all()
+                            select(SegmentAttachmentBinding, UploadFile)
+                            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+                            .where(
+                                SegmentAttachmentBinding.segment_id == segment.id,
+                            )
+                        ).all()
                         if attachments_with_bindings:
                             for _, upload_file in attachments_with_bindings:
                                 attchment_info = File(
-                                id=upload_file.id,
-                                filename=upload_file.name,
-                                extension="." + upload_file.extension,
-                                mime_type=upload_file.mime_type,
-                                tenant_id=segment.tenant_id,
-                                type=FileType.IMAGE,
-                                transfer_method=FileTransferMethod.LOCAL_FILE,
-                                remote_url=upload_file.source_url,
-                                related_id=upload_file.id,
-                                size=upload_file.size,
-                                storage_key=upload_file.key,
-                                url=sign_upload_file(upload_file.id, upload_file.extension),
+                                    id=upload_file.id,
+                                    filename=upload_file.name,
+                                    extension="." + upload_file.extension,
+                                    mime_type=upload_file.mime_type,
+                                    tenant_id=segment.tenant_id,
+                                    type=FileType.IMAGE,
+                                    transfer_method=FileTransferMethod.LOCAL_FILE,
+                                    remote_url=upload_file.source_url,
+                                    related_id=upload_file.id,
+                                    size=upload_file.size,
+                                    storage_key=upload_file.key,
+                                    url=sign_upload_file(upload_file.id, upload_file.extension),
                                 )
                                 context_files.append(attchment_info)
                 if show_retrieve_source:
@@ -322,8 +321,10 @@ class DatasetRetrieval:
             hit_callback.return_retriever_resource_info(retrieval_resource_list)
         if document_context_list:
             document_context_list = sorted(document_context_list, key=lambda x: x.score or 0.0, reverse=True)
-            return str("\n".join([document_context.content for document_context in document_context_list])), context_files
-        return "" , context_files
+            return str(
+                "\n".join([document_context.content for document_context in document_context_list])
+            ), context_files
+        return "", context_files
 
     def single_retrieve(
         self,

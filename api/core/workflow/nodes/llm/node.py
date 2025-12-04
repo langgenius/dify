@@ -666,7 +666,9 @@ class LLMNode(Node[LLMNodeData]):
         context_value_variable = self.graph_runtime_state.variable_pool.get(node_data.context.variable_selector)
         if context_value_variable:
             if isinstance(context_value_variable, StringSegment):
-                yield RunRetrieverResourceEvent(retriever_resources=[], context=context_value_variable.value, context_files=[])
+                yield RunRetrieverResourceEvent(
+                    retriever_resources=[], context=context_value_variable.value, context_files=[]
+                )
             elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
                 original_retriever_resource: list[RetrievalSourceMetadata] = []
@@ -693,22 +695,24 @@ class LLMNode(Node[LLMNodeData]):
                             if attachments_with_bindings:
                                 for _, upload_file in attachments_with_bindings:
                                     attchment_info = File(
-                                    id=upload_file.id,
-                                    filename=upload_file.name,
-                                    extension="." + upload_file.extension,
-                                    mime_type=upload_file.mime_type,
-                                    tenant_id=self.tenant_id,
-                                    type=FileType.IMAGE,
-                                    transfer_method=FileTransferMethod.LOCAL_FILE,
-                                    remote_url=upload_file.source_url,
-                                    related_id=upload_file.id,
-                                    size=upload_file.size,
-                                    storage_key=upload_file.key,
-                                    url=sign_upload_file(upload_file.id, upload_file.extension),
-                                )
+                                        id=upload_file.id,
+                                        filename=upload_file.name,
+                                        extension="." + upload_file.extension,
+                                        mime_type=upload_file.mime_type,
+                                        tenant_id=self.tenant_id,
+                                        type=FileType.IMAGE,
+                                        transfer_method=FileTransferMethod.LOCAL_FILE,
+                                        remote_url=upload_file.source_url,
+                                        related_id=upload_file.id,
+                                        size=upload_file.size,
+                                        storage_key=upload_file.key,
+                                        url=sign_upload_file(upload_file.id, upload_file.extension),
+                                    )
                                     context_files.append(attchment_info)
                 yield RunRetrieverResourceEvent(
-                    retriever_resources=original_retriever_resource, context=context_str.strip(), context_files=context_files
+                    retriever_resources=original_retriever_resource,
+                    context=context_str.strip(),
+                    context_files=context_files,
                 )
 
     def _convert_to_original_retriever_resource(self, context_dict: dict) -> RetrievalSourceMetadata | None:

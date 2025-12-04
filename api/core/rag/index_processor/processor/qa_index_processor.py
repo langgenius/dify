@@ -20,7 +20,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import Document, QAStructureChunk, AttachmentDocument
+from core.rag.models.document import AttachmentDocument, Document, QAStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
@@ -117,7 +117,7 @@ class QAIndexProcessor(BaseIndexProcessor):
 
         try:
             # Skip the first row
-            df = pd.read_csv(file)# type: ignore
+            df = pd.read_csv(file)  # type: ignore
             text_docs = []
             for _, row in df.iterrows():
                 data = Document(page_content=row.iloc[0], metadata={"answer": row.iloc[1]})

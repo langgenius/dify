@@ -867,7 +867,9 @@ class DatasetService:
                     model=knowledge_configuration.embedding_model or "",
                 )
                 is_multimodal = DatasetService.check_is_multimodal_model(
-                    current_user.current_tenant_id, knowledge_configuration.embedding_model_provider, knowledge_configuration.embedding_model
+                    current_user.current_tenant_id,
+                    knowledge_configuration.embedding_model_provider,
+                    knowledge_configuration.embedding_model,
                 )
                 dataset.is_multimodal = is_multimodal
                 dataset.embedding_model = embedding_model.model
@@ -907,7 +909,9 @@ class DatasetService:
                             embedding_model.provider, embedding_model.model
                         )
                         is_multimodal = DatasetService.check_is_multimodal_model(
-                            current_user.current_tenant_id, knowledge_configuration.embedding_model_provider, knowledge_configuration.embedding_model
+                            current_user.current_tenant_id,
+                            knowledge_configuration.embedding_model_provider,
+                            knowledge_configuration.embedding_model,
                         )
                         dataset.is_multimodal = is_multimodal
                         dataset.collection_binding_id = dataset_collection_binding.id
@@ -968,7 +972,9 @@ class DatasetService:
                                     )
                                     dataset.collection_binding_id = dataset_collection_binding.id
                                     is_multimodal = DatasetService.check_is_multimodal_model(
-                                        current_user.current_tenant_id, knowledge_configuration.embedding_model_provider, knowledge_configuration.embedding_model
+                                        current_user.current_tenant_id,
+                                        knowledge_configuration.embedding_model_provider,
+                                        knowledge_configuration.embedding_model,
                                     )
                                     dataset.is_multimodal = is_multimodal
                     except LLMBadRequestError:
@@ -1776,7 +1782,7 @@ class DocumentService:
                             knowledge_config.data_source.info_list.data_source_type,
                             knowledge_config.doc_form,
                             knowledge_config.doc_language,
-                            data_source_info, 
+                            data_source_info,
                             created_from,
                             position,
                             account,
@@ -2715,7 +2721,7 @@ class SegmentService:
         if "content" not in args or not args["content"] or not args["content"].strip():
             raise ValueError("Content is empty")
 
-        if "attachment_ids" in args and args["attachment_ids"]:
+        if args.get("attachment_ids"):
             if not isinstance(args["attachment_ids"], list):
                 raise ValueError("Attachment IDs is invalid")
             single_chunk_attachment_limit = dify_config.SINGLE_CHUNK_ATTACHMENT_LIMIT

@@ -87,16 +87,18 @@ def enable_segment_to_index_task(segment_id: str):
         multimodel_documents = []
         if dataset.is_multimodal:
             for attachment in segment.attachments:
-                multimodel_documents.append(AttachmentDocument(
-                    page_content=attachment["name"],
-                    metadata={
-                        "doc_id": attachment["id"],
-                        "doc_hash": "",
-                        "document_id": segment.document_id,
-                        "dataset_id": segment.dataset_id,
-                        "doc_type": DocType.IMAGE,
-                    },
-                ))
+                multimodel_documents.append(
+                    AttachmentDocument(
+                        page_content=attachment["name"],
+                        metadata={
+                            "doc_id": attachment["id"],
+                            "doc_hash": "",
+                            "document_id": segment.document_id,
+                            "dataset_id": segment.dataset_id,
+                            "doc_type": DocType.IMAGE,
+                        },
+                    )
+                )
 
         # save vector index
         index_processor.load(dataset, [document], multimodal_documents=multimodel_documents)

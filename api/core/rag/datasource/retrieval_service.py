@@ -6,8 +6,6 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
 from configs import dify_config
-from core.file.enums import FileTransferMethod, FileType
-from core.file.models import File
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor

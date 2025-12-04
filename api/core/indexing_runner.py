@@ -95,7 +95,12 @@ class IndexingRunner:
                     raise ValueError("no current user found")
                 current_user.set_tenant_id(dataset.tenant_id)
                 documents = self._transform(
-                    index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict(), current_user=current_user
+                    index_processor,
+                    dataset,
+                    text_docs,
+                    requeried_document.doc_language,
+                    processing_rule.to_dict(),
+                    current_user=current_user,
                 )
                 # save segment
                 self._load_segments(dataset, requeried_document, documents)
@@ -162,7 +167,12 @@ class IndexingRunner:
                 raise ValueError("no current user found")
             current_user.set_tenant_id(dataset.tenant_id)
             documents = self._transform(
-                index_processor, dataset, text_docs, requeried_document.doc_language, processing_rule.to_dict(), current_user=current_user
+                index_processor,
+                dataset,
+                text_docs,
+                requeried_document.doc_language,
+                processing_rule.to_dict(),
+                current_user=current_user,
             )
             # save segment
             self._load_segments(dataset, requeried_document, documents)
@@ -561,8 +571,10 @@ class IndexingRunner:
         indexing_start_at = time.perf_counter()
         tokens = 0
         create_keyword_thread = None
-        if (dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
-            and dataset.indexing_technique == "economy"):
+        if (
+            dataset_document.doc_form != IndexStructureType.PARENT_CHILD_INDEX
+            and dataset.indexing_technique == "economy"
+        ):
             # create keyword index
             create_keyword_thread = threading.Thread(
                 target=self._process_keyword_index,
@@ -646,12 +658,13 @@ class IndexingRunner:
                 db.session.commit()
 
     def _process_chunk(
-        self, flask_app: Flask,
+        self,
+        flask_app: Flask,
         index_processor: BaseIndexProcessor,
         chunk_documents: list[Document],
         dataset: Dataset,
         dataset_document: DatasetDocument,
-        embedding_model_instance: ModelInstance | None
+        embedding_model_instance: ModelInstance | None,
     ):
         with flask_app.app_context():
             # check document is paused
@@ -668,10 +681,9 @@ class IndexingRunner:
                     multimodal_documents.extend(document.attachments)
 
             # load index
-            index_processor.load(dataset,
-                                 chunk_documents,
-                                 multimodal_documents=multimodal_documents,
-                                 with_keywords=False)
+            index_processor.load(
+                dataset, chunk_documents, multimodal_documents=multimodal_documents, with_keywords=False
+            )
 
             document_ids = [document.metadata["doc_id"] for document in chunk_documents]
             db.session.query(DocumentSegment).where(
@@ -752,7 +764,6 @@ class IndexingRunner:
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
 
-
         documents = index_processor.transform(
             text_docs,
             current_user,
@@ -771,8 +782,9 @@ class IndexingRunner:
         )
 
         # add document segments
-        doc_store.add_documents(docs=documents,
-        save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX)
+        doc_store.add_documents(
+            docs=documents, save_child=dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX
+        )
 
         # update document status to indexing
         cur_time = naive_utc_now()

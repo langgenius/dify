@@ -149,19 +149,23 @@ def deal_dataset_index_update_task(dataset_id: str, action: str):
                                         document.children = child_documents
                                 if dataset.is_multimodal:
                                     for attachment in segment.attachments:
-                                        multimodal_documents.append(AttachmentDocument(
-                                            page_content=attachment["name"],
-                                            metadata={
-                                                "doc_id": attachment["id"],
-                                                "doc_hash": "",
-                                                "document_id": segment.document_id,
-                                                "dataset_id": segment.dataset_id,
-                                                "doc_type": DocType.IMAGE,
-                                            },
-                                        ))
+                                        multimodal_documents.append(
+                                            AttachmentDocument(
+                                                page_content=attachment["name"],
+                                                metadata={
+                                                    "doc_id": attachment["id"],
+                                                    "doc_hash": "",
+                                                    "document_id": segment.document_id,
+                                                    "dataset_id": segment.dataset_id,
+                                                    "doc_type": DocType.IMAGE,
+                                                },
+                                            )
+                                        )
                                 documents.append(document)
                             # save vector index
-                            index_processor.load(dataset, documents, multimodal_documents=multimodal_documents, with_keywords=False)
+                            index_processor.load(
+                                dataset, documents, multimodal_documents=multimodal_documents, with_keywords=False
+                            )
                         db.session.query(DatasetDocument).where(DatasetDocument.id == dataset_document.id).update(
                             {"indexing_status": "completed"}, synchronize_session=False
                         )

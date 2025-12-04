@@ -409,7 +409,11 @@ class TestDeleteSegmentFromIndexTask:
         fake = Faker()
 
         # Test different document forms
-        document_forms = [IndexStructureType.PARAGRAPH_INDEX, IndexStructureType.QA_INDEX, IndexStructureType.PARENT_CHILD_INDEX]
+        document_forms = [
+            IndexStructureType.PARAGRAPH_INDEX,
+            IndexStructureType.QA_INDEX,
+            IndexStructureType.PARENT_CHILD_INDEX,
+        ]
 
         for doc_form in document_forms:
             # Create test data for each document form

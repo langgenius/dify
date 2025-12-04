@@ -61,9 +61,11 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
         index_node_ids = [segment.index_node_id for segment in segments]
         if dataset.is_multimodal:
             segment_ids = [segment.id for segment in segments]
-            segment_attachment_bindings = db.session.query(SegmentAttachmentBinding).filter(
-                SegmentAttachmentBinding.segment_id.in_(segment_ids)
-            ).all()
+            segment_attachment_bindings = (
+                db.session.query(SegmentAttachmentBinding)
+                .filter(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                .all()
+            )
             if segment_attachment_bindings:
                 attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
                 index_node_ids.extend(attachment_ids)

@@ -172,7 +172,9 @@ class ChatAppRunner(AppRunner):
                 memory=memory,
                 message_id=message.id,
                 inputs=inputs,
-                vision_enabled=application_generate_entity.app_config.app_model_config_dict.get("file_upload", {}).get("enabled", False),
+                vision_enabled=application_generate_entity.app_config.app_model_config_dict.get("file_upload", {}).get(
+                    "enabled", False
+                ),
             )
 
         # reorganize all inputs and template to prompt messages
