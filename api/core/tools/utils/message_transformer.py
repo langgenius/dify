@@ -157,7 +157,8 @@ class ToolFileMessageTransformer:
                     else:
                         yield message
                 elif isinstance(file, dict) and file.get("transfer_method") == FileTransferMethod.REMOTE_URL:
-                    message.meta["file"] = build_from_mapping(mapping=file, tenant_id=tenant_id)
+                    meta["file"] = build_from_mapping(mapping=file, tenant_id=tenant_id)
+                    message.meta = meta
                     yield message
             elif message.type == ToolInvokeMessage.MessageType.JSON:
                 if isinstance(message.message, ToolInvokeMessage.JsonMessage):
