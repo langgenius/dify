@@ -65,16 +65,16 @@ class Dataset(Base):
     updated_at = mapped_column(
         sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    embedding_model = mapped_column(sa.String(255), nullable=True)
-    embedding_model_provider = mapped_column(sa.String(255), nullable=True)
+    embedding_model: Mapped[str | None] = mapped_column(sa.String(255))
+    embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255))
     keyword_number = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
     collection_binding_id = mapped_column(StringUUID, nullable=True)
     retrieval_model = mapped_column(AdjustedJSON, nullable=True)
     built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     icon_info = mapped_column(AdjustedJSON, nullable=True)
-    runtime_mode = mapped_column(sa.String(255), nullable=True, server_default=sa.text("'general'"))
+    runtime_mode: Mapped[str | None] = mapped_column(sa.String(255), server_default=sa.text("'general'"))
     pipeline_id = mapped_column(StringUUID, nullable=True)
-    chunk_structure = mapped_column(sa.String(255), nullable=True)
+    chunk_structure: Mapped[str | None] = mapped_column(sa.String(255))
     enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
 
     @property
@@ -316,7 +316,7 @@ class DatasetProcessRule(Base):  # bug
 
     id = mapped_column(StringUUID, nullable=False, default=lambda: str(uuid4()))
     dataset_id = mapped_column(StringUUID, nullable=False)
-    mode = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'"))
+    mode: Mapped[str] = mapped_column(String(255), server_default=sa.text("'automatic'"))
     rules = mapped_column(LongText, nullable=True)
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
@@ -401,21 +401,21 @@ class Document(Base):
     stopped_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # basic fields
-    indexing_status = mapped_column(String(255), nullable=False, server_default=sa.text("'waiting'"))
+    indexing_status: Mapped[str] = mapped_column(String(255), server_default=sa.text("'waiting'"))
     enabled: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     disabled_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     disabled_by = mapped_column(StringUUID, nullable=True)
     archived: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    archived_reason = mapped_column(String(255), nullable=True)
+    archived_reason: Mapped[str | None] = mapped_column(String(255))
     archived_by = mapped_column(StringUUID, nullable=True)
     archived_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
-    doc_type = mapped_column(String(40), nullable=True)
+    doc_type: Mapped[str | None] = mapped_column(String(40))
     doc_metadata = mapped_column(AdjustedJSON, nullable=True)
-    doc_form = mapped_column(String(255), nullable=False, server_default=sa.text("'text_model'"))
-    doc_language = mapped_column(String(255), nullable=True)
+    doc_form: Mapped[str] = mapped_column(String(255), server_default=sa.text("'text_model'"))
+    doc_language: Mapped[str | None] = mapped_column(String(255))
 
     DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
 
@@ -716,8 +716,8 @@ class DocumentSegment(Base):
 
     # indexing fields
     keywords = mapped_column(sa.JSON, nullable=True)
-    index_node_id = mapped_column(String(255), nullable=True)
-    index_node_hash = mapped_column(String(255), nullable=True)
+    index_node_id: Mapped[str | None] = mapped_column(String(255))
+    index_node_hash: Mapped[str | None] = mapped_column(String(255))
 
     # basic fields
     hit_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
@@ -886,9 +886,9 @@ class ChildChunk(Base):
     content = mapped_column(LongText, nullable=False)
     word_count: Mapped[int] = mapped_column(sa.Integer, nullable=False)
     # indexing fields
-    index_node_id = mapped_column(String(255), nullable=True)
-    index_node_hash = mapped_column(String(255), nullable=True)
-    type = mapped_column(String(255), nullable=False, server_default=sa.text("'automatic'"))
+    index_node_id: Mapped[str | None] = mapped_column(String(255))
+    index_node_hash: Mapped[str | None] = mapped_column(String(255))
+    type: Mapped[str] = mapped_column(String(255), server_default=sa.text("'automatic'"))
     created_by = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=sa.func.current_timestamp())
     updated_by = mapped_column(StringUUID, nullable=True)
