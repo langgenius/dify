@@ -172,7 +172,9 @@ class TestAddDocumentToIndexTask:
 
         # Assert: Verify the expected outcomes
         # Verify index processor was called correctly
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexStructureType.PARAGRAPH_INDEX)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.PARAGRAPH_INDEX
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify database state changes
@@ -221,7 +223,9 @@ class TestAddDocumentToIndexTask:
         add_document_to_index_task(document.id)
 
         # Assert: Verify different index type handling
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexStructureType.QA_INDEX)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.QA_INDEX
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify the load method was called with correct parameters
@@ -466,7 +470,9 @@ class TestAddDocumentToIndexTask:
         add_document_to_index_task(document.id)
 
         # Assert: Verify index processing occurred but with empty documents list
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexStructureType.PARAGRAPH_INDEX)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.PARAGRAPH_INDEX
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify the load method was called with all completed segments
@@ -532,7 +538,9 @@ class TestAddDocumentToIndexTask:
         assert len(remaining_logs) == 0
 
         # Verify index processing occurred normally
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexStructureType.PARAGRAPH_INDEX)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.PARAGRAPH_INDEX
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify segments were enabled
@@ -699,7 +707,9 @@ class TestAddDocumentToIndexTask:
         add_document_to_index_task(document.id)
 
         # Assert: Verify only eligible segments were processed
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexStructureType.PARAGRAPH_INDEX)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.PARAGRAPH_INDEX
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify the load method was called with correct parameters

@@ -71,7 +71,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     if document_node.metadata is not None:
                         document_node.metadata["doc_id"] = doc_id
                         document_node.metadata["doc_hash"] = hash
-                    multimodal_documents = self._get_content_files(document_node, current_user) if document_node.metadata else None
+                    multimodal_documents = (
+                        self._get_content_files(document_node, current_user) if document_node.metadata else None
+                    )
                     if multimodal_documents:
                         document_node.attachments = multimodal_documents
                     # delete Splitter character

@@ -120,7 +120,9 @@ class DatasetDocumentStore:
 
                 db.session.add(segment_document)
                 db.session.flush()
-                self.add_multimodel_documents_binding(segment_id=segment_document.id, multimodel_documents=doc.attachments)
+                self.add_multimodel_documents_binding(
+                    segment_id=segment_document.id, multimodel_documents=doc.attachments
+                )
                 if save_child:
                     if doc.children:
                         for position, child in enumerate(doc.children, start=1):
@@ -145,7 +147,9 @@ class DatasetDocumentStore:
                 segment_document.index_node_hash = doc.metadata.get("doc_hash")
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
-                self.add_multimodel_documents_binding(segment_id=segment_document.id, multimodel_documents=doc.attachments)
+                self.add_multimodel_documents_binding(
+                    segment_id=segment_document.id, multimodel_documents=doc.attachments
+                )
                 if save_child and doc.children:
                     # delete the existing child chunks
                     db.session.query(ChildChunk).where(

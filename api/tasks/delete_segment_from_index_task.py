@@ -52,13 +52,14 @@ def delete_segment_from_index_task(
         )
         if dataset.is_multimodal:
             # delete segment attachment binding
-            segment_attachment_bindings = db.session.query(SegmentAttachmentBinding).filter(
-                SegmentAttachmentBinding.segment_id.in_(segment_ids)
-            ).all()
+            segment_attachment_bindings = (
+                db.session.query(SegmentAttachmentBinding)
+                .filter(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                .all()
+            )
             if segment_attachment_bindings:
                 attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
-                index_processor.clean(
-                    dataset=dataset, node_ids=attachment_ids, with_keywords=False)
+                index_processor.clean(dataset=dataset, node_ids=attachment_ids, with_keywords=False)
                 for binding in segment_attachment_bindings:
                     db.session.delete(binding)
                 # delete upload file

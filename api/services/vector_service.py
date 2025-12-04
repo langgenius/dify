@@ -94,9 +94,7 @@ class VectorService:
         index_processor: BaseIndexProcessor = IndexProcessorFactory(doc_form).init_index_processor()
 
         if len(documents) > 0:
-            index_processor.load(
-                dataset, documents, None, with_keywords=True, keywords_list=keywords_list
-            )
+            index_processor.load(dataset, documents, None, with_keywords=True, keywords_list=keywords_list)
         if len(multimodal_documents) > 0:
             index_processor.load(dataset, [], multimodal_documents, with_keywords=False)
 

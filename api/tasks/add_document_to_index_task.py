@@ -85,16 +85,18 @@ def add_document_to_index_task(dataset_document_id: str):
                     document.children = child_documents
             if dataset.is_multimodal:
                 for attachment in segment.attachments:
-                    multimodal_documents.append(AttachmentDocument(
-                        page_content=attachment["name"],
-                        metadata={
-                            "doc_id": attachment["id"],
-                            "doc_hash": "",
-                            "document_id": segment.document_id,
-                            "dataset_id": segment.dataset_id,
-                            "doc_type": DocType.IMAGE,
-                        },
-                    ))
+                    multimodal_documents.append(
+                        AttachmentDocument(
+                            page_content=attachment["name"],
+                            metadata={
+                                "doc_id": attachment["id"],
+                                "doc_hash": "",
+                                "document_id": segment.document_id,
+                                "dataset_id": segment.dataset_id,
+                                "doc_type": DocType.IMAGE,
+                            },
+                        )
+                    )
             documents.append(document)
 
         index_type = dataset.doc_form

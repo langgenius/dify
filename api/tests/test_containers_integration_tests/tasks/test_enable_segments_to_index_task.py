@@ -185,7 +185,9 @@ class TestEnableSegmentsToIndexTask:
         enable_segments_to_index_task(segment_ids, dataset.id, document.id)
 
         # Assert: Verify different index type handling
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexStructureType.QA_INDEX)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.QA_INDEX
+        )
         mock_external_service_dependencies["index_processor"].load.assert_called_once()
 
         # Verify the load method was called with correct parameters
@@ -328,7 +330,9 @@ class TestEnableSegmentsToIndexTask:
         enable_segments_to_index_task(non_existent_segment_ids, dataset.id, document.id)
 
         # Assert: Verify index processor was created but load was not called
-        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(IndexStructureType.PARAGRAPH_INDEX)
+        mock_external_service_dependencies["index_processor_factory"].assert_called_once_with(
+            IndexStructureType.PARAGRAPH_INDEX
+        )
         mock_external_service_dependencies["index_processor"].load.assert_not_called()
 
     def test_enable_segments_to_index_with_parent_child_structure(

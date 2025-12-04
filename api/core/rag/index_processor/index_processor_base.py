@@ -161,8 +161,7 @@ class BaseIndexProcessor(ABC):
                     upload_file_id_list.append(upload_file_id)
                 continue
             if current_user:
-                print("download image file")
-                upload_file_id = self._download_image(image.split(' ')[0], current_user)
+                upload_file_id = self._download_image(image.split(" ")[0], current_user)
                 if upload_file_id:
                     print("download image file success")
                     upload_file_id_list.append(upload_file_id)
@@ -181,9 +180,10 @@ class BaseIndexProcessor(ABC):
         for upload_file_id in upload_file_id_list:
             upload_file = upload_file_map.get(upload_file_id)
             if upload_file:
-                multi_model_documents.append(AttachmentDocument(
-                    page_content=upload_file.name,
-                    metadata={
+                multi_model_documents.append(
+                    AttachmentDocument(
+                        page_content=upload_file.name,
+                        metadata={
                             "doc_id": upload_file.id,
                             "doc_hash": "",
                             "document_id": document.metadata.get("document_id"),
@@ -198,7 +198,7 @@ class BaseIndexProcessor(ABC):
         """
         Extract the markdown images from the text.
         """
-        pattern = r'!\[.*?\]\((.*?)\)'
+        pattern = r"!\[.*?\]\((.*?)\)"
         return re.findall(pattern, text)
 
     def _download_image(self, image_url: str, current_user: Account) -> str | None:
@@ -217,18 +217,18 @@ class BaseIndexProcessor(ABC):
             response.raise_for_status()
 
             # Check Content-Length header if available
-            content_length = response.headers.get('Content-Length')
+            content_length = response.headers.get("Content-Length")
             if content_length and int(content_length) > MAX_IMAGE_SIZE:
                 logging.warning("Image from %s exceeds 2MB limit (size: %s bytes)", image_url, content_length)
                 return None
 
             filename = None
 
-            content_disposition = response.headers.get('content-disposition')
+            content_disposition = response.headers.get("content-disposition")
             if content_disposition:
                 _, params = cgi.parse_header(content_disposition)
-                if 'filename' in params:
-                    filename = params['filename']
+                if "filename" in params:
+                    filename = params["filename"]
                     filename = unquote(filename)
 
             if not filename:
@@ -242,14 +242,14 @@ class BaseIndexProcessor(ABC):
 
             name, current_ext = os.path.splitext(filename)
 
-            content_type = response.headers.get('content-type', '').split(';')[0].strip()
+            content_type = response.headers.get("content-type", "").split(";")[0].strip()
 
             real_ext = mimetypes.guess_extension(content_type)
 
-            if not current_ext and real_ext or current_ext in ['.php', '.jsp', '.asp', '.html'] and real_ext:
+            if not current_ext and real_ext or current_ext in [".php", ".jsp", ".asp", ".html"] and real_ext:
                 filename = f"{name}{real_ext}"
             # Download content with size limit
-            blob = b''
+            blob = b""
             for chunk in response.iter_bytes(chunk_size=8192):
                 blob += chunk
                 if len(blob) > MAX_IMAGE_SIZE:
