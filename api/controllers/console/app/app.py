@@ -329,7 +329,7 @@ class AppListApi(Resource):
                         if node_data.get("type") in trigger_node_types:
                             draft_trigger_app_ids.add(str(workflow.app_id))
                             break
-                except Exception :
+                except Exception:
                     continue
 
         for app in app_pagination.items:
