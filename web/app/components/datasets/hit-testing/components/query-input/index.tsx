@@ -157,7 +157,7 @@ const QueryInput = ({
           _onSubmit()
       },
     })
-  }, [text, retrievalConfig, isEconomy, hitTestingMutation, onUpdateList, _onSubmit])
+  }, [text, retrievalConfig, isEconomy, hitTestingMutation, onUpdateList, _onSubmit, images, setHitResult])
 
   const externalRetrievalTestingOnSubmit = useCallback(async () => {
     await externalKnowledgeBaseHitTestingMutation({
@@ -173,7 +173,7 @@ const QueryInput = ({
         onUpdateList?.()
       },
     })
-  }, [text, externalRetrievalSettings, externalKnowledgeBaseHitTestingMutation, onUpdateList])
+  }, [text, externalRetrievalSettings, externalKnowledgeBaseHitTestingMutation, onUpdateList, setExternalHitResult])
 
   const retrievalMethod = isEconomy ? RETRIEVE_METHOD.keywordSearch : retrievalConfig.search_method
   const icon = <Image className='size-3.5 text-util-colors-purple-purple-600' src={getIcon(retrievalMethod)} alt='' />
