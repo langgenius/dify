@@ -54,6 +54,13 @@ class ChatConversationQuery(BaseConversationQuery):
     )
 
 
+class ClearConversationsPayload(BaseModel):
+    conversation_ids: list[str] | None = Field(
+        default=None,
+        description="Optional list of conversation IDs to clear. If not provided, all conversations will be cleared.",
+    )
+
+
 console_ns.schema_model(
     CompletionConversationQuery.__name__,
     CompletionConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
@@ -61,6 +68,10 @@ console_ns.schema_model(
 console_ns.schema_model(
     ChatConversationQuery.__name__,
     ChatConversationQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    ClearConversationsPayload.__name__,
+    ClearConversationsPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
 # Register models for flask_restx to avoid dict type issues in Swagger
@@ -383,6 +394,38 @@ class CompletionConversationApi(Resource):
 
         return conversations
 
+    @console_ns.doc("clear_completion_conversations")
+    @console_ns.doc(description="Clear completion conversations and related data")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[ClearConversationsPayload.__name__])
+    @console_ns.response(202, "Clearing task queued successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=AppMode.COMPLETION)
+    @edit_permission_required
+    def delete(self, app_model):
+        from services.errors.conversation import ConversationClearInProgressError
+
+        current_user, _ = current_account_with_tenant()
+        args = ClearConversationsPayload.model_validate(console_ns.payload or {})
+
+        # Convert conversation IDs to strings if provided and non-empty
+        conversation_ids = (
+            [str(id) for id in args.conversation_ids]
+            if args.conversation_ids and len(args.conversation_ids) > 0
+            else None
+        )
+
+        try:
+            result = ConversationService.clear_conversations(
+                app_model=app_model, user=current_user, conversation_ids=conversation_ids
+            )
+            return result, 202
+        except ConversationClearInProgressError as e:
+            return {"message": str(e), "code": "task_in_progress"}, 409
+
 
 @console_ns.route("/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
 class CompletionConversationDetailApi(Resource):
@@ -526,6 +569,38 @@ class ChatConversationApi(Resource):
         conversations = db.paginate(query, page=args.page, per_page=args.limit, error_out=False)
 
         return conversations
+
+    @console_ns.doc("clear_chat_conversations")
+    @console_ns.doc(description="Clear chat conversations and related data")
+    @console_ns.doc(params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[ClearConversationsPayload.__name__])
+    @console_ns.response(202, "Clearing task queued successfully")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def delete(self, app_model):
+        from services.errors.conversation import ConversationClearInProgressError
+
+        current_user, _ = current_account_with_tenant()
+        args = ClearConversationsPayload.model_validate(console_ns.payload or {})
+
+        # Convert conversation IDs to strings if provided and non-empty
+        conversation_ids = (
+            [str(id) for id in args.conversation_ids]
+            if args.conversation_ids and len(args.conversation_ids) > 0
+            else None
+        )
+
+        try:
+            result = ConversationService.clear_conversations(
+                app_model=app_model, user=current_user, conversation_ids=conversation_ids
+            )
+            return result, 202
+        except ConversationClearInProgressError as e:
+            return {"message": str(e), "code": "task_in_progress"}, 409
 
 
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")

@@ -6,7 +6,7 @@ import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import List from './list'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import EmptyElement from './empty-element'
@@ -29,7 +29,6 @@ export type QueryParam = {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [queryParams, setQueryParams] = useState<QueryParam>({
@@ -45,6 +44,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   }, [searchParams])
   const [currPage, setCurrPage] = React.useState<number>(() => getPageFromParams())
   const [limit, setLimit] = React.useState<number>(APP_PAGE_LIMIT)
+  const [selectedItems, setSelectedItems] = React.useState<string[]>([])
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   useEffect(() => {
@@ -74,45 +74,102 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       url: `/apps/${appDetail.id}/chat-conversations`,
       params: query,
     }
-    : null, fetchChatConversations)
+    : null, fetchChatConversations, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+  })
 
   const { data: completionConversations, mutate: mutateCompletionList } = useSWR(() => !isChatMode
     ? {
       url: `/apps/${appDetail.id}/completion-conversations`,
       params: query,
     }
-    : null, fetchCompletionConversations)
+    : null, fetchCompletionConversations, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+  })
+
+  // Refresh data when navigating to logs page
+  useEffect(() => {
+    if (pathname?.includes('/logs')) {
+      if (isChatMode)
+        mutateChatList()
+      else
+        mutateCompletionList()
+    }
+  }, [pathname, isChatMode, mutateChatList, mutateCompletionList])
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
 
-  const handlePageChange = useCallback((page: number) => {
-    setCurrPage(page)
-    const params = new URLSearchParams(searchParams.toString())
-    const nextPageValue = page + 1
-    if (nextPageValue === 1)
-      params.delete('page')
-    else
-      params.set('page', String(nextPageValue))
-    const queryString = params.toString()
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
-  }, [pathname, router, searchParams])
+  // Clear selected items when data refreshes or conversation IDs are removed
+  const handleClearSelected = (conversationIds?: string[]) => {
+    if (conversationIds) {
+      // Remove specific conversation IDs from selection
+      setSelectedItems(prev => prev.filter(id => !conversationIds.includes(id)))
+    }
+    else {
+      // Clear all selections
+      setSelectedItems([])
+    }
+  }
+
+  // Optimistic update: remove items from list immediately
+  const handleOptimisticDelete = (conversationIds?: string[]) => {
+    if (isChatMode && chatConversations) {
+      mutateChatList({
+        ...chatConversations,
+        data: conversationIds
+          ? chatConversations.data.filter(item => !conversationIds.includes(item.id))
+          : [],
+        total: conversationIds
+          ? chatConversations.total - conversationIds.length
+          : 0,
+      }, false) // false means don't revalidate immediately
+    }
+    else if (!isChatMode && completionConversations) {
+      mutateCompletionList({
+        ...completionConversations,
+        data: conversationIds
+          ? completionConversations.data.filter(item => !conversationIds.includes(item.id))
+          : [],
+        total: conversationIds
+          ? completionConversations.total - conversationIds.length
+          : 0,
+      }, false)
+    }
+  }
 
   return (
     <div className='flex h-full grow flex-col'>
       <p className='system-sm-regular shrink-0 text-text-tertiary'>{t('appLog.description')}</p>
       <div className='flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4'>
-        <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter
+          isChatMode={isChatMode}
+          appId={appDetail.id}
+          queryParams={queryParams}
+          setQueryParams={setQueryParams}
+          onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
+          selectedItems={selectedItems}
+          onClearSelected={handleClearSelected}
+          onOptimisticDelete={handleOptimisticDelete}
+        />
         {total === undefined
           ? <Loading type='app' />
           : total > 0
-            ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
+            ? <List
+              logs={isChatMode ? chatConversations : completionConversations}
+              appDetail={appDetail}
+              onRefresh={isChatMode ? mutateChatList : mutateCompletionList}
+              selectedItems={selectedItems}
+              onSelectionChange={setSelectedItems}
+            />
             : <EmptyElement appDetail={appDetail} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
           ? <Pagination
             current={currPage}
-            onChange={handlePageChange}
+            onChange={setCurrPage}
             total={total}
             limit={limit}
             onLimitChange={setLimit}

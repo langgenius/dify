@@ -1,4 +1,5 @@
 import contextlib
+import hashlib
 import logging
 from collections.abc import Callable, Sequence
 from typing import Any, Union
@@ -11,18 +12,21 @@ from core.llm_generator.llm_generator import LLMGenerator
 from core.variables.types import SegmentType
 from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from factories import variable_factory
 from libs.datetime_utils import naive_utc_now
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models import Account, ConversationVariable
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import (
+    ConversationClearInProgressError,
     ConversationNotExistsError,
     ConversationVariableNotExistsError,
     ConversationVariableTypeMismatchError,
     LastConversationNotExistsError,
 )
 from services.errors.message import MessageNotExistsError
+from tasks.clear_conversation_task import clear_conversations_task
 from tasks.delete_conversation_task import delete_conversation_related_data
 
 logger = logging.getLogger(__name__)
@@ -128,7 +132,18 @@ class ConversationService:
         else:
             conversation.name = name
             conversation.updated_at = naive_utc_now()
-            db.session.commit()
+            try:
+                db.session.commit()
+            except Exception as e:
+                # Handle case where conversation was deleted after we retrieved it
+                from sqlalchemy.orm.exc import StaleDataError
+
+                db.session.rollback()
+                if isinstance(e, StaleDataError):
+                    # Conversation was likely deleted, raise ConversationNotExistsError
+                    raise ConversationNotExistsError()
+                else:
+                    raise
 
         return conversation
 
@@ -152,7 +167,18 @@ class ConversationService:
             )
             conversation.name = name
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            # Handle case where conversation was deleted after we retrieved it
+            from sqlalchemy.orm.exc import StaleDataError
+
+            db.session.rollback()
+            if isinstance(e, StaleDataError):
+                # Conversation was likely deleted, raise ConversationNotExistsError
+                raise ConversationNotExistsError()
+            else:
+                raise
 
         return conversation
 
@@ -193,6 +219,93 @@ class ConversationService:
         except Exception as e:
             db.session.rollback()
             raise e
+
+    @classmethod
+    def clear_conversations(
+        cls, app_model: App, user: Union[Account, EndUser] | None, conversation_ids: list[str] | None = None
+    ) -> dict[str, Any]:
+        """
+        Clear conversations and related data, optionally for specific conversation IDs.
+        Uses Celery task for handling large datasets.
+
+        Args:
+            app_model: The app model
+            user: The user (Account or EndUser)
+            conversation_ids: Optional list of specific conversation IDs to clear
+
+        Returns:
+            dict with task info and estimated counts
+
+        Raises:
+            ConversationClearInProgressError: If a clearing task is already in progress
+        """
+        # Validate conversation ownership if specific IDs provided
+        if conversation_ids:
+            for conversation_id in conversation_ids:
+                cls.get_conversation(app_model, conversation_id, user)
+
+        # Get conversation mode for task
+        if app_model.mode == "completion":
+            mode = "completion"
+        else:
+            mode = "chat"  # covers chat, agent-chat, advanced-chat
+
+        # Generate unique lock key to prevent duplicate tasks
+        # Key format: clear_conversations:{app_id}:{mode}[:{conversation_ids_hash}]
+        lock_key = f"clear_conversations:{app_model.id}:{mode}"
+        if conversation_ids:
+            # For selective deletion, include hash of conversation IDs
+            ids_hash = hashlib.md5(",".join(sorted(conversation_ids)).encode()).hexdigest()[:8]
+            lock_key += f":{ids_hash}"
+
+        # Try to acquire lock (expires in 10 minutes)
+        # nx=True means set only if key doesn't exist
+        lock_acquired = redis_client.set(lock_key, "1", ex=600, nx=True)
+        if not lock_acquired:
+            # Another clearing task is already in progress
+            raise ConversationClearInProgressError(
+                "A conversation clearing task is already in progress for this app. Please wait for it to complete."
+            )
+
+        try:
+            # Queue the Celery task with lock_key for cleanup
+            task = clear_conversations_task.delay(
+                app_id=app_model.id,
+                conversation_mode=mode,
+                conversation_ids=conversation_ids,
+                user_id=user.id if user else None,
+                user_type="account" if isinstance(user, Account) else "end_user" if isinstance(user, EndUser) else None,
+                lock_key=lock_key,
+            )
+
+            # Get estimated counts for response
+            if conversation_ids:
+                conversation_count = len(conversation_ids)
+            else:
+                # Estimate total conversations for this app
+                conversation_count = (
+                    db.session.query(Conversation)
+                    .filter(
+                        Conversation.app_id == app_model.id,
+                        Conversation.mode == mode,
+                        Conversation.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                        Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                        Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+                        Conversation.is_deleted == False,
+                    )
+                    .count()
+                )
+
+            return {
+                "task_id": task.id,
+                "status": "queued",
+                "estimated_conversations": conversation_count,
+                "mode": "selective" if conversation_ids else "all",
+            }
+        except Exception:
+            # Release lock if task queueing failed
+            redis_client.delete(lock_key)
+            raise
 
     @classmethod
     def get_conversational_variable(
