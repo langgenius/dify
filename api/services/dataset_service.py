@@ -50,7 +50,8 @@ from models.model import UploadFile
 from models.provider_ids import ModelProviderID
 from models.source import DataSourceOauthBinding
 from models.workflow import Workflow
-from services.document_indexing_task_proxy import DocumentIndexingTaskProxy
+from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
+from services.document_indexing_proxy.duplicate_document_indexing_task_proxy import DuplicateDocumentIndexingTaskProxy
 from services.entities.knowledge_entities.knowledge_entities import (
     ChildChunkUpdateArgs,
     KnowledgeConfig,
@@ -81,7 +82,6 @@ from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.disable_segments_from_index_task import disable_segments_from_index_task
 from tasks.document_indexing_update_task import document_indexing_update_task
-from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
@@ -1759,7 +1759,7 @@ class DocumentService:
                 if document_ids:
                     DocumentIndexingTaskProxy(dataset.tenant_id, dataset.id, document_ids).delay()
                 if duplicate_document_ids:
-                    duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
+                    DuplicateDocumentIndexingTaskProxy(dataset.tenant_id, dataset.id, duplicate_document_ids).delay()
 
         return documents, batch
 
