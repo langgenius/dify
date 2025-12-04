@@ -415,7 +415,7 @@ class ModelManager:
     def __init__(self):
         self._provider_manager = ProviderManager()
 
-    def get_model_instance(self, tenant_id: str, provider: str, model_type: ModelType, model: str) -> ModelInstance:
+    def get_model_instance(self, tenant_id: str, provider: str | None, model_type: ModelType, model: str) -> ModelInstance:
         """
         Get model instance
         :param tenant_id: tenant id
