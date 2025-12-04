@@ -15,7 +15,6 @@ from factories.file_factory import build_from_mapping
 from libs.login import current_user
 from models import Account
 
-
 logger = logging.getLogger(__name__)
 
 
