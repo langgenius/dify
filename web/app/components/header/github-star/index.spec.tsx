@@ -1,39 +1,36 @@
 import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
-import { HttpResponse, http } from 'msw'
-import { setupServer } from 'msw/node'
+import nock from 'nock'
 import GithubStar from './index'
 
-const GITHUB_URL = 'https://api.github.com/repos/langgenius/dify'
-
-const server = setupServer(
-  http.get(GITHUB_URL, () => HttpResponse.json({ stargazers_count: 123456 })),
-)
+const GITHUB_HOST = 'https://api.github.com'
+const GITHUB_PATH = '/repos/langgenius/dify'
 
 const renderWithQueryClient = () => {
   const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: { retry: false },
-    },
+    defaultOptions: { queries: { retry: false } },
   })
-  const utils = render(
+  return render(
     <QueryClientProvider client={queryClient}>
       <GithubStar className='test-class' />
     </QueryClientProvider>,
   )
-  return { queryClient, ...utils }
+}
+
+const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs = 0) => {
+  return nock(GITHUB_HOST).get(GITHUB_PATH).delay(delayMs).reply(status, body)
 }
 
 describe('GithubStar', () => {
-  beforeAll(() => server.listen({ onUnhandledRequest: 'error' }))
   afterEach(() => {
-    server.resetHandlers()
+    nock.cleanAll()
   })
-  afterAll(() => server.close())
 
   // Shows fetched star count when request succeeds
   it('should render fetched star count', async () => {
+    mockGithubStar(200, { stargazers_count: 123456 })
+
     renderWithQueryClient()
 
     expect(await screen.findByText('123,456')).toBeInTheDocument()
@@ -41,7 +38,7 @@ describe('GithubStar', () => {
 
   // Falls back to default star count when request fails
   it('should render default star count on error', async () => {
-    server.use(http.get(GITHUB_URL, () => HttpResponse.json({}, { status: 500 })))
+    mockGithubStar(500, {})
 
     renderWithQueryClient()
 
@@ -50,12 +47,7 @@ describe('GithubStar', () => {
 
   // Renders loader while fetching data
   it('should show loader while fetching', async () => {
-    server.use(
-      http.get(GITHUB_URL, async () => {
-        await new Promise(resolve => setTimeout(resolve, 50))
-        return HttpResponse.json({ stargazers_count: 222222 })
-      }),
-    )
+    mockGithubStar(200, { stargazers_count: 222222 }, 50)
 
     const { container } = renderWithQueryClient()
 
