@@ -292,9 +292,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             answer=final_answer,
             messages_ids=[],
         )
-        self.queue_manager.publish(
-            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
-        )
+        self.queue_manager.publish(QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER)
 
     def _handle_invoke_action(
         self,

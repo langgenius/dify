@@ -124,7 +124,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         function_call_state = True
                         tool_calls.extend(self.extract_tool_calls(chunk) or [])
                         tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
-                        
+
                         tool_call_inputs = self._prepare_tool_inputs(tool_calls)
 
                     if chunk.delta.message and chunk.delta.message.content:
@@ -146,7 +146,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     function_call_state = True
                     tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
                     tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
-                    
+
                     tool_call_inputs = self._prepare_tool_inputs(tool_calls)
 
                 if result.usage:
@@ -457,7 +457,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         :param final_answer: The final answer content.
         :param prompt_messages: The prompt messages.
         :param usage: The usage statistics.
-        :param delta_content: The content to be yielded in the chunk delta. 
+        :param delta_content: The content to be yielded in the chunk delta.
                               Defaults to "" to avoid duplicate display when yielding final answer.
         :return: A generator yielding LLMResultChunk.
         """
@@ -493,9 +493,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         :param kwargs: Additional arguments to be passed to save_agent_thought.
         """
         self.save_agent_thought(agent_thought_id=thought_id, **kwargs)
-        self.queue_manager.publish(
-            QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER
-        )
+        self.queue_manager.publish(QueueAgentThoughtEvent(agent_thought_id=thought_id), PublishFrom.APPLICATION_MANAGER)
 
     def _handle_direct_return(
         self,
