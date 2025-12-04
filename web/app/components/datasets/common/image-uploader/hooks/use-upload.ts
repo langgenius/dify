@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFileUploadConfig } from '@/service/use-common'
 import type { FileEntity, FileUploadConfig } from '../types'
-import { getFileType, traverseFileEntry } from '../utils'
+import { getFileType, getFileUploadConfig, traverseFileEntry } from '../utils'
 import Toast from '@/app/components/base/toast'
 import { useTranslation } from 'react-i18next'
 import { ACCEPT_TYPES } from '../constants'
@@ -22,23 +22,7 @@ export const useUpload = () => {
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
 
   const fileUploadConfig: FileUploadConfig = useMemo(() => {
-    if (!fileUploadConfigResponse) {
-      return {
-        imageFileSizeLimit: 2,
-        imageFileBatchLimit: 5,
-        singleChunkAttachmentLimit: 10,
-      }
-    }
-    const {
-      image_file_batch_limit,
-      single_chunk_attachment_limit,
-      attachment_image_file_size_limit,
-    } = fileUploadConfigResponse
-    return {
-      imageFileSizeLimit: Number(attachment_image_file_size_limit),
-      imageFileBatchLimit: Number(image_file_batch_limit),
-      singleChunkAttachmentLimit: Number(single_chunk_attachment_limit),
-    }
+    return getFileUploadConfig(fileUploadConfigResponse)
   }, [fileUploadConfigResponse])
 
   const handleDragEnter = (e: DragEvent) => {

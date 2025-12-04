@@ -1,4 +1,10 @@
+import type { FileUploadConfigResponse } from '@/models/common'
 import type { FileEntity } from './types'
+import {
+  DEFAULT_IMAGE_FILE_BATCH_LIMIT,
+  DEFAULT_IMAGE_FILE_SIZE_LIMIT,
+  DEFAULT_SINGLE_CHUNK_ATTACHMENT_LIMIT,
+} from './constants'
 
 export const getFileType = (currentFile: File) => {
   if (!currentFile)
@@ -50,4 +56,37 @@ export const traverseFileEntry = (entry: any, prefix = ''): Promise<FileWithPath
 export const fileIsUploaded = (file: FileEntity) => {
   if (file.uploadedId || file.progress === 100)
     return true
+}
+
+const getNumberValue = (value: number | string | undefined | null): number => {
+  if (value === undefined || value === null)
+    return 0
+  if (typeof value === 'number')
+    return value
+  if (typeof value === 'string')
+    return Number(value)
+  return 0
+}
+
+export const getFileUploadConfig = (fileUploadConfigResponse: FileUploadConfigResponse | undefined) => {
+  if (!fileUploadConfigResponse) {
+    return {
+      imageFileSizeLimit: DEFAULT_IMAGE_FILE_SIZE_LIMIT,
+      imageFileBatchLimit: DEFAULT_IMAGE_FILE_BATCH_LIMIT,
+      singleChunkAttachmentLimit: DEFAULT_SINGLE_CHUNK_ATTACHMENT_LIMIT,
+    }
+  }
+  const {
+    image_file_batch_limit,
+    single_chunk_attachment_limit,
+    attachment_image_file_size_limit,
+  } = fileUploadConfigResponse
+  const imageFileSizeLimit = getNumberValue(attachment_image_file_size_limit)
+  const imageFileBatchLimit = getNumberValue(image_file_batch_limit)
+  const singleChunkAttachmentLimit = getNumberValue(single_chunk_attachment_limit)
+  return {
+    imageFileSizeLimit: imageFileSizeLimit > 0 ? imageFileSizeLimit : DEFAULT_IMAGE_FILE_SIZE_LIMIT,
+    imageFileBatchLimit: imageFileBatchLimit > 0 ? imageFileBatchLimit : DEFAULT_IMAGE_FILE_BATCH_LIMIT,
+    singleChunkAttachmentLimit: singleChunkAttachmentLimit > 0 ? singleChunkAttachmentLimit : DEFAULT_SINGLE_CHUNK_ATTACHMENT_LIMIT,
+  }
 }
