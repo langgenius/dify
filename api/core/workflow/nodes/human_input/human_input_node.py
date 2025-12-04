@@ -13,9 +13,10 @@ from core.workflow.repositories.human_input_form_repository import (
     HumanInputFormEntity,
     HumanInputFormRepository,
 )
+from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
 
-from .entities import HumanInputNodeData
+from .entities import HumanInputNodeData, PlaceholderType
 
 if TYPE_CHECKING:
     from core.workflow.entities.graph_init_params import GraphInitParams
@@ -130,8 +131,27 @@ class HumanInputNode(Node[HumanInputNodeData]):
         pause_requested_event = PauseRequestedEvent(reason=required_event)
         return pause_requested_event
 
+    def _resolve_inputs(self) -> Mapping[str, Any]:
+        variable_pool = self.graph_runtime_state.variable_pool
+        resolved_inputs = {}
+        for input in self._node_data.inputs:
+            if (placeholder := input.placeholder) is None:
+                continue
+            if placeholder.type == PlaceholderType.CONSTANT:
+                continue
+            placeholder_value = variable_pool.get(placeholder.selector)
+            if placeholder_value is None:
+                # TODO: How should we handle this?
+                continue
+            resolved_inputs[input.output_variable_name] = (
+                WorkflowRuntimeTypeConverter().value_to_json_encodable_recursive(placeholder_value.value)
+            )
+
+        return resolved_inputs
+
     def _human_input_required_event(self, form_entity: HumanInputFormEntity) -> HumanInputRequired:
         node_data = self._node_data
+        resolved_placeholder_values = self._resolve_inputs()
         return HumanInputRequired(
             form_id=form_entity.id,
             form_content=form_entity.rendered_content,
@@ -140,6 +160,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
             node_id=self.id,
             node_title=node_data.title,
             web_app_form_token=form_entity.web_app_token,
+            resolved_placeholder_values=resolved_placeholder_values,
         )
 
     def _create_form(self) -> Generator[NodeEventBase, None, None] | NodeRunResult:
@@ -149,6 +170,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 node_id=self.id,
                 form_config=self._node_data,
                 rendered_content=self._render_form_content(),
+                resolved_placeholder_values=self._resolve_inputs(),
             )
             form_entity = self._form_repository.create_form(params)
             # Create human input required event

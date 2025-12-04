@@ -251,7 +251,7 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
         mock_form_entity.rendered_content = "rendered"
         mock_create_repo.create_form.return_value = mock_form_entity
 
-        def initial_graph_factory() -> tuple[Graph, GraphRuntimeState]:
+        def initial_graph_factory(mock_create_repo=mock_create_repo) -> tuple[Graph, GraphRuntimeState]:
             return _build_branching_graph(mock_config, mock_create_repo)
 
         initial_case = WorkflowTestCase(
@@ -303,7 +303,9 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
         mock_get_repo.get_form_submission.return_value = mock_form_submission
         mock_get_repo.get_form.return_value = mock_form_entity
 
-        def resume_graph_factory() -> tuple[Graph, GraphRuntimeState]:
+        def resume_graph_factory(
+            initial_result=initial_result, mock_get_repo=mock_get_repo
+        ) -> tuple[Graph, GraphRuntimeState]:
             assert initial_result.graph_runtime_state is not None
             serialized_runtime_state = initial_result.graph_runtime_state.dumps()
             resume_runtime_state = GraphRuntimeState.from_snapshot(serialized_runtime_state)

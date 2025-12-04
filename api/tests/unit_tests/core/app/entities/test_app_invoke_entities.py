@@ -52,7 +52,9 @@ def _create_workflow_generate_entity(trace_manager: TraceQueueManager | None = N
     )
 
 
-def _create_advanced_chat_generate_entity(trace_manager: TraceQueueManager | None = None) -> AdvancedChatAppGenerateEntity:
+def _create_advanced_chat_generate_entity(
+    trace_manager: TraceQueueManager | None = None,
+) -> AdvancedChatAppGenerateEntity:
     return AdvancedChatAppGenerateEntity(
         task_id="advanced-task",
         app_config=_build_workflow_app_config(AppMode.ADVANCED_CHAT),

@@ -1,5 +1,6 @@
+from collections.abc import Mapping
 from enum import StrEnum, auto
-from typing import Annotated, Literal, TypeAlias
+from typing import Annotated, Any, Literal, TypeAlias
 
 from pydantic import BaseModel, Field
 
@@ -19,6 +20,22 @@ class HumanInputRequired(BaseModel):
     actions: list[UserAction] = Field(default_factory=list)
     node_id: str
     node_title: str
+
+    # The `resolved_placeholder_values` stores the resolved values of variable placeholders. It's a mapping from
+    # `output_variable_name` to their resolved values.
+    #
+    # For example, The form contains a input with output variable name `name` and placeholder type `VARIABLE`, its
+    # selector is ["start", "name"]. While the HumanInputNode is executed, the correspond value of variable
+    # `start.name` in variable pool is `John`. Thus, the resolved value of the output variable `name` is `John`. The
+    # `resolved_placeholder_values` is `{"name": "John"}`.
+    #
+    # Only form inputs with placeholder type `VARIABLE` will be resolved and stored in `resolved_placeholder_values`.
+    resolved_placeholder_values: Mapping[str, Any] = Field(default_factory=dict)
+
+    # The `web_app_form_token` is the token used to submit the form via webapp. It corresponds to
+    # `HumanInputFormRecipient.access_token`.
+    #
+    # This field is `None` if webapp delivery is not set.
     web_app_form_token: str | None = None
 
 

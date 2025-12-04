@@ -13,6 +13,7 @@ from core.workflow.nodes.human_input.entities import (
     EmailDeliveryMethod,
     EmailRecipients,
     ExternalRecipient,
+    FormDefinition,
     HumanInputNodeData,
     MemberRecipient,
     UserAction,
@@ -22,6 +23,7 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.human_input import (
     EmailExternalRecipientPayload,
     EmailMemberRecipientPayload,
+    HumanInputForm,
     HumanInputFormRecipient,
     RecipientType,
 )
@@ -68,6 +70,7 @@ def _build_form_params(delivery_methods: list[EmailDeliveryMethod]) -> FormCreat
         node_id="human-input-node",
         form_config=form_config,
         rendered_content="<p>Approve?</p>",
+        resolved_placeholder_values={},
     )
 
 
@@ -156,3 +159,37 @@ class TestHumanInputFormRepositoryImplWithContainers:
         ]
         assert len(external_payloads) == 1
         assert external_payloads[0].email == "external@example.com"
+
+    def test_create_form_persists_placeholder_values(self, db_session_with_containers: Session) -> None:
+        engine = db_session_with_containers.get_bind()
+        assert isinstance(engine, Engine)
+        tenant, _ = _create_tenant_with_members(
+            db_session_with_containers,
+            member_emails=["prefill@example.com"],
+        )
+
+        repository = HumanInputFormRepositoryImpl(session_factory=engine, tenant_id=tenant.id)
+        resolved_values = {"greeting": "Hello!"}
+        params = FormCreateParams(
+            workflow_execution_id=str(uuid4()),
+            node_id="human-input-node",
+            form_config=HumanInputNodeData(
+                title="Human Approval",
+                form_content="<p>Approve?</p>",
+                inputs=[],
+                user_actions=[UserAction(id="approve", title="Approve")],
+            ),
+            rendered_content="<p>Approve?</p>",
+            resolved_placeholder_values=resolved_values,
+        )
+
+        form_entity = repository.create_form(params)
+
+        with Session(engine) as verification_session:
+            form_model = verification_session.scalars(
+                select(HumanInputForm).where(HumanInputForm.id == form_entity.id)
+            ).first()
+
+        assert form_model is not None
+        definition = FormDefinition.model_validate_json(form_model.form_definition)
+        assert definition.placeholder_values == resolved_values

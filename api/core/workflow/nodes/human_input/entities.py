@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Annotated, Literal, Optional, Self
+from typing import Annotated, Any, Literal, Optional, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -278,3 +278,6 @@ class FormDefinition(BaseModel):
 
     timeout: int
     timeout_unit: TimeoutUnit
+
+    # this is used to store the values of the placeholders
+    placeholder_values: dict[str, Any] = Field(default_factory=dict)

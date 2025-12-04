@@ -1,26 +1,7 @@
-import sys
-from types import ModuleType, SimpleNamespace
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
-if "core.ops.ops_trace_manager" not in sys.modules:
-    stub_module = ModuleType("core.ops.ops_trace_manager")
-
-    class _StubTraceQueueManager:
-        def __init__(self, *_, **__):
-            pass
-
-    stub_module.TraceQueueManager = _StubTraceQueueManager
-    sys.modules["core.ops.ops_trace_manager"] = stub_module
-
 from core.app.apps.workflow.app_generator import SKIP_PREPARE_USER_INPUTS_KEY, WorkflowAppGenerator
-from tests.unit_tests.core.workflow.graph_engine.test_pause_resume_state import (
-    _build_pausing_graph,
-    _build_runtime_state,
-    _node_successes,
-    _PausingNode,
-    _PausingNodeData,
-    _run_graph,
-)
 
 
 def test_should_prepare_user_inputs_defaults_to_true():

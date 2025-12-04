@@ -67,7 +67,7 @@ def _print_event(event: Mapping | str) -> None:
         payload = json.dumps(event, ensure_ascii=False)
     else:
         payload = event
-    print(payload)
+    # print(payload)
     sys.stdout.flush()
 
 

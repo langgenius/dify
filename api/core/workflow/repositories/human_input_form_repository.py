@@ -28,6 +28,12 @@ class FormCreateParams:
     form_config: HumanInputNodeData
     rendered_content: str
 
+    # resolved_placeholder_values saves the values for placeholders with
+    # type = VARIABLE.
+    #
+    # For type = CONSTANT, the value is not stored inside `resolved_placeholder_values`
+    resolved_placeholder_values: Mapping[str, Any]
+
 
 class HumanInputFormEntity(abc.ABC):
     @property

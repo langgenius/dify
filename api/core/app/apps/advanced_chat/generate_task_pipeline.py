@@ -537,8 +537,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             event=event,
             task_id=self._application_generate_entity.task_id,
         )
-        for response in responses:
-            yield response
+        yield from responses
         self._base_task_pipeline.queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
 
     def _handle_workflow_failed_event(

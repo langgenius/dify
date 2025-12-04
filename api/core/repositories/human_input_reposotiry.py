@@ -61,9 +61,7 @@ class _HumanInputFormRecipientEntityImpl(HumanInputFormRecipientEntity):
     @property
     def token(self) -> str:
         if self._recipient_model.access_token is None:
-            raise AssertionError(
-                f"access_token should not be None for recipient {self._recipient_model.id}"
-            )
+            raise AssertionError(f"access_token should not be None for recipient {self._recipient_model.id}")
         return self._recipient_model.access_token
 
 
@@ -309,6 +307,7 @@ class HumanInputFormRepositoryImpl:
                 rendered_content=params.rendered_content,
                 timeout=form_config.timeout,
                 timeout_unit=form_config.timeout_unit,
+                placeholder_values=dict(params.resolved_placeholder_values),
             )
             form_model = HumanInputForm(
                 id=form_id,
@@ -345,9 +344,7 @@ class HumanInputFormRepositoryImpl:
             if form_model is None:
                 return None
 
-            recipient_query = select(HumanInputFormRecipient).where(
-                HumanInputFormRecipient.form_id == form_model.id
-            )
+            recipient_query = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form_model.id)
             recipient_models = session.scalars(recipient_query).all()
         return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
 

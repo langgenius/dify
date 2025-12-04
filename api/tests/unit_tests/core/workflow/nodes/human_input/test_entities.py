@@ -2,9 +2,14 @@
 Unit tests for human input node entities.
 """
 
+from types import SimpleNamespace
+from unittest.mock import MagicMock
+
 import pytest
 from pydantic import ValidationError
 
+from core.workflow.entities import GraphInitParams
+from core.workflow.node_events import PauseRequestedEvent
 from core.workflow.nodes.human_input.entities import (
     ButtonStyle,
     DeliveryMethodType,
@@ -24,6 +29,10 @@ from core.workflow.nodes.human_input.entities import (
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
 )
+from core.workflow.nodes.human_input.human_input_node import HumanInputNode
+from core.workflow.repositories.human_input_form_repository import HumanInputFormRepository
+from core.workflow.runtime import GraphRuntimeState, VariablePool
+from core.workflow.system_variable import SystemVariable
 
 
 class TestDeliveryMethod:
@@ -261,6 +270,82 @@ class TestRecipients:
         assert len(recipients.items) == 2
         assert recipients.items[0].user_id == "user-123"
         assert recipients.items[1].email == "external@example.com"
+
+
+class TestHumanInputNodeVariableResolution:
+    """Tests for resolving variable-based placeholders in HumanInputNode."""
+
+    def test_resolves_variable_placeholders(self):
+        variable_pool = VariablePool(
+            system_variables=SystemVariable(
+                user_id="user",
+                app_id="app",
+                workflow_id="workflow",
+                workflow_execution_id="exec-1",
+            ),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        variable_pool.add(("start", "name"), "Jane Doe")
+        runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+        graph_init_params = GraphInitParams(
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            graph_config={"nodes": [], "edges": []},
+            user_id="user",
+            user_from="account",
+            invoke_from="debugger",
+            call_depth=0,
+        )
+
+        node_data = HumanInputNodeData(
+            title="Human Input",
+            form_content="Provide your name",
+            inputs=[
+                FormInput(
+                    type=FormInputType.TEXT_INPUT,
+                    output_variable_name="user_name",
+                    placeholder=FormInputPlaceholder(type=PlaceholderType.VARIABLE, selector=["start", "name"]),
+                ),
+                FormInput(
+                    type=FormInputType.TEXT_INPUT,
+                    output_variable_name="user_email",
+                    placeholder=FormInputPlaceholder(type=PlaceholderType.CONSTANT, value="foo@example.com"),
+                ),
+            ],
+            user_actions=[UserAction(id="submit", title="Submit")],
+        )
+        config = {"id": "human", "data": node_data.model_dump()}
+
+        mock_repo = MagicMock(spec=HumanInputFormRepository)
+        mock_repo.get_form.return_value = None
+        mock_repo.get_form_submission.return_value = None
+        mock_repo.create_form.return_value = SimpleNamespace(
+            id="form-1",
+            rendered_content="Provide your name",
+            web_app_token="token",
+            recipients=[],
+        )
+
+        node = HumanInputNode(
+            id=config["id"],
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=runtime_state,
+            form_repository=mock_repo,
+        )
+        node.init_node_data(config["data"])
+
+        run_result = node._run()
+        pause_event = next(run_result)
+
+        assert isinstance(pause_event, PauseRequestedEvent)
+        expected_values = {"user_name": "Jane Doe"}
+        assert pause_event.reason.resolved_placeholder_values == expected_values
+
+        params = mock_repo.create_form.call_args.args[0]
+        assert params.resolved_placeholder_values == expected_values
 
 
 class TestValidation:
