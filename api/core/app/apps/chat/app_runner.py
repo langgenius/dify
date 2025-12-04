@@ -11,6 +11,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.file import File
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
@@ -146,7 +147,7 @@ class ChatAppRunner(AppRunner):
 
         # get context from datasets
         context = None
-        context_files = []
+        context_files: list[File] = []
         if app_config.dataset and app_config.dataset.dataset_ids:
             hit_callback = DatasetIndexToolCallbackHandler(
                 queue_manager,
@@ -157,7 +158,7 @@ class ChatAppRunner(AppRunner):
             )
 
             dataset_retrieval = DatasetRetrieval(application_generate_entity)
-            context, context_files = dataset_retrieval.retrieve(
+            context, retrieved_files = dataset_retrieval.retrieve(
                 app_id=app_record.id,
                 user_id=application_generate_entity.user_id,
                 tenant_id=app_record.tenant_id,
@@ -176,6 +177,7 @@ class ChatAppRunner(AppRunner):
                     "enabled", False
                 ),
             )
+            context_files = retrieved_files or []
 
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)

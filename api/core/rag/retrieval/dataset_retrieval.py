@@ -1384,7 +1384,7 @@ class DatasetRetrieval:
     ):
         with flask_app.app_context():
             threads = []
-            all_documents_item = []
+            all_documents_item: list[Document] = []
             index_type = None
             for dataset in available_datasets:
                 index_type = dataset.indexing_technique
@@ -1444,6 +1444,6 @@ class DatasetRetrieval:
                 elif index_type == IndexTechniqueType.HIGH_QUALITY:
                     all_documents_item = self.calculate_vector_score(all_documents_item, top_k, score_threshold)
                 else:
-                    all_documents_item: Any | list[Any] = all_documents_item[:top_k] if top_k else all_documents_item
+                    all_documents_item = all_documents_item[:top_k] if top_k else all_documents_item
             if all_documents_item:
                 all_documents.extend(all_documents_item)
