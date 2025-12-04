@@ -176,7 +176,7 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: str | None = None) -> Account:
         """authenticate account with email and password"""
 
-        account = db.session.query(Account).filter_by(email=email).first()
+        account = db.session.query(Account).where(func.lower(Account.email) == func.lower(email)).first()
         if not account:
             raise AccountPasswordError("Invalid email or password.")
 
@@ -966,7 +966,7 @@ class AccountService:
 
     @staticmethod
     def check_email_unique(email: str) -> bool:
-        return db.session.query(Account).filter_by(email=email).first() is None
+        return db.session.query(Account).where(func.lower(Account.email) == func.lower(email)).first() is None
 
 
 class TenantService:
