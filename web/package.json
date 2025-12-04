@@ -45,6 +45,8 @@
     "knip": "knip"
   },
   "dependencies": {
+    "@amplitude/analytics-browser": "^2.31.3",
+    "@amplitude/plugin-session-replay-browser": "^1.23.6",
     "@emoji-mart/data": "^1.2.1",
     "@floating-ui/react": "^0.26.28",
     "@formatjs/intl-localematcher": "^0.5.10",
@@ -102,7 +104,7 @@
     "mime": "^4.1.0",
     "mitt": "^3.0.1",
     "negotiator": "^1.0.0",
-    "next": "~15.5.6",
+    "next": "~15.5.7",
     "next-pwa": "^5.6.0",
     "next-themes": "^0.4.6",
     "pinyin-pro": "^3.27.0",
@@ -199,6 +201,7 @@
     "lodash": "^4.17.21",
     "magicast": "^0.3.5",
     "postcss": "^8.5.6",
+    "react-scan": "^0.4.3",
     "sass": "^1.93.2",
     "storybook": "9.1.13",
     "tailwindcss": "^3.4.18",

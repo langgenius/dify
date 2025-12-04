@@ -300,6 +300,14 @@ class ModelProviderFactory:
                 file_name = provider_schema.icon_small.zh_Hans
             else:
                 file_name = provider_schema.icon_small.en_US
+        elif icon_type.lower() == "icon_small_dark":
+            if not provider_schema.icon_small_dark:
+                raise ValueError(f"Provider {provider} does not have small dark icon.")
+
+            if lang.lower() == "zh_hans":
+                file_name = provider_schema.icon_small_dark.zh_Hans
+            else:
+                file_name = provider_schema.icon_small_dark.en_US
         else:
             if not provider_schema.icon_large:
                 raise ValueError(f"Provider {provider} does not have large icon.")
