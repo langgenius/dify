@@ -17,7 +17,9 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
+from extensions.ext_database import db
 from libs import helper
+from models import Tenant
 from models.account import Account
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
@@ -186,12 +188,17 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                             "dataset_id": dataset.id,
                             "doc_type": DocType.IMAGE,
                         }
-                        file_document = AttachmentDocument(page_content=file.name, metadata=file_metadata)
+                        file_document = AttachmentDocument(page_content=file.filename or "image_file", metadata=file_metadata)
                         attachments.append(file_document)
                         all_multimodal_documents.append(file_document)
                     doc.attachments = attachments
                 else:
-                    doc.attachments = self._get_content_files(doc)
+                    account = db.session.query(Account).filter(Account.id == document.created_by).first()
+                    if account:
+                        tenant = db.session.query(Tenant).filter(Tenant.id == dataset.tenant_id).first()
+                        if tenant:
+                            account.current_tenant = tenant
+                    doc.attachments = self._get_content_files(doc, current_user=account)
                     if doc.attachments:
                         all_multimodal_documents.extend(doc.attachments)
                 documents.append(doc)
