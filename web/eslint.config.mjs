@@ -257,4 +257,9 @@ export default combine(
     },
   },
   oxlint.configs['flat/recommended'],
+  {
+    rules: {
+      'react-hooks/exhaustive-deps': 'error',
+    },
+  },
 )
