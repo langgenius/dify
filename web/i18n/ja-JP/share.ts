@@ -77,6 +77,14 @@ const translation = {
   login: {
     backToHome: 'ホームに戻る',
   },
+  serviceConnection: {
+    title: 'サービスを接続して開始',
+    description: 'このアプリを使用するには {{count}} 件の接続を設定する必要があります',
+    connect: '接続',
+    addApiKey: 'API Key を追加',
+    connected: '接続済み',
+    continue: '続行',
+  },
 }
 
 export default translation

@@ -77,6 +77,14 @@ const translation = {
   login: {
     backToHome: '返回首頁',
   },
+  serviceConnection: {
+    title: '連接所需服務以開始',
+    description: '您需要配置 {{count}} 個連接才能使用此應用',
+    connect: '連接',
+    addApiKey: '新增 API Key',
+    connected: '已連接',
+    continue: '繼續',
+  },
 }
 
 export default translation

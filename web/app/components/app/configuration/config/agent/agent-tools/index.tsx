@@ -32,6 +32,7 @@ import { canFindTool } from '@/utils'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useMittContextSelector } from '@/context/mitt-context'
+import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 
 type AgentToolWithMoreInfo = (AgentTool & { icon: any; collection?: Collection; use_end_user_credentials?: boolean; end_user_credential_type?: string }) | null
 const AgentTools: FC = () => {
@@ -383,10 +384,138 @@ const AgentTools: FC = () => {
                   </div>
                 ))}
               </div>
+              <div className='grid grid-cols-1 flex-wrap items-center justify-between gap-1 2xl:grid-cols-2'>
+                {tools.map((item: AgentTool & { icon: any; collection?: Collection }, index) => (
+                  <div key={index}
+                    className={cn(
+                      'cursor group relative flex w-full items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-1.5 pr-2 shadow-xs last-of-type:mb-0 hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+                      isDeleting === index && 'border-state-destructive-border hover:bg-state-destructive-hover',
+                    )}
+                  >
+                    <div className='flex w-0 grow items-center'>
+                      {item.isDeleted && <DefaultToolIcon className='h-5 w-5' />}
+                      {!item.isDeleted && (
+                        <div className={cn((item.notAuthor || !item.enabled) && 'shrink-0 opacity-50')}>
+                          {typeof item.icon === 'string' && <div className='h-5 w-5 rounded-md bg-cover bg-center' style={{ backgroundImage: `url(${item.icon})` }} />}
+                          {typeof item.icon !== 'string' && <AppIcon className='rounded-md' size='xs' icon={item.icon?.content} background={item.icon?.background} />}
+                        </div>
+                      )}
+                      <div
+                        className={cn(
+                          'system-xs-regular ml-1.5 flex w-0 grow items-center truncate',
+                          (item.isDeleted || item.notAuthor || !item.enabled) ? 'opacity-50' : '',
+                        )}
+                      >
+                        <span className='system-xs-medium pr-1.5 text-text-secondary'>{getProviderShowName(item)}</span>
+                        <span className='text-text-tertiary'>{item.tool_label}</span>
+                        {!item.isDeleted && (
+                          <Tooltip
+                            popupContent={
+                              <div className='w-[180px]'>
+                                <div className='mb-1.5 text-text-secondary'>{item.tool_name}</div>
+                                <div className='mb-1.5 text-text-tertiary'>{t('tools.toolNameUsageTip')}</div>
+                                <div className='cursor-pointer text-text-accent' onClick={() => copy(item.tool_name)}>{t('tools.copyToolName')}</div>
+                              </div>
+                            }
+                          >
+                            <div className='h-4 w-4'>
+                              <div className='ml-0.5 hidden group-hover:inline-block'>
+                                <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
+                              </div>
+                            </div>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </div>
+                    <div className='ml-1 flex shrink-0 items-center'>
+                      {item.isDeleted && (
+                        <div className='mr-2 flex items-center'>
+                          <Tooltip
+                            popupContent={t('tools.toolRemoved')}
+                          >
+                            <div className='mr-1 cursor-pointer rounded-md p-1 hover:bg-black/5'>
+                              <AlertTriangle className='h-4 w-4 text-[#F79009]' />
+                            </div>
+                          </Tooltip>
+                          <div
+                            className='cursor-pointer rounded-md p-1 text-text-tertiary hover:text-text-destructive'
+                            onClick={() => {
+                              const newModelConfig = produce(modelConfig, (draft) => {
+                                draft.agentConfig.tools.splice(index, 1)
+                              })
+                              setModelConfig(newModelConfig)
+                              formattingChangedDispatcher()
+                            }}
+                            onMouseOver={() => setIsDeleting(index)}
+                            onMouseLeave={() => setIsDeleting(-1)}
+                          >
+                            <RiDeleteBinLine className='h-4 w-4' />
+                          </div>
+                        </div>
+                      )}
+                      {!item.isDeleted && (
+                        <div className='mr-2 hidden items-center gap-1 group-hover:flex'>
+                          {!item.notAuthor && (
+                            <Tooltip
+                              popupContent={t('tools.setBuiltInTools.infoAndSetting')}
+                              needsDelay={false}
+                            >
+                              <div className='cursor-pointer rounded-md p-1  hover:bg-black/5' onClick={() => {
+                                setCurrentTool(item)
+                                setIsShowSettingTool(true)
+                              }}>
+                                <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                              </div>
+                            </Tooltip>
+                          )}
+                          <div
+                            className='cursor-pointer rounded-md p-1 text-text-tertiary hover:text-text-destructive'
+                            onClick={() => {
+                              const newModelConfig = produce(modelConfig, (draft) => {
+                                draft.agentConfig.tools.splice(index, 1)
+                              })
+                              setModelConfig(newModelConfig)
+                              formattingChangedDispatcher()
+                            }}
+                            onMouseOver={() => setIsDeleting(index)}
+                            onMouseLeave={() => setIsDeleting(-1)}
+                          >
+                            <RiDeleteBinLine className='h-4 w-4' />
+                          </div>
+                        </div>
+                      )}
+                      <div className={cn(item.isDeleted && 'opacity-50')}>
+                        {!item.notAuthor && (
+                          <Switch
+                            defaultValue={item.isDeleted ? false : item.enabled}
+                            disabled={item.isDeleted}
+                            size='md'
+                            onChange={(enabled) => {
+                              const newModelConfig = produce(modelConfig, (draft) => {
+                                (draft.agentConfig.tools[index] as any).enabled = enabled
+                              })
+                              setModelConfig(newModelConfig)
+                              formattingChangedDispatcher()
+                            }} />
+                        )}
+                        {item.notAuthor && (
+                          <Button variant='secondary' size='small' onClick={() => {
+                            setCurrentTool(item)
+                            setIsShowSettingTool(true)
+                          }}>
+                            {t('tools.notAuthorized')}
+                            <Indicator className='ml-2' color='orange' />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ))}
         </div>
-      </Panel >
+      </Panel>
       {isShowSettingTool && (
         <SettingBuiltInTool
           toolName={currentTool?.tool_name as string}

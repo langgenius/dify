@@ -4,14 +4,14 @@ from typing import TYPE_CHECKING, Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
-if TYPE_CHECKING:
-    from core.ops.ops_trace_manager import TraceQueueManager
-
 from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
 from core.model_runtime.entities.model_entities import AIModelEntity
+
+if TYPE_CHECKING:
+    from core.ops.ops_trace_manager import TraceQueueManager
 
 
 class InvokeFrom(StrEnum):
@@ -275,10 +275,8 @@ class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):
     start_node_id: str | None = None
 
 
-# Import TraceQueueManager at runtime to resolve forward references
 from core.ops.ops_trace_manager import TraceQueueManager
 
-# Rebuild models that use forward references
 AppGenerateEntity.model_rebuild()
 EasyUIBasedAppGenerateEntity.model_rebuild()
 ConversationAppGenerateEntity.model_rebuild()
