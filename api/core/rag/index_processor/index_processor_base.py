@@ -25,7 +25,8 @@ from core.rag.splitter.fixed_text_splitter import (
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
-from models import Account
+from extensions.ext_storage import storage
+from models import Account, ToolFile
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
@@ -155,10 +156,9 @@ class BaseIndexProcessor(ABC):
             if match:
                 if current_user:
                     tool_file_id = match.group(1)
-                    tool_file_extension = match.group(2)
-                    tool_file_sign_url = sign_tool_file(tool_file_id=tool_file_id, extension=tool_file_extension)
-                    upload_file_id = self._download_image(tool_file_sign_url, current_user)
-                    upload_file_id_list.append(upload_file_id)
+                    upload_file_id = self._download_tool_file(tool_file_id, current_user)
+                    if upload_file_id:
+                        upload_file_id_list.append(upload_file_id)
                 continue
             if current_user:
                 upload_file_id = self._download_image(image.split(" ")[0], current_user)
@@ -275,3 +275,21 @@ class BaseIndexProcessor(ABC):
         except Exception:
             logging.exception("Unexpected error downloading image from %s", image_url)
             return None
+
+    def _download_tool_file(self, tool_file_id: str, current_user: Account) -> str | None:
+        """
+        Download the tool file from the ID.
+        """
+        from services.file_service import FileService
+
+        tool_file = db.session.query(ToolFile).filter(ToolFile.id == tool_file_id).first()
+        if not tool_file:
+            return None
+        blob = storage.load_once(tool_file.file_key)
+        upload_file = FileService(db.engine).upload_file(
+            filename=tool_file.name,
+            content=blob,
+            mimetype=tool_file.mimetype,
+            user=current_user,
+        )
+        return upload_file.id
