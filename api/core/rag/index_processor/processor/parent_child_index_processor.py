@@ -3,7 +3,9 @@
 import json
 import uuid
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
+
+from flask_login import current_user
 
 from configs import dify_config
 from core.model_manager import ModelInstance
@@ -261,7 +263,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 }
                 child_documents.append(ChildDocument(page_content=child, metadata=child_metadata))
             doc = Document(page_content=parent_child.parent_content, metadata=metadata, children=child_documents)
-            if parent_child.files:
+            if parent_child.files and len(parent_child.files) > 0:
                 attachments = []
                 for file in parent_child.files:
                     file_metadata = {
@@ -275,7 +277,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     attachments.append(file_document)
                 doc.attachments = attachments
             else:
-                doc.attachments = self._get_content_files(doc)
+                account = db.session.query(Account).filter(Account.id == document.created_by).first()
+                doc.attachments = self._get_content_files(doc, current_user=account)
             documents.append(doc)
         if documents:
             # update document parent mode
