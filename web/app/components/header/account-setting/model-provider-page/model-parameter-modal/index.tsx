@@ -31,6 +31,7 @@ import Loading from '@/app/components/base/loading'
 import { useProviderContext } from '@/context/provider-context'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { MEDIA_RESOLUTION_RULE, isNanoBanana } from '@/utils/model-detection'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
@@ -83,8 +84,20 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const disabled = !isAPIKeySet || hasDeprecated || modelDisabled
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
-    return parameterRulesData?.data || []
-  }, [parameterRulesData])
+    const base: ModelParameterRule[] = parameterRulesData?.data || []
+    if (!isNanoBanana(
+      provider,
+      modelId,
+      (currentProvider as any)?.provider,
+      (currentModel as any)?.model,
+      (currentProvider as any)?.label?.en_US,
+      (currentProvider as any)?.label?.zh_Hans,
+      (currentModel as any)?.label?.en_US,
+      (currentModel as any)?.label?.zh_Hans,
+    ))
+      return base
+    return [...base, MEDIA_RESOLUTION_RULE]
+  }, [parameterRulesData, provider, modelId, currentProvider, currentModel])
 
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({

@@ -291,7 +291,7 @@ export type ModelParameterRule = {
   required: false
   type: string
   use_template?: string
-  options?: string[]
+  options?: Array<string | number | { value: string | number; name: string }>
   tagPlaceholder?: TypeWithI18N
 }
 

@@ -12,6 +12,7 @@ import type { ParameterValue } from '@/app/components/header/account-setting/mod
 import { fetchModelParameterRules } from '@/service/common'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
 import cn from '@/utils/classnames'
+import { MEDIA_RESOLUTION_RULE, isNanoBanana } from '@/utils/model-detection'
 
 type Props = {
   isAdvancedMode: boolean
@@ -36,8 +37,12 @@ const LLMParamsPanel = ({
   )
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
-    return parameterRulesData?.data || []
-  }, [parameterRulesData])
+    const base: ModelParameterRule[] = parameterRulesData?.data || []
+    if (!isNanoBanana(provider, modelId))
+      return base
+    // Inject custom media_resolution selector into completion params only for Nano Banana
+    return [...base, MEDIA_RESOLUTION_RULE]
+  }, [parameterRulesData, provider, modelId])
 
   const handleSelectPresetParameter = (toneId: number) => {
     const tone = TONE_LIST.find(tone => tone.id === toneId)

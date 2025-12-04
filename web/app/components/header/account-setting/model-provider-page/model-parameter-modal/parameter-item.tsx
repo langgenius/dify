@@ -216,14 +216,19 @@ const ParameterItem: FC<ParameterItemProps> = ({
       )
     }
 
-    if (parameterRule.type === 'string' && !!parameterRule?.options?.length) {
+    if (!!parameterRule?.options?.length && (parameterRule.type === 'string' || parameterRule.type === 'int')) {
+      const widthCls = isInWorkflow ? 'w-[150px]' : 'w-full'
       return (
         <SimpleSelect
-          className='!py-0'
-          wrapperClassName={cn('!h-8 w-full')}
-          defaultValue={renderValue as string}
+          className='!py-0 text-xs'
+          wrapperClassName={cn('!h-8', widthCls)}
+          defaultValue={renderValue as unknown as string | number}
           onSelect={handleSelect}
-          items={parameterRule.options.map(option => ({ value: option, name: option }))}
+          items={(parameterRule.options as Array<string | number | { value: string | number; name: string }>).map(option => (
+            typeof option === 'object' && option !== null && 'value' in option
+              ? option as { value: string | number; name: string }
+              : { value: option as string | number, name: String(option) }
+          ))}
         />
       )
     }

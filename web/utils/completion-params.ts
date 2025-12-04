@@ -1,4 +1,5 @@
 import type { FormValue, ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { MEDIA_RESOLUTION_RULE, isNanoBanana } from '@/utils/model-detection'
 
 export const mergeValidCompletionParams = (
   oldParams: FormValue | undefined,
@@ -59,7 +60,10 @@ export const mergeValidCompletionParams = (
           return
         }
         if (Array.isArray(rule.options) && rule.options.length) {
-          if (!(rule.options as string[]).includes(value)) {
+          const allowedValues = (rule.options as Array<string | number | { value: string | number; name: string }>).map(o =>
+            (typeof o === 'object' && o !== null && 'value' in o) ? (o as { value: string | number }).value : o,
+          )
+          if (!allowedValues.includes(value as any)) {
             removedDetails[key] = 'unsupported option'
             return
           }
@@ -85,5 +89,30 @@ export const fetchAndMergeValidCompletionParams = async (
   const { fetchModelParameterRules } = await import('@/service/common')
   const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
   const { data: parameterRules } = await fetchModelParameterRules(url)
-  return mergeValidCompletionParams(oldParams, parameterRules ?? [], isAdvancedMode)
+  const baseRules: ModelParameterRule[] = parameterRules ?? []
+  if (!isNanoBanana(provider, modelId))
+    return mergeValidCompletionParams(oldParams, baseRules, isAdvancedMode)
+
+  // Backward-compat: convert legacy string media_resolution to numeric 0..3
+  let migratedParams = oldParams
+  const m = oldParams?.media_resolution
+  if (typeof m === 'string') {
+    const map: Record<string, number> = {
+      MEDIA_RESOLUTION_LOW: 1,
+      MEDIA_RESOLUTION_MEDIUM: 2,
+      MEDIA_RESOLUTION_HIGH: 3,
+      MEDIA_RESOLUTION_UNSPECIFIED: 0,
+    }
+    migratedParams = {
+      ...oldParams,
+      media_resolution: map[m] ?? 0,
+    }
+  }
+
+  // Augment only for Nano Banana
+  const augmentedRules: ModelParameterRule[] = [
+    ...baseRules,
+    MEDIA_RESOLUTION_RULE,
+  ]
+  return mergeValidCompletionParams(migratedParams, augmentedRules, isAdvancedMode)
 }
