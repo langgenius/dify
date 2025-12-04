@@ -71,6 +71,7 @@ export type PluginDeclaration = {
   version: string
   author: string
   icon: string
+  icon_dark?: string
   name: string
   category: PluginCategoryEnum
   label: Record<Locale, string>
@@ -248,7 +249,7 @@ export type PluginInfoFromMarketPlace = {
 }
 
 export type Plugin = {
-  type: 'plugin' | 'bundle' | 'model' | 'extension' | 'tool' | 'agent_strategy'
+  type: 'plugin' | 'bundle' | 'model' | 'extension' | 'tool' | 'agent_strategy' | 'datasource' | 'trigger'
   org: string
   author?: string
   name: string
@@ -257,6 +258,7 @@ export type Plugin = {
   latest_version: string
   latest_package_identifier: string
   icon: string
+  icon_dark?: string
   verified: boolean
   label: Record<Locale, string>
   brief: Record<Locale, string>

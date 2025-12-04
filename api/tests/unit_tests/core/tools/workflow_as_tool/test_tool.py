@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -214,3 +216,76 @@ def test_create_variable_message():
         assert message.message.variable_name == var_name
         assert message.message.variable_value == var_value
         assert message.message.stream is False
+
+
+def test_resolve_user_from_database_falls_back_to_end_user(monkeypatch: pytest.MonkeyPatch):
+    """Ensure worker context can resolve EndUser when Account is missing."""
+
+    class StubSession:
+        def __init__(self, results: list):
+            self.results = results
+
+        def scalar(self, _stmt):
+            return self.results.pop(0)
+
+    tenant = SimpleNamespace(id="tenant_id")
+    end_user = SimpleNamespace(id="end_user_id", tenant_id="tenant_id")
+    db_stub = SimpleNamespace(session=StubSession([tenant, None, end_user]))
+
+    monkeypatch.setattr("core.tools.workflow_as_tool.tool.db", db_stub)
+
+    entity = ToolEntity(
+        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
+        parameters=[],
+        description=None,
+        has_runtime_parameters=False,
+    )
+    runtime = ToolRuntime(tenant_id="tenant_id", invoke_from=InvokeFrom.SERVICE_API)
+    tool = WorkflowTool(
+        workflow_app_id="",
+        workflow_as_tool_id="",
+        version="1",
+        workflow_entities={},
+        workflow_call_depth=1,
+        entity=entity,
+        runtime=runtime,
+    )
+
+    resolved_user = tool._resolve_user_from_database(user_id=end_user.id)
+
+    assert resolved_user is end_user
+
+
+def test_resolve_user_from_database_returns_none_when_no_tenant(monkeypatch: pytest.MonkeyPatch):
+    """Return None if tenant cannot be found in worker context."""
+
+    class StubSession:
+        def __init__(self, results: list):
+            self.results = results
+
+        def scalar(self, _stmt):
+            return self.results.pop(0)
+
+    db_stub = SimpleNamespace(session=StubSession([None]))
+    monkeypatch.setattr("core.tools.workflow_as_tool.tool.db", db_stub)
+
+    entity = ToolEntity(
+        identity=ToolIdentity(author="test", name="test tool", label=I18nObject(en_US="test tool"), provider="test"),
+        parameters=[],
+        description=None,
+        has_runtime_parameters=False,
+    )
+    runtime = ToolRuntime(tenant_id="missing_tenant", invoke_from=InvokeFrom.SERVICE_API)
+    tool = WorkflowTool(
+        workflow_app_id="",
+        workflow_as_tool_id="",
+        version="1",
+        workflow_entities={},
+        workflow_call_depth=1,
+        entity=entity,
+        runtime=runtime,
+    )
+
+    resolved_user = tool._resolve_user_from_database(user_id="any")
+
+    assert resolved_user is None

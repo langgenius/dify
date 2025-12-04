@@ -259,34 +259,3 @@ export const useMarketplaceContainerScroll = (
     }
   }, [handleScroll])
 }
-
-export const useSearchBoxAutoAnimate = (searchBoxAutoAnimate?: boolean) => {
-  const [searchBoxCanAnimate, setSearchBoxCanAnimate] = useState(true)
-
-  const handleSearchBoxCanAnimateChange = useCallback(() => {
-    if (!searchBoxAutoAnimate) {
-      const clientWidth = document.documentElement.clientWidth
-
-      if (clientWidth < 1400)
-        setSearchBoxCanAnimate(false)
-      else
-        setSearchBoxCanAnimate(true)
-    }
-  }, [searchBoxAutoAnimate])
-
-  useEffect(() => {
-    handleSearchBoxCanAnimateChange()
-  }, [handleSearchBoxCanAnimateChange])
-
-  useEffect(() => {
-    window.addEventListener('resize', handleSearchBoxCanAnimateChange)
-
-    return () => {
-      window.removeEventListener('resize', handleSearchBoxCanAnimateChange)
-    }
-  }, [handleSearchBoxCanAnimateChange])
-
-  return {
-    searchBoxCanAnimate,
-  }
-}
