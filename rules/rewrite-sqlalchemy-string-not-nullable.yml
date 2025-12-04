@@ -1,4 +1,4 @@
-id: remove-nullable-arg
+id: rewrite-sqlalchemy-string-not-nullable
 language: python
 rule:
   pattern: $X = mapped_column($$$ARGS)
@@ -8,7 +8,7 @@ rule:
     - pattern: $X = mapped_column($$$BEFORE, String($LENGTH), $$$MID, nullable=False, $$$AFTER)
     - pattern: $X = mapped_column($$$BEFORE, String($LENGTH), $$$MID, nullable=False)
 rewriters:
-- id: filter-string-nullable
+- id: filter-nullable-false-arg
   rule:
     pattern: $ARG
     inside:
@@ -23,7 +23,7 @@ rewriters:
 transform:
   NEWARGS:
     rewrite:
-      rewriters: [filter-string-nullable]
+      rewriters: [filter-nullable-false-arg]
       source: $$$ARGS
       joinBy: ', '
 fix: |-
