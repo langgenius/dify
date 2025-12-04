@@ -3,9 +3,7 @@
 import json
 import uuid
 from collections.abc import Mapping
-from typing import Any, cast
-
-from flask_login import current_user
+from typing import Any
 
 from configs import dify_config
 from core.model_manager import ModelInstance

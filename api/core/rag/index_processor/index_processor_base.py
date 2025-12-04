@@ -23,7 +23,6 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
-from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import Account, ToolFile

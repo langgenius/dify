@@ -413,7 +413,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                                 "doc_metadata": document.doc_metadata,
                             },
                             "title": document.name,
-                            "files": [file for file in record.files] if record.files else None,
+                            "files": list(record.files) if record.files else None,
                         }
                         if segment.answer:
                             source["content"] = f"question:{segment.get_sign_content()} \nanswer:{segment.answer}"

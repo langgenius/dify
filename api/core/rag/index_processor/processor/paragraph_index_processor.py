@@ -188,7 +188,9 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                             "dataset_id": dataset.id,
                             "doc_type": DocType.IMAGE,
                         }
-                        file_document = AttachmentDocument(page_content=file.filename or "image_file", metadata=file_metadata)
+                        file_document = AttachmentDocument(
+                            page_content=file.filename or "image_file", metadata=file_metadata
+                        )
                         attachments.append(file_document)
                         all_multimodal_documents.append(file_document)
                     doc.attachments = attachments
