@@ -113,7 +113,7 @@ class BillingService:
 
         url = f"{cls.base_url}{endpoint}"
         response = httpx.request(method, url, json=json, params=params, headers=headers)
-        if method == "GET" and response.status_code != httpx.codes.OK:
+        if method == "GET" and response.status_code != 200:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
         if method == "PUT":
             if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
