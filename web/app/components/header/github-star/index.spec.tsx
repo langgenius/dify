@@ -23,7 +23,7 @@ const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs =
 }
 
 describe('GithubStar', () => {
-  afterEach(() => {
+  beforeEach(() => {
     nock.cleanAll()
   })
 
