@@ -34,6 +34,7 @@ from .enums import (
     WorkflowRunTriggeredFrom,
     WorkflowTriggerStatus,
 )
+from .execution_extra_content import ExecutionExtraContent, HumanInputContent
 from .human_input import HumanInputForm
 from .model import (
     ApiRequest,
@@ -54,7 +55,6 @@ from .model import (
     MessageAgentThought,
     MessageAnnotation,
     MessageChain,
-    MessageExtraContent,
     MessageFeedback,
     MessageFile,
     OperationLog,
@@ -151,8 +151,10 @@ __all__ = [
     "DocumentSegment",
     "Embedding",
     "EndUser",
+    "ExecutionExtraContent",
     "ExternalKnowledgeApis",
     "ExternalKnowledgeBindings",
+    "HumanInputContent",
     "HumanInputForm",
     "IconType",
     "InstalledApp",
@@ -162,7 +164,6 @@ __all__ = [
     "MessageAgentThought",
     "MessageAnnotation",
     "MessageChain",
-    "MessageExtraContent",
     "MessageFeedback",
     "MessageFile",
     "OperationLog",
