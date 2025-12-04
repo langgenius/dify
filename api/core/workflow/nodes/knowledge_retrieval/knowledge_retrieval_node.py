@@ -130,7 +130,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 metadata={},
                 llm_usage=LLMUsage.empty_usage(),
             )
-        variables = {}
+        variables: dict[str, Any] = {}
         # extract variables
         if self._node_data.query_variable_selector:
             variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
@@ -413,7 +413,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                                 "doc_metadata": document.doc_metadata,
                             },
                             "title": document.name,
-                            "files": [file for file in record.files] if record.files else None,
+                            "files": list(record.files) if record.files else None,
                         }
                         if segment.answer:
                             source["content"] = f"question:{segment.get_sign_content()} \nanswer:{segment.answer}"
@@ -423,11 +423,13 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
                 retrieval_resource_list,
-                key=lambda x: x["metadata"]["score"] if x["metadata"].get("score") is not None else 0.0,
+                key=lambda x: x.get("metadata", {}).get("score")
+                if x.get("metadata", {}).get("score") is not None
+                else 0.0,  # type: ignore[return-value]
                 reverse=True,
             )
             for position, item in enumerate(retrieval_resource_list, start=1):
-                item["metadata"]["position"] = position
+                item["metadata"]["position"] = position  # type: ignore[index]
         return retrieval_resource_list, usage
 
     def _get_metadata_filter_condition(

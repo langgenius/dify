@@ -3,9 +3,7 @@
 import json
 import uuid
 from collections.abc import Mapping
-from typing import Any, cast
-
-from flask_login import current_user
+from typing import Any
 
 from configs import dify_config
 from core.model_manager import ModelInstance
@@ -277,9 +275,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     attachments.append(file_document)
                 doc.attachments = attachments
             else:
-                account = db.session.query(Account).filter(Account.id == document.created_by).first()
+                account = db.session.query(Account).where(Account.id == document.created_by).first()
                 if account:
-                    tenant = db.session.query(Tenant).filter(Tenant.id == dataset.tenant_id).first()
+                    tenant = db.session.query(Tenant).where(Tenant.id == dataset.tenant_id).first()
                     if tenant:
                         account.current_tenant = tenant
                     doc.attachments = self._get_content_files(doc, current_user=account)

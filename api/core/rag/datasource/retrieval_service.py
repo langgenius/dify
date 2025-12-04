@@ -1,5 +1,6 @@
 import concurrent.futures
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any
 
 from flask import Flask, current_app
 from sqlalchemy import select
@@ -674,7 +675,7 @@ class RetrievalService:
     @classmethod
     def get_segment_attachment_info(
         cls, dataset_id: str, tenant_id: str, attachment_id: str, session: Session
-    ) -> dict[str, dict[str, str | int] | str] | None:
+    ) -> dict[str, Any] | None:
         upload_file = session.query(UploadFile).where(UploadFile.id == attachment_id).first()
         if upload_file:
             attachment_binding = (
