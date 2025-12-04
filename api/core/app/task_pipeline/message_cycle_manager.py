@@ -108,7 +108,7 @@ class MessageCycleManager:
 
                 cached_name = redis_client.get(cache_key)
                 if cached_name:
-                    name = cached_name.decode('utf-8')
+                    name = cached_name.decode("utf-8")
                 else:
                     try:
                         name = LLMGenerator.generate_conversation_name(
@@ -117,8 +117,7 @@ class MessageCycleManager:
                         redis_client.setex(cache_key, 3600, name)
                     except Exception:
                         if dify_config.DEBUG:
-                            logger.exception(
-                                "generate conversation name failed, conversation_id: %s", conversation_id)
+                            logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
                         name = query[:47] + "..." if len(query) > 50 else query
                 conversation.name = name
                 db.session.commit()
