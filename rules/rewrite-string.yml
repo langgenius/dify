@@ -1,0 +1,30 @@
+id: remove-nullable-arg
+language: python
+rule:
+  pattern: $X = mapped_column($$$ARGS)
+  any:
+    - pattern: $X = mapped_column($$$BEFORE, sa.String($LENGTH), $$$MID, nullable=False, $$$AFTER)
+    - pattern: $X = mapped_column($$$BEFORE, sa.String($LENGTH), $$$MID, nullable=False)
+    - pattern: $X = mapped_column($$$BEFORE, String($LENGTH), $$$MID, nullable=False, $$$AFTER)
+    - pattern: $X = mapped_column($$$BEFORE, String($LENGTH), $$$MID, nullable=False)
+rewriters:
+- id: filter-string-nullable
+  rule:
+    pattern: $ARG
+    inside:
+      kind: argument_list
+    all:
+    - not:
+        pattern:
+          context: a(nullable=False)
+          selector: keyword_argument
+  fix: $ARG
+
+transform:
+  NEWARGS:
+    rewrite:
+      rewriters: [filter-string-nullable]
+      source: $$$ARGS
+      joinBy: ', '
+fix: |-
+  $X: Mapped[str] = mapped_column($NEWARGS)
