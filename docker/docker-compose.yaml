@@ -790,7 +790,7 @@ services:
           "-h",
           "db_postgres",
           "-U",
-          "${PGUSER:-postgres}",
+          "${DB_USERNAME:-postgres}",
           "-d",
           "${DB_DATABASE:-dify}",
         ]
