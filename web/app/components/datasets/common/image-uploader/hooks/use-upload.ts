@@ -24,18 +24,18 @@ export const useUpload = () => {
   const fileUploadConfig: FileUploadConfig = useMemo(() => {
     if (!fileUploadConfigResponse) {
       return {
-        imageFileSizeLimit: 10,
-        imageFileBatchLimit: 10,
+        imageFileSizeLimit: 2,
+        imageFileBatchLimit: 5,
         singleChunkAttachmentLimit: 10,
       }
     }
     const {
-      image_file_size_limit,
       image_file_batch_limit,
       single_chunk_attachment_limit,
+      attachment_image_file_size_limit,
     } = fileUploadConfigResponse
     return {
-      imageFileSizeLimit: Number(image_file_size_limit),
+      imageFileSizeLimit: Number(attachment_image_file_size_limit),
       imageFileBatchLimit: Number(image_file_batch_limit),
       singleChunkAttachmentLimit: Number(single_chunk_attachment_limit),
     }
