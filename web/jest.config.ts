@@ -195,7 +195,7 @@ const config: Config = {
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
   // For pnpm: allow transforming uuid ESM package
   transformIgnorePatterns: [
-    'node_modules/(?!(.pnpm|uuid))',
+    'node_modules/(?!(.pnpm|uuid|until-async@3.0.2))',
   ],
 
   // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
