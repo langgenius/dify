@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Optional
 from urllib.parse import unquote, urlparse
 
-import requests
+import httpx
 
 from configs import dify_config
 from core.helper import ssrf_proxy
@@ -211,7 +211,7 @@ class BaseIndexProcessor(ABC):
 
         try:
             # Download with timeout
-            response = ssrf_proxy.get(image_url, timeout=DOWNLOAD_TIMEOUT, stream=True)
+            response = ssrf_proxy.get(image_url, timeout=DOWNLOAD_TIMEOUT)
             response.raise_for_status()
 
             # Check Content-Length header if available
@@ -248,7 +248,7 @@ class BaseIndexProcessor(ABC):
                 filename = f"{name}{real_ext}"
             # Download content with size limit
             blob = b''
-            for chunk in response.iter_content(chunk_size=8192):
+            for chunk in response.iter_bytes(chunk_size=8192):
                 blob += chunk
                 if len(blob) > MAX_IMAGE_SIZE:
                     logging.warning("Image from %s exceeds 2MB limit during download", image_url)
@@ -265,10 +265,10 @@ class BaseIndexProcessor(ABC):
                 user=current_user,
             )
             return upload_file.id
-        except requests.exceptions.Timeout:
+        except httpx.TimeoutException:
             logging.warning("Timeout downloading image from %s after %s seconds", image_url, DOWNLOAD_TIMEOUT)
             return None
-        except requests.exceptions.RequestException as e:
+        except httpx.RequestError as e:
             logging.warning("Error downloading image from %s: %s", image_url, str(e))
             return None
         except Exception:
