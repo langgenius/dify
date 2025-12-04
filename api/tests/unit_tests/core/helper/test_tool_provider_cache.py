@@ -3,8 +3,9 @@ from unittest.mock import patch
 
 import pytest
 from redis.exceptions import RedisError
-from core.tools.entities.api_entities import ToolProviderTypeApiLiteral
+
 from core.helper.tool_provider_cache import ToolProviderListCache
+from core.tools.entities.api_entities import ToolProviderTypeApiLiteral
 
 
 @pytest.fixture
@@ -38,9 +39,7 @@ class TestToolProviderListCache:
 
         result = ToolProviderListCache.get_cached_providers(tenant_id, typ)
 
-        mock_redis_client.get.assert_called_once_with(
-            ToolProviderListCache._generate_cache_key(tenant_id, typ)
-        )
+        mock_redis_client.get.assert_called_once_with(ToolProviderListCache._generate_cache_key(tenant_id, typ))
         assert result == mock_providers
 
     def test_get_cached_providers_decode_error(self, mock_redis_client):
@@ -73,9 +72,7 @@ class TestToolProviderListCache:
         ToolProviderListCache.set_cached_providers(tenant_id, typ, mock_providers)
 
         mock_redis_client.setex.assert_called_once_with(
-            cache_key,
-            ToolProviderListCache.CACHE_TTL,
-            json.dumps(mock_providers)
+            cache_key, ToolProviderListCache.CACHE_TTL, json.dumps(mock_providers)
         )
 
     def test_invalidate_cache_specific_type(self, mock_redis_client):
@@ -93,7 +90,7 @@ class TestToolProviderListCache:
         tenant_id = "tenant_123"
         mock_keys = [
             b"tool_providers:tenant_id:tenant_123:type:all",
-            b"tool_providers:tenant_id:tenant_123:type:builtin"
+            b"tool_providers:tenant_id:tenant_123:type:builtin",
         ]
         mock_redis_client.scan_iter.return_value = mock_keys
 
