@@ -604,15 +604,14 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
   useEffect(() => {
     // After first fetch, refresh plugin list each time all tasks are done
     // Skip initialization period, because the query cache is not updated yet
-    if (initialized && !isRefetching) {
-      const lastData = cloneDeep(data)
-      const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
-      const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
-      if (taskDone) {
-        if (lastData?.tasks.length && !taskAllFailed)
-          refreshPluginList(category ? { category } as any : undefined, !category)
-      }
-    }
+    if (!initialized || isRefetching)
+      return
+
+    const lastData = cloneDeep(data)
+    const taskDone = lastData?.tasks.every(task => task.status === TaskStatus.success || task.status === TaskStatus.failed)
+    const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
+    if (taskDone && lastData?.tasks.length && !taskAllFailed)
+      refreshPluginList(category ? { category } as any : undefined, !category)
   }, [isRefetching])
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useFileUploadConfig } from '@/service/use-common'
 import type { FileEntity, FileUploadConfig } from '../types'
-import { getFileType, traverseFileEntry } from '../utils'
+import { getFileType, getFileUploadConfig, traverseFileEntry } from '../utils'
 import Toast from '@/app/components/base/toast'
 import { useTranslation } from 'react-i18next'
 import { ACCEPT_TYPES } from '../constants'
@@ -22,23 +22,7 @@ export const useUpload = () => {
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
 
   const fileUploadConfig: FileUploadConfig = useMemo(() => {
-    if (!fileUploadConfigResponse) {
-      return {
-        imageFileSizeLimit: 10,
-        imageFileBatchLimit: 10,
-        singleChunkAttachmentLimit: 10,
-      }
-    }
-    const {
-      image_file_size_limit,
-      image_file_batch_limit,
-      single_chunk_attachment_limit,
-    } = fileUploadConfigResponse
-    return {
-      imageFileSizeLimit: Number(image_file_size_limit),
-      imageFileBatchLimit: Number(image_file_batch_limit),
-      singleChunkAttachmentLimit: Number(single_chunk_attachment_limit),
-    }
+    return getFileUploadConfig(fileUploadConfigResponse)
   }, [fileUploadConfigResponse])
 
   const handleDragEnter = (e: DragEvent) => {
@@ -73,7 +57,7 @@ export const useUpload = () => {
       Toast.notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
     else
       Toast.notify({ type: 'error', message: t('dataset.imageUploader.fileSizeLimitExceeded', { size: fileUploadConfig.imageFileSizeLimit }) })
-  }, [])
+  }, [fileUploadConfig, t])
 
   const getValidFiles = useCallback((files: File[]) => {
     let validType = true
@@ -219,7 +203,7 @@ export const useUpload = () => {
       false,
     )
     reader.readAsDataURL(file)
-  }, [Toast, t, handleAddFile, handleUpdateFile])
+  }, [t, handleAddFile, handleUpdateFile])
 
   const handleFileUpload = useCallback((newFiles: File[]) => {
     const { files } = fileStore.getState()
@@ -234,14 +218,14 @@ export const useUpload = () => {
     }
     for (const file of newFiles)
       handleLocalFileUpload(file)
-  }, [fileUploadConfig])
+  }, [fileUploadConfig, fileStore, t, handleLocalFileUpload])
 
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const { imageFileBatchLimit } = fileUploadConfig
     const files = Array.from(e.target.files ?? []).slice(0, imageFileBatchLimit)
     const validFiles = getValidFiles(files)
     handleFileUpload(validFiles)
-  }, [getValidFiles, handleFileUpload])
+  }, [getValidFiles, handleFileUpload, fileUploadConfig])
 
   const handleDrop = useCallback(async (e: DragEvent) => {
     e.preventDefault()
@@ -259,7 +243,7 @@ export const useUpload = () => {
     const files = nested.flat().slice(0, fileUploadConfig.imageFileBatchLimit)
     const validFiles = getValidFiles(files)
     handleFileUpload(validFiles)
-  }, [fileUploadConfig, handleFileUpload])
+  }, [fileUploadConfig, handleFileUpload, getValidFiles])
 
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
