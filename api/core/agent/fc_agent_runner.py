@@ -457,7 +457,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         :param final_answer: The final answer content.
         :param prompt_messages: The prompt messages.
         :param usage: The usage statistics.
-        :param delta_content: The content to be yielded in the chunk delta. Defaults to "" to avoid duplicate display when yielding final answer.
+        :param delta_content: The content to be yielded in the chunk delta. 
+                              Defaults to "" to avoid duplicate display when yielding final answer.
         :return: A generator yielding LLMResultChunk.
         """
         yield LLMResultChunk(
