@@ -53,7 +53,8 @@ def delete_segment_from_index_task(
         if dataset.is_multimodal:
             # delete segment attachment binding
             segment_attachment_bindings = (
-                db.session.query(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                db.session.query(SegmentAttachmentBinding)
+                .where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
                 .all()
             )
             if segment_attachment_bindings:
