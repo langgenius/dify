@@ -169,7 +169,7 @@ class BaseIndexProcessor(ABC):
 
         # Get unique IDs for database query
         unique_upload_file_ids = list(set(upload_file_id_list))
-        upload_files = db.session.query(UploadFile).filter(UploadFile.id.in_(unique_upload_file_ids)).all()
+        upload_files = db.session.query(UploadFile).where(UploadFile.id.in_(unique_upload_file_ids)).all()
 
         # Create a mapping from ID to UploadFile for quick lookup
         upload_file_map = {upload_file.id: upload_file for upload_file in upload_files}
@@ -281,7 +281,7 @@ class BaseIndexProcessor(ABC):
         """
         from services.file_service import FileService
 
-        tool_file = db.session.query(ToolFile).filter(ToolFile.id == tool_file_id).first()
+        tool_file = db.session.query(ToolFile).where(ToolFile.id == tool_file_id).first()
         if not tool_file:
             return None
         blob = storage.load_once(tool_file.file_key)

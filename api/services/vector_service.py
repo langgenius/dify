@@ -269,7 +269,7 @@ class VectorService:
                     vector.delete_by_ids(old_attachment_ids)
 
             # Delete existing segment attachment bindings in one operation
-            db.session.query(SegmentAttachmentBinding).filter(SegmentAttachmentBinding.segment_id == segment.id).delete(
+            db.session.query(SegmentAttachmentBinding).where(SegmentAttachmentBinding.segment_id == segment.id).delete(
                 synchronize_session=False
             )
 
@@ -278,7 +278,7 @@ class VectorService:
                 return
 
             # Bulk fetch upload files - only fetch needed fields
-            upload_file_list = db.session.query(UploadFile).filter(UploadFile.id.in_(attachment_ids)).all()
+            upload_file_list = db.session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).all()
 
             if not upload_file_list:
                 db.session.commit()

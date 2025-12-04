@@ -54,7 +54,7 @@ def delete_segment_from_index_task(
             # delete segment attachment binding
             segment_attachment_bindings = (
                 db.session.query(SegmentAttachmentBinding)
-                .filter(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                .where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
                 .all()
             )
             if segment_attachment_bindings:
@@ -63,7 +63,7 @@ def delete_segment_from_index_task(
                 for binding in segment_attachment_bindings:
                     db.session.delete(binding)
                 # delete upload file
-                db.session.query(UploadFile).filter(UploadFile.id.in_(attachment_ids)).delete(synchronize_session=False)
+                db.session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).delete(synchronize_session=False)
                 db.session.commit()
 
         end_at = time.perf_counter()
