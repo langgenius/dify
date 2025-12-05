@@ -522,7 +522,7 @@ class RetrievalService:
                     record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks")  # type: ignore
                     record["score"] = segment_child_map[record["segment"].id]["max_score"]
                 if record["segment"].id in segment_file_map:
-                    record["files"] = segment_file_map[record["segment"].id]
+                    record["files"] = segment_file_map[record["segment"].id]  # type: ignore[assignment]
 
             result = []
             for record in records:

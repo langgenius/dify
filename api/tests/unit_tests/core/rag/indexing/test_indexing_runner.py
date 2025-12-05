@@ -802,6 +802,21 @@ class TestIndexingRunnerRun:
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
         mock_dependencies["db"].session.scalar.return_value = mock_process_rule
 
+        # Mock current_user (Account) for _transform
+        mock_current_user = MagicMock()
+        mock_current_user.set_tenant_id = MagicMock()
+
+        # Setup db.session.query to return different results based on the model
+        def mock_query_side_effect(model):
+            mock_query_result = MagicMock()
+            if model.__name__ == "Dataset":
+                mock_query_result.filter_by.return_value.first.return_value = mock_dataset
+            elif model.__name__ == "Account":
+                mock_query_result.filter_by.return_value.first.return_value = mock_current_user
+            return mock_query_result
+
+        mock_dependencies["db"].session.query.side_effect = mock_query_side_effect
+
         # Mock processor
         mock_processor = MagicMock()
         mock_dependencies["factory"].return_value.init_index_processor.return_value = mock_processor
