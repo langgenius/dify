@@ -423,7 +423,9 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
                 retrieval_resource_list,
-                key=lambda x: x.get("metadata", {}).get("score") if x.get("metadata", {}).get("score") is not None else 0.0,  # type: ignore[arg-type, union-attr, return-value]
+                key=lambda x: x.get("metadata", {}).get("score")
+                if x.get("metadata", {}).get("score") is not None
+                else 0.0,  # type: ignore[arg-type, union-attr, return-value]
                 reverse=True,
             )
             for position, item in enumerate(retrieval_resource_list, start=1):
