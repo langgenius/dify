@@ -21,6 +21,7 @@ from opentelemetry.trace import Link, SpanContext, TraceFlags
 
 from configs import dify_config
 from core.ops.aliyun_trace.entities.aliyun_trace_entity import SpanData
+from core.ops.aliyun_trace.entities.semconv import ACS_ARMS_SERVICE_FEATURE
 
 INVALID_SPAN_ID: Final[int] = 0x0000000000000000
 INVALID_TRACE_ID: Final[int] = 0x00000000000000000000000000000000
@@ -48,6 +49,7 @@ class TraceClient:
                 ResourceAttributes.SERVICE_VERSION: f"dify-{dify_config.project.version}-{dify_config.COMMIT_SHA}",
                 ResourceAttributes.DEPLOYMENT_ENVIRONMENT: f"{dify_config.DEPLOY_ENV}-{dify_config.EDITION}",
                 ResourceAttributes.HOST_NAME: socket.gethostname(),
+                ACS_ARMS_SERVICE_FEATURE: "genai_app",
             }
         )
         self.span_builder = SpanBuilder(self.resource)
@@ -75,10 +77,10 @@ class TraceClient:
             if response.status_code == 405:
                 return True
             else:
-                logger.debug("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
+                logger.warning("AliyunTrace API check failed: Unexpected status code: %s", response.status_code)
                 return False
         except httpx.RequestError as e:
-            logger.debug("AliyunTrace API check failed: %s", str(e))
+            logger.warning("AliyunTrace API check failed: %s", str(e))
             raise ValueError(f"AliyunTrace API check failed: {str(e)}")
 
     def get_project_url(self) -> str:
@@ -116,7 +118,7 @@ class TraceClient:
             try:
                 self.exporter.export(spans_to_export)
             except Exception as e:
-                logger.debug("Error exporting spans: %s", e)
+                logger.warning("Error exporting spans: %s", e)
 
     def shutdown(self) -> None:
         with self.condition:

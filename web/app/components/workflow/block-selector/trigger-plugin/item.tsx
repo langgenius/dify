@@ -10,6 +10,17 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import TriggerPluginActionItem from './action-item'
+import { Theme } from '@/types/app'
+import useTheme from '@/hooks/use-theme'
+import { basePath } from '@/utils/var'
+
+const normalizeProviderIcon = (icon?: TriggerWithProvider['icon']) => {
+  if (!icon)
+    return icon
+  if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
+    return `${basePath}${icon}`
+  return icon
+}
 
 type Props = {
   className?: string
@@ -26,6 +37,7 @@ const TriggerPluginItem: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const { theme } = useTheme()
   const notShowProvider = payload.type === CollectionType.workflow
   const actions = payload.events
   const hasAction = !notShowProvider
@@ -55,6 +67,23 @@ const TriggerPluginItem: FC<Props> = ({
 
     return payload.author || ''
   }, [payload.author, payload.type, t])
+  const normalizedIcon = useMemo<TriggerWithProvider['icon']>(() => {
+    return normalizeProviderIcon(payload.icon) ?? payload.icon
+  }, [payload.icon])
+  const normalizedIconDark = useMemo(() => {
+    if (!payload.icon_dark)
+      return undefined
+    return normalizeProviderIcon(payload.icon_dark) ?? payload.icon_dark
+  }, [payload.icon_dark])
+  const providerIcon = useMemo<TriggerWithProvider['icon']>(() => {
+    if (theme === Theme.dark && normalizedIconDark)
+      return normalizedIconDark
+    return normalizedIcon
+  }, [normalizedIcon, normalizedIconDark, theme])
+  const providerWithResolvedIcon = useMemo(() => ({
+    ...payload,
+    icon: providerIcon,
+  }), [payload, providerIcon])
 
   return (
     <div
@@ -99,7 +128,7 @@ const TriggerPluginItem: FC<Props> = ({
             <BlockIcon
               className='shrink-0'
               type={BlockEnum.TriggerPlugin}
-              toolIcon={payload.icon}
+              toolIcon={providerIcon}
             />
             <div className='ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary'>
               <span className='max-w-[200px] truncate'>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
@@ -118,7 +147,7 @@ const TriggerPluginItem: FC<Props> = ({
           actions.map(action => (
             <TriggerPluginActionItem
               key={action.name}
-              provider={payload}
+              provider={providerWithResolvedIcon}
               payload={action}
               onSelect={onSelect}
               disabled={false}

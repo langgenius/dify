@@ -12,10 +12,7 @@ import {
 import { useCallback, useEffect } from 'react'
 import { PluginCategoryEnum } from '../types'
 import { useMarketplaceContext } from './context'
-import {
-  useMixedTranslation,
-  useSearchBoxAutoAnimate,
-} from './hooks'
+import { useMixedTranslation } from './hooks'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
   all: 'all',
@@ -30,19 +27,16 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
 type PluginTypeSwitchProps = {
   locale?: string
   className?: string
-  searchBoxAutoAnimate?: boolean
   showSearchParams?: boolean
 }
 const PluginTypeSwitch = ({
   locale,
   className,
-  searchBoxAutoAnimate,
   showSearchParams,
 }: PluginTypeSwitchProps) => {
   const { t } = useMixedTranslation(locale)
   const activePluginType = useMarketplaceContext(s => s.activePluginType)
   const handleActivePluginTypeChange = useMarketplaceContext(s => s.handleActivePluginTypeChange)
-  const { searchBoxCanAnimate } = useSearchBoxAutoAnimate(searchBoxAutoAnimate)
 
   const options = [
     {
@@ -105,7 +99,6 @@ const PluginTypeSwitch = ({
   return (
     <div className={cn(
       'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
-      searchBoxCanAnimate && 'sticky top-[56px] z-10',
       className,
     )}>
       {

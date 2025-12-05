@@ -202,6 +202,16 @@ Reserve snapshots for static, deterministic fragments (icons, badges, layout chr
 
 **Note**: Dify is a desktop application. **No need for** responsive/mobile testing.
 
+### 12. Mock API
+
+Use Nock to mock API calls. Example:
+
+```ts
+const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs = 0) => {
+  return nock(GITHUB_HOST).get(GITHUB_PATH).delay(delayMs).reply(status, body)
+}
+```
+
 ## Code Style
 
 ### Example Structure
