@@ -508,9 +508,7 @@ class TestRetrievalService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_vector_search_with_document_filter(
-        self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents
-    ):
+    def test_vector_search_with_document_filter(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test vector search with document ID filtering.
 
@@ -1166,9 +1164,7 @@ class TestRetrievalService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_vector_search_with_metadata_filter(
-        self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents
-    ):
+    def test_vector_search_with_metadata_filter(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test vector search with metadata-based document filtering.
 
@@ -1456,9 +1452,7 @@ class TestRetrievalService:
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_semantic_search_with_reranking(
-        self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents
-    ):
+    def test_semantic_search_with_reranking(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test semantic search with reranking model.
 
