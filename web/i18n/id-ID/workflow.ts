@@ -381,6 +381,7 @@ const translation = {
     goTo: 'Pergi ke',
     startNode: 'Mulai Node',
     scrollToSelectedNode: 'Gulir ke node yang dipilih',
+    openWorkflow: 'Buka Alur Kerja',
   },
   nodes: {
     common: {

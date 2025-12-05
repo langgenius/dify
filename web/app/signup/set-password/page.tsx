@@ -9,6 +9,7 @@ import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 import type { MailRegisterResponse } from '@/service/use-common'
 import { useMailRegister } from '@/service/use-common'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
@@ -54,6 +55,11 @@ const ChangePasswordForm = () => {
       })
       const { result } = res as MailRegisterResponse
       if (result === 'success') {
+        // Track registration success event
+        trackEvent('user_registration_success', {
+          method: 'email',
+        })
+
         Toast.notify({
           type: 'success',
           message: t('common.api.actionSuccess'),

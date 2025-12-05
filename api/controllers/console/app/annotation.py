@@ -1,7 +1,8 @@
-from typing import Literal
+from typing import Any, Literal
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal, marshal_with
+from pydantic import BaseModel, Field, field_validator
 
 from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.console import console_ns
@@ -21,22 +22,79 @@ from libs.helper import uuid_value
 from libs.login import login_required
 from services.annotation_service import AppAnnotationService
 
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class AnnotationReplyPayload(BaseModel):
+    score_threshold: float = Field(..., description="Score threshold for annotation matching")
+    embedding_provider_name: str = Field(..., description="Embedding provider name")
+    embedding_model_name: str = Field(..., description="Embedding model name")
+
+
+class AnnotationSettingUpdatePayload(BaseModel):
+    score_threshold: float = Field(..., description="Score threshold")
+
+
+class AnnotationListQuery(BaseModel):
+    page: int = Field(default=1, ge=1, description="Page number")
+    limit: int = Field(default=20, ge=1, description="Page size")
+    keyword: str = Field(default="", description="Search keyword")
+
+
+class CreateAnnotationPayload(BaseModel):
+    message_id: str | None = Field(default=None, description="Message ID")
+    question: str | None = Field(default=None, description="Question text")
+    answer: str | None = Field(default=None, description="Answer text")
+    content: str | None = Field(default=None, description="Content text")
+    annotation_reply: dict[str, Any] | None = Field(default=None, description="Annotation reply data")
+
+    @field_validator("message_id")
+    @classmethod
+    def validate_message_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class UpdateAnnotationPayload(BaseModel):
+    question: str | None = None
+    answer: str | None = None
+    content: str | None = None
+    annotation_reply: dict[str, Any] | None = None
+
+
+class AnnotationReplyStatusQuery(BaseModel):
+    action: Literal["enable", "disable"]
+
+
+class AnnotationFilePayload(BaseModel):
+    message_id: str = Field(..., description="Message ID")
+
+    @field_validator("message_id")
+    @classmethod
+    def validate_message_id(cls, value: str) -> str:
+        return uuid_value(value)
+
+
+def reg(model: type[BaseModel]) -> None:
+    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(AnnotationReplyPayload)
+reg(AnnotationSettingUpdatePayload)
+reg(AnnotationListQuery)
+reg(CreateAnnotationPayload)
+reg(UpdateAnnotationPayload)
+reg(AnnotationReplyStatusQuery)
+reg(AnnotationFilePayload)
+
 
 @console_ns.route("/apps/<uuid:app_id>/annotation-reply/<string:action>")
 class AnnotationReplyActionApi(Resource):
     @console_ns.doc("annotation_reply_action")
     @console_ns.doc(description="Enable or disable annotation reply for an app")
     @console_ns.doc(params={"app_id": "Application ID", "action": "Action to perform (enable/disable)"})
-    @console_ns.expect(
-        console_ns.model(
-            "AnnotationReplyActionRequest",
-            {
-                "score_threshold": fields.Float(required=True, description="Score threshold for annotation matching"),
-                "embedding_provider_name": fields.String(required=True, description="Embedding provider name"),
-                "embedding_model_name": fields.String(required=True, description="Embedding model name"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[AnnotationReplyPayload.__name__])
     @console_ns.response(200, "Action completed successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -46,15 +104,9 @@ class AnnotationReplyActionApi(Resource):
     @edit_permission_required
     def post(self, app_id, action: Literal["enable", "disable"]):
         app_id = str(app_id)
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("score_threshold", required=True, type=float, location="json")
-            .add_argument("embedding_provider_name", required=True, type=str, location="json")
-            .add_argument("embedding_model_name", required=True, type=str, location="json")
-        )
-        args = parser.parse_args()
+        args = AnnotationReplyPayload.model_validate(console_ns.payload)
         if action == "enable":
-            result = AppAnnotationService.enable_app_annotation(args, app_id)
+            result = AppAnnotationService.enable_app_annotation(args.model_dump(), app_id)
         elif action == "disable":
             result = AppAnnotationService.disable_app_annotation(app_id)
         return result, 200
@@ -82,16 +134,7 @@ class AppAnnotationSettingUpdateApi(Resource):
     @console_ns.doc("update_annotation_setting")
     @console_ns.doc(description="Update annotation settings for an app")
     @console_ns.doc(params={"app_id": "Application ID", "annotation_setting_id": "Annotation setting ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "AnnotationSettingUpdateRequest",
-            {
-                "score_threshold": fields.Float(required=True, description="Score threshold"),
-                "embedding_provider_name": fields.String(required=True, description="Embedding provider"),
-                "embedding_model_name": fields.String(required=True, description="Embedding model"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[AnnotationSettingUpdatePayload.__name__])
     @console_ns.response(200, "Settings updated successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -102,10 +145,9 @@ class AppAnnotationSettingUpdateApi(Resource):
         app_id = str(app_id)
         annotation_setting_id = str(annotation_setting_id)
 
-        parser = reqparse.RequestParser().add_argument("score_threshold", required=True, type=float, location="json")
-        args = parser.parse_args()
+        args = AnnotationSettingUpdatePayload.model_validate(console_ns.payload)
 
-        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args)
+        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args.model_dump())
         return result, 200
 
 
@@ -142,12 +184,7 @@ class AnnotationApi(Resource):
     @console_ns.doc("list_annotations")
     @console_ns.doc(description="Get annotations for an app with pagination")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.parser()
-        .add_argument("page", type=int, location="args", default=1, help="Page number")
-        .add_argument("limit", type=int, location="args", default=20, help="Page size")
-        .add_argument("keyword", type=str, location="args", default="", help="Search keyword")
-    )
+    @console_ns.expect(console_ns.models[AnnotationListQuery.__name__])
     @console_ns.response(200, "Annotations retrieved successfully")
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -155,9 +192,10 @@ class AnnotationApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def get(self, app_id):
-        page = request.args.get("page", default=1, type=int)
-        limit = request.args.get("limit", default=20, type=int)
-        keyword = request.args.get("keyword", default="", type=str)
+        args = AnnotationListQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        page = args.page
+        limit = args.limit
+        keyword = args.keyword
 
         app_id = str(app_id)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)
@@ -173,18 +211,7 @@ class AnnotationApi(Resource):
     @console_ns.doc("create_annotation")
     @console_ns.doc(description="Create a new annotation for an app")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "CreateAnnotationRequest",
-            {
-                "message_id": fields.String(description="Message ID (optional)"),
-                "question": fields.String(description="Question text (required when message_id not provided)"),
-                "answer": fields.String(description="Answer text (use 'answer' or 'content')"),
-                "content": fields.String(description="Content text (use 'answer' or 'content')"),
-                "annotation_reply": fields.Raw(description="Annotation reply data"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[CreateAnnotationPayload.__name__])
     @console_ns.response(201, "Annotation created successfully", build_annotation_model(console_ns))
     @console_ns.response(403, "Insufficient permissions")
     @setup_required
@@ -195,16 +222,9 @@ class AnnotationApi(Resource):
     @edit_permission_required
     def post(self, app_id):
         app_id = str(app_id)
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("message_id", required=False, type=uuid_value, location="json")
-            .add_argument("question", required=False, type=str, location="json")
-            .add_argument("answer", required=False, type=str, location="json")
-            .add_argument("content", required=False, type=str, location="json")
-            .add_argument("annotation_reply", required=False, type=dict, location="json")
-        )
-        args = parser.parse_args()
-        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
+        args = CreateAnnotationPayload.model_validate(console_ns.payload)
+        data = args.model_dump(exclude_none=True)
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(data, app_id)
         return annotation
 
     @setup_required
@@ -256,13 +276,6 @@ class AnnotationExportApi(Resource):
         return response, 200
 
 
-parser = (
-    reqparse.RequestParser()
-    .add_argument("question", required=True, type=str, location="json")
-    .add_argument("answer", required=True, type=str, location="json")
-)
-
-
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
     @console_ns.doc("update_delete_annotation")
@@ -271,7 +284,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @console_ns.response(200, "Annotation updated successfully", build_annotation_model(console_ns))
     @console_ns.response(204, "Annotation deleted successfully")
     @console_ns.response(403, "Insufficient permissions")
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[UpdateAnnotationPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -281,8 +294,10 @@ class AnnotationUpdateDeleteApi(Resource):
     def post(self, app_id, annotation_id):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
-        args = parser.parse_args()
-        annotation = AppAnnotationService.update_app_annotation_directly(args, app_id, annotation_id)
+        args = UpdateAnnotationPayload.model_validate(console_ns.payload)
+        annotation = AppAnnotationService.update_app_annotation_directly(
+            args.model_dump(exclude_none=True), app_id, annotation_id
+        )
         return annotation
 
     @setup_required

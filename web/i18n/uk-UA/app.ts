@@ -302,6 +302,8 @@ const translation = {
       docDesc: 'Відкрийте документацію допомоги',
       accountDesc: 'Перейдіть на сторінку облікового запису',
       communityDesc: 'Відкрита Discord-спільнота',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'Плагінів не знайдено',

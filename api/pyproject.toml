@@ -11,7 +11,7 @@ dependencies = [
     "bs4~=0.0.1",
     "cachetools~=5.3.0",
     "celery~=5.5.2",
-    "chardet~=5.1.0",
+    "charset-normalizer>=3.4.4",
     "flask~=3.1.2",
     "flask-compress>=1.17,<1.18",
     "flask-cors~=6.0.0",
@@ -91,6 +91,7 @@ dependencies = [
     "weaviate-client==4.17.0",
     "apscheduler>=3.11.0",
     "weave>=0.52.16",
+    "jsonschema>=4.25.1",
 ]
 # Before adding new dependency, consider place it in
 # alphabet order (a-z) and suitable group.
@@ -111,7 +112,7 @@ package = false
 dev = [
     "coverage~=7.2.4",
     "dotenv-linter~=0.5.0",
-    "faker~=32.1.0",
+    "faker~=38.2.0",
     "lxml-stubs~=0.5.1",
     "ty~=0.0.1a19",
     "basedpyright~=1.31.0",

@@ -401,6 +401,7 @@ const translation = {
     minimize: '全画面を終了する',
     scrollToSelectedNode: '選択したノードまでスクロール',
     optional_and_hidden: '（オプションおよび非表示）',
+    openWorkflow: 'ワークフローを開く',
   },
   nodes: {
     common: {
