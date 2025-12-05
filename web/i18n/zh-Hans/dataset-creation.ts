@@ -93,6 +93,7 @@ const translation = {
       excludePaths: '排除路径',
       includeOnlyPaths: '仅包含路径',
       extractOnlyMainContent: '仅提取主要内容（无标题、导航、页脚等）',
+      crawlEntireDomain: '爬取整个域名',
       exceptionErrorTitle: '运行时发生异常：',
       unknownError: '未知错误',
       totalPageScraped: '抓取页面总数：',

@@ -96,6 +96,7 @@ const translation = {
       excludePaths: 'Exclude paths',
       includeOnlyPaths: 'Include only paths',
       extractOnlyMainContent: 'Extract only main content (no headers, navs, footers, etc.)',
+      crawlEntireDomain: 'Crawl entire domain',
       exceptionErrorTitle: 'An exception occurred while running crawling job:',
       unknownError: 'Unknown error',
       totalPageScraped: 'Total pages scraped:',
