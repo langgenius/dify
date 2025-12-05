@@ -157,6 +157,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.COUCHBASE,
         VectorType.OPENGAUSS,
         VectorType.OCEANBASE,
+        VectorType.SEEKDB,
         VectorType.TABLESTORE,
         VectorType.HUAWEI_CLOUD,
         VectorType.TENCENT,
