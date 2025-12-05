@@ -30,6 +30,7 @@ const translation = {
     vectorSpace: 'فضای وکتور',
     vectorSpaceTooltip: 'فضای وکتور سیستم حافظه بلند مدت است که برای درک داده‌های شما توسط LLM‌ها مورد نیاز است.',
     documentProcessingPriority: 'اولویت پردازش مستندات',
+    documentProcessingPriorityTip: 'برای اولویت بالاتر پردازش اسناد، لطفاً برنامه خود را ارتقا دهید.',
     documentProcessingPriorityUpgrade: 'داده‌های بیشتری را با دقت بالاتر و سرعت بیشتر پردازش کنید.',
     priority: {
       'standard': 'استاندارد',
