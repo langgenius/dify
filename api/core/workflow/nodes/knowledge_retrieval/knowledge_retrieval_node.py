@@ -424,7 +424,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             retrieval_resource_list = sorted(
                 retrieval_resource_list,
                 key=lambda x: x.get("metadata", {}).get("score")
-                if x.get("metadata", {}).get("score") is not None
+                if isinstance(x.get("metadata", {}), dict) and x.get("metadata", {}).get("score") is not None
                 else 0.0,  # type: ignore[arg-type, union-attr, return-value]
                 reverse=True,
             )
