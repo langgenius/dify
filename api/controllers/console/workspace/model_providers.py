@@ -2,7 +2,7 @@ import io
 from typing import Any, Literal
 
 from flask import request, send_file
-from flask_restx import Resource
+from flask_restx import Resource, reqparse
 from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns
@@ -10,6 +10,7 @@ from controllers.console.wraps import account_initialization_required, is_admin_
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.provider_manager import ProviderManager
 from libs.helper import uuid_value
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
@@ -268,6 +269,53 @@ class ModelProviderIconApi(Resource):
         if icon is None:
             raise ValueError(f"icon not found for provider {provider}, icon_type {icon_type}, lang {lang}")
         return send_file(io.BytesIO(icon), mimetype=mimetype)
+
+
+parser_preferred = reqparse.RequestParser().add_argument(
+    "preferred_provider_type",
+    type=str,
+    required=True,
+    nullable=False,
+    choices=["system", "custom"],
+    location="json",
+)
+
+# available credentials (provider-level and model-level)
+parser_available_credentials = (
+    reqparse.RequestParser()
+    .add_argument("model", type=str, required=False, nullable=True, location="args")
+    .add_argument("model_type", type=str, required=False, nullable=True, location="args")
+)
+
+
+@console_ns.route("/workspaces/current/model-providers/<path:provider>/available-credentials")
+class ModelProviderAvailableCredentialsApi(Resource):
+    @console_ns.expect(parser_available_credentials)
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider: str):
+        _, current_tenant_id = current_account_with_tenant()
+        args = parser_available_credentials.parse_args()
+
+        pm = ProviderManager()
+
+        provider_available_credentials = pm.get_provider_available_credentials(current_tenant_id, provider)
+
+        model_available_credentials = []
+        model = args.get("model")
+        model_type = args.get("model_type")
+        if model and model_type:
+            model_available_credentials = pm.get_provider_model_available_credentials(
+                current_tenant_id, provider, model, model_type
+            )
+
+        return jsonable_encoder(
+            {
+                "provider_available_credentials": provider_available_credentials,
+                "model_available_credentials": model_available_credentials,
+            }
+        )
 
 
 @console_ns.route("/workspaces/current/model-providers/<path:provider>/preferred-provider-type")
