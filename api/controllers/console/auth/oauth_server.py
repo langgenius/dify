@@ -109,7 +109,6 @@ class OAuthServerAppApi(Resource):
     @setup_required
     @oauth_server_client_id_required
     def post(self, oauth_provider_app: OAuthProviderApp):
-        
         payload = OAuthProviderRequest.model_validate(request.get_json())
         redirect_uri = payload.redirect_uri
 

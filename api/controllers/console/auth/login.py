@@ -162,7 +162,6 @@ class ResetPasswordSendEmailApi(Resource):
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
     def post(self):
-        
         args = EmailPayload.model_validate(console_ns.payload)
 
         if args.language is not None and args.language == "zh-Hans":
@@ -189,7 +188,6 @@ class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailPayload.__name__])
     def post(self):
-        
         args = EmailPayload.model_validate(console_ns.payload)
 
         ip_address = extract_remote_ip(request)

@@ -61,7 +61,6 @@ class EmailRegisterSendEmailApi(Resource):
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        
         args = EmailRegisterSendPayload.model_validate(console_ns.payload)
 
         ip_address = extract_remote_ip(request)

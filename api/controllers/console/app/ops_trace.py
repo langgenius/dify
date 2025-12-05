@@ -50,7 +50,6 @@ class TraceAppConfigApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
-        
         args = TraceProviderQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:

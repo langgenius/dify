@@ -175,7 +175,6 @@ class TextModesApi(Resource):
     @account_initialization_required
     def get(self, app_model):
         try:
-            
             args = TextToSpeechVoiceQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
             response = AudioService.transcript_tts_voices(

@@ -75,7 +75,6 @@ class ForgotPasswordSendEmailApi(Resource):
     @setup_required
     @email_password_login_enabled
     def post(self):
-        
         args = ForgotPasswordSendPayload.model_validate(console_ns.payload)
 
         ip_address = extract_remote_ip(request)
