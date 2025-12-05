@@ -9,8 +9,8 @@ services:
     env_file:
       - ./middleware.env
     environment:
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
-      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${DB_DATABASE:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     command: >
       postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
@@ -32,9 +32,9 @@ services:
           "-h",
           "db_postgres",
           "-U",
-          "${PGUSER:-postgres}",
+          "${DB_USERNAME:-postgres}",
           "-d",
-          "${POSTGRES_DB:-dify}",
+          "${DB_DATABASE:-dify}",
         ]
       interval: 1s
       timeout: 3s
@@ -48,8 +48,8 @@ services:
     env_file:
       - ./middleware.env
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${DB_DATABASE:-dify}
     command: >
       --max_connections=1000
       --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
@@ -67,7 +67,7 @@ services:
           "ping",
           "-u",
           "root",
-          "-p${MYSQL_PASSWORD:-difyai123456}",
+          "-p${DB_PASSWORD:-difyai123456}",
         ]
       interval: 1s
       timeout: 3s
@@ -123,7 +123,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.4.0-local
+    image: langgenius/dify-plugin-daemon:0.4.1-local
     restart: always
     env_file:
       - ./middleware.env

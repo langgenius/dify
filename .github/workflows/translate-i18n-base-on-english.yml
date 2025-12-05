@@ -20,22 +20,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Check for file changes in i18n/en-US
         id: check_files
         run: |
-          recent_commit_sha=$(git rev-parse HEAD)
-          second_recent_commit_sha=$(git rev-parse HEAD~1)
-          changed_files=$(git diff --name-only $recent_commit_sha $second_recent_commit_sha -- 'i18n/en-US/*.ts')
+          git fetch origin "${{ github.event.before }}" || true
+          git fetch origin "${{ github.sha }}" || true
+          changed_files=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'i18n/en-US/*.ts')
           echo "Changed files: $changed_files"
           if [ -n "$changed_files" ]; then
             echo "FILES_CHANGED=true" >> $GITHUB_ENV
             file_args=""
             for file in $changed_files; do
               filename=$(basename "$file" .ts)
-              file_args="$file_args --file=$filename"
+              file_args="$file_args --file $filename"
             done
             echo "FILE_ARGS=$file_args" >> $GITHUB_ENV
             echo "File arguments: $file_args"
@@ -77,12 +77,15 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: Update i18n files and type definitions based on en-US changes
-          title: 'chore: translate i18n files and update type definitions'
+          commit-message: 'chore(i18n): update translations based on en-US changes'
+          title: 'chore(i18n): translate i18n files and update type definitions'
           body: |
             This PR was automatically created to update i18n files and TypeScript type definitions based on changes in en-US locale.
-            
+
+            **Triggered by:** ${{ github.sha }}
+
             **Changes included:**
             - Updated translation files for all locales
             - Regenerated TypeScript type definitions for type safety
-          branch: chore/automated-i18n-updates
+          branch: chore/automated-i18n-updates-${{ github.sha }}
+          delete-branch: true

@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import styles from './VideoPlayer.module.css'
 
 type VideoPlayerProps = {
-  src: string
+  src?: string // Keep backward compatibility
+  srcs?: string[] // Support multiple sources
 }
 
 const PlayIcon = () => (
@@ -35,7 +36,7 @@ const FullscreenIcon = () => (
   </svg>
 )
 
-const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
+const VideoPlayer: React.FC<VideoPlayerProps> = ({ src, srcs }) => {
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
@@ -78,7 +79,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
       video.removeEventListener('timeupdate', setVideoTime)
       video.removeEventListener('ended', handleEnded)
     }
-  }, [src])
+  }, [src, srcs])
 
   useEffect(() => {
     return () => {
@@ -131,7 +132,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
     return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
   }
 
-  const updateVideoProgress = useCallback((clientX: number) => {
+  const updateVideoProgress = useCallback((clientX: number, updateTime = false) => {
     const progressBar = progressRef.current
     const video = videoRef.current
     if (progressBar && video) {
@@ -140,7 +141,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
       const newTime = pos * video.duration
       if (newTime >= 0 && newTime <= video.duration) {
         setHoverTime(newTime)
-        if (isDragging)
+        if (isDragging || updateTime)
           video.currentTime = newTime
       }
     }
@@ -155,10 +156,15 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
       setHoverTime(null)
   }, [isDragging])
 
+  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    updateVideoProgress(e.clientX, true)
+  }, [updateVideoProgress])
+
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault()
     setIsDragging(true)
-    updateVideoProgress(e.clientX)
+    updateVideoProgress(e.clientX, true)
   }, [updateVideoProgress])
 
   useEffect(() => {
@@ -209,14 +215,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
 
   return (
     <div ref={containerRef} className={styles.videoPlayer} onMouseMove={showControls} onMouseEnter={showControls}>
-      <video ref={videoRef} src={src} className={styles.video} />
+      <video ref={videoRef} src={src} className={styles.video}>
+        {/* If srcs array is provided, render multiple source elements */}
+        {srcs && srcs.map((srcUrl, index) => (
+          <source key={index} src={srcUrl} />
+        ))}
+      </video>
       <div className={`${styles.controls} ${isControlsVisible ? styles.visible : styles.hidden} ${isSmallSize ? styles.smallSize : ''}`}>
         <div className={styles.overlay}>
           <div className={styles.progressBarContainer}>
             <div
               ref={progressRef}
               className={styles.progressBar}
-              onClick={handleMouseDown}
+              onClick={handleProgressClick}
               onMouseMove={handleMouseMove}
               onMouseLeave={handleMouseLeave}
               onMouseDown={handleMouseDown}

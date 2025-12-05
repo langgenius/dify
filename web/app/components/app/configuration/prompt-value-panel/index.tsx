@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
@@ -53,6 +53,24 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     })
     return obj
   }, [promptVariables])
+
+  // Initialize inputs with default values from promptVariables
+  useEffect(() => {
+    const newInputs = { ...inputs }
+    let hasChanges = false
+
+    promptVariables.forEach((variable) => {
+      const { key, default: defaultValue } = variable
+      // Only set default value if the field is empty and a default exists
+      if (defaultValue !== undefined && defaultValue !== null && defaultValue !== '' && (inputs[key] === undefined || inputs[key] === null || inputs[key] === '')) {
+        newInputs[key] = defaultValue
+        hasChanges = true
+      }
+    })
+
+    if (hasChanges)
+      setInputs(newInputs)
+  }, [promptVariables, inputs, setInputs])
 
   const canNotRun = useMemo(() => {
     if (mode !== AppModeEnum.COMPLETION)

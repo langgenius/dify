@@ -73,6 +73,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum allowed execution time for the application in seconds",
         default=1200,
     )
+    APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
+        description="Default number of concurrent active requests per app (0 for unlimited)",
+        default=0,
+    )
     APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
@@ -549,7 +553,10 @@ class LoggingConfig(BaseSettings):
 
     LOG_FORMAT: str = Field(
         description="Format string for log messages",
-        default="%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s",
+        default=(
+            "%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] "
+            "[%(filename)s:%(lineno)d] %(trace_id)s - %(message)s"
+        ),
     )
 
     LOG_DATEFORMAT: str | None = Field(

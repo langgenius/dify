@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Abrechnung und Abonnements verwalten',
   buyPermissionDeniedTip: 'Bitte kontaktieren Sie Ihren Unternehmensadministrator, um zu abonnieren',
   plansCommon: {
-    title: 'Wählen Sie einen Tarif, der zu Ihnen passt',
     yearlyTip: 'Erhalten Sie 2 Monate kostenlos durch jährliches Abonnieren!',
     mostPopular: 'Am beliebtesten',
     planRange: {
@@ -99,6 +98,8 @@ const translation = {
     triggerEvents: {
       tooltip: 'Die Anzahl der Ereignisse, die Workflows automatisch über Plugin-, Zeitplan- oder Webhook-Auslöser starten.',
       unlimited: 'Unbegrenzte Auslöser-Ereignisse',
+      sandbox: '{{count,number}} Ereignisse auslösen',
+      professional: '{{count,number}} Auslöseereignisse/Monat',
     },
     workflowExecution: {
       faster: 'Schnellere Arbeitsablauf-Ausführung',
@@ -108,6 +109,11 @@ const translation = {
     },
     startNodes: {
       unlimited: 'Unbegrenzte Auslöser/Workflows',
+      limited: 'Bis zu {{count}} Auslöser/Workflows',
+    },
+    title: {
+      plans: 'Pläne',
+      description: 'Wählen Sie den Plan, der am besten zu den Bedürfnissen Ihres Teams passt.',
     },
   },
   plans: {
@@ -134,17 +140,7 @@ const translation = {
       price: 'Benutzerdefiniert',
       priceTip: 'Jährliche Abrechnung nur',
       for: 'Für große Teams',
-      features: [
-        'Skalierbare Bereitstellungslösungen in Unternehmensqualität',
-        'Kommerzielle Lizenzierung',
-        'Exklusive Enterprise-Funktionen',
-        'Mehrere Arbeitsbereiche und Unternehmensverwaltung',
-        'SSO (Single Sign-On)',
-        'Vereinbarte SLAs mit Dify-Partnern',
-        'Erweiterte Sicherheitsfunktionen und Kontrollen',
-        'Offizielle Updates und Wartung durch Dify',
-        'Professioneller technischer Support',
-      ],
+      features: ['Unternehmensgerechte skalierbare Bereitstellungslösungen', 'Gewerbliche Lizenzgenehmigung', 'Exklusive Unternehmensfunktionen', 'Mehrere Arbeitsbereiche & Unternehmensverwaltung', 'SSO', 'Von Dify-Partnern ausgehandelte SLAs', 'Erweiterte Sicherheit & Steuerungen', 'Updates und Wartung offiziell von Dify', 'Professioneller technischer Support'],
     },
     community: {
       description: 'Für Einzelbenutzer, kleine Teams oder nicht-kommerzielle Projekte',
@@ -153,11 +149,7 @@ const translation = {
       price: 'Kostenlos',
       includesTitle: 'Kostenlose Funktionen:',
       name: 'Gemeinschaft',
-      features: [
-        'Alle Kernfunktionen im öffentlichen Repository veröffentlicht',
-        'Einzelner Arbeitsbereich',
-        'Entspricht der Dify Open-Source-Lizenz',
-      ],
+      features: ['Alle Kernfunktionen im öffentlichen Repository veröffentlicht', 'Einzelarbeitsbereich', 'Entspricht der Dify Open-Source-Lizenz'],
     },
     premium: {
       includesTitle: 'Alles aus der Community, plus:',
@@ -168,12 +160,7 @@ const translation = {
       comingSoon: 'Microsoft Azure- und Google Cloud-Support demnächst verfügbar',
       description: 'Für mittelgroße Organisationen und Teams',
       price: 'Skalierbar',
-      features: [
-        'Selbstverwaltete Zuverlässigkeit durch verschiedene Cloud-Anbieter',
-        'Einzelner Arbeitsbereich',
-        'Anpassung von WebApp-Logo und Branding',
-        'Bevorzugter E-Mail- und Chat-Support',
-      ],
+      features: ['Selbstverwaltete Zuverlässigkeit durch verschiedene Cloud-Anbieter', 'Einzelarbeitsbereich', 'WebApp-Logo & Markenanpassung', 'Priorisierte E-Mail- und Chatsupport'],
     },
   },
   vectorSpace: {
@@ -201,6 +188,7 @@ const translation = {
     vectorSpaceTooltip: 'Dokumente mit dem Hochqualitäts-Indexierungsmodus verbrauchen Ressourcen des Knowledge Data Storage. Wenn der Knowledge Data Storage die Grenze erreicht, werden keine neuen Dokumente hochgeladen.',
     perMonth: 'pro Monat',
     triggerEvents: 'Auslöser-Ereignisse',
+    resetsIn: 'Setzt in {{count,number}} Tagen zurück',
   },
   teamMembers: 'Teammitglieder',
   triggerLimitModal: {

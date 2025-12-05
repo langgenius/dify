@@ -1,6 +1,5 @@
 'use client'
 import { useState } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import {
   RiGraduationCapFill,
@@ -23,8 +22,9 @@ import PremiumBadge from '@/app/components/base/premium-badge'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import EmailChangeModal from './email-change-modal'
 import { validPassword } from '@/config'
-import { fetchAppList } from '@/service/apps'
+
 import type { App } from '@/types/app'
+import { useAppList } from '@/service/use-apps'
 
 const titleClassName = `
   system-sm-semibold text-text-secondary
@@ -36,7 +36,7 @@ const descriptionClassName = `
 export default function AccountPage() {
   const { t } = useTranslation()
   const { systemFeatures } = useGlobalPublicStore()
-  const { data: appList } = useSWR({ url: '/apps', params: { page: 1, limit: 100, name: '' } }, fetchAppList)
+  const { data: appList } = useAppList({ page: 1, limit: 100, name: '' })
   const apps = appList?.data || []
   const { mutateUserProfile, userProfile } = useAppContext()
   const { isEducationAccount } = useProviderContext()
