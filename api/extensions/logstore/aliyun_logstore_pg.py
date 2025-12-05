@@ -1,5 +1,6 @@
 import logging
 import os
+import socket
 import time
 from collections.abc import Sequence
 from contextlib import contextmanager
@@ -8,6 +9,8 @@ from typing import Any
 import psycopg2
 import psycopg2.pool
 from psycopg2 import InterfaceError, OperationalError
+
+from configs import dify_config
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,31 @@ class AliyunLogStorePG:
         self._pg_pool: psycopg2.pool.SimpleConnectionPool | None = None
         self._use_pg_protocol = False
 
+    def _check_port_connectivity(self, host: str, port: int, timeout: float = 2.0) -> bool:
+        """
+        Check if a TCP port is reachable using socket connection.
+
+        This provides a fast check before attempting full database connection,
+        preventing long waits when connecting to unsupported regions.
+
+        Args:
+            host: Hostname or IP address
+            port: Port number
+            timeout: Connection timeout in seconds (default: 2.0)
+
+        Returns:
+            True if port is reachable, False otherwise
+        """
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            result = sock.connect_ex((host, port))
+            sock.close()
+            return result == 0
+        except Exception as e:
+            logger.debug("Port connectivity check failed for %s:%d: %s", host, port, str(e))
+            return False
+
     def init_connection(self) -> bool:
         """
         Initialize PostgreSQL connection pool for SLS PG protocol support.
@@ -55,10 +83,19 @@ class AliyunLogStorePG:
             pg_max_connections = int(os.environ.get("ALIYUN_SLS_PG_MAX_CONNECTIONS", 10))
 
             logger.info(
-                "Attempting to initialize PG protocol connection to SLS: host=%s, project=%s",
+                "Check PG protocol connection to SLS: host=%s, project=%s",
                 pg_host,
                 self.project_name,
             )
+
+            # Fast port connectivity check before attempting full connection
+            # This prevents long waits when connecting to unsupported regions
+            if not self._check_port_connectivity(pg_host, 5432, timeout=1.0):
+                logger.info(
+                    "USE SDK mode for read/write operations, host=%s",
+                    pg_host,
+                )
+                return False
 
             # Create connection pool
             self._pg_pool = psycopg2.pool.SimpleConnectionPool(
@@ -70,7 +107,8 @@ class AliyunLogStorePG:
                 user=self._access_key_id,
                 password=self._access_key_secret,
                 sslmode="require",
-                connect_timeout=5,  # 5 second timeout to avoid long startup delays
+                connect_timeout=5,
+                application_name=f"Dify-{dify_config.project.version}",
             )
 
             # Note: Skip test query because SLS PG protocol only supports SELECT/INSERT on actual tables
