@@ -113,6 +113,13 @@ const translation = {
       description: '描述',
       descriptionPlaceholder: '参数意义的描述',
     },
+    toolOutput: {
+      title: '工具出参',
+      name: '名称',
+      reserved: '预留',
+      reservedParameterDuplicateTip: 'text、json、files 是预留变量，这些名称的变量不能出现在 output_schema 中。',
+      description: '描述',
+    },
     customDisclaimer: '自定义免责声明',
     customDisclaimerPlaceholder: '请输入自定义免责声明',
     confirmTitle: '确认保存？',

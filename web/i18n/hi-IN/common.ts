@@ -65,6 +65,12 @@ const translation = {
     yes: 'हाँ',
     deleteConfirmTitle: 'हटाएं?',
     confirmAction: 'कृपया अपनी क्रिया की पुष्टि करें।',
+    noSearchResults: 'कोई {{content}} नहीं मिला',
+    resetKeywords: 'कीवर्ड रीसेट करें',
+    selectCount: '{{count}} चयनित',
+    searchCount: '{{count}} {{content}} खोजें',
+    noSearchCount: '0 {{content}}',
+    now: 'अब',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -73,6 +79,7 @@ const translation = {
   placeholder: {
     input: 'कृपया दर्ज करें',
     select: 'कृपया चयन करें',
+    search: 'खोजें...',
   },
   voice: {
     language: {
@@ -790,6 +797,13 @@ const translation = {
   },
   label: {
     optional: '(अनिवार्य नहीं)',
+  },
+  noData: 'कोई डेटा नहीं',
+  dynamicSelect: {
+    error: 'विकल्प लोड करने में विफल',
+    noData: 'कोई विकल्प उपलब्ध नहीं है',
+    loading: 'विकल्प लोड हो रहे हैं...',
+    selected: '{{count}} चयनित',
   },
 }
 

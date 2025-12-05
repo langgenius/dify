@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: '知識流水線已發布',
+      tip: '<CustomLink>前往文件</CustomLink>以新增或管理文件。',
     },
     error: {
       message: '無法發佈知識流水線',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structureTooltip: '區塊結構會決定文件的分割和索引方式 （提供一般、父子和問答模式），而且每個知識庫都是唯一的。',
     structure: '建築物',
+    createdBy: '由 {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     title: '新增文件',
     characters: '角色',
     backToDataSource: '資料來源',
+    selectOnlineDocumentTip: '處理最多 {{count}} 頁',
+    selectOnlineDriveTip: '處理最多 {{count}} 個檔案，每個檔案最大 {{fileSize}} MB',
   },
   documentSettings: {
     title: '文件設定',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} 頁',
+  },
   onlineDrive: {
     breadcrumbs: {
       allBuckets: '所有雲端儲存貯體',
       searchPlaceholder: '搜尋檔案...',
       allFiles: '所有檔案',
+      searchResult: '在「{{folderName}}」資料夾中找到 {{searchResultsLength}} 項目',
     },
     resetKeywords: '重設關鍵字',
     notSupportedFileType: '不支援此檔案類型',
     emptySearchResult: '沒有找到任何物品',
     emptyFolder: '此資料夾是空的',
+    notConnected: '{{name}} 未連接',
+    notConnectedTip: '要與 {{name}} 同步，必須先建立與 {{name}} 的連線。',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}的{{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: '證實',
@@ -149,6 +160,7 @@ const translation = {
   inputField: '輸入欄位',
   knowledgePermissions: '權限',
   editPipelineInfo: '編輯管線資訊',
+  configurationTip: '配置 {{pluginName}}',
 }
 
 export default translation

@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Knowledge Pipeline veröffentlicht',
+      tip: '<CustomLink>Gehe zu Dokumente</CustomLink>, um Dokumente hinzuzufügen oder zu verwalten.',
     },
     error: {
       message: 'Fehler beim Veröffentlichen der Wissenspipeline',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Struktur',
     structureTooltip: 'Die Blockstruktur bestimmt, wie Dokumente aufgeteilt und indiziert werden, und bietet die Modi "Allgemein", "Über-Eltern-Kind" und "Q&A" und ist für jede Wissensdatenbank einzigartig.',
+    createdBy: 'Von {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'Zeichen',
     backToDataSource: 'Datenquelle',
     title: 'Dokumente hinzufügen',
+    selectOnlineDocumentTip: 'Bis zu {{count}} Seiten verarbeiten',
+    selectOnlineDriveTip: 'Verarbeiten Sie bis zu {{count}} Dateien, maximal {{fileSize}} MB pro Datei',
   },
   documentSettings: {
     title: 'Dokument-Einstellungen',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} Seiten',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Alle Dateien',
       allBuckets: 'Alle Cloud Storage-Buckets',
       searchPlaceholder: 'Dateien suchen...',
+      searchResult: '{{searchResultsLength}} Elemente im Ordner "{{folderName}}" finden',
     },
     emptySearchResult: 'Es wurden keine Gegenstände gefunden',
     resetKeywords: 'Schlüsselwörter zurücksetzen',
     notSupportedFileType: 'Dieser Dateityp wird nicht unterstützt',
     emptyFolder: 'Dieser Ordner ist leer',
+    notConnected: '{{name}} ist nicht verbunden',
+    notConnectedTip: 'Um mit {{name}} zu synchronisieren, muss zuerst eine Verbindung zu {{name}} hergestellt werden.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Bestätigung',
@@ -149,6 +160,7 @@ const translation = {
   pipelineNameAndIcon: 'Name und Symbol der Pipeline',
   knowledgeDescriptionPlaceholder: 'Beschreiben Sie, was in dieser Wissensdatenbank enthalten ist. Eine detaillierte Beschreibung ermöglicht es der KI, genauer auf den Inhalt des Datensatzes zuzugreifen. Wenn das Feld leer ist, verwendet Dify die Standard-Trefferstrategie. (Fakultativ)',
   knowledgeNameAndIconPlaceholder: 'Bitte geben Sie den Namen der Knowledge Base ein.',
+  configurationTip: 'Konfigurieren {{pluginName}}',
 }
 
 export default translation

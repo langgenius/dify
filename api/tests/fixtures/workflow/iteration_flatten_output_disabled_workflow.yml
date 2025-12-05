@@ -233,7 +233,7 @@ workflow:
         - value_selector:
           - iteration_node
           - output
-          value_type: array[array[number]]
+          value_type: array[number]
           variable: output
         selected: false
         title: End

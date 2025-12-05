@@ -1,4 +1,6 @@
+import hashlib
 import logging
+import time
 from threading import Thread
 from typing import Union
 
@@ -31,6 +33,7 @@ from core.app.entities.task_entities import (
 from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.signature import sign_tool_file
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.model import AppMode, Conversation, MessageAnnotation, MessageFile
 from services.annotation_service import AppAnnotationService
 
@@ -68,6 +71,8 @@ class MessageCycleManager:
 
         if auto_generate_conversation_name and is_first_message:
             # start generate thread
+            # time.sleep not block other logic
+            time.sleep(1)
             thread = Thread(
                 target=self._generate_conversation_name_worker,
                 kwargs={
@@ -76,7 +81,7 @@ class MessageCycleManager:
                     "query": query,
                 },
             )
-
+            thread.daemon = True
             thread.start()
 
             return thread
@@ -98,15 +103,23 @@ class MessageCycleManager:
                     return
 
                 # generate conversation name
-                try:
-                    name = LLMGenerator.generate_conversation_name(
-                        app_model.tenant_id, query, conversation_id, conversation.app_id
-                    )
-                    conversation.name = name
-                except Exception:
-                    if dify_config.DEBUG:
-                        logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                query_hash = hashlib.md5(query.encode()).hexdigest()[:16]
+                cache_key = f"conv_name:{conversation_id}:{query_hash}"
 
+                cached_name = redis_client.get(cache_key)
+                if cached_name:
+                    name = cached_name.decode("utf-8")
+                else:
+                    try:
+                        name = LLMGenerator.generate_conversation_name(
+                            app_model.tenant_id, query, conversation_id, conversation.app_id
+                        )
+                        redis_client.setex(cache_key, 3600, name)
+                    except Exception:
+                        if dify_config.DEBUG:
+                            logger.exception("generate conversation name failed, conversation_id: %s", conversation_id)
+                        name = query[:47] + "..." if len(query) > 50 else query
+                conversation.name = name
                 db.session.commit()
                 db.session.close()
 

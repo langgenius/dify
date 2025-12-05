@@ -28,13 +28,20 @@ const ListWrapper = ({
   const isLoading = useMarketplaceContext(v => v.isLoading)
   const isSuccessCollections = useMarketplaceContext(v => v.isSuccessCollections)
   const handleQueryPlugins = useMarketplaceContext(v => v.handleQueryPlugins)
+  const searchPluginText = useMarketplaceContext(v => v.searchPluginText)
+  const filterPluginTags = useMarketplaceContext(v => v.filterPluginTags)
   const page = useMarketplaceContext(v => v.page)
   const handleMoreClick = useMarketplaceContext(v => v.handleMoreClick)
 
   useEffect(() => {
-    if (!marketplaceCollectionsFromClient?.length && isSuccessCollections)
+    if (
+      !marketplaceCollectionsFromClient?.length
+      && isSuccessCollections
+      && !searchPluginText
+      && !filterPluginTags.length
+    )
       handleQueryPlugins()
-  }, [handleQueryPlugins, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections])
+  }, [handleQueryPlugins, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections, searchPluginText, filterPluginTags])
 
   return (
     <div

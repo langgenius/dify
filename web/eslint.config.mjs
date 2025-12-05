@@ -94,7 +94,6 @@ export default combine(
       // orignal ts/no-var-requires
       'ts/no-require-imports': 'off',
       'no-console': 'off',
-      'react-hooks/exhaustive-deps': 'warn',
       'react/display-name': 'off',
       'array-callback-return': ['error', {
         allowImplicit: false,
@@ -257,4 +256,9 @@ export default combine(
     },
   },
   oxlint.configs['flat/recommended'],
+  {
+    rules: {
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
 )

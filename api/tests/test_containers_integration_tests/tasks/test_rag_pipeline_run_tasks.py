@@ -112,13 +112,13 @@ class TestRagPipelineRunTasks:
 
         # Create pipeline
         pipeline = Pipeline(
-            id=str(uuid.uuid4()),
             tenant_id=tenant.id,
             workflow_id=workflow.id,
             name=fake.company(),
             description=fake.text(max_nb_chars=100),
             created_by=account.id,
         )
+        pipeline.id = str(uuid.uuid4())
         db.session.add(pipeline)
         db.session.commit()
 

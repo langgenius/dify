@@ -1,0 +1,226 @@
+# CODEOWNERS
+# This file defines code ownership for the Dify project.
+# Each line is a file pattern followed by one or more owners.
+# Owners can be @username, @org/team-name, or email addresses.
+# For more information, see: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+* @crazywoola @laipz8200 @Yeuoly
+
+# Backend (default owner, more specific rules below will override)
+api/ @QuantumGhost
+
+# Backend - Workflow - Engine (Core graph execution engine)
+api/core/workflow/graph_engine/ @laipz8200 @QuantumGhost
+api/core/workflow/runtime/ @laipz8200 @QuantumGhost
+api/core/workflow/graph/ @laipz8200 @QuantumGhost
+api/core/workflow/graph_events/ @laipz8200 @QuantumGhost
+api/core/workflow/node_events/ @laipz8200 @QuantumGhost
+api/core/model_runtime/ @laipz8200 @QuantumGhost
+
+# Backend - Workflow - Nodes (Agent, Iteration, Loop, LLM)
+api/core/workflow/nodes/agent/ @Nov1c444
+api/core/workflow/nodes/iteration/ @Nov1c444
+api/core/workflow/nodes/loop/ @Nov1c444
+api/core/workflow/nodes/llm/ @Nov1c444
+
+# Backend - RAG (Retrieval Augmented Generation)
+api/core/rag/ @JohnJyong
+api/services/rag_pipeline/ @JohnJyong
+api/services/dataset_service.py @JohnJyong
+api/services/knowledge_service.py @JohnJyong
+api/services/external_knowledge_service.py @JohnJyong
+api/services/hit_testing_service.py @JohnJyong
+api/services/metadata_service.py @JohnJyong
+api/services/vector_service.py @JohnJyong
+api/services/entities/knowledge_entities/ @JohnJyong
+api/services/entities/external_knowledge_entities/ @JohnJyong
+api/controllers/console/datasets/ @JohnJyong
+api/controllers/service_api/dataset/ @JohnJyong
+api/models/dataset.py @JohnJyong
+api/tasks/rag_pipeline/ @JohnJyong
+api/tasks/add_document_to_index_task.py @JohnJyong
+api/tasks/batch_clean_document_task.py @JohnJyong
+api/tasks/clean_document_task.py @JohnJyong
+api/tasks/clean_notion_document_task.py @JohnJyong
+api/tasks/document_indexing_task.py @JohnJyong
+api/tasks/document_indexing_sync_task.py @JohnJyong
+api/tasks/document_indexing_update_task.py @JohnJyong
+api/tasks/duplicate_document_indexing_task.py @JohnJyong
+api/tasks/recover_document_indexing_task.py @JohnJyong
+api/tasks/remove_document_from_index_task.py @JohnJyong
+api/tasks/retry_document_indexing_task.py @JohnJyong
+api/tasks/sync_website_document_indexing_task.py @JohnJyong
+api/tasks/batch_create_segment_to_index_task.py @JohnJyong
+api/tasks/create_segment_to_index_task.py @JohnJyong
+api/tasks/delete_segment_from_index_task.py @JohnJyong
+api/tasks/disable_segment_from_index_task.py @JohnJyong
+api/tasks/disable_segments_from_index_task.py @JohnJyong
+api/tasks/enable_segment_to_index_task.py @JohnJyong
+api/tasks/enable_segments_to_index_task.py @JohnJyong
+api/tasks/clean_dataset_task.py @JohnJyong
+api/tasks/deal_dataset_index_update_task.py @JohnJyong
+api/tasks/deal_dataset_vector_index_task.py @JohnJyong
+
+# Backend - Plugins
+api/core/plugin/ @Mairuis @Yeuoly @Stream29
+api/services/plugin/ @Mairuis @Yeuoly @Stream29
+api/controllers/console/workspace/plugin.py @Mairuis @Yeuoly @Stream29
+api/controllers/inner_api/plugin/ @Mairuis @Yeuoly @Stream29
+api/tasks/process_tenant_plugin_autoupgrade_check_task.py @Mairuis @Yeuoly @Stream29
+
+# Backend - Trigger/Schedule/Webhook
+api/controllers/trigger/ @Mairuis @Yeuoly
+api/controllers/console/app/workflow_trigger.py @Mairuis @Yeuoly
+api/controllers/console/workspace/trigger_providers.py @Mairuis @Yeuoly
+api/core/trigger/ @Mairuis @Yeuoly
+api/core/app/layers/trigger_post_layer.py @Mairuis @Yeuoly
+api/services/trigger/ @Mairuis @Yeuoly
+api/models/trigger.py @Mairuis @Yeuoly
+api/fields/workflow_trigger_fields.py @Mairuis @Yeuoly
+api/repositories/workflow_trigger_log_repository.py @Mairuis @Yeuoly
+api/repositories/sqlalchemy_workflow_trigger_log_repository.py @Mairuis @Yeuoly
+api/libs/schedule_utils.py @Mairuis @Yeuoly
+api/services/workflow/scheduler.py @Mairuis @Yeuoly
+api/schedule/trigger_provider_refresh_task.py @Mairuis @Yeuoly
+api/schedule/workflow_schedule_task.py @Mairuis @Yeuoly
+api/tasks/trigger_processing_tasks.py @Mairuis @Yeuoly
+api/tasks/trigger_subscription_refresh_tasks.py @Mairuis @Yeuoly
+api/tasks/workflow_schedule_tasks.py @Mairuis @Yeuoly
+api/tasks/workflow_cfs_scheduler/ @Mairuis @Yeuoly
+api/events/event_handlers/sync_plugin_trigger_when_app_created.py @Mairuis @Yeuoly
+api/events/event_handlers/update_app_triggers_when_app_published_workflow_updated.py @Mairuis @Yeuoly
+api/events/event_handlers/sync_workflow_schedule_when_app_published.py @Mairuis @Yeuoly
+api/events/event_handlers/sync_webhook_when_app_created.py @Mairuis @Yeuoly
+
+# Backend - Async Workflow
+api/services/async_workflow_service.py @Mairuis @Yeuoly
+api/tasks/async_workflow_tasks.py @Mairuis @Yeuoly
+
+# Backend - Billing
+api/services/billing_service.py @hj24 @zyssyz123
+api/controllers/console/billing/ @hj24 @zyssyz123
+
+# Backend - Enterprise
+api/configs/enterprise/ @GarfieldDai @GareArc
+api/services/enterprise/ @GarfieldDai @GareArc
+api/services/feature_service.py @GarfieldDai @GareArc
+api/controllers/console/feature.py @GarfieldDai @GareArc
+api/controllers/web/feature.py @GarfieldDai @GareArc
+
+# Backend - Database Migrations
+api/migrations/ @snakevash @laipz8200
+
+# Frontend
+web/ @iamjoel
+
+# Frontend - App - Orchestration
+web/app/components/workflow/ @iamjoel @zxhlyh
+web/app/components/workflow-app/ @iamjoel @zxhlyh
+web/app/components/app/configuration/ @iamjoel @zxhlyh
+web/app/components/app/app-publisher/ @iamjoel @zxhlyh
+
+# Frontend - WebApp - Chat
+web/app/components/base/chat/ @iamjoel @zxhlyh
+
+# Frontend - WebApp - Completion
+web/app/components/share/text-generation/ @iamjoel @zxhlyh
+
+# Frontend - App - List and Creation
+web/app/components/apps/ @JzoNgKVO @iamjoel
+web/app/components/app/create-app-dialog/ @JzoNgKVO @iamjoel
+web/app/components/app/create-app-modal/ @JzoNgKVO @iamjoel
+web/app/components/app/create-from-dsl-modal/ @JzoNgKVO @iamjoel
+
+# Frontend - App - API Documentation
+web/app/components/develop/ @JzoNgKVO @iamjoel
+
+# Frontend - App - Logs and Annotations
+web/app/components/app/workflow-log/ @JzoNgKVO @iamjoel
+web/app/components/app/log/ @JzoNgKVO @iamjoel
+web/app/components/app/log-annotation/ @JzoNgKVO @iamjoel
+web/app/components/app/annotation/ @JzoNgKVO @iamjoel
+
+# Frontend - App - Monitoring
+web/app/(commonLayout)/app/(appDetailLayout)/\[appId\]/overview/ @JzoNgKVO @iamjoel
+web/app/components/app/overview/ @JzoNgKVO @iamjoel
+
+# Frontend - App - Settings
+web/app/components/app-sidebar/ @JzoNgKVO @iamjoel
+
+# Frontend - RAG - Hit Testing
+web/app/components/datasets/hit-testing/ @JzoNgKVO @iamjoel
+
+# Frontend - RAG - List and Creation
+web/app/components/datasets/list/ @iamjoel @WTW0313
+web/app/components/datasets/create/ @iamjoel @WTW0313
+web/app/components/datasets/create-from-pipeline/ @iamjoel @WTW0313
+web/app/components/datasets/external-knowledge-base/ @iamjoel @WTW0313
+
+# Frontend - RAG - Orchestration (general rule first, specific rules below override)
+web/app/components/rag-pipeline/ @iamjoel @WTW0313
+web/app/components/rag-pipeline/components/rag-pipeline-main.tsx @iamjoel @zxhlyh
+web/app/components/rag-pipeline/store/ @iamjoel @zxhlyh
+
+# Frontend - RAG - Documents List
+web/app/components/datasets/documents/list.tsx @iamjoel @WTW0313
+web/app/components/datasets/documents/create-from-pipeline/ @iamjoel @WTW0313
+
+# Frontend - RAG - Segments List
+web/app/components/datasets/documents/detail/ @iamjoel @WTW0313
+
+# Frontend - RAG - Settings
+web/app/components/datasets/settings/ @iamjoel @WTW0313
+
+# Frontend - Ecosystem - Plugins
+web/app/components/plugins/ @iamjoel @zhsama
+
+# Frontend - Ecosystem - Tools
+web/app/components/tools/ @iamjoel @Yessenia-d
+
+# Frontend - Ecosystem - MarketPlace
+web/app/components/plugins/marketplace/ @iamjoel @Yessenia-d
+
+# Frontend - Login and Registration
+web/app/signin/ @douxc @iamjoel
+web/app/signup/ @douxc @iamjoel
+web/app/reset-password/ @douxc @iamjoel
+web/app/install/ @douxc @iamjoel
+web/app/init/ @douxc @iamjoel
+web/app/forgot-password/ @douxc @iamjoel
+web/app/account/ @douxc @iamjoel
+
+# Frontend - Service Authentication
+web/service/base.ts @douxc @iamjoel
+
+# Frontend - WebApp Authentication and Access Control
+web/app/(shareLayout)/components/ @douxc @iamjoel
+web/app/(shareLayout)/webapp-signin/ @douxc @iamjoel
+web/app/(shareLayout)/webapp-reset-password/ @douxc @iamjoel
+web/app/components/app/app-access-control/ @douxc @iamjoel
+
+# Frontend - Explore Page
+web/app/components/explore/ @CodingOnStar @iamjoel
+
+# Frontend - Personal Settings
+web/app/components/header/account-setting/ @CodingOnStar @iamjoel
+web/app/components/header/account-dropdown/ @CodingOnStar @iamjoel
+
+# Frontend - Analytics
+web/app/components/base/ga/ @CodingOnStar @iamjoel
+
+# Frontend - Base Components
+web/app/components/base/ @iamjoel @zxhlyh
+
+# Frontend - Utils and Hooks
+web/utils/classnames.ts @iamjoel @zxhlyh
+web/utils/time.ts @iamjoel @zxhlyh
+web/utils/format.ts @iamjoel @zxhlyh
+web/utils/clipboard.ts @iamjoel @zxhlyh
+web/hooks/use-document-title.ts @iamjoel @zxhlyh
+
+# Frontend - Billing and Education
+web/app/components/billing/ @iamjoel @zxhlyh
+web/app/education-apply/ @iamjoel @zxhlyh
+
+# Frontend - Workspace
+web/app/components/header/account-dropdown/workplace-selector/ @iamjoel @zxhlyh
