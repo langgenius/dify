@@ -37,7 +37,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.datetime_utils import naive_utc_now
-from libs.helper import TimestampField, email, extract_remote_ip, timezone
+from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
 from models import Account, AccountIntegrate, InvitationCode
 from services.account_service import AccountService
@@ -111,13 +111,8 @@ class AccountDeletePayload(BaseModel):
 
 
 class AccountDeletionFeedbackPayload(BaseModel):
-    email: str
+    email: EmailStr
     feedback: str
-
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 class EducationActivatePayload(BaseModel):
@@ -133,45 +128,25 @@ class EducationAutocompleteQuery(BaseModel):
 
 
 class ChangeEmailSendPayload(BaseModel):
-    email: str
+    email: EmailStr
     language: str | None = None
     phase: str | None = None
     token: str | None = None
 
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
-
 
 class ChangeEmailValidityPayload(BaseModel):
-    email: str
+    email: EmailStr
     code: str
     token: str
 
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
-
 
 class ChangeEmailResetPayload(BaseModel):
-    new_email: str
+    new_email: EmailStr
     token: str
-
-    @field_validator("new_email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 class CheckEmailUniquePayload(BaseModel):
-    email: str
-
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
+    email: EmailStr
 
 
 def reg(cls: type[BaseModel]):

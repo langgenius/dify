@@ -156,7 +156,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         query = application_generate_entity.query or "New conversation"
         conversation_name = (query[:20] + "…") if len(query) > 20 else query
 
-        with db.session.begin():
+        try:
             if not conversation:
                 conversation = Conversation(
                     app_id=app_config.app_id,
@@ -232,7 +232,10 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 db.session.add_all(message_files)
 
             db.session.commit()
-        return conversation, message
+            return conversation, message
+        except Exception:
+            db.session.rollback()
+            raise
 
     def _get_conversation_introduction(self, application_generate_entity: AppGenerateEntity) -> str:
         """
