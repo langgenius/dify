@@ -377,20 +377,20 @@ class OpsTraceManager:
         return app_model_config
 
     @classmethod
-    def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str):
+    def update_app_tracing_config(cls, app_id: str, enabled: bool, tracing_provider: str | None):
         """
         Update app tracing config
         :param app_id: app id
         :param enabled: enabled
-        :param tracing_provider: tracing provider
+        :param tracing_provider: tracing provider (None when disabling)
         :return:
         """
         # auth check
-        try:
-            if enabled or tracing_provider is not None:
+        if tracing_provider is not None:
+            try:
                 provider_config_map[tracing_provider]
-        except KeyError:
-            raise ValueError(f"Invalid tracing provider: {tracing_provider}")
+            except KeyError:
+                raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: App | None = db.session.query(App).where(App.id == app_id).first()
         if not app_config:
