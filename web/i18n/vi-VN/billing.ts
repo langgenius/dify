@@ -29,6 +29,7 @@ const translation = {
     vectorSpace: 'Không gian Vector',
     vectorSpaceTooltip: 'Không gian Vector là hệ thống bộ nhớ dài hạn cần thiết cho LLMs để hiểu dữ liệu của bạn.',
     documentProcessingPriority: 'Ưu tiên Xử lý Tài liệu',
+    documentProcessingPriorityTip: 'Để có mức độ ưu tiên xử lý tài liệu cao hơn, vui lòng nâng cấp gói của bạn.',
     documentProcessingPriorityUpgrade: 'Xử lý nhiều dữ liệu với độ chính xác cao và tốc độ nhanh hơn.',
     priority: {
       'standard': 'Tiêu chuẩn',
