@@ -1,5 +1,6 @@
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -14,15 +15,44 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import AccountInFreezeError, EmailSendIpLimitError
-from controllers.console.wraps import email_password_login_enabled, email_register_enabled, setup_required
 from extensions.ext_database import db
-from libs.helper import email, extract_remote_ip
+from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models import Account
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
+
+from ..error import AccountInFreezeError, EmailSendIpLimitError
+from ..wraps import email_password_login_enabled, email_register_enabled, setup_required
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class EmailRegisterSendPayload(BaseModel):
+    email: EmailStr = Field(..., description="Email address")
+    language: str | None = Field(default=None, description="Language code")
+
+
+class EmailRegisterValidityPayload(BaseModel):
+    email: EmailStr = Field(...)
+    code: str = Field(...)
+    token: str = Field(...)
+
+
+class EmailRegisterResetPayload(BaseModel):
+    token: str = Field(...)
+    new_password: str = Field(...)
+    password_confirm: str = Field(...)
+
+    @field_validator("new_password", "password_confirm")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return valid_password(value)
+
+
+for model in (EmailRegisterSendPayload, EmailRegisterValidityPayload, EmailRegisterResetPayload):
+    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
 @console_ns.route("/email-register/send-email")
@@ -31,27 +61,22 @@ class EmailRegisterSendEmailApi(Resource):
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=email, required=True, location="json")
-            .add_argument("language", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = EmailRegisterSendPayload.model_validate(console_ns.payload)
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
         language = "en-US"
-        if args["language"] in languages:
-            language = args["language"]
+        if args.language in languages:
+            language = args.language
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args["email"]):
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args.email):
             raise AccountInFreezeError()
 
         with Session(db.engine) as session:
-            account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
+            account = session.execute(select(Account).filter_by(email=args.email)).scalar_one_or_none()
         token = None
-        token = AccountService.send_email_register_email(email=args["email"], account=account, language=language)
+        token = AccountService.send_email_register_email(email=args.email, account=account, language=language)
         return {"result": "success", "data": token}
 
 
@@ -61,40 +86,34 @@ class EmailRegisterCheckApi(Resource):
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=str, required=True, location="json")
-            .add_argument("code", type=str, required=True, location="json")
-            .add_argument("token", type=str, required=True, nullable=False, location="json")
-        )
-        args = parser.parse_args()
+        args = EmailRegisterValidityPayload.model_validate(console_ns.payload)
 
-        user_email = args["email"]
+        user_email = args.email
 
-        is_email_register_error_rate_limit = AccountService.is_email_register_error_rate_limit(args["email"])
+        is_email_register_error_rate_limit = AccountService.is_email_register_error_rate_limit(args.email)
         if is_email_register_error_rate_limit:
             raise EmailRegisterLimitError()
 
-        token_data = AccountService.get_email_register_data(args["token"])
+        token_data = AccountService.get_email_register_data(args.token)
         if token_data is None:
             raise InvalidTokenError()
 
         if user_email != token_data.get("email"):
             raise InvalidEmailError()
 
-        if args["code"] != token_data.get("code"):
-            AccountService.add_email_register_error_rate_limit(args["email"])
+        if args.code != token_data.get("code"):
+            AccountService.add_email_register_error_rate_limit(args.email)
             raise EmailCodeError()
 
         # Verified, revoke the first token
-        AccountService.revoke_email_register_token(args["token"])
+        AccountService.revoke_email_register_token(args.token)
 
         # Refresh token data by generating a new token
         _, new_token = AccountService.generate_email_register_token(
-            user_email, code=args["code"], additional_data={"phase": "register"}
+            user_email, code=args.code, additional_data={"phase": "register"}
         )
 
-        AccountService.reset_email_register_error_rate_limit(args["email"])
+        AccountService.reset_email_register_error_rate_limit(args.email)
         return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
 
 
@@ -104,20 +123,14 @@ class EmailRegisterResetApi(Resource):
     @email_password_login_enabled
     @email_register_enabled
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("token", type=str, required=True, nullable=False, location="json")
-            .add_argument("new_password", type=valid_password, required=True, nullable=False, location="json")
-            .add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
-        )
-        args = parser.parse_args()
+        args = EmailRegisterResetPayload.model_validate(console_ns.payload)
 
         # Validate passwords match
-        if args["new_password"] != args["password_confirm"]:
+        if args.new_password != args.password_confirm:
             raise PasswordMismatchError()
 
         # Validate token and get register data
-        register_data = AccountService.get_email_register_data(args["token"])
+        register_data = AccountService.get_email_register_data(args.token)
         if not register_data:
             raise InvalidTokenError()
         # Must use token in reset phase
@@ -125,7 +138,7 @@ class EmailRegisterResetApi(Resource):
             raise InvalidTokenError()
 
         # Revoke token to prevent reuse
-        AccountService.revoke_email_register_token(args["token"])
+        AccountService.revoke_email_register_token(args.token)
 
         email = register_data.get("email", "")
 
@@ -135,7 +148,7 @@ class EmailRegisterResetApi(Resource):
             if account:
                 raise EmailAlreadyInUseError()
             else:
-                account = self._create_new_account(email, args["password_confirm"])
+                account = self._create_new_account(email, args.password_confirm)
                 if not account:
                     raise AccountNotFoundError()
                 token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))

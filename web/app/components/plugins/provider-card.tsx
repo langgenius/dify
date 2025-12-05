@@ -76,7 +76,7 @@ const ProviderCard: FC<Props> = ({
           className='grow'
           variant='secondary'
         >
-          <a href={`${getPluginLinkInMarketplace(payload)}?language=${locale}${theme ? `&theme=${theme}` : ''}`} target='_blank' className='flex items-center gap-0.5'>
+          <a href={getPluginLinkInMarketplace(payload, { language: locale, theme })} target='_blank' className='flex items-center gap-0.5'>
             {t('plugin.detailPanel.operation.detail')}
             <RiArrowRightUpLine className='h-4 w-4' />
           </a>

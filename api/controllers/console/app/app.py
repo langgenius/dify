@@ -146,7 +146,14 @@ class AppApiStatusPayload(BaseModel):
 
 class AppTracePayload(BaseModel):
     enabled: bool = Field(..., description="Enable or disable tracing")
-    tracing_provider: str = Field(..., description="Tracing provider")
+    tracing_provider: str | None = Field(default=None, description="Tracing provider")
+
+    @field_validator("tracing_provider")
+    @classmethod
+    def validate_tracing_provider(cls, value: str | None, info) -> str | None:
+        if info.data.get("enabled") and not value:
+            raise ValueError("tracing_provider is required when enabled is True")
+        return value
 
 
 def reg(cls: type[BaseModel]):

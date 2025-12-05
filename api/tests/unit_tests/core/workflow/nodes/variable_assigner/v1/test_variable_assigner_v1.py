@@ -30,7 +30,13 @@ def test_overwrite_string_variable():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "version": "1", "title": "Variable Assigner", "items": []},
+                "data": {
+                    "type": "assigner",
+                    "title": "Variable Assigner",
+                    "assigned_variable_selector": ["conversation", "test_conversation_variable"],
+                    "write_mode": "over-write",
+                    "input_variable_selector": ["node_id", "test_string_variable"],
+                },
                 "id": "assigner",
             },
         ],
@@ -131,7 +137,13 @@ def test_append_variable_to_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "version": "1", "title": "Variable Assigner", "items": []},
+                "data": {
+                    "type": "assigner",
+                    "title": "Variable Assigner",
+                    "assigned_variable_selector": ["conversation", "test_conversation_variable"],
+                    "write_mode": "append",
+                    "input_variable_selector": ["node_id", "test_string_variable"],
+                },
                 "id": "assigner",
             },
         ],
@@ -231,7 +243,13 @@ def test_clear_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "version": "1", "title": "Variable Assigner", "items": []},
+                "data": {
+                    "type": "assigner",
+                    "title": "Variable Assigner",
+                    "assigned_variable_selector": ["conversation", "test_conversation_variable"],
+                    "write_mode": "clear",
+                    "input_variable_selector": [],
+                },
                 "id": "assigner",
             },
         ],
