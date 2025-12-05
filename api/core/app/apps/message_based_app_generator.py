@@ -237,7 +237,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             db.session.rollback()
             raise
 
-
     def _get_conversation_introduction(self, application_generate_entity: AppGenerateEntity) -> str:
         """
         Get conversation introduction
