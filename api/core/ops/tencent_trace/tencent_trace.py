@@ -27,7 +27,7 @@ from core.repositories import SQLAlchemyWorkflowNodeExecutionRepository
 from core.workflow.entities.workflow_node_execution import (
     WorkflowNodeExecution,
 )
-from core.workflow.nodes import NodeType
+from core.workflow.enums import NodeType
 from extensions.ext_database import db
 from models import Account, App, TenantAccountJoin, WorkflowNodeExecutionTriggeredFrom
 

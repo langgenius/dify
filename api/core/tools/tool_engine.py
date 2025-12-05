@@ -4,7 +4,7 @@ from collections.abc import Generator, Iterable
 from copy import deepcopy
 from datetime import UTC, datetime
 from mimetypes import guess_type
-from typing import Any, Union, cast
+from typing import TYPE_CHECKING, Any, Union, cast
 
 from yarl import URL
 
@@ -13,7 +13,9 @@ from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackH
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import FileType
 from core.file.models import FileTransferMethod
-from core.ops.ops_trace_manager import TraceQueueManager
+
+if TYPE_CHECKING:
+    from core.workflow.runtime.graph_runtime_state import TraceQueueManagerProtocol
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolInvokeMessage,
@@ -51,7 +53,7 @@ class ToolEngine:
         message: Message,
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
-        trace_manager: TraceQueueManager | None = None,
+        trace_manager: Union["TraceQueueManagerProtocol", None] = None,
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
@@ -155,6 +157,7 @@ class ToolEngine:
         conversation_id: str | None = None,
         app_id: str | None = None,
         message_id: str | None = None,
+        trace_manager: Union["TraceQueueManagerProtocol", None] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Workflow invokes the tool with the given arguments.
@@ -182,6 +185,8 @@ class ToolEngine:
                 tool_name=tool.entity.identity.name,
                 tool_inputs=tool_parameters,
                 tool_outputs=response,
+                message_id=message_id,
+                trace_manager=trace_manager,
             )
 
             return response

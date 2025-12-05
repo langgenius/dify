@@ -146,7 +146,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             )
 
             # init graph
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.time())
+            graph_runtime_state = GraphRuntimeState(
+                variable_pool=variable_pool,
+                start_at=time.perf_counter(),
+                trace_manager=self.application_generate_entity.trace_manager,
+            )
             graph = self._init_graph(
                 graph_config=self._workflow.graph_dict,
                 graph_runtime_state=graph_runtime_state,

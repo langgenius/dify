@@ -91,11 +91,18 @@ class WorkflowTool(Tool):
 
         self._latest_usage = LLMUsage.empty_usage()
 
+        # Add conversation_id and message_id to args if available
+        args: dict[str, Any] = {"inputs": tool_parameters, "files": files}
+        if conversation_id:
+            args["conversation_id"] = conversation_id
+        if message_id:
+            args["message_id"] = message_id
+
         result = generator.generate(
             app_model=app,
             workflow=workflow,
             user=user,
-            args={"inputs": tool_parameters, "files": files},
+            args=args,
             invoke_from=self.runtime.invoke_from,
             streaming=False,
             call_depth=self.workflow_call_depth + 1,

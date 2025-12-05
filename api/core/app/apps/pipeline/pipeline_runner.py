@@ -142,7 +142,11 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 conversation_variables=[],
                 rag_pipeline_variables=rag_pipeline_variables,
             )
-            graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
+            graph_runtime_state = GraphRuntimeState(
+                variable_pool=variable_pool,
+                start_at=time.perf_counter(),
+                trace_manager=self.application_generate_entity.trace_manager,
+            )
 
             # init graph
             graph = self._init_rag_pipeline_graph(

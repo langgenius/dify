@@ -5,7 +5,7 @@ import json
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, Union
 
 from pydantic.json import pydantic_encoder
 
@@ -102,6 +102,12 @@ class ResponseStreamCoordinatorProtocol(Protocol):
         ...
 
 
+class TraceQueueManagerProtocol(Protocol):
+    """Structural interface for trace queue manager."""
+
+    def add_trace_task(self, trace_task: Any) -> None: ...
+
+
 class GraphProtocol(Protocol):
     """Structural interface required from graph instances attached to the runtime state."""
 
@@ -145,6 +151,7 @@ class GraphRuntimeState:
         graph_execution: GraphExecutionProtocol | None = None,
         response_coordinator: ResponseStreamCoordinatorProtocol | None = None,
         graph: GraphProtocol | None = None,
+        trace_manager: Union[TraceQueueManagerProtocol, None] = None,
     ) -> None:
         self._variable_pool = variable_pool
         self._start_at = start_at
@@ -168,6 +175,7 @@ class GraphRuntimeState:
         self._pending_response_coordinator_dump: str | None = None
         self._pending_graph_execution_workflow_id: str | None = None
         self._paused_nodes: set[str] = set()
+        self._trace_manager = trace_manager
 
         if graph is not None:
             self.attach_graph(graph)
@@ -206,6 +214,10 @@ class GraphRuntimeState:
     @property
     def variable_pool(self) -> VariablePool:
         return self._variable_pool
+
+    @property
+    def trace_manager(self) -> Union[TraceQueueManagerProtocol, None]:
+        return self._trace_manager
 
     @property
     def ready_queue(self) -> ReadyQueueProtocol:
