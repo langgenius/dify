@@ -423,14 +423,20 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
                 retrieval_resource_list,
-                key=lambda x: x.get("metadata", {}).get("score")
-                if isinstance(x.get("metadata", {}), dict) and x.get("metadata", {}).get("score") is not None
-                else 0.0,  # type: ignore[arg-type, union-attr, return-value]
+                key=self._score,  # type: ignore[arg-type, return-value]
                 reverse=True,
             )
             for position, item in enumerate(retrieval_resource_list, start=1):
                 item["metadata"]["position"] = position  # type: ignore[index]
         return retrieval_resource_list, usage
+
+    def _score(self, item: dict[str, Any]) -> float:
+        meta = item.get("metadata")
+        if isinstance(meta, dict):
+            s = meta.get("score")
+            if isinstance(s, (int, float)):
+                return float(s)
+        return 0.0
 
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
