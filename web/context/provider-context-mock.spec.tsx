@@ -15,7 +15,7 @@ const renderWithPlan = (plan: Plan) => {
   return render(<ProviderContextMock />)
 }
 
-describe('mock plan', () => {
+describe('ProviderContextMock', () => {
   beforeEach(() => {
     mockPlan = Plan.sandbox
     jest.clearAllMocks()
