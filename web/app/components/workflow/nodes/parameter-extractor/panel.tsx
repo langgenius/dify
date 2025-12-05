@@ -7,6 +7,7 @@ import Editor from '../_base/components/prompt/editor'
 import ConfigVision from '../_base/components/config-vision'
 import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
+import { ReasoningModeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
 import ImportFromTool from './components/extract-parameter/import-from-tool'
 import AddExtractParameter from './components/extract-parameter/update'
@@ -52,6 +53,11 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     isVisionModel,
     handleVisionResolutionChange,
     handleVisionResolutionEnabledChange,
+    // Custom prompt handlers
+    handleSystemPromptChange,
+    handleUserPromptTemplateChange,
+    handleCompletionPromptChange,
+    handleChatPromptChange,
   } = useConfig(id, data)
 
   const model = inputs.model
@@ -171,6 +177,81 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
               />
             </div>
           )}
+
+          {/* Custom Prompts Section */}
+          <div className='mt-4'>
+            <div className='text-sm font-medium text-text-tertiary uppercase mb-2'>
+              {t(`${i18nPrefix}.customPrompts`)}
+            </div>
+
+            {/* Function Call Mode Prompts */}
+            {inputs.reasoning_mode === ReasoningModeType.functionCall && (
+              <div className='space-y-3'>
+                <Editor
+                  title={t(`${i18nPrefix}.customSystemPrompt`)}
+                  value={inputs.system_prompt || ''}
+                  onChange={handleSystemPromptChange}
+                  readOnly={readOnly}
+                  isChatModel={isChatModel}
+                  isChatApp={isChatMode}
+                  isShowContext={false}
+                  hasSetBlockStatus={hasSetBlockStatus}
+                  nodesOutputVars={availableVars}
+                  availableNodes={availableNodesWithParent}
+                  placeholder={t(`${i18nPrefix}.systemPromptPlaceholder`)}
+                />
+                <Editor
+                  title={t(`${i18nPrefix}.customUserPromptTemplate`)}
+                  value={inputs.user_prompt_template || ''}
+                  onChange={handleUserPromptTemplateChange}
+                  readOnly={readOnly}
+                  isChatModel={isChatModel}
+                  isChatApp={isChatMode}
+                  isShowContext={false}
+                  hasSetBlockStatus={hasSetBlockStatus}
+                  nodesOutputVars={availableVars}
+                  availableNodes={availableNodesWithParent}
+                  placeholder={t(`${i18nPrefix}.userPromptTemplatePlaceholder`)}
+                />
+              </div>
+            )}
+
+            {/* Prompt Engineering Mode Prompts */}
+            {inputs.reasoning_mode === 'prompt' && (
+              <div className='space-y-3'>
+                {isChatModel && (
+                  <Editor
+                    title={t(`${i18nPrefix}.customChatPrompt`)}
+                    value={inputs.chat_prompt || ''}
+                    onChange={handleChatPromptChange}
+                    readOnly={readOnly}
+                    isChatModel={isChatModel}
+                    isChatApp={isChatMode}
+                    isShowContext={false}
+                    hasSetBlockStatus={hasSetBlockStatus}
+                    nodesOutputVars={availableVars}
+                    availableNodes={availableNodesWithParent}
+                    placeholder={t(`${i18nPrefix}.chatPromptPlaceholder`)}
+                  />
+                )}
+                {isCompletionModel && (
+                  <Editor
+                    title={t(`${i18nPrefix}.customCompletionPrompt`)}
+                    value={inputs.completion_prompt || ''}
+                    onChange={handleCompletionPromptChange}
+                    readOnly={readOnly}
+                    isChatModel={isChatModel}
+                    isChatApp={isChatMode}
+                    isShowContext={false}
+                    hasSetBlockStatus={hasSetBlockStatus}
+                    nodesOutputVars={availableVars}
+                    availableNodes={availableNodesWithParent}
+                    placeholder={t(`${i18nPrefix}.completionPromptPlaceholder`)}
+                  />
+                )}
+              </div>
+            )}
+          </div>
         </>
       </FieldCollapse>
       {inputs.parameters?.length > 0 && (<>

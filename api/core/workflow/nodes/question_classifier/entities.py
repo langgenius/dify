@@ -17,6 +17,9 @@ class QuestionClassifierNodeData(BaseNodeData):
     instruction: str | None = None
     memory: MemoryConfig | None = None
     vision: VisionConfig = Field(default_factory=VisionConfig)
+    # Custom prompts (DSL v0.6.0+)
+    system_prompt: str | None = None  # For chat models
+    completion_prompt: str | None = None  # For completion models
 
     @property
     def structured_output_enabled(self) -> bool:

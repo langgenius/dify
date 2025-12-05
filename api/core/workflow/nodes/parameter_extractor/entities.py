@@ -90,6 +90,11 @@ class ParameterExtractorNodeData(BaseNodeData):
     memory: MemoryConfig | None = None
     reasoning_mode: Literal["function_call", "prompt"]
     vision: VisionConfig = Field(default_factory=VisionConfig)
+    # Custom prompts (DSL v0.6.0+)
+    system_prompt: str | None = None  # For function_call mode
+    user_prompt_template: str | None = None  # For function_call mode
+    completion_prompt: str | None = None  # For prompt mode with completion models
+    chat_prompt: str | None = None  # For prompt mode with chat models
 
     @field_validator("reasoning_mode", mode="before")
     @classmethod

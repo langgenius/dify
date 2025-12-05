@@ -35,4 +35,9 @@ export type ParameterExtractorNodeType = CommonNodeType & {
     enabled: boolean
     configs?: VisionSetting
   }
+  // Custom prompts (DSL v0.6.0+)
+  system_prompt?: string
+  user_prompt_template?: string
+  completion_prompt?: string
+  chat_prompt?: string
 }
