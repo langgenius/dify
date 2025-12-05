@@ -95,7 +95,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
             else:
                 splits = text.split(separator)
                 if self._keep_separator:
-                    splits = [item + separator if i < len(splits) - 1 else item for i, item in enumerate(splits)]
+                    splits = [s + separator for s in splits[:-1]] + splits[-1:]
         else:
             splits = list(text)
         if separator == "\n":
