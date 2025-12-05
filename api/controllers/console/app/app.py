@@ -146,7 +146,14 @@ class AppApiStatusPayload(BaseModel):
 
 class AppTracePayload(BaseModel):
     enabled: bool = Field(..., description="Enable or disable tracing")
-    tracing_provider: str = Field(..., description="Tracing provider")
+    tracing_provider: str | None = Field(default=None, description="Tracing provider")
+
+    @field_validator("tracing_provider")
+    @classmethod
+    def validate_tracing_provider(cls, value: str | None, info) -> str | None:
+        if info.data.get("enabled") and not value:
+            raise ValueError("tracing_provider is required when enabled is True")
+        return value
 
 
 def reg(cls: type[BaseModel]):
@@ -324,10 +331,13 @@ class AppListApi(Resource):
                 NodeType.TRIGGER_PLUGIN,
             }
             for workflow in draft_workflows:
-                for _, node_data in workflow.walk_nodes():
-                    if node_data.get("type") in trigger_node_types:
-                        draft_trigger_app_ids.add(str(workflow.app_id))
-                        break
+                try:
+                    for _, node_data in workflow.walk_nodes():
+                        if node_data.get("type") in trigger_node_types:
+                            draft_trigger_app_ids.add(str(workflow.app_id))
+                            break
+                except Exception:
+                    continue
 
         for app in app_pagination.items:
             app.has_draft_trigger = str(app.id) in draft_trigger_app_ids

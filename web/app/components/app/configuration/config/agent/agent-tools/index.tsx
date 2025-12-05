@@ -251,6 +251,7 @@ const AgentTools: FC = () => {
                     {!item.notAuthor && (
                       <Tooltip
                         popupContent={t('tools.setBuiltInTools.infoAndSetting')}
+                        needsDelay={false}
                       >
                         <div className='cursor-pointer rounded-md p-1  hover:bg-black/5' onClick={() => {
                           setCurrentTool(item)
