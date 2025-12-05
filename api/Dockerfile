@@ -98,6 +98,6 @@ ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
 ENV NLTK_DATA=/usr/local/share/nltk_data
 
-USER dify
+USER root
 
 ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
