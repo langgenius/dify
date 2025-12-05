@@ -105,12 +105,12 @@ const ConfigPrompt: FC<Props> = ({
   const handleAddPrompt = useCallback(() => {
     const newPrompt = produce(payload as PromptItem[], (draft) => {
       if (draft.length === 0) {
-        draft.push({ role: PromptRole.system, text: '' })
+        draft.push({ role: PromptRole.system, text: '', id: uuid4() })
 
         return
       }
       const isLastItemUser = draft[draft.length - 1].role === PromptRole.user
-      draft.push({ role: isLastItemUser ? PromptRole.assistant : PromptRole.user, text: '' })
+      draft.push({ role: isLastItemUser ? PromptRole.assistant : PromptRole.user, text: '', id: uuid4() })
     })
     onChange(newPrompt)
   }, [onChange, payload])
