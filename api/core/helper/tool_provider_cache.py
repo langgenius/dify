@@ -21,9 +21,7 @@ class ToolProviderListCache:
 
     @staticmethod
     @redis_fallback(default_return=None)
-    def get_cached_providers(
-        tenant_id: str, typ: ToolProviderTypeApiLiteral = None
-    ) -> list[dict[str, Any]] | None:
+    def get_cached_providers(tenant_id: str, typ: ToolProviderTypeApiLiteral = None) -> list[dict[str, Any]] | None:
         """Get cached tool providers"""
         cache_key = ToolProviderListCache._generate_cache_key(tenant_id, typ)
         cached_data = redis_client.get(cache_key)
