@@ -30,6 +30,7 @@ const translation = {
     vectorSpace: 'Vektör Alanı',
     vectorSpaceTooltip: 'Vektör Alanı, LLM\'lerin verilerinizi anlaması için gerekli uzun süreli hafıza sistemidir.',
     documentProcessingPriority: 'Doküman İşleme Önceliği',
+    documentProcessingPriorityTip: 'Daha yüksek belge işleme önceliği için lütfen planınızı yükseltin.',
     documentProcessingPriorityUpgrade: 'Daha fazla veriyi daha yüksek doğrulukla ve daha hızlı işleyin.',
     priority: {
       'standard': 'Standart',

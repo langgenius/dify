@@ -30,6 +30,7 @@ const translation = {
     vectorSpace: 'พื้นที่เวกเตอร์',
     vectorSpaceTooltip: 'Vector Space เป็นระบบหน่วยความจําระยะยาวที่จําเป็นสําหรับ LLM ในการทําความเข้าใจข้อมูลของคุณ',
     documentProcessingPriority: 'ลําดับความสําคัญในการประมวลผลเอกสาร',
+    documentProcessingPriorityTip: 'สำหรับความสำคัญในการประมวลผลเอกสารที่สูงขึ้น โปรดอัปเกรดแผนของคุณ',
     documentProcessingPriorityUpgrade: 'ประมวลผลข้อมูลได้มากขึ้นด้วยความแม่นยําที่สูงขึ้นด้วยความเร็วที่เร็วขึ้น',
     priority: {
       'standard': 'มาตรฐาน',

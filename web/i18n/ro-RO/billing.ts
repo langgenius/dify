@@ -29,6 +29,7 @@ const translation = {
     vectorSpace: 'Spațiu vectorial',
     vectorSpaceTooltip: 'Spațiul vectorial este sistemul de memorie pe termen lung necesar pentru ca LLM-urile să înțeleagă datele dvs.',
     documentProcessingPriority: 'Prioritatea procesării documentelor',
+    documentProcessingPriorityTip: 'Pentru o prioritate mai mare a procesării documentelor, vă rugăm să vă actualizați planul.',
     documentProcessingPriorityUpgrade: 'Procesați mai multe date cu o acuratețe mai mare și la viteze mai rapide.',
     priority: {
       'standard': 'Standard',
