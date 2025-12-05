@@ -46,6 +46,9 @@ from core.workflow.node_events import (
     RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
+    ThoughtChunkEvent,
+    ToolCallChunkEvent,
+    ToolResultChunkEvent,
 )
 from core.workflow.runtime import GraphRuntimeState
 from libs.datetime_utils import naive_utc_now
@@ -536,6 +539,8 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: StreamChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
         return NodeRunStreamChunkEvent(
             id=self._node_execution_id,
             node_id=self._node_id,
@@ -543,6 +548,57 @@ class Node(Generic[NodeDataT]):
             selector=event.selector,
             chunk=event.chunk,
             is_final=event.is_final,
+            chunk_type=ChunkType(event.chunk_type.value),
+        )
+
+    @_dispatch.register
+    def _(self, event: ToolCallChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
+        return NodeRunStreamChunkEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=ChunkType.TOOL_CALL,
+            tool_call_id=event.tool_call_id,
+            tool_name=event.tool_name,
+            tool_arguments=event.tool_arguments,
+        )
+
+    @_dispatch.register
+    def _(self, event: ToolResultChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
+        return NodeRunStreamChunkEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=ChunkType.TOOL_RESULT,
+            tool_call_id=event.tool_call_id,
+            tool_name=event.tool_name,
+            tool_files=event.tool_files,
+            tool_error=event.tool_error,
+        )
+
+    @_dispatch.register
+    def _(self, event: ThoughtChunkEvent) -> NodeRunStreamChunkEvent:
+        from core.workflow.graph_events import ChunkType
+
+        return NodeRunStreamChunkEvent(
+            id=self._node_execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=ChunkType.THOUGHT,
+            round_index=event.round_index,
         )
 
     @_dispatch.register

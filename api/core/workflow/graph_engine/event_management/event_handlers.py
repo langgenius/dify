@@ -146,7 +146,15 @@ class EventHandler:
         Args:
             event: The stream chunk event
         """
-        # Process with response coordinator
+        from core.workflow.graph_events import ChunkType
+
+        # For agent-specific chunk types (TOOL_CALL, TOOL_RESULT, THOUGHT),
+        # bypass response coordinator and collect directly to avoid template-based filtering
+        if event.chunk_type in (ChunkType.TOOL_CALL, ChunkType.TOOL_RESULT, ChunkType.THOUGHT):
+            self._event_collector.collect(event)
+            return
+
+        # For TEXT chunks, process with response coordinator (template-based flow)
         streaming_events = list(self._response_coordinator.intercept_event(event))
 
         # Collect all events

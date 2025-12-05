@@ -201,6 +201,7 @@ message_detail_model = console_ns.model(
         "status": fields.String,
         "error": fields.String,
         "parent_message_id": fields.String,
+        "generation_detail": fields.Raw,
     },
 )
 

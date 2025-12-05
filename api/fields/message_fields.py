@@ -68,6 +68,7 @@ message_fields = {
     "message_files": fields.List(fields.Nested(message_file_fields)),
     "status": fields.String,
     "error": fields.String,
+    "generation_detail": fields.Raw,
 }
 
 message_infinite_scroll_pagination_fields = {

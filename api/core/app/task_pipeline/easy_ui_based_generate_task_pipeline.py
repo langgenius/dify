@@ -58,7 +58,7 @@ from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from models.model import AppMode, Conversation, Message, MessageAgentThought
+from models.model import AppMode, Conversation, LLMGenerationDetail, Message, MessageAgentThought
 
 logger = logging.getLogger(__name__)
 
@@ -425,10 +425,91 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 )
             )
 
+        # Save LLM generation detail if there's reasoning_content
+        self._save_generation_detail(session=session, message=message, llm_result=llm_result)
+
         message_was_created.send(
             message,
             application_generate_entity=self._application_generate_entity,
         )
+
+    def _save_generation_detail(self, *, session: Session, message: Message, llm_result: LLMResult) -> None:
+        """
+        Save LLM generation detail for Completion/Chat/Agent-Chat applications.
+        For Agent-Chat, also merges MessageAgentThought records.
+        """
+        import json
+
+        reasoning_list: list[str] = []
+        tool_calls_list: list[dict] = []
+        sequence: list[dict] = []
+        answer = message.answer or ""
+
+        # Check if this is Agent-Chat mode by looking for agent thoughts
+        agent_thoughts = (
+            session.query(MessageAgentThought)
+            .filter_by(message_id=message.id)
+            .order_by(MessageAgentThought.position.asc())
+            .all()
+        )
+
+        if agent_thoughts:
+            # Agent-Chat mode: merge MessageAgentThought records
+            content_pos = 0
+            for thought in agent_thoughts:
+                # Add thought/reasoning
+                if thought.thought:
+                    reasoning_list.append(thought.thought)
+                    sequence.append({"type": "reasoning", "index": len(reasoning_list) - 1})
+
+                # Add tool calls
+                if thought.tool:
+                    tool_calls_list.append(
+                        {
+                            "name": thought.tool,
+                            "arguments": thought.tool_input or "",
+                            "result": thought.observation or "",
+                        }
+                    )
+                    sequence.append({"type": "tool_call", "index": len(tool_calls_list) - 1})
+
+                # Add answer content if present
+                if thought.answer:
+                    start = content_pos
+                    end = content_pos + len(thought.answer)
+                    sequence.append({"type": "content", "start": start, "end": end})
+                    content_pos = end
+        else:
+            # Completion/Chat mode: use reasoning_content from llm_result
+            reasoning_content = llm_result.reasoning_content
+            if reasoning_content:
+                reasoning_list = [reasoning_content]
+                # Content comes first, then reasoning
+                if answer:
+                    sequence.append({"type": "content", "start": 0, "end": len(answer)})
+                sequence.append({"type": "reasoning", "index": 0})
+
+        # Only save if there's meaningful generation detail
+        if not reasoning_list and not tool_calls_list:
+            return
+
+        # Check if generation detail already exists
+        existing = session.query(LLMGenerationDetail).filter_by(message_id=message.id).first()
+
+        if existing:
+            existing.reasoning_content = json.dumps(reasoning_list) if reasoning_list else None
+            existing.tool_calls = json.dumps(tool_calls_list) if tool_calls_list else None
+            existing.sequence = json.dumps(sequence) if sequence else None
+        else:
+            generation_detail = LLMGenerationDetail(
+                tenant_id=self._application_generate_entity.app_config.tenant_id,
+                app_id=self._application_generate_entity.app_config.app_id,
+                message_id=message.id,
+                reasoning_content=json.dumps(reasoning_list) if reasoning_list else None,
+                tool_calls=json.dumps(tool_calls_list) if tool_calls_list else None,
+                sequence=json.dumps(sequence) if sequence else None,
+            )
+            session.add(generation_detail)
 
     def _handle_stop(self, event: QueueStopEvent):
         """

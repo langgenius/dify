@@ -86,6 +86,7 @@ def build_message_model(api_or_ns: Api | Namespace):
         "agent_thoughts": fields.List(fields.Nested(agent_thought_model)),
         "status": fields.String,
         "error": fields.String,
+        "generation_detail": fields.Raw,
     }
     return api_or_ns.model("Message", message_fields)
 
