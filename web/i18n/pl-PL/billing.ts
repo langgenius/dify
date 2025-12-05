@@ -147,7 +147,7 @@ const translation = {
       description:
         'Uzyskaj pełne możliwości i wsparcie dla systemów o kluczowym znaczeniu dla misji.',
       includesTitle: 'Wszystko w planie Zespołowym, plus:',
-      features: ['Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej', 'Autoryzacja licencji komercyjnej', 'Ekskluzywne funkcje dla przedsiębiorstw', 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem', 'SSO', 'Negocjowane umowy SLA przez partnerów Dify', 'Zaawansowane zabezpieczenia i kontrola', 'Aktualizacje i konserwacja przez Dify oficjalnie', 'Profesjonalne wsparcie techniczne'],
+      features: ['Skalowalne rozwiązania wdrożeniowe dla przedsiębiorstw', 'Autoryzacja licencji komercyjnej', 'Ekskluzywne funkcje dla przedsiębiorstw', 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem', 'SSO', 'Negocjowane umowy SLA przez partnerów Dify', 'Zaawansowane zabezpieczenia i kontrola', 'Aktualizacje i konserwacja przez Dify oficjalnie', 'Profesjonalne wsparcie techniczne'],
       priceTip: 'Tylko roczne fakturowanie',
       btnText: 'Skontaktuj się z działem sprzedaży',
       for: 'Dla dużych zespołów',
@@ -163,7 +163,7 @@ const translation = {
       for: 'Dla użytkowników indywidualnych, małych zespołów lub projektów niekomercyjnych',
     },
     premium: {
-      features: ['Niezawodność zarządzana samodzielnie przez różnych dostawców chmury', 'Pojedyncza przestrzeń robocza', 'Dostosowywanie logo i marki aplikacji webowej', 'Priorytetowe wsparcie e-mail i czat'],
+      features: ['Niezawodność zarządzana samodzielnie przez różnych dostawców chmury', 'Pojedyncza przestrzeń robocza', 'Dostosowywanie logo i marki aplikacji internetowej', 'Priorytetowe wsparcie e-mail i czat'],
       description: 'Dla średnich organizacji i zespołów',
       for: 'Dla średnich organizacji i zespołów',
       name: 'Premium',

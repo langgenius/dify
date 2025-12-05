@@ -153,7 +153,7 @@ const translation = {
       description: 'Pour les utilisateurs individuels, les petites équipes ou les projets non commerciaux',
     },
     premium: {
-      features: ['Fiabilité autonome par divers fournisseurs de cloud', 'Espace de travail unique', 'Personnalisation du logo et de l\'identité visuelle de l\'application web', 'Assistance prioritaire par e-mail et chat'],
+      features: ['Fiabilité autonome par divers fournisseurs de cloud', 'Espace de travail unique', 'Personnalisation du logo et de l\'image de marque de l\'application web', 'Assistance prioritaire par e-mail et chat'],
       for: 'Pour les organisations et les équipes de taille moyenne',
       includesTitle: 'Tout de la communauté, en plus :',
       name: 'Premium',

@@ -144,7 +144,7 @@ const translation = {
       btnText: 'Liên hệ với Bộ phận Bán hàng',
     },
     community: {
-      features: ['Tất cả các Tính năng Cốt lõi được Phát hành Dưới Kho Lưu trữ Công khai', 'Không gian làm việc đơn', 'Tuân thủ Giấy phép Mã nguồn mở Dify'],
+      features: ['Tất cả các tính năng cốt lõi đã được phát hành trên kho lưu trữ công khai', 'Không gian làm việc đơn', 'Tuân thủ Giấy phép Mã nguồn mở Dify'],
       description: 'Dành cho người dùng cá nhân, nhóm nhỏ hoặc các dự án phi thương mại',
       name: 'Cộng đồng',
       btnText: 'Bắt đầu với Cộng đồng',

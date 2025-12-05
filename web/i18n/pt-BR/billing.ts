@@ -153,7 +153,7 @@ const translation = {
       for: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
     },
     premium: {
-      features: ['Confiabilidade Autogerenciada por Diversos Provedores de Nuvem', 'Espaço de Trabalho Único', 'Personalização de Logo e Marca do WebApp', 'Suporte Prioritário por E-mail e Chat'],
+      features: ['Confiabilidade Autogerenciada por Diversos Provedores de Nuvem', 'Espaço de Trabalho Único', 'Personalização de Logo e Branding do WebApp', 'Suporte Prioritário por Email e Chat'],
       includesTitle: 'Tudo da Comunidade, além de:',
       for: 'Para organizações e equipes de médio porte',
       price: 'Escalável',

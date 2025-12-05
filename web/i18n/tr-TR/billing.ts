@@ -153,7 +153,7 @@ const translation = {
       description: 'Bireysel Kullanıcılar, Küçük Ekipler veya Ticari Olmayan Projeler İçin',
     },
     premium: {
-      features: ['Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendine Yönetilen Güvenilirlik', 'Tek Çalışma Alanı', 'Web Uygulama Logo ve Marka Özelleştirmesi', 'Öncelikli E-posta ve Sohbet Desteği'],
+      features: ['Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendine Yönetilen Güvenilirlik', 'Tek Çalışma Alanı', 'Web Uygulaması Logo ve Marka Özelleştirme', 'Öncelikli E-posta ve Sohbet Desteği'],
       name: 'Premium',
       includesTitle: 'Topluluktan her şey, artı:',
       for: 'Orta Büyüklükteki Organizasyonlar ve Ekipler için',
