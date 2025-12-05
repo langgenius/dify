@@ -2,7 +2,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.10.1
+    image: langgenius/dify-api:1.10.1-fix.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -41,7 +41,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.10.1
+    image: langgenius/dify-api:1.10.1-fix.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -78,7 +78,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.10.1
+    image: langgenius/dify-api:1.10.1-fix.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -106,7 +106,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.10.1
+    image: langgenius/dify-web:1.10.1-fix.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -139,9 +139,9 @@ services:
       - postgresql
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
-      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${DB_DATABASE:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     command: >
       postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
@@ -161,7 +161,7 @@ services:
           "-h",
           "db_postgres",
           "-U",
-          "${PGUSER:-postgres}",
+          "${DB_USERNAME:-postgres}",
           "-d",
           "${DB_DATABASE:-dify}",
         ]
@@ -176,8 +176,8 @@ services:
       - mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${DB_DATABASE:-dify}
     command: >
       --max_connections=1000
       --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
@@ -193,7 +193,7 @@ services:
           "ping",
           "-u",
           "root",
-          "-p${MYSQL_PASSWORD:-difyai123456}",
+          "-p${DB_PASSWORD:-difyai123456}",
         ]
       interval: 1s
       timeout: 3s

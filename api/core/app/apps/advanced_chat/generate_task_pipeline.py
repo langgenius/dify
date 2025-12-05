@@ -770,7 +770,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tts_publisher.publish(None)
 
         if self._conversation_name_generate_thread:
-            self._conversation_name_generate_thread.join()
+            logger.debug("Conversation name generation running as daemon thread")
 
     def _save_message(
         self,
