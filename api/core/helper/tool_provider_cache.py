@@ -13,19 +13,19 @@ class ToolProviderListCache:
 
     CACHE_TTL = 300  # 5 minutes
 
-    @classmethod
-    def _generate_cache_key(cls, tenant_id: str, typ: ToolProviderTypeApiLiteral = None) -> str:
+    @staticmethod
+    def _generate_cache_key(tenant_id: str, typ: ToolProviderTypeApiLiteral = None) -> str:
         """Generate cache key for tool providers list"""
         type_filter = typ or "all"
         return f"tool_providers:tenant_id:{tenant_id}:type:{type_filter}"
 
-    @classmethod
+    @staticmethod
     @redis_fallback(default_return=None)
     def get_cached_providers(
-        cls, tenant_id: str, typ: ToolProviderTypeApiLiteral = None
+        tenant_id: str, typ: ToolProviderTypeApiLiteral = None
     ) -> list[dict[str, Any]] | None:
         """Get cached tool providers"""
-        cache_key = cls._generate_cache_key(tenant_id, typ)
+        cache_key = ToolProviderListCache._generate_cache_key(tenant_id, typ)
         cached_data = redis_client.get(cache_key)
         if cached_data:
             try:
@@ -35,20 +35,20 @@ class ToolProviderListCache:
                 return None
         return None
 
-    @classmethod
+    @staticmethod
     @redis_fallback()
-    def set_cached_providers(cls, tenant_id: str, typ: ToolProviderTypeApiLiteral, providers: list[dict[str, Any]]):
+    def set_cached_providers(tenant_id: str, typ: ToolProviderTypeApiLiteral, providers: list[dict[str, Any]]):
         """Cache tool providers"""
-        cache_key = cls._generate_cache_key(tenant_id, typ)
-        redis_client.setex(cache_key, cls.CACHE_TTL, json.dumps(providers))
+        cache_key = ToolProviderListCache._generate_cache_key(tenant_id, typ)
+        redis_client.setex(cache_key, ToolProviderListCache.CACHE_TTL, json.dumps(providers))
 
-    @classmethod
+    @staticmethod
     @redis_fallback()
-    def invalidate_cache(cls, tenant_id: str, typ: ToolProviderTypeApiLiteral = None):
+    def invalidate_cache(tenant_id: str, typ: ToolProviderTypeApiLiteral = None):
         """Invalidate cache for tool providers"""
         if typ:
             # Invalidate specific type cache
-            cache_key = cls._generate_cache_key(tenant_id, typ)
+            cache_key = ToolProviderListCache._generate_cache_key(tenant_id, typ)
             redis_client.delete(cache_key)
         else:
             # Invalidate all caches for this tenant
