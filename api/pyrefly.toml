@@ -1,0 +1,10 @@
+project-includes = ["."]
+project-excludes = [
+    "tests/",
+    ".venv",
+    "migrations/",
+    "core/rag",
+]
+python-platform = "linux"
+python-version = "3.11.0"
+infer-with-first-use = false

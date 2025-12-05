@@ -71,7 +71,7 @@ export const routes = {
   },
   stopWorkflow: {
     method: "POST",
-    url: (task_id) => `/workflows/${task_id}/stop`,
+    url: (task_id) => `/workflows/tasks/${task_id}/stop`,
   }
 
 };
@@ -94,11 +94,13 @@ export class DifyClient {
     stream = false,
     headerParams = {}
   ) {
+    const isFormData =
+      (typeof FormData !== "undefined" && data instanceof FormData) ||
+      (data && data.constructor && data.constructor.name === "FormData");
     const headers = {
-      
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      ...headerParams
+      Authorization: `Bearer ${this.apiKey}`,
+      ...(isFormData ? {} : { "Content-Type": "application/json" }),
+      ...headerParams,
     };
 
     const url = `${this.baseUrl}${endpoint}`;
@@ -152,12 +154,7 @@ export class DifyClient {
     return this.sendRequest(
       routes.fileUpload.method,
       routes.fileUpload.url(),
-      data,
-      null,
-      false,
-      {
-        "Content-Type": 'multipart/form-data'
-      }
+      data
     );
   }
 
@@ -179,8 +176,8 @@ export class DifyClient {
   getMeta(user) {
     const params = { user };
     return this.sendRequest(
-      routes.meta.method,
-      routes.meta.url(),
+      routes.getMeta.method,
+      routes.getMeta.url(),
       null,
       params
     );
@@ -320,12 +317,7 @@ export class ChatClient extends DifyClient {
     return this.sendRequest(
       routes.audioToText.method,
       routes.audioToText.url(),
-      data,
-      null,
-      false,
-      {
-        "Content-Type": 'multipart/form-data'
-      }
+      data
     );
   }
 

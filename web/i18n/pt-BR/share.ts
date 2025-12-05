@@ -74,8 +74,9 @@ const translation = {
       moreThanMaxLengthLine: 'Linha {{rowIndex}}: o valor de {{varName}} não pode ter mais de {{maxLength}} caracteres',
       atLeastOne: 'Por favor, insira pelo menos uma linha no arquivo enviado.',
     },
-    executions: '{{num}} EXECUÇÕES',
-    execution: 'EXECUÇÃO',
+    execution: 'Executar',
+    executions: '{{num}} execuções',
+    stopRun: 'Parar execução',
   },
   login: {
     backToHome: 'Voltar para a página inicial',

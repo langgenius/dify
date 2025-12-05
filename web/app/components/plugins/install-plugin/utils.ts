@@ -17,6 +17,7 @@ export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaratio
     brief: pluginManifest.description,
     description: pluginManifest.description,
     icon: pluginManifest.icon,
+    icon_dark: pluginManifest.icon_dark,
     verified: pluginManifest.verified,
     introduction: '',
     repository: '',

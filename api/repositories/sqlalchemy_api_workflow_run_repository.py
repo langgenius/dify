@@ -31,7 +31,7 @@ from sqlalchemy import and_, delete, func, null, or_, select
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
-from core.workflow.entities.workflow_pause import WorkflowPauseEntity
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, SchedulingPause
 from core.workflow.enums import WorkflowExecutionStatus
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
@@ -41,8 +41,9 @@ from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import WorkflowPause as WorkflowPauseModel
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -318,6 +319,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         workflow_run_id: str,
         state_owner_user_id: str,
         state: str,
+        pause_reasons: Sequence[PauseReason],
     ) -> WorkflowPauseEntity:
         """
         Create a new workflow pause state.
@@ -371,6 +373,25 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pause_model.workflow_run_id = workflow_run.id
             pause_model.state_object_key = state_obj_key
             pause_model.created_at = naive_utc_now()
+            pause_reason_models = []
+            for reason in pause_reasons:
+                if isinstance(reason, HumanInputRequired):
+                    # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
+                    pause_reason_model = WorkflowPauseReason(
+                        pause_id=pause_model.id,
+                        type_=reason.TYPE,
+                        form_id=reason.form_id,
+                    )
+                elif isinstance(reason, SchedulingPause):
+                    pause_reason_model = WorkflowPauseReason(
+                        pause_id=pause_model.id,
+                        type_=reason.TYPE,
+                        message=reason.message,
+                    )
+                else:
+                    raise AssertionError(f"unkown reason type: {type(reason)}")
+
+                pause_reason_models.append(pause_reason_model)
 
             # Update workflow run status
             workflow_run.status = WorkflowExecutionStatus.PAUSED
@@ -378,10 +399,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             # Save everything in a transaction
             session.add(pause_model)
             session.add(workflow_run)
+            session.add_all(pause_reason_models)
 
             logger.info("Created workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
 
-            return _PrivateWorkflowPauseEntity.from_models(pause_model)
+            return _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=pause_reason_models)
+
+    def _get_reasons_by_pause_id(self, session: Session, pause_id: str):
+        reason_stmt = select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id == pause_id)
+        pause_reason_models = session.scalars(reason_stmt).all()
+        return pause_reason_models
 
     def get_workflow_pause(
         self,
@@ -413,8 +440,16 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pause_model = workflow_run.pause
             if pause_model is None:
                 return None
+            pause_reason_models = self._get_reasons_by_pause_id(session, pause_model.id)
 
-            return _PrivateWorkflowPauseEntity.from_models(pause_model)
+            human_input_form: list[Any] = []
+            # TODO(QuantumGhost): query human_input_forms model and rebuild PauseReason
+
+        return _PrivateWorkflowPauseEntity(
+            pause_model=pause_model,
+            reason_models=pause_reason_models,
+            human_input_form=human_input_form,
+        )
 
     def resume_workflow_pause(
         self,
@@ -466,6 +501,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if pause_model.resumed_at is not None:
                 raise _WorkflowRunError(f"Cannot resume an already resumed pause, pause_id={pause_model.id}")
 
+            pause_reasons = self._get_reasons_by_pause_id(session, pause_model.id)
+
             # Mark as resumed
             pause_model.resumed_at = naive_utc_now()
             workflow_run.pause_id = None  # type: ignore
@@ -476,7 +513,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             logger.info("Resumed workflow pause %s for workflow run %s", pause_model.id, workflow_run_id)
 
-            return _PrivateWorkflowPauseEntity.from_models(pause_model)
+            return _PrivateWorkflowPauseEntity(pause_model=pause_model, reason_models=pause_reasons)
 
     def delete_workflow_pause(
         self,
@@ -815,26 +852,13 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
         self,
         *,
         pause_model: WorkflowPauseModel,
+        reason_models: Sequence[WorkflowPauseReason],
+        human_input_form: Sequence = (),
     ) -> None:
         self._pause_model = pause_model
+        self._reason_models = reason_models
         self._cached_state: bytes | None = None
-
-    @classmethod
-    def from_models(cls, workflow_pause_model) -> "_PrivateWorkflowPauseEntity":
-        """
-        Create a _PrivateWorkflowPauseEntity from database models.
-
-        Args:
-            workflow_pause_model: The WorkflowPause database model
-            upload_file_model: The UploadFile database model
-
-        Returns:
-            _PrivateWorkflowPauseEntity: The constructed entity
-
-        Raises:
-            ValueError: If required model attributes are missing
-        """
-        return cls(pause_model=workflow_pause_model)
+        self._human_input_form = human_input_form
 
     @property
     def id(self) -> str:
@@ -867,3 +891,6 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     @property
     def resumed_at(self) -> datetime | None:
         return self._pause_model.resumed_at
+
+    def get_pause_reasons(self) -> Sequence[PauseReason]:
+        return [reason.to_entity() for reason in self._reason_models]

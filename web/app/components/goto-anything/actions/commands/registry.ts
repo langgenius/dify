@@ -70,11 +70,12 @@ export class SlashCommandRegistry {
 
     // First check if any alias starts with this
     const aliasMatch = this.findHandlerByAliasPrefix(lowerPartial)
-    if (aliasMatch)
+    if (aliasMatch && this.isCommandAvailable(aliasMatch))
       return aliasMatch
 
     // Then check if command name starts with this
-    return this.findHandlerByNamePrefix(lowerPartial)
+    const nameMatch = this.findHandlerByNamePrefix(lowerPartial)
+    return nameMatch && this.isCommandAvailable(nameMatch) ? nameMatch : undefined
   }
 
   /**
@@ -109,6 +110,14 @@ export class SlashCommandRegistry {
   }
 
   /**
+   * Get all available commands in current context (deduplicated and filtered)
+   * Commands without isAvailable method are considered always available
+   */
+  getAvailableCommands(): SlashCommandHandler[] {
+    return this.getAllCommands().filter(handler => this.isCommandAvailable(handler))
+  }
+
+  /**
    * Search commands
    * @param query Full query (e.g., "/theme dark" or "/lang en")
    * @param locale Current language
@@ -128,7 +137,7 @@ export class SlashCommandRegistry {
 
     // First try exact match
     let handler = this.findCommand(commandName)
-    if (handler) {
+    if (handler && this.isCommandAvailable(handler)) {
       try {
         return await handler.search(args, locale)
       }
@@ -140,7 +149,7 @@ export class SlashCommandRegistry {
 
     // If no exact match, try smart partial matching
     handler = this.findBestPartialMatch(commandName)
-    if (handler) {
+    if (handler && this.isCommandAvailable(handler)) {
       try {
         return await handler.search(args, locale)
       }
@@ -156,35 +165,30 @@ export class SlashCommandRegistry {
 
   /**
    * Get root level command list
+   * Only shows commands that are available in current context
    */
   private async getRootCommands(): Promise<CommandSearchResult[]> {
-    const results: CommandSearchResult[] = []
-
-    // Generate a root level item for each command
-    for (const handler of this.getAllCommands()) {
-      results.push({
-        id: `root-${handler.name}`,
-        title: `/${handler.name}`,
-        description: handler.description,
-        type: 'command' as const,
-        data: {
-          command: `root.${handler.name}`,
-          args: { name: handler.name },
-        },
-      })
-    }
-
-    return results
+    return this.getAvailableCommands().map(handler => ({
+      id: `root-${handler.name}`,
+      title: `/${handler.name}`,
+      description: handler.description,
+      type: 'command' as const,
+      data: {
+        command: `root.${handler.name}`,
+        args: { name: handler.name },
+      },
+    }))
   }
 
   /**
    * Fuzzy search commands
+   * Only shows commands that are available in current context
    */
   private fuzzySearchCommands(query: string): CommandSearchResult[] {
     const lowercaseQuery = query.toLowerCase()
     const matches: CommandSearchResult[] = []
 
-    this.getAllCommands().forEach((handler) => {
+    for (const handler of this.getAvailableCommands()) {
       // Check if command name matches
       if (handler.name.toLowerCase().includes(lowercaseQuery)) {
         matches.push({
@@ -216,7 +220,7 @@ export class SlashCommandRegistry {
           }
         })
       }
-    })
+    }
 
     return matches
   }
@@ -226,6 +230,14 @@ export class SlashCommandRegistry {
    */
   getCommandDependencies(commandName: string): any {
     return this.commandDeps.get(commandName)
+  }
+
+  /**
+   * Determine if a command is available in the current context.
+   * Defaults to true when a handler does not implement the guard.
+   */
+  private isCommandAvailable(handler: SlashCommandHandler) {
+    return handler.isAvailable?.() ?? true
   }
 }
 

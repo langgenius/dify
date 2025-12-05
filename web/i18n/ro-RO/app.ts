@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: 'Vizualizați documentația {{key}}',
       removeConfirmTitle: 'Eliminați configurația {{key}}?',
       removeConfirmContent: 'Configurația curentă este în uz, eliminarea acesteia va dezactiva funcția de Urmărire.',
+      clientSecret: 'Secret client OAuth',
+      password: 'Parolă',
+      experimentId: 'ID-ul experimentului',
+      databricksHost: 'URL-ul spațiului de lucru Databricks',
+      trackingUri: 'URI de urmărire',
+      personalAccessToken: 'Token de acces personal (vechi)',
+      clientId: 'ID client OAuth',
+      username: 'Nume de utilizator',
     },
     view: 'Vedere',
     opik: {
@@ -162,6 +170,14 @@ const translation = {
     aliyun: {
       description: 'Platforma de observabilitate SaaS oferită de Alibaba Cloud permite monitorizarea, urmărirea și evaluarea aplicațiilor Dify din cutie.',
       title: 'Monitorizarea Cloud',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Platformă LLMOps open source pentru urmărirea experimentelor, observabilitate și evaluare, pentru a construi aplicații AI/LLM cu încredere.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks oferă MLflow complet gestionat cu o puternică guvernanță și securitate pentru stocarea datelor de urmărire.',
     },
     tencent: {
       title: 'Tencent APM',
@@ -286,6 +302,8 @@ const translation = {
       docDesc: 'Deschide documentația de ajutor',
       communityDesc: 'Deschide comunitatea Discord',
       accountDesc: 'Navigați la pagina de cont',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: 'Nu s-au găsit aplicații',
@@ -326,6 +344,8 @@ const translation = {
     tips: 'Apăsați ↑↓ pentru a naviga',
     pressEscToClose: 'Apăsați ESC pentru a închide',
   },
+  notPublishedYet: 'Aplicația nu este încă publicată',
+  noUserInputNode: 'Lipsă nod de intrare pentru utilizator',
 }
 
 export default translation

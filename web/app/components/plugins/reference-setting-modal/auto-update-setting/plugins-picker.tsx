@@ -53,7 +53,7 @@ const PluginsPicker: FC<Props> = ({
 
       <ToolPicker
         trigger={
-          <Button className='mt-2 w-[412px]' size='small' variant='secondary-accent'>
+          <Button className='mt-2 w-full' size='small' variant='secondary-accent'>
             <RiAddLine className='size-3.5' />
             {t(`${i18nPrefix}.operation.select`)}
           </Button>

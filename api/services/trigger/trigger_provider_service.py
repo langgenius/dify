@@ -475,7 +475,7 @@ class TriggerProviderService:
                 oauth_params = encrypter.decrypt(dict(tenant_client.oauth_params))
                 return oauth_params
 
-            is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
+            is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
             if not is_verified:
                 return None
 
@@ -499,7 +499,8 @@ class TriggerProviderService:
         """
         Check if system OAuth client exists for a trigger provider.
         """
-        is_verified = PluginService.is_plugin_verified(tenant_id, provider_id.plugin_id)
+        provider_controller = TriggerManager.get_trigger_provider(tenant_id=tenant_id, provider_id=provider_id)
+        is_verified = PluginService.is_plugin_verified(tenant_id, provider_controller.plugin_unique_identifier)
         if not is_verified:
             return False
         with Session(db.engine, expire_on_commit=False) as session:

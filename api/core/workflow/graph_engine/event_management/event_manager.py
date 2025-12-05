@@ -110,7 +110,13 @@ class EventManager:
         """
         with self._lock.write_lock():
             self._events.append(event)
-            self._notify_layers(event)
+
+        # NOTE: `_notify_layers` is intentionally called outside the critical section
+        # to minimize lock contention and avoid blocking other readers or writers.
+        #
+        # The public `notify_layers` method also does not use a write lock,
+        # so protecting `_notify_layers` with a lock here is unnecessary.
+        self._notify_layers(event)
 
     def _get_new_events(self, start_index: int) -> list[GraphEngineEvent]:
         """

@@ -3,15 +3,72 @@ from flask_restx import Resource, fields, marshal, reqparse
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
-from fields.dataset_fields import dataset_detail_fields
+from fields.dataset_fields import (
+    dataset_detail_fields,
+    dataset_retrieval_model_fields,
+    doc_metadata_fields,
+    external_knowledge_info_fields,
+    external_retrieval_model_fields,
+    icon_info_fields,
+    keyword_setting_fields,
+    reranking_model_fields,
+    tag_fields,
+    vector_setting_fields,
+    weighted_score_fields,
+)
 from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
 from services.hit_testing_service import HitTestingService
 from services.knowledge_service import ExternalDatasetTestService
+
+
+def _get_or_create_model(model_name: str, field_def):
+    existing = console_ns.models.get(model_name)
+    if existing is None:
+        existing = console_ns.model(model_name, field_def)
+    return existing
+
+
+def _build_dataset_detail_model():
+    keyword_setting_model = _get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
+    vector_setting_model = _get_or_create_model("DatasetVectorSetting", vector_setting_fields)
+
+    weighted_score_fields_copy = weighted_score_fields.copy()
+    weighted_score_fields_copy["keyword_setting"] = fields.Nested(keyword_setting_model)
+    weighted_score_fields_copy["vector_setting"] = fields.Nested(vector_setting_model)
+    weighted_score_model = _get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
+
+    reranking_model = _get_or_create_model("DatasetRerankingModel", reranking_model_fields)
+
+    dataset_retrieval_model_fields_copy = dataset_retrieval_model_fields.copy()
+    dataset_retrieval_model_fields_copy["reranking_model"] = fields.Nested(reranking_model)
+    dataset_retrieval_model_fields_copy["weights"] = fields.Nested(weighted_score_model, allow_null=True)
+    dataset_retrieval_model = _get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
+
+    tag_model = _get_or_create_model("Tag", tag_fields)
+    doc_metadata_model = _get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
+    external_knowledge_info_model = _get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
+    external_retrieval_model = _get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
+    icon_info_model = _get_or_create_model("DatasetIconInfo", icon_info_fields)
+
+    dataset_detail_fields_copy = dataset_detail_fields.copy()
+    dataset_detail_fields_copy["retrieval_model_dict"] = fields.Nested(dataset_retrieval_model)
+    dataset_detail_fields_copy["tags"] = fields.List(fields.Nested(tag_model))
+    dataset_detail_fields_copy["external_knowledge_info"] = fields.Nested(external_knowledge_info_model)
+    dataset_detail_fields_copy["external_retrieval_model"] = fields.Nested(external_retrieval_model, allow_null=True)
+    dataset_detail_fields_copy["doc_metadata"] = fields.List(fields.Nested(doc_metadata_model))
+    dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
+    return _get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
+
+
+try:
+    dataset_detail_model = console_ns.models["DatasetDetail"]
+except KeyError:
+    dataset_detail_model = _build_dataset_detail_model()
 
 
 def _validate_name(name: str) -> str:
@@ -22,16 +79,16 @@ def _validate_name(name: str) -> str:
 
 @console_ns.route("/datasets/external-knowledge-api")
 class ExternalApiTemplateListApi(Resource):
-    @api.doc("get_external_api_templates")
-    @api.doc(description="Get external knowledge API templates")
-    @api.doc(
+    @console_ns.doc("get_external_api_templates")
+    @console_ns.doc(description="Get external knowledge API templates")
+    @console_ns.doc(
         params={
             "page": "Page number (default: 1)",
             "limit": "Number of items per page (default: 20)",
             "keyword": "Search keyword",
         }
     )
-    @api.response(200, "External API templates retrieved successfully")
+    @console_ns.response(200, "External API templates retrieved successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -95,11 +152,11 @@ class ExternalApiTemplateListApi(Resource):
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>")
 class ExternalApiTemplateApi(Resource):
-    @api.doc("get_external_api_template")
-    @api.doc(description="Get external knowledge API template details")
-    @api.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
-    @api.response(200, "External API template retrieved successfully")
-    @api.response(404, "Template not found")
+    @console_ns.doc("get_external_api_template")
+    @console_ns.doc(description="Get external knowledge API template details")
+    @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
+    @console_ns.response(200, "External API template retrieved successfully")
+    @console_ns.response(404, "Template not found")
     @setup_required
     @login_required
     @account_initialization_required
@@ -163,10 +220,10 @@ class ExternalApiTemplateApi(Resource):
 
 @console_ns.route("/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>/use-check")
 class ExternalApiUseCheckApi(Resource):
-    @api.doc("check_external_api_usage")
-    @api.doc(description="Check if external knowledge API is being used")
-    @api.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
-    @api.response(200, "Usage check completed successfully")
+    @console_ns.doc("check_external_api_usage")
+    @console_ns.doc(description="Check if external knowledge API is being used")
+    @console_ns.doc(params={"external_knowledge_api_id": "External knowledge API ID"})
+    @console_ns.response(200, "Usage check completed successfully")
     @setup_required
     @login_required
     @account_initialization_required
@@ -181,10 +238,10 @@ class ExternalApiUseCheckApi(Resource):
 
 @console_ns.route("/datasets/external")
 class ExternalDatasetCreateApi(Resource):
-    @api.doc("create_external_dataset")
-    @api.doc(description="Create external knowledge dataset")
-    @api.expect(
-        api.model(
+    @console_ns.doc("create_external_dataset")
+    @console_ns.doc(description="Create external knowledge dataset")
+    @console_ns.expect(
+        console_ns.model(
             "CreateExternalDatasetRequest",
             {
                 "external_knowledge_api_id": fields.String(required=True, description="External knowledge API ID"),
@@ -194,9 +251,9 @@ class ExternalDatasetCreateApi(Resource):
             },
         )
     )
-    @api.response(201, "External dataset created successfully", dataset_detail_fields)
-    @api.response(400, "Invalid parameters")
-    @api.response(403, "Permission denied")
+    @console_ns.response(201, "External dataset created successfully", dataset_detail_model)
+    @console_ns.response(400, "Invalid parameters")
+    @console_ns.response(403, "Permission denied")
     @setup_required
     @login_required
     @account_initialization_required
@@ -239,11 +296,11 @@ class ExternalDatasetCreateApi(Resource):
 
 @console_ns.route("/datasets/<uuid:dataset_id>/external-hit-testing")
 class ExternalKnowledgeHitTestingApi(Resource):
-    @api.doc("test_external_knowledge_retrieval")
-    @api.doc(description="Test external knowledge retrieval for dataset")
-    @api.doc(params={"dataset_id": "Dataset ID"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("test_external_knowledge_retrieval")
+    @console_ns.doc(description="Test external knowledge retrieval for dataset")
+    @console_ns.doc(params={"dataset_id": "Dataset ID"})
+    @console_ns.expect(
+        console_ns.model(
             "ExternalHitTestingRequest",
             {
                 "query": fields.String(required=True, description="Query text for testing"),
@@ -252,9 +309,9 @@ class ExternalKnowledgeHitTestingApi(Resource):
             },
         )
     )
-    @api.response(200, "External hit testing completed successfully")
-    @api.response(404, "Dataset not found")
-    @api.response(400, "Invalid parameters")
+    @console_ns.response(200, "External hit testing completed successfully")
+    @console_ns.response(404, "Dataset not found")
+    @console_ns.response(400, "Invalid parameters")
     @setup_required
     @login_required
     @account_initialization_required
@@ -297,10 +354,10 @@ class ExternalKnowledgeHitTestingApi(Resource):
 @console_ns.route("/test/retrieval")
 class BedrockRetrievalApi(Resource):
     # this api is only for internal testing
-    @api.doc("bedrock_retrieval_test")
-    @api.doc(description="Bedrock retrieval test (internal use only)")
-    @api.expect(
-        api.model(
+    @console_ns.doc("bedrock_retrieval_test")
+    @console_ns.doc(description="Bedrock retrieval test (internal use only)")
+    @console_ns.expect(
+        console_ns.model(
             "BedrockRetrievalTestRequest",
             {
                 "retrieval_setting": fields.Raw(required=True, description="Retrieval settings"),
@@ -309,7 +366,7 @@ class BedrockRetrievalApi(Resource):
             },
         )
     )
-    @api.response(200, "Bedrock retrieval test completed")
+    @console_ns.response(200, "Bedrock retrieval test completed")
     def post(self):
         parser = (
             reqparse.RequestParser()

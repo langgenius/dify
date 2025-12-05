@@ -49,7 +49,7 @@ const translation = {
     completionResult: '生成結果',
     queryPlaceholder: '入力してください',
     run: '実行',
-    execution: '処理中',
+    execution: '実行',
     executions: '{{num}}回実行',
     copy: 'コピー',
     resultTitle: 'AI 生成結果',
@@ -72,6 +72,7 @@ const translation = {
       moreThanMaxLengthLine: '{{rowIndex}}行目：{{varName}}が制限長（{{maxLength}}）を超過',
       atLeastOne: '1 行以上のデータが必要です',
     },
+    stopRun: '実行を停止',
   },
   login: {
     backToHome: 'ホームに戻る',

@@ -28,10 +28,12 @@ const translation = {
       loading: 'Işleme... Lütfen bekleyin',
       viewDetails: 'Ayrıntıları görüntüleme',
       error: 'Yürütme sırasında hata oluştu',
+      footerTip: 'Test çalıştırma modunda, {{count}} parçaya kadar önizleme yapabilirsiniz',
     },
   },
   ragToolSuggestions: {
     title: 'RAG için Öneriler',
+    noRecommendationPlugins: 'Önerilen eklenti yok, daha fazlasını <CustomLink>Marketplace</CustomLink> içinde bulabilirsiniz',
   },
 }
 

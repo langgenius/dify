@@ -1,6 +1,6 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import useAccessControlStore from '../../../../context/access-control-store'
+import useAccessControlStore from '@/context/access-control-store'
 import type { AccessMode } from '@/models/access-control'
 
 type AccessControlItemProps = PropsWithChildren<{
@@ -8,7 +8,8 @@ type AccessControlItemProps = PropsWithChildren<{
 }>
 
 const AccessControlItem: FC<AccessControlItemProps> = ({ type, children }) => {
-  const { currentMenu, setCurrentMenu } = useAccessControlStore(s => ({ currentMenu: s.currentMenu, setCurrentMenu: s.setCurrentMenu }))
+  const currentMenu = useAccessControlStore(s => s.currentMenu)
+  const setCurrentMenu = useAccessControlStore(s => s.setCurrentMenu)
   if (currentMenu !== type) {
     return <div
       className="cursor-pointer rounded-[10px] border-[1px]
