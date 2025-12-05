@@ -16,6 +16,10 @@ const renderWithPlan = (plan: Plan) => {
 }
 
 describe('mock plan', () => {
+  beforeEach(() => {
+    mockPlan = Plan.sandbox
+    jest.clearAllMocks()
+  })
   it('mock sandbox plan', async () => {
     renderWithPlan(Plan.sandbox)
     await waitFor(() => expect(screen.getByTestId('plan-type').textContent).toBe(Plan.sandbox))
