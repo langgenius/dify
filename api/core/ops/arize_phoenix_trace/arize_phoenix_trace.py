@@ -142,6 +142,20 @@ def safe_json_dumps(obj: Any) -> str:
     return json.dumps(obj, default=str, ensure_ascii=False)
 
 
+def wrap_dict(key_name, data):
+    """Make sure that the provided data is a dict for Arize/Phoenix."""
+    if not isinstance(data, dict):
+        return {key_name: data}
+    return data
+
+
+def wrap_metadata(metadata, **kwargs):
+    """Add common metatada to all trace entity types for Arize/Phoenix."""
+    metadata["created_from"] = "Dify"
+    metadata.update(kwargs)
+    return metadata
+
+
 class ArizePhoenixDataTrace(BaseTraceInstance):
     def __init__(
         self,
@@ -183,16 +197,27 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             raise
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        workflow_metadata = {
-            "workflow_run_id": trace_info.workflow_run_id or "",
-            "message_id": trace_info.message_id or "",
-            "workflow_app_log_id": trace_info.workflow_app_log_id or "",
-            "status": trace_info.workflow_run_status or "",
-            "status_message": trace_info.error or "",
-            "level": "ERROR" if trace_info.error else "DEFAULT",
-            "total_tokens": trace_info.total_tokens or 0,
-        }
-        workflow_metadata.update(trace_info.metadata)
+        # workflow_metadata = {
+        #     "workflow_run_id": trace_info.workflow_run_id or "",
+        #     "message_id": trace_info.message_id or "",
+        #     "workflow_app_log_id": trace_info.workflow_app_log_id or "",
+        #     "status": trace_info.workflow_run_status or "",
+        #     "status_message": trace_info.error or "",
+        #     "level": "ERROR" if trace_info.error else "DEFAULT",
+        #     "total_tokens": trace_info.total_tokens or 0,
+        # }
+        # workflow_metadata.update(trace_info.metadata)
+
+        workflow_metadata = wrap_metadata(
+            trace_info.metadata,
+            workflow_run_id=trace_info.workflow_run_id or "",
+            message_id=trace_info.message_id or "",
+            workflow_app_log_id=trace_info.workflow_app_log_id or "",
+            status=trace_info.workflow_run_status or "",
+            status_message=trace_info.error or "",
+            level="ERROR" if trace_info.error else "DEFAULT",
+            total_tokens=trace_info.total_tokens or 0,
+        )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
         self.ensure_root_span(dify_trace_id)
@@ -348,21 +373,37 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
             file_list.append(file_url)
 
-        message_metadata = {
-            "message_id": trace_info.message_id or "",
-            "conversation_mode": str(trace_info.conversation_mode or ""),
-            "user_id": trace_info.message_data.from_account_id or "",
-            "file_list": json.dumps(file_list),
-            "status": trace_info.message_data.status or "",
-            "status_message": trace_info.error or "",
-            "level": "ERROR" if trace_info.error else "DEFAULT",
-            "total_tokens": trace_info.total_tokens or 0,
-            "prompt_tokens": trace_info.message_tokens or 0,
-            "completion_tokens": trace_info.answer_tokens or 0,
-            "ls_provider": trace_info.message_data.model_provider or "",
-            "ls_model_name": trace_info.message_data.model_id or "",
-        }
-        message_metadata.update(trace_info.metadata)
+        # message_metadata = {
+        #     "message_id": trace_info.message_id or "",
+        #     "conversation_mode": str(trace_info.conversation_mode or ""),
+        #     "user_id": trace_info.message_data.from_account_id or "",
+        #     "file_list": json.dumps(file_list),
+        #     "status": trace_info.message_data.status or "",
+        #     "status_message": trace_info.error or "",
+        #     "level": "ERROR" if trace_info.error else "DEFAULT",
+        #     "total_tokens": trace_info.total_tokens or 0,
+        #     "prompt_tokens": trace_info.message_tokens or 0,
+        #     "completion_tokens": trace_info.answer_tokens or 0,
+        #     "ls_provider": trace_info.message_data.model_provider or "",
+        #     "ls_model_name": trace_info.message_data.model_id or "",
+        # }
+        # message_metadata.update(trace_info.metadata)
+
+        message_metadata = wrap_metadata(
+            trace_info.metadata,
+            message_id=trace_info.message_id or "",
+            conversation_mode=str(trace_info.conversation_mode or ""),
+            user_id=trace_info.message_data.from_account_id or "",
+            file_list=json.dumps(file_list),
+            status=trace_info.message_data.status or "",
+            status_message=trace_info.error or "",
+            level="ERROR" if trace_info.error else "DEFAULT",
+            total_tokens=trace_info.total_tokens or 0,
+            prompt_tokens=trace_info.message_tokens or 0,
+            completion_tokens=trace_info.answer_tokens or 0,
+            ls_provider=trace_info.message_data.model_provider or "",
+            ls_model_name=trace_info.message_data.model_id or "",
+        )
 
         # Add end user data if available
         if trace_info.message_data.from_end_user_id:
@@ -451,14 +492,23 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
 
-        metadata = {
-            "message_id": trace_info.message_id,
-            "tool_name": "moderation",
-            "status": trace_info.message_data.status,
-            "status_message": trace_info.message_data.error or "",
-            "level": "ERROR" if trace_info.message_data.error else "DEFAULT",
-        }
-        metadata.update(trace_info.metadata)
+        # metadata = {
+        #     "message_id": trace_info.message_id,
+        #     "tool_name": "moderation",
+        #     "status": trace_info.message_data.status,
+        #     "status_message": trace_info.message_data.error or "",
+        #     "level": "ERROR" if trace_info.message_data.error else "DEFAULT",
+        # }
+        # metadata.update(trace_info.metadata)
+
+        metadata = wrap_metadata(
+            trace_info.metadata,
+            message_id=trace_info.message_id,
+            tool_name="moderation",
+            status=trace_info.message_data.status,
+            status_message=trace_info.message_data.error or "",
+            level="ERROR" if trace_info.message_data.error else "DEFAULT",
+        )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
         self.ensure_root_span(dify_trace_id)
@@ -499,17 +549,29 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         start_time = trace_info.start_time or trace_info.message_data.created_at
         end_time = trace_info.end_time or trace_info.message_data.updated_at
 
-        metadata = {
-            "message_id": trace_info.message_id,
-            "tool_name": "suggested_question",
-            "status": trace_info.status,
-            "status_message": trace_info.error or "",
-            "level": "ERROR" if trace_info.error else "DEFAULT",
-            "total_tokens": trace_info.total_tokens,
-            "ls_provider": trace_info.model_provider or "",
-            "ls_model_name": trace_info.model_id or "",
-        }
-        metadata.update(trace_info.metadata)
+        # metadata = {
+        #     "message_id": trace_info.message_id,
+        #     "tool_name": "suggested_question",
+        #     "status": trace_info.status,
+        #     "status_message": trace_info.error or "",
+        #     "level": "ERROR" if trace_info.error else "DEFAULT",
+        #     "total_tokens": trace_info.total_tokens,
+        #     "ls_provider": trace_info.model_provider or "",
+        #     "ls_model_name": trace_info.model_id or "",
+        # }
+        # metadata.update(trace_info.metadata)
+
+        metadata = wrap_metadata(
+            trace_info.metadata,
+            message_id=trace_info.message_id,
+            tool_name="suggested_question",
+            status=trace_info.status,
+            status_message=trace_info.error or "",
+            level="ERROR" if trace_info.error else "DEFAULT",
+            total_tokens=trace_info.total_tokens,
+            ls_provider=trace_info.model_provider or "",
+            ls_model_name=trace_info.model_id or "",
+        )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
         self.ensure_root_span(dify_trace_id)
@@ -542,16 +604,27 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         start_time = trace_info.start_time or trace_info.message_data.created_at
         end_time = trace_info.end_time or trace_info.message_data.updated_at
 
-        metadata = {
-            "message_id": trace_info.message_id,
-            "tool_name": "dataset_retrieval",
-            "status": trace_info.message_data.status,
-            "status_message": trace_info.message_data.error or "",
-            "level": "ERROR" if trace_info.message_data.error else "DEFAULT",
-            "ls_provider": trace_info.message_data.model_provider or "",
-            "ls_model_name": trace_info.message_data.model_id or "",
-        }
-        metadata.update(trace_info.metadata)
+        # metadata = {
+        #     "message_id": trace_info.message_id,
+        #     "tool_name": "dataset_retrieval",
+        #     "status": trace_info.message_data.status,
+        #     "status_message": trace_info.message_data.error or "",
+        #     "level": "ERROR" if trace_info.message_data.error else "DEFAULT",
+        #     "ls_provider": trace_info.message_data.model_provider or "",
+        #     "ls_model_name": trace_info.message_data.model_id or "",
+        # }
+        # metadata.update(trace_info.metadata)
+
+        metadata = wrap_metadata(
+            trace_info.metadata,
+            message_id=trace_info.message_id,
+            tool_name="dataset_retrieval",
+            status=trace_info.message_data.status,
+            status_message=trace_info.message_data.error or "",
+            level="ERROR" if trace_info.message_data.error else "DEFAULT",
+            ls_provider=trace_info.message_data.model_provider or "",
+            ls_model_name=trace_info.message_data.model_id or "",
+        )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
         self.ensure_root_span(dify_trace_id)
@@ -584,10 +657,16 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             logger.warning("[Arize/Phoenix] Message data is None, skipping tool trace.")
             return
 
-        metadata = {
-            "message_id": trace_info.message_id,
-            "tool_config": json.dumps(trace_info.tool_config, ensure_ascii=False),
-        }
+        # metadata = {
+        #     "message_id": trace_info.message_id,
+        #     "tool_config": json.dumps(trace_info.tool_config, ensure_ascii=False),
+        # }
+
+        metadata = wrap_metadata(
+            trace_info.metadata,
+            message_id=trace_info.message_id,
+            tool_config=json.dumps(trace_info.tool_config, ensure_ascii=False),
+        )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
         self.ensure_root_span(dify_trace_id)
@@ -625,14 +704,23 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         if trace_info.message_data is None:
             return
 
-        metadata = {
-            "project_name": self.project,
-            "message_id": trace_info.message_id,
-            "status": trace_info.message_data.status,
-            "status_message": trace_info.message_data.error or "",
-            "level": "ERROR" if trace_info.message_data.error else "DEFAULT",
-        }
-        metadata.update(trace_info.metadata)
+        # metadata = {
+        #     "project_name": self.project,
+        #     "message_id": trace_info.message_id,
+        #     "status": trace_info.message_data.status,
+        #     "status_message": trace_info.message_data.error or "",
+        #     "level": "ERROR" if trace_info.message_data.error else "DEFAULT",
+        # }
+        # metadata.update(trace_info.metadata)
+
+        metadata = wrap_metadata(
+            trace_info.metadata,
+            project_name=self.project,
+            message_id=trace_info.message_id,
+            status=trace_info.message_data.status,
+            status_message=trace_info.message_data.error or "",
+            level="ERROR" if trace_info.message_data.error else "DEFAULT",
+        )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id or trace_info.conversation_id
         self.ensure_root_span(dify_trace_id)
