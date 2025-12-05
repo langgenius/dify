@@ -129,43 +129,69 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             workflow_id,
             node_id,
         )
-        # Build query string using LogStore query syntax
-        query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_id: {workflow_id} and node_id: {node_id}"
-
         try:
-            # Query raw logs with large time range
-            from_time = 0
-            to_time = int(time.time())  # now
+            # Check if PG protocol is supported
+            if self.logstore_client.supports_pg_protocol:
+                # Use PG protocol with SQL query (get latest version of each record)
+                sql_query = f"""
+                    SELECT * FROM (
+                        SELECT *, 
+                            ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
+                        FROM "{AliyunLogStore.workflow_node_execution_logstore}"
+                        WHERE tenant_id = '{tenant_id}' 
+                          AND app_id = '{app_id}' 
+                          AND workflow_id = '{workflow_id}' 
+                          AND node_id = '{node_id}'
+                          AND __time__ > 0
+                    ) AS subquery WHERE rn = 1
+                    LIMIT 100
+                """
+                results = self.logstore_client.execute_sql(
+                    sql=sql_query,
+                    logstore=AliyunLogStore.workflow_node_execution_logstore,
+                )
+            else:
+                # Use SDK with LogStore query syntax
+                query = (
+                    f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_id: {workflow_id} and node_id: {node_id}"
+                )
+                from_time = 0
+                to_time = int(time.time())  # now
 
-            results = self.logstore_client.get_logs(
-                logstore=AliyunLogStore.workflow_node_execution_logstore,
-                from_time=from_time,
-                to_time=to_time,
-                query=query,
-                line=100,
-                reverse=False,
-            )
+                results = self.logstore_client.get_logs(
+                    logstore=AliyunLogStore.workflow_node_execution_logstore,
+                    from_time=from_time,
+                    to_time=to_time,
+                    query=query,
+                    line=100,
+                    reverse=False,
+                )
 
             if not results:
                 return None
 
-            # Group by id and select the one with max log_version for each group
-            id_to_results: dict[str, list[dict[str, Any]]] = {}
-            for row in results:
-                row_id = row.get("id")
-                if row_id:
-                    if row_id not in id_to_results:
-                        id_to_results[row_id] = []
-                    id_to_results[row_id].append(row)
+            # For SDK mode, group by id and select the one with max log_version for each group
+            # For PG mode, this is already done by the SQL query
+            if not self.logstore_client.supports_pg_protocol:
+                id_to_results: dict[str, list[dict[str, Any]]] = {}
+                for row in results:
+                    row_id = row.get("id")
+                    if row_id:
+                        if row_id not in id_to_results:
+                            id_to_results[row_id] = []
+                        id_to_results[row_id].append(row)
 
-            # For each id, select the row with max log_version
-            deduplicated_results = []
-            for rows in id_to_results.values():
-                if len(rows) > 1:
-                    max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
-                else:
-                    max_row = rows[0]
-                deduplicated_results.append(max_row)
+                # For each id, select the row with max log_version
+                deduplicated_results = []
+                for rows in id_to_results.values():
+                    if len(rows) > 1:
+                        max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
+                    else:
+                        max_row = rows[0]
+                    deduplicated_results.append(max_row)
+            else:
+                # For PG mode, results are already deduplicated by the SQL query
+                deduplicated_results = results
 
             # Sort by created_at DESC and return the most recent one
             deduplicated_results.sort(
@@ -200,46 +226,72 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
             app_id,
             workflow_run_id,
         )
-        # Build query string using LogStore query syntax
-        query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_run_id: {workflow_run_id}"
-
         try:
-            # Query raw logs with large time range
-            from_time = 0
-            to_time = int(time.time())  # now
+            # Check if PG protocol is supported
+            if self.logstore_client.supports_pg_protocol:
+                # Use PG protocol with SQL query (get latest version of each record)
+                sql_query = f"""
+                    SELECT * FROM (
+                        SELECT *, 
+                            ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
+                        FROM "{AliyunLogStore.workflow_node_execution_logstore}"
+                        WHERE tenant_id = '{tenant_id}' 
+                          AND app_id = '{app_id}' 
+                          AND workflow_run_id = '{workflow_run_id}'
+                          AND __time__ > 0
+                    ) AS subquery WHERE rn = 1
+                    LIMIT 1000
+                """
+                results = self.logstore_client.execute_sql(
+                    sql=sql_query,
+                    logstore=AliyunLogStore.workflow_node_execution_logstore,
+                )
+            else:
+                # Use SDK with LogStore query syntax
+                query = f"tenant_id: {tenant_id} and app_id: {app_id} and workflow_run_id: {workflow_run_id}"
+                from_time = 0
+                to_time = int(time.time())  # now
 
-            results = self.logstore_client.get_logs(
-                logstore=AliyunLogStore.workflow_node_execution_logstore,
-                from_time=from_time,
-                to_time=to_time,
-                query=query,
-                line=1000,  # Get more results for node executions
-                reverse=False,
-            )
+                results = self.logstore_client.get_logs(
+                    logstore=AliyunLogStore.workflow_node_execution_logstore,
+                    from_time=from_time,
+                    to_time=to_time,
+                    query=query,
+                    line=1000,  # Get more results for node executions
+                    reverse=False,
+                )
 
             if not results:
                 return []
 
-            # Group by id and select the one with max log_version for each group
-            id_to_results: dict[str, list[dict[str, Any]]] = {}
-            for row in results:
-                row_id = row.get("id")
-                if row_id:
-                    if row_id not in id_to_results:
-                        id_to_results[row_id] = []
-                    id_to_results[row_id].append(row)
-
-            # For each id, select the row with max log_version and filter finished executions
+            # For SDK mode, group by id and select the one with max log_version for each group
+            # For PG mode, this is already done by the SQL query
             models = []
-            for rows in id_to_results.values():
-                if len(rows) > 1:
-                    max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
-                else:
-                    max_row = rows[0]
+            if not self.logstore_client.supports_pg_protocol:
+                id_to_results: dict[str, list[dict[str, Any]]] = {}
+                for row in results:
+                    row_id = row.get("id")
+                    if row_id:
+                        if row_id not in id_to_results:
+                            id_to_results[row_id] = []
+                        id_to_results[row_id].append(row)
 
-                model = _dict_to_workflow_node_execution_model(max_row)
-                if model and model.id:  # Ensure model is valid
-                    models.append(model)
+                # For each id, select the row with max log_version
+                for rows in id_to_results.values():
+                    if len(rows) > 1:
+                        max_row = max(rows, key=lambda x: int(x.get("log_version", 0)))
+                    else:
+                        max_row = rows[0]
+
+                    model = _dict_to_workflow_node_execution_model(max_row)
+                    if model and model.id:  # Ensure model is valid
+                        models.append(model)
+            else:
+                # For PG mode, results are already deduplicated by the SQL query
+                for row in results:
+                    model = _dict_to_workflow_node_execution_model(row)
+                    if model and model.id:  # Ensure model is valid
+                        models.append(model)
 
             # Sort by index DESC for trace visualization
             models.sort(key=lambda x: x.index, reverse=True)
@@ -260,35 +312,53 @@ class LogstoreAPIWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecutionRep
         Uses query syntax to get raw logs and selects the one with max log_version.
         """
         logger.debug("get_execution_by_id: execution_id=%s, tenant_id=%s", execution_id, tenant_id)
-        # Build query string using LogStore query syntax
-        if tenant_id:
-            query = f"id: {execution_id} and tenant_id: {tenant_id}"
-        else:
-            query = f"id: {execution_id}"
-
         try:
-            # Query raw logs with large time range
-            from_time = 0
-            to_time = int(time.time())  # now
+            # Check if PG protocol is supported
+            if self.logstore_client.supports_pg_protocol:
+                # Use PG protocol with SQL query (get latest version of record)
+                tenant_filter = f"AND tenant_id = '{tenant_id}'" if tenant_id else ""
+                sql_query = f"""
+                    SELECT * FROM (
+                        SELECT *, 
+                            ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
+                        FROM "{AliyunLogStore.workflow_node_execution_logstore}"
+                        WHERE id = '{execution_id}' {tenant_filter} AND __time__ > 0
+                    ) AS subquery WHERE rn = 1
+                    LIMIT 1
+                """
+                results = self.logstore_client.execute_sql(
+                    sql=sql_query,
+                    logstore=AliyunLogStore.workflow_node_execution_logstore,
+                )
+            else:
+                # Use SDK with LogStore query syntax
+                if tenant_id:
+                    query = f"id: {execution_id} and tenant_id: {tenant_id}"
+                else:
+                    query = f"id: {execution_id}"
 
-            results = self.logstore_client.get_logs(
-                logstore=AliyunLogStore.workflow_node_execution_logstore,
-                from_time=from_time,
-                to_time=to_time,
-                query=query,
-                line=100,
-                reverse=False,
-            )
+                from_time = 0
+                to_time = int(time.time())  # now
+
+                results = self.logstore_client.get_logs(
+                    logstore=AliyunLogStore.workflow_node_execution_logstore,
+                    from_time=from_time,
+                    to_time=to_time,
+                    query=query,
+                    line=100,
+                    reverse=False,
+                )
 
             if not results:
                 return None
 
-            # If multiple results, select the one with max log_version
-            if len(results) > 1:
+            # For PG mode, result is already the latest version
+            # For SDK mode, if multiple results, select the one with max log_version
+            if self.logstore_client.supports_pg_protocol or len(results) == 1:
+                return _dict_to_workflow_node_execution_model(results[0])
+            else:
                 max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
                 return _dict_to_workflow_node_execution_model(max_result)
-            else:
-                return _dict_to_workflow_node_execution_model(results[0])
 
         except Exception:
             logger.exception("Failed to get execution by ID from LogStore: execution_id=%s", execution_id)

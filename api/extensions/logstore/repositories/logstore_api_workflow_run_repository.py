@@ -184,8 +184,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             logger.warning("last_id pagination not fully implemented for LogStore")
 
         # Use window function to get latest log_version of each workflow run
-        query = f"""
-            * | SELECT * FROM (
+        sql = f"""
+            SELECT * FROM (
                 SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                 FROM {AliyunLogStore.workflow_execution_logstore}
                 WHERE tenant_id='{tenant_id}'
@@ -201,7 +201,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         try:
             results = self.logstore_client.execute_sql(
-                query=query, logstore=AliyunLogStore.workflow_execution_logstore, from_time=None, to_time=None
+                sql=sql, 
+                query="*",
+                logstore=AliyunLogStore.workflow_execution_logstore, 
+                from_time=None, 
+                to_time=None
             )
 
             # Check if there are more records
@@ -230,22 +234,38 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Falls back to PostgreSQL if not found in LogStore (for data consistency during migration).
         """
         logger.info("get_workflow_run_by_id: tenant_id=%s, app_id=%s, run_id=%s", tenant_id, app_id, run_id)
-        # Build query string using LogStore query syntax
-        query = f"id: {run_id} and tenant_id: {tenant_id} and app_id: {app_id}"
 
         try:
-            # Query raw logs with large time range
-            from_time = 0
-            to_time = int(time.time())  # now
+            # Check if PG protocol is supported
+            if self.logstore_client.supports_pg_protocol:
+                # Use PG protocol with SQL query (get latest version of record)
+                sql_query = f"""
+                    SELECT * FROM (
+                        SELECT *, 
+                            ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
+                        FROM "{AliyunLogStore.workflow_execution_logstore}"
+                        WHERE id = '{run_id}' AND tenant_id = '{tenant_id}' AND app_id = '{app_id}' AND __time__ > 0
+                    ) AS subquery WHERE rn = 1
+                    LIMIT 100
+                """
+                results = self.logstore_client.execute_sql(
+                    sql=sql_query,
+                    logstore=AliyunLogStore.workflow_execution_logstore,
+                )
+            else:
+                # Use SDK with LogStore query syntax
+                query = f"id: {run_id} and tenant_id: {tenant_id} and app_id: {app_id}"
+                from_time = 0
+                to_time = int(time.time())  # now
 
-            results = self.logstore_client.get_logs(
-                logstore=AliyunLogStore.workflow_execution_logstore,
-                from_time=from_time,
-                to_time=to_time,
-                query=query,
-                line=100,
-                reverse=False,
-            )
+                results = self.logstore_client.get_logs(
+                    logstore=AliyunLogStore.workflow_execution_logstore,
+                    from_time=from_time,
+                    to_time=to_time,
+                    query=query,
+                    line=100,
+                    reverse=False,
+                )
 
             if not results:
                 # Fallback to PostgreSQL for records created before LogStore migration
@@ -260,12 +280,13 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                     return self._fallback_get_workflow_run_by_id_with_tenant(run_id, tenant_id, app_id)
                 return None
 
-            # If multiple results, select the one with max log_version
-            if len(results) > 1:
+            # For PG mode, results are already deduplicated by the SQL query
+            # For SDK mode, if multiple results, select the one with max log_version
+            if self.logstore_client.supports_pg_protocol or len(results) == 1:
+                return _dict_to_workflow_run(results[0])
+            else:
                 max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
                 return _dict_to_workflow_run(max_result)
-            else:
-                return _dict_to_workflow_run(results[0])
 
         except Exception:
             logger.exception("Failed to get workflow run by ID from LogStore: run_id=%s", run_id)
@@ -304,22 +325,38 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Falls back to PostgreSQL if not found in LogStore (controlled by LOGSTORE_DUAL_READ_ENABLED).
         """
         logger.info("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
-        # Build query string using LogStore query syntax
-        query = f"id: {run_id}"
 
         try:
-            # Query raw logs with large time range
-            from_time = 0
-            to_time = int(time.time())  # now
+            # Check if PG protocol is supported
+            if self.logstore_client.supports_pg_protocol:
+                # Use PG protocol with SQL query (get latest version of record)
+                sql_query = f"""
+                    SELECT * FROM (
+                        SELECT *, 
+                            ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) as rn
+                        FROM "{AliyunLogStore.workflow_execution_logstore}"
+                        WHERE id = '{run_id}' AND __time__ > 0
+                    ) AS subquery WHERE rn = 1
+                    LIMIT 100
+                """
+                results = self.logstore_client.execute_sql(
+                    sql=sql_query,
+                    logstore=AliyunLogStore.workflow_execution_logstore,
+                )
+            else:
+                # Use SDK with LogStore query syntax
+                query = f"id: {run_id}"
+                from_time = 0
+                to_time = int(time.time())  # now
 
-            results = self.logstore_client.get_logs(
-                logstore=AliyunLogStore.workflow_execution_logstore,
-                from_time=from_time,
-                to_time=to_time,
-                query=query,
-                line=100,
-                reverse=False,
-            )
+                results = self.logstore_client.get_logs(
+                    logstore=AliyunLogStore.workflow_execution_logstore,
+                    from_time=from_time,
+                    to_time=to_time,
+                    query=query,
+                    line=100,
+                    reverse=False,
+                )
 
             if not results:
                 # Fallback to PostgreSQL for records created before LogStore migration
@@ -328,12 +365,13 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                     return self._fallback_get_workflow_run_by_id(run_id)
                 return None
 
-            # If multiple results, select the one with max log_version
-            if len(results) > 1:
+            # For PG mode, results are already deduplicated by the SQL query
+            # For SDK mode, if multiple results, select the one with max log_version
+            if self.logstore_client.supports_pg_protocol or len(results) == 1:
+                return _dict_to_workflow_run(results[0])
+            else:
                 max_result = max(results, key=lambda x: int(x.get("log_version", 0)))
                 return _dict_to_workflow_run(max_result)
-            else:
-                return _dict_to_workflow_run(results[0])
 
         except Exception:
             logger.exception("Failed to get workflow run without tenant: run_id=%s", run_id)
@@ -386,8 +424,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         if status:
             if status == "running":
                 # Running status requires window function
-                query = f"""
-                    * | SELECT COUNT(*) as count
+                sql = f"""
+                    SELECT COUNT(*) as count
                     FROM (
                         SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                         FROM {AliyunLogStore.workflow_execution_logstore}
@@ -401,8 +439,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
                 """
             else:
                 # Finished status uses optimized filter
-                query = f"""
-                    * | SELECT COUNT(DISTINCT id) as count
+                sql = f"""
+                    SELECT COUNT(DISTINCT id) as count
                     FROM {AliyunLogStore.workflow_execution_logstore}
                     WHERE tenant_id='{tenant_id}'
                       AND app_id='{app_id}'
@@ -414,7 +452,9 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
             try:
                 results = self.logstore_client.execute_sql(
-                    query=query, logstore=AliyunLogStore.workflow_execution_logstore
+                    sql=sql, 
+                    query="*",
+                    logstore=AliyunLogStore.workflow_execution_logstore
                 )
                 count = results[0]["count"] if results and len(results) > 0 else 0
 
@@ -434,8 +474,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         # Use optimized query for finished runs, separate query for running
         try:
             # Count finished runs grouped by status
-            finished_query = f"""
-                * | SELECT status, COUNT(DISTINCT id) as count
+            finished_sql = f"""
+                SELECT status, COUNT(DISTINCT id) as count
                 FROM {AliyunLogStore.workflow_execution_logstore}
                 WHERE tenant_id='{tenant_id}'
                   AND app_id='{app_id}'
@@ -446,8 +486,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             """
 
             # Count running runs
-            running_query = f"""
-                * | SELECT COUNT(*) as count
+            running_sql = f"""
+                SELECT COUNT(*) as count
                 FROM (
                     SELECT *, ROW_NUMBER() OVER (PARTITION BY id ORDER BY log_version DESC) AS rn
                     FROM {AliyunLogStore.workflow_execution_logstore}
@@ -461,10 +501,14 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             """
 
             finished_results = self.logstore_client.execute_sql(
-                query=finished_query, logstore=AliyunLogStore.workflow_execution_logstore
+                sql=finished_sql, 
+                query="*",
+                logstore=AliyunLogStore.workflow_execution_logstore
             )
             running_results = self.logstore_client.execute_sql(
-                query=running_query, logstore=AliyunLogStore.workflow_execution_logstore
+                sql=running_sql, 
+                query="*",
+                logstore=AliyunLogStore.workflow_execution_logstore
             )
 
             # Build response
@@ -520,7 +564,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             time_filter += f" AND __time__ < to_unixtime(from_iso8601_timestamp('{end_date.isoformat()}'))"
 
         # Optimized query: Use finished_at filter to avoid window function
-        query = f"""
+        sql = f"""
             SELECT DATE(from_unixtime(__time__)) as date, COUNT(DISTINCT id) as runs
             FROM {AliyunLogStore.workflow_execution_logstore}
             WHERE tenant_id='{tenant_id}'
@@ -533,7 +577,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
 
         try:
-            results = self.logstore_client.execute_sql(query=query, logstore=AliyunLogStore.workflow_execution_logstore)
+            results = self.logstore_client.execute_sql(
+                sql=sql, 
+                query="*",
+                logstore=AliyunLogStore.workflow_execution_logstore
+            )
 
             response_data = []
             for row in results:
@@ -572,8 +620,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         if end_date:
             time_filter += f" AND __time__ < to_unixtime(from_iso8601_timestamp('{end_date.isoformat()}'))"
 
-        query = f"""
-            * | SELECT DATE(from_unixtime(__time__)) as date, COUNT(DISTINCT created_by) as terminal_count
+        sql = f"""
+            SELECT DATE(from_unixtime(__time__)) as date, COUNT(DISTINCT created_by) as terminal_count
             FROM {AliyunLogStore.workflow_execution_logstore}
             WHERE tenant_id='{tenant_id}'
               AND app_id='{app_id}'
@@ -585,7 +633,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
 
         try:
-            results = self.logstore_client.execute_sql(query=query, logstore=AliyunLogStore.workflow_execution_logstore)
+            results = self.logstore_client.execute_sql(
+                sql=sql, 
+                query="*",
+                logstore=AliyunLogStore.workflow_execution_logstore
+            )
 
             response_data = []
             for row in results:
@@ -624,8 +676,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         if end_date:
             time_filter += f" AND __time__ < to_unixtime(from_iso8601_timestamp('{end_date.isoformat()}'))"
 
-        query = f"""
-            * | SELECT DATE(from_unixtime(__time__)) as date, SUM(total_tokens) as token_count
+        sql = f"""
+            SELECT DATE(from_unixtime(__time__)) as date, SUM(total_tokens) as token_count
             FROM {AliyunLogStore.workflow_execution_logstore}
             WHERE tenant_id='{tenant_id}'
               AND app_id='{app_id}'
@@ -637,7 +689,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
 
         try:
-            results = self.logstore_client.execute_sql(query=query, logstore=AliyunLogStore.workflow_execution_logstore)
+            results = self.logstore_client.execute_sql(
+                sql=sql, 
+                query="*",
+                logstore=AliyunLogStore.workflow_execution_logstore
+            )
 
             response_data = []
             for row in results:
@@ -676,8 +732,8 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         if end_date:
             time_filter += f" AND __time__ < to_unixtime(from_iso8601_timestamp('{end_date.isoformat()}'))"
 
-        query = f"""
-            * | SELECT
+        sql = f"""
+            SELECT
                 AVG(sub.interactions) AS interactions,
                 sub.date
             FROM (
@@ -697,7 +753,11 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         """
 
         try:
-            results = self.logstore_client.execute_sql(query=query, logstore=AliyunLogStore.workflow_execution_logstore)
+            results = self.logstore_client.execute_sql(
+                sql=sql, 
+                query="*",
+                logstore=AliyunLogStore.workflow_execution_logstore
+            )
 
             response_data = []
             for row in results:

@@ -321,7 +321,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             if order_fields:
                 order_clause = "ORDER BY " + ", ".join(order_fields)
 
-        query = f"""
+        sql = f"""
             SELECT *
             FROM {AliyunLogStore.workflow_node_execution_logstore}
             WHERE workflow_run_id='{workflow_run_id}'
@@ -330,15 +330,16 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         """
 
         if self._app_id:
-            query += f" AND app_id='{self._app_id}'"
+            sql += f" AND app_id='{self._app_id}'"
 
         if order_clause:
-            query += f" {order_clause}"
+            sql += f" {order_clause}"
 
         try:
             # Execute SQL query
             results = self.logstore_client.execute_sql(
-                query=query,
+                sql=sql,
+                query="*",
                 logstore=AliyunLogStore.workflow_node_execution_logstore,
             )
 

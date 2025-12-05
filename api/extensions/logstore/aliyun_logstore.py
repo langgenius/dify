@@ -20,16 +20,32 @@ from dotenv import load_dotenv
 from sqlalchemy.orm import DeclarativeBase
 
 from configs import dify_config
+from extensions.logstore.aliyun_logstore_pg import AliyunLogStorePG
 
 logger = logging.getLogger(__name__)
 
 
 class AliyunLogStore:
+    """
+    Singleton class for Aliyun SLS LogStore operations.
+
+    Ensures only one instance exists to prevent multiple PG connection pools.
+    """
+
+    _instance: "AliyunLogStore | None" = None
+    _initialized: bool = False
+
+    def __new__(cls) -> "AliyunLogStore":
+        """Implement singleton pattern."""
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     project_des = "dify"
 
-    workflow_execution_logstore = "workflow_execution"
+    workflow_execution_logstore = "workflow_execution_2"
 
-    workflow_node_execution_logstore = "workflow_node_execution"
+    workflow_node_execution_logstore = "workflow_node_execution_2"
 
     @staticmethod
     def _sqlalchemy_type_to_logstore_type(column: Any) -> str:
@@ -114,6 +130,10 @@ class AliyunLogStore:
         return index_keys
 
     def __init__(self) -> None:
+        # Skip initialization if already initialized (singleton pattern)
+        if self.__class__._initialized:
+            return
+
         load_dotenv()
 
         access_key_id: str = os.environ.get("ALIYUN_SLS_ACCESS_KEY_ID", "")
@@ -133,6 +153,18 @@ class AliyunLogStore:
         dify_version = dify_config.project.version
         enhanced_user_agent = f"Dify,Dify-{dify_version},{original_user_agent}"
         self.client.set_user_agent(enhanced_user_agent)
+
+        # Initialize PG connection pool (if region supports it)
+        self._pg_client = AliyunLogStorePG(access_key_id, access_key_secret, endpoint, self.project_name)
+        self._use_pg_protocol = self._pg_client.init_connection()
+
+        # Mark as initialized
+        self.__class__._initialized = True
+
+    @property
+    def supports_pg_protocol(self) -> bool:
+        """Check if PG protocol is supported and enabled."""
+        return self._use_pg_protocol
 
     def init_project_logstore(self):
         """
@@ -296,7 +328,7 @@ class AliyunLogStore:
 
         # key_config_list should be a dict, not a list
         # Create index config with both line and field indexes
-        return IndexConfig(line_config=line_config, key_config_list=field_keys)
+        return IndexConfig(line_config=line_config, key_config_list=field_keys, scan_index=True)
 
     def create_index(self, logstore_name: str) -> None:
         """
@@ -424,7 +456,7 @@ class AliyunLogStore:
         # Create merged config
         # key_config_list should be a dict, not a list
         merged_config = IndexConfig(
-            line_config=existing_config.line_config or IndexLineConfig(), key_config_list=existing_keys
+            line_config=existing_config.line_config or IndexLineConfig(), key_config_list=existing_keys, scan_index=True
         )
 
         return merged_config, needs_update
@@ -492,28 +524,32 @@ class AliyunLogStore:
                 )
 
     def put_log(self, logstore: str, contents: Sequence[tuple[str, str]]) -> None:
-        log_item = LogItem(contents=contents)
-        request = PutLogsRequest(project=self.project_name, logstore=logstore, logitems=[log_item])
+        # Route to PG or SDK based on protocol availability
+        if self._use_pg_protocol:
+            self._pg_client.put_log(logstore, contents, self.log_enabled)
+        else:
+            log_item = LogItem(contents=contents)
+            request = PutLogsRequest(project=self.project_name, logstore=logstore, logitems=[log_item])
 
-        if self.log_enabled:
-            logger.info(
-                "[LogStore] PUT_LOG | logstore=%s | project=%s | items_count=%d",
-                logstore,
-                self.project_name,
-                len(contents),
-            )
+            if self.log_enabled:
+                logger.info(
+                    "[LogStore-SDK] PUT_LOG | logstore=%s | project=%s | items_count=%d",
+                    logstore,
+                    self.project_name,
+                    len(contents),
+                )
 
-        try:
-            self.client.put_logs(request)
-        except LogException as e:
-            logger.exception(
-                "Failed to put logs to logstore %s: errorCode=%s, errorMessage=%s, requestId=%s",
-                logstore,
-                e.get_error_code(),
-                e.get_error_message(),
-                e.get_request_id(),
-            )
-            raise
+            try:
+                self.client.put_logs(request)
+            except LogException as e:
+                logger.exception(
+                    "Failed to put logs to logstore %s: errorCode=%s, errorMessage=%s, requestId=%s",
+                    logstore,
+                    e.get_error_code(),
+                    e.get_error_message(),
+                    e.get_request_id(),
+                )
+                raise
 
     def get_logs(
         self,
@@ -582,8 +618,9 @@ class AliyunLogStore:
 
     def execute_sql(
         self,
-        query: str,
+        sql: str,
         logstore: str | None = None,
+        query: str = "*",
         from_time: int | None = None,
         to_time: int | None = None,
         power_sql: bool = False,
@@ -592,72 +629,87 @@ class AliyunLogStore:
         Execute SQL query for aggregation and analysis.
 
         Args:
-            query: SQL query string
-            logstore: Name of the logstore (optional, can be specified in FROM clause)
-            from_time: Start time (Unix timestamp)
-            to_time: End time (Unix timestamp)
+            sql: SQL query string (SELECT statement)
+            logstore: Name of the logstore (required)
+            query: Search/filter query for SDK mode (default: "*" for all logs).
+                   Only used in SDK mode. PG mode ignores this parameter.
+            from_time: Start time (Unix timestamp) - only used in SDK mode
+            to_time: End time (Unix timestamp) - only used in SDK mode
             power_sql: Whether to use enhanced SQL mode (default: False)
 
         Returns:
             List of result rows as dictionaries
+
+        Note:
+            - PG mode: Only executes the SQL directly
+            - SDK mode: Combines query and sql as "query | sql"
         """
-        # Logstore is required by the SDK
+        # Logstore is required
         if not logstore:
             raise ValueError("logstore parameter is required for execute_sql")
 
-        # Provide default time range if not specified
-        if from_time is None:
-            from_time = 0
+        # Route to PG or SDK based on protocol availability
+        if self._use_pg_protocol:
+            # PG mode: execute SQL directly (ignore query parameter)
+            return self._pg_client.execute_sql(sql, logstore, self.log_enabled)
+        else:
+            # SDK mode: combine query and sql as "query | sql"
+            full_query = f"{query} | {sql}"
 
-        if to_time is None:
-            to_time = int(time.time())  # now
+            # Provide default time range if not specified
+            if from_time is None:
+                from_time = 0
 
-        request = GetLogsRequest(
-            project=self.project_name,
-            logstore=logstore,
-            fromTime=from_time,
-            toTime=to_time,
-            query=query,
-        )
+            if to_time is None:
+                to_time = int(time.time())  # now
 
-        # Log query info if SQLALCHEMY_ECHO is enabled
-        if self.log_enabled:
-            logger.info(
-                "[LogStore] EXECUTE_SQL | logstore=%s | project=%s | from_time=%d | to_time=%d | query=%s",
-                logstore,
-                self.project_name,
-                from_time,
-                to_time,
-                query,
+            request = GetLogsRequest(
+                project=self.project_name,
+                logstore=logstore,
+                fromTime=from_time,
+                toTime=to_time,
+                query=full_query,
             )
 
-        try:
-            response = self.client.get_logs(request)
-
-            result = []
-            logs = response.get_logs() if response else []
-            for log in logs:
-                result.append(log.get_contents())
-
-            # Log result count if SQLALCHEMY_ECHO is enabled
+            # Log query info if SQLALCHEMY_ECHO is enabled
             if self.log_enabled:
                 logger.info(
-                    "[LogStore] EXECUTE_SQL RESULT | logstore=%s | returned_count=%d",
+                    "[LogStore-SDK] EXECUTE_SQL | logstore=%s | project=%s | from_time=%d | to_time=%d | full_query=%s",
                     logstore,
-                    len(result),
+                    self.project_name,
+                    from_time,
+                    to_time,
+                    query,
+                    sql,
                 )
 
-            return result
-        except LogException as e:
-            logger.exception(
-                "Failed to execute SQL query on logstore %s: errorCode=%s, errorMessage=%s, requestId=%s, query=%s",
-                logstore,
-                e.get_error_code(),
-                e.get_error_message(),
-                e.get_request_id(),
-                query,
-            )
-            raise
+            try:
+                response = self.client.get_logs(request)
+
+                result = []
+                logs = response.get_logs() if response else []
+                for log in logs:
+                    result.append(log.get_contents())
+
+                # Log result count if SQLALCHEMY_ECHO is enabled
+                if self.log_enabled:
+                    logger.info(
+                        "[LogStore-SDK] EXECUTE_SQL RESULT | logstore=%s | returned_count=%d",
+                        logstore,
+                        len(result),
+                    )
+
+                return result
+            except LogException as e:
+                logger.exception(
+                    "Failed to execute SQL, logstore %s: errorCode=%s, errorMessage=%s, requestId=%s, full_query=%s",
+                    logstore,
+                    e.get_error_code(),
+                    e.get_error_message(),
+                    e.get_request_id(),
+                    full_query,
+                )
+                raise
 
 
 if __name__ == "__main__":
