@@ -82,6 +82,7 @@ const translation = {
     annualBilling: 'Penagihan Tahunan',
     contractSales: 'Hubungi penjualan',
     documentProcessingPriority: 'Pemrosesan Dokumen',
+    documentProcessingPriorityTip: 'Untuk prioritas pemrosesan dokumen yang lebih tinggi, silakan tingkatkan paket Anda.',
     startForFree: 'Mulai Gratis',
     documentsRequestQuotaTooltip: 'Menentukan jumlah total tindakan yang dapat dilakukan ruang kerja per menit dalam pangkalan pengetahuan, termasuk pembuatan, penghapusan, pembaruan, pengunggahan dokumen, modifikasi, pengarsipan, dan kueri basis pengetahuan himpunan data. Metrik ini digunakan untuk mengevaluasi performa permintaan basis pengetahuan. Misalnya, jika pengguna Sandbox melakukan 10 pengujian hit berturut-turut dalam satu menit, ruang kerja mereka akan dibatasi sementara untuk melakukan tindakan berikut selama menit berikutnya: pembuatan, penghapusan, pembaruan, dan unggahan atau modifikasi himpunan data.',
     unlimited: 'Unlimited',

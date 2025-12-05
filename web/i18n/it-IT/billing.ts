@@ -32,6 +32,7 @@ const translation = {
     vectorSpaceTooltip:
       'Lo Spazio Vettoriale è il sistema di memoria a lungo termine necessario per permettere agli LLM di comprendere i tuoi dati.',
     documentProcessingPriority: 'Priorità di Elaborazione Documenti',
+    documentProcessingPriorityTip: 'Per una maggiore priorità nell\'elaborazione dei documenti, aggiorna il tuo piano.',
     documentProcessingPriorityUpgrade:
       'Elabora più dati con maggiore precisione a velocità più elevate.',
     priority: {

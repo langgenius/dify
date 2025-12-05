@@ -75,6 +75,7 @@ const translation = {
     unlimitedApiRate: 'API 请求频率无限制',
     apiRateLimitTooltip: 'API 请求频率限制涵盖所有通过 Dify API 发起的调用，例如文本生成、聊天对话、工作流执行和文档处理等。',
     documentProcessingPriority: '文档处理',
+    documentProcessingPriorityTip: '如需更高的文档处理优先级，请升级您的套餐。',
     documentProcessingPriorityUpgrade: '以更快的速度、更高的精度处理更多的数据。',
     priority: {
       'standard': '标准',
