@@ -26,6 +26,7 @@ The codebase is split into:
 cd web
 pnpm lint
 pnpm lint:fix
+pnpm type-check
 pnpm test
 ```
 
@@ -39,7 +40,7 @@ pnpm test
 ## Language Style
 
 - **Python**: Keep type hints on functions and attributes, and implement relevant special methods (e.g., `__repr__`, `__str__`).
-- **TypeScript**: Use the strict config, lean on ESLint + Prettier workflows, and avoid `any` types.
+- **TypeScript**: Use the strict config, rely on ESLint (`pnpm lint` / `pnpm lint:fix`) plus `pnpm type-check`, avoid `any` types, and do not introduce Prettier (not used in this repo).
 
 ## General Practices
 
