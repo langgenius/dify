@@ -24,11 +24,12 @@ The codebase is split into:
 
 ```bash
 cd web
-pnpm lint
 pnpm lint:fix
-pnpm type-check
+pnpm type-check:tsgo
 pnpm test
 ```
+
+Use `pnpm lint:fix` for lint + autofix; fall back to `pnpm lint` only when you need a read-only check.
 
 ## Testing & Quality Practices
 
@@ -40,7 +41,7 @@ pnpm test
 ## Language Style
 
 - **Python**: Keep type hints on functions and attributes, and implement relevant special methods (e.g., `__repr__`, `__str__`).
-- **TypeScript**: Use the strict config, rely on ESLint (`pnpm lint` / `pnpm lint:fix`) plus `pnpm type-check`, avoid `any` types, and do not introduce Prettier (not used in this repo).
+- **TypeScript**: Use the strict config, rely on ESLint (`pnpm lint:fix` preferred) plus `pnpm type-check:tsgo`, and avoid `any` types.
 
 ## General Practices
 
