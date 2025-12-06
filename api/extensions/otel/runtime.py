@@ -11,6 +11,7 @@ from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from configs import dify_config
+from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from libs.helper import extract_tenant_id
 from models import Account, EndUser
 
@@ -51,8 +52,8 @@ def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
                 if not tenant_id:
                     return
                 if current_span:
-                    current_span.set_attribute("service.tenant.id", tenant_id)
-                    current_span.set_attribute("service.user.id", user.id)
+                    current_span.set_attribute(DifySpanAttributes.TENANT_ID, tenant_id)
+                    current_span.set_attribute(GenAIAttributes.USER_ID, user.id)
             except Exception:
                 logger.exception("Error setting tenant and user attributes")
                 pass
