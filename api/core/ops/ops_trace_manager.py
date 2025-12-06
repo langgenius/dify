@@ -658,6 +658,19 @@ class TraceTask:
 
         message_tokens = message_data.message_tokens
 
+        # Try to extract provider response ID from message metadata if available
+        provider_response_id = None
+        try:
+            # Check if response ID is in message metadata or workflow run data
+            if message_data.message_metadata:
+                import json
+
+                metadata_dict = json.loads(message_data.message_metadata) if message_data.message_metadata else {}
+                provider_response_id = metadata_dict.get("provider_response_id")
+        except Exception:
+            # Ignore errors in extracting response ID
+            pass
+
         message_trace_info = MessageTraceInfo(
             trace_id=self.trace_id,
             message_id=message_id,
@@ -678,6 +691,7 @@ class TraceTask:
             gen_ai_server_time_to_first_token=streaming_metrics.get("gen_ai_server_time_to_first_token"),
             llm_streaming_time_to_generate=streaming_metrics.get("llm_streaming_time_to_generate"),
             is_streaming_request=streaming_metrics.get("is_streaming_request", False),
+            provider_response_id=provider_response_id,
         )
 
         return message_trace_info
