@@ -2,6 +2,7 @@
 Unified event manager for collecting and emitting events.
 """
 
+import logging
 import threading
 import time
 from collections.abc import Generator
@@ -11,6 +12,8 @@ from typing import final
 from core.workflow.graph_events import GraphEngineEvent
 
 from ..layers.base import GraphEngineLayer
+
+_logger = logging.getLogger(__name__)
 
 
 @final
@@ -180,5 +183,4 @@ class EventManager:
             try:
                 layer.on_event(event)
             except Exception:
-                # Silently ignore layer errors during collection
-                pass
+                _logger.exception("Error in layer on_event, layer_type=%s", type(layer))
