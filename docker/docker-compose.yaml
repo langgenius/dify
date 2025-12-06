@@ -54,7 +54,7 @@ x-shared-env: &shared-api-worker-env
   NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX: ${NEXT_PUBLIC_ENABLE_SINGLE_DOLLAR_LATEX:-false}
   DB_USERNAME: ${DB_USERNAME:-postgres}
   DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
-  DB_HOST: ${DB_HOST:-db}
+  DB_HOST: ${DB_HOST:-db_postgres}
   DB_PORT: ${DB_PORT:-5432}
   DB_DATABASE: ${DB_DATABASE:-dify}
   SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-30}
@@ -257,7 +257,7 @@ x-shared-env: &shared-api-worker-env
   ALIBABACLOUD_MYSQL_DATABASE: ${ALIBABACLOUD_MYSQL_DATABASE:-dify}
   ALIBABACLOUD_MYSQL_MAX_CONNECTION: ${ALIBABACLOUD_MYSQL_MAX_CONNECTION:-5}
   ALIBABACLOUD_MYSQL_HNSW_M: ${ALIBABACLOUD_MYSQL_HNSW_M:-6}
-  RELYT_HOST: ${RELYT_HOST:-db}
+  RELYT_HOST: ${RELYT_HOST:-db_postgres}
   RELYT_PORT: ${RELYT_PORT:-5432}
   RELYT_USER: ${RELYT_USER:-postgres}
   RELYT_PASSWORD: ${RELYT_PASSWORD:-difyai123456}
@@ -634,7 +634,7 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
       redis:
         condition: service_started
@@ -661,7 +661,7 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
       redis:
         condition: service_started
@@ -683,7 +683,7 @@ services:
       # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
       MODE: beat
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
       redis:
         condition: service_started
@@ -744,7 +744,7 @@ services:
           "CMD",
           "pg_isready",
           "-h",
-          "db",
+          "db_postgres",
           "-U",
           "${PGUSER:-postgres}",
           "-d",
@@ -854,7 +854,7 @@ services:
     volumes:
       - ./volumes/plugin_daemon:/app/storage
     depends_on:
-      db:
+      db_postgres:
         condition: service_healthy
 
   # ssrf_proxy server
