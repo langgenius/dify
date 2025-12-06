@@ -630,8 +630,15 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             created_from = WorkflowAppLogCreatedFrom.INSTALLED_APP
         elif invoke_from == InvokeFrom.WEB_APP:
             created_from = WorkflowAppLogCreatedFrom.WEB_APP
+        elif invoke_from == InvokeFrom.DEBUGGER:
+            agent_context = self._application_generate_entity.extras
+            if agent_context and any(key in str(agent_context) for key in ["conversation_id", "message_id"]):
+                created_from = WorkflowAppLogCreatedFrom.SERVICE_API
+            else:
+                # not save log for regular debugging
+                return
         else:
-            # not save log for debugging
+            # not save log for other invoke_from types
             return
 
         if not workflow_run_id:
