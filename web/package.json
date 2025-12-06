@@ -23,10 +23,11 @@
     "build": "next build",
     "build:docker": "next build && node scripts/optimize-standalone.js",
     "start": "node ./scripts/copy-and-start.mjs",
-    "lint": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
-    "lint:fix": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
-    "lint:quiet": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
-    "lint:complexity": "eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --rule 'complexity: [error, {max: 15}]' --quiet",
+    "lint:oxlint": "oxlint --config .oxlintrc.json .",
+    "lint": "pnpm run lint:oxlint && eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache",
+    "lint:fix": "pnpm run lint:oxlint && eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --fix",
+    "lint:quiet": "pnpm run lint:oxlint && eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --quiet",
+    "lint:complexity": "pnpm run lint:oxlint && eslint --cache --cache-location node_modules/.cache/eslint/.eslint-cache --rule 'complexity: [error, {max: 15}]' --quiet",
     "type-check": "tsc --noEmit",
     "type-check:tsgo": "tsgo --noEmit",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
@@ -182,6 +183,7 @@
     "@types/semver": "^7.7.1",
     "@types/sortablejs": "^1.15.8",
     "@types/uuid": "^10.0.0",
+    "@typescript/native-preview": "^7.0.0-dev",
     "autoprefixer": "^10.4.21",
     "babel-loader": "^10.0.0",
     "bing-translate-api": "^4.1.0",
@@ -202,12 +204,12 @@
     "lodash": "^4.17.21",
     "magicast": "^0.3.5",
     "nock": "^14.0.10",
+    "oxlint": "^1.31.0",
     "postcss": "^8.5.6",
     "react-scan": "^0.4.3",
     "sass": "^1.93.2",
     "storybook": "9.1.13",
     "tailwindcss": "^3.4.18",
-    "@typescript/native-preview": "^7.0.0-dev",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
     "uglify-js": "^3.19.3"
@@ -229,6 +231,7 @@
       "eslint --fix"
     ],
     "**/*.ts?(x)": [
+      "oxlint --config .oxlintrc.json",
       "eslint --fix"
     ]
   },
