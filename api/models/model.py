@@ -16,6 +16,7 @@ from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from constants import DEFAULT_FILE_NUMBER_LIMITS
+from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.file import helpers as file_helpers
 from core.tools.signature import sign_tool_file
@@ -24,7 +25,7 @@ from libs.helper import generate_string  # type: ignore[import-not-found]
 from libs.uuid_utils import uuidv7
 
 from .account import Account, Tenant
-from .base import Base, TypeBase
+from .base import TypeBase
 from .engine import db
 from .enums import CreatorUserRole
 from .provider_ids import GenericProviderID
@@ -72,7 +73,7 @@ class IconType(StrEnum):
     EMOJI = auto()
 
 
-class App(Base):
+class App(TypeBase):
     __tablename__ = "apps"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_pkey"), sa.Index("app_tenant_id_idx", "tenant_id"))
 
@@ -82,7 +83,7 @@ class App(Base):
     description: Mapped[str] = mapped_column(LongText, default=sa.text("''"))
     mode: Mapped[str] = mapped_column(String(255))
     icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji
-    icon = mapped_column(String(255))
+    icon: Mapped[str] = mapped_column(String(255))
     icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
     workflow_id = mapped_column(StringUUID, nullable=True)
@@ -111,7 +112,7 @@ class App(Base):
         else:
             app_model_config = self.app_model_config
             if app_model_config:
-                return app_model_config.pre_prompt
+                return app_model_config.pre_prompt or ""
             else:
                 return ""
 
@@ -308,7 +309,7 @@ class App(Base):
         return None
 
 
-class AppModelConfig(Base):
+class AppModelConfig(TypeBase):
     __tablename__ = "app_model_configs"
     __table_args__ = (sa.PrimaryKeyConstraint("id", name="app_model_config_pkey"), sa.Index("app_app_id_idx", "app_id"))
 
@@ -548,6 +549,7 @@ class RecommendedApp(Base):  # bug
     privacy_policy: Mapped[str] = mapped_column(String(255), nullable=False)
     custom_disclaimer: Mapped[str] = mapped_column(LongText, default="")
     category: Mapped[str] = mapped_column(String(255), nullable=False)
+    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     is_listed: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     install_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
@@ -627,7 +629,7 @@ class OAuthProviderApp(TypeBase):
     )
 
 
-class Conversation(Base):
+class Conversation(TypeBase):
     __tablename__ = "conversations"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="conversation_pkey"),
@@ -653,14 +655,14 @@ class Conversation(Base):
     #
     # Its value corresponds to the members of `InvokeFrom`.
     # (api/core/app/entities/app_invoke_entities.py)
-    invoke_from = mapped_column(String(255), nullable=True)
+    invoke_from: Mapped[InvokeFrom | None] = mapped_column(String(255), nullable=True)
 
     # ref: ConversationSource.
     from_source: Mapped[str] = mapped_column(String(255), nullable=False)
-    from_end_user_id = mapped_column(StringUUID)
-    from_account_id = mapped_column(StringUUID)
-    read_at = mapped_column(sa.DateTime)
-    read_account_id = mapped_column(StringUUID)
+    from_end_user_id: Mapped[str | None] = mapped_column(StringUUID)
+    from_account_id: Mapped[str | None] = mapped_column(StringUUID)
+    read_at: Mapped[datetime | None] = mapped_column(sa.DateTime, default=None, init=False)
+    read_account_id: Mapped[str | None] = mapped_column(StringUUID, default=None, init=False)
     dialogue_count: Mapped[int] = mapped_column(default=0)
     created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = mapped_column(
@@ -672,7 +674,7 @@ class Conversation(Base):
         "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
     )
 
-    is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
+    is_deleted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"), default=False)
 
     @property
     def inputs(self) -> dict[str, Any]:
@@ -922,7 +924,7 @@ class Conversation(Base):
         }
 
 
-class Message(Base):
+class Message(TypeBase):
     __tablename__ = "messages"
     __table_args__ = (
         PrimaryKeyConstraint("id", name="message_pkey"),
@@ -1279,8 +1281,7 @@ class Message(Base):
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Message":
-        return cls(
-            id=data["id"],
+        message = cls(
             app_id=data["app_id"],
             conversation_id=data["conversation_id"],
             model_provider=data.get("model_provider"),
@@ -1293,17 +1294,22 @@ class Message(Base):
             query=data["query"],
             message=data["message"],
             answer=data["answer"],
-            status=data["status"],
-            error=data["error"],
-            message_metadata=json.dumps(data["message_metadata"]),
             from_source=data["from_source"],
-            from_end_user_id=data["from_end_user_id"],
-            from_account_id=data["from_account_id"],
-            created_at=data["created_at"],
-            updated_at=data["updated_at"],
-            agent_based=data["agent_based"],
-            workflow_run_id=data["workflow_run_id"],
         )
+        # Set fields with init=False
+        message.id = data["id"]
+        message.model_id = data.get("model_id")
+        message.total_price = data.get("total_price")
+        message.status = data.get("status", "normal")
+        message.error = data.get("error")
+        message.message_metadata = json.dumps(data["message_metadata"]) if data.get("message_metadata") else None
+        message.from_end_user_id = data.get("from_end_user_id")
+        message.from_account_id = data.get("from_account_id")
+        message.created_at = data["created_at"]
+        message.updated_at = data["updated_at"]
+        message.agent_based = data.get("agent_based", False)
+        message.workflow_run_id = data.get("workflow_run_id")
+        return message
 
 
 class MessageFeedback(TypeBase):
@@ -1382,7 +1388,7 @@ class MessageFile(TypeBase):
     )
 
 
-class MessageAnnotation(Base):
+class MessageAnnotation(TypeBase):
     __tablename__ = "message_annotations"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_annotation_pkey"),
@@ -1415,7 +1421,7 @@ class MessageAnnotation(Base):
         return account
 
 
-class AppAnnotationHitHistory(Base):
+class AppAnnotationHitHistory(TypeBase):
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),
@@ -1526,7 +1532,7 @@ class DefaultEndUserSessionID(StrEnum):
     DEFAULT_SESSION_ID = "DEFAULT-USER"
 
 
-class EndUser(Base, UserMixin):
+class EndUser(TypeBase, UserMixin):
     __tablename__ = "end_users"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="end_user_pkey"),
@@ -1536,12 +1542,12 @@ class EndUser(Base, UserMixin):
 
     id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    app_id = mapped_column(StringUUID, nullable=True)
+    app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True)
     type: Mapped[str] = mapped_column(String(255), nullable=False)
-    external_user_id = mapped_column(String(255), nullable=True)
-    name = mapped_column(String(255))
+    external_user_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    name: Mapped[str | None] = mapped_column(String(255))
     _is_anonymous: Mapped[bool] = mapped_column(
-        "is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true")
+        "is_anonymous", sa.Boolean, nullable=False, server_default=sa.text("true"), init=False
     )
 
     @property
@@ -1602,7 +1608,7 @@ class AppMCPServer(TypeBase):
         return cast(dict[str, Any], json.loads(self.parameters))
 
 
-class Site(Base):
+class Site(TypeBase):
     __tablename__ = "sites"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="site_pkey"),
@@ -1618,10 +1624,10 @@ class Site(Base):
     icon_background = mapped_column(String(255))
     description = mapped_column(LongText)
     default_language: Mapped[str] = mapped_column(String(255), nullable=False)
-    chat_color_theme = mapped_column(String(255))
+    chat_color_theme: Mapped[str | None] = mapped_column(String(255))
     chat_color_theme_inverted: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    copyright = mapped_column(String(255))
-    privacy_policy = mapped_column(String(255))
+    copyright: Mapped[str | None] = mapped_column(String(255))
+    privacy_policy: Mapped[str | None] = mapped_column(String(255))
     show_workflow_steps: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     use_icon_as_answer_icon: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
     _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", LongText, default="")
@@ -1675,8 +1681,11 @@ class ApiToken(Base):  # bug: this uses setattr so idk the field.
     tenant_id = mapped_column(StringUUID, nullable=True)
     type = mapped_column(String(16), nullable=False)
     token: Mapped[str] = mapped_column(String(255), nullable=False)
-    last_used_at = mapped_column(sa.DateTime, nullable=True)
-    created_at = mapped_column(sa.DateTime, nullable=False, server_default=func.current_timestamp())
+    app_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(sa.DateTime, nullable=True, init=False)
+    created_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, server_default=func.current_timestamp(), init=False
+    )
 
     @staticmethod
     def generate_api_key(prefix: str, n: int) -> str:
@@ -1687,7 +1696,7 @@ class ApiToken(Base):  # bug: this uses setattr so idk the field.
             return result
 
 
-class UploadFile(Base):
+class UploadFile(TypeBase):
     __tablename__ = "upload_files"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="upload_file_pkey"),
@@ -1811,7 +1820,7 @@ class MessageChain(TypeBase):
     )
 
 
-class MessageAgentThought(Base):
+class MessageAgentThought(TypeBase):
     __tablename__ = "message_agent_thoughts"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="message_agent_thought_pkey"),

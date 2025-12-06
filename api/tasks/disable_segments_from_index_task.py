@@ -58,8 +58,9 @@ def disable_segments_from_index_task(segment_ids: list, dataset_id: str, documen
         return
 
     try:
-        index_node_ids = [segment.index_node_id for segment in segments]
-        index_processor.clean(dataset, index_node_ids, with_keywords=True, delete_child_chunks=False)
+        index_node_ids = [segment.index_node_id for segment in segments if segment.index_node_id is not None]
+        node_ids_param = index_node_ids or None
+        index_processor.clean(dataset, node_ids_param, with_keywords=True, delete_child_chunks=False)
 
         end_at = time.perf_counter()
         logger.info(click.style(f"Segments removed from index latency: {end_at - start_at}", fg="green"))
