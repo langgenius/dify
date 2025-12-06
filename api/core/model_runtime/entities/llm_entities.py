@@ -199,6 +199,7 @@ class LLMResultChunk(BaseModel):
     Model class for llm result chunk.
     """
 
+    id: str | None = None  # Provider response ID
     model: str
     prompt_messages: Sequence[PromptMessage] = Field(default_factory=list)
     system_fingerprint: str | None = None
