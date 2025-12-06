@@ -1,15 +1,15 @@
 import json
 from collections.abc import Generator
-from typing import cast
+from typing import Any, cast
 
 from flask import request
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.common.schema import register_schema_model
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
@@ -24,6 +24,19 @@ from models import DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
+
+from .. import console_ns
+from ..wraps import account_initialization_required, setup_required
+
+
+class NotionEstimatePayload(BaseModel):
+    notion_info_list: list[dict[str, Any]]
+    process_rule: dict[str, Any]
+    doc_form: str = Field(default="text_model")
+    doc_language: str = Field(default="English")
+
+
+register_schema_model(console_ns, NotionEstimatePayload)
 
 
 @console_ns.route(
@@ -243,20 +256,15 @@ class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.expect(console_ns.models[NotionEstimatePayload.__name__])
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("notion_info_list", type=list, required=True, nullable=True, location="json")
-            .add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
-            .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-            .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = NotionEstimatePayload.model_validate(console_ns.payload or {})
+        args = payload.model_dump()
         # validate args
         DocumentService.estimate_args_validate(args)
-        notion_info_list = args["notion_info_list"]
+        notion_info_list = payload.notion_info_list
         extract_settings = []
         for notion_info in notion_info_list:
             workspace_id = notion_info["workspace_id"]
