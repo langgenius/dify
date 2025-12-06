@@ -49,7 +49,7 @@ class LoginApi(Resource):
             .add_argument("email", type=email, required=True, location="json")
             .add_argument("password", type=valid_password, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             account = WebAppAuthService.authenticate(args["email"], args["password"])
@@ -152,7 +152,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             .add_argument("email", type=email, required=True, location="json")
             .add_argument("language", type=str, required=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         if args["language"] is not None and args["language"] == "zh-Hans":
             language = "zh-Hans"
@@ -188,7 +188,7 @@ class EmailCodeLoginApi(Resource):
             .add_argument("code", type=str, required=True, location="json")
             .add_argument("token", type=str, required=True, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         user_email = args["email"]
 

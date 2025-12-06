@@ -37,7 +37,7 @@ class ConversationListApi(InstalledAppResource):
             .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
             .add_argument("pinned", type=str, choices=["true", "false", None], location="args")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         pinned = None
         if "pinned" in args and args["pinned"] is not None:
@@ -101,7 +101,7 @@ class ConversationRenameApi(InstalledAppResource):
             .add_argument("name", type=str, required=False, location="json")
             .add_argument("auto_generate", type=bool, required=False, default=False, location="json")
         )
-        args = parser.parse_args()
+        args = parser.parse_args(strict=True)
 
         try:
             if not isinstance(current_user, Account):
