@@ -28,7 +28,7 @@ const FullScreenDrawer = ({
       panelClassName={cn(
         fullScreen
           ? 'w-full'
-          : 'w-[560px] pb-2 pr-2 pt-16',
+          : 'w-[568px] pb-2 pr-2 pt-16',
       )}
       panelContentClassName={cn(
         'bg-components-panel-bg',

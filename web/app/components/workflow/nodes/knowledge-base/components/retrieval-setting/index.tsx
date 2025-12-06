@@ -27,6 +27,7 @@ type RetrievalSettingProps = {
   onRerankingModelEnabledChange?: (value: boolean) => void
   weightedScore?: WeightedScore
   onWeightedScoreChange: (value: { value: number[] }) => void
+  showMultiModalTip?: boolean
 } & RerankingModelSelectorProps & TopKAndScoreThresholdProps
 
 const RetrievalSetting = ({
@@ -48,6 +49,7 @@ const RetrievalSetting = ({
   onScoreThresholdChange,
   isScoreThresholdEnabled,
   onScoreThresholdEnabledChange,
+  showMultiModalTip,
 }: RetrievalSettingProps) => {
   const { t } = useTranslation()
   const {
@@ -91,6 +93,7 @@ const RetrievalSetting = ({
               rerankingModel={rerankingModel}
               onRerankingModelChange={onRerankingModelChange}
               readonly={readonly}
+              showMultiModalTip={showMultiModalTip}
             />
           ))
         }

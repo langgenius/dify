@@ -29,7 +29,9 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     readOnly,
     inputs,
     handleQueryVarChange,
-    filterVar,
+    handleQueryAttachmentChange,
+    filterStringVar,
+    filterFileVar,
     handleModelChanged,
     handleCompletionParamsChange,
     handleRetrievalModeChange,
@@ -50,6 +52,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     availableStringNodesWithParent,
     availableNumberVars,
     availableNumberNodesWithParent,
+    showImageQueryVarSelector,
   } = useConfig(id, data)
 
   const metadataList = useMemo(() => {
@@ -63,19 +66,29 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   return (
     <div className='pt-2'>
       <div className='space-y-4 px-4 pb-2'>
-        <Field
-          title={t(`${i18nPrefix}.queryVariable`)}
-          required
-        >
+        <Field title={t(`${i18nPrefix}.queryText`)}>
           <VarReferencePicker
             nodeId={id}
             readonly={readOnly}
             isShowNodeName
             value={inputs.query_variable_selector}
             onChange={handleQueryVarChange}
-            filterVar={filterVar}
+            filterVar={filterStringVar}
           />
         </Field>
+
+        {showImageQueryVarSelector && (
+          <Field title={t(`${i18nPrefix}.queryAttachment`)}>
+            <VarReferencePicker
+              nodeId={id}
+              readonly={readOnly}
+              isShowNodeName
+              value={inputs.query_attachment_selector}
+              onChange={handleQueryAttachmentChange}
+              filterVar={filterFileVar}
+            />
+          </Field>
+        )}
 
         <Field
           title={t(`${i18nPrefix}.knowledge`)}
@@ -169,6 +182,11 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                   name: 'metadata',
                   type: 'object',
                   description: t(`${i18nPrefix}.outputVars.metadata`),
+                },
+                {
+                  name: 'files',
+                  type: 'Array[File]',
+                  description: t(`${i18nPrefix}.outputVars.files`),
                 },
               ]}
             />

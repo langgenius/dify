@@ -77,7 +77,7 @@ const DatasetConfig: FC = () => {
     const oldRetrievalConfig = {
       top_k,
       score_threshold,
-      reranking_model: (reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
+      reranking_model: (reranking_model && reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
         provider: reranking_model.reranking_provider_name,
         model: reranking_model.reranking_model_name,
       } : undefined,
