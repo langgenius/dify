@@ -29,8 +29,6 @@ pnpm type-check:tsgo
 pnpm test
 ```
 
-Use `pnpm lint:fix` for lint + autofix; fall back to `pnpm lint` only when you need a read-only check.
-
 ## Testing & Quality Practices
 
 - Follow TDD: red → green → refactor.
