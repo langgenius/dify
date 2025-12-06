@@ -1,0 +1,78 @@
+{
+  "$id": "https://dify.ai/schemas/v1/multimodal_parent_child_structure.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "type": "object",
+  "title": "Multimodal Parent-Child Structure",
+  "description": "Schema for multimodal parent-child structure (v1)",
+  "properties": {
+    "parent_mode": {
+      "type": "string",
+      "description": "The mode of parent-child relationship"
+    },
+    "parent_child_chunks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "parent_content": {
+            "type": "string",
+            "description": "The parent content"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "file name"
+                },
+                "size": {
+                  "type": "number",
+                  "description": "file size"
+                },
+                "extension": {
+                  "type": "string",
+                  "description": "file extension"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "file type"
+                },
+                "mime_type": {
+                  "type": "string",
+                  "description": "file mime type"
+                },
+                "transfer_method": {
+                  "type": "string",
+                  "description": "file transfer method"
+                },
+                "url": {
+                  "type": "string",
+                  "description": "file url"
+                },
+                "related_id": {
+                  "type": "string",
+                  "description": "file related id"
+                }
+              },
+              "required": ["name", "size", "extension", "type", "mime_type", "transfer_method", "url", "related_id"]
+            },
+            "description": "List of files"
+          },
+          "child_contents": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of child contents"
+          }
+        },
+        "required": ["parent_content", "child_contents"]
+      },
+      "description": "List of parent-child chunk pairs"
+    }
+  },
+  "required": ["parent_mode", "parent_child_chunks"]
+}

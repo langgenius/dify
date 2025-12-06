@@ -53,7 +53,7 @@ from sqlalchemy.exc import IntegrityError
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import ModelPropertyKey
-from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
+from core.model_runtime.entities.text_embedding_entities import EmbeddingResult, EmbeddingUsage
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeConnectionError,
@@ -99,10 +99,10 @@ class TestCacheEmbeddingDocuments:
 
     @pytest.fixture
     def sample_embedding_result(self):
-        """Create a sample TextEmbeddingResult for testing.
+        """Create a sample EmbeddingResult for testing.
 
         Returns:
-            TextEmbeddingResult: Mock embedding result with proper structure
+            EmbeddingResult: Mock embedding result with proper structure
         """
         # Create normalized embedding vectors (dimension 1536 for ada-002)
         embedding_vector = np.random.randn(1536)
@@ -118,7 +118,7 @@ class TestCacheEmbeddingDocuments:
             latency=0.5,
         )
 
-        return TextEmbeddingResult(
+        return EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized_vector],
             usage=usage,
@@ -197,7 +197,7 @@ class TestCacheEmbeddingDocuments:
             latency=0.8,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=embeddings,
             usage=usage,
@@ -296,7 +296,7 @@ class TestCacheEmbeddingDocuments:
             latency=0.6,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=new_embeddings,
             usage=usage,
@@ -386,7 +386,7 @@ class TestCacheEmbeddingDocuments:
                 latency=0.5,
             )
 
-            return TextEmbeddingResult(
+            return EmbeddingResult(
                 model="text-embedding-ada-002",
                 embeddings=embeddings,
                 usage=usage,
@@ -449,7 +449,7 @@ class TestCacheEmbeddingDocuments:
             latency=0.5,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[valid_vector.tolist(), nan_vector],
             usage=usage,
@@ -629,7 +629,7 @@ class TestCacheEmbeddingQuery:
             latency=0.3,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized],
             usage=usage,
@@ -728,7 +728,7 @@ class TestCacheEmbeddingQuery:
             latency=0.3,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[nan_vector],
             usage=usage,
@@ -793,7 +793,7 @@ class TestCacheEmbeddingQuery:
             latency=0.3,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized],
             usage=usage,
@@ -873,13 +873,13 @@ class TestEmbeddingModelSwitching:
             latency=0.3,
         )
 
-        result_ada = TextEmbeddingResult(
+        result_ada = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized_ada],
             usage=usage,
         )
 
-        result_3_small = TextEmbeddingResult(
+        result_3_small = EmbeddingResult(
             model="text-embedding-3-small",
             embeddings=[normalized_3_small],
             usage=usage,
@@ -953,13 +953,13 @@ class TestEmbeddingModelSwitching:
             latency=0.4,
         )
 
-        result_openai = TextEmbeddingResult(
+        result_openai = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized_openai],
             usage=usage_openai,
         )
 
-        result_cohere = TextEmbeddingResult(
+        result_cohere = EmbeddingResult(
             model="embed-english-v3.0",
             embeddings=[normalized_cohere],
             usage=usage_cohere,
@@ -1042,7 +1042,7 @@ class TestEmbeddingDimensionValidation:
             latency=0.7,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=embeddings,
             usage=usage,
@@ -1095,7 +1095,7 @@ class TestEmbeddingDimensionValidation:
             latency=0.5,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=embeddings,
             usage=usage,
@@ -1148,7 +1148,7 @@ class TestEmbeddingDimensionValidation:
             latency=0.3,
         )
 
-        result_ada = TextEmbeddingResult(
+        result_ada = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized_ada],
             usage=usage_ada,
@@ -1181,7 +1181,7 @@ class TestEmbeddingDimensionValidation:
             latency=0.4,
         )
 
-        result_cohere = TextEmbeddingResult(
+        result_cohere = EmbeddingResult(
             model="embed-english-v3.0",
             embeddings=[normalized_cohere],
             usage=usage_cohere,
@@ -1279,7 +1279,7 @@ class TestEmbeddingEdgeCases:
             latency=0.1,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized],
             usage=usage,
@@ -1322,7 +1322,7 @@ class TestEmbeddingEdgeCases:
             latency=1.5,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized],
             usage=usage,
@@ -1370,7 +1370,7 @@ class TestEmbeddingEdgeCases:
             latency=0.5,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=embeddings,
             usage=usage,
@@ -1422,7 +1422,7 @@ class TestEmbeddingEdgeCases:
             latency=0.2,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=embeddings,
             usage=usage,
@@ -1478,7 +1478,7 @@ class TestEmbeddingEdgeCases:
         )
 
         # Model returns embeddings for all texts
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=embeddings,
             usage=usage,
@@ -1546,7 +1546,7 @@ class TestEmbeddingEdgeCases:
             latency=0.8,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=embeddings,
             usage=usage,
@@ -1603,7 +1603,7 @@ class TestEmbeddingEdgeCases:
             latency=0.3,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized],
             usage=usage,
@@ -1657,7 +1657,7 @@ class TestEmbeddingEdgeCases:
             latency=0.5,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=embeddings,
             usage=usage,
@@ -1757,7 +1757,7 @@ class TestEmbeddingCachePerformance:
                 latency=0.3,
             )
 
-            embedding_result = TextEmbeddingResult(
+            embedding_result = EmbeddingResult(
                 model="text-embedding-ada-002",
                 embeddings=[normalized],
                 usage=usage,
@@ -1826,7 +1826,7 @@ class TestEmbeddingCachePerformance:
                 latency=0.5,
             )
 
-            return TextEmbeddingResult(
+            return EmbeddingResult(
                 model="text-embedding-ada-002",
                 embeddings=embeddings,
                 usage=usage,
@@ -1888,7 +1888,7 @@ class TestEmbeddingCachePerformance:
             latency=0.3,
         )
 
-        embedding_result = TextEmbeddingResult(
+        embedding_result = EmbeddingResult(
             model="text-embedding-ada-002",
             embeddings=[normalized],
             usage=usage,

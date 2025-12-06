@@ -50,3 +50,43 @@ class RerankModel(AIModel):
             )
         except Exception as e:
             raise self._transform_invoke_error(e)
+
+    def invoke_multimodal_rerank(
+        self,
+        model: str,
+        credentials: dict,
+        query: dict,
+        docs: list[dict],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+        user: str | None = None,
+    ) -> RerankResult:
+        """
+        Invoke multimodal rerank model
+        :param model: model name
+        :param credentials: model credentials
+        :param query: search query
+        :param docs: docs for reranking
+        :param score_threshold: score threshold
+        :param top_n: top n
+        :param user: unique user id
+        :return: rerank result
+        """
+        try:
+            from core.plugin.impl.model import PluginModelClient
+
+            plugin_model_manager = PluginModelClient()
+            return plugin_model_manager.invoke_multimodal_rerank(
+                tenant_id=self.tenant_id,
+                user_id=user or "unknown",
+                plugin_id=self.plugin_id,
+                provider=self.provider_name,
+                model=model,
+                credentials=credentials,
+                query=query,
+                docs=docs,
+                score_threshold=score_threshold,
+                top_n=top_n,
+            )
+        except Exception as e:
+            raise self._transform_invoke_error(e)

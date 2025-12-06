@@ -49,6 +49,7 @@ class SimplePromptTransform(PromptTransform):
         memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         inputs = {key: str(value) for key, value in inputs.items()}
 
@@ -64,6 +65,7 @@ class SimplePromptTransform(PromptTransform):
                 memory=memory,
                 model_config=model_config,
                 image_detail_config=image_detail_config,
+                context_files=context_files,
             )
         else:
             prompt_messages, stops = self._get_completion_model_prompt_messages(
@@ -76,6 +78,7 @@ class SimplePromptTransform(PromptTransform):
                 memory=memory,
                 model_config=model_config,
                 image_detail_config=image_detail_config,
+                context_files=context_files,
             )
 
         return prompt_messages, stops
@@ -187,6 +190,7 @@ class SimplePromptTransform(PromptTransform):
         memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
@@ -216,9 +220,9 @@ class SimplePromptTransform(PromptTransform):
             )
 
         if query:
-            prompt_messages.append(self._get_last_user_message(query, files, image_detail_config))
+            prompt_messages.append(self._get_last_user_message(query, files, image_detail_config, context_files))
         else:
-            prompt_messages.append(self._get_last_user_message(prompt, files, image_detail_config))
+            prompt_messages.append(self._get_last_user_message(prompt, files, image_detail_config, context_files))
 
         return prompt_messages, None
 
@@ -233,6 +237,7 @@ class SimplePromptTransform(PromptTransform):
         memory: TokenBufferMemory | None,
         model_config: ModelConfigWithCredentialsEntity,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         # get prompt
         prompt, prompt_rules = self._get_prompt_str_and_rules(
@@ -275,20 +280,27 @@ class SimplePromptTransform(PromptTransform):
         if stops is not None and len(stops) == 0:
             stops = None
 
-        return [self._get_last_user_message(prompt, files, image_detail_config)], stops
+        return [self._get_last_user_message(prompt, files, image_detail_config, context_files)], stops
 
     def _get_last_user_message(
         self,
         prompt: str,
         files: Sequence["File"],
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> UserPromptMessage:
+        prompt_message_contents: list[PromptMessageContentUnionTypes] = []
         if files:
-            prompt_message_contents: list[PromptMessageContentUnionTypes] = []
             for file in files:
                 prompt_message_contents.append(
                     file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
                 )
+        if context_files:
+            for file in context_files:
+                prompt_message_contents.append(
+                    file_manager.to_prompt_message_content(file, image_detail_config=image_detail_config)
+                )
+        if prompt_message_contents:
             prompt_message_contents.append(TextPromptMessageContent(data=prompt))
 
             prompt_message = UserPromptMessage(content=prompt_message_contents)

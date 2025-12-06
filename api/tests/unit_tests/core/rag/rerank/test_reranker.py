@@ -26,6 +26,18 @@ from core.rag.rerank.rerank_type import RerankMode
 from core.rag.rerank.weight_rerank import WeightRerankRunner
 
 
+def create_mock_model_instance():
+    """Create a properly configured mock ModelInstance for reranking tests."""
+    mock_instance = Mock(spec=ModelInstance)
+    # Setup provider_model_bundle chain for check_model_support_vision
+    mock_instance.provider_model_bundle = Mock()
+    mock_instance.provider_model_bundle.configuration = Mock()
+    mock_instance.provider_model_bundle.configuration.tenant_id = "test-tenant-id"
+    mock_instance.provider = "test-provider"
+    mock_instance.model = "test-model"
+    return mock_instance
+
+
 class TestRerankModelRunner:
     """Unit tests for RerankModelRunner.
 
@@ -37,10 +49,23 @@ class TestRerankModelRunner:
     - Metadata preservation and score injection
     """
 
+    @pytest.fixture(autouse=True)
+    def mock_model_manager(self):
+        """Auto-use fixture to patch ModelManager for all tests in this class."""
+        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+            mock_mm.return_value.check_model_support_vision.return_value = False
+            yield mock_mm
+
     @pytest.fixture
     def mock_model_instance(self):
         """Create a mock ModelInstance for reranking."""
         mock_instance = Mock(spec=ModelInstance)
+        # Setup provider_model_bundle chain for check_model_support_vision
+        mock_instance.provider_model_bundle = Mock()
+        mock_instance.provider_model_bundle.configuration = Mock()
+        mock_instance.provider_model_bundle.configuration.tenant_id = "test-tenant-id"
+        mock_instance.provider = "test-provider"
+        mock_instance.model = "test-model"
         return mock_instance
 
     @pytest.fixture
@@ -803,7 +828,7 @@ class TestRerankRunnerFactory:
         - Parameters are forwarded to runner constructor
         """
         # Arrange: Mock model instance
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
 
         # Act: Create runner via factory
         runner = RerankRunnerFactory.create_rerank_runner(
@@ -865,7 +890,7 @@ class TestRerankRunnerFactory:
         - String values are properly matched
         """
         # Arrange: Mock model instance
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
 
         # Act: Create runner using enum value
         runner = RerankRunnerFactory.create_rerank_runner(
@@ -886,6 +911,13 @@ class TestRerankIntegration:
     - Real-world usage scenarios
     """
 
+    @pytest.fixture(autouse=True)
+    def mock_model_manager(self):
+        """Auto-use fixture to patch ModelManager for all tests in this class."""
+        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+            mock_mm.return_value.check_model_support_vision.return_value = False
+            yield mock_mm
+
     def test_model_reranking_full_workflow(self):
         """Test complete model-based reranking workflow.
 
@@ -895,7 +927,7 @@ class TestRerankIntegration:
         - Top results are returned correctly
         """
         # Arrange: Create mock model and documents
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -951,7 +983,7 @@ class TestRerankIntegration:
         - Normalization is consistent
         """
         # Arrange: Create mock model with various scores
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -991,6 +1023,13 @@ class TestRerankEdgeCases:
     - Concurrent reranking scenarios
     """
 
+    @pytest.fixture(autouse=True)
+    def mock_model_manager(self):
+        """Auto-use fixture to patch ModelManager for all tests in this class."""
+        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+            mock_mm.return_value.check_model_support_vision.return_value = False
+            yield mock_mm
+
     def test_rerank_with_empty_metadata(self):
         """Test reranking when documents have empty metadata.
 
@@ -1000,7 +1039,7 @@ class TestRerankEdgeCases:
         - Empty metadata documents are processed correctly
         """
         # Arrange: Create documents with empty metadata
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1046,7 +1085,7 @@ class TestRerankEdgeCases:
         - Score comparison logic works at boundary
         """
         # Arrange: Create mock with various scores including negatives
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1082,7 +1121,7 @@ class TestRerankEdgeCases:
         - No overflow or precision issues
         """
         # Arrange: All documents with perfect scores
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1117,7 +1156,7 @@ class TestRerankEdgeCases:
         - Content encoding is preserved
         """
         # Arrange: Documents with special characters
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1159,7 +1198,7 @@ class TestRerankEdgeCases:
         - Content is not truncated unexpectedly
         """
         # Arrange: Documents with very long content
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         long_content = "This is a very long document. " * 1000  # ~30,000 characters
 
         mock_rerank_result = RerankResult(
@@ -1196,7 +1235,7 @@ class TestRerankEdgeCases:
         - All documents are processed correctly
         """
         # Arrange: Create 100 documents
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         num_docs = 100
 
         # Create rerank results for all documents
@@ -1287,7 +1326,7 @@ class TestRerankEdgeCases:
         - Documents can still be ranked
         """
         # Arrange: Empty query
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[
@@ -1325,6 +1364,13 @@ class TestRerankPerformance:
     - Score calculation optimization
     """
 
+    @pytest.fixture(autouse=True)
+    def mock_model_manager(self):
+        """Auto-use fixture to patch ModelManager for all tests in this class."""
+        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+            mock_mm.return_value.check_model_support_vision.return_value = False
+            yield mock_mm
+
     def test_rerank_batch_processing(self):
         """Test that documents are processed in a single batch.
 
@@ -1334,7 +1380,7 @@ class TestRerankPerformance:
         - Efficient batch processing
         """
         # Arrange: Multiple documents
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[RerankDocument(index=i, text=f"Doc {i}", score=0.9 - i * 0.1) for i in range(5)],
@@ -1435,6 +1481,13 @@ class TestRerankErrorHandling:
     - Error propagation
     """
 
+    @pytest.fixture(autouse=True)
+    def mock_model_manager(self):
+        """Auto-use fixture to patch ModelManager for all tests in this class."""
+        with patch("core.rag.rerank.rerank_model.ModelManager") as mock_mm:
+            mock_mm.return_value.check_model_support_vision.return_value = False
+            yield mock_mm
+
     def test_rerank_model_invocation_error(self):
         """Test handling of model invocation errors.
 
@@ -1444,7 +1497,7 @@ class TestRerankErrorHandling:
         - Error context is preserved
         """
         # Arrange: Mock model that raises exception
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_model_instance.invoke_rerank.side_effect = RuntimeError("Model invocation failed")
 
         documents = [
@@ -1470,7 +1523,7 @@ class TestRerankErrorHandling:
         - Invalid results don't corrupt output
         """
         # Arrange: Rerank result with invalid index
-        mock_model_instance = Mock(spec=ModelInstance)
+        mock_model_instance = create_mock_model_instance()
         mock_rerank_result = RerankResult(
             model="bge-reranker-base",
             docs=[

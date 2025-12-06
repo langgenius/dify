@@ -62,7 +62,7 @@ from core.indexing_runner import (
     IndexingRunner,
 )
 from core.model_runtime.entities.model_entities import ModelType
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import ChildDocument, Document
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, DatasetProcessRule
@@ -112,7 +112,7 @@ def create_mock_dataset_document(
     document_id: str | None = None,
     dataset_id: str | None = None,
     tenant_id: str | None = None,
-    doc_form: str = IndexType.PARAGRAPH_INDEX,
+    doc_form: str = IndexStructureType.PARAGRAPH_INDEX,
     data_source_type: str = "upload_file",
     doc_language: str = "English",
 ) -> Mock:
@@ -133,8 +133,8 @@ def create_mock_dataset_document(
         Mock: A configured mock DatasetDocument object with all required attributes.
 
     Example:
-        >>> doc = create_mock_dataset_document(doc_form=IndexType.QA_INDEX)
-        >>> assert doc.doc_form == IndexType.QA_INDEX
+        >>> doc = create_mock_dataset_document(doc_form=IndexStructureType.QA_INDEX)
+        >>> assert doc.doc_form == IndexStructureType.QA_INDEX
     """
     doc = Mock(spec=DatasetDocument)
     doc.id = document_id or str(uuid.uuid4())
@@ -276,7 +276,7 @@ class TestIndexingRunnerExtract:
         doc.id = str(uuid.uuid4())
         doc.dataset_id = str(uuid.uuid4())
         doc.tenant_id = str(uuid.uuid4())
-        doc.doc_form = IndexType.PARAGRAPH_INDEX
+        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
         doc.data_source_type = "upload_file"
         doc.data_source_info_dict = {"upload_file_id": str(uuid.uuid4())}
         return doc
@@ -616,7 +616,7 @@ class TestIndexingRunnerLoad:
         doc = Mock(spec=DatasetDocument)
         doc.id = str(uuid.uuid4())
         doc.dataset_id = str(uuid.uuid4())
-        doc.doc_form = IndexType.PARAGRAPH_INDEX
+        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
         return doc
 
     @pytest.fixture
@@ -700,7 +700,7 @@ class TestIndexingRunnerLoad:
         """Test loading with parent-child index structure."""
         # Arrange
         runner = IndexingRunner()
-        sample_dataset_document.doc_form = IndexType.PARENT_CHILD_INDEX
+        sample_dataset_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
         sample_dataset.indexing_technique = "high_quality"
 
         # Add child documents
@@ -775,7 +775,7 @@ class TestIndexingRunnerRun:
             doc.id = str(uuid.uuid4())
             doc.dataset_id = str(uuid.uuid4())
             doc.tenant_id = str(uuid.uuid4())
-            doc.doc_form = IndexType.PARAGRAPH_INDEX
+            doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
             doc.doc_language = "English"
             doc.data_source_type = "upload_file"
             doc.data_source_info_dict = {"upload_file_id": str(uuid.uuid4())}
@@ -801,6 +801,21 @@ class TestIndexingRunnerRun:
         mock_process_rule = Mock(spec=DatasetProcessRule)
         mock_process_rule.to_dict.return_value = {"mode": "automatic", "rules": {}}
         mock_dependencies["db"].session.scalar.return_value = mock_process_rule
+
+        # Mock current_user (Account) for _transform
+        mock_current_user = MagicMock()
+        mock_current_user.set_tenant_id = MagicMock()
+
+        # Setup db.session.query to return different results based on the model
+        def mock_query_side_effect(model):
+            mock_query_result = MagicMock()
+            if model.__name__ == "Dataset":
+                mock_query_result.filter_by.return_value.first.return_value = mock_dataset
+            elif model.__name__ == "Account":
+                mock_query_result.filter_by.return_value.first.return_value = mock_current_user
+            return mock_query_result
+
+        mock_dependencies["db"].session.query.side_effect = mock_query_side_effect
 
         # Mock processor
         mock_processor = MagicMock()
@@ -1268,7 +1283,7 @@ class TestIndexingRunnerLoadSegments:
         doc.id = str(uuid.uuid4())
         doc.dataset_id = str(uuid.uuid4())
         doc.created_by = str(uuid.uuid4())
-        doc.doc_form = IndexType.PARAGRAPH_INDEX
+        doc.doc_form = IndexStructureType.PARAGRAPH_INDEX
         return doc
 
     @pytest.fixture
@@ -1316,7 +1331,7 @@ class TestIndexingRunnerLoadSegments:
         """Test loading segments for parent-child index."""
         # Arrange
         runner = IndexingRunner()
-        sample_dataset_document.doc_form = IndexType.PARENT_CHILD_INDEX
+        sample_dataset_document.doc_form = IndexStructureType.PARENT_CHILD_INDEX
 
         # Add child documents
         for doc in sample_documents:
@@ -1413,7 +1428,7 @@ class TestIndexingRunnerEstimate:
                     tenant_id=tenant_id,
                     extract_settings=extract_settings,
                     tmp_processing_rule={"mode": "automatic", "rules": {}},
-                    doc_form=IndexType.PARAGRAPH_INDEX,
+                    doc_form=IndexStructureType.PARAGRAPH_INDEX,
                 )
 
 
