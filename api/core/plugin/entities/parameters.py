@@ -76,9 +76,13 @@ class PluginParameter(BaseModel):
     auto_generate: PluginParameterAutoGenerate | None = None
     template: PluginParameterTemplate | None = None
     required: bool = False
-    default: Union[float, int, str, bool] | None = None
+    default: Union[float, int, str, bool, list] | None = None
     min: Union[float, int] | None = None
     max: Union[float, int] | None = None
+    multiple: bool | None = Field(
+        default=False,
+        description="Whether the parameter is multiple select, only valid for select or dynamic-select type",
+    )
     precision: int | None = None
     options: list[PluginParameterOption] = Field(default_factory=list)
 
@@ -112,8 +116,11 @@ def cast_parameter_value(typ: StrEnum, value: Any, /):
             ):
                 if value is None:
                     return ""
-                else:
-                    return value if isinstance(value, str) else str(value)
+                if isinstance(value, list):
+                    return value
+                if isinstance(value, str):
+                    return value
+                return str(value)
 
             case PluginParameterType.BOOLEAN:
                 if value is None:
