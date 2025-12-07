@@ -46,7 +46,7 @@ def _dict_to_workflow_run(data: dict[str, Any]) -> WorkflowRun:
     Returns:
         WorkflowRun instance
     """
-    logger.info("_dict_to_workflow_run: data keys=%s", list(data.keys())[:5])
+    logger.debug("_dict_to_workflow_run: data keys=%s", list(data.keys())[:5])
     # Create model instance without session
     model = WorkflowRun()
 
@@ -124,7 +124,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Args:
             session_maker: SQLAlchemy sessionmaker (unused, for compatibility with factory pattern)
         """
-        logger.info("LogstoreAPIWorkflowRunRepository.__init__: initializing")
+        logger.debug("LogstoreAPIWorkflowRunRepository.__init__: initializing")
         self.logstore_client = AliyunLogStore()
 
         # Control flag for dual-read (fallback to PostgreSQL when LogStore returns no results)
@@ -157,7 +157,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Returns:
             InfiniteScrollPagination object
         """
-        logger.info(
+        logger.debug(
             "get_paginated_workflow_runs: tenant_id=%s, app_id=%s, limit=%d, status=%s",
             tenant_id,
             app_id,
@@ -233,7 +233,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Uses query syntax to get raw logs and selects the one with max log_version in code.
         Falls back to PostgreSQL if not found in LogStore (for data consistency during migration).
         """
-        logger.info("get_workflow_run_by_id: tenant_id=%s, app_id=%s, run_id=%s", tenant_id, app_id, run_id)
+        logger.debug("get_workflow_run_by_id: tenant_id=%s, app_id=%s, run_id=%s", tenant_id, app_id, run_id)
 
         try:
             # Check if PG protocol is supported
@@ -270,7 +270,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             if not results:
                 # Fallback to PostgreSQL for records created before LogStore migration
                 if self._enable_dual_read:
-                    logger.info(
+                    logger.debug(
                         "WorkflowRun not found in LogStore, falling back to PostgreSQL: "
                         "run_id=%s, tenant_id=%s, app_id=%s",
                         run_id,
@@ -324,7 +324,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
         Uses query syntax to get raw logs and selects the one with max log_version.
         Falls back to PostgreSQL if not found in LogStore (controlled by LOGSTORE_DUAL_READ_ENABLED).
         """
-        logger.info("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
+        logger.debug("get_workflow_run_by_id_without_tenant: run_id=%s", run_id)
 
         try:
             # Check if PG protocol is supported
@@ -361,7 +361,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             if not results:
                 # Fallback to PostgreSQL for records created before LogStore migration
                 if self._enable_dual_read:
-                    logger.info("WorkflowRun not found in LogStore, falling back to PostgreSQL: run_id=%s", run_id)
+                    logger.debug("WorkflowRun not found in LogStore, falling back to PostgreSQL: run_id=%s", run_id)
                     return self._fallback_get_workflow_run_by_id(run_id)
                 return None
 
@@ -407,7 +407,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL for completed runs (10-50x faster)
         """
-        logger.info(
+        logger.debug(
             "get_workflow_runs_count: tenant_id=%s, app_id=%s, triggered_from=%s, status=%s",
             tenant_id,
             app_id,
@@ -553,7 +553,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + COUNT(DISTINCT id) (20-100x faster)
         """
-        logger.info(
+        logger.debug(
             "get_daily_runs_statistics: tenant_id=%s, app_id=%s, triggered_from=%s", tenant_id, app_id, triggered_from
         )
         # Build time range filter
@@ -607,7 +607,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + COUNT(DISTINCT created_by) (20-100x faster)
         """
-        logger.info(
+        logger.debug(
             "get_daily_terminals_statistics: tenant_id=%s, app_id=%s, triggered_from=%s",
             tenant_id,
             app_id,
@@ -663,7 +663,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + SUM(total_tokens) (20-100x faster)
         """
-        logger.info(
+        logger.debug(
             "get_daily_token_cost_statistics: tenant_id=%s, app_id=%s, triggered_from=%s",
             tenant_id,
             app_id,
@@ -719,7 +719,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         Optimization: Use finished_at IS NOT NULL + AVG (20-100x faster)
         """
-        logger.info(
+        logger.debug(
             "get_average_app_interaction_statistics: tenant_id=%s, app_id=%s, triggered_from=%s",
             tenant_id,
             app_id,

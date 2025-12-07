@@ -45,7 +45,7 @@ def _dict_to_workflow_node_execution(data: dict[str, Any]) -> WorkflowNodeExecut
     Returns:
         WorkflowNodeExecution domain model instance
     """
-    logger.info("_dict_to_workflow_node_execution: data keys=%s", list(data.keys())[:5])
+    logger.debug("_dict_to_workflow_node_execution: data keys=%s", list(data.keys())[:5])
     # Parse JSON fields
     inputs = json.loads(data.get("inputs", "{}"))
     process_data = json.loads(data.get("process_data", "{}"))
@@ -120,7 +120,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (SINGLE_STEP or WORKFLOW_RUN)
         """
-        logger.info(
+        logger.debug(
             "LogstoreWorkflowNodeExecutionRepository.__init__: app_id=%s, triggered_from=%s", app_id, triggered_from
         )
         # Initialize LogStore client
@@ -150,7 +150,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         self._enable_dual_write = os.environ.get("LOGSTORE_DUAL_WRITE_ENABLED", "true").lower() == "true"
 
     def _to_logstore_model(self, domain_model: WorkflowNodeExecution) -> Sequence[tuple[str, str]]:
-        logger.info(
+        logger.debug(
             "_to_logstore_model: id=%s, node_id=%s, status=%s",
             domain_model.id,
             domain_model.node_id,
@@ -230,7 +230,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         Args:
             execution: The NodeExecution domain entity to persist
         """
-        logger.info(
+        logger.debug(
             "save: id=%s, node_execution_id=%s, status=%s",
             execution.id,
             execution.node_execution_id,
@@ -240,7 +240,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             logstore_model = self._to_logstore_model(execution)
             self.logstore_client.put_log(AliyunLogStore.workflow_node_execution_logstore, logstore_model)
 
-            logger.info(
+            logger.debug(
                 "Saved node execution to LogStore: id=%s, node_execution_id=%s, status=%s",
                 execution.id,
                 execution.node_execution_id,
@@ -258,7 +258,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         if self._enable_dual_write:
             try:
                 self.sql_repository.save(execution)
-                logger.info("Dual-write: saved node execution to SQL database: id=%s", execution.id)
+                logger.debug("Dual-write: saved node execution to SQL database: id=%s", execution.id)
             except Exception:
                 logger.exception("Failed to dual-write node execution to SQL database: id=%s", execution.id)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
@@ -274,7 +274,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
         Args:
             execution: The NodeExecution instance with data to save
         """
-        logger.info("save_execution_data: id=%s, node_execution_id=%s", execution.id, execution.node_execution_id)
+        logger.debug("save_execution_data: id=%s, node_execution_id=%s", execution.id, execution.node_execution_id)
         # In LogStore, we simply write a new complete record with the data
         # The log_version timestamp will ensure this is treated as the latest version
         self.save(execution)
@@ -302,7 +302,7 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             version updates. For complete history including intermediate states,
             a different query strategy would be needed.
         """
-        logger.info("get_by_workflow_run: workflow_run_id=%s, order_config=%s", workflow_run_id, order_config)
+        logger.debug("get_by_workflow_run: workflow_run_id=%s, order_config=%s", workflow_run_id, order_config)
         # Build SQL query with deduplication using finished_at IS NOT NULL
         # This optimization avoids window functions for common case where we only
         # want the final state of each node execution

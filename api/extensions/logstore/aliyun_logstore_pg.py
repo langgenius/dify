@@ -82,7 +82,7 @@ class AliyunLogStorePG:
             # Get pool configuration
             pg_max_connections = int(os.environ.get("ALIYUN_SLS_PG_MAX_CONNECTIONS", 10))
 
-            logger.info(
+            logger.debug(
                 "Check PG protocol connection to SLS: host=%s, project=%s",
                 pg_host,
                 self.project_name,

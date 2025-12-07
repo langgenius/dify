@@ -43,9 +43,9 @@ class AliyunLogStore:
 
     project_des = "dify"
 
-    workflow_execution_logstore = "workflow_execution_2"
+    workflow_execution_logstore = "workflow_execution"
 
-    workflow_node_execution_logstore = "workflow_node_execution_2"
+    workflow_node_execution_logstore = "workflow_node_execution"
 
     @staticmethod
     def _sqlalchemy_type_to_logstore_type(column: Any) -> str:
@@ -301,7 +301,7 @@ class AliyunLogStore:
 
         index_keys = self._generate_index_keys_from_model(WorkflowNodeExecutionModel)
 
-        logger.info(
+        logger.debug(
             "Generated %d index keys for workflow_node_execution from WorkflowNodeExecutionModel", len(index_keys)
         )
         return index_keys

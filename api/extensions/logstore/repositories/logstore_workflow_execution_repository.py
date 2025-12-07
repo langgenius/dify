@@ -39,7 +39,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
             app_id: App ID for filtering by application (can be None)
             triggered_from: Source of the execution trigger (DEBUGGING or APP_RUN)
         """
-        logger.info(
+        logger.debug(
             "LogstoreWorkflowExecutionRepository.__init__: app_id=%s, triggered_from=%s", app_id, triggered_from
         )
         # Initialize LogStore client
@@ -79,7 +79,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         Returns:
             The logstore model as a list of key-value tuples
         """
-        logger.info(
+        logger.debug(
             "_to_logstore_model: id=%s, workflow_id=%s, status=%s",
             domain_model.id_,
             domain_model.workflow_id,
@@ -142,14 +142,14 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         Args:
             execution: The WorkflowExecution domain entity to persist
         """
-        logger.info(
+        logger.debug(
             "save: id=%s, workflow_id=%s, status=%s", execution.id_, execution.workflow_id, execution.status.value
         )
         try:
             logstore_model = self._to_logstore_model(execution)
             self.logstore_client.put_log(AliyunLogStore.workflow_execution_logstore, logstore_model)
 
-            logger.info("Saved workflow execution to logstore: id=%s", execution.id_)
+            logger.debug("Saved workflow execution to logstore: id=%s", execution.id_)
         except Exception:
             logger.exception("Failed to save workflow execution to logstore: id=%s", execution.id_)
             raise
@@ -158,7 +158,7 @@ class LogstoreWorkflowExecutionRepository(WorkflowExecutionRepository):
         if self._enable_dual_write:
             try:
                 self.sql_repository.save(execution)
-                logger.info("Dual-write: saved workflow execution to SQL database: id=%s", execution.id_)
+                logger.debug("Dual-write: saved workflow execution to SQL database: id=%s", execution.id_)
             except Exception:
                 logger.exception("Failed to dual-write workflow execution to SQL database: id=%s", execution.id_)
                 # Don't raise - LogStore write succeeded, SQL is just a backup
