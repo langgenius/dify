@@ -202,6 +202,7 @@ class ConversationService:
         user: Union[Account, EndUser] | None,
         limit: int,
         last_id: str | None,
+        variable_name: str | None = None,
     ) -> InfiniteScrollPagination:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
@@ -211,6 +212,15 @@ class ConversationService:
             .where(ConversationVariable.conversation_id == conversation.id)
             .order_by(ConversationVariable.created_at)
         )
+
+        # Apply variable_name filter if provided
+        if variable_name:
+            # Filter using JSON extraction to match variable names case-insensitively
+            escaped_variable_name = variable_name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            # Filter using JSON extraction to match variable names case-insensitively
+            stmt = stmt.where(
+                func.json_extract(ConversationVariable.data, "$.name").ilike(f"%{escaped_variable_name}%", escape="\\")
+            )
 
         with Session(db.engine) as session:
             if last_id:
