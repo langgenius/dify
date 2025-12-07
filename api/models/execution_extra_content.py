@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 class ExecutionContentType(StrEnum):
-    HUMAN_INPUT = auto()
+    HUMAN_INPUT_RESULT = auto()
 
 
 class ExecutionExtraContent(DefaultFieldsMixin, Base):
@@ -56,7 +56,7 @@ class HumanInputContent(ExecutionExtraContent):
     It should only be initialized with the `new` class method."""
 
     __mapper_args__ = {
-        "polymorphic_identity": ExecutionContentType.HUMAN_INPUT,
+        "polymorphic_identity": ExecutionContentType.HUMAN_INPUT_RESULT,
     }
 
     # A relation to HumanInputForm table.

@@ -80,6 +80,7 @@ class MessageListApi(WebApiResource):
         "message_files": fields.List(fields.Nested(message_file_fields)),
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
         "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
+        "extra_contents": fields.List(fields.Raw),
         "created_at": TimestampField,
         "agent_thoughts": fields.List(fields.Nested(agent_thought_fields)),
         "metadata": fields.Raw(attribute="message_metadata_dict"),

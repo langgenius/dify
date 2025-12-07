@@ -1,7 +1,7 @@
 import json
 import re
 import uuid
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
@@ -1268,6 +1268,14 @@ class Message(Base):
 
         db.session.commit()
         return result
+
+    # TODO(QuantumGhost): dirty hacks, fix this later.
+    def set_extra_contents(self, contents: Sequence[dict[str, Any]]) -> None:
+        self._extra_contents = list(contents)
+
+    @property
+    def extra_contents(self) -> list[dict[str, Any]]:
+        return getattr(self, "_extra_contents", [])
 
     @property
     def workflow_run(self):
