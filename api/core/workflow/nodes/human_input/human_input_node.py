@@ -207,15 +207,18 @@ class HumanInputNode(Node[HumanInputNodeData]):
         if form is None:
             return self._create_form()
 
-        submission_result = repo.get_form_submission(form.id)
-        if submission_result:
-            outputs: dict[str, Any] = dict(submission_result.form_data())
-            outputs["action_id"] = submission_result.selected_action_id
-            outputs["__action_id"] = submission_result.selected_action_id
+        if form.submitted:
+            selected_action_id = form.selected_action_id
+            if selected_action_id is None:
+                raise AssertionError(f"selected_action_id should not be None when form submitted, form_id={form.id}")
+            submitted_data = form.submitted_data or {}
+            outputs: dict[str, Any] = dict(submitted_data)
+            outputs["__action_id"] = selected_action_id
+            outputs["__rendered_content"] = form.rendered_content
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs=outputs,
-                edge_source_handle=submission_result.selected_action_id,
+                edge_source_handle=selected_action_id,
             )
 
         return self._pause_with_form(form)

@@ -38,9 +38,13 @@ class TestAppGenerateService:
 
             # Setup default mock returns for workflow service
             mock_workflow_service_instance = mock_workflow_service.return_value
-            mock_workflow_service_instance.get_published_workflow.return_value = MagicMock(spec=Workflow)
-            mock_workflow_service_instance.get_draft_workflow.return_value = MagicMock(spec=Workflow)
-            mock_workflow_service_instance.get_published_workflow_by_id.return_value = MagicMock(spec=Workflow)
+            mock_published_workflow = MagicMock(spec=Workflow)
+            mock_published_workflow.id = str(uuid.uuid4())
+            mock_workflow_service_instance.get_published_workflow.return_value = mock_published_workflow
+            mock_draft_workflow = MagicMock(spec=Workflow)
+            mock_draft_workflow.id = str(uuid.uuid4())
+            mock_workflow_service_instance.get_draft_workflow.return_value = mock_draft_workflow
+            mock_workflow_service_instance.get_published_workflow_by_id.return_value = mock_published_workflow
 
             # Setup default mock returns for rate limiting
             mock_rate_limit_instance = mock_rate_limit.return_value

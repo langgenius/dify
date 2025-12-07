@@ -64,6 +64,24 @@ class HumanInputFormEntity(abc.ABC):
         """Rendered markdown content associated with the form."""
         ...
 
+    @property
+    @abc.abstractmethod
+    def selected_action_id(self) -> str | None:
+        """Identifier of the selected user action if the form has been submitted."""
+        ...
+
+    @property
+    @abc.abstractmethod
+    def submitted_data(self) -> Mapping[str, Any] | None:
+        """Submitted form data if available."""
+        ...
+
+    @property
+    @abc.abstractmethod
+    def submitted(self) -> bool:
+        """Whether the form has been submitted."""
+        ...
+
 
 class HumanInputFormRecipientEntity(abc.ABC):
     @property
@@ -77,19 +95,6 @@ class HumanInputFormRecipientEntity(abc.ABC):
     def token(self) -> str:
         """token returns a random string used to submit form"""
         ...
-
-
-class FormSubmission(abc.ABC):
-    @property
-    @abc.abstractmethod
-    def selected_action_id(self) -> str:
-        """The identifier of action user has selected, correspond to `UserAction.id`."""
-        pass
-
-    @abc.abstractmethod
-    def form_data(self) -> Mapping[str, Any]:
-        """The data submitted for this form"""
-        pass
 
 
 class HumanInputFormRepository(Protocol):
@@ -113,14 +118,5 @@ class HumanInputFormRepository(Protocol):
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         """
         Create a human input form from form definition.
-        """
-        ...
-
-    def get_form_submission(self, form_id: str) -> FormSubmission | None:
-        """Retrieve the submission for a specific human input node.
-
-        Returns `FormSubmission` if the form has been submitted, or `None` if not.
-
-        Raises `FormNotFoundError` if correspond form record is not found.
         """
         ...

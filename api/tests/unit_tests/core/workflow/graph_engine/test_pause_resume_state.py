@@ -20,7 +20,6 @@ from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.repositories.human_input_form_repository import (
-    FormSubmission,
     HumanInputFormEntity,
     HumanInputFormRepository,
 )
@@ -43,28 +42,27 @@ def _build_runtime_state() -> GraphRuntimeState:
 
 
 def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepository:
-    submission = MagicMock(spec=FormSubmission)
-    submission.selected_action_id = action_id
-    submission.form_data.return_value = {}
     repo = MagicMock(spec=HumanInputFormRepository)
-    repo.get_form_submission.return_value = submission
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
     form_entity.web_app_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
+    form_entity.submitted = True
+    form_entity.selected_action_id = action_id
+    form_entity.submitted_data = {}
     repo.get_form.return_value = form_entity
     return repo
 
 
 def _mock_form_repository_without_submission() -> HumanInputFormRepository:
     repo = MagicMock(spec=HumanInputFormRepository)
-    repo.get_form_submission.return_value = None
     form_entity = MagicMock(spec=HumanInputFormEntity)
     form_entity.id = "test-form-id"
     form_entity.web_app_token = "test-form-token"
     form_entity.recipients = []
     form_entity.rendered_content = "rendered"
+    form_entity.submitted = False
     repo.create_form.return_value = form_entity
     repo.get_form.return_value = None
     return repo
@@ -184,8 +182,8 @@ def test_engine_resume_restores_state_and_completion():
     assert combined_success_nodes == baseline_success_nodes
 
     assert baseline_state.outputs == resumed_state.outputs
-    assert _segment_value(baseline_state.variable_pool, ("human", "action_id")) == _segment_value(
-        resumed_state.variable_pool, ("human", "action_id")
+    assert _segment_value(baseline_state.variable_pool, ("human", "__action_id")) == _segment_value(
+        resumed_state.variable_pool, ("human", "__action_id")
     )
     assert baseline_state.graph_execution.completed
     assert resumed_state.graph_execution.completed

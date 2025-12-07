@@ -20,7 +20,6 @@ from core.workflow.nodes.human_input.entities import (
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
     FormNotFoundError,
-    FormSubmission,
     HumanInputFormEntity,
     HumanInputFormRecipientEntity,
 )
@@ -73,6 +72,9 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
             (recipient for recipient in recipient_models if recipient.recipient_type == RecipientType.WEBAPP),
             None,
         )
+        self._submitted_data: Mapping[str, Any] | None = (
+            json.loads(form_model.submitted_data) if form_model.submitted_data is not None else None
+        )
 
     @property
     def id(self) -> str:
@@ -92,23 +94,17 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
     def rendered_content(self) -> str:
         return self._form_model.rendered_content
 
-
-class _FormSubmissionImpl(FormSubmission):
-    def __init__(self, form_model: HumanInputForm):
-        self._form_model = form_model
+    @property
+    def selected_action_id(self) -> str | None:
+        return self._form_model.selected_action_id
 
     @property
-    def selected_action_id(self) -> str:
-        selected_action_id = self._form_model.selected_action_id
-        if selected_action_id is None:
-            raise AssertionError(f"selected_action_id should not be None, form_id={self._form_model.id}")
-        return selected_action_id
+    def submitted_data(self) -> Mapping[str, Any] | None:
+        return self._submitted_data
 
-    def form_data(self) -> Mapping[str, Any]:
-        submitted_data = self._form_model.submitted_data
-        if submitted_data is None:
-            raise AssertionError(f"submitted_data should not be None, form_id={self._form_model.id}")
-        return json.loads(submitted_data)
+    @property
+    def submitted(self) -> bool:
+        return self._form_model.submitted_at is not None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -347,17 +343,6 @@ class HumanInputFormRepositoryImpl:
             recipient_query = select(HumanInputFormRecipient).where(HumanInputFormRecipient.form_id == form_model.id)
             recipient_models = session.scalars(recipient_query).all()
         return _HumanInputFormEntityImpl(form_model=form_model, recipient_models=recipient_models)
-
-    def get_form_submission(self, form_id: str) -> FormSubmission | None:
-        with self._session_factory(expire_on_commit=False) as session:
-            form_model: HumanInputForm | None = session.get(HumanInputForm, form_id)
-            if form_model is None or form_model.tenant_id != self._tenant_id:
-                raise FormNotFoundError(f"form not found, form_id={form_id}")
-
-            if form_model.submitted_at is None:
-                return None
-
-        return _FormSubmissionImpl(form_model=form_model)
 
 
 class HumanInputFormSubmissionRepository:

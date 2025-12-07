@@ -168,11 +168,11 @@ class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
     ):
         """Test workflow pause creation when workflow not in RUNNING status."""
         # Arrange
-        sample_workflow_run.status = WorkflowExecutionStatus.PAUSED
+        sample_workflow_run.status = WorkflowExecutionStatus.SUCCEEDED
         mock_session.get.return_value = sample_workflow_run
 
         # Act & Assert
-        with pytest.raises(_WorkflowRunError, match="Only WorkflowRun with RUNNING status can be paused"):
+        with pytest.raises(_WorkflowRunError, match="Only WorkflowRun with RUNNING or PAUSED status can be paused"):
             repository.create_workflow_pause(
                 workflow_run_id="workflow-run-123",
                 state_owner_user_id="user-123",

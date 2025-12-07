@@ -8,7 +8,6 @@ from typing import Any
 
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
-    FormSubmission,
     HumanInputFormEntity,
     HumanInputFormRecipientEntity,
     HumanInputFormRepository,
@@ -36,6 +35,9 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     form_id: str
     rendered: str
     token: str | None = None
+    action_id: str | None = None
+    data: Mapping[str, Any] | None = None
+    is_submitted: bool = False
 
     @property
     def id(self) -> str:
@@ -53,18 +55,17 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     def rendered_content(self) -> str:
         return self.rendered
 
-
-class _InMemoryFormSubmission(FormSubmission):
-    def __init__(self, selected_action_id: str, form_data: Mapping[str, Any]) -> None:
-        self._selected_action_id = selected_action_id
-        self._form_data = form_data
+    @property
+    def selected_action_id(self) -> str | None:
+        return self.action_id
 
     @property
-    def selected_action_id(self) -> str:
-        return self._selected_action_id
+    def submitted_data(self) -> Mapping[str, Any] | None:
+        return self.data
 
-    def form_data(self) -> Mapping[str, Any]:
-        return self._form_data
+    @property
+    def submitted(self) -> bool:
+        return self.is_submitted
 
 
 class InMemoryHumanInputFormRepository(HumanInputFormRepository):
@@ -75,7 +76,6 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         self.created_params: list[FormCreateParams] = []
         self.created_forms: list[_InMemoryFormEntity] = []
         self._forms_by_key: dict[tuple[str, str], _InMemoryFormEntity] = {}
-        self._submissions: dict[str, FormSubmission] = {}
 
     def create_form(self, params: FormCreateParams) -> HumanInputFormEntity:
         self.created_params.append(params)
@@ -89,9 +89,6 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
     def get_form(self, workflow_execution_id: str, node_id: str) -> HumanInputFormEntity | None:
         return self._forms_by_key.get((workflow_execution_id, node_id))
 
-    def get_form_submission(self, form_id: str) -> FormSubmission | None:
-        return self._submissions.get(form_id)
-
     # Convenience helpers for tests -------------------------------------
 
     def set_submission(self, *, action_id: str, form_data: Mapping[str, Any] | None = None) -> None:
@@ -99,8 +96,15 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
 
         if not self.created_forms:
             raise AssertionError("no form has been created to attach submission data")
-        target_form_id = self.created_forms[-1].id
-        self._submissions[target_form_id] = _InMemoryFormSubmission(action_id, form_data or {})
+        entity = self.created_forms[-1]
+        entity.action_id = action_id
+        entity.data = form_data or {}
+        entity.is_submitted = True
 
     def clear_submission(self) -> None:
-        self._submissions.clear()
+        if not self.created_forms:
+            return
+        for form in self.created_forms:
+            form.action_id = None
+            form.data = None
+            form.is_submitted = False

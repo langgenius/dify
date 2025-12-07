@@ -22,7 +22,6 @@ from core.workflow.nodes.human_input.entities import (
     TimeoutUnit,
     UserAction,
 )
-from core.workflow.repositories.human_input_form_repository import FormNotFoundError
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
@@ -309,7 +308,7 @@ class TestHumanInputFormRepositoryImplPublicMethods:
 
         assert repo.get_form("run-1", "node-1") is None
 
-    def test_get_form_submission_returns_none_when_pending(self):
+    def test_get_form_returns_unsubmitted_state(self):
         form = _DummyForm(
             id="form-1",
             workflow_run_id="run-1",
@@ -319,12 +318,17 @@ class TestHumanInputFormRepositoryImplPublicMethods:
             rendered_content="<p>hello</p>",
             expiration_time=naive_utc_now(),
         )
-        session = _FakeSession(forms={form.id: form})
+        session = _FakeSession(scalars_results=[form, []])
         repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant-id")
 
-        assert repo.get_form_submission(form.id) is None
+        entity = repo.get_form(form.workflow_run_id, form.node_id)
 
-    def test_get_form_submission_returns_submission_when_completed(self):
+        assert entity is not None
+        assert entity.submitted is False
+        assert entity.selected_action_id is None
+        assert entity.submitted_data is None
+
+    def test_get_form_returns_submission_when_completed(self):
         form = _DummyForm(
             id="form-1",
             workflow_run_id="run-1",
@@ -337,21 +341,15 @@ class TestHumanInputFormRepositoryImplPublicMethods:
             submitted_data='{"field": "value"}',
             submitted_at=naive_utc_now(),
         )
-        session = _FakeSession(forms={form.id: form})
+        session = _FakeSession(scalars_results=[form, []])
         repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant-id")
 
-        submission = repo.get_form_submission(form.id)
+        entity = repo.get_form(form.workflow_run_id, form.node_id)
 
-        assert submission is not None
-        assert submission.selected_action_id == "approve"
-        assert submission.form_data() == {"field": "value"}
-
-    def test_get_form_submission_raises_when_form_missing(self):
-        session = _FakeSession(forms={})
-        repo = HumanInputFormRepositoryImpl(_session_factory(session), tenant_id="tenant-id")
-
-        with pytest.raises(FormNotFoundError):
-            repo.get_form_submission("form-unknown")
+        assert entity is not None
+        assert entity.submitted is True
+        assert entity.selected_action_id == "approve"
+        assert entity.submitted_data == {"field": "value"}
 
 
 class TestHumanInputFormSubmissionRepository:

@@ -320,12 +320,12 @@ class TestHumanInputNodeVariableResolution:
 
         mock_repo = MagicMock(spec=HumanInputFormRepository)
         mock_repo.get_form.return_value = None
-        mock_repo.get_form_submission.return_value = None
         mock_repo.create_form.return_value = SimpleNamespace(
             id="form-1",
             rendered_content="Provide your name",
             web_app_token="token",
             recipients=[],
+            submitted=False,
         )
 
         node = HumanInputNode(

@@ -29,11 +29,7 @@ from core.workflow.nodes.llm.entities import (
 )
 from core.workflow.nodes.start.entities import StartNodeData
 from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.repositories.human_input_form_repository import (
-    FormSubmission,
-    HumanInputFormEntity,
-    HumanInputFormRepository,
-)
+from core.workflow.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 
@@ -242,13 +238,13 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
         runner = TableTestRunner()
 
         mock_create_repo = MagicMock(spec=HumanInputFormRepository)
-        mock_create_repo.get_form_submission.return_value = None
         mock_create_repo.get_form.return_value = None
         mock_form_entity = MagicMock(spec=HumanInputFormEntity)
         mock_form_entity.id = "test_form_id"
         mock_form_entity.web_app_token = "test_web_app_token"
         mock_form_entity.recipients = []
         mock_form_entity.rendered_content = "rendered"
+        mock_form_entity.submitted = False
         mock_create_repo.create_form.return_value = mock_form_entity
 
         def initial_graph_factory(mock_create_repo=mock_create_repo) -> tuple[Graph, GraphRuntimeState]:
@@ -297,11 +293,15 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
         )
 
         mock_get_repo = MagicMock(spec=HumanInputFormRepository)
-        mock_form_submission = MagicMock(spec=FormSubmission)
-        mock_form_submission.selected_action_id = scenario["handle"]
-        mock_form_submission.form_data.return_value = {}
-        mock_get_repo.get_form_submission.return_value = mock_form_submission
-        mock_get_repo.get_form.return_value = mock_form_entity
+        submitted_form = MagicMock(spec=HumanInputFormEntity)
+        submitted_form.id = mock_form_entity.id
+        submitted_form.web_app_token = mock_form_entity.web_app_token
+        submitted_form.recipients = []
+        submitted_form.rendered_content = mock_form_entity.rendered_content
+        submitted_form.submitted = True
+        submitted_form.selected_action_id = scenario["handle"]
+        submitted_form.submitted_data = {}
+        mock_get_repo.get_form.return_value = submitted_form
 
         def resume_graph_factory(
             initial_result=initial_result, mock_get_repo=mock_get_repo

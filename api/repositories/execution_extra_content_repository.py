@@ -7,8 +7,7 @@ from core.entities.execution_extra_content import ExecutionExtraContentDomainMod
 
 
 class ExecutionExtraContentRepository(Protocol):
-    def get_by_message_ids(self, message_ids: Sequence[str]) -> list[list[ExecutionExtraContentDomainModel]]:
-        ...
+    def get_by_message_ids(self, message_ids: Sequence[str]) -> list[list[ExecutionExtraContentDomainModel]]: ...
 
 
 __all__ = ["ExecutionExtraContentRepository"]
