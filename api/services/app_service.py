@@ -211,7 +211,7 @@ class AppService:
                     # override tool parameters
                     tool["tool_parameters"] = masked_parameter
                 except Exception:
-                    pass
+                    logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
 
             # override agent mode
             if model_config:

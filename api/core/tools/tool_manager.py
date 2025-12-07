@@ -723,7 +723,7 @@ class ToolManager:
                         )
                     except Exception:
                         # app has been deleted
-                        pass
+                        logger.exception("Failed to transform workflow provider %s to controller", workflow_provider.id)
 
                 labels = ToolLabelManager.get_tools_labels(
                     [cast(ToolProviderController, controller) for controller in workflow_provider_controllers]
