@@ -1,7 +1,6 @@
 'use client'
 import { useCallback } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
@@ -49,7 +48,7 @@ const Header = () => {
       <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center overflow-hidden whitespace-nowrap px-0.5 indent-[-9999px]'>
         {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
         {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-          ? <Image
+          ? <img
             src={systemFeatures.branding.workspace_logo}
             className='block h-[22px] w-auto object-contain'
             alt='logo'
