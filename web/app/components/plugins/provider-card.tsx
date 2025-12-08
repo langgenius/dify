@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import React, { useMemo } from 'react'
 import type { FC } from 'react'
 import { useTheme } from 'next-themes'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +23,7 @@ type Props = {
   payload: Plugin
 }
 
-const ProviderCard: FC<Props> = ({
+const ProviderCardComponent: FC<Props> = ({
   className,
   payload,
 }) => {
@@ -36,6 +36,9 @@ const ProviderCard: FC<Props> = ({
   }] = useBoolean(false)
   const { org, label } = payload
   const { locale } = useI18N()
+
+  // Memoize the marketplace link params to prevent unnecessary re-renders
+  const marketplaceLinkParams = useMemo(() => ({ language: locale, theme }), [locale, theme])
 
   return (
     <div className={cn('group relative rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg p-4 pb-3 shadow-xs hover:bg-components-panel-on-panel-item-bg', className)}>
@@ -76,7 +79,7 @@ const ProviderCard: FC<Props> = ({
           className='grow'
           variant='secondary'
         >
-          <a href={getPluginLinkInMarketplace(payload, { language: locale, theme })} target='_blank' className='flex items-center gap-0.5'>
+          <a href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)} target='_blank' className='flex items-center gap-0.5'>
             {t('plugin.detailPanel.operation.detail')}
             <RiArrowRightUpLine className='h-4 w-4' />
           </a>
@@ -95,5 +98,8 @@ const ProviderCard: FC<Props> = ({
     </div>
   )
 }
+
+// Memoize the component to prevent unnecessary re-renders when props haven't changed
+const ProviderCard = React.memo(ProviderCardComponent)
 
 export default ProviderCard
