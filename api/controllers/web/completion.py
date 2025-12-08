@@ -43,7 +43,7 @@ class CompletionMessagePayload(BaseModel):
     response_mode: Literal["blocking", "streaming"] | None = Field(
         default=None, description="Response mode: blocking or streaming"
     )
-    retriever_from: str | None = Field(default="web_app", description="Source of retriever")
+    retriever_from: str = Field(default="web_app", description="Source of retriever")
 
 
 class ChatMessagePayload(BaseModel):
@@ -55,7 +55,7 @@ class ChatMessagePayload(BaseModel):
     )
     conversation_id: str | None = Field(default=None, description="Conversation ID")
     parent_message_id: str | None = Field(default=None, description="Parent message ID")
-    retriever_from: str | None = Field(default="web_app", description="Source of retriever")
+    retriever_from: str = Field(default="web_app", description="Source of retriever")
 
     @field_validator("conversation_id", "parent_message_id")
     @classmethod
