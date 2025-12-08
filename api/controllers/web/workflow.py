@@ -1,6 +1,7 @@
 import logging
+from typing import Any
 
-from flask_restx import reqparse
+from pydantic import BaseModel
 from werkzeug.exceptions import InternalServerError
 
 from controllers.web import web_ns
@@ -26,6 +27,12 @@ from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.errors.llm import InvokeRateLimitError
+
+
+class WorkflowRunPayload(BaseModel):
+    inputs: dict[str, Any]
+    files: list[dict[str, Any]] | None = None
+
 
 logger = logging.getLogger(__name__)
 
@@ -58,12 +65,8 @@ class WorkflowRunApi(WebApiResource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("files", type=list, required=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = WorkflowRunPayload.model_validate(web_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
         try:
             response = AppGenerateService.generate(
