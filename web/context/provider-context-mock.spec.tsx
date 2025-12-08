@@ -36,7 +36,6 @@ jest.mock('@/context/provider-context', () => ({
     const withUsage = createMockPlanUsage(usage, withPlan)
     const withTotal = createMockPlanTotal(total, withUsage)
     const withReset = createMockPlanReset(reset, withTotal)
-    console.log(JSON.stringify(withReset.plan, null, 2))
     return withReset
   },
 }))
