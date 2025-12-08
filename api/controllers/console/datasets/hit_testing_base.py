@@ -1,7 +1,7 @@
 import logging
 from typing import Any
 
-from flask_restx import marshal
+from flask_restx import marshal, reqparse
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
@@ -33,6 +33,7 @@ class HitTestingPayload(BaseModel):
     query: str = Field(max_length=250)
     retrieval_model: dict[str, Any] | None = None
     external_retrieval_model: dict[str, Any] | None = None
+    attachment_ids: list[str] | None = None
 
 
 class DatasetsHitTestingBase:
