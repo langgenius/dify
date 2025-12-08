@@ -29,7 +29,7 @@ const ActivateForm = () => {
   const { data: checkRes } = useInvitationCheck({
     ...checkParams.params,
     token: token || undefined,
-  })
+  }, true)
 
   useEffect(() => {
     if (checkRes?.is_valid) {
