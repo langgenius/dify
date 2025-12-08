@@ -162,7 +162,6 @@ class BaseIndexProcessor(ABC):
             if current_user:
                 upload_file_id = self._download_image(image.split(" ")[0], current_user)
                 if upload_file_id:
-                    print("download image file success")
                     upload_file_id_list.append(upload_file_id)
 
         if not upload_file_id_list:

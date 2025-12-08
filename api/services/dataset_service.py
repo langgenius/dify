@@ -1802,10 +1802,11 @@ class DocumentService:
                     if document_ids:
                         DocumentIndexingTaskProxy(dataset.tenant_id, dataset.id, document_ids).delay()
                     if duplicate_document_ids:
-                        DuplicateDocumentIndexingTaskProxy(dataset.tenant_id, dataset.id, duplicate_document_ids).delay()
+                        DuplicateDocumentIndexingTaskProxy(
+                            dataset.tenant_id, dataset.id, duplicate_document_ids
+                        ).delay()
             except LockNotOwnedError:
                 pass
-
 
         return documents, batch
 
