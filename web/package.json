@@ -217,8 +217,8 @@
     "uglify-js": "^3.19.3"
   },
   "resolutions": {
-    "@types/react": "~19.2.1",
-    "@types/react-dom": "~19.2.1",
+    "@types/react": "~19.2.7",
+    "@types/react-dom": "~19.2.3",
     "string-width": "4.2.3"
   },
   "lint-staged": {
@@ -230,8 +230,8 @@
     ]
   },
   "overrides": {
-    "@types/react": "19.0.11",
-    "@types/react-dom": "19.0.4",
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
     "@storybook/test": "8.5.0"
   },
   "pnpm": {
