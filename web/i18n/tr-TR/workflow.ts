@@ -596,7 +596,6 @@ const translation = {
         'authorizationType': 'Yetkilendirme Türü',
         'no-auth': 'Yok',
         'api-key': 'API Anahtarı',
-        'authType': 'Yetki Türü',
         'basic': 'Temel',
         'bearer': 'Bearer',
         'custom': 'Özel',

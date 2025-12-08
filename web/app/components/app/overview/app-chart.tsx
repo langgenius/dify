@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import React from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
-import useSWR from 'swr'
 import type { Dayjs } from 'dayjs'
 import dayjs from 'dayjs'
 import { get } from 'lodash-es'
@@ -13,7 +12,20 @@ import { formatNumber } from '@/utils/format'
 import Basic from '@/app/components/app-sidebar/basic'
 import Loading from '@/app/components/base/loading'
 import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppTokenCostsResponse } from '@/models/app'
-import { getAppDailyConversations, getAppDailyEndUsers, getAppDailyMessages, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations } from '@/service/apps'
+import {
+  useAppAverageResponseTime,
+  useAppAverageSessionInteractions,
+  useAppDailyConversations,
+  useAppDailyEndUsers,
+  useAppDailyMessages,
+  useAppSatisfactionRate,
+  useAppTokenCosts,
+  useAppTokensPerSecond,
+  useWorkflowAverageInteractions,
+  useWorkflowDailyConversations,
+  useWorkflowDailyTerminals,
+  useWorkflowTokenCosts,
+} from '@/service/use-apps'
 const valueFormatter = (v: string | number) => v
 
 const COLOR_TYPE_MAP = {
@@ -272,8 +284,8 @@ const getDefaultChartData = ({ start, end, key = 'count' }: { start: string; end
 
 export const MessagesChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
-  const { data: response } = useSWR({ url: `/apps/${id}/statistics/daily-messages`, params: period.query }, getAppDailyMessages)
-  if (!response)
+  const { data: response, isLoading } = useAppDailyMessages(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -286,8 +298,8 @@ export const MessagesChart: FC<IBizChartProps> = ({ id, period }) => {
 
 export const ConversationsChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
-  const { data: response } = useSWR({ url: `/apps/${id}/statistics/daily-conversations`, params: period.query }, getAppDailyConversations)
-  if (!response)
+  const { data: response, isLoading } = useAppDailyConversations(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -301,8 +313,8 @@ export const ConversationsChart: FC<IBizChartProps> = ({ id, period }) => {
 export const EndUsersChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
 
-  const { data: response } = useSWR({ url: `/apps/${id}/statistics/daily-end-users`, id, params: period.query }, getAppDailyEndUsers)
-  if (!response)
+  const { data: response, isLoading } = useAppDailyEndUsers(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -315,8 +327,8 @@ export const EndUsersChart: FC<IBizChartProps> = ({ id, period }) => {
 
 export const AvgSessionInteractions: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
-  const { data: response } = useSWR({ url: `/apps/${id}/statistics/average-session-interactions`, params: period.query }, getAppStatistics)
-  if (!response)
+  const { data: response, isLoading } = useAppAverageSessionInteractions(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -331,8 +343,8 @@ export const AvgSessionInteractions: FC<IBizChartProps> = ({ id, period }) => {
 
 export const AvgResponseTime: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
-  const { data: response } = useSWR({ url: `/apps/${id}/statistics/average-response-time`, params: period.query }, getAppStatistics)
-  if (!response)
+  const { data: response, isLoading } = useAppAverageResponseTime(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -348,8 +360,8 @@ export const AvgResponseTime: FC<IBizChartProps> = ({ id, period }) => {
 
 export const TokenPerSecond: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
-  const { data: response } = useSWR({ url: `/apps/${id}/statistics/tokens-per-second`, params: period.query }, getAppStatistics)
-  if (!response)
+  const { data: response, isLoading } = useAppTokensPerSecond(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -366,8 +378,8 @@ export const TokenPerSecond: FC<IBizChartProps> = ({ id, period }) => {
 
 export const UserSatisfactionRate: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
-  const { data: response } = useSWR({ url: `/apps/${id}/statistics/user-satisfaction-rate`, params: period.query }, getAppStatistics)
-  if (!response)
+  const { data: response, isLoading } = useAppSatisfactionRate(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -384,8 +396,8 @@ export const UserSatisfactionRate: FC<IBizChartProps> = ({ id, period }) => {
 export const CostChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
 
-  const { data: response } = useSWR({ url: `/apps/${id}/statistics/token-costs`, params: period.query }, getAppTokenCosts)
-  if (!response)
+  const { data: response, isLoading } = useAppTokenCosts(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -398,8 +410,8 @@ export const CostChart: FC<IBizChartProps> = ({ id, period }) => {
 
 export const WorkflowMessagesChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
-  const { data: response } = useSWR({ url: `/apps/${id}/workflow/statistics/daily-conversations`, params: period.query }, getWorkflowDailyConversations)
-  if (!response)
+  const { data: response, isLoading } = useWorkflowDailyConversations(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -414,8 +426,8 @@ export const WorkflowMessagesChart: FC<IBizChartProps> = ({ id, period }) => {
 export const WorkflowDailyTerminalsChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
 
-  const { data: response } = useSWR({ url: `/apps/${id}/workflow/statistics/daily-terminals`, id, params: period.query }, getAppDailyEndUsers)
-  if (!response)
+  const { data: response, isLoading } = useWorkflowDailyTerminals(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -429,8 +441,8 @@ export const WorkflowDailyTerminalsChart: FC<IBizChartProps> = ({ id, period }) 
 export const WorkflowCostChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
 
-  const { data: response } = useSWR({ url: `/apps/${id}/workflow/statistics/token-costs`, params: period.query }, getAppTokenCosts)
-  if (!response)
+  const { data: response, isLoading } = useWorkflowTokenCosts(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
@@ -443,8 +455,8 @@ export const WorkflowCostChart: FC<IBizChartProps> = ({ id, period }) => {
 
 export const AvgUserInteractions: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
-  const { data: response } = useSWR({ url: `/apps/${id}/workflow/statistics/average-app-interactions`, params: period.query }, getAppStatistics)
-  if (!response)
+  const { data: response, isLoading } = useWorkflowAverageInteractions(id, period.query)
+  if (isLoading || !response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart

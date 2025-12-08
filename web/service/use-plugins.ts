@@ -612,12 +612,11 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
       refreshPluginList(category ? { category } as any : undefined, !category)
-  }, [initialized, isRefetching, data, category, refreshPluginList])
+  }, [isRefetching])
 
   useEffect(() => {
-    if (isFetched && !initialized)
-      setInitialized(true)
-  }, [isFetched, initialized])
+    setInitialized(true)
+  }, [])
 
   const handleRefetch = useCallback(() => {
     refetch()

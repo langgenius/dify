@@ -29,6 +29,7 @@ const translation = {
     vectorSpace: 'Векторний простір',
     vectorSpaceTooltip: 'Векторний простір – це система довгострокової пам\'яті, необхідна LLM для розуміння ваших даних.',
     documentProcessingPriority: 'Пріоритет обробки документів',
+    documentProcessingPriorityTip: 'Для вищого пріоритету обробки документів оновіть свій план.',
     documentProcessingPriorityUpgrade: 'Обробляйте більше даних із вищою точністю та на більших швидкостях.',
     priority: {
       'standard': 'Стандартний',

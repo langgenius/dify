@@ -455,13 +455,7 @@ x-shared-env: &shared-api-worker-env
   TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
   ALLOW_UNSAFE_DATA_SCHEME: ${ALLOW_UNSAFE_DATA_SCHEME:-false}
   MAX_TREE_DEPTH: ${MAX_TREE_DEPTH:-50}
-  POSTGRES_USER: ${POSTGRES_USER:-${DB_USERNAME}}
-  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-${DB_PASSWORD}}
-  POSTGRES_DB: ${POSTGRES_DB:-${DB_DATABASE}}
   PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
-  MYSQL_USERNAME: ${MYSQL_USERNAME:-${DB_USERNAME}}
-  MYSQL_PASSWORD: ${MYSQL_PASSWORD:-${DB_PASSWORD}}
-  MYSQL_DATABASE: ${MYSQL_DATABASE:-${DB_DATABASE}}
   MYSQL_HOST_VOLUME: ${MYSQL_HOST_VOLUME:-./volumes/mysql/data}
   SANDBOX_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
   SANDBOX_GIN_MODE: ${SANDBOX_GIN_MODE:-release}
@@ -480,6 +474,7 @@ x-shared-env: &shared-api-worker-env
   WEAVIATE_AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
   WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
   WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+  WEAVIATE_DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-false}
   CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
   CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
   CHROMA_IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
@@ -637,7 +632,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:1.10.1
+    image: langgenius/dify-api:1.10.1-fix.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -676,7 +671,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.10.1
+    image: langgenius/dify-api:1.10.1-fix.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -713,7 +708,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.10.1
+    image: langgenius/dify-api:1.10.1-fix.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -741,7 +736,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.10.1
+    image: langgenius/dify-web:1.10.1-fix.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -774,9 +769,9 @@ services:
       - postgresql
     restart: always
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
-      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${DB_DATABASE:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     command: >
       postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
@@ -796,7 +791,7 @@ services:
           "-h",
           "db_postgres",
           "-U",
-          "${PGUSER:-postgres}",
+          "${DB_USERNAME:-postgres}",
           "-d",
           "${DB_DATABASE:-dify}",
         ]
@@ -811,8 +806,8 @@ services:
       - mysql
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-difyai123456}
-      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${DB_DATABASE:-dify}
     command: >
       --max_connections=1000
       --innodb_buffer_pool_size=${MYSQL_INNODB_BUFFER_POOL_SIZE:-512M}
@@ -828,7 +823,7 @@ services:
           "ping",
           "-u",
           "root",
-          "-p${MYSQL_PASSWORD:-difyai123456}",
+          "-p${DB_PASSWORD:-difyai123456}",
         ]
       interval: 1s
       timeout: 3s
@@ -1060,6 +1055,7 @@ services:
       AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+      DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-false}
 
   # OceanBase vector database
   oceanbase:

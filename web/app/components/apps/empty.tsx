@@ -23,7 +23,7 @@ const Empty = () => {
   return (
     <>
       <DefaultCards />
-      <div className='absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-t from-background-body to-transparent pointer-events-none'>
+      <div className='pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-t from-background-body to-transparent'>
         <span className='system-md-medium text-text-tertiary'>
           {t('app.newApp.noAppsFound')}
         </span>
