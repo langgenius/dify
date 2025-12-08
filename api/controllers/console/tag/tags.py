@@ -12,6 +12,7 @@ from fields.tag_fields import dataset_tag_fields
 from libs.login import current_account_with_tenant, login_required
 from services.tag_service import TagService
 
+
 class TagBasePayload(BaseModel):
     name: str = Field(description="Tag name", min_length=1, max_length=50)
     type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
