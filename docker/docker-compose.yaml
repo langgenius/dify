@@ -666,7 +666,7 @@ services:
         condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
-      - ./volumes/app/storage:/app/api/storage
+      - dify_storage_data:/app/api/storage
     networks:
       - ssrf_proxy_network
       - default
@@ -703,7 +703,7 @@ services:
         condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
-      - ./volumes/app/storage:/app/api/storage
+      - dify_storage_data:/app/api/storage
     networks:
       - ssrf_proxy_network
       - default
@@ -785,7 +785,7 @@ services:
                -c 'statement_timeout=${POSTGRES_STATEMENT_TIMEOUT:-0}'
                -c 'idle_in_transaction_session_timeout=${POSTGRES_IDLE_IN_TRANSACTION_SESSION_TIMEOUT:-0}'
     volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
+      - dify_postgres_data:/var/lib/postgresql/data
     healthcheck:
       test:
         [
@@ -840,7 +840,7 @@ services:
       REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
     volumes:
       # Mount the redis data directory to the container.
-      - ./volumes/redis/data:/data
+      - dify_redis_data:/data
     # Set the redis password when startup redis server.
     command:
       - redis-server
@@ -942,7 +942,7 @@ services:
     ports:
       - "${EXPOSE_PLUGIN_DEBUGGING_PORT:-5003}:${PLUGIN_DEBUGGING_PORT:-5003}"
     volumes:
-      - ./volumes/plugin_daemon:/app/storage
+      - dify_plugin_data:/app/storage
     networks:
       - default
     depends_on:
@@ -1057,7 +1057,7 @@ services:
     restart: always
     volumes:
       # Mount the Weaviate data directory to the con tainer.
-      - ./volumes/weaviate:/var/lib/weaviate
+      - dify_weaviate_data:/var/lib/weaviate
     environment:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
@@ -1524,3 +1524,8 @@ networks:
 volumes:
   oradata:
   dify_es01_data:
+  dify_postgres_data:   # Lưu Database chính (User, App, Knowledge base)
+  dify_redis_data:      # Lưu Cache và hàng đợi (Queue)
+  dify_storage_data:    # Lưu File upload (Ảnh, tài liệu người dùng up lên)
+  dify_weaviate_data:   # Lưu Vector DB (Nếu bạn dùng Weaviate - Mặc định)
+  dify_plugin_data:     # Lưu dữ liệu Plugin (Nếu dùng plugin)
