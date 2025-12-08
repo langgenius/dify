@@ -68,11 +68,11 @@ const FileUploader = ({
       .join(locale !== LanguagesSupported[1] ? ', ' : '、 ')
   })()
   const ACCEPTS = supportTypes.map((ext: string) => `.${ext}`)
-  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
-    file_size_limit: 15,
-    batch_count_limit: 5,
-    file_upload_limit: 5,
-  }, [fileUploadConfigResponse])
+  const fileUploadConfig = useMemo(() => ({
+    file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
+    batch_count_limit: fileUploadConfigResponse?.batch_count_limit ?? 5,
+    file_upload_limit: fileUploadConfigResponse?.file_upload_limit ?? 5,
+  }), [fileUploadConfigResponse])
 
   const fileListRef = useRef<FileItem[]>([])
 
