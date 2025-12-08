@@ -151,6 +151,7 @@ class DatasetUpdatePayload(BaseModel):
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
     icon_info: dict[str, Any] | None = None
+    is_multimodal: bool | None = False
 
     @field_validator("indexing_technique")
     @classmethod
@@ -423,7 +424,6 @@ class DatasetApi(Resource):
         payload = DatasetUpdatePayload.model_validate(console_ns.payload or {})
         payload_data = payload.model_dump(exclude_unset=True)
         current_user, current_tenant_id = current_account_with_tenant()
-        args["is_multimodal"] = False
         # check embedding model setting
         if (
             payload.indexing_technique == "high_quality"
@@ -433,7 +433,7 @@ class DatasetApi(Resource):
             is_multimodal = DatasetService.check_is_multimodal_model(
                 dataset.tenant_id, payload.embedding_model_provider, payload.embedding_model
             )
-            args["is_multimodal"] = is_multimodal
+            payload.is_multimodal = is_multimodal
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
             current_user, dataset, payload.permission, payload.partial_member_list
