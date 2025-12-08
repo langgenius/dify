@@ -13,6 +13,11 @@ jest.mock('@tanstack/react-query', () => ({
 // mock use-context-selector
 jest.mock('use-context-selector', () => ({
   useContext: jest.fn(),
+  createContext: () => ({
+    Provider: ({ children }: any) => children,
+    Consumer: ({ children }: any) => children(null),
+  }),
+  useContextSelector: jest.fn(),
 }))
 
 // mock service/common functions
@@ -20,8 +25,13 @@ jest.mock('@/service/common', () => ({
   fetchDefaultModal: jest.fn(),
   fetchModelList: jest.fn(),
   fetchModelProviderCredentials: jest.fn(),
-  fetchModelProviders: jest.fn(),
   getPayUrl: jest.fn(),
+}))
+
+jest.mock('@/service/use-common', () => ({
+  commonQueryKeys: {
+    modelProviders: ['common', 'model-providers'],
+  },
 }))
 
 // mock context hooks
