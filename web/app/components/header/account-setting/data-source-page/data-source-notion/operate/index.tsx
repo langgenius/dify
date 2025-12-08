@@ -1,7 +1,8 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
-import { useSWRConfig } from 'swr'
+import { useQueryClient } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import {
   RiDeleteBinLine,
   RiLoopLeftLine,
@@ -25,14 +26,16 @@ export default function Operate({
   onAuthAgain,
 }: OperateProps) {
   const { t } = useTranslation()
-  const { mutate } = useSWRConfig()
+  const queryClient = useQueryClient()
+  const router = useRouter()
 
   const updateIntegrates = () => {
     Toast.notify({
       type: 'success',
       message: t('common.api.success'),
     })
-    mutate({ url: 'data-source/integrates' })
+    queryClient.invalidateQueries({ queryKey: ['data-source-auth'] })
+    router.refresh()
   }
   const handleSync = async () => {
     await syncDataSourceNotion({ url: `/oauth/data-source/notion/${payload.id}/sync` })

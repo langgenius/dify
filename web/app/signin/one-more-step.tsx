@@ -1,8 +1,7 @@
 'use client'
-import React, { type Reducer, useEffect, useReducer } from 'react'
+import React, { type Reducer, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
@@ -10,9 +9,9 @@ import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
 import { LanguagesSupported, languages } from '@/i18n-config/language'
-import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import { useDocLink } from '@/context/i18n'
+import { useOneMoreStep } from '@/service/use-common'
 
 type IState = {
   formState: 'processing' | 'error' | 'success' | 'initial'
@@ -62,25 +61,7 @@ const OneMoreStep = () => {
     interface_language: 'en-US',
     timezone: 'Asia/Shanghai',
   })
-  const { data, error } = useSWR(state.formState === 'processing'
-    ? {
-      url: '/account/init',
-      body: {
-        invitation_code: state.invitation_code,
-        interface_language: state.interface_language,
-        timezone: state.timezone,
-      },
-    }
-    : null, oneMoreStep)
-
-  useEffect(() => {
-    if (error && error.status === 400) {
-      Toast.notify({ type: 'error', message: t('login.invalidInvitationCode') })
-      dispatch({ type: 'failed', payload: null })
-    }
-    if (data)
-      router.push('/apps')
-  }, [data, error])
+  const { mutateAsync: submitOneMoreStep, isPending } = useOneMoreStep()
 
   return (
     <>
@@ -151,9 +132,22 @@ const OneMoreStep = () => {
             <Button
               variant='primary'
               className='w-full'
-              disabled={state.formState === 'processing'}
-              onClick={() => {
+              disabled={state.formState === 'processing' || isPending}
+              onClick={async () => {
                 dispatch({ type: 'formState', value: 'processing' })
+                try {
+                  await submitOneMoreStep({
+                    invitation_code: state.invitation_code,
+                    interface_language: state.interface_language,
+                    timezone: state.timezone,
+                  })
+                  router.push('/apps')
+                }
+                catch (error: any) {
+                  if (error && error.status === 400)
+                    Toast.notify({ type: 'error', message: t('login.invalidInvitationCode') })
+                  dispatch({ type: 'failed', payload: null })
+                }
               }}
             >
               {t('login.go')}

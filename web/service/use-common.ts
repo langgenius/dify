@@ -1,5 +1,6 @@
 import { get, post } from './base'
 import type {
+  CommonResponse,
   FileUploadConfigResponse,
   Member,
   StructuredOutputRulesRequestBody,
@@ -42,6 +43,8 @@ export const commonQueryKeys = {
   notionBinding: (code?: string | null) => [NAME_SPACE, 'notion-binding', code] as const,
   modelParameterRules: (provider?: string, model?: string) => [NAME_SPACE, 'model-parameter-rules', provider, model] as const,
   langGeniusVersion: (currentVersion?: string | null) => [NAME_SPACE, 'lang-genius-version', currentVersion] as const,
+  forgotPasswordValidity: (token?: string | null) => [NAME_SPACE, 'forgot-password-validity', token] as const,
+  dataSourceIntegrates: [NAME_SPACE, 'data-source-integrates'] as const,
 }
 
 export const useFileUploadConfig = () => {
@@ -219,6 +222,30 @@ export const useLogout = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
+  })
+}
+
+type ForgotPasswordValidity = CommonResponse & { is_valid: boolean; email: string }
+export const useVerifyForgotPasswordToken = (token?: string | null) => {
+  return useQuery<ForgotPasswordValidity>({
+    queryKey: commonQueryKeys.forgotPasswordValidity(token),
+    queryFn: () => post<ForgotPasswordValidity>('/forgot-password/validity', { body: { token } }),
+    enabled: !!token,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  })
+}
+
+type OneMoreStepPayload = {
+  invitation_code: string
+  interface_language: string
+  timezone: string
+}
+export const useOneMoreStep = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'one-more-step'],
+    mutationFn: (body: OneMoreStepPayload) => post<CommonResponse>('/account/init', { body }),
   })
 }
 
