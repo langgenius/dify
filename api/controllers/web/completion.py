@@ -38,7 +38,7 @@ logger = logging.getLogger(__name__)
 
 class CompletionMessagePayload(BaseModel):
     inputs: dict[str, Any] = Field(description="Input variables for the completion")
-    query: str = Field(description="Query text for completion")
+    query: str = Field(default="", description="Query text for completion")
     files: list[dict[str, Any]] | None = Field(default=None, description="Files to be processed")
     response_mode: Literal["blocking", "streaming"] | None = Field(
         default=None, description="Response mode: blocking or streaming"
