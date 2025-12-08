@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from controllers.common.schema import register_schema_models
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -45,6 +46,9 @@ class ForgotPasswordResetPayload(BaseModel):
     @classmethod
     def validate_password(cls, value: str) -> str:
         return valid_password(value)
+
+
+register_schema_models(web_ns, ForgotPasswordSendPayload, ForgotPasswordCheckPayload, ForgotPasswordResetPayload)
 
 
 @web_ns.route("/forgot-password")
