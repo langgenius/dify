@@ -27,9 +27,9 @@ import {
   fetchDefaultModal,
   fetchModelList,
   fetchModelProviderCredentials,
-  fetchModelProviders,
   getPayUrl,
 } from '@/service/common'
+import { commonQueryKeys } from '@/service/use-common'
 import { useProviderContext } from '@/context/provider-context'
 import {
   useMarketplacePlugins,
@@ -244,25 +244,11 @@ export const useAnthropicBuyQuota = () => {
   return handleGetPayUrl
 }
 
-export const useModelProviders = () => {
-  const { data: providersData, refetch, isPending } = useQuery({
-    queryKey: ['model-providers', 'list'],
-    queryFn: () => fetchModelProviders('/workspaces/current/model-providers'),
-  })
-
-  return {
-    data: providersData?.data || [],
-    mutate: refetch,
-    isLoading: isPending,
-  }
-}
-
 export const useUpdateModelProviders = () => {
   const queryClient = useQueryClient()
 
   const updateModelProviders = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['common', 'model-providers'] })
-    queryClient.invalidateQueries({ queryKey: ['model-providers', 'list'] })
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviders })
   }, [queryClient])
 
   return updateModelProviders

@@ -21,7 +21,7 @@ import type { ModelParameterRule } from '@/app/components/header/account-setting
 
 const NAME_SPACE = 'common'
 
-const commonQueryKeys = {
+export const commonQueryKeys = {
   fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
   userProfile: [NAME_SPACE, 'user-profile'] as const,
   currentWorkspace: [NAME_SPACE, 'current-workspace'] as const,
