@@ -4,8 +4,8 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource, reqparse
-from sqlalchemy.orm import Session
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -49,6 +49,7 @@ class CompletionRequestPayload(BaseModel):
     response_mode: Literal["blocking", "streaming"] | None = None
     retriever_from: str = Field(default="dev")
 
+
 # Define parser for chat API
 chat_parser = (
     reqparse.RequestParser()
@@ -77,6 +78,7 @@ chat_parser.add_argument(
     location="json",
     help="Workflow alias for advanced chat",
 )
+
 
 class ChatRequestPayload(BaseModel):
     inputs: dict[str, Any]
