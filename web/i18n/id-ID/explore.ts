@@ -26,6 +26,7 @@ const translation = {
   appCustomize: {
     subTitle: 'Ikon & nama aplikasi',
     nameRequired: 'Nama aplikasi diperlukan',
+    title: 'Buat aplikasi dari {{name}}',
   },
   category: {
     Entertainment: 'Hiburan',

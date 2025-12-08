@@ -11,6 +11,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from enums.quota_type import QuotaType, unlimited
+from extensions.otel import AppGenerateHandler, trace_span
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
 from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
@@ -19,6 +20,7 @@ from services.workflow_service import WorkflowService
 
 class AppGenerateService:
     @classmethod
+    @trace_span(AppGenerateHandler)
     def generate(
         cls,
         app_model: App,
@@ -135,7 +137,7 @@ class AppGenerateService:
         Returns:
             The maximum number of active requests allowed
         """
-        app_limit = app.max_active_requests or 0
+        app_limit = app.max_active_requests or dify_config.APP_DEFAULT_ACTIVE_REQUESTS
         config_limit = dify_config.APP_MAX_ACTIVE_REQUESTS
 
         # Filter out infinite (0) values and return the minimum, or 0 if both are infinite

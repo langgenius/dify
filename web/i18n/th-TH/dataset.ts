@@ -107,8 +107,6 @@ const translation = {
       recommend: 'แนะนำ',
     },
     invertedIndex: {
-      title: 'ดัชนีกลับด้าน',
-      description: 'Inverted Index เป็นโครงสร้างที่ใช้สําหรับการดึงข้อมูลอย่างมีประสิทธิภาพ จัดเรียงตามคําศัพท์ แต่ละคําชี้ไปที่เอกสารหรือหน้าเว็บที่มีคําดังกล่าว',
     },
     change: 'เปลี่ยน',
     changeRetrievalMethod: 'วิธีการเรียกดูการเปลี่ยนแปลง',
@@ -235,6 +233,10 @@ const translation = {
     disabled: 'ถูกปิดใช้งาน',
     title: 'บริการ API',
   },
+  docAllEnabled_one: '{{count}} เอกสารถูกเปิดใช้งาน',
+  docAllEnabled_other: 'เอกสาร {{count}} ทั้งหมดเปิดใช้งานแล้ว',
+  partialEnabled_one: 'รวม {{count}} เอกสาร, {{num}} ใช้งานได้',
+  partialEnabled_other: 'รวม {{count}} เอกสาร, {{num}} ใช้งานได้',
 }
 
 export default translation

@@ -1139,6 +1139,7 @@ def remove_orphaned_files_on_storage(force: bool):
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
     except Exception as e:
         click.echo(click.style(f"Error fetching keys: {str(e)}", fg="red"))
+        return
 
     all_files_on_storage = []
     for storage_path in storage_paths:

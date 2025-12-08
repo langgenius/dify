@@ -100,6 +100,13 @@ const translation = {
     nameForToolCallPlaceHolder: 'Służy do rozpoznawania maszyn, takich jak getCurrentWeather, list_pets',
     confirmTip: 'Będzie to miało wpływ na aplikacje korzystające z tego narzędzia',
     confirmTitle: 'Potwierdź, aby zapisać ?',
+    toolOutput: {
+      title: 'Wynik narzędzia',
+      name: 'Nazwa',
+      reserved: 'Zarezerwowane',
+      reservedParameterDuplicateTip: 'text, json i pliki są zastrzeżonymi zmiennymi. Zmienne o tych nazwach nie mogą pojawiać się w schemacie wyjściowym.',
+      description: 'Opis',
+    },
   },
   test: {
     title: 'Test',

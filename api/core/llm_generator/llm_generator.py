@@ -15,6 +15,8 @@ from core.llm_generator.prompts import (
     LLM_MODIFY_CODE_SYSTEM,
     LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
+    SUGGESTED_QUESTIONS_MAX_TOKENS,
+    SUGGESTED_QUESTIONS_TEMPERATURE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
@@ -124,7 +126,10 @@ class LLMGenerator:
         try:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
-                model_parameters={"max_tokens": 256, "temperature": 0},
+                model_parameters={
+                    "max_tokens": SUGGESTED_QUESTIONS_MAX_TOKENS,
+                    "temperature": SUGGESTED_QUESTIONS_TEMPERATURE,
+                },
                 stream=False,
             )
 

@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Knowledge Pipeline đã xuất bản',
+      tip: '<CustomLink>Đi tới Tài liệu</CustomLink> để thêm hoặc quản lý các tài liệu.',
     },
     error: {
       message: 'Không thể xuất bản quy trình kiến thức',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Cấu trúc',
     structureTooltip: 'Chunk Structure xác định cách các tài liệu được phân tách và lập chỉ mục — cung cấp các chế độ General, Parent-Child và Q&A — và là duy nhất cho mỗi cơ sở tri thức.',
+    createdBy: 'Bởi {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'Ký tự',
     backToDataSource: 'Nguồn dữ liệu',
     title: 'Thêm tài liệu',
+    selectOnlineDocumentTip: 'Xử lý lên đến {{count}} trang',
+    selectOnlineDriveTip: 'Xử lý tối đa {{count}} tệp, mỗi tệp tối đa {{fileSize}} MB',
   },
   documentSettings: {
     title: 'Cài đặt tài liệu',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} trang',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'Tất cả các tập tin',
       allBuckets: 'Tất cả các bộ lưu trữ đám mây',
       searchPlaceholder: 'Tìm kiếm tệp...',
+      searchResult: 'Tìm {{searchResultsLength}} mục trong thư mục "{{folderName}}"',
     },
     emptySearchResult: 'Không có vật phẩm nào được tìm thấy',
     notSupportedFileType: 'Loại tệp này không được hỗ trợ',
     emptyFolder: 'Thư mục này trống',
     resetKeywords: 'Đặt lại từ khóa',
+    notConnected: '{{name}} không được kết nối',
+    notConnectedTip: 'Để đồng bộ với {{name}}, trước tiên phải thiết lập kết nối với {{name}}.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}\'s {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Sự xác nhận',
@@ -149,6 +160,7 @@ const translation = {
   editPipelineInfo: 'Chỉnh sửa thông tin quy trình',
   knowledgeNameAndIconPlaceholder: 'Vui lòng nhập tên của Cơ sở kiến thức',
   knowledgeDescriptionPlaceholder: 'Mô tả những gì có trong Cơ sở kiến thức này. Mô tả chi tiết cho phép AI truy cập nội dung của tập dữ liệu chính xác hơn. Nếu trống, Dify sẽ sử dụng chiến lược hit mặc định. (Tùy chọn)',
+  configurationTip: 'Cấu hình {{pluginName}}',
 }
 
 export default translation

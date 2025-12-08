@@ -18,7 +18,9 @@ class DataSourceOauthBinding(TypeBase):
         adjusted_json_index("source_info_idx", "source_info"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     access_token: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -44,7 +46,9 @@ class DataSourceApiKeyAuthBinding(TypeBase):
         sa.Index("data_source_api_key_auth_binding_provider_idx", "provider"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     category: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)

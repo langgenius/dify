@@ -107,8 +107,12 @@ class TencentDataTrace(BaseTraceInstance):
                 links.append(TencentTraceUtils.create_link(trace_info.trace_id))
 
             message_span = TencentSpanBuilder.build_message_span(trace_info, trace_id, str(user_id), links)
-
             self.trace_client.add_span(message_span)
+
+            # Add LLM child span with detailed attributes
+            parent_span_id = TencentTraceUtils.convert_to_span_id(trace_info.message_id, "message")
+            llm_span = TencentSpanBuilder.build_message_llm_span(trace_info, trace_id, parent_span_id, str(user_id))
+            self.trace_client.add_span(llm_span)
 
             self._record_message_llm_metrics(trace_info)
 
@@ -517,4 +521,4 @@ class TencentDataTrace(BaseTraceInstance):
             if hasattr(self, "trace_client"):
                 self.trace_client.shutdown()
         except Exception:
-            pass
+            logger.exception("[Tencent APM] Failed to shutdown trace client during cleanup")

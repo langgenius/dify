@@ -1,4 +1,5 @@
 import json
+import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from typing import Any
@@ -22,6 +23,8 @@ from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
+
+logger = logging.getLogger(__name__)
 
 
 class CotAgentRunner(BaseAgentRunner, ABC):
@@ -400,8 +403,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                             action_input=json.loads(message.tool_calls[0].function.arguments),
                         )
                         current_scratchpad.action_str = json.dumps(current_scratchpad.action.to_dict())
-                    except:
-                        pass
+                    except Exception:
+                        logger.exception("Failed to parse tool call from assistant message")
             elif isinstance(message, ToolPromptMessage):
                 if current_scratchpad:
                     assert isinstance(message.content, str)

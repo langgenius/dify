@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: '別擔心 — 這不會影響你當前的訂閱，但當它續訂時，如果你沒有重新確認你的身份，你將不會獲得教育折扣。',
+      title: '您的教育狀態將於 {{date}} 到期',
     },
     stillInEducation: {
       title: '仍在接受教育嗎？',

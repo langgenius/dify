@@ -10,12 +10,13 @@ import uuid
 from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
 from pydantic import BaseModel
+from pydantic.functional_validators import AfterValidator
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
@@ -101,6 +102,9 @@ def email(email):
 
     error = f"{email} is not a valid email."
     raise ValueError(error)
+
+
+EmailStr = Annotated[str, AfterValidator(email)]
 
 
 def uuid_value(value):

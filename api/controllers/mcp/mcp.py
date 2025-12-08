@@ -1,10 +1,11 @@
-from typing import Union
+from typing import Any, Union
 
 from flask import Response
-from flask_restx import Resource, reqparse
-from pydantic import ValidationError
+from flask_restx import Resource
+from pydantic import BaseModel, Field, ValidationError
 from sqlalchemy.orm import Session
 
+from controllers.common.schema import register_schema_model
 from controllers.console.app.mcp_server import AppMCPServerStatus
 from controllers.mcp import mcp_ns
 from core.app.app_config.entities import VariableEntity
@@ -24,27 +25,19 @@ class MCPRequestError(Exception):
         super().__init__(message)
 
 
-def int_or_str(value):
-    """Validate that a value is either an integer or string."""
-    if isinstance(value, (int, str)):
-        return value
-    else:
-        return None
+class MCPRequestPayload(BaseModel):
+    jsonrpc: str = Field(description="JSON-RPC version (should be '2.0')")
+    method: str = Field(description="The method to invoke")
+    params: dict[str, Any] | None = Field(default=None, description="Parameters for the method")
+    id: int | str | None = Field(default=None, description="Request ID for tracking responses")
 
 
-# Define parser for both documentation and validation
-mcp_request_parser = (
-    reqparse.RequestParser()
-    .add_argument("jsonrpc", type=str, required=True, location="json", help="JSON-RPC version (should be '2.0')")
-    .add_argument("method", type=str, required=True, location="json", help="The method to invoke")
-    .add_argument("params", type=dict, required=False, location="json", help="Parameters for the method")
-    .add_argument("id", type=int_or_str, required=False, location="json", help="Request ID for tracking responses")
-)
+register_schema_model(mcp_ns, MCPRequestPayload)
 
 
 @mcp_ns.route("/server/<string:server_code>/mcp")
 class MCPAppApi(Resource):
-    @mcp_ns.expect(mcp_request_parser)
+    @mcp_ns.expect(mcp_ns.models[MCPRequestPayload.__name__])
     @mcp_ns.doc("handle_mcp_request")
     @mcp_ns.doc(description="Handle Model Context Protocol (MCP) requests for a specific server")
     @mcp_ns.doc(params={"server_code": "Unique identifier for the MCP server"})
@@ -70,9 +63,9 @@ class MCPAppApi(Resource):
         Raises:
             ValidationError: Invalid request format or parameters
         """
-        args = mcp_request_parser.parse_args()
-        request_id: Union[int, str] | None = args.get("id")
-        mcp_request = self._parse_mcp_request(args)
+        args = MCPRequestPayload.model_validate(mcp_ns.payload or {})
+        request_id: Union[int, str] | None = args.id
+        mcp_request = self._parse_mcp_request(args.model_dump(exclude_none=True))
 
         with Session(db.engine, expire_on_commit=False) as session:
             # Get MCP server and app
