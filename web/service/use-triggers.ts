@@ -25,6 +25,7 @@ const convertToTriggerWithProvider = (provider: TriggerProviderApiEntity): Trigg
     author: provider.author,
     description: provider.description,
     icon: provider.icon || '',
+    icon_dark: provider.icon_dark || '',
     label: provider.label,
     type: CollectionType.trigger,
     team_credentials: {},

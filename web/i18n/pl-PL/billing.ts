@@ -31,6 +31,7 @@ const translation = {
     vectorSpaceTooltip:
       'Przestrzeń wektorowa jest systemem pamięci długoterminowej wymaganym dla LLM, aby zrozumieć Twoje dane.',
     documentProcessingPriority: 'Priorytet przetwarzania dokumentów',
+    documentProcessingPriorityTip: 'Aby uzyskać wyższy priorytet przetwarzania dokumentów, zaktualizuj swój plan.',
     documentProcessingPriorityUpgrade:
       'Przetwarzaj więcej danych z większą dokładnością i w szybszym tempie.',
     priority: {
