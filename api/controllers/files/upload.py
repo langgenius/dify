@@ -1,40 +1,45 @@
 from mimetypes import guess_extension
 
-from flask_restx import Resource, reqparse
+from flask import request
+from flask_restx import Resource
 from flask_restx.api import HTTPStatus
+from pydantic import BaseModel, Field
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import Forbidden
 
 import services
-from controllers.common.errors import (
-    FileTooLargeError,
-    UnsupportedFileTypeError,
-)
-from controllers.console.wraps import setup_required
-from controllers.files import files_ns
-from controllers.inner_api.plugin.wraps import get_user
 from core.file.helpers import verify_plugin_file_signature
 from core.tools.tool_file_manager import ToolFileManager
 from fields.file_fields import build_file_model
 
-# Define parser for both documentation and validation
-upload_parser = (
-    reqparse.RequestParser()
-    .add_argument("file", location="files", type=FileStorage, required=True, help="File to upload")
-    .add_argument(
-        "timestamp", type=str, required=True, location="args", help="Unix timestamp for signature verification"
-    )
-    .add_argument("nonce", type=str, required=True, location="args", help="Random string for signature verification")
-    .add_argument("sign", type=str, required=True, location="args", help="HMAC signature for request validation")
-    .add_argument("tenant_id", type=str, required=True, location="args", help="Tenant identifier")
-    .add_argument("user_id", type=str, required=False, location="args", help="User identifier")
+from ..common.errors import (
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+)
+from ..console.wraps import setup_required
+from ..files import files_ns
+from ..inner_api.plugin.wraps import get_user
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class PluginUploadQuery(BaseModel):
+    timestamp: str = Field(..., description="Unix timestamp for signature verification")
+    nonce: str = Field(..., description="Random nonce for signature verification")
+    sign: str = Field(..., description="HMAC signature")
+    tenant_id: str = Field(..., description="Tenant identifier")
+    user_id: str | None = Field(default=None, description="User identifier")
+
+
+files_ns.schema_model(
+    PluginUploadQuery.__name__, PluginUploadQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
 )
 
 
 @files_ns.route("/upload/for-plugin")
 class PluginUploadFileApi(Resource):
     @setup_required
-    @files_ns.expect(upload_parser)
+    @files_ns.expect(files_ns.models[PluginUploadQuery.__name__])
     @files_ns.doc("upload_plugin_file")
     @files_ns.doc(description="Upload a file for plugin usage with signature verification")
     @files_ns.doc(
@@ -62,15 +67,17 @@ class PluginUploadFileApi(Resource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        # Parse and validate all arguments
-        args = upload_parser.parse_args()
+        args = PluginUploadQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        file: FileStorage = args["file"]
-        timestamp: str = args["timestamp"]
-        nonce: str = args["nonce"]
-        sign: str = args["sign"]
-        tenant_id: str = args["tenant_id"]
-        user_id: str | None = args.get("user_id")
+        file: FileStorage | None = request.files.get("file")
+        if file is None:
+            raise Forbidden("File is required.")
+
+        timestamp = args.timestamp
+        nonce = args.nonce
+        sign = args.sign
+        tenant_id = args.tenant_id
+        user_id = args.user_id
         user = get_user(tenant_id, user_id)
 
         filename: str | None = file.filename

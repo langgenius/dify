@@ -6,11 +6,14 @@ using the new Redis command channel, without requiring user permission checks.
 Supports stop, pause, and resume operations.
 """
 
+import logging
 from typing import final
 
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.entities.commands import AbortCommand, GraphEngineCommand, PauseCommand
 from extensions.ext_redis import redis_client
+
+logger = logging.getLogger(__name__)
 
 
 @final
@@ -57,4 +60,4 @@ class GraphEngineManager:
         except Exception:
             # Silently fail if Redis is unavailable
             # The legacy control mechanisms will still work
-            pass
+            logger.exception("Failed to send graph engine command %s for task %s", command.__class__.__name__, task_id)

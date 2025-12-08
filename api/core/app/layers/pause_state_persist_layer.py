@@ -118,6 +118,7 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
             workflow_run_id=workflow_run_id,
             state_owner_user_id=self._state_owner_user_id,
             state=state.dumps(),
+            pause_reasons=event.reasons,
         )
 
     def on_graph_end(self, error: Exception | None) -> None:

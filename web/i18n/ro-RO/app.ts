@@ -302,6 +302,8 @@ const translation = {
       docDesc: 'Deschide documentația de ajutor',
       communityDesc: 'Deschide comunitatea Discord',
       accountDesc: 'Navigați la pagina de cont',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: 'Nu s-au găsit aplicații',

@@ -28,10 +28,12 @@ const translation = {
       loading: 'Xử lý... Hãy chờ',
       error: 'Lỗi xảy ra trong quá trình thực thi',
       viewDetails: 'Xem chi tiết',
+      footerTip: 'Trong chế độ chạy thử, xem trước tối đa {{count}} phần',
     },
   },
   ragToolSuggestions: {
     title: 'Gợi ý cho RAG',
+    noRecommendationPlugins: 'Không có plugin được đề xuất, tìm thêm trong <CustomLink>Chợ</CustomLink>',
   },
 }
 

@@ -4,12 +4,12 @@ from collections.abc import Generator
 from typing import Any
 
 from flask import request
-from flask_restx import reqparse
-from flask_restx.reqparse import ParseResult, RequestParser
+from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
 import services
 from controllers.common.errors import FilenameNotExistsError, NoFileUploadedError, TooManyFilesError
+from controllers.common.schema import register_schema_model
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import PipelineRunError
 from controllers.service_api.wraps import DatasetApiResource
@@ -22,9 +22,23 @@ from models.dataset import Pipeline
 from models.engine import db
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 from services.file_service import FileService
-from services.rag_pipeline.entity.pipeline_service_api_entities import DatasourceNodeRunApiEntity
+from services.rag_pipeline.entity.pipeline_service_api_entities import (
+    DatasourceNodeRunApiEntity,
+    PipelineRunApiEntity,
+)
 from services.rag_pipeline.pipeline_generate_service import PipelineGenerateService
 from services.rag_pipeline.rag_pipeline import RagPipelineService
+
+
+class DatasourceNodeRunPayload(BaseModel):
+    inputs: dict[str, Any]
+    datasource_type: str
+    credential_id: str | None = None
+    is_published: bool
+
+
+register_schema_model(service_api_ns, DatasourceNodeRunPayload)
+register_schema_model(service_api_ns, PipelineRunApiEntity)
 
 
 @service_api_ns.route(f"/datasets/{uuid:dataset_id}/pipeline/datasource-plugins")
@@ -88,22 +102,20 @@ class DatasourceNodeRunApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
+    @service_api_ns.expect(service_api_ns.models[DatasourceNodeRunPayload.__name__])
     def post(self, tenant_id: str, dataset_id: str, node_id: str):
         """Resource for getting datasource plugins."""
-        # Get query parameter to determine published or draft
-        parser: RequestParser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("datasource_type", type=str, required=True, location="json")
-            .add_argument("credential_id", type=str, required=False, location="json")
-            .add_argument("is_published", type=bool, required=True, location="json")
-        )
-        args: ParseResult = parser.parse_args()
-
-        datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(args)
+        payload = DatasourceNodeRunPayload.model_validate(service_api_ns.payload or {})
         assert isinstance(current_user, Account)
         rag_pipeline_service: RagPipelineService = RagPipelineService()
         pipeline: Pipeline = rag_pipeline_service.get_pipeline(tenant_id=tenant_id, dataset_id=dataset_id)
+        datasource_node_run_api_entity = DatasourceNodeRunApiEntity.model_validate(
+            {
+                **payload.model_dump(exclude_none=True),
+                "pipeline_id": str(pipeline.id),
+                "node_id": node_id,
+            }
+        )
         return helper.compact_generate_response(
             PipelineGenerator.convert_to_event_stream(
                 rag_pipeline_service.run_datasource_workflow_node(
@@ -147,25 +159,10 @@ class PipelineRunApi(DatasetApiResource):
             401: "Unauthorized - invalid API token",
         }
     )
+    @service_api_ns.expect(service_api_ns.models[PipelineRunApiEntity.__name__])
     def post(self, tenant_id: str, dataset_id: str):
         """Resource for running a rag pipeline."""
-        parser: RequestParser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, nullable=False, location="json")
-            .add_argument("datasource_type", type=str, required=True, location="json")
-            .add_argument("datasource_info_list", type=list, required=True, location="json")
-            .add_argument("start_node_id", type=str, required=True, location="json")
-            .add_argument("is_published", type=bool, required=True, default=True, location="json")
-            .add_argument(
-                "response_mode",
-                type=str,
-                required=True,
-                choices=["streaming", "blocking"],
-                default="blocking",
-                location="json",
-            )
-        )
-        args: ParseResult = parser.parse_args()
+        payload = PipelineRunApiEntity.model_validate(service_api_ns.payload or {})
 
         if not isinstance(current_user, Account):
             raise Forbidden()
@@ -176,9 +173,9 @@ class PipelineRunApi(DatasetApiResource):
             response: dict[Any, Any] | Generator[str, Any, None] = PipelineGenerateService.generate(
                 pipeline=pipeline,
                 user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.PUBLISHED if args.get("is_published") else InvokeFrom.DEBUGGER,
-                streaming=args.get("response_mode") == "streaming",
+                args=payload.model_dump(),
+                invoke_from=InvokeFrom.PUBLISHED if payload.is_published else InvokeFrom.DEBUGGER,
+                streaming=payload.response_mode == "streaming",
             )
 
             return helper.compact_generate_response(response)

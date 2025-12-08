@@ -114,7 +114,11 @@ const translation = {
         },
       },
       launch: 'Баркас',
-      enableTooltip: {},
+      enableTooltip: {
+        description: 'Чтобы включить эту функцию, добавьте на холст узел ввода пользователя. (Может уже существовать в черновике, вступает в силу после публикации)',
+        learnMore: 'Узнать больше',
+      },
+      title: 'Веб-приложение',
     },
     apiInfo: {
       title: 'API серверной части',
@@ -126,7 +130,14 @@ const translation = {
       running: 'В работе',
       disable: 'Отключено',
     },
-    triggerInfo: {},
+    triggerInfo: {
+      title: 'Триггеры',
+      explanation: 'Управление триггерами рабочего процесса',
+      triggersAdded: 'Добавлены триггеры',
+      noTriggerAdded: 'Триггер не добавлен',
+      triggerStatusDescription: 'Статус узла триггера отображается здесь. (Может уже существовать в черновике, вступает в силу после публикации)',
+      learnAboutTriggers: 'Узнайте о триггерах',
+    },
     disableTooltip: {
       triggerMode: 'Функция {{feature}} не поддерживается в режиме узла триггера.',
     },

@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 
 import httpx
@@ -8,6 +9,7 @@ from core.helper.download import download_with_size_limit
 from core.plugin.entities.marketplace import MarketplacePluginDeclaration
 
 marketplace_api_url = URL(str(dify_config.MARKETPLACE_API_URL))
+logger = logging.getLogger(__name__)
 
 
 def get_plugin_pkg_url(plugin_unique_identifier: str) -> str:
@@ -55,7 +57,9 @@ def batch_fetch_plugin_manifests_ignore_deserialization_error(
         try:
             result.append(MarketplacePluginDeclaration.model_validate(plugin))
         except Exception:
-            pass
+            logger.exception(
+                "Failed to deserialize marketplace plugin manifest for %s", plugin.get("plugin_id", "unknown")
+            )
 
     return result
 

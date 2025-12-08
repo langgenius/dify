@@ -65,6 +65,12 @@ const translation = {
     no: 'Нет',
     deleteConfirmTitle: 'Удалить?',
     confirmAction: 'Пожалуйста, подтвердите ваше действие.',
+    noSearchResults: 'Ничего {{content}} не найдено',
+    resetKeywords: 'Сбросить ключевые слова',
+    selectCount: '{{count}} Выбран',
+    searchCount: 'Найти {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Сейчас',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',
@@ -73,6 +79,7 @@ const translation = {
   placeholder: {
     input: 'Пожалуйста, введите',
     select: 'Пожалуйста, выберите',
+    search: 'Поиск...',
   },
   voice: {
     language: {
@@ -768,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '(необязательно)',
+  },
+  noData: 'Нет данных',
+  dynamicSelect: {
+    error: 'Не удалось загрузить параметры',
+    noData: 'Нет доступных вариантов',
+    loading: 'Загрузка параметров...',
+    selected: '{{count}} выбрано',
   },
 }
 

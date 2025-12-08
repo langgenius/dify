@@ -106,7 +106,7 @@ jobs:
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run type-check
+        run: pnpm run type-check:tsgo
 
   docker-compose-template:
     name: Docker Compose Template
