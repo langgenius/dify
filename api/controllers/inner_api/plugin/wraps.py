@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from functools import wraps
-from typing import ParamSpec, TypeVar, cast, overload
+from typing import ParamSpec, TypeVar, overload
 
 from flask import current_app, request
 from flask_login import user_logged_in
