@@ -1,6 +1,5 @@
 import type { FC } from 'react'
-import { useRef, useState } from 'react'
-import { useMount } from 'ahooks'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
 import { RiCloseLine } from '@remixicon/react'
@@ -30,10 +29,10 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { useDocLink } from '@/context/i18n'
+import { useMembers } from '@/service/use-common'
 
 type SettingsModalProps = {
   currentDataset: DataSet
@@ -72,6 +71,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
+  const { data: membersData } = useMembers()
 
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
@@ -169,17 +169,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
     }
   }
 
-  const getMembers = async () => {
-    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-    if (!accounts)
+  useEffect(() => {
+    if (!membersData?.accounts)
       setMemberList([])
     else
-      setMemberList(accounts)
-  }
-
-  useMount(() => {
-    getMembers()
-  })
+      setMemberList(membersData.accounts)
+  }, [membersData])
 
   return (
     <div

@@ -7,13 +7,98 @@ import type {
 } from '@/models/common'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FileTypesRes } from './datasets'
+import type { ICurrentWorkspace, IWorkspace, UserProfileResponse } from '@/models/common'
+import type {
+  Model,
+  ModelProvider,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { RETRIEVE_METHOD } from '@/types/app'
+import type { LangGeniusVersionResponse } from '@/models/common'
+import type { PluginProvider } from '@/models/common'
+import type { ApiBasedExtension } from '@/models/common'
+import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const NAME_SPACE = 'common'
 
+const commonQueryKeys = {
+  fileUploadConfig: [NAME_SPACE, 'file-upload-config'] as const,
+  userProfile: [NAME_SPACE, 'user-profile'] as const,
+  currentWorkspace: [NAME_SPACE, 'current-workspace'] as const,
+  workspaces: [NAME_SPACE, 'workspaces'] as const,
+  members: (params?: Record<string, any>) => [NAME_SPACE, 'members', params] as const,
+  filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
+  schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
+  isLogin: [NAME_SPACE, 'is-login'] as const,
+  modelProviders: [NAME_SPACE, 'model-providers'] as const,
+  modelList: (type: ModelTypeEnum) => [NAME_SPACE, 'model-list', type] as const,
+  defaultModel: (type: ModelTypeEnum) => [NAME_SPACE, 'default-model', type] as const,
+  retrievalMethods: [NAME_SPACE, 'support-retrieval-methods'] as const,
+  accountIntegrates: [NAME_SPACE, 'account-integrates'] as const,
+  pluginProviders: [NAME_SPACE, 'plugin-providers'] as const,
+  notionConnection: [NAME_SPACE, 'notion-connection'] as const,
+  apiBasedExtensions: [NAME_SPACE, 'api-based-extensions'] as const,
+  invitationCheck: (params: Record<string, any>) => [NAME_SPACE, 'invitation-check', params] as const,
+  notionBinding: (code?: string | null) => [NAME_SPACE, 'notion-binding', code] as const,
+  modelParameterRules: (provider?: string, model?: string) => [NAME_SPACE, 'model-parameter-rules', provider, model] as const,
+  langGeniusVersion: (currentVersion?: string | null) => [NAME_SPACE, 'lang-genius-version', currentVersion] as const,
+}
+
 export const useFileUploadConfig = () => {
   return useQuery<FileUploadConfigResponse>({
-    queryKey: [NAME_SPACE, 'file-upload-config'],
+    queryKey: commonQueryKeys.fileUploadConfig,
     queryFn: () => get<FileUploadConfigResponse>('/files/upload'),
+  })
+}
+
+type UserProfileWithMeta = {
+  profile: UserProfileResponse
+  meta: {
+    currentVersion: string | null
+    currentEnv: string | null
+  }
+}
+
+export const useUserProfile = () => {
+  return useQuery<UserProfileWithMeta>({
+    queryKey: commonQueryKeys.userProfile,
+    queryFn: async () => {
+      const response = await get<Response>('/account/profile', {}, { needAllResponseContent: true }) as Response
+      const profile = await response.clone().json() as UserProfileResponse
+      return {
+        profile,
+        meta: {
+          currentVersion: response.headers.get('x-version'),
+          currentEnv: process.env.NODE_ENV === 'development'
+            ? 'DEVELOPMENT'
+            : response.headers.get('x-env'),
+        },
+      }
+    },
+    staleTime: 0,
+    gcTime: 0,
+  })
+}
+
+export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: boolean) => {
+  return useQuery<LangGeniusVersionResponse>({
+    queryKey: commonQueryKeys.langGeniusVersion(currentVersion || undefined),
+    queryFn: () => get<LangGeniusVersionResponse>('/version', { params: { current_version: currentVersion } }),
+    enabled: !!currentVersion && (enabled ?? true),
+  })
+}
+
+export const useCurrentWorkspace = () => {
+  return useQuery<ICurrentWorkspace>({
+    queryKey: commonQueryKeys.currentWorkspace,
+    queryFn: () => post<ICurrentWorkspace>('/workspaces/current', { body: {} }),
+  })
+}
+
+export const useWorkspaces = () => {
+  return useQuery<{ workspaces: IWorkspace[] }>({
+    queryKey: commonQueryKeys.workspaces,
+    queryFn: () => get<{ workspaces: IWorkspace[] }>('/workspaces'),
   })
 }
 
@@ -73,11 +158,12 @@ type MemberResponse = {
 }
 
 export const useMembers = () => {
-  return useQuery<MemberResponse>({
-    queryKey: [NAME_SPACE, 'members'],
-    queryFn: (params: Record<string, any>) => get<MemberResponse>('/workspaces/current/members', {
-      params,
-    }),
+  return useQuery<MemberResponse, Error, MemberResponse, ReturnType<typeof commonQueryKeys.members>>({
+    queryKey: commonQueryKeys.members({}),
+    queryFn: ({ queryKey }) => {
+      const [, , params] = queryKey
+      return get<MemberResponse>('/workspaces/current/members', { params })
+    },
   })
 }
 
@@ -87,7 +173,7 @@ type FilePreviewResponse = {
 
 export const useFilePreview = (fileID: string) => {
   return useQuery<FilePreviewResponse>({
-    queryKey: [NAME_SPACE, 'file-preview', fileID],
+    queryKey: commonQueryKeys.filePreview(fileID),
     queryFn: () => get<FilePreviewResponse>(`/files/${fileID}/preview`),
     enabled: !!fileID,
   })
@@ -102,7 +188,7 @@ export type SchemaTypeDefinition = {
 
 export const useSchemaTypeDefinitions = () => {
   return useQuery<SchemaTypeDefinition[]>({
-    queryKey: [NAME_SPACE, 'schema-type-definitions'],
+    queryKey: commonQueryKeys.schemaDefinitions,
     queryFn: () => get<SchemaTypeDefinition[]>('/spec/schema-definitions'),
   })
 }
@@ -113,7 +199,7 @@ type isLogin = {
 
 export const useIsLogin = () => {
   return useQuery<isLogin>({
-    queryKey: [NAME_SPACE, 'is-login'],
+    queryKey: commonQueryKeys.isLogin,
     staleTime: 0,
     gcTime: 0,
     queryFn: async (): Promise<isLogin> => {
@@ -136,5 +222,93 @@ export const useLogout = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
+  })
+}
+
+export const useModelProviders = () => {
+  return useQuery<{ data: ModelProvider[] }>({
+    queryKey: commonQueryKeys.modelProviders,
+    queryFn: () => get<{ data: ModelProvider[] }>('/workspaces/current/model-providers'),
+  })
+}
+
+export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
+  return useQuery<{ data: Model[] }>({
+    queryKey: commonQueryKeys.modelList(type),
+    queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
+    enabled,
+  })
+}
+
+export const useDefaultModelByType = (type: ModelTypeEnum, enabled = true) => {
+  return useQuery({
+    queryKey: commonQueryKeys.defaultModel(type),
+    queryFn: () => get(`/workspaces/current/default-model?model_type=${type}`),
+    enabled,
+  })
+}
+
+export const useSupportRetrievalMethods = () => {
+  return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
+    queryKey: commonQueryKeys.retrievalMethods,
+    queryFn: () => get<{ retrieval_method: RETRIEVE_METHOD[] }>('/datasets/retrieval-setting'),
+  })
+}
+
+export const useAccountIntegrates = () => {
+  return useQuery({
+    queryKey: commonQueryKeys.accountIntegrates,
+    queryFn: () => get<{ data: any[] | null }>('/account/integrates'),
+  })
+}
+
+export const usePluginProviders = () => {
+  return useQuery<PluginProvider[] | null>({
+    queryKey: commonQueryKeys.pluginProviders,
+    queryFn: () => get<PluginProvider[] | null>('/workspaces/current/tool-providers'),
+  })
+}
+
+export const useNotionConnection = (enabled: boolean) => {
+  return useQuery<{ data: string }>({
+    queryKey: commonQueryKeys.notionConnection,
+    queryFn: () => get<{ data: string }>('/oauth/data-source/notion'),
+    enabled,
+  })
+}
+
+export const useApiBasedExtensions = () => {
+  return useQuery<ApiBasedExtension[]>({
+    queryKey: commonQueryKeys.apiBasedExtensions,
+    queryFn: () => get<ApiBasedExtension[]>('/api-based-extension'),
+  })
+}
+
+export const useInvitationCheck = (params?: { workspace_id?: string; email?: string; token?: string }, enabled?: boolean) => {
+  return useQuery({
+    queryKey: commonQueryKeys.invitationCheck(params || {}),
+    queryFn: () => get<{
+      is_valid: boolean
+      data: { workspace_name: string; email: string; workspace_id: string }
+      result: string
+    }>('/activate/check', { params }),
+    enabled: enabled ?? !!params?.token,
+    retry: false,
+  })
+}
+
+export const useNotionBinding = (code?: string | null, enabled?: boolean) => {
+  return useQuery({
+    queryKey: commonQueryKeys.notionBinding(code),
+    queryFn: () => get<{ result: string }>('/oauth/data-source/binding/notion', { params: { code } }),
+    enabled: !!code && (enabled ?? true),
+  })
+}
+
+export const useModelParameterRules = (provider?: string, model?: string, enabled?: boolean) => {
+  return useQuery<{ data: ModelParameterRule[] }>({
+    queryKey: commonQueryKeys.modelParameterRules(provider, model),
+    queryFn: () => get<{ data: ModelParameterRule[] }>(`/workspaces/current/model-providers/${provider}/models/parameter-rules`, { params: { model } }),
+    enabled: !!provider && !!model && (enabled ?? true),
   })
 }

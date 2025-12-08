@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { produce } from 'immer'
 import { useContext } from 'use-context-selector'
 import { RiEqualizer2Line } from '@remixicon/react'
@@ -13,6 +12,7 @@ import { FeatureEnum } from '@/app/components/base/features/types'
 import { fetchCodeBasedExtensionList } from '@/service/common'
 import { useModalContext } from '@/context/modal-context'
 import I18n from '@/context/i18n'
+import { useQuery } from '@tanstack/react-query'
 
 type Props = {
   disabled?: boolean
@@ -28,10 +28,10 @@ const Moderation = ({
   const { locale } = useContext(I18n)
   const featuresStore = useFeaturesStore()
   const moderation = useFeatures(s => s.features.moderation)
-  const { data: codeBasedExtensionList } = useSWR(
-    '/code-based-extension?module=moderation',
-    fetchCodeBasedExtensionList,
-  )
+  const { data: codeBasedExtensionList } = useQuery({
+    queryKey: ['code-based-extension', 'moderation'],
+    queryFn: () => fetchCodeBasedExtensionList('/code-based-extension?module=moderation'),
+  })
   const [isHovering, setIsHovering] = useState(false)
 
   const handleOpenModerationSettingModal = () => {

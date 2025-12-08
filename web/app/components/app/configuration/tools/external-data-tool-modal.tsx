@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { useState } from 'react'
-import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
@@ -21,6 +20,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
+import { useQuery } from '@tanstack/react-query'
 
 const systemTypes = ['api']
 type ExternalDataToolModalProps = {
@@ -46,10 +46,10 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const { locale } = useContext(I18n)
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const { data: codeBasedExtensionList } = useSWR(
-    '/code-based-extension?module=external_data_tool',
-    fetchCodeBasedExtensionList,
-  )
+  const { data: codeBasedExtensionList } = useQuery({
+    queryKey: ['code-based-extension', 'external_data_tool'],
+    queryFn: () => fetchCodeBasedExtensionList('/code-based-extension?module=external_data_tool'),
+  })
 
   const providers: Provider[] = [
     {

@@ -3,10 +3,11 @@ import { useLanguage } from './hooks'
 import { useContext } from 'use-context-selector'
 import { after } from 'node:test'
 
-jest.mock('swr', () => ({
-  __esModule: true,
-  default: jest.fn(), // mock useSWR
-  useSWRConfig: jest.fn(),
+jest.mock('@tanstack/react-query', () => ({
+  useQuery: jest.fn(),
+  useQueryClient: jest.fn(() => ({
+    invalidateQueries: jest.fn(),
+  })),
 }))
 
 // mock use-context-selector

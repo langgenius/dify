@@ -1,8 +1,7 @@
 'use client'
 
 import { createContext, useContext } from 'use-context-selector'
-import useSWR from 'swr'
-import { fetchWorkspaces } from '@/service/common'
+import { useWorkspaces } from '@/service/use-common'
 import type { IWorkspace } from '@/models/common'
 
 export type WorkspacesContextValue = {
@@ -20,7 +19,7 @@ type IWorkspaceProviderProps = {
 export const WorkspaceProvider = ({
   children,
 }: IWorkspaceProviderProps) => {
-  const { data } = useSWR({ url: '/workspaces' }, fetchWorkspaces)
+  const { data } = useWorkspaces()
 
   return (
     <WorkspacesContext.Provider value={{
