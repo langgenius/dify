@@ -288,6 +288,13 @@ class RetrievalService:
                 documents = vector_processor.search_by_full_text(
                     cls.escape_query_for_search(query), top_k=top_k, document_ids_filter=document_ids_filter
                 )
+                # Set score to 0 for hybrid search results
+                # full-text search scores are not comparable with semantic search scores
+                # RerankRunner will calculate the score.
+                if retrieval_method == RetrievalMethod.HYBRID_SEARCH:
+                    for document in documents:
+                        if document.metadata is not None:
+                            document.metadata["score"] = 0
                 if documents:
                     if (
                         reranking_model
