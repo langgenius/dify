@@ -70,6 +70,13 @@ conversation_variables_parser = (
         location="args",
         help="Number of variables to return",
     )
+    .add_argument(
+        "variable_name",
+        type=str,
+        required=False,
+        location="args",
+        help="Filter variables by name (case-insensitive partial match)",
+    )
 )
 
 conversation_variable_update_parser = reqparse.RequestParser().add_argument(
@@ -215,7 +222,7 @@ class ConversationVariablesApi(Resource):
 
         try:
             return ConversationService.get_conversational_variable(
-                app_model, conversation_id, end_user, args["limit"], args["last_id"]
+                app_model, conversation_id, end_user, args["limit"], args["last_id"], args["variable_name"]
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
