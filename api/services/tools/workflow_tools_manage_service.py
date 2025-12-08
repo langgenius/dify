@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
@@ -18,6 +19,8 @@ from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.tools.tools_transform_service import ToolTransformService
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowToolManageService:
@@ -198,7 +201,7 @@ class WorkflowToolManageService:
                 tools.append(ToolTransformService.workflow_provider_to_controller(provider))
             except Exception:
                 # skip deleted tools
-                pass
+                logger.exception("Failed to load workflow tool provider %s", provider.id)
 
         labels = ToolLabelManager.get_tools_labels([t for t in tools if isinstance(t, ToolProviderController)])
 

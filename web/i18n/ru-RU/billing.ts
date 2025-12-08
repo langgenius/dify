@@ -30,6 +30,7 @@ const translation = {
     vectorSpace: 'Векторное пространство',
     vectorSpaceTooltip: 'Векторное пространство - это система долговременной памяти, необходимая LLM для понимания ваших данных.',
     documentProcessingPriority: 'Приоритет обработки документов',
+    documentProcessingPriorityTip: 'Для повышения приоритета обработки документов обновите свой план.',
     documentProcessingPriorityUpgrade: 'Обрабатывайте больше данных с большей точностью и на более высоких скоростях.',
     priority: {
       'standard': 'Стандартный',
