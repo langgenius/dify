@@ -496,12 +496,6 @@ const StepTwo = ({
       setDefaultConfig(data.rules)
       setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
     },
-    onError(error) {
-      Toast.notify({
-        type: 'error',
-        message: `${error}`,
-      })
-    },
   })
 
   const getRulesFromDetail = () => {
@@ -539,22 +533,8 @@ const StepTwo = ({
       setSegmentationType(documentDetail.dataset_process_rule.mode)
   }
 
-  const createFirstDocumentMutation = useCreateFirstDocument({
-    onError(error) {
-      Toast.notify({
-        type: 'error',
-        message: `${error}`,
-      })
-    },
-  })
-  const createDocumentMutation = useCreateDocument(datasetId!, {
-    onError(error) {
-      Toast.notify({
-        type: 'error',
-        message: `${error}`,
-      })
-    },
-  })
+  const createFirstDocumentMutation = useCreateFirstDocument()
+  const createDocumentMutation = useCreateDocument(datasetId!)
 
   const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
   const invalidDatasetList = useInvalidDatasetList()
