@@ -160,7 +160,7 @@ class WorkflowToolManageService:
         workflow_tool_provider.label = label
         workflow_tool_provider.icon = json.dumps(icon)
         workflow_tool_provider.description = description
-        workflow_tool_provider.parameter_configuration = json.dumps(obj=[p.model_dump() for p in parameters])
+        workflow_tool_provider.parameter_configuration = json.dumps([p.model_dump() for p in parameters])
         workflow_tool_provider.privacy_policy = privacy_policy
         workflow_tool_provider.version = workflow.version
         workflow_tool_provider.updated_at = datetime.now()
