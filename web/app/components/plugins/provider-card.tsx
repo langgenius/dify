@@ -63,7 +63,7 @@ const ProviderCard: FC<Props> = ({
         ))}
       </div>
       <div
-        className='absolute bottom-0 left-0 right-0 hidden items-center gap-2 rounded-xl bg-gradient-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-8 group-hover:flex'
+        className='absolute bottom-0 left-0 right-0 hidden items-center gap-2 rounded-xl bg-gradient-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent p-4 pt-4 group-hover:flex'
       >
         <Button
           className='grow'
