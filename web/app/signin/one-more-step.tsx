@@ -14,7 +14,6 @@ import { useDocLink } from '@/context/i18n'
 import { useOneMoreStep } from '@/service/use-common'
 
 type IState = {
-  formState: 'processing' | 'error' | 'success' | 'initial'
   invitation_code: string
   interface_language: string
   timezone: string
@@ -25,7 +24,6 @@ type IAction
   | { type: 'invitation_code', value: string }
   | { type: 'interface_language', value: string }
   | { type: 'timezone', value: string }
-  | { type: 'formState', value: 'processing' }
 
 const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
@@ -35,11 +33,8 @@ const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
       return { ...state, interface_language: action.value }
     case 'timezone':
       return { ...state, timezone: action.value }
-    case 'formState':
-      return { ...state, formState: action.value }
     case 'failed':
       return {
-        formState: 'initial',
         invitation_code: '',
         interface_language: 'en-US',
         timezone: 'Asia/Shanghai',
@@ -56,7 +51,6 @@ const OneMoreStep = () => {
   const searchParams = useSearchParams()
 
   const [state, dispatch] = useReducer(reducer, {
-    formState: 'initial',
     invitation_code: searchParams.get('invitation_code') || '',
     interface_language: 'en-US',
     timezone: 'Asia/Shanghai',
@@ -132,9 +126,10 @@ const OneMoreStep = () => {
             <Button
               variant='primary'
               className='w-full'
-              disabled={state.formState === 'processing' || isPending}
+              disabled={isPending}
               onClick={async () => {
-                dispatch({ type: 'formState', value: 'processing' })
+                if (isPending)
+                  return
                 try {
                   await submitOneMoreStep({
                     invitation_code: state.invitation_code,
