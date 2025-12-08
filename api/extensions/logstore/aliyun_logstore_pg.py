@@ -186,7 +186,7 @@ class AliyunLogStorePG:
         try:
             # Validate connection and get a fresh one if needed
             if not self._is_connection_valid(conn):
-                logger.warning("Connection is stale, marking as bad and getting a new one")
+                logger.debug("Connection is stale, marking as bad and getting a new one")
                 # Mark connection as bad and get a new one
                 self._pg_pool.putconn(conn, close=True)
                 conn = self._pg_pool.getconn()

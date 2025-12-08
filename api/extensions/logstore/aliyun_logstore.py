@@ -144,6 +144,7 @@ class AliyunLogStore:
         self.project_name: str = os.environ.get("ALIYUN_SLS_PROJECT_NAME", "")
         self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 90))
         self.log_enabled: bool = os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
+        self.pg_mode_enabled: bool = os.environ.get("LOGSTORE_PG_MODE_ENABLED", "true").lower() == "true"
 
         self.client = LogClient(endpoint, access_key_id, access_key_secret, auth_version=AUTH_VERSION_4, region=region)
 
@@ -154,11 +155,14 @@ class AliyunLogStore:
         enhanced_user_agent = f"Dify,Dify-{dify_version},{original_user_agent}"
         self.client.set_user_agent(enhanced_user_agent)
 
-        # Initialize PG connection pool (if region supports it)
-        self._pg_client = AliyunLogStorePG(access_key_id, access_key_secret, endpoint, self.project_name)
-        self._use_pg_protocol = self._pg_client.init_connection()
+        # Initialize PG connection pool (if PG mode is enabled and region supports it)
+        if self.pg_mode_enabled:
+            self._pg_client = AliyunLogStorePG(access_key_id, access_key_secret, endpoint, self.project_name)
+            self._use_pg_protocol = self._pg_client.init_connection()
+        else:
+            self._pg_client = None
+            self._use_pg_protocol = False
 
-        # Mark as initialized
         self.__class__._initialized = True
 
     @property
@@ -173,6 +177,38 @@ class AliyunLogStore:
         if not self.is_project_exist():
             self.create_project()
         self.create_logstore_if_not_exist()
+
+        # Check if scan_index is enabled for all logstores
+        # If any logstore has scan_index=false, disable PG protocol
+        if self._use_pg_protocol:
+            self._check_and_disable_pg_if_scan_index_disabled()
+
+    def _check_and_disable_pg_if_scan_index_disabled(self) -> None:
+        """
+        Check if scan_index is enabled for all logstores.
+        If any logstore has scan_index=false, disable PG protocol.
+
+        This is necessary because PG protocol requires scan_index to be enabled.
+        """
+        logstore_name_list = [
+            AliyunLogStore.workflow_execution_logstore,
+            AliyunLogStore.workflow_node_execution_logstore,
+        ]
+
+        for logstore_name in logstore_name_list:
+            existing_config = self.get_existing_index_config(logstore_name)
+            if existing_config and not existing_config.scan_index:
+                logger.info(
+                    "Logstore %s has scan_index=false, USE SDK mode for read/write operations. "
+                    "PG protocol requires scan_index to be enabled.",
+                    logstore_name,
+                )
+                self._use_pg_protocol = False
+                # Close PG connection if it was initialized
+                if self._pg_client:
+                    self._pg_client.close()
+                    self._pg_client = None
+                return
 
     def is_project_exist(self) -> bool:
         try:
@@ -455,8 +491,11 @@ class AliyunLogStore:
 
         # Create merged config
         # key_config_list should be a dict, not a list
+        # Preserve the original scan_index value - don't force it to True
         merged_config = IndexConfig(
-            line_config=existing_config.line_config or IndexLineConfig(), key_config_list=existing_keys, scan_index=True
+            line_config=existing_config.line_config or IndexLineConfig(),
+            key_config_list=existing_keys,
+            scan_index=existing_config.scan_index,
         )
 
         return merged_config, needs_update
