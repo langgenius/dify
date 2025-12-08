@@ -30,6 +30,7 @@ const translation = {
     vectorSpaceTooltip:
       '벡터 공간은 LLM 이 데이터를 이해하는 데 필요한 장기 기억 시스템입니다.',
     documentProcessingPriority: '문서 처리 우선순위',
+    documentProcessingPriorityTip: '더 높은 문서 처리 우선순위가 필요하면 플랜을 업그레이드하세요.',
     documentProcessingPriorityUpgrade:
       '더 높은 정확성과 빠른 속도로 데이터를 처리합니다.',
     priority: {

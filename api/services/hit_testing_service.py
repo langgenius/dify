@@ -112,8 +112,8 @@ class HitTestingService:
         dataset: Dataset,
         query: str,
         account: Account,
-        external_retrieval_model: dict,
-        metadata_filtering_conditions: dict,
+        external_retrieval_model: dict | None = None,
+        metadata_filtering_conditions: dict | None = None,
     ):
         if dataset.provider != "external":
             return {

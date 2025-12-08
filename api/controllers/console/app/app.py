@@ -31,7 +31,6 @@ from fields.app_fields import (
 from fields.workflow_fields import workflow_partial_fields as _workflow_partial_fields_dict
 from libs.helper import AppIconUrlField, TimestampField
 from libs.login import current_account_with_tenant, login_required
-from libs.validators import validate_description_length
 from models import App, Workflow
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
@@ -76,50 +75,29 @@ class AppListQuery(BaseModel):
 
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
-    description: str | None = Field(default=None, description="App description (max 400 chars)")
+    description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
-    @field_validator("description")
-    @classmethod
-    def validate_description(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_description_length(value)
-
 
 class UpdateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
-    description: str | None = Field(default=None, description="App description (max 400 chars)")
+    description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
     max_active_requests: int | None = Field(default=None, description="Maximum active requests")
 
-    @field_validator("description")
-    @classmethod
-    def validate_description(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_description_length(value)
-
 
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
-    description: str | None = Field(default=None, description="Description for the copied app")
+    description: str | None = Field(default=None, description="Description for the copied app", max_length=400)
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
-
-    @field_validator("description")
-    @classmethod
-    def validate_description(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_description_length(value)
 
 
 class AppExportQuery(BaseModel):
@@ -146,7 +124,14 @@ class AppApiStatusPayload(BaseModel):
 
 class AppTracePayload(BaseModel):
     enabled: bool = Field(..., description="Enable or disable tracing")
-    tracing_provider: str = Field(..., description="Tracing provider")
+    tracing_provider: str | None = Field(default=None, description="Tracing provider")
+
+    @field_validator("tracing_provider")
+    @classmethod
+    def validate_tracing_provider(cls, value: str | None, info) -> str | None:
+        if info.data.get("enabled") and not value:
+            raise ValueError("tracing_provider is required when enabled is True")
+        return value
 
 
 def reg(cls: type[BaseModel]):
@@ -324,10 +309,13 @@ class AppListApi(Resource):
                 NodeType.TRIGGER_PLUGIN,
             }
             for workflow in draft_workflows:
-                for _, node_data in workflow.walk_nodes():
-                    if node_data.get("type") in trigger_node_types:
-                        draft_trigger_app_ids.add(str(workflow.app_id))
-                        break
+                try:
+                    for _, node_data in workflow.walk_nodes():
+                        if node_data.get("type") in trigger_node_types:
+                            draft_trigger_app_ids.add(str(workflow.app_id))
+                            break
+                except Exception:
+                    continue
 
         for app in app_pagination.items:
             app.has_draft_trigger = str(app.id) in draft_trigger_app_ids
