@@ -82,7 +82,7 @@ class ConversationListApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = ConversationListQuery.model_validate(raw_args)
 
         try:
@@ -171,7 +171,7 @@ class ConversationRenameApi(WebApiResource):
         payload = ConversationRenamePayload.model_validate(web_ns.payload or {})
 
         try:
-            return ConversationService.rename(app_model, conversation_id, end_user, payload.name, payload.auto_generate)
+            return ConversationService.rename(app_model, conversation_id, end_user, payload.name, payload.auto_generate)  # type: ignore
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

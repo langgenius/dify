@@ -1,8 +1,11 @@
+from typing import Literal
+
 from flask import request
 from flask_restx import Resource, marshal_with
 from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from fields.tag_fields import dataset_tag_fields

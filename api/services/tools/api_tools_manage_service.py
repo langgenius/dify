@@ -247,14 +247,14 @@ class ApiToolManageService:
         credentials: dict,
         schema_type: str,
         schema: str,
-        privacy_policy: str,
+        privacy_policy: str | None,
         custom_disclaimer: str,
         labels: list[str],
     ):
         """
         update api tool provider
         """
-        if schema_type not in [member.value for member in ApiProviderSchemaType]:
+        if schema_type not in list(ApiProviderSchemaType):
             raise ValueError(f"invalid schema type {schema}")
 
         provider_name = provider_name.strip()

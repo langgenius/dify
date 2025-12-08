@@ -7,9 +7,7 @@ from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
 from controllers.common import fields
-from controllers.web import web_ns
-from controllers.web.error import AppUnavailableError
-from controllers.web.wraps import WebApiResource
+from controllers.common.schema import register_schema_models
 from core.app.app_config.common.parameters_mapping import get_parameters_from_feature_dict
 from libs.passport import PassportService
 from libs.token import extract_webapp_passport
@@ -19,6 +17,10 @@ from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
+from . import web_ns
+from .error import AppUnavailableError
+from .wraps import WebApiResource
+
 logger = logging.getLogger(__name__)
 
 
@@ -27,6 +29,9 @@ class AppAccessModeQuery(BaseModel):
 
     app_id: str | None = Field(default=None, alias="appId", description="Application ID")
     app_code: str | None = Field(default=None, alias="appCode", description="Application code")
+
+
+register_schema_models(web_ns, AppAccessModeQuery)
 
 
 @web_ns.route("/parameters")
@@ -99,7 +104,7 @@ class AppAccessMode(Resource):
         }
     )
     def get(self):
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         args = AppAccessModeQuery.model_validate(raw_args)
 
         features = FeatureService.get_system_features()
