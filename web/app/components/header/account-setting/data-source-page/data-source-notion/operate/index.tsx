@@ -1,7 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import {
   RiDeleteBinLine,
@@ -11,6 +10,7 @@ import {
 } from '@remixicon/react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
+import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import Toast from '@/app/components/base/toast'
 import cn from '@/utils/classnames'
 
@@ -26,15 +26,15 @@ export default function Operate({
   onAuthAgain,
 }: OperateProps) {
   const { t } = useTranslation()
-  const queryClient = useQueryClient()
   const router = useRouter()
+  const invalidateDataSourceListAuth = useInvalidDataSourceListAuth()
 
   const updateIntegrates = () => {
     Toast.notify({
       type: 'success',
       message: t('common.api.success'),
     })
-    queryClient.invalidateQueries({ queryKey: ['data-source-auth'] })
+    invalidateDataSourceListAuth()
     router.refresh()
   }
   const handleSync = async () => {
