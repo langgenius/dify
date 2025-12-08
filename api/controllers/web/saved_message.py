@@ -85,7 +85,7 @@ class SavedMessageListApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = SavedMessageListQuery.model_validate(raw_args)
 
         return SavedMessageService.pagination_by_last_id(app_model, end_user, query.last_id, query.limit)

@@ -18,8 +18,6 @@ from controllers.web.error import (
     ProviderQuotaExceededError,
     UnsupportedAudioTypeError,
 )
-from ..common import register_schema_models
-from controllers.web.wraps import WebApiResource
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
@@ -31,6 +29,9 @@ from services.errors.audio import (
     ProviderNotSupportSpeechToTextServiceError,
     UnsupportedAudioTypeServiceError,
 )
+
+from ..common.schema import register_schema_models
+from ..web.wraps import WebApiResource
 
 
 class TextToAudioPayload(BaseModel):
@@ -45,6 +46,7 @@ class TextToAudioPayload(BaseModel):
         if value is None:
             return value
         return uuid_value(value)
+
 
 register_schema_models(web_ns, TextToAudioPayload)
 

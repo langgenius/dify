@@ -24,6 +24,7 @@ from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
+from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 from extensions.ext_database import db
 from libs.helper import alphanumeric, uuid_value
 from libs.login import current_account_with_tenant, login_required
@@ -74,12 +75,12 @@ class BuiltinToolUpdatePayload(BaseModel):
 class ApiToolProviderBasePayload(BaseModel):
     credentials: dict[str, Any]
     schema_type: str
-    schema: str
+    schema_: str = Field(alias="schema")
     provider: str
     icon: dict[str, Any]
     privacy_policy: str | None = None
     labels: list[str] | None = None
-    custom_disclaimer: str | None = None
+    custom_disclaimer: str = ""
 
 
 class ApiToolProviderAddPayload(ApiToolProviderBasePayload):
@@ -110,7 +111,7 @@ class ApiToolProviderDeletePayload(BaseModel):
 
 
 class ApiToolSchemaPayload(BaseModel):
-    schema: str
+    schema_: str = Field(alias="schema")
 
 
 class ApiToolTestPayload(BaseModel):
@@ -119,7 +120,7 @@ class ApiToolTestPayload(BaseModel):
     credentials: dict[str, Any]
     parameters: dict[str, Any]
     schema_type: str
-    schema: str
+    schema_: str = Field(alias="schema")
 
 
 class WorkflowToolBasePayload(BaseModel):
@@ -127,7 +128,7 @@ class WorkflowToolBasePayload(BaseModel):
     label: str
     description: str
     icon: dict[str, Any]
-    parameters: list[dict[str, Any]]
+    parameters: list[WorkflowToolParameterConfiguration]
     privacy_policy: str | None = ""
     labels: list[str] | None = None
 
@@ -205,7 +206,7 @@ class MCPProviderBasePayload(BaseModel):
     name: str
     icon: str
     icon_type: str
-    icon_background: str | None = ""
+    icon_background: str = ""
     server_identifier: str
     configuration: dict[str, Any] | None = Field(default_factory=dict)
     headers: dict[str, Any] | None = Field(default_factory=dict)
@@ -266,10 +267,10 @@ class ToolProviderListApi(Resource):
 
         user_id = user.id
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = ToolProviderListQuery.model_validate(raw_args)
 
-        return ToolCommonService.list_tool_providers(user_id, tenant_id, query.type)
+        return ToolCommonService.list_tool_providers(user_id, tenant_id, query.type)  # type: ignore
 
 
 @console_ns.route("/workspaces/current/tool-provider/builtin/<path:provider>/tools")
@@ -411,7 +412,7 @@ class ToolApiProviderAddApi(Resource):
             payload.icon,
             payload.credentials,
             payload.schema_type,
-            payload.schema,
+            payload.schema_,
             payload.privacy_policy or "",
             payload.custom_disclaimer or "",
             payload.labels or [],
@@ -428,7 +429,7 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
 
         user_id = user.id
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = UrlQuery.model_validate(raw_args)
 
         return ApiToolManageService.get_api_tool_provider_remote_schema(
@@ -448,7 +449,7 @@ class ToolApiProviderListToolsApi(Resource):
 
         user_id = user.id
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = ProviderQuery.model_validate(raw_args)
 
         return jsonable_encoder(
@@ -482,7 +483,7 @@ class ToolApiProviderUpdateApi(Resource):
             payload.icon,
             payload.credentials,
             payload.schema_type,
-            payload.schema,
+            payload.schema_,
             payload.privacy_policy,
             payload.custom_disclaimer,
             payload.labels or [],
@@ -520,7 +521,7 @@ class ToolApiProviderGetApi(Resource):
 
         user_id = user.id
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = ProviderQuery.model_validate(raw_args)
 
         return ApiToolManageService.get_api_tool_provider(
@@ -555,7 +556,7 @@ class ToolApiProviderSchemaApi(Resource):
         payload = ApiToolSchemaPayload.model_validate(console_ns.payload or {})
 
         return ApiToolManageService.parser_api_schema(
-            schema=payload.schema,
+            schema=payload.schema_,
         )
 
 
@@ -575,7 +576,7 @@ class ToolApiProviderPreviousTestApi(Resource):
             payload.credentials,
             payload.parameters,
             payload.schema_type,
-            payload.schema,
+            payload.schema_,
         )
 
 
@@ -665,7 +666,7 @@ class ToolWorkflowProviderGetApi(Resource):
 
         user_id = user.id
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = WorkflowToolGetQuery.model_validate(raw_args)
 
         if query.workflow_tool_id:
@@ -696,7 +697,7 @@ class ToolWorkflowProviderListToolApi(Resource):
 
         user_id = user.id
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = WorkflowToolListQuery.model_validate(raw_args)
 
         return jsonable_encoder(
@@ -1155,7 +1156,7 @@ class ToolMCPUpdateApi(Resource):
 @console_ns.route("/mcp/oauth/callback")
 class ToolMCPCallbackApi(Resource):
     def get(self):
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = MCPCallbackQuery.model_validate(raw_args)
         state_key = query.state
         authorization_code = query.code

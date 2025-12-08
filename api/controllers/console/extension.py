@@ -3,14 +3,15 @@ from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field
 
 from constants import HIDDEN_VALUE
-from controllers.console import console_ns
-from controllers.common.schema import register_schema_models
-from controllers.console.wraps import account_initialization_required, setup_required
 from fields.api_based_extension_fields import api_based_extension_fields
 from libs.login import current_account_with_tenant, login_required
 from models.api_based_extension import APIBasedExtension
 from services.api_based_extension_service import APIBasedExtensionService
 from services.code_based_extension_service import CodeBasedExtensionService
+
+from ..common.schema import register_schema_models
+from . import console_ns
+from .wraps import account_initialization_required, setup_required
 
 
 class CodeBasedExtensionQuery(BaseModel):

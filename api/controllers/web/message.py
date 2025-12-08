@@ -108,7 +108,7 @@ class MessageListApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = MessageListQuery.model_validate(raw_args)
 
         try:
@@ -182,7 +182,7 @@ class MessageMoreLikeThisApi(WebApiResource):
 
         message_id = str(message_id)
 
-        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        raw_args = request.args.to_dict()
         query = MessageMoreLikeThisQuery.model_validate(raw_args)
 
         streaming = query.response_mode == "streaming"
