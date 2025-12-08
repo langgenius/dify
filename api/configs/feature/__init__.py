@@ -1221,7 +1221,6 @@ class SwaggerUIConfig(BaseSettings):
         default="/swagger-ui.html",
     )
 
-    @computed_field
     @property
     def swagger_ui_enabled(self) -> bool:
         """
