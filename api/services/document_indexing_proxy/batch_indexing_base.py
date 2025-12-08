@@ -66,15 +66,11 @@ class BatchDocumentIndexingProxy(DocumentTaskProxyBase):
                     )
                 ]
             )
-            logger.info(
-                "tenant %s push tasks: %s - %s", self._tenant_id, self._dataset_id, self._document_ids
-            )
+            logger.info("tenant %s push tasks: %s - %s", self._tenant_id, self._dataset_id, self._document_ids)
         else:
             # Set flag and execute task
             self._tenant_isolated_task_queue.set_task_waiting_time()
             task_func.delay(  # type: ignore
                 tenant_id=self._tenant_id, dataset_id=self._dataset_id, document_ids=self._document_ids
             )
-            logger.info(
-                "tenant %s init tasks: %s - %s", self._tenant_id, self._dataset_id, self._document_ids
-            )
+            logger.info("tenant %s init tasks: %s - %s", self._tenant_id, self._dataset_id, self._document_ids)

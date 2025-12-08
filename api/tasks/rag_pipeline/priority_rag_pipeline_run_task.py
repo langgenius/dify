@@ -47,9 +47,7 @@ def priority_rag_pipeline_run_task(
         )
         rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
 
-        logger.info(
-            "tenant %s received %d rag pipeline invoke entities", tenant_id, len(rag_pipeline_invoke_entities)
-        )
+        logger.info("tenant %s received %d rag pipeline invoke entities", tenant_id, len(rag_pipeline_invoke_entities))
 
         # Get Flask app object for thread context
         flask_app = current_app._get_current_object()  # type: ignore

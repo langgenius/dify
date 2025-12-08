@@ -44,8 +44,11 @@ def _duplicate_document_indexing_task_with_tenant_queue(
         _duplicate_document_indexing_task(dataset_id, document_ids)
     except Exception:
         logger.exception(
-            "Error processing duplicate document indexing %s for tenant %s: %s", dataset_id, tenant_id, document_ids,
-            exc_info=True
+            "Error processing duplicate document indexing %s for tenant %s: %s",
+            dataset_id,
+            tenant_id,
+            document_ids,
+            exc_info=True,
         )
     finally:
         tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "duplicate_document_indexing")

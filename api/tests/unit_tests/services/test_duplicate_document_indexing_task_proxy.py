@@ -361,4 +361,3 @@ class TestDuplicateDocumentIndexingTaskProxy:
 
         # Assert
         proxy._send_to_priority_tenant_queue.assert_called_once()
-

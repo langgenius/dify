@@ -115,8 +115,11 @@ def _document_indexing_with_tenant_queue(
         _document_indexing(dataset_id, document_ids)
     except Exception:
         logger.exception(
-            "Error processing document indexing %s for tenant %s: %s", dataset_id, tenant_id, document_ids,
-            exc_info=True
+            "Error processing document indexing %s for tenant %s: %s",
+            dataset_id,
+            tenant_id,
+            document_ids,
+            exc_info=True,
         )
     finally:
         tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
