@@ -1,7 +1,8 @@
 import logging
 
 from flask import request
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with
+from pydantic import BaseModel, ConfigDict, Field
 from werkzeug.exceptions import Unauthorized
 
 from constants import HEADER_NAME_APP_CODE
@@ -19,6 +20,13 @@ from services.feature_service import FeatureService
 from services.webapp_auth_service import WebAppAuthService
 
 logger = logging.getLogger(__name__)
+
+
+class AppAccessModeQuery(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    app_id: str | None = Field(default=None, alias="appId", description="Application ID")
+    app_code: str | None = Field(default=None, alias="appCode", description="Application code")
 
 
 @web_ns.route("/parameters")
@@ -82,12 +90,7 @@ class AppMeta(WebApiResource):
 class AppAccessMode(Resource):
     @web_ns.doc("Get App Access Mode")
     @web_ns.doc(description="Retrieve the access mode for a web application (public or restricted).")
-    @web_ns.doc(
-        params={
-            "appId": {"description": "Application ID", "type": "string", "required": False},
-            "appCode": {"description": "Application code", "type": "string", "required": False},
-        }
-    )
+    @web_ns.expect(web_ns.models[AppAccessModeQuery.__name__])
     @web_ns.doc(
         responses={
             200: "Success",
@@ -96,21 +99,16 @@ class AppAccessMode(Resource):
         }
     )
     def get(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("appId", type=str, required=False, location="args")
-            .add_argument("appCode", type=str, required=False, location="args")
-        )
-        args = parser.parse_args()
+        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        args = AppAccessModeQuery.model_validate(raw_args)
 
         features = FeatureService.get_system_features()
         if not features.webapp_auth.enabled:
             return {"accessMode": "public"}
 
-        app_id = args.get("appId")
-        if args.get("appCode"):
-            app_code = args["appCode"]
-            app_id = AppService.get_app_id_by_code(app_code)
+        app_id = args.app_id
+        if args.app_code:
+            app_id = AppService.get_app_id_by_code(args.app_code)
 
         if not app_id:
             raise ValueError("appId or appCode must be provided")

@@ -1,5 +1,6 @@
-from flask_restx import fields, marshal_with, reqparse
-from flask_restx.inputs import int_range
+from flask import request
+from flask_restx import fields, marshal_with
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import NotFound
 
 from controllers.web import web_ns
@@ -21,6 +22,27 @@ message_fields = {
     "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
     "created_at": TimestampField,
 }
+
+
+class SavedMessageListQuery(BaseModel):
+    last_id: str | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+
+    @field_validator("last_id")
+    @classmethod
+    def validate_last_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+class SavedMessageCreatePayload(BaseModel):
+    message_id: str
+
+    @field_validator("message_id")
+    @classmethod
+    def validate_message_id(cls, value: str) -> str:
+        return uuid_value(value)
 
 
 @web_ns.route("/saved-messages")
@@ -63,14 +85,10 @@ class SavedMessageListApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("last_id", type=uuid_value, location="args")
-            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        )
-        args = parser.parse_args()
+        raw_args = request.args.to_dict(flat=True)  # type: ignore[arg-type]
+        query = SavedMessageListQuery.model_validate(raw_args)
 
-        return SavedMessageService.pagination_by_last_id(app_model, end_user, args["last_id"], args["limit"])
+        return SavedMessageService.pagination_by_last_id(app_model, end_user, query.last_id, query.limit)
 
     @web_ns.doc("Save Message")
     @web_ns.doc(description="Save a specific message for later reference.")
@@ -94,11 +112,10 @@ class SavedMessageListApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        parser = reqparse.RequestParser().add_argument("message_id", type=uuid_value, required=True, location="json")
-        args = parser.parse_args()
+        payload = SavedMessageCreatePayload.model_validate(web_ns.payload or {})
 
         try:
-            SavedMessageService.save(app_model, end_user, args["message_id"])
+            SavedMessageService.save(app_model, end_user, payload.message_id)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
