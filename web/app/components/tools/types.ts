@@ -49,6 +49,7 @@ export type Collection = {
   author: string
   description: TypeWithI18N
   icon: string | Emoji
+  icon_dark?: string | Emoji
   label: TypeWithI18N
   type: CollectionType | string
   team_credentials: Record<string, any>
@@ -77,6 +78,8 @@ export type Collection = {
     timeout?: number
     sse_read_timeout?: number
   }
+  // Workflow
+  workflow_app_id?: string
 }
 
 export type ToolParameter = {
