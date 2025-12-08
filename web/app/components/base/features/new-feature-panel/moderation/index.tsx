@@ -9,10 +9,9 @@ import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
-import { fetchCodeBasedExtensionList } from '@/service/common'
 import { useModalContext } from '@/context/modal-context'
 import I18n from '@/context/i18n'
-import { useQuery } from '@tanstack/react-query'
+import { useCodeBasedExtensions } from '@/service/use-common'
 
 type Props = {
   disabled?: boolean
@@ -28,10 +27,7 @@ const Moderation = ({
   const { locale } = useContext(I18n)
   const featuresStore = useFeaturesStore()
   const moderation = useFeatures(s => s.features.moderation)
-  const { data: codeBasedExtensionList } = useQuery({
-    queryKey: ['code-based-extension', 'moderation'],
-    queryFn: () => fetchCodeBasedExtensionList('/code-based-extension?module=moderation'),
-  })
+  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
   const [isHovering, setIsHovering] = useState(false)
 
   const handleOpenModerationSettingModal = () => {

@@ -10,15 +10,13 @@ import { ToastContext } from '@/app/components/base/toast'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 
 import { upload } from '@/service/base'
-import { fetchSupportFileTypes } from '@/service/datasets'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { IS_CE_EDITION } from '@/config'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { useFileUploadConfig } from '@/service/use-common'
-import { useQuery } from '@tanstack/react-query'
+import { useFileSupportTypes, useFileUploadConfig } from '@/service/use-common'
 
 type IFileUploaderProps = {
   fileList: FileItem[]
@@ -49,10 +47,7 @@ const FileUploader = ({
   const hideUpload = notSupportBatchUpload && fileList.length > 0
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
-  const { data: supportFileTypesResponse } = useQuery({
-    queryKey: ['files', 'support-type'],
-    queryFn: () => fetchSupportFileTypes({ url: '/files/support-type' }),
-  })
+  const { data: supportFileTypesResponse } = useFileSupportTypes()
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []
   const supportTypesShowNames = (() => {
     const extensionMap: { [key: string]: string } = {

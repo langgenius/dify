@@ -12,9 +12,6 @@ import Divider from '@/app/components/base/divider'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { useToastContext } from '@/app/components/base/toast'
-import {
-  fetchCodeBasedExtensionList,
-} from '@/service/common'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -25,8 +22,7 @@ import cn from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { useModelProviders } from '@/service/use-common'
-import { useQuery } from '@tanstack/react-query'
+import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
 
 const systemTypes = ['openai_moderation', 'keywords', 'api']
 
@@ -62,10 +58,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       },
     })
   }
-  const { data: codeBasedExtensionList } = useQuery({
-    queryKey: ['code-based-extension', 'moderation'],
-    queryFn: () => fetchCodeBasedExtensionList('/code-based-extension?module=moderation'),
-  })
+  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
   const openaiProvider = modelProviders?.data.find(item => item.provider === 'langgenius/openai/openai')
   const systemOpenaiProviderEnabled = openaiProvider?.system_configuration.enabled
   const systemOpenaiProviderQuota = systemOpenaiProviderEnabled ? openaiProvider?.system_configuration.quota_configurations.find(item => item.quota_type === openaiProvider.system_configuration.current_quota_type) : undefined

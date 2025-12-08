@@ -8,7 +8,6 @@ import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import { fetchCodeBasedExtensionList } from '@/service/common'
 import { SimpleSelect } from '@/app/components/base/select'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -20,7 +19,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
-import { useQuery } from '@tanstack/react-query'
+import { useCodeBasedExtensions } from '@/service/use-common'
 
 const systemTypes = ['api']
 type ExternalDataToolModalProps = {
@@ -46,10 +45,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const { locale } = useContext(I18n)
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const { data: codeBasedExtensionList } = useQuery({
-    queryKey: ['code-based-extension', 'external_data_tool'],
-    queryFn: () => fetchCodeBasedExtensionList('/code-based-extension?module=external_data_tool'),
-  })
+  const { data: codeBasedExtensionList } = useCodeBasedExtensions('external_data_tool')
 
   const providers: Provider[] = [
     {

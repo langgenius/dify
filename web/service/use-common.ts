@@ -19,6 +19,7 @@ import type { LangGeniusVersionResponse } from '@/models/common'
 import type { PluginProvider } from '@/models/common'
 import type { ApiBasedExtension } from '@/models/common'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { CodeBasedExtension } from '@/models/common'
 
 const NAME_SPACE = 'common'
 
@@ -39,6 +40,7 @@ export const commonQueryKeys = {
   pluginProviders: [NAME_SPACE, 'plugin-providers'] as const,
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   apiBasedExtensions: [NAME_SPACE, 'api-based-extensions'] as const,
+  codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
   invitationCheck: (params: Record<string, any>) => [NAME_SPACE, 'invitation-check', params] as const,
   notionBinding: (code?: string | null) => [NAME_SPACE, 'notion-binding', code] as const,
   modelParameterRules: (provider?: string, model?: string) => [NAME_SPACE, 'model-parameter-rules', provider, model] as const,
@@ -290,6 +292,13 @@ export const usePluginProviders = () => {
   return useQuery<PluginProvider[] | null>({
     queryKey: commonQueryKeys.pluginProviders,
     queryFn: () => get<PluginProvider[] | null>('/workspaces/current/tool-providers'),
+  })
+}
+
+export const useCodeBasedExtensions = (module: string) => {
+  return useQuery<CodeBasedExtension>({
+    queryKey: commonQueryKeys.codeBasedExtensions(module),
+    queryFn: () => get<CodeBasedExtension>(`/code-based-extension?module=${module}`),
   })
 }
 
