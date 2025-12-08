@@ -521,4 +521,4 @@ class TencentDataTrace(BaseTraceInstance):
             if hasattr(self, "trace_client"):
                 self.trace_client.shutdown()
         except Exception:
-            pass
+            logger.exception("[Tencent APM] Failed to shutdown trace client during cleanup")
