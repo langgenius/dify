@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AppUnavailableError,
@@ -62,6 +63,9 @@ class ChatMessagePayload(BaseModel):
         if value is None:
             return value
         return uuid_value(value)
+
+
+register_schema_models(web_ns, CompletionMessagePayload, ChatMessagePayload)
 
 
 # define completion api for user
