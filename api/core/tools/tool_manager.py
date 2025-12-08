@@ -742,8 +742,8 @@ class ToolManager:
                         workflow_provider_controllers.append(workflow_controller)
                     except Exception:
                         # app has been deleted
+                        logger.exception("Failed to transform workflow provider %s to controller", workflow_provider.id)
                         continue
-
                 # Batch get labels for workflow providers
                 if workflow_provider_controllers:
                     workflow_controllers: list[ToolProviderController] = [
