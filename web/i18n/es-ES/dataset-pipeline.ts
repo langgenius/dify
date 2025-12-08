@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'Publicación de Knowledge Pipeline',
+      tip: '<CustomLink>Ve a Documentos</CustomLink> para agregar o gestionar documentos.',
     },
     error: {
       message: 'No se pudo publicar la canalización de conocimiento',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'Structure',
     structureTooltip: 'La estructura de fragmentos determina cómo se dividen e indexan los documentos, ofreciendo modos General, Principal-Secundario y Preguntas y respuestas, y es única para cada base de conocimiento.',
+    createdBy: 'Por {{author}}',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: 'Caracteres',
     title: 'Agregar documentos',
     backToDataSource: 'Fuente de datos',
+    selectOnlineDocumentTip: 'Procesar hasta {{count}} páginas',
+    selectOnlineDriveTip: 'Procesar hasta {{count}} archivos, máximo {{fileSize}} MB cada uno',
   },
   documentSettings: {
     title: 'Parametrizaciones de documentos',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} páginas',
+  },
   onlineDrive: {
     breadcrumbs: {
       allBuckets: 'Todos los depósitos de Cloud Storage',
       allFiles: 'Todos los archivos',
       searchPlaceholder: 'Buscar archivos...',
+      searchResult: 'Encontrar {{searchResultsLength}} elementos en la carpeta "{{folderName}}"',
     },
     emptySearchResult: 'No se encontraron artículos',
     resetKeywords: 'Restablecer palabras clave',
     emptyFolder: 'Esta carpeta está vacía',
     notSupportedFileType: 'Este tipo de archivo no es compatible',
+    notConnected: '{{name}} no está conectado',
+    notConnectedTip: 'Para sincronizar con {{name}}, primero se debe establecer conexión con {{name}}.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}} de {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'Confirmación',
@@ -149,6 +160,7 @@ const translation = {
   pipelineNameAndIcon: 'Nombre e icono de la tubería',
   knowledgePermissions: 'Permisos',
   editPipelineInfo: 'Editar información de canalización',
+  configurationTip: 'Configurar {{pluginName}}',
 }
 
 export default translation

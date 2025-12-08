@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: '지식 파이프라인 게시',
+      tip: '<CustomLink>문서</CustomLink>로 이동하여 문서를 추가하거나 관리하세요.',
     },
     error: {
       message: '지식 파이프라인 게시 실패',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: '구조',
     structureTooltip: '청크 구조는 문서를 분할하고 인덱싱하는 방법(일반, 부모-자식 및 Q&A 모드를 제공)을 결정하며 각 기술 자료에 고유합니다.',
+    createdBy: '{{author}} 작성',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     characters: '문자',
     backToDataSource: '데이터 소스',
     title: '문서 추가',
+    selectOnlineDocumentTip: '{{count}}페이지까지 처리',
+    selectOnlineDriveTip: '최대 {{fileSize}}MB 크기의 파일 {{count}}개까지 처리',
   },
   documentSettings: {
     title: '문서 설정',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} 페이지',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: '모든 파일',
       allBuckets: '모든 Cloud Storage 버킷',
       searchPlaceholder: '파일 검색...',
+      searchResult: '{{folderName}} 폴더에서 {{searchResultsLength}}개의 항목 찾기',
     },
     emptySearchResult: '항목을 찾을 수 없습니다.',
     emptyFolder: '이 폴더는 비어 있습니다.',
     resetKeywords: '키워드 재설정',
     notSupportedFileType: '이 파일 형식은 지원되지 않습니다',
+    notConnected: '{{name}}가 연결되어 있지 않습니다',
+    notConnectedTip: '{{name}}와(과) 동기화하려면 먼저 {{name}}에 연결해야 합니다.',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}}의 {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: '확인',
@@ -149,6 +160,7 @@ const translation = {
   editPipelineInfo: '파이프라인 정보 편집',
   knowledgeNameAndIconPlaceholder: '기술 자료의 이름을 입력하십시오.',
   knowledgeDescriptionPlaceholder: '이 기술 자료에 포함된 내용을 설명하십시오. 자세한 설명을 통해 AI는 데이터 세트의 콘텐츠에 보다 정확하게 액세스할 수 있습니다. 비어 있으면 Dify는 기본 히트 전략을 사용합니다. (선택 사항)',
+  configurationTip: '{{pluginName}} 구성',
 }
 
 export default translation

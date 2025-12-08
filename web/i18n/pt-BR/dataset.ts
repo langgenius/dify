@@ -35,8 +35,6 @@ const translation = {
       recommend: 'Recomendar',
     },
     invertedIndex: {
-      title: 'Índice Invertido',
-      description: 'O Índice Invertido é uma estrutura usada para recuperação eficiente. Organizado por termos, cada termo aponta para documentos ou páginas da web que o contêm.',
     },
     change: 'Alterar',
     changeRetrievalMethod: 'Alterar método de recuperação',
@@ -236,6 +234,10 @@ const translation = {
     title: 'API de Serviço',
     disabled: 'Desativado',
   },
+  docAllEnabled_one: '{{count}} documento habilitado',
+  docAllEnabled_other: 'Todos os documentos {{count}} ativados',
+  partialEnabled_one: 'Total de {{count}} documentos, {{num}} disponíveis',
+  partialEnabled_other: 'Total de {{count}} documentos, {{num}} disponíveis',
 }
 
 export default translation

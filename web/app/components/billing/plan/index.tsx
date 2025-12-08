@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   RiBook2Line,
   RiFileEditLine,
@@ -25,6 +25,8 @@ import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/con
 import { useEducationVerify } from '@/service/use-education'
 import { useModalContextSelector } from '@/context/modal-context'
 import { Enterprise, Professional, Sandbox, Team } from './assets'
+import { Loading } from '../../base/icons/src/public/thought'
+import { useUnmountedRef } from 'ahooks'
 
 type Props = {
   loc: string
@@ -35,6 +37,7 @@ const PlanComp: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const router = useRouter()
+  const path = usePathname()
   const { userProfile } = useAppContext()
   const { plan, enableEducationPlan, allowRefreshEducationVerify, isEducationAccount } = useProviderContext()
   const isAboutToExpire = allowRefreshEducationVerify
@@ -61,17 +64,24 @@ const PlanComp: FC<Props> = ({
   })()
 
   const [showModal, setShowModal] = React.useState(false)
-  const { mutateAsync } = useEducationVerify()
+  const { mutateAsync, isPending } = useEducationVerify()
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
+  const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
+    if (isPending) return
     mutateAsync().then((res) => {
       localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
+      if (unmountedRef.current) return
       router.push(`/education-apply?token=${res.token}`)
-      setShowAccountSettingModal(null)
     }).catch(() => {
       setShowModal(true)
     })
   }
+  useEffect(() => {
+    // setShowAccountSettingModal would prevent navigation
+    if (path.startsWith('/education-apply'))
+      setShowAccountSettingModal(null)
+  }, [path, setShowAccountSettingModal])
   return (
     <div className='relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn'>
       <div className='p-6 pb-2'>
@@ -96,9 +106,10 @@ const PlanComp: FC<Props> = ({
           </div>
           <div className='flex shrink-0 items-center gap-1'>
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
-              <Button variant='ghost' onClick={handleVerify}>
+              <Button variant='ghost' onClick={handleVerify} disabled={isPending} >
                 <RiGraduationCapLine className='mr-1 h-4 w-4' />
                 {t('education.toVerified')}
+                {isPending && <Loading className='ml-1 animate-spin-slow' />}
               </Button>
             )}
             {(plan.type as any) !== SelfHostedPlan.enterprise && (

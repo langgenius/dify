@@ -22,5 +22,6 @@ export type ToolNodeType = CommonNodeType & {
   params?: Record<string, any>
   plugin_id?: string
   provider_icon?: Collection['icon']
+  provider_icon_dark?: Collection['icon_dark']
   plugin_unique_identifier?: string
 }

@@ -74,8 +74,8 @@ const translation = {
       moreThanMaxLengthLine: 'Fila {{rowIndex}}: el valor de {{varName}} no puede tener más de {{maxLength}} caracteres',
       atLeastOne: 'Por favor, ingresa al menos una fila en el archivo cargado.',
     },
-    execution: 'EJECUCIÓN',
-    executions: '{{num}} EJECUCIONES',
+    execution: 'Ejecutar',
+    executions: '{{num}} ejecuciones',
     stopRun: 'Detener ejecución',
   },
   login: {

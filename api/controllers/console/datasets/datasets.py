@@ -1,14 +1,19 @@
 from typing import Any, cast
 
 from flask import request
-from flask_restx import Resource, fields, marshal, marshal_with, reqparse
+from flask_restx import Resource, fields, marshal, marshal_with
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
 from configs import dify_config
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
-from controllers.console.apikey import api_key_fields, api_key_list
+from controllers.console.apikey import (
+    api_key_item_model,
+    api_key_list_model,
+)
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
 from controllers.console.wraps import (
@@ -27,21 +32,150 @@ from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting, NotionInfo, WebsiteInfo
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from fields.app_fields import related_app_list
-from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
+from fields.app_fields import app_detail_kernel_fields, related_app_list
+from fields.dataset_fields import (
+    dataset_detail_fields,
+    dataset_fields,
+    dataset_query_detail_fields,
+    dataset_retrieval_model_fields,
+    doc_metadata_fields,
+    external_knowledge_info_fields,
+    external_retrieval_model_fields,
+    icon_info_fields,
+    keyword_setting_fields,
+    reranking_model_fields,
+    tag_fields,
+    vector_setting_fields,
+    weighted_score_fields,
+)
 from fields.document_fields import document_status_fields
 from libs.login import current_account_with_tenant, login_required
-from libs.validators import validate_description_length
 from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
 from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 
-def _validate_name(name: str) -> str:
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
+def _get_or_create_model(model_name: str, field_def):
+    existing = console_ns.models.get(model_name)
+    if existing is None:
+        existing = console_ns.model(model_name, field_def)
+    return existing
+
+
+# Register models for flask_restx to avoid dict type issues in Swagger
+dataset_base_model = _get_or_create_model("DatasetBase", dataset_fields)
+
+tag_model = _get_or_create_model("Tag", tag_fields)
+
+keyword_setting_model = _get_or_create_model("DatasetKeywordSetting", keyword_setting_fields)
+vector_setting_model = _get_or_create_model("DatasetVectorSetting", vector_setting_fields)
+
+weighted_score_fields_copy = weighted_score_fields.copy()
+weighted_score_fields_copy["keyword_setting"] = fields.Nested(keyword_setting_model)
+weighted_score_fields_copy["vector_setting"] = fields.Nested(vector_setting_model)
+weighted_score_model = _get_or_create_model("DatasetWeightedScore", weighted_score_fields_copy)
+
+reranking_model = _get_or_create_model("DatasetRerankingModel", reranking_model_fields)
+
+dataset_retrieval_model_fields_copy = dataset_retrieval_model_fields.copy()
+dataset_retrieval_model_fields_copy["reranking_model"] = fields.Nested(reranking_model)
+dataset_retrieval_model_fields_copy["weights"] = fields.Nested(weighted_score_model, allow_null=True)
+dataset_retrieval_model = _get_or_create_model("DatasetRetrievalModel", dataset_retrieval_model_fields_copy)
+
+external_knowledge_info_model = _get_or_create_model("ExternalKnowledgeInfo", external_knowledge_info_fields)
+
+external_retrieval_model = _get_or_create_model("ExternalRetrievalModel", external_retrieval_model_fields)
+
+doc_metadata_model = _get_or_create_model("DatasetDocMetadata", doc_metadata_fields)
+
+icon_info_model = _get_or_create_model("DatasetIconInfo", icon_info_fields)
+
+dataset_detail_fields_copy = dataset_detail_fields.copy()
+dataset_detail_fields_copy["retrieval_model_dict"] = fields.Nested(dataset_retrieval_model)
+dataset_detail_fields_copy["tags"] = fields.List(fields.Nested(tag_model))
+dataset_detail_fields_copy["external_knowledge_info"] = fields.Nested(external_knowledge_info_model)
+dataset_detail_fields_copy["external_retrieval_model"] = fields.Nested(external_retrieval_model, allow_null=True)
+dataset_detail_fields_copy["doc_metadata"] = fields.List(fields.Nested(doc_metadata_model))
+dataset_detail_fields_copy["icon_info"] = fields.Nested(icon_info_model)
+dataset_detail_model = _get_or_create_model("DatasetDetail", dataset_detail_fields_copy)
+
+dataset_query_detail_model = _get_or_create_model("DatasetQueryDetail", dataset_query_detail_fields)
+
+app_detail_kernel_model = _get_or_create_model("AppDetailKernel", app_detail_kernel_fields)
+related_app_list_copy = related_app_list.copy()
+related_app_list_copy["data"] = fields.List(fields.Nested(app_detail_kernel_model))
+related_app_list_model = _get_or_create_model("RelatedAppList", related_app_list_copy)
+
+
+def _validate_indexing_technique(value: str | None) -> str | None:
+    if value is None:
+        return value
+    if value not in Dataset.INDEXING_TECHNIQUE_LIST:
+        raise ValueError("Invalid indexing technique.")
+    return value
+
+
+class DatasetCreatePayload(BaseModel):
+    name: str = Field(..., min_length=1, max_length=40)
+    description: str = Field("", max_length=400)
+    indexing_technique: str | None = None
+    permission: DatasetPermissionEnum | None = DatasetPermissionEnum.ONLY_ME
+    provider: str = "vendor"
+    external_knowledge_api_id: str | None = None
+    external_knowledge_id: str | None = None
+
+    @field_validator("indexing_technique")
+    @classmethod
+    def validate_indexing(cls, value: str | None) -> str | None:
+        return _validate_indexing_technique(value)
+
+    @field_validator("provider")
+    @classmethod
+    def validate_provider(cls, value: str) -> str:
+        if value not in Dataset.PROVIDER_LIST:
+            raise ValueError("Invalid provider.")
+        return value
+
+
+class DatasetUpdatePayload(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=40)
+    description: str | None = Field(None, max_length=400)
+    permission: DatasetPermissionEnum | None = None
+    indexing_technique: str | None = None
+    embedding_model: str | None = None
+    embedding_model_provider: str | None = None
+    retrieval_model: dict[str, Any] | None = None
+    partial_member_list: list[str] | None = None
+    external_retrieval_model: dict[str, Any] | None = None
+    external_knowledge_id: str | None = None
+    external_knowledge_api_id: str | None = None
+    icon_info: dict[str, Any] | None = None
+
+    @field_validator("indexing_technique")
+    @classmethod
+    def validate_indexing(cls, value: str | None) -> str | None:
+        return _validate_indexing_technique(value)
+
+
+class IndexingEstimatePayload(BaseModel):
+    info_list: dict[str, Any]
+    process_rule: dict[str, Any]
+    indexing_technique: str
+    doc_form: str = "text_model"
+    dataset_id: str | None = None
+    doc_language: str = "English"
+
+    @field_validator("indexing_technique")
+    @classmethod
+    def validate_indexing(cls, value: str) -> str:
+        result = _validate_indexing_technique(value)
+        if result is None:
+            raise ValueError("indexing_technique is required.")
+        return result
+
+
+register_schema_models(console_ns, DatasetCreatePayload, DatasetUpdatePayload, IndexingEstimatePayload)
 
 
 def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool = False) -> dict[str, list[str]]:
@@ -186,20 +320,7 @@ class DatasetListApi(Resource):
 
     @console_ns.doc("create_dataset")
     @console_ns.doc(description="Create a new dataset")
-    @console_ns.expect(
-        console_ns.model(
-            "CreateDatasetRequest",
-            {
-                "name": fields.String(required=True, description="Dataset name (1-40 characters)"),
-                "description": fields.String(description="Dataset description (max 400 characters)"),
-                "indexing_technique": fields.String(description="Indexing technique"),
-                "permission": fields.String(description="Dataset permission"),
-                "provider": fields.String(description="Provider"),
-                "external_knowledge_api_id": fields.String(description="External knowledge API ID"),
-                "external_knowledge_id": fields.String(description="External knowledge ID"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[DatasetCreatePayload.__name__])
     @console_ns.response(201, "Dataset created successfully")
     @console_ns.response(400, "Invalid request parameters")
     @setup_required
@@ -207,52 +328,7 @@ class DatasetListApi(Resource):
     @account_initialization_required
     @cloud_edition_billing_rate_limit_check("knowledge")
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "name",
-                nullable=False,
-                required=True,
-                help="type is required. Name must be between 1 to 40 characters.",
-                type=_validate_name,
-            )
-            .add_argument(
-                "description",
-                type=validate_description_length,
-                nullable=True,
-                required=False,
-                default="",
-            )
-            .add_argument(
-                "indexing_technique",
-                type=str,
-                location="json",
-                choices=Dataset.INDEXING_TECHNIQUE_LIST,
-                nullable=True,
-                help="Invalid indexing technique.",
-            )
-            .add_argument(
-                "external_knowledge_api_id",
-                type=str,
-                nullable=True,
-                required=False,
-            )
-            .add_argument(
-                "provider",
-                type=str,
-                nullable=True,
-                choices=Dataset.PROVIDER_LIST,
-                required=False,
-                default="vendor",
-            )
-            .add_argument(
-                "external_knowledge_id",
-                type=str,
-                nullable=True,
-                required=False,
-            )
-        )
-        args = parser.parse_args()
+        payload = DatasetCreatePayload.model_validate(console_ns.payload or {})
         current_user, current_tenant_id = current_account_with_tenant()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
@@ -262,14 +338,14 @@ class DatasetListApi(Resource):
         try:
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=current_tenant_id,
-                name=args["name"],
-                description=args["description"],
-                indexing_technique=args["indexing_technique"],
+                name=payload.name,
+                description=payload.description,
+                indexing_technique=payload.indexing_technique,
                 account=current_user,
-                permission=DatasetPermissionEnum.ONLY_ME,
-                provider=args["provider"],
-                external_knowledge_api_id=args["external_knowledge_api_id"],
-                external_knowledge_id=args["external_knowledge_id"],
+                permission=payload.permission or DatasetPermissionEnum.ONLY_ME,
+                provider=payload.provider,
+                external_knowledge_api_id=payload.external_knowledge_api_id,
+                external_knowledge_id=payload.external_knowledge_id,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -282,7 +358,7 @@ class DatasetApi(Resource):
     @console_ns.doc("get_dataset")
     @console_ns.doc(description="Get dataset details")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Dataset retrieved successfully", dataset_detail_fields)
+    @console_ns.response(200, "Dataset retrieved successfully", dataset_detail_model)
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
@@ -330,19 +406,8 @@ class DatasetApi(Resource):
 
     @console_ns.doc("update_dataset")
     @console_ns.doc(description="Update dataset details")
-    @console_ns.expect(
-        console_ns.model(
-            "UpdateDatasetRequest",
-            {
-                "name": fields.String(description="Dataset name"),
-                "description": fields.String(description="Dataset description"),
-                "permission": fields.String(description="Dataset permission"),
-                "indexing_technique": fields.String(description="Indexing technique"),
-                "external_retrieval_model": fields.Raw(description="External retrieval model settings"),
-            },
-        )
-    )
-    @console_ns.response(200, "Dataset updated successfully", dataset_detail_fields)
+    @console_ns.expect(console_ns.models[DatasetUpdatePayload.__name__])
+    @console_ns.response(200, "Dataset updated successfully", dataset_detail_model)
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(403, "Permission denied")
     @setup_required
@@ -355,93 +420,26 @@ class DatasetApi(Resource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "name",
-                nullable=False,
-                help="type is required. Name must be between 1 to 40 characters.",
-                type=_validate_name,
-            )
-            .add_argument("description", location="json", store_missing=False, type=validate_description_length)
-            .add_argument(
-                "indexing_technique",
-                type=str,
-                location="json",
-                choices=Dataset.INDEXING_TECHNIQUE_LIST,
-                nullable=True,
-                help="Invalid indexing technique.",
-            )
-            .add_argument(
-                "permission",
-                type=str,
-                location="json",
-                choices=(
-                    DatasetPermissionEnum.ONLY_ME,
-                    DatasetPermissionEnum.ALL_TEAM,
-                    DatasetPermissionEnum.PARTIAL_TEAM,
-                ),
-                help="Invalid permission.",
-            )
-            .add_argument("embedding_model", type=str, location="json", help="Invalid embedding model.")
-            .add_argument(
-                "embedding_model_provider", type=str, location="json", help="Invalid embedding model provider."
-            )
-            .add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
-            .add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
-            .add_argument(
-                "external_retrieval_model",
-                type=dict,
-                required=False,
-                nullable=True,
-                location="json",
-                help="Invalid external retrieval model.",
-            )
-            .add_argument(
-                "external_knowledge_id",
-                type=str,
-                required=False,
-                nullable=True,
-                location="json",
-                help="Invalid external knowledge id.",
-            )
-            .add_argument(
-                "external_knowledge_api_id",
-                type=str,
-                required=False,
-                nullable=True,
-                location="json",
-                help="Invalid external knowledge api id.",
-            )
-            .add_argument(
-                "icon_info",
-                type=dict,
-                required=False,
-                nullable=True,
-                location="json",
-                help="Invalid icon info.",
-            )
-        )
-        args = parser.parse_args()
-        data = request.get_json()
+        payload = DatasetUpdatePayload.model_validate(console_ns.payload or {})
+        payload_data = payload.model_dump(exclude_unset=True)
         current_user, current_tenant_id = current_account_with_tenant()
 
         # check embedding model setting
         if (
-            data.get("indexing_technique") == "high_quality"
-            and data.get("embedding_model_provider") is not None
-            and data.get("embedding_model") is not None
+            payload.indexing_technique == "high_quality"
+            and payload.embedding_model_provider is not None
+            and payload.embedding_model is not None
         ):
             DatasetService.check_embedding_model_setting(
-                dataset.tenant_id, data.get("embedding_model_provider"), data.get("embedding_model")
+                dataset.tenant_id, payload.embedding_model_provider, payload.embedding_model
             )
 
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
-            current_user, dataset, data.get("permission"), data.get("partial_member_list")
+            current_user, dataset, payload.permission, payload.partial_member_list
         )
 
-        dataset = DatasetService.update_dataset(dataset_id_str, args, current_user)
+        dataset = DatasetService.update_dataset(dataset_id_str, payload_data, current_user)
 
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -449,15 +447,10 @@ class DatasetApi(Resource):
         result_data = cast(dict[str, Any], marshal(dataset, dataset_detail_fields))
         tenant_id = current_tenant_id
 
-        if data.get("partial_member_list") and data.get("permission") == "partial_members":
-            DatasetPermissionService.update_partial_member_list(
-                tenant_id, dataset_id_str, data.get("partial_member_list")
-            )
+        if payload.partial_member_list is not None and payload.permission == DatasetPermissionEnum.PARTIAL_TEAM:
+            DatasetPermissionService.update_partial_member_list(tenant_id, dataset_id_str, payload.partial_member_list)
         # clear partial member list when permission is only_me or all_team_members
-        elif (
-            data.get("permission") == DatasetPermissionEnum.ONLY_ME
-            or data.get("permission") == DatasetPermissionEnum.ALL_TEAM
-        ):
+        elif payload.permission in {DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM}:
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
 
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
@@ -507,7 +500,7 @@ class DatasetQueryApi(Resource):
     @console_ns.doc("get_dataset_queries")
     @console_ns.doc(description="Get dataset query history")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Query history retrieved successfully", dataset_query_detail_fields)
+    @console_ns.response(200, "Query history retrieved successfully", dataset_query_detail_model)
     @setup_required
     @login_required
     @account_initialization_required
@@ -529,7 +522,7 @@ class DatasetQueryApi(Resource):
         dataset_queries, total = DatasetService.get_dataset_queries(dataset_id=dataset.id, page=page, per_page=limit)
 
         response = {
-            "data": marshal(dataset_queries, dataset_query_detail_fields),
+            "data": marshal(dataset_queries, dataset_query_detail_model),
             "has_more": len(dataset_queries) == limit,
             "limit": limit,
             "total": total,
@@ -546,24 +539,10 @@ class DatasetIndexingEstimateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.expect(console_ns.models[IndexingEstimatePayload.__name__])
     def post(self):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("info_list", type=dict, required=True, nullable=True, location="json")
-            .add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
-            .add_argument(
-                "indexing_technique",
-                type=str,
-                required=True,
-                choices=Dataset.INDEXING_TECHNIQUE_LIST,
-                nullable=True,
-                location="json",
-            )
-            .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-            .add_argument("dataset_id", type=str, required=False, nullable=False, location="json")
-            .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = IndexingEstimatePayload.model_validate(console_ns.payload or {})
+        args = payload.model_dump()
         _, current_tenant_id = current_account_with_tenant()
         # validate args
         DocumentService.estimate_args_validate(args)
@@ -653,11 +632,11 @@ class DatasetRelatedAppListApi(Resource):
     @console_ns.doc("get_dataset_related_apps")
     @console_ns.doc(description="Get applications related to dataset")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.response(200, "Related apps retrieved successfully", related_app_list)
+    @console_ns.response(200, "Related apps retrieved successfully", related_app_list_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(related_app_list)
+    @marshal_with(related_app_list_model)
     def get(self, dataset_id):
         current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
@@ -740,11 +719,11 @@ class DatasetApiKeyApi(Resource):
 
     @console_ns.doc("get_dataset_api_keys")
     @console_ns.doc(description="Get dataset API keys")
-    @console_ns.response(200, "API keys retrieved successfully", api_key_list)
+    @console_ns.response(200, "API keys retrieved successfully", api_key_list_model)
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(api_key_list)
+    @marshal_with(api_key_list_model)
     def get(self):
         _, current_tenant_id = current_account_with_tenant()
         keys = db.session.scalars(
@@ -756,7 +735,7 @@ class DatasetApiKeyApi(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @marshal_with(api_key_fields)
+    @marshal_with(api_key_item_model)
     def post(self):
         _, current_tenant_id = current_account_with_tenant()
 

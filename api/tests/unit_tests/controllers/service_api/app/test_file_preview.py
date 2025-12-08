@@ -256,24 +256,18 @@ class TestFilePreviewApi:
                 mock_app,  # App query for tenant validation
             ]
 
-            with patch("controllers.service_api.app.file_preview.reqparse") as mock_reqparse:
-                # Mock request parsing
-                mock_parser = Mock()
-                mock_parser.parse_args.return_value = {"as_attachment": False}
-                mock_reqparse.RequestParser.return_value = mock_parser
+            # Test the core logic directly without Flask decorators
+            # Validate file ownership
+            result_message_file, result_upload_file = file_preview_api._validate_file_ownership(file_id, app_id)
+            assert result_message_file == mock_message_file
+            assert result_upload_file == mock_upload_file
 
-                # Test the core logic directly without Flask decorators
-                # Validate file ownership
-                result_message_file, result_upload_file = file_preview_api._validate_file_ownership(file_id, app_id)
-                assert result_message_file == mock_message_file
-                assert result_upload_file == mock_upload_file
+            # Test file response building
+            response = file_preview_api._build_file_response(mock_generator, mock_upload_file, False)
+            assert response is not None
 
-                # Test file response building
-                response = file_preview_api._build_file_response(mock_generator, mock_upload_file, False)
-                assert response is not None
-
-                # Verify storage was called correctly
-                mock_storage.load.assert_not_called()  # Since we're testing components separately
+            # Verify storage was called correctly
+            mock_storage.load.assert_not_called()  # Since we're testing components separately
 
     @patch("controllers.service_api.app.file_preview.storage")
     def test_storage_error_handling(
