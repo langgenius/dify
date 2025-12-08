@@ -704,6 +704,8 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+    entrypoint: ["/bin/sh", "-c", "chown dify:dify -R /app/api/storage"]
+    user: root
 
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
