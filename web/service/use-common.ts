@@ -26,7 +26,7 @@ const commonQueryKeys = {
   userProfile: [NAME_SPACE, 'user-profile'] as const,
   currentWorkspace: [NAME_SPACE, 'current-workspace'] as const,
   workspaces: [NAME_SPACE, 'workspaces'] as const,
-  members: (params?: Record<string, any>) => [NAME_SPACE, 'members', params] as const,
+  members: [NAME_SPACE, 'members'] as const,
   filePreview: (fileID: string) => [NAME_SPACE, 'file-preview', fileID] as const,
   schemaDefinitions: [NAME_SPACE, 'schema-type-definitions'] as const,
   isLogin: [NAME_SPACE, 'is-login'] as const,
@@ -158,12 +158,9 @@ type MemberResponse = {
 }
 
 export const useMembers = () => {
-  return useQuery<MemberResponse, Error, MemberResponse, ReturnType<typeof commonQueryKeys.members>>({
-    queryKey: commonQueryKeys.members({}),
-    queryFn: ({ queryKey }) => {
-      const [, , params] = queryKey
-      return get<MemberResponse>('/workspaces/current/members', { params })
-    },
+  return useQuery<MemberResponse>({
+    queryKey: commonQueryKeys.members,
+    queryFn: () => get<MemberResponse>('/workspaces/current/members', { params: {} }),
   })
 }
 
