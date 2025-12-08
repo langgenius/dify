@@ -3,6 +3,7 @@ from flask_restx import fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import NotFound
 
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
@@ -43,6 +44,9 @@ class SavedMessageCreatePayload(BaseModel):
     @classmethod
     def validate_message_id(cls, value: str) -> str:
         return uuid_value(value)
+
+
+register_schema_models(web_ns, SavedMessageListQuery, SavedMessageCreatePayload)
 
 
 @web_ns.route("/saved-messages")

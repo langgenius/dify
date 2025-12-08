@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
@@ -36,6 +37,9 @@ class ConversationListQuery(BaseModel):
 class ConversationRenamePayload(BaseModel):
     name: str | None = None
     auto_generate: bool = False
+
+
+register_schema_models(web_ns, ConversationListQuery, ConversationRenamePayload)
 
 
 @web_ns.route("/conversations")
@@ -171,7 +175,9 @@ class ConversationRenameApi(WebApiResource):
         payload = ConversationRenamePayload.model_validate(web_ns.payload or {})
 
         try:
-            return ConversationService.rename(app_model, conversation_id, end_user, payload.name, payload.auto_generate)  # type: ignore
+            return ConversationService.rename(
+                app_model, conversation_id, end_user, payload.name or "", payload.auto_generate
+            )
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

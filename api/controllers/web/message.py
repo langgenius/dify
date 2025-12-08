@@ -6,6 +6,7 @@ from flask_restx import fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     AppMoreLikeThisDisabledError,
@@ -64,6 +65,9 @@ class MessageMoreLikeThisQuery(BaseModel):
     )
 
 
+register_schema_models(web_ns, MessageListQuery, MessageFeedbackPayload, MessageMoreLikeThisQuery)
+
+
 @web_ns.route("/messages")
 class MessageListApi(WebApiResource):
     message_fields = {
@@ -91,7 +95,22 @@ class MessageListApi(WebApiResource):
 
     @web_ns.doc("Get Message List")
     @web_ns.doc(description="Retrieve paginated list of messages from a conversation in a chat application.")
-    @web_ns.expect(web_ns.models[MessageListQuery.__name__])
+    @web_ns.doc(
+        params={
+            "conversation_id": {"description": "Conversation UUID", "type": "string", "required": True},
+            "first_id": {
+                "description": "First message ID for pagination",
+                "type": "string",
+                "required": False,
+            },
+            "limit": {
+                "description": "Number of messages to return (1-100)",
+                "type": "integer",
+                "required": False,
+                "default": 20,
+            },
+        }
+    )
     @web_ns.doc(
         responses={
             200: "Success",
@@ -130,7 +149,17 @@ class MessageFeedbackApi(WebApiResource):
     @web_ns.doc("Create Message Feedback")
     @web_ns.doc(description="Submit feedback (like/dislike) for a specific message.")
     @web_ns.doc(params={"message_id": {"description": "Message UUID", "type": "string", "required": True}})
-    @web_ns.expect(web_ns.models[MessageFeedbackPayload.__name__])
+    @web_ns.doc(
+        params={
+            "rating": {
+                "description": "Feedback rating",
+                "type": "string",
+                "enum": ["like", "dislike"],
+                "required": False,
+            },
+            "content": {"description": "Feedback content", "type": "string", "required": False},
+        }
+    )
     @web_ns.doc(
         responses={
             200: "Feedback submitted successfully",

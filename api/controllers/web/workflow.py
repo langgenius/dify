@@ -4,6 +4,7 @@ from typing import Any
 from pydantic import BaseModel
 from werkzeug.exceptions import InternalServerError
 
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import (
     CompletionRequestError,
@@ -35,6 +36,8 @@ class WorkflowRunPayload(BaseModel):
 
 
 logger = logging.getLogger(__name__)
+
+register_schema_models(web_ns, WorkflowRunPayload)
 
 
 @web_ns.route("/workflows/run")

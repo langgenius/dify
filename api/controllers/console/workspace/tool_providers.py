@@ -128,7 +128,7 @@ class WorkflowToolBasePayload(BaseModel):
     label: str
     description: str
     icon: dict[str, Any]
-    parameters: list[WorkflowToolParameterConfiguration]
+    parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
     privacy_policy: str | None = ""
     labels: list[str] | None = None
 

@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, field_validator
 
 import services
 from configs import dify_config
+from controllers.common.schema import register_schema_models
 from controllers.console.auth.error import (
     AuthenticationFailedError,
     EmailCodeError,
@@ -45,6 +46,9 @@ class EmailCodeLoginVerifyPayload(BaseModel):
     email: EmailStr
     code: str
     token: str = Field(min_length=1)
+
+
+register_schema_models(web_ns, LoginPayload, EmailCodeLoginSendPayload, EmailCodeLoginVerifyPayload)
 
 
 @web_ns.route("/login")

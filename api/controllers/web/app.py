@@ -95,7 +95,12 @@ class AppMeta(WebApiResource):
 class AppAccessMode(Resource):
     @web_ns.doc("Get App Access Mode")
     @web_ns.doc(description="Retrieve the access mode for a web application (public or restricted).")
-    @web_ns.expect(web_ns.models[AppAccessModeQuery.__name__])
+    @web_ns.doc(
+        params={
+            "appId": {"description": "Application ID", "type": "string", "required": False},
+            "appCode": {"description": "Application code", "type": "string", "required": False},
+        }
+    )
     @web_ns.doc(
         responses={
             200: "Success",
