@@ -1,5 +1,24 @@
 x-shared-env: &shared-api-worker-env
 services:
+  # Init container to fix permissions
+  init_permissions:
+    image: busybox:latest
+    command:
+      - sh
+      - -c
+      - |
+        FLAG_FILE="/app/api/storage/.init_permissions"
+        if [ -f "$${FLAG_FILE}" ]; then
+          echo "Permissions already initialized. Exiting."
+          exit 0
+        fi
+        echo "Initializing permissions for /app/api/storage"
+        chown -R 1001:1001 /app/api/storage && touch "$${FLAG_FILE}"
+        echo "Permissions initialized. Exiting."
+    volumes:
+      - ./volumes/app/storage:/app/api/storage
+    restart: "no"
+
   # API service
   api:
     image: langgenius/dify-api:1.10.1-fix.1
@@ -17,6 +36,8 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
+      init_permissions:
+        condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
         required: false
@@ -54,6 +75,8 @@ services:
       PLUGIN_MAX_PACKAGE_SIZE: ${PLUGIN_MAX_PACKAGE_SIZE:-52428800}
       INNER_API_KEY_FOR_PLUGIN: ${PLUGIN_DIFY_INNER_API_KEY:-QaHbTe77CtuXmsfyhR7+vRjI/+XbV1AaFy691iy+kGDv2Jvy0/eAh8Y1}
     depends_on:
+      init_permissions:
+        condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
         required: false
@@ -86,6 +109,8 @@ services:
       # Startup mode, 'worker_beat' starts the Celery beat for scheduling periodic tasks.
       MODE: beat
     depends_on:
+      init_permissions:
+        condition: service_completed_successfully
       db_postgres:
         condition: service_healthy
         required: false
