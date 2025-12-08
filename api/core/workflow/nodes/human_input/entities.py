@@ -8,7 +8,7 @@ import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
 from enum import StrEnum
-from typing import Annotated, Any, Literal, Optional, Self
+from typing import Annotated, Any, ClassVar, Literal, Optional, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -105,9 +105,25 @@ class EmailRecipients(BaseModel):
 class EmailDeliveryConfig(BaseModel):
     """Configuration for email delivery method."""
 
+    URL_PLACEHOLDER: ClassVar[str] = "{{#url#}}"
+
     recipients: EmailRecipients
+
+    # the subject of email
     subject: str
+
+    # Body is the content of email, it may contain the speical placeholder `{{#url#}}`, which
+    # represent the url to submit the form.
     body: str
+
+    @classmethod
+    def replace_url_placeholder(cls, body: str, url: str | None) -> str:
+        """Replace the url placeholder with provided value."""
+        return body.replace(cls.URL_PLACEHOLDER, url or "")
+
+    def body_with_url(self, url: str | None) -> str:
+        """Return body content with url placeholder replaced."""
+        return self.replace_url_placeholder(self.body, url)
 
 
 class _DeliveryMethodBase(BaseModel):

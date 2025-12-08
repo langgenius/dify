@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
@@ -54,6 +55,7 @@ from core.workflow.graph_events import (
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_events.graph import GraphRunAbortedEvent
+from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
@@ -61,8 +63,11 @@ from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
+from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 from models.enums import UserFrom
 from models.workflow import Workflow
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowBasedAppRunner:
@@ -367,6 +372,7 @@ class WorkflowBasedAppRunner:
         elif isinstance(event, GraphRunPausedEvent):
             runtime_state = workflow_entry.graph_engine.graph_runtime_state
             paused_nodes = runtime_state.get_paused_nodes()
+            self._enqueue_human_input_notifications(event.reasons)
             self._publish_event(
                 QueueWorkflowPausedEvent(
                     reasons=event.reasons,
@@ -579,6 +585,20 @@ class WorkflowBasedAppRunner:
                     error=event.error if isinstance(event, NodeRunLoopFailedEvent) else None,
                 )
             )
+
+    def _enqueue_human_input_notifications(self, reasons: Sequence[object]) -> None:
+        for reason in reasons:
+            if not isinstance(reason, HumanInputRequired):
+                continue
+            if not reason.form_id:
+                continue
+            try:
+                dispatch_human_input_email_task.apply_async(
+                    kwargs={"form_id": reason.form_id, "node_title": reason.node_title},
+                    queue="mail",
+                )
+            except Exception:  # pragma: no cover - defensive logging
+                logger.exception("Failed to enqueue human input email task for form %s", reason.form_id)
 
     def _publish_event(self, event: AppQueueEvent):
         self._queue_manager.publish(event, PublishFrom.APPLICATION_MANAGER)

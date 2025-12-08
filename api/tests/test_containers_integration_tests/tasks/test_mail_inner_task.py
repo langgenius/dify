@@ -15,7 +15,7 @@ class TestMailInnerTask:
         with (
             patch("tasks.mail_inner_task.mail") as mock_mail,
             patch("tasks.mail_inner_task.get_email_i18n_service") as mock_get_email_i18n_service,
-            patch("tasks.mail_inner_task._render_template_with_strategy") as mock_render_template,
+            patch("tasks.mail_inner_task.render_email_template") as mock_render_template,
         ):
             # Setup mock mail service
             mock_mail.is_inited.return_value = True
