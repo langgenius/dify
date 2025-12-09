@@ -51,6 +51,19 @@ class TestDatasetModelValidation:
         assert dataset.created_by == created_by
         # Note: Default values are set by database, not by model instantiation
 
+    def test_dataset_is_multimodal_defaults_false(self):
+        """Dataset.is_multimodal should default to False on instantiation."""
+        # Arrange & Act
+        dataset = Dataset(
+            tenant_id=str(uuid4()),
+            name="Test Dataset",
+            data_source_type="upload_file",
+            created_by=str(uuid4()),
+        )
+
+        # Assert
+        assert dataset.is_multimodal is False
+
     def test_dataset_creation_with_optional_fields(self):
         """Test creating a dataset with optional fields."""
         # Arrange & Act
