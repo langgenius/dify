@@ -71,6 +71,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   // Get the app type first
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
+  const { sort_by } = debouncedQueryParams
 
   const completionQuery = useMemo<CompletionConversationsRequest & { sort_by?: string }>(() => ({
     page: currPage + 1,
@@ -88,9 +89,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const chatQuery = useMemo<ChatConversationsRequest & { sort_by?: string }>(() => ({
     ...completionQuery,
-    sort_by: debouncedQueryParams.sort_by,
-    message_count: (debouncedQueryParams as any).message_count ?? 0,
-  }), [completionQuery, debouncedQueryParams.sort_by, isChatMode])
+    sort_by,
+    message_count: 0,
+  }), [completionQuery, sort_by])
 
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, refetch: refetchChatList } = useChatConversations(appDetail.id, chatQuery, isChatMode)
