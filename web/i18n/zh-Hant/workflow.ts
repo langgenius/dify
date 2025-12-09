@@ -548,6 +548,7 @@ const translation = {
         icon: '分段圖標',
         url: '分段鏈接',
         metadata: '其他元資料',
+        files: '已檢索的檔案',
       },
       metadata: {
         options: {
@@ -577,6 +578,8 @@ const translation = {
         title: '元資料過濾',
         tip: '元資料過濾是使用元資料屬性（如標籤、類別或訪問權限）來精煉和控制在系統內檢索相關信息的過程。',
       },
+      queryText: '查詢文字',
+      queryAttachment: '查詢圖片',
     },
     http: {
       inputVars: '輸入變數',

@@ -543,6 +543,7 @@ const translation = {
         icon: 'Icône segmentée',
         url: 'URL segmentée',
         metadata: 'Autres métadonnées',
+        files: 'Fichiers récupérés',
       },
       metadata: {
         options: {
@@ -572,6 +573,8 @@ const translation = {
         title: 'Filtrage des métadonnées',
         tip: 'Le filtrage des métadonnées est le processus d\'utilisation des attributs de métadonnées (tels que les étiquettes, les catégories ou les autorisations d\'accès) pour affiner et contrôler la récupération d\'informations pertinentes au sein d\'un système.',
       },
+      queryText: 'Texte de la requête',
+      queryAttachment: 'Images de requête',
     },
     http: {
       inputVars: 'Variables de saisie',

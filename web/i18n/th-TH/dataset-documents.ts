@@ -400,6 +400,7 @@ const translation = {
     childChunks_one: 'ก้อนเด็ก',
     keywordDuplicate: 'คำสำคัญมีอยู่แล้ว',
     keywordEmpty: 'คีย์เวิร์ดไม่สามารถว่างเปล่าได้',
+    allFilesUploaded: 'ต้องอัปโหลดไฟล์ทั้งหมดก่อนบันทึก',
   },
 }
 
