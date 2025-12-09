@@ -115,7 +115,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       className='w-[400px]'
       title={t('appDebug.feature.dataSet.selectTitle')}
     >
-      {(isLoading && datasets.length === 0) && (
+      (isLoading && (
         <div className='flex h-[200px]'>
           <Loading type='area' />
         </div>
