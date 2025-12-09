@@ -90,6 +90,7 @@ class ChatRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+    workflow_alias: str | None = Field(default=None, description="Workflow alias for advanced chat")
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
@@ -216,6 +217,7 @@ class ChatApi(Resource):
             raise NotChatAppError()
 
         payload = ChatRequestPayload.model_validate(service_api_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
         workflow_alias = args.get("workflow_alias")
         if workflow_alias:
@@ -223,7 +225,6 @@ class ChatApi(Resource):
             args["workflow_id"] = workflow_id
 
         external_trace_id = get_external_trace_id(request)
-        args = payload.model_dump(exclude_none=True)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
