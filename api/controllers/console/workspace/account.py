@@ -276,13 +276,8 @@ class AccountInterfaceLanguageApi(Resource):
         # Temporary debug logs for interface-language validation — gated behind DEBUG
         if dify_config.DEBUG:
             logger.debug('Interface-language payload received: %s', payload)
-        try:
-            args = AccountInterfaceLanguagePayload.model_validate(payload)
-        except Exception as e:
-            if dify_config.DEBUG:
-                logger.debug('Validation error for interface-language payload: %s; error: %s', payload, str(e))
-            # Re-raise the exception for standard error handling
-            raise
+        # Validate payload — let framework/global error handling manage exceptions
+        args = AccountInterfaceLanguagePayload.model_validate(payload)
 
         updated_account = AccountService.update_account(current_user, interface_language=args.interface_language)
 
