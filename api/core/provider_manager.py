@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from json import JSONDecodeError
 from typing import Any, cast
 
+import sqlalchemy.orm as sa_orm
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -100,8 +101,9 @@ class ProviderManager:
         :param tenant_id:
         :return:
         """
+        session = db.session
         # Get all provider records of the workspace
-        provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
+        provider_name_to_provider_records_dict = self._get_all_providers(session, tenant_id)
 
         # Initialize trial provider records if not exist
         provider_name_to_provider_records_dict = self._init_trial_provider_records(
@@ -118,7 +120,7 @@ class ProviderManager:
                 ]
 
         # Get all provider model records of the workspace
-        provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
+        provider_name_to_provider_model_records_dict = self._get_all_provider_models(session, tenant_id)
         for provider_name in list(provider_name_to_provider_model_records_dict.keys()):
             provider_id = ModelProviderID(provider_name)
             if str(provider_id) not in provider_name_to_provider_model_records_dict:
@@ -131,7 +133,9 @@ class ProviderManager:
         provider_entities = model_provider_factory.get_providers()
 
         # Get All preferred provider types of the workspace
-        provider_name_to_preferred_model_provider_records_dict = self._get_all_preferred_model_providers(tenant_id)
+        provider_name_to_preferred_model_provider_records_dict = self._get_all_preferred_model_providers(
+            session, tenant_id
+        )
         # Ensure that both the original provider name and its ModelProviderID string representation
         # are present in the dictionary to handle cases where either form might be used
         for provider_name in list(provider_name_to_preferred_model_provider_records_dict.keys()):
@@ -143,15 +147,15 @@ class ProviderManager:
                 )
 
         # Get All provider model settings
-        provider_name_to_provider_model_settings_dict = self._get_all_provider_model_settings(tenant_id)
+        provider_name_to_provider_model_settings_dict = self._get_all_provider_model_settings(session, tenant_id)
 
         # Get All load balancing configs
         provider_name_to_provider_load_balancing_model_configs_dict = self._get_all_provider_load_balancing_configs(
-            tenant_id
+            session, tenant_id
         )
 
         # Get All provider model credentials
-        provider_name_to_provider_model_credentials_dict = self._get_all_provider_model_credentials(tenant_id)
+        provider_name_to_provider_model_credentials_dict = self._get_all_provider_model_credentials(session, tenant_id)
 
         provider_configurations = ProviderConfigurations(tenant_id=tenant_id)
 
@@ -403,18 +407,18 @@ class ProviderManager:
         return default_model
 
     @staticmethod
-    def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
+    def _get_all_providers(session: sa_orm.scoped_session[Any], tenant_id: str) -> dict[str, list[Provider]]:
         provider_name_to_provider_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
-            stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
-            providers = session.scalars(stmt)
-            for provider in providers:
-                # Use provider name with prefix after the data migration
-                provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
+        stmt = select(Provider).where(Provider.tenant_id == tenant_id, Provider.is_valid == True)
+        providers = session.scalars(stmt)
+        for provider in providers:
+            # Use provider name with prefix after the data migration
+            provider_name_to_provider_records_dict[str(ModelProviderID(provider.provider_name))].append(provider)
         return provider_name_to_provider_records_dict
 
     @staticmethod
-    def _get_all_provider_models(tenant_id: str) -> dict[str, list[ProviderModel]]:
+    def _get_all_provider_models(
+        session: sa_orm.scoped_session[Any], tenant_id: str) -> dict[str, list[ProviderModel]]:
         """
         Get all provider model records of the workspace.
 
@@ -422,15 +426,15 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_records_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
-            stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
-            provider_models = session.scalars(stmt)
-            for provider_model in provider_models:
-                provider_name_to_provider_model_records_dict[provider_model.provider_name].append(provider_model)
+        stmt = select(ProviderModel).where(ProviderModel.tenant_id == tenant_id, ProviderModel.is_valid == True)
+        provider_models = session.scalars(stmt)
+        for provider_model in provider_models:
+            provider_name_to_provider_model_records_dict[provider_model.provider_name].append(provider_model)
         return provider_name_to_provider_model_records_dict
 
     @staticmethod
-    def _get_all_preferred_model_providers(tenant_id: str) -> dict[str, TenantPreferredModelProvider]:
+    def _get_all_preferred_model_providers(
+        session: sa_orm.scoped_session[Any], tenant_id: str) -> dict[str, TenantPreferredModelProvider]:
         """
         Get All preferred provider types of the workspace.
 
@@ -438,17 +442,17 @@ class ProviderManager:
         :return:
         """
         provider_name_to_preferred_provider_type_records_dict = {}
-        with Session(db.engine, expire_on_commit=False) as session:
-            stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == tenant_id)
-            preferred_provider_types = session.scalars(stmt)
-            provider_name_to_preferred_provider_type_records_dict = {
-                preferred_provider_type.provider_name: preferred_provider_type
-                for preferred_provider_type in preferred_provider_types
-            }
+        stmt = select(TenantPreferredModelProvider).where(TenantPreferredModelProvider.tenant_id == tenant_id)
+        preferred_provider_types = session.scalars(stmt)
+        provider_name_to_preferred_provider_type_records_dict = {
+            preferred_provider_type.provider_name: preferred_provider_type
+            for preferred_provider_type in preferred_provider_types
+        }
         return provider_name_to_preferred_provider_type_records_dict
 
     @staticmethod
-    def _get_all_provider_model_settings(tenant_id: str) -> dict[str, list[ProviderModelSetting]]:
+    def _get_all_provider_model_settings(
+        session: sa_orm.scoped_session[Any], tenant_id: str) -> dict[str, list[ProviderModelSetting]]:
         """
         Get All provider model settings of the workspace.
 
@@ -456,17 +460,19 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_settings_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
-            stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
-            provider_model_settings = session.scalars(stmt)
-            for provider_model_setting in provider_model_settings:
-                provider_name_to_provider_model_settings_dict[provider_model_setting.provider_name].append(
-                    provider_model_setting
-                )
+        stmt = select(ProviderModelSetting).where(ProviderModelSetting.tenant_id == tenant_id)
+        provider_model_settings = session.scalars(stmt)
+        for provider_model_setting in provider_model_settings:
+            provider_name_to_provider_model_settings_dict[provider_model_setting.provider_name].append(
+                provider_model_setting
+            )
+
         return provider_name_to_provider_model_settings_dict
 
     @staticmethod
-    def _get_all_provider_model_credentials(tenant_id: str) -> dict[str, list[ProviderModelCredential]]:
+    def _get_all_provider_model_credentials(
+        session: sa_orm.scoped_session[Any], tenant_id: str
+    ) -> dict[str, list[ProviderModelCredential]]:
         """
         Get All provider model credentials of the workspace.
 
@@ -474,17 +480,18 @@ class ProviderManager:
         :return:
         """
         provider_name_to_provider_model_credentials_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
-            stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
-            provider_model_credentials = session.scalars(stmt)
-            for provider_model_credential in provider_model_credentials:
-                provider_name_to_provider_model_credentials_dict[provider_model_credential.provider_name].append(
-                    provider_model_credential
-                )
+        stmt = select(ProviderModelCredential).where(ProviderModelCredential.tenant_id == tenant_id)
+        provider_model_credentials = session.scalars(stmt)
+        for provider_model_credential in provider_model_credentials:
+            provider_name_to_provider_model_credentials_dict[provider_model_credential.provider_name].append(
+                provider_model_credential
+            )
         return provider_name_to_provider_model_credentials_dict
 
     @staticmethod
-    def _get_all_provider_load_balancing_configs(tenant_id: str) -> dict[str, list[LoadBalancingModelConfig]]:
+    def _get_all_provider_load_balancing_configs(
+        session: sa_orm.scoped_session[Any], tenant_id: str
+    ) -> dict[str, list[LoadBalancingModelConfig]]:
         """
         Get All provider load balancing configs of the workspace.
 
@@ -504,13 +511,12 @@ class ProviderManager:
             return {}
 
         provider_name_to_provider_load_balancing_model_configs_dict = defaultdict(list)
-        with Session(db.engine, expire_on_commit=False) as session:
-            stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
-            provider_load_balancing_configs = session.scalars(stmt)
-            for provider_load_balancing_config in provider_load_balancing_configs:
-                provider_name_to_provider_load_balancing_model_configs_dict[
-                    provider_load_balancing_config.provider_name
-                ].append(provider_load_balancing_config)
+        stmt = select(LoadBalancingModelConfig).where(LoadBalancingModelConfig.tenant_id == tenant_id)
+        provider_load_balancing_configs = session.scalars(stmt)
+        for provider_load_balancing_config in provider_load_balancing_configs:
+            provider_name_to_provider_load_balancing_model_configs_dict[
+                provider_load_balancing_config.provider_name
+            ].append(provider_load_balancing_config)
 
         return provider_name_to_provider_load_balancing_model_configs_dict
 
