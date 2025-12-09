@@ -51,6 +51,7 @@ class SegmentCreatePayload(BaseModel):
     content: str
     answer: str | None = None
     keywords: list[str] | None = None
+    attachment_ids: list[str] | None = None
 
 
 class SegmentUpdatePayload(BaseModel):
@@ -58,6 +59,7 @@ class SegmentUpdatePayload(BaseModel):
     answer: str | None = None
     keywords: list[str] | None = None
     regenerate_child_chunks: bool = False
+    attachment_ids: list[str] | None = None
 
 
 class BatchImportPayload(BaseModel):

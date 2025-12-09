@@ -71,7 +71,6 @@ export type ChatProps = {
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
   inputDisabled?: boolean
-  isMobile?: boolean
   sidebarCollapseState?: boolean
 }
 
@@ -110,7 +109,6 @@ const Chat: FC<ChatProps> = ({
   onFeatureBarClick,
   noSpacing,
   inputDisabled,
-  isMobile,
   sidebarCollapseState,
 }) => {
   const { t } = useTranslation()
@@ -321,7 +319,6 @@ const Chat: FC<ChatProps> = ({
                 <TryToAsk
                   suggestedQuestions={suggestedQuestions}
                   onSend={onSend}
-                  isMobile={isMobile}
                 />
               )
             }
