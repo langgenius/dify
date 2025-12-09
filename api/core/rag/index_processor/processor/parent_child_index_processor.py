@@ -20,7 +20,7 @@ from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from libs import helper
-from models import Account, Tenant
+from models import Account
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from services.account_service import AccountService

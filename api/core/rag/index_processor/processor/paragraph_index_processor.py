@@ -17,9 +17,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import AttachmentDocument, Document, MultimodalGeneralStructureChunk
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.utils.text_processing_utils import remove_leading_symbols
-from extensions.ext_database import db
 from libs import helper
-from models import Tenant
 from models.account import Account
 from models.dataset import Dataset, DatasetProcessRule
 from models.dataset import Document as DatasetDocument
