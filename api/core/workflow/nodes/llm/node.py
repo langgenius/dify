@@ -694,7 +694,7 @@ class LLMNode(Node[LLMNodeData]):
                             ).all()
                             if attachments_with_bindings:
                                 for _, upload_file in attachments_with_bindings:
-                                    attchment_info = File(
+                                    attachment_info = File(
                                         id=upload_file.id,
                                         filename=upload_file.name,
                                         extension="." + upload_file.extension,
@@ -708,7 +708,7 @@ class LLMNode(Node[LLMNodeData]):
                                         storage_key=upload_file.key,
                                         url=sign_upload_file(upload_file.id, upload_file.extension),
                                     )
-                                    context_files.append(attchment_info)
+                                    context_files.append(attachment_info)
                 yield RunRetrieverResourceEvent(
                     retriever_resources=original_retriever_resource,
                     context=context_str.strip(),

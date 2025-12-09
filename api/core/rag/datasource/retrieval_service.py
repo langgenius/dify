@@ -395,7 +395,7 @@ class RetrievalService:
                                 session,
                             )
                             if attachment_info_dict:
-                                attachment_info = attachment_info_dict["attchment_info"]
+                                attachment_info = attachment_info_dict["attachment_info"]
                                 segment_id = attachment_info_dict["segment_id"]
                         else:
                             child_index_node_id = document.metadata.get("doc_id")
