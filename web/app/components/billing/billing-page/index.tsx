@@ -2,23 +2,19 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
 import PlanComp from '../plan'
-import { fetchBillingUrl } from '@/service/billing'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useBillingUrl } from '@/service/use-billing'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const { enableBilling } = useProviderContext()
-  const { data: billingUrl } = useSWR(
-    (!enableBilling || !isCurrentWorkspaceManager) ? null : ['/billing/invoices'],
-    () => fetchBillingUrl().then(data => data.url),
-  )
+  const { data: billingUrl } = useBillingUrl(enableBilling && isCurrentWorkspaceManager)
 
   return (
     <div>
