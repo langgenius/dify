@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Literal
 
@@ -34,7 +35,6 @@ from controllers.console.wraps import (
     only_edition_cloud,
     setup_required,
 )
-import logging
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.datetime_utils import naive_utc_now
@@ -275,7 +275,7 @@ class AccountInterfaceLanguageApi(Resource):
         logger = logging.getLogger(__name__)
         # Temporary debug logs for interface-language validation — gated behind DEBUG
         if dify_config.DEBUG:
-            logger.debug('Interface-language payload received: %s', payload)
+            logger.debug("Interface-language payload received: %s", payload)
         # Validate payload — let framework/global error handling manage exceptions
         args = AccountInterfaceLanguagePayload.model_validate(payload)
 
