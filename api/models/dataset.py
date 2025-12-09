@@ -77,7 +77,9 @@ class Dataset(TypeBase):
     )
     embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
     embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
-    keyword_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=10, server_default=sa.text("10"))
+    keyword_number: Mapped[int | None] = mapped_column(
+        sa.Integer, nullable=True, default=10, server_default=sa.text("10")
+    )
     collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     retrieval_model: Mapped[Any | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
     built_in_field_enabled: Mapped[bool] = mapped_column(
@@ -90,7 +92,9 @@ class Dataset(TypeBase):
     pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
     chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
     enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True, server_default=sa.text("true"))
-    is_multimodal: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False, server_default=db.text("false"))
+    is_multimodal: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=db.text("false")
+    )
 
     @property
     def total_documents(self):
