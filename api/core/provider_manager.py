@@ -417,8 +417,7 @@ class ProviderManager:
         return provider_name_to_provider_records_dict
 
     @staticmethod
-    def _get_all_provider_models(
-        session: sa_orm.scoped_session[Any], tenant_id: str) -> dict[str, list[ProviderModel]]:
+    def _get_all_provider_models(session: sa_orm.scoped_session[Any], tenant_id: str) -> dict[str, list[ProviderModel]]:
         """
         Get all provider model records of the workspace.
 
@@ -434,7 +433,8 @@ class ProviderManager:
 
     @staticmethod
     def _get_all_preferred_model_providers(
-        session: sa_orm.scoped_session[Any], tenant_id: str) -> dict[str, TenantPreferredModelProvider]:
+        session: sa_orm.scoped_session[Any], tenant_id: str
+    ) -> dict[str, TenantPreferredModelProvider]:
         """
         Get All preferred provider types of the workspace.
 
@@ -452,7 +452,8 @@ class ProviderManager:
 
     @staticmethod
     def _get_all_provider_model_settings(
-        session: sa_orm.scoped_session[Any], tenant_id: str) -> dict[str, list[ProviderModelSetting]]:
+        session: sa_orm.scoped_session[Any], tenant_id: str
+    ) -> dict[str, list[ProviderModelSetting]]:
         """
         Get All provider model settings of the workspace.
 
