@@ -67,6 +67,8 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
         showModelType
         showMode
         showContextSize
+        showFeatures
+        showFeaturesLabel
       >
       </ModelName>
       <div className='flex shrink-0 items-center'>
