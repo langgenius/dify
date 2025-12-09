@@ -1,8 +1,6 @@
 name: "✨ Refactor or Chore"
 description: Refactor existing code or perform maintenance chores to improve readability and reliability.
 title: "[Refactor/Chore] "
-labels:
-  - refactor
 body:
   - type: checkboxes
     attributes:
