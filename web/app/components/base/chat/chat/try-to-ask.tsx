@@ -8,12 +8,10 @@ import Divider from '@/app/components/base/divider'
 type TryToAskProps = {
   suggestedQuestions: string[]
   onSend: OnSend
-  isMobile?: boolean
 }
 const TryToAsk: FC<TryToAskProps> = ({
   suggestedQuestions,
   onSend,
-  isMobile: _isMobile,
 }) => {
   const { t } = useTranslation()
 
