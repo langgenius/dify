@@ -75,9 +75,11 @@ const SettingBuiltInTool: FC<Props> = ({
   useEffect(() => {
     if (!collection)
       return
-    if (hasPassedTools && currTool) {
-      const formSchemas = toolParametersToFormSchemas(currTool.parameters)
-      setTempSetting(addDefaultValue(setting, formSchemas))
+    if (hasPassedTools) {
+      if (currTool) {
+        const formSchemas = toolParametersToFormSchemas(currTool.parameters)
+        setTempSetting(addDefaultValue(setting, formSchemas))
+      }
       return
     }
 
