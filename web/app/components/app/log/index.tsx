@@ -15,6 +15,7 @@ import { useChatConversations, useCompletionConversations } from '@/service/use-
 import { APP_PAGE_LIMIT } from '@/config'
 import type { App } from '@/types/app'
 import { AppModeEnum } from '@/types/app'
+import type { ChatConversationsRequest, CompletionConversationsRequest } from '@/models/log'
 export type ILogsProps = {
   appDetail: App
 }
@@ -71,23 +72,30 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   // Get the app type first
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
 
-  const query = useMemo(() => ({
+  const completionQuery = useMemo<CompletionConversationsRequest & { sort_by?: string }>(() => ({
     page: currPage + 1,
     limit,
-    ...((debouncedQueryParams.period !== '9')
-      ? {
-        start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-        end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
-      }
-      : {}),
-    ...(isChatMode ? { sort_by: debouncedQueryParams.sort_by } : {}),
-    ...omit(debouncedQueryParams, ['period']),
-  }), [currPage, debouncedQueryParams, isChatMode, limit])
+    keyword: debouncedQueryParams.keyword ?? '',
+    annotation_status: debouncedQueryParams.annotation_status ?? 'all',
+    start: debouncedQueryParams.period !== '9'
+      ? dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm')
+      : '',
+    end: debouncedQueryParams.period !== '9'
+      ? dayjs().endOf('day').format('YYYY-MM-DD HH:mm')
+      : '',
+    ...omit(debouncedQueryParams, ['period', 'sort_by', 'keyword', 'annotation_status']),
+  }), [currPage, debouncedQueryParams, limit])
+
+  const chatQuery = useMemo<ChatConversationsRequest & { sort_by?: string }>(() => ({
+    ...completionQuery,
+    sort_by: debouncedQueryParams.sort_by,
+    message_count: (debouncedQueryParams as any).message_count ?? 0,
+  }), [completionQuery, debouncedQueryParams.sort_by, isChatMode])
 
   // When the details are obtained, proceed to the next request
-  const { data: chatConversations, refetch: refetchChatList } = useChatConversations(appDetail.id, query as any, isChatMode)
+  const { data: chatConversations, refetch: refetchChatList } = useChatConversations(appDetail.id, chatQuery, isChatMode)
 
-  const { data: completionConversations, refetch: refetchCompletionList } = useCompletionConversations(appDetail.id, query as any, !isChatMode)
+  const { data: completionConversations, refetch: refetchCompletionList } = useCompletionConversations(appDetail.id, completionQuery, !isChatMode)
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
 

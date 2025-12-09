@@ -24,13 +24,13 @@ import type { NodeTracingListResponse } from '@/types/workflow'
 export const fetchConversationList = ({ appId, params }: { name: string; appId: string; params?: Record<string, any> }): Promise<ConversationListResponse> => get<ConversationListResponse>(`/console/api/apps/${appId}/messages`, params)
 
 // (Text Generation Application) Session List
-export const fetchCompletionConversations = ({ url, params }: { url: string; params?: CompletionConversationsRequest }): Promise<CompletionConversationsResponse> => get<CompletionConversationsResponse>(url, { params })
+export const fetchCompletionConversations = ({ url, params }: { url: string; params?: Partial<CompletionConversationsRequest> & { sort_by?: string } }): Promise<CompletionConversationsResponse> => get<CompletionConversationsResponse>(url, { params })
 
 // (Text Generation Application) Session Detail
 export const fetchCompletionConversationDetail = ({ url }: { url: string }): Promise<CompletionConversationFullDetailResponse> => get<CompletionConversationFullDetailResponse>(url, {})
 
 // (Chat Application) Session List
-export const fetchChatConversations = ({ url, params }: { url: string; params?: ChatConversationsRequest }): Promise<ChatConversationsResponse> => get<ChatConversationsResponse>(url, { params })
+export const fetchChatConversations = ({ url, params }: { url: string; params?: Partial<ChatConversationsRequest> & { sort_by?: string } }): Promise<ChatConversationsResponse> => get<ChatConversationsResponse>(url, { params })
 
 // (Chat Application) Session Detail
 export const fetchChatConversationDetail = ({ url }: { url: string }): Promise<ChatConversationFullDetailResponse> => get<ChatConversationFullDetailResponse>(url, {})

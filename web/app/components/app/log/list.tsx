@@ -935,14 +935,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     router.push(buildUrlWithConversation(log.id), { scroll: false })
   }, [buildUrlWithConversation, conversationIdInUrl, currentConversation, router, showDrawer])
 
-  const currentConversationId = currentConversation?.id
-
   useEffect(() => {
     if (!conversationIdInUrl) {
       if (pendingConversationIdRef.current)
         return
 
-      if (showDrawer || currentConversationId) {
+      if (showDrawer || currentConversation?.id) {
         setShowDrawer(false)
         setCurrentConversation(undefined)
       }
@@ -970,7 +968,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
     if (pendingConversationCacheRef.current?.id === conversationIdInUrl || matchedConversation)
       pendingConversationCacheRef.current = undefined
-  }, [conversationIdInUrl, currentConversation, currentConversationId, isChatMode, logs?.data, showDrawer])
+  }, [conversationIdInUrl, currentConversation, isChatMode, logs?.data, showDrawer])
 
   const onCloseDrawer = useCallback(() => {
     onRefresh()

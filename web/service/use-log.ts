@@ -35,15 +35,18 @@ type AnnotationPayload = {
   value: string
 }
 
-export const chatConversationsKey = (appId?: string, params?: ChatConversationsRequest): QueryKey => ['chat-conversations', appId, params]
-export const completionConversationsKey = (appId?: string, params?: CompletionConversationsRequest): QueryKey => ['completion-conversations', appId, params]
+type ChatConversationsParams = Partial<ChatConversationsRequest> & { sort_by?: string }
+type CompletionConversationsParams = Partial<CompletionConversationsRequest> & { sort_by?: string }
+
+export const chatConversationsKey = (appId?: string, params?: ChatConversationsParams): QueryKey => ['chat-conversations', appId, params]
+export const completionConversationsKey = (appId?: string, params?: CompletionConversationsParams): QueryKey => ['completion-conversations', appId, params]
 export const completionConversationDetailKey = (appId?: string, conversationId?: string): QueryKey => ['completion-conversation-detail', appId, conversationId]
 
 export const chatConversationDetailKey = (appId?: string, conversationId?: string): QueryKey => ['chat-conversation-detail', appId, conversationId]
 
 export const annotationsCountKey = (appId?: string): QueryKey => ['annotations-count', appId]
 
-export const useChatConversations = (appId?: string, params?: ChatConversationsRequest, enabled = true) => {
+export const useChatConversations = (appId?: string, params?: ChatConversationsParams, enabled = true) => {
   const queryKey = chatConversationsKey(appId, params)
   const queryResult = useQuery<ChatConversationsResponse>({
     queryKey,
@@ -54,7 +57,7 @@ export const useChatConversations = (appId?: string, params?: ChatConversationsR
   return { ...queryResult, queryKey }
 }
 
-export const useCompletionConversations = (appId?: string, params?: CompletionConversationsRequest, enabled = true) => {
+export const useCompletionConversations = (appId?: string, params?: CompletionConversationsParams, enabled = true) => {
   const queryKey = completionConversationsKey(appId, params)
   const queryResult = useQuery<CompletionConversationsResponse>({
     queryKey,
@@ -103,6 +106,8 @@ export const useUpdateLogMessageFeedback = (appId?: string, invalidateKey?: Quer
 
   return useMutation({
     mutationFn: async ({ mid, rating, content }: FeedbackPayload) => {
+      if (!appId)
+        throw new Error('appId is required to update message feedback.')
       return await updateLogMessageFeedbacks({
         url: `/apps/${appId}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
@@ -120,6 +125,8 @@ export const useUpdateLogMessageAnnotation = (appId?: string, invalidateKey?: Qu
 
   return useMutation({
     mutationFn: async ({ mid, value }: AnnotationPayload) => {
+      if (!appId)
+        throw new Error('appId is required to update message annotation.')
       return await updateLogMessageAnnotations({
         url: `/apps/${appId}/annotations`,
         body: { message_id: mid, content: value },
