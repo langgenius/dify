@@ -7,6 +7,8 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
+from core.agent.entities import AgentLog, AgentResult, AgentToolEntity, ExecutionContext
+from core.agent.patterns import StrategyFactory
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.file import FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
@@ -44,6 +46,8 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.tools.__base.tool import Tool
+from core.tools.tool_manager import ToolManager
 from core.variables import (
     ArrayFileSegment,
     ArraySegment,
@@ -61,12 +65,16 @@ from core.workflow.enums import (
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.node_events import (
+    AgentLogEvent,
     ModelInvokeCompletedEvent,
     NodeEventBase,
     NodeRunResult,
     RunRetrieverResourceEvent,
     StreamChunkEvent,
     StreamCompletedEvent,
+    ThoughtChunkEvent,
+    ToolCallChunkEvent,
+    ToolResultChunkEvent,
 )
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
@@ -147,7 +155,8 @@ class LLMNode(Node[LLMNodeData]):
         clean_text = ""
         usage = LLMUsage.empty_usage()
         finish_reason = None
-        reasoning_content = None
+        reasoning_content = ""  # Initialize as empty string for consistency
+        clean_text = ""  # Initialize clean_text to avoid UnboundLocalError
         variable_pool = self.graph_runtime_state.variable_pool
 
         try:
@@ -162,6 +171,15 @@ class LLMNode(Node[LLMNodeData]):
 
             # merge inputs
             inputs.update(jinja_inputs)
+
+            # Add all inputs to node_inputs for logging
+            node_inputs.update(inputs)
+
+            # Add tools to inputs if configured
+            if self.tool_call_enabled:
+                node_inputs["tools"] = [
+                    {"provider_id": tool.provider_name, "tool_name": tool.tool_name} for tool in self._node_data.tools
+                ]
 
             # fetch files
             files = (
@@ -222,21 +240,39 @@ class LLMNode(Node[LLMNodeData]):
                 tenant_id=self.tenant_id,
             )
 
-            # handle invoke result
-            generator = LLMNode.invoke_llm(
-                node_data_model=self.node_data.model,
-                model_instance=model_instance,
-                prompt_messages=prompt_messages,
-                stop=stop,
-                user_id=self.user_id,
-                structured_output_enabled=self.node_data.structured_output_enabled,
-                structured_output=self.node_data.structured_output,
-                file_saver=self._llm_file_saver,
-                file_outputs=self._file_outputs,
-                node_id=self._node_id,
-                node_type=self.node_type,
-                reasoning_format=self.node_data.reasoning_format,
-            )
+            # Check if tools are configured
+            if self.tool_call_enabled:
+                # Use tool-enabled invocation (Agent V2 style)
+                # This generator handles all events including final events
+                generator = self._invoke_llm_with_tools(
+                    model_instance=model_instance,
+                    prompt_messages=prompt_messages,
+                    stop=stop,
+                    files=files,
+                    variable_pool=variable_pool,
+                    node_inputs=node_inputs,
+                    process_data=process_data,
+                )
+                # Forward all events and return early since _invoke_llm_with_tools
+                # already sends final event and StreamCompletedEvent
+                yield from generator
+                return
+            else:
+                # Use traditional LLM invocation
+                generator = LLMNode.invoke_llm(
+                    node_data_model=self._node_data.model,
+                    model_instance=model_instance,
+                    prompt_messages=prompt_messages,
+                    stop=stop,
+                    user_id=self.user_id,
+                    structured_output_enabled=self._node_data.structured_output_enabled,
+                    structured_output=self._node_data.structured_output,
+                    file_saver=self._llm_file_saver,
+                    file_outputs=self._file_outputs,
+                    node_id=self._node_id,
+                    node_type=self.node_type,
+                    reasoning_format=self._node_data.reasoning_format,
+                )
 
             structured_output: LLMStructuredOutput | None = None
 
@@ -287,6 +323,11 @@ class LLMNode(Node[LLMNodeData]):
                 "reasoning_content": reasoning_content,
                 "usage": jsonable_encoder(usage),
                 "finish_reason": finish_reason,
+                "generation": {
+                    "content": clean_text,
+                    "reasoning_content": [reasoning_content] if reasoning_content else [],
+                    "tool_calls": [],
+                },
             }
             if structured_output:
                 outputs["structured_output"] = structured_output.structured_output
@@ -1203,6 +1244,398 @@ class LLMNode(Node[LLMNodeData]):
     @property
     def retry(self) -> bool:
         return self.node_data.retry_config.retry_enabled
+
+    @property
+    def tool_call_enabled(self) -> bool:
+        return (
+            self.node_data.tools is not None
+            and len(self.node_data.tools) > 0
+            and all(tool.enabled for tool in self.node_data.tools)
+        )
+
+    def _invoke_llm_with_tools(
+        self,
+        model_instance: ModelInstance,
+        prompt_messages: Sequence[PromptMessage],
+        stop: Sequence[str] | None,
+        files: Sequence["File"],
+        variable_pool: VariablePool,
+        node_inputs: dict[str, Any],
+        process_data: dict[str, Any],
+    ) -> Generator[NodeEventBase, None, None]:
+        """Invoke LLM with tools support (from Agent V2)."""
+        # Get model features to determine strategy
+        model_features = self._get_model_features(model_instance)
+
+        # Prepare tool instances
+        tool_instances = self._prepare_tool_instances(variable_pool)
+
+        # Prepare prompt files (files that come from prompt variables, not vision files)
+        prompt_files = self._extract_prompt_files(variable_pool)
+
+        # Use factory to create appropriate strategy
+        strategy = StrategyFactory.create_strategy(
+            model_features=model_features,
+            model_instance=model_instance,
+            tools=tool_instances,
+            files=prompt_files,
+            max_iterations=10,
+            context=ExecutionContext(user_id=self.user_id, app_id=self.app_id, tenant_id=self.tenant_id),
+        )
+
+        # Run strategy
+        outputs = strategy.run(
+            prompt_messages=list(prompt_messages),
+            model_parameters=self._node_data.model.completion_params,
+            stop=list(stop or []),
+            stream=True,
+        )
+
+        # Process outputs
+        yield from self._process_tool_outputs(outputs, strategy, node_inputs, process_data)
+
+    def _get_model_features(self, model_instance: ModelInstance) -> list[ModelFeature]:
+        """Get model schema to determine features."""
+        try:
+            model_type_instance = model_instance.model_type_instance
+            model_schema = model_type_instance.get_model_schema(
+                model_instance.model,
+                model_instance.credentials,
+            )
+            return model_schema.features if model_schema and model_schema.features else []
+        except Exception:
+            logger.warning("Failed to get model schema, assuming no special features")
+            return []
+
+    def _prepare_tool_instances(self, variable_pool: VariablePool) -> list[Tool]:
+        """Prepare tool instances from configuration."""
+        tool_instances = []
+
+        if self._node_data.tools:
+            for tool in self._node_data.tools:
+                try:
+                    # Process settings to extract the correct structure
+                    processed_settings = {}
+                    for key, value in tool.settings.items():
+                        if isinstance(value, dict) and "value" in value and isinstance(value["value"], dict):
+                            # Extract the nested value if it has the ToolInput structure
+                            if "type" in value["value"] and "value" in value["value"]:
+                                processed_settings[key] = value["value"]
+                            else:
+                                processed_settings[key] = value
+                        else:
+                            processed_settings[key] = value
+
+                    # Merge parameters with processed settings (similar to Agent Node logic)
+                    merged_parameters = {**tool.parameters, **processed_settings}
+
+                    # Create AgentToolEntity from ToolMetadata
+                    agent_tool = AgentToolEntity(
+                        provider_id=tool.provider_name,
+                        provider_type=tool.type,
+                        tool_name=tool.tool_name,
+                        tool_parameters=merged_parameters,
+                        plugin_unique_identifier=tool.plugin_unique_identifier,
+                        credential_id=tool.credential_id,
+                    )
+
+                    # Get tool runtime from ToolManager
+                    tool_runtime = ToolManager.get_agent_tool_runtime(
+                        tenant_id=self.tenant_id,
+                        app_id=self.app_id,
+                        agent_tool=agent_tool,
+                        invoke_from=self.invoke_from,
+                        variable_pool=variable_pool,
+                    )
+
+                    # Apply custom description from extra field if available
+                    if tool.extra.get("description") and tool_runtime.entity.description:
+                        tool_runtime.entity.description.llm = (
+                            tool.extra.get("description") or tool_runtime.entity.description.llm
+                        )
+
+                    tool_instances.append(tool_runtime)
+                except Exception as e:
+                    logger.warning("Failed to load tool %s: %s", tool, str(e))
+                    continue
+
+        return tool_instances
+
+    def _extract_prompt_files(self, variable_pool: VariablePool) -> list["File"]:
+        """Extract files from prompt template variables."""
+        from core.variables import ArrayFileVariable, FileVariable
+
+        files: list[File] = []
+
+        # Extract variables from prompt template
+        if isinstance(self._node_data.prompt_template, list):
+            for message in self._node_data.prompt_template:
+                if message.text:
+                    parser = VariableTemplateParser(message.text)
+                    variable_selectors = parser.extract_variable_selectors()
+
+                    for variable_selector in variable_selectors:
+                        variable = variable_pool.get(variable_selector.value_selector)
+                        if isinstance(variable, FileVariable) and variable.value:
+                            files.append(variable.value)
+                        elif isinstance(variable, ArrayFileVariable) and variable.value:
+                            files.extend(variable.value)
+
+        return files
+
+    def _process_tool_outputs(
+        self,
+        outputs: Generator[LLMResultChunk | AgentLog, None, AgentResult],
+        strategy: Any,
+        node_inputs: dict[str, Any],
+        process_data: dict[str, Any],
+    ) -> Generator[NodeEventBase, None, None]:
+        """Process strategy outputs and convert to node events."""
+        text = ""
+        files: list[File] = []
+        usage = LLMUsage.empty_usage()
+        agent_logs: list[AgentLogEvent] = []
+        finish_reason = None
+        agent_result: AgentResult | None = None
+
+        # Track current round for ThoughtChunkEvent
+        current_round = 1
+        think_parser = llm_utils.ThinkTagStreamParser()
+        reasoning_chunks: list[str] = []
+
+        # Process each output from strategy
+        try:
+            for output in outputs:
+                if isinstance(output, AgentLog):
+                    # Store agent log event for metadata (no longer yielded, StreamChunkEvent contains the info)
+                    agent_log_event = AgentLogEvent(
+                        message_id=output.id,
+                        label=output.label,
+                        node_execution_id=self.id,
+                        parent_id=output.parent_id,
+                        error=output.error,
+                        status=output.status.value,
+                        data=output.data,
+                        metadata={k.value: v for k, v in output.metadata.items()},
+                        node_id=self._node_id,
+                    )
+                    for log in agent_logs:
+                        if log.message_id == agent_log_event.message_id:
+                            # update the log
+                            log.data = agent_log_event.data
+                            log.status = agent_log_event.status
+                            log.error = agent_log_event.error
+                            log.label = agent_log_event.label
+                            log.metadata = agent_log_event.metadata
+                            break
+                    else:
+                        agent_logs.append(agent_log_event)
+
+                    # Extract round number from ROUND log type
+                    if output.log_type == AgentLog.LogType.ROUND:
+                        round_index = output.data.get("round_index")
+                        if isinstance(round_index, int):
+                            current_round = round_index
+
+                    # Emit tool call events when tool call starts
+                    if output.log_type == AgentLog.LogType.TOOL_CALL and output.status == AgentLog.LogStatus.START:
+                        tool_name = output.data.get("tool_name", "")
+                        tool_call_id = output.data.get("tool_call_id", "")
+                        tool_args = output.data.get("tool_args", {})
+                        tool_arguments = json.dumps(tool_args) if tool_args else ""
+
+                        yield ToolCallChunkEvent(
+                            selector=[self._node_id, "generation", "tool_calls"],
+                            chunk=tool_arguments,
+                            tool_call_id=tool_call_id,
+                            tool_name=tool_name,
+                            tool_arguments=tool_arguments,
+                            is_final=True,
+                        )
+
+                    # Emit tool result events when tool call completes
+                    if output.log_type == AgentLog.LogType.TOOL_CALL and output.status == AgentLog.LogStatus.SUCCESS:
+                        tool_name = output.data.get("tool_name", "")
+                        tool_output = output.data.get("output", "")
+                        tool_call_id = output.data.get("tool_call_id", "")
+                        tool_files = []
+                        tool_error = None
+
+                        # Extract file IDs if present
+                        files_data = output.data.get("files")
+                        if files_data and isinstance(files_data, list):
+                            tool_files = files_data
+
+                        # Check for error in meta
+                        meta = output.data.get("meta")
+                        if meta and isinstance(meta, dict) and meta.get("error"):
+                            tool_error = meta.get("error")
+
+                        yield ToolResultChunkEvent(
+                            selector=[self._node_id, "generation", "tool_results"],
+                            chunk=str(tool_output) if tool_output else "",
+                            tool_call_id=tool_call_id,
+                            tool_name=tool_name,
+                            tool_files=tool_files,
+                            tool_error=tool_error,
+                            is_final=True,
+                        )
+
+                elif isinstance(output, LLMResultChunk):
+                    # Handle LLM result chunks - only process text content
+                    message = output.delta.message
+
+                    # Handle text content
+                    if message and message.content:
+                        chunk_text = message.content
+                        if isinstance(chunk_text, list):
+                            # Extract text from content list
+                            chunk_text = "".join(getattr(c, "data", str(c)) for c in chunk_text)
+                        else:
+                            chunk_text = str(chunk_text)
+                        for kind, segment in think_parser.process(chunk_text):
+                            if not segment:
+                                continue
+
+                            if kind == "thought":
+                                reasoning_chunks.append(segment)
+                                yield ThoughtChunkEvent(
+                                    selector=[self._node_id, "generation", "thought"],
+                                    chunk=segment,
+                                    round_index=current_round,
+                                    is_final=False,
+                                )
+                            else:
+                                text += segment
+                                yield StreamChunkEvent(
+                                    selector=[self._node_id, "text"],
+                                    chunk=segment,
+                                    is_final=False,
+                                )
+                                yield StreamChunkEvent(
+                                    selector=[self._node_id, "generation", "content"],
+                                    chunk=segment,
+                                    is_final=False,
+                                )
+
+                    if output.delta.usage:
+                        self._accumulate_usage(usage, output.delta.usage)
+
+                    # Capture finish reason
+                    if output.delta.finish_reason:
+                        finish_reason = output.delta.finish_reason
+
+        except StopIteration as e:
+            # Get the return value from generator
+            if isinstance(getattr(e, "value", None), AgentResult):
+                agent_result = e.value
+
+        # Use result from generator if available
+        if agent_result:
+            text = agent_result.text or text
+            files = agent_result.files
+            if agent_result.usage:
+                usage = agent_result.usage
+            if agent_result.finish_reason:
+                finish_reason = agent_result.finish_reason
+
+        # Flush any remaining buffered content after streaming ends
+        for kind, segment in think_parser.flush():
+            if not segment:
+                continue
+            if kind == "thought":
+                reasoning_chunks.append(segment)
+                yield ThoughtChunkEvent(
+                    selector=[self._node_id, "generation", "thought"],
+                    chunk=segment,
+                    round_index=current_round,
+                    is_final=False,
+                )
+            else:
+                text += segment
+                yield StreamChunkEvent(
+                    selector=[self._node_id, "text"],
+                    chunk=segment,
+                    is_final=False,
+                )
+                yield StreamChunkEvent(
+                    selector=[self._node_id, "generation", "content"],
+                    chunk=segment,
+                    is_final=False,
+                )
+
+        # Send final events for all streams
+        yield StreamChunkEvent(
+            selector=[self._node_id, "text"],
+            chunk="",
+            is_final=True,
+        )
+
+        # Close generation sub-field streams
+        yield StreamChunkEvent(
+            selector=[self._node_id, "generation", "content"],
+            chunk="",
+            is_final=True,
+        )
+        yield ThoughtChunkEvent(
+            selector=[self._node_id, "generation", "thought"],
+            chunk="",
+            round_index=current_round,
+            is_final=True,
+        )
+
+        # Build generation field from agent_logs
+        tool_calls_for_generation = []
+        for log in agent_logs:
+            if log.label == "Tool Call":
+                tool_call_data = {
+                    "id": log.data.get("tool_call_id", ""),
+                    "name": log.data.get("tool_name", ""),
+                    "arguments": json.dumps(log.data.get("tool_args", {})),
+                    "result": log.data.get("output", ""),
+                }
+                tool_calls_for_generation.append(tool_call_data)
+
+        # Complete with results
+        yield StreamCompletedEvent(
+            node_run_result=NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                outputs={
+                    "text": text,
+                    "files": ArrayFileSegment(value=files),
+                    "usage": jsonable_encoder(usage),
+                    "finish_reason": finish_reason,
+                    "generation": {
+                        "reasoning_content": ["".join(reasoning_chunks)] if reasoning_chunks else [],
+                        "tool_calls": tool_calls_for_generation,
+                        "content": text,
+                    },
+                },
+                metadata={
+                    WorkflowNodeExecutionMetadataKey.LLM_CONTENT_SEQUENCE: [],
+                },
+                inputs={
+                    **node_inputs,
+                    "tools": [
+                        {"provider_id": tool.provider_name, "tool_name": tool.tool_name}
+                        for tool in self._node_data.tools
+                    ]
+                    if self._node_data.tools
+                    else [],
+                },
+                process_data=process_data,
+                llm_usage=usage,
+            )
+        )
+
+    def _accumulate_usage(self, total_usage: LLMUsage, delta_usage: LLMUsage) -> None:
+        """Accumulate LLM usage statistics."""
+        total_usage.prompt_tokens += delta_usage.prompt_tokens
+        total_usage.completion_tokens += delta_usage.completion_tokens
+        total_usage.total_tokens += delta_usage.total_tokens
+        total_usage.prompt_price += delta_usage.prompt_price
+        total_usage.completion_price += delta_usage.completion_price
+        total_usage.total_price += delta_usage.total_price
 
 
 def _combine_message_content_with_role(
