@@ -146,16 +146,16 @@ Treat component state as part of the public behavior: confirm the initial render
 - ✅ Reset shared stores (React context, Zustand, TanStack Query cache) between tests to avoid leaking state. Prefer helper factory functions over module-level singletons in specs.
 - ✅ For hooks that read from context, use `renderHook` with a custom wrapper that supplies required providers.
 - ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders](#9-test-data-builders-anti-hardcoding) section).
-- ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in __mocks__/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provier-context-mock.spec.tsx`).
+- ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in __mocks__/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provider-context-mock.spec.tsx`).
 - ✅ Use factory functions to create mock data with TypeScript types. This ensures type safety and makes tests more maintainable.
 
 **Rules**:
 
 1. **Import actual types**: Always import types from the source (`@/models/`, `@/types/`, etc.) instead of defining inline types.
-1. **Provide complete defaults**: Factory functions should return complete objects with all required fields filled with sensible defaults.
-1. **Allow partial overrides**: Accept `Partial<T>` to enable flexible customization for specific test cases.
-1. **Create list factories**: For array data, create a separate factory function that composes item factories.
-   **Reference**: See `__mocks__/provider-context.ts` for reusable context mock factories used across multiple test files.
+2. **Provide complete defaults**: Factory functions should return complete objects with all required fields filled with sensible defaults.
+3. **Allow partial overrides**: Accept `Partial<T>` to enable flexible customization for specific test cases.
+4. **Create list factories**: For array data, create a separate factory function that composes item factories.
+5. **Reference**: See `__mocks__/provider-context.ts` for reusable context mock factories used across multiple test files.
 
 ### 4. Performance Optimization
 
