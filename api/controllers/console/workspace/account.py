@@ -182,7 +182,8 @@ class AccountInitApi(Resource):
         if account.status == "active":
             raise AccountAlreadyInitedError()
 
-        payload = console_ns.payload or {}
+     
+        payload = console_ns.payload or request.get_json(silent=True) or {}
         args = AccountInitPayload.model_validate(payload)
 
         if dify_config.EDITION == "CLOUD":
