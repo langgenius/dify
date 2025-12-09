@@ -543,6 +543,7 @@ const translation = {
         icon: 'Segmentiertes Symbol',
         url: 'Segmentierte URL',
         metadata: 'Weitere Metadaten',
+        files: 'Abgerufene Dateien',
       },
       metadata: {
         options: {
@@ -572,6 +573,8 @@ const translation = {
         title: 'Metadatenfilterung',
         tip: 'Metadatenfilterung ist der Prozess, Metadatenattribute (wie Tags, Kategorien oder Zugriffsberechtigungen) zu verwenden, um die Abfrage und Kontrolle der relevanten Informationen innerhalb eines Systems zu verfeinern.',
       },
+      queryText: 'Abfrage Text',
+      queryAttachment: 'Abfragebilder',
     },
     http: {
       inputVars: 'Eingabevariablen',

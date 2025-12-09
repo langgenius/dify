@@ -144,7 +144,7 @@ const translation = {
       for: 'Za velike ekipe',
     },
     community: {
-      features: ['Vse osnovne funkcije so izdane v javni repozitorij', 'Enotno delovno okolje', 'V skladu z Dify licenco odprte kode'],
+      features: ['Vse osnovne funkcije so izdane v javnem repozitoriju', 'Enotno delovno okolje', 'V skladu z Dify licenco odprte kode'],
       includesTitle: 'Brezplačne funkcije:',
       price: 'Brezplačno',
       name: 'Skupnost',
@@ -199,6 +199,9 @@ const translation = {
     title: 'Nadgradite za odklep več sprožilnih dogodkov',
     upgrade: 'Nadgradnja',
   },
+  viewBillingTitle: 'Fakturiranje in naročnine',
+  viewBillingDescription: 'Upravljajte načine plačila, račune in spremembe naročnin',
+  viewBillingAction: 'Upravljaj',
 }
 
 export default translation

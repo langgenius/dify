@@ -176,6 +176,7 @@ const AllStartBlocks = ({
                 wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
                 list={marketplacePlugins}
                 searchText={trimmedSearchText}
+                category={PluginCategoryEnum.trigger}
                 tags={tags}
                 hideFindMoreFooter
               />
@@ -208,7 +209,7 @@ const AllStartBlocks = ({
           // Footer - Same as Tools tab marketplace footer
           <Link
             className={marketplaceFooterClassName}
-            href={getMarketplaceUrl('')}
+            href={getMarketplaceUrl('', { category: PluginCategoryEnum.trigger })}
             target='_blank'
           >
             <span>{t('plugin.findMoreInMarketplace')}</span>

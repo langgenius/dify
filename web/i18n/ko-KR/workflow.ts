@@ -570,6 +570,7 @@ const translation = {
         icon: '세그먼트 아이콘',
         url: '세그먼트 URL',
         metadata: '기타 메타데이터',
+        files: '검색된 파일',
       },
       metadata: {
         options: {
@@ -600,6 +601,8 @@ const translation = {
         title: '메타데이터 필터링',
         tip: '메타데이터 필터링은 시스템 내에서 관련 정보를 검색하는 과정을 정제하고 제어하기 위해 메타데이터 속성(예: 태그, 카테고리 또는 접근 권한)을 사용하는 과정입니다.',
       },
+      queryText: '질의 텍스트',
+      queryAttachment: '이미지 조회',
     },
     http: {
       inputVars: '입력 변수',
