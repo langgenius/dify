@@ -80,6 +80,12 @@ class Dataset(Base):
     enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
     is_multimodal = mapped_column(sa.Boolean, nullable=False, default=False, server_default=db.text("false"))
 
+    def __init__(self, **kwargs):
+        # Ensure Python-side default aligns with DB default without requiring a round-trip.
+        if "is_multimodal" not in kwargs:
+            kwargs["is_multimodal"] = False
+        super().__init__(**kwargs)
+
     @property
     def total_documents(self):
         return db.session.query(func.count(Document.id)).where(Document.dataset_id == self.id).scalar()
