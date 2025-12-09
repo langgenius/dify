@@ -61,6 +61,7 @@ class ChatMessagesQuery(BaseModel):
 class MessageFeedbackPayload(BaseModel):
     message_id: str = Field(..., description="Message ID")
     rating: Literal["like", "dislike"] | None = Field(default=None, description="Feedback rating")
+    content: str | None = Field(default=None, description="Feedback content")
 
     @field_validator("message_id")
     @classmethod
@@ -324,6 +325,7 @@ class MessageFeedbackApi(Resource):
             db.session.delete(feedback)
         elif args.rating and feedback:
             feedback.rating = args.rating
+            feedback.content = args.content
         elif not args.rating and not feedback:
             raise ValueError("rating cannot be None when feedback not exists")
         else:
@@ -335,6 +337,7 @@ class MessageFeedbackApi(Resource):
                 conversation_id=message.conversation_id,
                 message_id=message.id,
                 rating=rating_value,
+                content=args.content,
                 from_source="admin",
                 from_account_id=current_user.id,
             )

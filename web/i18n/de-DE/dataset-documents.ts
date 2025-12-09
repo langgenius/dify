@@ -401,6 +401,7 @@ const translation = {
     searchResults_one: 'ERGEBNIS',
     keywordEmpty: 'Das Schlüsselwort darf nicht leer sein.',
     keywordDuplicate: 'Das Schlüsselwort existiert bereits',
+    allFilesUploaded: 'Alle Dateien müssen vor dem Speichern hochgeladen werden',
   },
 }
 

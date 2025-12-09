@@ -1,13 +1,16 @@
 import logging
 import time
+from collections.abc import Callable, Sequence
 
 import click
 from celery import shared_task
 from sqlalchemy import select
 
 from configs import dify_config
+from core.entities.document_task import DocumentTask
 from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
+from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
@@ -24,8 +27,55 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
     :param dataset_id:
     :param document_ids:
 
+    .. warning:: TO BE DEPRECATED
+        This function will be deprecated and removed in a future version.
+        Use normal_duplicate_document_indexing_task or priority_duplicate_document_indexing_task instead.
+
     Usage: duplicate_document_indexing_task.delay(dataset_id, document_ids)
     """
+    logger.warning("duplicate document indexing task received: %s - %s", dataset_id, document_ids)
+    _duplicate_document_indexing_task(dataset_id, document_ids)
+
+
+def _duplicate_document_indexing_task_with_tenant_queue(
+    tenant_id: str, dataset_id: str, document_ids: Sequence[str], task_func: Callable[[str, str, Sequence[str]], None]
+):
+    try:
+        _duplicate_document_indexing_task(dataset_id, document_ids)
+    except Exception:
+        logger.exception(
+            "Error processing duplicate document indexing %s for tenant %s: %s",
+            dataset_id,
+            tenant_id,
+            document_ids,
+            exc_info=True,
+        )
+    finally:
+        tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "duplicate_document_indexing")
+
+        # Check if there are waiting tasks in the queue
+        # Use rpop to get the next task from the queue (FIFO order)
+        next_tasks = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
+
+        logger.info("duplicate document indexing tenant isolation queue %s next tasks: %s", tenant_id, next_tasks)
+
+        if next_tasks:
+            for next_task in next_tasks:
+                document_task = DocumentTask(**next_task)
+                # Process the next waiting task
+                # Keep the flag set to indicate a task is running
+                tenant_isolated_task_queue.set_task_waiting_time()
+                task_func.delay(  # type: ignore
+                    tenant_id=document_task.tenant_id,
+                    dataset_id=document_task.dataset_id,
+                    document_ids=document_task.document_ids,
+                )
+        else:
+            # No more waiting tasks, clear the flag
+            tenant_isolated_task_queue.delete_task_key()
+
+
+def _duplicate_document_indexing_task(dataset_id: str, document_ids: Sequence[str]):
     documents = []
     start_at = time.perf_counter()
 
@@ -110,3 +160,35 @@ def duplicate_document_indexing_task(dataset_id: str, document_ids: list):
         logger.exception("duplicate_document_indexing_task failed, dataset_id: %s", dataset_id)
     finally:
         db.session.close()
+
+
+@shared_task(queue="dataset")
+def normal_duplicate_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
+    """
+    Async process duplicate documents
+    :param tenant_id:
+    :param dataset_id:
+    :param document_ids:
+
+    Usage: normal_duplicate_document_indexing_task.delay(tenant_id, dataset_id, document_ids)
+    """
+    logger.info("normal duplicate document indexing task received: %s - %s - %s", tenant_id, dataset_id, document_ids)
+    _duplicate_document_indexing_task_with_tenant_queue(
+        tenant_id, dataset_id, document_ids, normal_duplicate_document_indexing_task
+    )
+
+
+@shared_task(queue="priority_dataset")
+def priority_duplicate_document_indexing_task(tenant_id: str, dataset_id: str, document_ids: Sequence[str]):
+    """
+    Async process duplicate documents
+    :param tenant_id:
+    :param dataset_id:
+    :param document_ids:
+
+    Usage: priority_duplicate_document_indexing_task.delay(tenant_id, dataset_id, document_ids)
+    """
+    logger.info("priority duplicate document indexing task received: %s - %s - %s", tenant_id, dataset_id, document_ids)
+    _duplicate_document_indexing_task_with_tenant_queue(
+        tenant_id, dataset_id, document_ids, priority_duplicate_document_indexing_task
+    )

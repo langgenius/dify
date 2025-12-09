@@ -543,6 +543,7 @@ const translation = {
         icon: 'Ikona segmentowana',
         url: 'URL segmentowany',
         metadata: 'Inne metadane',
+        files: 'Pobrane pliki',
       },
       metadata: {
         options: {
@@ -572,6 +573,8 @@ const translation = {
         title: 'Filtrowanie metadanych',
         tip: 'Filtracja metadanych to proces wykorzystania atrybutów metadanych (takich jak tagi, kategorie lub uprawnienia dostępu) do precyzowania i kontrolowania pozyskiwania istotnych informacji w systemie.',
       },
+      queryText: 'Tekst zapytania',
+      queryAttachment: 'Wyszukaj obrazy',
     },
     http: {
       inputVars: 'Zmienne wejściowe',

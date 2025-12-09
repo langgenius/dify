@@ -32,6 +32,7 @@ import { canFindTool } from '@/utils'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useMittContextSelector } from '@/context/mitt-context'
+import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 
 type AgentToolWithMoreInfo = (AgentTool & { icon: any; collection?: Collection; use_end_user_credentials?: boolean; end_user_credential_type?: string }) | null
@@ -101,13 +102,17 @@ const AgentTools: FC = () => {
     }))
   }, [])
   const getToolValue = (tool: ToolDefaultValue) => {
+    const currToolInCollections = collectionList.find(c => c.id === tool.provider_id)
+    const currToolWithConfigs = currToolInCollections?.tools.find(t => t.name === tool.tool_name)
+    const formSchemas = currToolWithConfigs ? toolParametersToFormSchemas(currToolWithConfigs.parameters) : []
+    const paramsWithDefaultValue = addDefaultValue(tool.params, formSchemas)
     return {
       provider_id: tool.provider_id,
       provider_type: tool.provider_type as CollectionType,
       provider_name: tool.provider_name,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
-      tool_parameters: tool.params,
+      tool_parameters: paramsWithDefaultValue,
       notAuthor: !tool.is_team_authorization,
       enabled: true,
       use_end_user_credentials: false,
@@ -129,7 +134,7 @@ const AgentTools: FC = () => {
   }
   const getProviderShowName = (item: AgentTool) => {
     const type = item.provider_type
-    if(type === CollectionType.builtIn)
+    if (type === CollectionType.builtIn)
       return item.provider_name.split('/').pop()
     return item.provider_name
   }
