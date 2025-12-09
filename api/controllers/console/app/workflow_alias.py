@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any
 
 from flask_restx import Resource, marshal_with, reqparse
 from flask_restx.inputs import int_range
@@ -28,7 +28,8 @@ logger = logging.getLogger(__name__)
 @dataclass
 class PaginatedResponse:
     """Structured pagination response object."""
-    items: List[Any]
+
+    items: list[Any]
     limit: int
     offset: int
     has_more: bool
@@ -38,7 +39,7 @@ class PaginatedResponse:
         """Calculate current page from offset and limit."""
         return (self.offset // self.limit) + 1
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary format for API response."""
         return {
             "items": self.items,
@@ -52,11 +53,7 @@ def _create_pagination_parser() -> reqparse.RequestParser:
     """Create a parser with validated pagination parameters."""
     parser = reqparse.RequestParser()
     parser.add_argument(
-        "workflow_ids",
-        type=str,
-        required=False,
-        location="args",
-        help="Comma-separated list of workflow IDs"
+        "workflow_ids", type=str, required=False, location="args", help="Comma-separated list of workflow IDs"
     )
     parser.add_argument(
         "limit",
@@ -64,7 +61,7 @@ def _create_pagination_parser() -> reqparse.RequestParser:
         required=False,
         default=100,
         location="args",
-        help="Number of items to return (1-1000)"
+        help="Number of items to return (1-1000)",
     )
     parser.add_argument(
         "offset",
@@ -72,7 +69,7 @@ def _create_pagination_parser() -> reqparse.RequestParser:
         required=False,
         default=0,
         location="args",
-        help="Number of items to skip (0-1000000)"
+        help="Number of items to skip (0-1000000)",
     )
     return parser
 

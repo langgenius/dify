@@ -28,7 +28,7 @@ class WorkflowAliasService:
     def __init__(self, session: Union[Session, "scoped_session"] | None = None):
         """
         Initialize WorkflowAliasService with optional database session.
-        
+
         Args:
             session: Database session. If provided, will be used for all operations.
                     If None, session must be passed to each method call.
@@ -47,7 +47,7 @@ class WorkflowAliasService:
         db_session = self._session or session
         if not db_session:
             raise ValueError("Database session is required")
-            
+
         workflow = db_session.get(Workflow, request.workflow_id)
         if not workflow:
             raise ValueError(f"Workflow {request.workflow_id} not found")
@@ -88,7 +88,7 @@ class WorkflowAliasService:
         db_session = self._session or session
         if not db_session:
             raise ValueError("Database session is required")
-            
+
         workflow = db_session.get(Workflow, request.workflow_id)
         if not workflow:
             raise ValueError(f"Workflow {request.workflow_id} not found")
@@ -129,7 +129,7 @@ class WorkflowAliasService:
         db_session = self._session or session
         if not db_session:
             raise ValueError("Database session is required")
-            
+
         conditions = [WorkflowNameAlias.app_id == app_id]
 
         if workflow_ids:
@@ -155,7 +155,7 @@ class WorkflowAliasService:
         db_session = self._session or session
         if not db_session:
             raise ValueError("Database session is required")
-            
+
         alias = db_session.get(WorkflowNameAlias, alias_id)
         if not alias or alias.app_id != app_id:
             raise ValueError("Alias not found")
