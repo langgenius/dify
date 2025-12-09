@@ -163,7 +163,7 @@ const translation = {
       for: 'Dla użytkowników indywidualnych, małych zespołów lub projektów niekomercyjnych',
     },
     premium: {
-      features: ['Niezawodność zarządzana samodzielnie przez różnych dostawców chmury', 'Pojedyncza przestrzeń robocza', 'Dostosowywanie logo i marki aplikacji webowej', 'Priorytetowe wsparcie e-mail i czat'],
+      features: ['Niezawodność zarządzana samodzielnie przez różnych dostawców chmury', 'Pojedyncza przestrzeń robocza', 'Dostosowywanie logo i identyfikacji wizualnej aplikacji webowej', 'Priorytetowe wsparcie e-mail i czat'],
       description: 'Dla średnich organizacji i zespołów',
       for: 'Dla średnich organizacji i zespołów',
       name: 'Premium',
@@ -209,6 +209,9 @@ const translation = {
     title: 'Uaktualnij, aby odblokować więcej zdarzeń wyzwalających',
     dismiss: 'Odrzuć',
   },
+  viewBillingTitle: 'Rozliczenia i subskrypcje',
+  viewBillingDescription: 'Zarządzaj metodami płatności, fakturami i zmianami subskrypcji',
+  viewBillingAction: 'Zarządzać',
 }
 
 export default translation
