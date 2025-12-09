@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
-import useSWR from 'swr'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
@@ -12,7 +11,7 @@ import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import EmptyElement from './empty-element'
 import Pagination from '@/app/components/base/pagination'
 import Loading from '@/app/components/base/loading'
-import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
+import { useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { APP_PAGE_LIMIT } from '@/config'
 import type { App } from '@/types/app'
 import { AppModeEnum } from '@/types/app'
@@ -72,7 +71,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   // Get the app type first
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
 
-  const query = {
+  const query = useMemo(() => ({
     page: currPage + 1,
     limit,
     ...((debouncedQueryParams.period !== '9')
@@ -83,24 +82,22 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       : {}),
     ...(isChatMode ? { sort_by: debouncedQueryParams.sort_by } : {}),
     ...omit(debouncedQueryParams, ['period']),
-  }
+  }), [currPage, debouncedQueryParams, isChatMode, limit])
 
   // When the details are obtained, proceed to the next request
-  const { data: chatConversations, mutate: mutateChatList } = useSWR(() => isChatMode
-    ? {
-      url: `/apps/${appDetail.id}/chat-conversations`,
-      params: query,
-    }
-    : null, fetchChatConversations)
+  const { data: chatConversations, refetch: refetchChatList } = useChatConversations(appDetail.id, query as any, isChatMode)
 
-  const { data: completionConversations, mutate: mutateCompletionList } = useSWR(() => !isChatMode
-    ? {
-      url: `/apps/${appDetail.id}/completion-conversations`,
-      params: query,
-    }
-    : null, fetchCompletionConversations)
+  const { data: completionConversations, refetch: refetchCompletionList } = useCompletionConversations(appDetail.id, query as any, !isChatMode)
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
+
+  const handleRefreshList = useCallback(() => {
+    if (isChatMode) {
+      void refetchChatList()
+      return
+    }
+    void refetchCompletionList()
+  }, [isChatMode, refetchChatList, refetchCompletionList])
 
   const handleQueryParamsChange = useCallback((next: QueryParam) => {
     setCurrPage(0)
@@ -124,12 +121,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       <p className='system-sm-regular shrink-0 text-text-tertiary'>{t('appLog.description')}</p>
       <div className='flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4'>
         <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={handleQueryParamsChange} />
-        {total === undefined
-          ? <Loading type='app' />
-          : total > 0
-            ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
-            : <EmptyElement appDetail={appDetail} />
-        }
+        {(() => {
+          if (total === undefined)
+            return <Loading type='app' />
+          if (total > 0)
+            return <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={handleRefreshList} />
+          return <EmptyElement appDetail={appDetail} />
+        })()}
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
           ? <Pagination

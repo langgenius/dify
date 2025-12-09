@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import dayjs from 'dayjs'
 import { RiCalendarLine } from '@remixicon/react'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
@@ -10,7 +9,7 @@ import type { QueryParam } from './index'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'
-import { fetchAnnotationsCount } from '@/service/log'
+import { useAnnotationsCount } from '@/service/use-log'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
@@ -35,7 +34,7 @@ type IFilterProps = {
 }
 
 const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams }: IFilterProps) => {
-  const { data } = useSWR({ url: `/apps/${appId}/annotations/count` }, fetchAnnotationsCount)
+  const { data } = useAnnotationsCount(appId)
   const { t } = useTranslation()
   if (!data)
     return null

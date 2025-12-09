@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import useSWR from 'swr'
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
@@ -18,7 +17,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { ChatItemInTree } from '../../base/chat/types'
 import Indicator from '../../header/indicator'
 import VarPanel from './var-panel'
-import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
+import type { FeedbackFunc, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import { type App, AppModeEnum } from '@/types/app'
 import ActionButton from '@/app/components/base/action-button'
@@ -26,7 +25,8 @@ import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Chat from '@/app/components/base/chat/chat'
 import { ToastContext } from '@/app/components/base/toast'
-import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
+import { fetchChatMessages } from '@/service/log'
+import { useChatConversationDetail, useCompletionConversationDetail, useUpdateLogMessageAnnotation, useUpdateLogMessageFeedback } from '@/service/use-log'
 import ModelInfo from '@/app/components/app/log/model-info'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
@@ -199,6 +199,39 @@ type IDetailPanel = {
   onSubmitAnnotation: SubmitAnnotationFunc
 }
 
+const useConversationDetailActions = (appId: string | undefined, detailQueryKey: any) => {
+  const { notify } = useContext(ToastContext)
+  const { t } = useTranslation()
+  const { mutateAsync: submitFeedback } = useUpdateLogMessageFeedback(appId, detailQueryKey)
+  const { mutateAsync: submitAnnotation } = useUpdateLogMessageAnnotation(appId, detailQueryKey)
+
+  const handleFeedback = useCallback<FeedbackFunc>(async (mid, { rating, content }) => {
+    try {
+      await submitFeedback({ mid, rating, content })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      return true
+    }
+    catch {
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      return false
+    }
+  }, [notify, submitFeedback, t])
+
+  const handleAnnotation = useCallback<SubmitAnnotationFunc>(async (mid, value) => {
+    try {
+      await submitAnnotation({ mid, value })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      return true
+    }
+    catch {
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      return false
+    }
+  }, [notify, submitAnnotation, t])
+
+  return { handleFeedback, handleAnnotation }
+}
+
 function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const MIN_ITEMS_FOR_SCROLL_LOADING = 8
   const SCROLL_THRESHOLD_PX = 50
@@ -369,7 +402,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
-  }, [allChatItems, appDetail?.id, t])
+  }, [allChatItems, appDetail?.id, notify, t])
 
   const fetchInitiated = useRef(false)
 
@@ -516,7 +549,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     finally {
       setIsLoading(false)
     }
-  }, [allChatItems, detail.id, hasMore, isLoading, timezone, t, appDetail])
+  }, [allChatItems, detail?.model_config?.configs?.introduction, detail.id, hasMore, isLoading, timezone, t, appDetail])
 
   useEffect(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')
@@ -811,39 +844,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
    */
 const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
-  const detailParams = ({ url: `/apps/${appId}/completion-conversations/${conversationId}` })
-  const { data: conversationDetail, mutate: conversationDetailMutate } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchCompletionConversationDetail)
-  const { notify } = useContext(ToastContext)
-  const { t } = useTranslation()
-
-  const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
-    try {
-      await updateLogMessageFeedbacks({
-        url: `/apps/${appId}/feedbacks`,
-        body: { message_id: mid, rating, content: content ?? undefined },
-      })
-      conversationDetailMutate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      return true
-    }
-    catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-      return false
-    }
-  }
-
-  const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
-    try {
-      await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
-      conversationDetailMutate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      return true
-    }
-    catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-      return false
-    }
-  }
+  const { data: conversationDetail, queryKey: detailQueryKey } = useCompletionConversationDetail(appId, conversationId)
+  const { handleFeedback, handleAnnotation } = useConversationDetailActions(appId, detailQueryKey)
 
   if (!conversationDetail)
     return null
@@ -859,37 +861,8 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
    * Chat App Conversation Detail Component
    */
 const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
-  const detailParams = { url: `/apps/${appId}/chat-conversations/${conversationId}` }
-  const { data: conversationDetail } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchChatConversationDetail)
-  const { notify } = useContext(ToastContext)
-  const { t } = useTranslation()
-
-  const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
-    try {
-      await updateLogMessageFeedbacks({
-        url: `/apps/${appId}/feedbacks`,
-        body: { message_id: mid, rating, content: content ?? undefined },
-      })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      return true
-    }
-    catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-      return false
-    }
-  }
-
-  const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
-    try {
-      await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      return true
-    }
-    catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-      return false
-    }
-  }
+  const { data: conversationDetail, queryKey: detailQueryKey } = useChatConversationDetail(appId, conversationId)
+  const { handleFeedback, handleAnnotation } = useConversationDetailActions(appId, detailQueryKey)
 
   if (!conversationDetail)
     return null
@@ -997,7 +970,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
     if (pendingConversationCacheRef.current?.id === conversationIdInUrl || matchedConversation)
       pendingConversationCacheRef.current = undefined
-  }, [conversationIdInUrl, currentConversation, isChatMode, logs?.data, showDrawer])
+  }, [conversationIdInUrl, currentConversation, currentConversationId, isChatMode, logs?.data, showDrawer])
 
   const onCloseDrawer = useCallback(() => {
     onRefresh()
