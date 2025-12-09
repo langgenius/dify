@@ -74,6 +74,7 @@ const translation = {
     unlimitedApiRate: '無制限の API コール',
     apiRateLimitTooltip: 'API レート制限は、テキスト生成、チャットボット、ワークフロー、ドキュメント処理など、Dify API 経由のすべてのリクエストに適用されます。',
     documentProcessingPriority: '文書処理',
+    documentProcessingPriorityTip: 'より高い文書処理優先度が必要な場合は、プランをアップグレードしてください。',
     documentProcessingPriorityUpgrade: 'より高い精度と高速な速度でデータを処理します。',
     priority: {
       'standard': '標準',

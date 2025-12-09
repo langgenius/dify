@@ -32,6 +32,7 @@ const translation = {
     vectorSpaceTooltip:
       'वेक्टर स्पेस वह दीर्घकालिक स्मृति प्रणाली है जिसकी आवश्यकता LLMs को आपके डेटा को समझने के लिए होती है।',
     documentProcessingPriority: 'दस्तावेज़ प्रसंस्करण प्राथमिकता',
+    documentProcessingPriorityTip: 'उच्च दस्तावेज़ प्रसंस्करण प्राथमिकता के लिए, कृपया अपनी योजना को अपग्रेड करें।',
     documentProcessingPriorityUpgrade:
       'तेजी से गति पर उच्च सटीकता के साथ अधिक डेटा संसाधित करें।',
     priority: {

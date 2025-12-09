@@ -47,6 +47,8 @@ def priority_rag_pipeline_run_task(
         )
         rag_pipeline_invoke_entities = json.loads(rag_pipeline_invoke_entities_content)
 
+        logger.info("tenant %s received %d rag pipeline invoke entities", tenant_id, len(rag_pipeline_invoke_entities))
+
         # Get Flask app object for thread context
         flask_app = current_app._get_current_object()  # type: ignore
 
@@ -66,7 +68,7 @@ def priority_rag_pipeline_run_task(
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                f"tenant_id: {tenant_id} , Rag pipeline run completed. Latency: {end_at - start_at}s", fg="green"
+                f"tenant_id: {tenant_id}, Rag pipeline run completed. Latency: {end_at - start_at}s", fg="green"
             )
         )
     except Exception:
@@ -78,7 +80,7 @@ def priority_rag_pipeline_run_task(
         # Check if there are waiting tasks in the queue
         # Use rpop to get the next task from the queue (FIFO order)
         next_file_ids = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
-        logger.info("priority rag pipeline tenant isolation queue next files: %s", next_file_ids)
+        logger.info("priority rag pipeline tenant isolation queue %s next files: %s", tenant_id, next_file_ids)
 
         if next_file_ids:
             for next_file_id in next_file_ids:

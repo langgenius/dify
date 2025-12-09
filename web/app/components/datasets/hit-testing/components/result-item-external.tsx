@@ -31,7 +31,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <div className='body-md-regular line-clamp-2 break-all'>{content}</div>
+        <div className='body-md-regular line-clamp-2 break-all text-text-primary'>{content}</div>
       </div>
 
       {/* Foot */}

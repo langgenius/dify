@@ -12,6 +12,7 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
+from core.helper.tool_provider_cache import ToolProviderListCache
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
@@ -204,6 +205,9 @@ class BuiltinToolManageService:
                     db_provider.name = name
 
                 session.commit()
+
+                # Invalidate tool providers cache
+                ToolProviderListCache.invalidate_cache(tenant_id)
             except Exception as e:
                 session.rollback()
                 raise ValueError(str(e))
@@ -282,6 +286,9 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.commit()
+
+                    # Invalidate tool providers cache
+                    ToolProviderListCache.invalidate_cache(tenant_id)
             except Exception as e:
                 session.rollback()
                 raise ValueError(str(e))
@@ -402,6 +409,9 @@ class BuiltinToolManageService:
             )
             cache.delete()
 
+            # Invalidate tool providers cache
+            ToolProviderListCache.invalidate_cache(tenant_id)
+
         return {"result": "success"}
 
     @staticmethod
@@ -423,6 +433,9 @@ class BuiltinToolManageService:
             # set new default provider
             target_provider.is_default = True
             session.commit()
+
+            # Invalidate tool providers cache
+            ToolProviderListCache.invalidate_cache(tenant_id)
         return {"result": "success"}
 
     @staticmethod
