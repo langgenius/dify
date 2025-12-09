@@ -570,6 +570,7 @@ const translation = {
         icon: 'セグメントアイコン',
         url: 'セグメント URL',
         metadata: 'メタデータ',
+        files: '取得したファイル',
       },
       metadata: {
         title: 'メタデータフィルタ',
@@ -599,6 +600,8 @@ const translation = {
           select: '変数選択...',
         },
       },
+      queryText: 'クエリテキスト',
+      queryAttachment: '画像を検索',
     },
     http: {
       inputVars: '入力変数',

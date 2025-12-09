@@ -199,6 +199,9 @@ const translation = {
     title: 'Tingkatkan untuk membuka lebih banyak peristiwa pemicu',
     description: 'Anda telah mencapai batas pemicu acara alur kerja untuk paket ini.',
   },
+  viewBillingTitle: 'Penagihan dan Langganan',
+  viewBillingDescription: 'Kelola metode pembayaran, faktur, dan perubahan langganan',
+  viewBillingAction: 'Kelola',
 }
 
 export default translation

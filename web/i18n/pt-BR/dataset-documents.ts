@@ -401,6 +401,7 @@ const translation = {
     parentChunk: 'Pedaço pai',
     keywordEmpty: 'A palavra-chave não pode estar vazia',
     keywordDuplicate: 'A palavra-chave já existe',
+    allFilesUploaded: 'Todos os arquivos devem ser enviados antes de salvar',
   },
 }
 
