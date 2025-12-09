@@ -440,6 +440,42 @@ class OceanBaseVector(BaseVector):
             logger.exception("Failed to delete collection '%s'", self._collection_name)
             raise Exception(f"Failed to delete collection '{self._collection_name}'") from e
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        try:
+            import re
+
+            from sqlalchemy import text
+
+            # Validate key to prevent injection in JSON path
+            if not re.match(r"^[a-zA-Z0-9_.]+$", key):
+                raise ValueError(f"Invalid characters in metadata key: {key}")
+
+            # Use parameterized query to prevent SQL injection
+            sql = text(
+                f"SELECT text, metadata, vector FROM `{self._collection_name}` "
+                f"WHERE metadata->>'$.{key}' = :value"
+            )
+
+            with self._client.engine.connect() as conn:
+                result = conn.execute(sql, {"value": value})
+                rows = result.fetchall()
+
+            docs = []
+            for row in rows:
+                text_content, metadata, vector = row
+                if isinstance(metadata, str):
+                    metadata = json.loads(metadata)
+                docs.append(Document(page_content=text_content, vector=vector, metadata=metadata))
+            return docs
+        except Exception as e:
+            logger.exception(
+                "Failed to search by metadata field '%s'='%s' in collection '%s'",
+                key,
+                value,
+                self._collection_name,
+            )
+            raise Exception(f"Failed to search by metadata field '{key}'") from e
+
 
 class OceanBaseVectorFactory(AbstractVectorFactory):
     def init_vector(

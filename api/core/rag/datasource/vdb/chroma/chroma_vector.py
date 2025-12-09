@@ -135,6 +135,30 @@ class ChromaVector(BaseVector):
         # chroma does not support BM25 full text searching
         return []
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        collection = self._client.get_or_create_collection(self._collection_name)
+
+        # FIXME: fix the type error later
+        results = collection.get(
+            where={key: {"$eq": value}},  # type: ignore
+            include=["documents", "metadatas", "embeddings"],
+        )
+
+        if not results["ids"] or not results["documents"] or not results["metadatas"]:
+            return []
+
+        docs = []
+        for i, doc_id in enumerate(results["ids"]):
+            metadata = dict(results["metadatas"][i]) if results["metadatas"][i] else {}
+            vector = results["embeddings"][i] if results.get("embeddings") else None
+            doc = Document(
+                page_content=results["documents"][i],
+                vector=vector,
+                metadata=metadata,
+            )
+            docs.append(doc)
+        return docs
+
 
 class ChromaVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> BaseVector:

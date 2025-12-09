@@ -270,6 +270,23 @@ class AnalyticdbVectorBySql:
                 documents.append(doc)
         return documents
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        with self._get_cursor() as cur:
+            cur.execute(
+                f"SELECT id, embedding, page_content, metadata_ FROM {self.table_name} WHERE metadata_->>%s = %s",
+                (key, value),
+            )
+            documents = []
+            for record in cur:
+                _, vector, page_content, metadata = record
+                doc = Document(
+                    page_content=page_content,
+                    vector=vector,
+                    metadata=metadata,
+                )
+                documents.append(doc)
+        return documents
+
     def delete(self):
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")

@@ -198,6 +198,34 @@ class BaiduVector(BaseVector):
                 docs.append(doc)
         return docs
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        # Escape double quotes in value to prevent injection
+        escaped_value = value.replace('"', '\\"')
+        filter = f'metadata["{key}"] = "{escaped_value}"'
+
+        res = self._db.table(self._collection_name).select(
+            projections=[VDBField.CONTENT_KEY, VDBField.METADATA_KEY, VDBField.VECTOR_KEY],
+            filter=filter,
+        )
+
+        docs = []
+        for row in res.rows:
+            row_data = row.get("row", {})
+            meta = row_data.get(VDBField.METADATA_KEY, {})
+
+            if isinstance(meta, str):
+                try:
+                    meta = json.loads(meta)
+                except (json.JSONDecodeError, TypeError):
+                    meta = {}
+            elif not isinstance(meta, dict):
+                meta = {}
+
+            vector = row_data.get(VDBField.VECTOR_KEY)
+            doc = Document(page_content=row_data.get(VDBField.CONTENT_KEY), vector=vector, metadata=meta)
+            docs.append(doc)
+        return docs
+
     def delete(self):
         try:
             self._db.drop_table(table_name=self._collection_name)

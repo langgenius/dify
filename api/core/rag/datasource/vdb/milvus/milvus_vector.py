@@ -291,6 +291,30 @@ class MilvusVector(BaseVector):
             score_threshold=float(kwargs.get("score_threshold") or 0.0),
         )
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        """
+        Search for documents by metadata field key and value.
+        """
+        if not self._client.has_collection(self._collection_name):
+            return []
+
+        result = self._client.query(
+            collection_name=self._collection_name,
+            filter=f'metadata["{key}"] == "{value}"',
+            output_fields=[Field.CONTENT_KEY, Field.METADATA_KEY, Field.VECTOR],
+        )
+
+        docs = []
+        for item in result:
+            metadata = item.get(Field.METADATA_KEY, {})
+            doc = Document(
+                page_content=item.get(Field.CONTENT_KEY, ""),
+                vector=item.get(Field.VECTOR),
+                metadata=metadata,
+            )
+            docs.append(doc)
+        return docs
+
     def create_collection(
         self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
     ):

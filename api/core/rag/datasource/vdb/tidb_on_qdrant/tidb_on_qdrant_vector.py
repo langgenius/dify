@@ -393,6 +393,42 @@ class TidbOnQdrantVector(BaseVector):
 
         return documents
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        from qdrant_client.http import models
+        from qdrant_client.http.exceptions import UnexpectedResponse
+
+        try:
+            scroll_filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key=f"metadata.{key}",
+                        match=models.MatchValue(value=value),
+                    ),
+                ]
+            )
+
+            response = self._client.scroll(
+                collection_name=self._collection_name,
+                scroll_filter=scroll_filter,
+                limit=999999,
+                with_payload=True,
+                with_vectors=True,
+            )
+            results = response[0]
+            documents = []
+            for result in results:
+                if result:
+                    metadata = result.payload.get(Field.METADATA_KEY) if result.payload else {}
+                    page_content = result.payload.get(Field.CONTENT_KEY, "") if result.payload else ""
+                    vector = result.vector if hasattr(result, "vector") else None
+                    documents.append(Document(page_content=page_content, vector=vector, metadata=metadata))
+
+            return documents
+        except UnexpectedResponse as e:
+            if e.status_code == 404:
+                return []
+            raise e
+
     def _reload_if_needed(self):
         if isinstance(self._client, QdrantLocal):
             self._client._load()

@@ -326,6 +326,31 @@ class LindormVectorStore(BaseVector):
 
         return docs
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        query: dict[str, Any] = {
+            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY}.{key}.keyword": value}}]}}
+        }
+        if self._using_ugc:
+            query["query"]["bool"]["must"].append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})
+
+        try:
+            params: dict[str, Any] = {"timeout": self._client_config.request_timeout}
+            if self._using_ugc:
+                params["routing"] = self._routing
+            response = self._client.search(index=self._collection_name, body=query, params=params, size=999999)
+        except Exception:
+            logger.exception("Error executing metadata field search, query: %s", query)
+            raise
+
+        docs = []
+        for hit in response["hits"]["hits"]:
+            metadata = hit["_source"].get(Field.METADATA_KEY) or {}
+            vector = hit["_source"].get(Field.VECTOR)
+            page_content = hit["_source"].get(Field.CONTENT_KEY)
+            doc = Document(page_content=page_content, vector=vector, metadata=metadata)
+            docs.append(doc)
+        return docs
+
     def create_collection(
         self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
     ):

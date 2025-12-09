@@ -117,6 +117,24 @@ class UpstashVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        query_result = self.index.query(
+            vector=[1.001 * i for i in range(self._get_index_dimension())],
+            include_metadata=True,
+            include_data=True,
+            include_vectors=True,
+            top_k=999999,
+            filter=f"{key} = '{value}'",
+        )
+        docs = []
+        for record in query_result:
+            metadata = record.metadata
+            text = record.data
+            vector = record.vector if hasattr(record, "vector") else None
+            if metadata is not None and text is not None:
+                docs.append(Document(page_content=text, vector=vector, metadata=metadata))
+        return docs
+
     def delete(self):
         self.index.reset()
 

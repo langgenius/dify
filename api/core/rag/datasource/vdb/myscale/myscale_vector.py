@@ -156,6 +156,24 @@ class MyScaleVector(BaseVector):
             logger.exception("Vector search operation failed")
             return []
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        sql = f"""
+            SELECT text, vector, metadata FROM {self._config.database}.{self._collection_name}
+            WHERE metadata['{key}']='{value}'
+        """
+        try:
+            return [
+                Document(
+                    page_content=r["text"],
+                    vector=r["vector"],
+                    metadata=r["metadata"],
+                )
+                for r in self._client.query(sql).named_results()
+            ]
+        except Exception:
+            logger.exception("Metadata field search operation failed")
+            return []
+
     def delete(self):
         self._client.command(f"DROP TABLE IF EXISTS {self._config.database}.{self._collection_name}")
 

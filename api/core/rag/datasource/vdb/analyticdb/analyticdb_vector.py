@@ -58,6 +58,9 @@ class AnalyticdbVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self.analyticdb_vector.search_by_full_text(query, **kwargs)
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        return self.analyticdb_vector.search_by_metadata_field(key, value, **kwargs)
+
     def delete(self):
         self.analyticdb_vector.delete()
 

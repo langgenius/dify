@@ -313,6 +313,20 @@ class AlibabaCloudMySQLVector(BaseVector):
                 docs.append(Document(page_content=record["text"], metadata=metadata))
         return docs
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        with self._get_cursor() as cur:
+            cur.execute(
+                f"SELECT meta, text, embedding FROM {self.table_name} WHERE JSON_UNQUOTE(JSON_EXTRACT(meta, %s)) = %s",
+                (f"$.{key}", value),
+            )
+            docs = []
+            for record in cur:
+                metadata = record["meta"]
+                if isinstance(metadata, str):
+                    metadata = json.loads(metadata)
+                docs.append(Document(page_content=record["text"], vector=record["embedding"], metadata=metadata))
+        return docs
+
     def delete(self):
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")

@@ -442,6 +442,30 @@ class WeaviateVector(BaseVector):
             return value.isoformat()
         return value
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        """Searches for documents matching a specific metadata field value."""
+        if not self._client.collections.exists(self._collection_name):
+            return []
+
+        col = self._client.collections.use(self._collection_name)
+        props = list({*self._attributes, Field.TEXT_KEY.value})
+
+        res = col.query.fetch_objects(
+            filters=Filter.by_property(key).equal(value),
+            limit=999999,
+            return_properties=props,
+            include_vector=True,
+        )
+
+        docs: list[Document] = []
+        for obj in res.objects:
+            properties = dict(obj.properties or {})
+            text = properties.pop(Field.TEXT_KEY.value, "")
+            vector = obj.vector.get("default") if obj.vector else None
+            docs.append(Document(page_content=text, vector=vector, metadata=properties))
+
+        return docs
+
 
 class WeaviateVectorFactory(AbstractVectorFactory):
     """Factory class for creating WeaviateVector instances."""

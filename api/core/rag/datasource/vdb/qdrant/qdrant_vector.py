@@ -434,9 +434,42 @@ class QdrantVector(BaseVector):
 
         return documents
 
-    def _reload_if_needed(self):
-        if isinstance(self._client, QdrantLocal):
-            self._client._load()
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        from qdrant_client.http import models
+        from qdrant_client.http.exceptions import UnexpectedResponse
+
+        try:
+            scroll_filter = models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="group_id",
+                        match=models.MatchValue(value=self._group_id),
+                    ),
+                    models.FieldCondition(
+                        key=f"metadata.{key}",
+                        match=models.MatchValue(value=value),
+                    ),
+                ]
+            )
+
+            response = self._client.scroll(
+                collection_name=self._collection_name,
+                scroll_filter=scroll_filter,
+                limit=999999,
+                with_payload=True,
+                with_vectors=True,
+            )
+            results = response[0]
+            documents = []
+            for result in results:
+                if result:
+                    doc = self._document_from_scored_point(result, Field.CONTENT_KEY, Field.METADATA_KEY)
+                    documents.append(doc)
+            return documents
+        except UnexpectedResponse as e:
+            if e.status_code == 404:
+                return []
+            raise e
 
     @classmethod
     def _document_from_scored_point(

@@ -237,6 +237,21 @@ class TiDBVector(BaseVector):
         # tidb doesn't support bm25 search
         return []
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        with Session(self._engine) as session:
+            select_statement = sql_text(f"""
+                SELECT meta, text, vector FROM {self._collection_name}
+                WHERE meta->>'$.{key}' = :value
+            """)
+            res = session.execute(select_statement, params={"value": value})
+            results = [(row[0], row[1], row[2]) for row in res]
+
+            docs = []
+            for meta, text, vector in results:
+                metadata = json.loads(meta)
+                docs.append(Document(page_content=text, vector=vector, metadata=metadata))
+        return docs
+
     def delete(self):
         with Session(self._engine) as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))

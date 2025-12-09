@@ -305,6 +305,34 @@ class AnalyticdbVectorOpenAPI:
         documents = sorted(documents, key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
         return documents
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
+
+        request = gpdb_20160503_models.QueryCollectionDataRequest(
+            dbinstance_id=self.config.instance_id,
+            region_id=self.config.region_id,
+            namespace=self.config.namespace,
+            namespace_password=self.config.namespace_password,
+            collection=self._collection_name,
+            include_values=True,
+            metrics=self.config.metrics,
+            vector=None,  # ty: ignore [invalid-argument-type]
+            content=None,  # ty: ignore [invalid-argument-type]
+            top_k=999999,
+            filter=f"metadata_->>'{key}' = '{value}'",
+        )
+        response = self._client.query_collection_data(request)
+        documents = []
+        for match in response.body.matches.match:
+            metadata = json.loads(match.metadata.get("metadata_"))
+            doc = Document(
+                page_content=match.metadata.get("page_content"),
+                vector=match.values.value if match.values else None,
+                metadata=metadata,
+            )
+            documents.append(doc)
+        return documents
+
     def delete(self):
         try:
             from alibabacloud_gpdb20160503 import models as gpdb_20160503_models

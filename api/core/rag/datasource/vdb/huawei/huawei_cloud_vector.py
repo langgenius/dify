@@ -149,6 +149,21 @@ class HuaweiCloudVector(BaseVector):
 
         return docs
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        query_str = {"query": {"match": {f"metadata.{key}": value}}}
+        results = self._client.search(index=self._collection_name, body=query_str, size=999999)
+
+        docs = []
+        for hit in results["hits"]["hits"]:
+            docs.append(
+                Document(
+                    page_content=hit["_source"][Field.CONTENT_KEY],
+                    vector=hit["_source"].get(Field.VECTOR),
+                    metadata=hit["_source"].get(Field.METADATA_KEY, {}),
+                )
+            )
+        return docs
+
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         metadatas = [d.metadata if d.metadata is not None else {} for d in texts]
         self.create_collection(embeddings, metadatas)

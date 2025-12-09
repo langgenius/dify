@@ -207,6 +207,23 @@ class Vector:
                 self._vector_processor.create(texts=batch, embeddings=batch_embeddings, **kwargs)
             logger.info("Embedding %s texts took %s s", len(texts), time.time() - start)
 
+    def create_with_vectors(self, texts: list[Document], **kwargs):
+        """
+        Create documents with vectors.
+
+        Args:
+            texts: List of documents.
+            **kwargs: Keyword arguments.
+        """
+        embeddings = []
+        embedding_texts = []
+        for text in texts:
+            if text.vector:
+                embeddings.append(text.vector)
+                embedding_texts.append(text)
+        if embeddings and embedding_texts:
+            self._vector_processor.create(texts=embedding_texts, embeddings=embeddings, **kwargs)
+
     def create_multimodal(self, file_documents: list | None = None, **kwargs):
         if file_documents:
             start = time.time()

@@ -299,6 +299,28 @@ class TencentVector(BaseVector):
                 docs.append(doc)
         return docs
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        filter = Filter(Filter.In(f"metadata.{key}", [value]))
+        res = self._client.query(
+            database_name=self._client_config.database,
+            collection_name=self.collection_name,
+            filter=filter,
+            retrieve_vector=True,
+        )
+
+        docs: list[Document] = []
+        if res is None or len(res) == 0:
+            return docs
+
+        for result in res:
+            meta = result.get(self.field_metadata)
+            if isinstance(meta, str):
+                meta = json.loads(meta)
+            vector = result.get(self.field_vector)
+            doc = Document(page_content=result.get(self.field_text), vector=vector, metadata=meta)
+            docs.append(doc)
+        return docs
+
     def delete(self):
         if self._has_collection():
             self._client.drop_collection(

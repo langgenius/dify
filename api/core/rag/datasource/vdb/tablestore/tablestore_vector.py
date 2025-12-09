@@ -390,6 +390,45 @@ class TableStoreVector(BaseVector):
             documents = sorted(documents, key=lambda x: x.metadata["score"] if x.metadata else 0, reverse=True)
         return documents
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        # Search using tags field which stores key=value pairs
+        tag_value = f"{key}={value}"
+
+        query = tablestore.SearchQuery(
+            tablestore.TermQuery(self._tags_field, tag_value),
+            limit=999999,
+            get_total_count=False,
+        )
+
+        search_response = self._tablestore_client.search(
+            table_name=self._table_name,
+            index_name=self._index_name,
+            search_query=query,
+            columns_to_get=tablestore.ColumnsToGet(return_type=tablestore.ColumnReturnType.ALL_FROM_INDEX),
+        )
+
+        documents = []
+        for search_hit in search_response.search_hits:
+            ots_column_map = {}
+            for col in search_hit.row[1]:
+                ots_column_map[col[0]] = col[1]
+
+            metadata_str = ots_column_map.get(Field.METADATA_KEY)
+            metadata = json.loads(metadata_str) if metadata_str else {}
+
+            vector_str = ots_column_map.get(Field.VECTOR)
+            # TableStore stores vector as JSON string, need to parse it
+            vector = json.loads(vector_str) if vector_str else None
+
+            documents.append(
+                Document(
+                    page_content=ots_column_map.get(Field.CONTENT_KEY) or "",
+                    vector=vector,
+                    metadata=metadata,
+                )
+            )
+        return documents
+
 
 class TableStoreVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TableStoreVector:

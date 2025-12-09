@@ -1025,6 +1025,38 @@ class ClickzettaVector(BaseVector):
             with connection.cursor() as cursor:
                 cursor.execute(f"DROP TABLE IF EXISTS {self._config.schema_name}.{self._table_name}")
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        """Search for documents by metadata field."""
+        # Check if table exists first
+        if not self._table_exists():
+            logger.warning(
+                "Table %s.%s does not exist, returning empty results",
+                self._config.schema_name,
+                self._table_name,
+            )
+            return []
+
+        # Use json_extract_string function for ClickZetta compatibility
+        search_sql = f"""
+        SELECT id, {Field.CONTENT_KEY}, {Field.METADATA_KEY}, {Field.VECTOR}
+        FROM {self._config.schema_name}.{self._table_name}
+        WHERE json_extract_string({Field.METADATA_KEY}, '$.{key}') = ?
+        """
+
+        documents = []
+        with self.get_connection_context() as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(search_sql, binding_params=[value])
+                results = cursor.fetchall()
+
+                for row in results:
+                    metadata = self._parse_metadata(row[2], row[0])
+                    vector = row[3] if len(row) > 3 else None
+                    doc = Document(page_content=row[1], vector=vector, metadata=metadata)
+                    documents.append(doc)
+
+        return documents
+
     def _format_vector_simple(self, vector: list[float]) -> str:
         """Simple vector formatting for SQL queries."""
         return ",".join(map(str, vector))

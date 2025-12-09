@@ -395,29 +395,12 @@ def migrate_knowledge_vector_database():
                 documents = []
                 segments_count = 0
                 for dataset_document in dataset_documents:
-                    
-                    segments = db.session.scalars(
-                        select(DocumentSegment).where(
-                            DocumentSegment.document_id == dataset_document.id,
-                            DocumentSegment.status == "completed",
-                            DocumentSegment.enabled == True,
-                        )
-                    ).all()
 
-                    for segment in segments:
-                        document = Document(
-                            page_content=segment.content,
-                            metadata={
-                                "doc_id": segment.index_node_id,
-                                "doc_hash": segment.index_node_hash,
-                                "document_id": segment.document_id,
-                                "dataset_id": segment.dataset_id,
-                            },
-                        )
+                    single_documents = vector.search_by_metadata_field("document_id", dataset_document.id)
 
-                        documents.append(document)
-                        segments_count = segments_count + 1
-
+                    if single_documents:
+                        documents.extend(single_documents)
+                        segments_count += len(single_documents)
                 if documents:
                     try:
                         click.echo(
@@ -427,12 +410,12 @@ def migrate_knowledge_vector_database():
                                 fg="green",
                             )
                         )
-                        vector.create(documents)
+                        vector.create_with_vectors(documents)
                         click.echo(click.style(f"Created vector index for dataset {dataset.id}.", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
                         raise e
-                db.session.add(dataset)
+                db.session.add(instance=dataset)
                 db.session.commit()
                 click.echo(f"Successfully migrated dataset {dataset.id}.")
                 create_count += 1

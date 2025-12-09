@@ -46,6 +46,10 @@ class BaseVector(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        raise NotImplementedError
+
+    @abstractmethod
     def delete(self):
         raise NotImplementedError
 

@@ -294,6 +294,27 @@ class RelytVector(BaseVector):
         # milvus/zilliz/relyt doesn't support bm25 search
         return []
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        sql_query = f"""
+            SELECT document, metadata, embedding
+            FROM "{self._collection_name}"
+            WHERE metadata->>'{key}' = :value
+        """
+        params = {"value": value}
+
+        with self.client.connect() as conn:
+            results = conn.execute(sql_text(sql_query), params).fetchall()
+
+        docs = []
+        for result in results:
+            doc = Document(
+                page_content=result.document,
+                vector=result.embedding,
+                metadata=result.metadata,
+            )
+            docs.append(doc)
+        return docs
+
 
 class RelytVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> RelytVector:

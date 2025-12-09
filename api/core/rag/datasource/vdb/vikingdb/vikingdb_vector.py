@@ -202,6 +202,30 @@ class VikingDBVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        # Query by metadata field using filter on group_id and matching metadata
+        results = self._client.get_index(self._collection_name, self._index_name).search(
+            filter={"op": "must", "field": vdb_Field.GROUP_KEY, "conds": [self._group_id]},
+            limit=5000,  # max value is 5000
+        )
+
+        if not results:
+            return []
+
+        docs = []
+        for result in results:
+            metadata = result.fields.get(vdb_Field.METADATA_KEY)
+            if metadata is not None:
+                if isinstance(metadata, str):
+                    metadata = json.loads(metadata)
+                if metadata.get(key) == value:
+                    vector = result.fields.get(vdb_Field.VECTOR_KEY)
+                    doc = Document(
+                        page_content=result.fields.get(vdb_Field.CONTENT_KEY), vector=vector, metadata=metadata
+                    )
+                    docs.append(doc)
+        return docs
+
     def delete(self):
         if self._has_index():
             self._client.drop_index(self._collection_name, self._index_name)

@@ -236,6 +236,19 @@ class OpenSearchVector(BaseVector):
 
         return docs
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        query = {"query": {"term": {f"{Field.METADATA_KEY}.{key}": value}}}
+        response = self._client.search(index=self._collection_name.lower(), body=query, size=999999)
+
+        docs = []
+        for hit in response["hits"]["hits"]:
+            metadata = hit["_source"].get(Field.METADATA_KEY) or {}
+            vector = hit["_source"].get(Field.VECTOR)
+            page_content = hit["_source"].get(Field.CONTENT_KEY)
+            doc = Document(page_content=page_content, vector=vector, metadata=metadata)
+            docs.append(doc)
+        return docs
+
     def create_collection(
         self, embeddings: list, metadatas: list[dict] | None = None, index_params: dict | None = None
     ):

@@ -325,6 +325,22 @@ class CouchbaseVector(BaseVector):
 
         return docs
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        query = f"""
+                SELECT text, metadata, embedding FROM
+                `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
+                WHERE metadata.{key} = $value
+                """
+        result = self._cluster.query(query, named_parameters={"value": value}).execute()
+        docs = []
+        for row in result:
+            text = row.get("text", "")
+            metadata = row.get("metadata", {})
+            vector = row.get("embedding")
+            doc = Document(page_content=text, vector=vector, metadata=metadata)
+            docs.append(doc)
+        return docs
+
     def delete(self):
         manager = self._bucket.collections()
         scopes = manager.get_all_scopes()

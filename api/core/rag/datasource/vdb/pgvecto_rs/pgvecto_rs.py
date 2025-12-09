@@ -210,6 +210,19 @@ class PGVectoRS(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        with Session(self._client) as session:
+            select_statement = sql_text(
+                f"SELECT text, meta, embedding FROM {self._collection_name} WHERE meta->>'{key}' = '{value}'"
+            )
+            result = session.execute(select_statement).fetchall()
+
+        docs = []
+        for record in result:
+            doc = Document(page_content=record[0], vector=record[2], metadata=record[1])
+            docs.append(doc)
+        return docs
+
 
 class PGVectoRSFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> PGVectoRS:

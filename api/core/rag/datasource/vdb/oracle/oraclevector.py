@@ -338,6 +338,20 @@ class OracleVector(BaseVector):
         else:
             return [Document(page_content="", metadata={})]
 
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        with self._get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    f"SELECT meta, text, embedding FROM {self.table_name} WHERE JSON_VALUE(meta, '$.{key}') = :1",
+                    (value,),
+                )
+                docs = []
+                for record in cur:
+                    metadata, text, embedding = record
+                    docs.append(Document(page_content=text, vector=embedding, metadata=metadata))
+            conn.close()
+        return docs
+
     def delete(self):
         with self._get_connection() as conn:
             with conn.cursor() as cur:

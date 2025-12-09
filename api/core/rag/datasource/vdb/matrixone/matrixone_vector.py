@@ -217,6 +217,27 @@ class MatrixoneVector(BaseVector):
         assert self.client is not None
         self.client.delete()
 
+    @ensure_client
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        assert self.client is not None
+
+        results = self.client.query_by_metadata(filter={key: value})
+
+        docs = []
+        for result in results:
+            metadata = result.metadata
+            if isinstance(metadata, str):
+                metadata = json.loads(metadata)
+            vector = result.embedding if hasattr(result, "embedding") else None
+            docs.append(
+                Document(
+                    page_content=result.document,
+                    vector=vector,
+                    metadata=metadata,
+                )
+            )
+        return docs
+
 
 class MatrixoneVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MatrixoneVector:
