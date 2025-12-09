@@ -37,7 +37,7 @@ from controllers.console.wraps import (
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.datetime_utils import naive_utc_now
-from libs.helper import TimestampField, email, extract_remote_ip, timezone
+from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
 from models import Account, AccountIntegrate, InvitationCode
 from services.account_service import AccountService
@@ -111,13 +111,8 @@ class AccountDeletePayload(BaseModel):
 
 
 class AccountDeletionFeedbackPayload(BaseModel):
-    email: str
+    email: EmailStr
     feedback: str
-
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 class EducationActivatePayload(BaseModel):
@@ -133,104 +128,46 @@ class EducationAutocompleteQuery(BaseModel):
 
 
 class ChangeEmailSendPayload(BaseModel):
-    email: str
+    email: EmailStr
     language: str | None = None
     phase: str | None = None
     token: str | None = None
 
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
-
 
 class ChangeEmailValidityPayload(BaseModel):
-    email: str
+    email: EmailStr
     code: str
     token: str
 
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
-
 
 class ChangeEmailResetPayload(BaseModel):
-    new_email: str
+    new_email: EmailStr
     token: str
-
-    @field_validator("new_email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
 
 
 class CheckEmailUniquePayload(BaseModel):
-    email: str
-
-    @field_validator("email")
-    @classmethod
-    def validate_email(cls, value: str) -> str:
-        return email(value)
+    email: EmailStr
 
 
-console_ns.schema_model(
-    AccountInitPayload.__name__, AccountInitPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    AccountNamePayload.__name__, AccountNamePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    AccountAvatarPayload.__name__, AccountAvatarPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-console_ns.schema_model(
-    AccountInterfaceLanguagePayload.__name__,
-    AccountInterfaceLanguagePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    AccountInterfaceThemePayload.__name__,
-    AccountInterfaceThemePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    AccountTimezonePayload.__name__,
-    AccountTimezonePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    AccountPasswordPayload.__name__,
-    AccountPasswordPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    AccountDeletePayload.__name__,
-    AccountDeletePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    AccountDeletionFeedbackPayload.__name__,
-    AccountDeletionFeedbackPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    EducationActivatePayload.__name__,
-    EducationActivatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    EducationAutocompleteQuery.__name__,
-    EducationAutocompleteQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    ChangeEmailSendPayload.__name__,
-    ChangeEmailSendPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    ChangeEmailValidityPayload.__name__,
-    ChangeEmailValidityPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    ChangeEmailResetPayload.__name__,
-    ChangeEmailResetPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    CheckEmailUniquePayload.__name__,
-    CheckEmailUniquePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(AccountInitPayload)
+reg(AccountNamePayload)
+reg(AccountAvatarPayload)
+reg(AccountInterfaceLanguagePayload)
+reg(AccountInterfaceThemePayload)
+reg(AccountTimezonePayload)
+reg(AccountPasswordPayload)
+reg(AccountDeletePayload)
+reg(AccountDeletionFeedbackPayload)
+reg(EducationActivatePayload)
+reg(EducationAutocompleteQuery)
+reg(ChangeEmailSendPayload)
+reg(ChangeEmailValidityPayload)
+reg(ChangeEmailResetPayload)
+reg(CheckEmailUniquePayload)
 
 
 @console_ns.route("/account/init")

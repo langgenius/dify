@@ -62,6 +62,7 @@ export type ToolDefaultValue = PluginCommonDefaultValue & {
   meta?: WorkflowPluginMeta
   plugin_id?: string
   provider_icon?: Collection['icon']
+  provider_icon_dark?: Collection['icon']
   plugin_unique_identifier?: string
 }
 

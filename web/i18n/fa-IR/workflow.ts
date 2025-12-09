@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(اختیاری و پنهان)',
     goTo: 'برو به',
     startNode: 'گره شروع',
+    openWorkflow: 'باز کردن جریان کاری',
   },
   nodes: {
     common: {

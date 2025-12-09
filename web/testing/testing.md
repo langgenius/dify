@@ -146,6 +146,8 @@ Treat component state as part of the public behavior: confirm the initial render
 - ✅ Reset shared stores (React context, Zustand, TanStack Query cache) between tests to avoid leaking state. Prefer helper factory functions over module-level singletons in specs.
 - ✅ For hooks that read from context, use `renderHook` with a custom wrapper that supplies required providers.
 
+If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in __mocks__/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provier-context-mock.spec.tsx`).
+
 ### 4. Performance Optimization
 
 Cover memoized callbacks or values only when they influence observable behavior—memoized children, subscription updates, expensive computations. Trigger realistic re-renders and assert the outcomes (avoided rerenders, reused results) instead of inspecting hook internals.
@@ -201,6 +203,16 @@ For complex inputs/entities, use Builders with solid defaults and chainable over
 Reserve snapshots for static, deterministic fragments (icons, badges, layout chrome). Keep them tight, prefer explicit assertions for behavior, and review any snapshot updates deliberately instead of accepting them wholesale.
 
 **Note**: Dify is a desktop application. **No need for** responsive/mobile testing.
+
+### 12. Mock API
+
+Use Nock to mock API calls. Example:
+
+```ts
+const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs = 0) => {
+  return nock(GITHUB_HOST).get(GITHUB_PATH).delay(delayMs).reply(status, body)
+}
+```
 
 ## Code Style
 

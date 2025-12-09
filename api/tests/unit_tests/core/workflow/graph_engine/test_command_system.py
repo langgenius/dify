@@ -32,7 +32,7 @@ def test_abort_command():
     # Create mock nodes with required attributes - using shared runtime state
     start_node = StartNode(
         id="start",
-        config={"id": "start"},
+        config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
             tenant_id="test_tenant",
             app_id="test_app",
@@ -45,7 +45,6 @@ def test_abort_command():
         ),
         graph_runtime_state=shared_runtime_state,
     )
-    start_node.init_node_data({"title": "start", "variables": []})
     mock_graph.nodes["start"] = start_node
 
     # Mock graph methods
@@ -142,7 +141,7 @@ def test_pause_command():
 
     start_node = StartNode(
         id="start",
-        config={"id": "start"},
+        config={"id": "start", "data": {"title": "start", "variables": []}},
         graph_init_params=GraphInitParams(
             tenant_id="test_tenant",
             app_id="test_app",
@@ -155,7 +154,6 @@ def test_pause_command():
         ),
         graph_runtime_state=shared_runtime_state,
     )
-    start_node.init_node_data({"title": "start", "variables": []})
     mock_graph.nodes["start"] = start_node
 
     mock_graph.get_outgoing_edges = MagicMock(return_value=[])

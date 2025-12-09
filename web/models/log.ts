@@ -21,9 +21,6 @@ export type ConversationListResponse = {
   logs: Conversation[]
 }
 
-export const fetchLogs = (url: string) =>
-  fetch(url).then<ConversationListResponse>(r => r.json())
-
 export const CompletionParams = ['temperature', 'top_p', 'presence_penalty', 'max_token', 'stop', 'frequency_penalty'] as const
 
 export type CompletionParamType = typeof CompletionParams[number]

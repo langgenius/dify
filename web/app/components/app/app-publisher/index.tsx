@@ -38,7 +38,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import type { InputVar } from '@/app/components/workflow/types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -103,6 +103,7 @@ export type AppPublisherProps = {
   crossAxisOffset?: number
   toolPublished?: boolean
   inputs?: InputVar[]
+  outputs?: Variable[]
   onRefreshData?: () => void
   workflowToolAvailable?: boolean
   missingStartNode?: boolean
@@ -125,6 +126,7 @@ const AppPublisher = ({
   crossAxisOffset = 0,
   toolPublished,
   inputs,
+  outputs,
   onRefreshData,
   workflowToolAvailable = true,
   missingStartNode = false,
@@ -457,6 +459,7 @@ const AppPublisher = ({
                           name={appDetail?.name}
                           description={appDetail?.description}
                           inputs={inputs}
+                          outputs={outputs}
                           handlePublish={handlePublish}
                           onRefreshData={onRefreshData}
                           disabledReason={workflowToolMessage}

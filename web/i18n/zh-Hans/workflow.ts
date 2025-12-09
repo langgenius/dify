@@ -383,6 +383,7 @@ const translation = {
     userInputField: '用户输入字段',
     changeBlock: '更改节点',
     helpLink: '查看帮助文档',
+    openWorkflow: '打开工作流',
     about: '关于',
     createdBy: '作者',
     nextStep: '下一步',
