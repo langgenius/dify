@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMount } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
@@ -25,15 +25,13 @@ import { isReRankModelSelected } from '@/app/components/datasets/common/check-re
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import {
-  useModelList,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { useDocLink } from '@/context/i18n'
+import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 
 type SettingsModalProps = {
   currentDataset: DataSet
@@ -54,10 +52,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
   onCancel,
   onSave,
 }) => {
-  const { data: embeddingsModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const {
-    modelList: rerankModelList,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useToastContext()
@@ -181,6 +177,23 @@ const SettingsModal: FC<SettingsModalProps> = ({
     getMembers()
   })
 
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel: {
+        provider: localeCurrentDataset.embedding_model_provider,
+        model: localeCurrentDataset.embedding_model,
+      },
+      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+      },
+      indexMethod,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [localeCurrentDataset.embedding_model, localeCurrentDataset.embedding_model_provider, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, indexMethod, embeddingModelList, rerankModelList])
+
   return (
     <div
       className='flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
@@ -273,7 +286,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                     provider: localeCurrentDataset.embedding_model_provider,
                     model: localeCurrentDataset.embedding_model,
                   }}
-                  modelList={embeddingsModelList}
+                  modelList={embeddingModelList}
                 />
               </div>
               <div className='mt-2 w-full text-xs leading-6 text-text-tertiary'>
@@ -344,6 +357,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   <RetrievalMethodConfig
                     value={retrievalConfig}
                     onChange={setRetrievalConfig}
+                    showMultiModalTip={showMultiModalTip}
                   />
                 )
                 : (

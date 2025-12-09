@@ -324,4 +324,5 @@ class ExternalDatasetService:
         )
         if response.status_code == 200:
             return cast(list[Any], response.json().get("records", []))
-        return []
+        else:
+            raise ValueError(response.text)

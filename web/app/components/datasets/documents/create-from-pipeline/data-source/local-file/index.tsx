@@ -21,8 +21,6 @@ import dynamic from 'next/dynamic'
 
 const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-chart'), { ssr: false })
 
-const FILES_NUMBER_LIMIT = 20
-
 export type LocalFileProps = {
   allowedExtensions: string[]
   notSupportBatchUpload?: boolean
@@ -64,10 +62,11 @@ const LocalFile = ({
       .join(locale !== LanguagesSupported[1] ? ', ' : '、 ')
   }, [locale, allowedExtensions])
   const ACCEPTS = allowedExtensions.map((ext: string) => `.${ext}`)
-  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
-    file_size_limit: 15,
-    batch_count_limit: 5,
-  }, [fileUploadConfigResponse])
+  const fileUploadConfig = useMemo(() => ({
+    file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
+    batch_count_limit: fileUploadConfigResponse?.batch_count_limit ?? 5,
+    file_upload_limit: fileUploadConfigResponse?.file_upload_limit ?? 5,
+  }), [fileUploadConfigResponse])
 
   const updateFile = useCallback((fileItem: FileItem, progress: number, list: FileItem[]) => {
     const { setLocalFileList } = dataSourceStore.getState()
@@ -186,11 +185,12 @@ const LocalFile = ({
   }, [fileUploadConfig, uploadBatchFiles])
 
   const initialUpload = useCallback((files: File[]) => {
+    const filesCountLimit = fileUploadConfig.file_upload_limit
     if (!files.length)
       return false
 
-    if (files.length + localFileList.length > FILES_NUMBER_LIMIT && !IS_CE_EDITION) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: FILES_NUMBER_LIMIT }) })
+    if (files.length + localFileList.length > filesCountLimit && !IS_CE_EDITION) {
+      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: filesCountLimit }) })
       return false
     }
 
@@ -203,7 +203,7 @@ const LocalFile = ({
     updateFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [updateFileList, uploadMultipleFiles, notify, t, localFileList])
+  }, [fileUploadConfig.file_upload_limit, localFileList.length, updateFileList, uploadMultipleFiles, notify, t])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
@@ -250,9 +250,10 @@ const LocalFile = ({
     updateFileList([...fileListRef.current])
   }
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = [...(e.target.files ?? [])] as File[]
+    let files = [...(e.target.files ?? [])] as File[]
+    files = files.slice(0, fileUploadConfig.batch_count_limit)
     initialUpload(files.filter(isValid))
-  }, [isValid, initialUpload])
+  }, [isValid, initialUpload, fileUploadConfig.batch_count_limit])
 
   const { theme } = useTheme()
   const chartColor = useMemo(() => theme === Theme.dark ? '#5289ff' : '#296dff', [theme])
@@ -305,6 +306,7 @@ const LocalFile = ({
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
             batchCount: notSupportBatchUpload ? 1 : fileUploadConfig.batch_count_limit,
+            totalCount: fileUploadConfig.file_upload_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>
