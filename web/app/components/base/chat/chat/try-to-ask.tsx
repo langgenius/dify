@@ -13,7 +13,7 @@ type TryToAskProps = {
 const TryToAsk: FC<TryToAskProps> = ({
   suggestedQuestions,
   onSend,
-  isMobile,
+  isMobile: _isMobile,
 }) => {
   const { t } = useTranslation()
 
