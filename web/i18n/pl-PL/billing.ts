@@ -9,7 +9,6 @@ const translation = {
   buyPermissionDeniedTip:
     'Skontaktuj się z administratorem swojej firmy, aby zasubskrybować',
   plansCommon: {
-    title: 'Wybierz plan odpowiedni dla siebie',
     yearlyTip: 'Otrzymaj 2 miesiące za darmo, subskrybując rocznie!',
     mostPopular: 'Najpopularniejszy',
     planRange: {
@@ -32,6 +31,7 @@ const translation = {
     vectorSpaceTooltip:
       'Przestrzeń wektorowa jest systemem pamięci długoterminowej wymaganym dla LLM, aby zrozumieć Twoje dane.',
     documentProcessingPriority: 'Priorytet przetwarzania dokumentów',
+    documentProcessingPriorityTip: 'Aby uzyskać wyższy priorytet przetwarzania dokumentów, zaktualizuj swój plan.',
     documentProcessingPriorityUpgrade:
       'Przetwarzaj więcej danych z większą dokładnością i w szybszym tempie.',
     priority: {
@@ -91,7 +91,7 @@ const translation = {
     freeTrialTipPrefix: 'Zarejestruj się i zdobądź',
     teamMember_other: '{{count,number}} członków zespołu',
     teamWorkspace: '{{count,number}} Zespół Workspace',
-    apiRateLimitUnit: '{{count,number}}/miesiąc',
+    apiRateLimitUnit: '{{count,number}}',
     cloud: 'Usługa chmurowa',
     teamMember_one: '{{count,number}} Członek zespołu',
     priceTip: 'na przestrzeń roboczą/',
@@ -103,6 +103,26 @@ const translation = {
     startBuilding: 'Zacznij budować',
     taxTip: 'Wszystkie ceny subskrypcji (miesięczne/roczne) nie obejmują obowiązujących podatków (np. VAT, podatek od sprzedaży).',
     taxTipSecond: 'Jeśli w Twoim regionie nie ma obowiązujących przepisów podatkowych, podatek nie pojawi się podczas realizacji zamówienia i nie zostaną naliczone żadne dodatkowe opłaty przez cały okres subskrypcji.',
+    triggerEvents: {
+      unlimited: 'Nieograniczone zdarzenia wyzwalające',
+      tooltip: 'Liczba zdarzeń, które automatycznie uruchamiają przepływy pracy za pomocą wtyczki, harmonogramu lub wyzwalaczy Webhook.',
+      sandbox: '{{count,number}} Wyzwalacze zdarzeń',
+      professional: '{{count,number}} Wywołania zdarzeń/miesiąc',
+    },
+    workflowExecution: {
+      standard: 'Standardowe wykonywanie przepływu pracy',
+      tooltip: 'Priorytet i szybkość wykonywania kolejki przepływu pracy.',
+      priority: 'Wykonywanie przepływu pracy według priorytetu',
+      faster: 'Szybsze wykonywanie przepływu pracy',
+    },
+    startNodes: {
+      unlimited: 'Nieograniczone wyzwalacze/przepływ pracy',
+      limited: 'Do {{count}} wyzwalaczy/przepływów pracy',
+    },
+    title: {
+      plans: 'plany',
+      description: 'Wybierz plan, który najlepiej odpowiada potrzebom Twojego zespołu.',
+    },
   },
   plans: {
     sandbox: {
@@ -127,28 +147,14 @@ const translation = {
       description:
         'Uzyskaj pełne możliwości i wsparcie dla systemów o kluczowym znaczeniu dla misji.',
       includesTitle: 'Wszystko w planie Zespołowym, plus:',
-      features: {
-        4: 'Usługi rejestracji jednokrotnej',
-        3: 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem',
-        8: 'Profesjonalne wsparcie techniczne',
-        7: 'Aktualizacje i konserwacja przez Dify oficjalnie',
-        5: 'Umowy SLA wynegocjowane przez Dify Partners',
-        0: 'Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej',
-        2: 'Wyjątkowe funkcje dla przedsiębiorstw',
-        1: 'Autoryzacja licencji komercyjnej',
-        6: 'Zaawansowane zabezpieczenia i kontrola',
-      },
+      features: ['Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej', 'Autoryzacja licencji komercyjnej', 'Ekskluzywne funkcje dla przedsiębiorstw', 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem', 'SSO', 'Negocjowane umowy SLA przez partnerów Dify', 'Zaawansowane zabezpieczenia i kontrola', 'Aktualizacje i konserwacja przez Dify oficjalnie', 'Profesjonalne wsparcie techniczne'],
       priceTip: 'Tylko roczne fakturowanie',
       btnText: 'Skontaktuj się z działem sprzedaży',
       for: 'Dla dużych zespołów',
       price: 'Niestety, nie mogę przetłumaczyć tego tekstu bez konkretnego zdania do przetłumaczenia.',
     },
     community: {
-      features: {
-        1: 'Pojedyncza przestrzeń robocza',
-        2: 'Zgodny z licencją Dify Open Source',
-        0: 'Wszystkie podstawowe funkcje udostępnione w repozytorium publicznym',
-      },
+      features: ['Wszystkie podstawowe funkcje udostępnione w publicznym repozytorium', 'Pojedyncza przestrzeń robocza', 'Zgodne z licencją Dify Open Source'],
       includesTitle: 'Darmowe funkcje:',
       name: 'Społeczność',
       price: 'Darmowy',
@@ -157,12 +163,7 @@ const translation = {
       for: 'Dla użytkowników indywidualnych, małych zespołów lub projektów niekomercyjnych',
     },
     premium: {
-      features: {
-        2: 'Personalizacja logo i brandingu aplikacji internetowej',
-        1: 'Pojedyncza przestrzeń robocza',
-        0: 'Niezawodność samodzielnego zarządzania przez różnych dostawców usług w chmurze',
-        3: 'Priorytetowa pomoc techniczna przez e-mail i czat',
-      },
+      features: ['Niezawodność zarządzana samodzielnie przez różnych dostawców chmury', 'Pojedyncza przestrzeń robocza', 'Dostosowywanie logo i identyfikacji wizualnej aplikacji webowej', 'Priorytetowe wsparcie e-mail i czat'],
       description: 'Dla średnich organizacji i zespołów',
       for: 'Dla średnich organizacji i zespołów',
       name: 'Premium',
@@ -196,8 +197,21 @@ const translation = {
     buildApps: 'Twórz aplikacje',
     annotationQuota: 'Kwota aneksji',
     vectorSpaceTooltip: 'Dokumenty z trybem indeksowania o wysokiej jakości będą zużywać zasoby magazynu danych wiedzy. Gdy magazyn danych wiedzy osiągnie limit, nowe dokumenty nie będą przesyłane.',
+    perMonth: 'miesięcznie',
+    triggerEvents: 'Wydarzenia wyzwalające',
+    resetsIn: 'Resetuje się za {{count,number}} dni',
   },
   teamMembers: 'Członkowie zespołu',
+  triggerLimitModal: {
+    upgrade: 'Uaktualnij',
+    usageTitle: 'WYDARZENIA WYZWALAJĄCE',
+    description: 'Osiągnąłeś limit wyzwalaczy zdarzeń przepływu pracy dla tego planu.',
+    title: 'Uaktualnij, aby odblokować więcej zdarzeń wyzwalających',
+    dismiss: 'Odrzuć',
+  },
+  viewBillingTitle: 'Rozliczenia i subskrypcje',
+  viewBillingDescription: 'Zarządzaj metodami płatności, fakturami i zmianami subskrypcji',
+  viewBillingAction: 'Zarządzać',
 }
 
 export default translation

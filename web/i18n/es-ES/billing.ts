@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Administrar facturación y suscripciones',
   buyPermissionDeniedTip: 'Por favor, contacta al administrador de tu empresa para suscribirte',
   plansCommon: {
-    title: 'Elige un plan que sea adecuado para ti',
     yearlyTip: '¡Obtén 2 meses gratis al suscribirte anualmente!',
     mostPopular: 'Más Popular',
     planRange: {
@@ -31,6 +30,7 @@ const translation = {
     vectorSpace: 'Espacio Vectorial',
     vectorSpaceTooltip: 'El Espacio Vectorial es el sistema de memoria a largo plazo necesario para que los LLMs comprendan tus datos.',
     documentProcessingPriority: 'Prioridad de Procesamiento de Documentos',
+    documentProcessingPriorityTip: 'Para una mayor prioridad en el procesamiento de documentos, actualice su plan.',
     documentProcessingPriorityUpgrade: 'Procesa más datos con mayor precisión y velocidad.',
     priority: {
       'standard': 'Estándar',
@@ -76,7 +76,7 @@ const translation = {
     priceTip: 'por espacio de trabajo/',
     teamMember_one: '{{count, número}} Miembro del Equipo',
     getStarted: 'Comenzar',
-    apiRateLimitUnit: '{{count, número}}/mes',
+    apiRateLimitUnit: '{{count, número}}',
     freeTrialTipSuffix: 'No se requiere tarjeta de crédito',
     unlimitedApiRate: 'Sin límite de tasa de API',
     apiRateLimit: 'Límite de tasa de API',
@@ -96,6 +96,26 @@ const translation = {
     startBuilding: 'Empezar a construir',
     taxTip: 'Todos los precios de suscripción (mensuales/anuales) excluyen los impuestos aplicables (por ejemplo, IVA, impuesto sobre ventas).',
     taxTipSecond: 'Si su región no tiene requisitos fiscales aplicables, no se mostrará ningún impuesto en su pago y no se le cobrará ninguna tarifa adicional durante todo el período de suscripción.',
+    triggerEvents: {
+      unlimited: 'Eventos de Disparo Ilimitados',
+      tooltip: 'El número de eventos que inician automáticamente flujos de trabajo mediante desencadenadores de Plugin, Programación o Webhook.',
+      sandbox: '{{count,number}} Eventos de activación',
+      professional: '{{count,number}} Eventos activadores/mes',
+    },
+    workflowExecution: {
+      tooltip: 'Prioridad y velocidad de la cola de ejecución de flujos de trabajo.',
+      standard: 'Ejecución estándar del flujo de trabajo',
+      priority: 'Ejecución de flujo de trabajo prioritaria',
+      faster: 'Ejecución de flujo de trabajo más rápida',
+    },
+    startNodes: {
+      unlimited: 'Disparadores/flujo de trabajo ilimitados',
+      limited: 'Hasta {{count}} Disparadores/flujo de trabajo',
+    },
+    title: {
+      plans: 'planes',
+      description: 'Selecciona el plan que mejor se adapte a las necesidades de tu equipo.',
+    },
   },
   plans: {
     sandbox: {
@@ -121,17 +141,7 @@ const translation = {
       for: 'Para equipos de gran tamaño',
       price: 'Personalizado',
       priceTip: 'Facturación Anual Solo',
-      features: [
-        'Soluciones de implementación escalables a nivel empresarial',
-        'Autorización de licencia comercial',
-        'Funciones exclusivas para empresas',
-        'Múltiples espacios de trabajo y gestión empresarial',
-        'SSO (inicio de sesión único)',
-        'SLAs negociados con socios de Dify',
-        'Seguridad y controles avanzados',
-        'Actualizaciones y mantenimiento oficiales por parte de Dify',
-        'Soporte técnico profesional',
-      ],
+      features: ['Soluciones de Despliegue Escalables de Nivel Empresarial', 'Autorización de Licencia Comercial', 'Funciones Exclusivas para Empresas', 'Múltiples espacios de trabajo y gestión empresarial', 'SSO', 'Acuerdos de nivel de servicio negociados por socios de Dify', 'Seguridad y Controles Avanzados', 'Actualizaciones y Mantenimiento por Dify Oficialmente', 'Soporte Técnico Profesional'],
     },
     community: {
       includesTitle: 'Características gratuitas:',
@@ -140,11 +150,7 @@ const translation = {
       btnText: 'Comienza con la Comunidad',
       name: 'Comunidad',
       description: 'Para usuarios individuales, pequeños equipos o proyectos no comerciales',
-      features: [
-        'Todas las funciones principales publicadas en el repositorio público',
-        'Espacio de trabajo único',
-        'Cumple con la licencia de código abierto de Dify',
-      ],
+      features: ['Todas las características principales se publican en el repositorio público', 'Espacio de trabajo único', 'Cumple con la Licencia de Código Abierto de Dify'],
     },
     premium: {
       description: 'Para organizaciones y equipos de tamaño mediano',
@@ -155,12 +161,7 @@ const translation = {
       includesTitle: 'Todo de Community, además:',
       name: 'Premium',
       for: 'Para organizaciones y equipos de tamaño mediano',
-      features: [
-        'Fiabilidad autogestionada mediante varios proveedores de nube',
-        'Espacio de trabajo único',
-        'Personalización del logotipo y la marca de la aplicación web',
-        'Soporte prioritario por correo electrónico y chat',
-      ],
+      features: ['Confiabilidad Autogestionada por Diversos Proveedores de Nube', 'Espacio de trabajo único', 'Personalización de Logotipo y Marca de la Aplicación Web', 'Soporte prioritario por correo electrónico y chat'],
     },
   },
   vectorSpace: {
@@ -186,8 +187,21 @@ const translation = {
     teamMembers: 'Miembros del equipo',
     annotationQuota: 'Cuota de anotación',
     vectorSpaceTooltip: 'Los documentos con el modo de indexación de alta calidad consumirán recursos de Almacenamiento de Datos de Conocimiento. Cuando el Almacenamiento de Datos de Conocimiento alcanza el límite, no se subirán nuevos documentos.',
+    triggerEvents: 'Eventos desencadenantes',
+    perMonth: 'por mes',
+    resetsIn: 'Se reinicia en {{count,number}} días',
   },
   teamMembers: 'Miembros del equipo',
+  triggerLimitModal: {
+    dismiss: 'Descartar',
+    upgrade: 'Actualizar',
+    usageTitle: 'EVENTOS DESENCADENANTES',
+    title: 'Actualiza para desbloquear más eventos desencadenantes',
+    description: 'Has alcanzado el límite de activadores de eventos de flujo de trabajo para este plan.',
+  },
+  viewBillingTitle: 'Facturación y Suscripciones',
+  viewBillingDescription: 'Gestiona métodos de pago, facturas y cambios de suscripción',
+  viewBillingAction: 'Gestionar',
 }
 
 export default translation

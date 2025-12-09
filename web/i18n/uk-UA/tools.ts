@@ -98,6 +98,13 @@ const translation = {
     confirmTip: 'Це вплине на програми, які використовують цей інструмент',
     nameForToolCallPlaceHolder: 'Використовується для розпізнавання машин, таких як getCurrentWeather, list_pets',
     descriptionPlaceholder: 'Короткий опис призначення інструменту, наприклад, отримання температури для конкретного місця.',
+    toolOutput: {
+      title: 'Вихідні дані інструменту',
+      name: 'Ім\'я',
+      reserved: 'Зарезервовано',
+      reservedParameterDuplicateTip: 'text, json та файли є зарезервованими змінними. Змінні з такими іменами не можуть з’являтися в схемі вихідних даних.',
+      description: 'Опис',
+    },
   },
   test: {
     title: 'Тест',
@@ -205,6 +212,7 @@ const translation = {
       authentication: 'Аутентифікація',
       configurations: 'Конфігурації',
       useDynamicClientRegistration: 'Використовувати динамічну реєстрацію клієнтів',
+      redirectUrlWarning: 'Будь ласка, налаштуйте URL-адресу перенаправлення OAuth на:',
     },
     delete: 'Видалити сервер MCP',
     deleteConfirmTitle: 'Видалити {mcp}?',

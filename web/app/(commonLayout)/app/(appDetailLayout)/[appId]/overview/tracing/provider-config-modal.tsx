@@ -4,7 +4,7 @@ import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Field from './field'
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import { docURL } from './config'
 import {
@@ -22,10 +22,10 @@ import Divider from '@/app/components/base/divider'
 type Props = {
   appId: string
   type: TracingProvider
-  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig | null
+  payload?: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig | null
   onRemoved: () => void
   onCancel: () => void
-  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig) => void
+  onSaved: (payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig) => void
   onChosen: (provider: TracingProvider) => void
 }
 
@@ -77,6 +77,21 @@ const aliyunConfigTemplate = {
   endpoint: '',
 }
 
+const mlflowConfigTemplate = {
+  tracking_uri: '',
+  experiment_id: '',
+  username: '',
+  password: '',
+}
+
+const databricksConfigTemplate = {
+  experiment_id: '',
+  host: '',
+  client_id: '',
+  client_secret: '',
+  personal_access_token: '',
+}
+
 const tencentConfigTemplate = {
   token: '',
   endpoint: '',
@@ -96,7 +111,7 @@ const ProviderConfigModal: FC<Props> = ({
   const isEdit = !!payload
   const isAdd = !isEdit
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig>((() => {
+  const [config, setConfig] = useState<ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig>((() => {
     if (isEdit)
       return payload
 
@@ -117,6 +132,12 @@ const ProviderConfigModal: FC<Props> = ({
 
     else if (type === TracingProvider.aliyun)
       return aliyunConfigTemplate
+
+    else if (type === TracingProvider.mlflow)
+      return mlflowConfigTemplate
+
+    else if (type === TracingProvider.databricks)
+      return databricksConfigTemplate
 
     else if (type === TracingProvider.tencent)
       return tencentConfigTemplate
@@ -209,6 +230,20 @@ const ProviderConfigModal: FC<Props> = ({
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'License Key' })
       if (!errorMessage && !postData.endpoint)
         errorMessage = t('common.errorMsg.fieldRequired', { field: 'Endpoint' })
+    }
+
+    if (type === TracingProvider.mlflow) {
+      const postData = config as MLflowConfig
+      if (!errorMessage && !postData.tracking_uri)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Tracking URI' })
+    }
+
+    if (type === TracingProvider.databricks) {
+      const postData = config as DatabricksConfig
+      if (!errorMessage && !postData.experiment_id)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Experiment ID' })
+      if (!errorMessage && !postData.host)
+        errorMessage = t('common.errorMsg.fieldRequired', { field: 'Host' })
     }
 
     if (type === TracingProvider.tencent) {
@@ -513,6 +548,81 @@ const ProviderConfigModal: FC<Props> = ({
                           />
                         </>
                       )}
+                      {type === TracingProvider.mlflow && (
+                        <>
+                          <Field
+                            label={t(`${I18N_PREFIX}.trackingUri`)!}
+                            labelClassName='!text-sm'
+                            value={(config as MLflowConfig).tracking_uri}
+                            isRequired
+                            onChange={handleConfigChange('tracking_uri')}
+                            placeholder={'http://localhost:5000'}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.experimentId`)!}
+                            labelClassName='!text-sm'
+                            isRequired
+                            value={(config as MLflowConfig).experiment_id}
+                            onChange={handleConfigChange('experiment_id')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.experimentId`) })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.username`)!}
+                            labelClassName='!text-sm'
+                            value={(config as MLflowConfig).username}
+                            onChange={handleConfigChange('username')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.username`) })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.password`)!}
+                            labelClassName='!text-sm'
+                            value={(config as MLflowConfig).password}
+                            onChange={handleConfigChange('password')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.password`) })!}
+                          />
+                        </>
+                      )}
+                      {type === TracingProvider.databricks && (
+                        <>
+                          <Field
+                            label={t(`${I18N_PREFIX}.experimentId`)!}
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).experiment_id}
+                            onChange={handleConfigChange('experiment_id')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.experimentId`) })!}
+                            isRequired
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.databricksHost`)!}
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).host}
+                            onChange={handleConfigChange('host')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.databricksHost`) })!}
+                            isRequired
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.clientId`)!}
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).client_id}
+                            onChange={handleConfigChange('client_id')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.clientId`) })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.clientSecret`)!}
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).client_secret}
+                            onChange={handleConfigChange('client_secret')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.clientSecret`) })!}
+                          />
+                          <Field
+                            label={t(`${I18N_PREFIX}.personalAccessToken`)!}
+                            labelClassName='!text-sm'
+                            value={(config as DatabricksConfig).personal_access_token}
+                            onChange={handleConfigChange('personal_access_token')}
+                            placeholder={t(`${I18N_PREFIX}.placeholder`, { key: t(`${I18N_PREFIX}.personalAccessToken`) })!}
+                          />
+                        </>
+                      )}
                     </div>
                     <div className='my-8 flex h-8 items-center justify-between'>
                       <a
@@ -532,7 +642,7 @@ const ProviderConfigModal: FC<Props> = ({
                             >
                               <span className='text-[#D92D20]'>{t('common.operation.remove')}</span>
                             </Button>
-                            <Divider className='mx-3 h-[18px]' />
+                            <Divider type='vertical' className='mx-3 h-[18px]' />
                           </>
                         )}
                         <Button

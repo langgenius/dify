@@ -816,9 +816,12 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
     try {
-      await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
+      await updateLogMessageFeedbacks({
+        url: `/apps/${appId}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      })
       conversationDetailMutate()
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
@@ -861,9 +864,12 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
     try {
-      await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
+      await updateLogMessageFeedbacks({
+        url: `/apps/${appId}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
@@ -1030,8 +1036,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return <Loading />
 
   return (
-    <div className='relative grow overflow-x-auto'>
-      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+    <div className='relative mt-2 grow overflow-x-auto'>
+      <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
         <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
             <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>

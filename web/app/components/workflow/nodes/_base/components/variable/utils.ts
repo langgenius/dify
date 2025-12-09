@@ -42,7 +42,7 @@ import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
 import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
-
+import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
 import {
   AGENT_OUTPUT_STRUCT,
   FILE_STRUCT,
@@ -591,16 +591,8 @@ const formatItem = (
             variable: outputKey,
             type:
               output.type === 'array'
-                ? (`Array[${output.items?.type
-                  ? output.items.type.slice(0, 1).toLocaleUpperCase()
-                  + output.items.type.slice(1)
-                  : 'Unknown'
-                }]` as VarType)
-                : (`${output.type
-                  ? output.type.slice(0, 1).toLocaleUpperCase()
-                  + output.type.slice(1)
-                  : 'Unknown'
-                }` as VarType),
+                ? (`Array[${output.items?.type ? output.items.type.slice(0, 1).toLocaleUpperCase() + output.items.type.slice(1) : 'Unknown'}]` as VarType)
+                : (`${output.type ? output.type.slice(0, 1).toLocaleUpperCase() + output.type.slice(1) : 'Unknown'}` as VarType),
           })
         },
       )
@@ -858,13 +850,14 @@ export const toNodeOutputVars = (
           filterVar,
           allPluginInfoList,
           ragVariablesInDataSource.map(
-            (ragVariable: RAGPipelineVariable) =>
-              ({
+            (ragVariable: RAGPipelineVariable) => {
+              return {
                 variable: `rag.${node.id}.${ragVariable.variable}`,
                 type: inputVarTypeToVarType(ragVariable.type as any),
                 description: ragVariable.label,
                 isRagVariable: true,
-              } as Var),
+              } as Var
+            },
           ),
           schemaTypeDefinitions,
         ),
@@ -1301,14 +1294,15 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.KnowledgeRetrieval: {
-      res = [(data as KnowledgeRetrievalNodeType).query_variable_selector]
+      const {
+        query_variable_selector,
+        query_attachment_selector,
+      } = data as KnowledgeRetrievalNodeType
+      res = [query_variable_selector, query_attachment_selector]
       break
     }
     case BlockEnum.IfElse: {
-      res
-        = (data as IfElseNodeType).conditions?.map((c) => {
-          return c.variable_selector || []
-        }) || []
+      res = []
       res.push(
         ...((data as IfElseNodeType).cases || [])
           .flatMap(c => c.conditions || [])
@@ -1480,9 +1474,22 @@ export const getNodeUsedVarPassToServerKey = (
       break
     }
     case BlockEnum.IfElse: {
-      const targetVar = (data as IfElseNodeType).conditions?.find(
-        c => c.variable_selector?.join('.') === valueSelector.join('.'),
-      )
+      const findConditionInCases = (cases: CaseItem[]): Condition | undefined => {
+        for (const caseItem of cases) {
+          for (const condition of caseItem.conditions || []) {
+            if (condition.variable_selector?.join('.') === valueSelector.join('.'))
+              return condition
+
+            if (condition.sub_variable_condition) {
+              const found = findConditionInCases([condition.sub_variable_condition])
+              if (found)
+                return found
+            }
+          }
+        }
+        return undefined
+      }
+      const targetVar = findConditionInCases((data as IfElseNodeType).cases || [])
       if (targetVar) res = `#${valueSelector.join('.')}#`
       break
     }
@@ -1630,17 +1637,14 @@ export const updateNodeVars = (
           payload.query_variable_selector.join('.') === oldVarSelector.join('.')
         )
           payload.query_variable_selector = newVarSelector
+        if (
+          payload.query_attachment_selector.join('.') === oldVarSelector.join('.')
+        )
+          payload.query_attachment_selector = newVarSelector
         break
       }
       case BlockEnum.IfElse: {
         const payload = data as IfElseNodeType
-        if (payload.conditions) {
-          payload.conditions = payload.conditions.map((c) => {
-            if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
-              c.variable_selector = newVarSelector
-            return c
-          })
-        }
         if (payload.cases) {
           payload.cases = payload.cases.map((caseItem) => {
             if (caseItem.conditions) {

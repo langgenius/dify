@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Gestionează facturarea și abonamentele',
   buyPermissionDeniedTip: 'Vă rugăm să contactați administratorul dvs. de întreprindere pentru a vă abona',
   plansCommon: {
-    title: 'Alegeți un plan potrivit pentru dvs.',
     yearlyTip: 'Obțineți 2 luni gratuite prin abonarea anuală!',
     mostPopular: 'Cel mai popular',
     planRange: {
@@ -30,6 +29,7 @@ const translation = {
     vectorSpace: 'Spațiu vectorial',
     vectorSpaceTooltip: 'Spațiul vectorial este sistemul de memorie pe termen lung necesar pentru ca LLM-urile să înțeleagă datele dvs.',
     documentProcessingPriority: 'Prioritatea procesării documentelor',
+    documentProcessingPriorityTip: 'Pentru o prioritate mai mare a procesării documentelor, vă rugăm să vă actualizați planul.',
     documentProcessingPriorityUpgrade: 'Procesați mai multe date cu o acuratețe mai mare și la viteze mai rapide.',
     priority: {
       'standard': 'Standard',
@@ -82,7 +82,7 @@ const translation = {
     documentsTooltip: 'Cota pe numărul de documente importate din Sursele de Date de Cunoștințe.',
     getStarted: 'Întrebați-vă',
     cloud: 'Serviciu de cloud',
-    apiRateLimitUnit: '{{count,number}}/lună',
+    apiRateLimitUnit: '{{count,number}}',
     comparePlanAndFeatures: 'Compară planurile și caracteristicile',
     documentsRequestQuota: '{{count,number}}/min Limita de rată a cererilor de cunoștințe',
     documents: '{{count,number}} Documente de Cunoaștere',
@@ -96,6 +96,26 @@ const translation = {
     startBuilding: 'Începeți să construiți',
     taxTip: 'Toate prețurile abonamentelor (lunare/anuale) nu includ taxele aplicabile (de exemplu, TVA, taxa pe vânzări).',
     taxTipSecond: 'Dacă regiunea dumneavoastră nu are cerințe fiscale aplicabile, niciun impozit nu va apărea la finalizarea comenzii și nu vi se vor percepe taxe suplimentare pe întreaga durată a abonamentului.',
+    triggerEvents: {
+      unlimited: 'Evenimente de declanșare nelimitate',
+      tooltip: 'Numărul de evenimente care pornesc automat fluxuri de lucru prin declanșatoare Plugin, Programare sau Webhook.',
+      sandbox: '{{count,number}} Evenimente Declanșatoare',
+      professional: '{{count,number}} Evenimente declanșatoare/lună',
+    },
+    workflowExecution: {
+      faster: 'Executarea mai rapidă a fluxului de lucru',
+      standard: 'Executarea fluxului de lucru standard',
+      tooltip: 'Prioritatea și viteza cozii de execuție a fluxului de lucru.',
+      priority: 'Executarea fluxului de lucru prioritar',
+    },
+    startNodes: {
+      unlimited: 'Declanșatori/workflow nelimitați',
+      limited: 'Până la {{count}} declanșatori/workflow',
+    },
+    title: {
+      plans: 'planuri',
+      description: 'Selectați planul care se potrivește cel mai bine nevoilor echipei dvs.',
+    },
   },
   plans: {
     sandbox: {
@@ -106,7 +126,7 @@ const translation = {
     professional: {
       name: 'Professional',
       description: 'Pentru persoane fizice și echipe mici pentru a debloca mai multă putere la un preț accesibil.',
-      for: 'Pentru dezvoltatori independenți / echipe mici',
+      for: 'Pentru dezvoltatori independenți/echipe mici',
     },
     team: {
       name: 'Echipă',
@@ -117,28 +137,14 @@ const translation = {
       name: 'Întreprindere',
       description: 'Obțineți capacități și asistență complete pentru sisteme critice la scară largă.',
       includesTitle: 'Tot ce este în planul Echipă, plus:',
-      features: {
-        1: 'Autorizare licență comercială',
-        3: 'Mai multe spații de lucru și managementul întreprinderii',
-        2: 'Funcții exclusive pentru întreprinderi',
-        7: 'Actualizări și întreținere de către Dify oficial',
-        0: 'Soluții de implementare scalabile la nivel de întreprindere',
-        4: 'SSO',
-        8: 'Asistență tehnică profesională',
-        5: 'SLA-uri negociate de partenerii Dify',
-        6: 'Securitate și controale avansate',
-      },
+      features: ['Soluții de implementare scalabile la nivel de întreprindere', 'Autorizație de licență comercială', 'Funcții Exclusive pentru Afaceri', 'Multiple spații de lucru și gestionarea întreprinderii', 'Autentificare unică', 'SLA-uri negociate de partenerii Dify', 'Securitate și Control Avansate', 'Actualizări și întreținere de către Dify Oficial', 'Asistență Tehnică Profesională'],
       for: 'Pentru echipe de mari dimensiuni',
       price: 'Personalizat',
       priceTip: 'Facturare anuală doar',
       btnText: 'Contactați Vânzări',
     },
     community: {
-      features: {
-        2: 'Respectă licența Dify Open Source',
-        0: 'Toate caracteristicile de bază lansate în depozitul public',
-        1: 'Spațiu de lucru unic',
-      },
+      features: ['Toate Funcțiile Principale Lansate în Repositorul Public', 'Spațiu de lucru unic', 'Respectă Licența Open Source Dify'],
       description: 'Pentru utilizatori individuali, echipe mici sau proiecte necomerciale',
       btnText: 'Începe cu Comunitatea',
       price: 'Gratuit',
@@ -147,12 +153,7 @@ const translation = {
       includesTitle: 'Funcții gratuite:',
     },
     premium: {
-      features: {
-        1: 'Spațiu de lucru unic',
-        3: 'Asistență prioritară prin e-mail și chat',
-        2: 'Personalizarea logo-ului și brandingului WebApp',
-        0: 'Fiabilitate autogestionată de diverși furnizori de cloud',
-      },
+      features: ['Fiabilitate autogestionată de diferiți furnizori de cloud', 'Spațiu de lucru unic', 'Personalizare Logo și Branding pentru WebApp', 'Asistență prioritară prin email și chat'],
       btnText: 'Obține Premium în',
       description: 'Pentru organizații și echipe de dimensiuni medii',
       includesTitle: 'Totul din Comunitate, plus:',
@@ -186,8 +187,21 @@ const translation = {
     teamMembers: 'Membrii echipei',
     annotationQuota: 'Cota de Anotare',
     documentsUploadQuota: 'Cota de încărcare a documentelor',
+    triggerEvents: 'Evenimente declanșatoare',
+    perMonth: 'pe lună',
+    resetsIn: 'Se resetează în {{count,number}} zile',
   },
   teamMembers: 'Membrii echipei',
+  triggerLimitModal: {
+    dismiss: 'Respinge',
+    upgrade: 'Actualizare',
+    usageTitle: 'EVENIMENTE DECLANȘATOARE',
+    description: 'Ai atins limita de evenimente declanșatoare de flux de lucru pentru acest plan.',
+    title: 'Actualizează pentru a debloca mai multe evenimente declanșatoare',
+  },
+  viewBillingTitle: 'Facturare și abonamente',
+  viewBillingDescription: 'Gestionează metodele de plată, facturile și modificările abonamentului',
+  viewBillingAction: 'Gestiona',
 }
 
 export default translation

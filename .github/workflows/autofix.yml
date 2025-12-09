@@ -28,6 +28,11 @@ jobs:
           # Format code
           uv run ruff format ..
 
+      - name: count migration progress
+        run: |
+          cd api
+          ./cnt_base.sh
+
       - name: ast-grep
         run: |
           uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all

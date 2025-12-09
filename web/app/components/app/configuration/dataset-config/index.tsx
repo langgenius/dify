@@ -9,7 +9,7 @@ import { v4 as uuid4 } from 'uuid'
 import { useFormattingChangedDispatcher } from '../debug/hooks'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
-import CardItem from './card-item/item'
+import CardItem from './card-item'
 import ParamsConfig from './params-config'
 import ContextVar from './context-var'
 import ConfigContext from '@/context/debug-configuration'
@@ -77,7 +77,7 @@ const DatasetConfig: FC = () => {
     const oldRetrievalConfig = {
       top_k,
       score_threshold,
-      reranking_model: (reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
+      reranking_model: (reranking_model && reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
         provider: reranking_model.reranking_provider_name,
         model: reranking_model.reranking_model_name,
       } : undefined,

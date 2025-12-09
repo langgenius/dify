@@ -28,10 +28,12 @@ const translation = {
       loading: 'Elaborazione... Attendere prego',
       error: 'Si è verificato un errore durante l\'esecuzione',
       viewDetails: 'Mostra dettagli',
+      footerTip: 'In modalità di test, anteprima di fino a {{count}} frammenti',
     },
   },
   ragToolSuggestions: {
     title: 'Suggerimenti per RAG',
+    noRecommendationPlugins: 'Nessun plugin consigliato, trova di più in <CustomLink>Marketplace</CustomLink>',
   },
 }
 

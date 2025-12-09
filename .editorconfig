@@ -29,7 +29,7 @@ trim_trailing_whitespace = false
 
 # Matches multiple files with brace expansion notation
 # Set default charset
-[*.{js,tsx}]
+[*.{js,jsx,ts,tsx,mjs}]
 indent_style = space
 indent_size = 2
 

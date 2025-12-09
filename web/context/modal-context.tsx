@@ -36,6 +36,12 @@ import { noop } from 'lodash-es'
 import dynamic from 'next/dynamic'
 import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
 import type { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useProviderContext } from '@/context/provider-context'
+import { useAppContext } from '@/context/app-context'
+import {
+  type TriggerEventsLimitModalPayload,
+  useTriggerEventsLimitModal,
+} from './hooks/use-trigger-events-limit-modal'
 
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
   ssr: false,
@@ -72,6 +78,9 @@ const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugi
 })
 
 const ExpireNoticeModal = dynamic(() => import('@/app/education-apply/expire-notice-modal'), {
+  ssr: false,
+})
+const TriggerEventsLimitModal = dynamic(() => import('@/app/components/billing/trigger-events-limit-modal'), {
   ssr: false,
 })
 
@@ -113,6 +122,7 @@ export type ModalContextState = {
   }> | null>>
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
   setShowEducationExpireNoticeModal: Dispatch<SetStateAction<ModalState<ExpireNoticeModalPayloadProps> | null>>
+  setShowTriggerEventsLimitModal: Dispatch<SetStateAction<ModalState<TriggerEventsLimitModalPayload> | null>>
 }
 const PRICING_MODAL_QUERY_PARAM = 'pricing'
 const PRICING_MODAL_QUERY_VALUE = 'open'
@@ -130,6 +140,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
   setShowEducationExpireNoticeModal: noop,
+  setShowTriggerEventsLimitModal: noop,
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -168,6 +179,7 @@ export const ModalContextProvider = ({
   }> | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
   const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
+  const { currentWorkspace } = useAppContext()
 
   const [showPricingModal, setShowPricingModal] = useState(
     searchParams.get(PRICING_MODAL_QUERY_PARAM) === PRICING_MODAL_QUERY_VALUE,
@@ -227,6 +239,17 @@ export const ModalContextProvider = ({
     }
     window.history.replaceState(null, '', url.toString())
   }, [showPricingModal])
+
+  const { plan, isFetchedPlan } = useProviderContext()
+  const {
+    showTriggerEventsLimitModal,
+    setShowTriggerEventsLimitModal,
+    persistTriggerEventsLimitModalDismiss,
+  } = useTriggerEventsLimitModal({
+    plan,
+    isFetchedPlan,
+    currentWorkspaceId: currentWorkspace?.id,
+  })
 
   const handleCancelModerationSettingModal = () => {
     setShowModerationSettingModal(null)
@@ -334,6 +357,7 @@ export const ModalContextProvider = ({
       setShowOpeningModal,
       setShowUpdatePluginModal,
       setShowEducationExpireNoticeModal,
+      setShowTriggerEventsLimitModal,
     }}>
       <>
         {children}
@@ -453,6 +477,25 @@ export const ModalContextProvider = ({
             <ExpireNoticeModal
               {...showEducationExpireNoticeModal.payload}
               onClose={() => setShowEducationExpireNoticeModal(null)}
+            />
+          )}
+        {
+          !!showTriggerEventsLimitModal && (
+            <TriggerEventsLimitModal
+              show
+              usage={showTriggerEventsLimitModal.payload.usage}
+              total={showTriggerEventsLimitModal.payload.total}
+              planType={showTriggerEventsLimitModal.payload.planType}
+              resetInDays={showTriggerEventsLimitModal.payload.resetInDays}
+              onDismiss={() => {
+                persistTriggerEventsLimitModalDismiss()
+                setShowTriggerEventsLimitModal(null)
+              }}
+              onUpgrade={() => {
+                persistTriggerEventsLimitModalDismiss()
+                setShowTriggerEventsLimitModal(null)
+                handleShowPricingModal()
+              }}
             />
           )}
       </>

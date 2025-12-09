@@ -113,11 +113,10 @@ const translation = {
         deleteContextVarTip: 'Variabel ini telah ditetapkan sebagai variabel kueri konteks, dan menghapusnya akan berdampak pada penggunaan normal Pengetahuan. Jika Anda masih perlu menghapusnya, silakan pilih kembali di bagian konteks.',
         ok: 'OKE',
         noVarTip: 'silakan buat variabel di bawah bagian Variabel',
+        deleteContextVarTitle: 'Hapus variabel “{{varName}}”?',
       },
       notSupportSelectMulti: 'Saat ini hanya mendukung satu Pengetahuan',
-      textBlocks: 'Blok Teks',
       selectTitle: 'Pilih referensi Pengetahuan',
-      words: 'Kata',
       toCreate: 'Pergi ke membuat',
       noDataSet: 'Tidak ada Pengetahuan yang ditemukan',
       noData: 'Anda dapat mengimpor Pengetahuan sebagai konteks',
@@ -142,6 +141,7 @@ const translation = {
       },
       tips: 'Alat menyediakan metode panggilan API standar, mengambil input atau variabel pengguna sebagai parameter permintaan untuk mengkueri data eksternal sebagai konteks.',
       title: 'Perkakas',
+      toolsInUse: '{{count}} alat yang digunakan',
     },
     conversationHistory: {
       editModal: {
@@ -152,6 +152,7 @@ const translation = {
       description: 'Menetapkan nama awalan untuk peran percakapan',
       title: 'Riwayat Percakapan',
       learnMore: 'Pelajari lebih lanjut',
+      tip: 'Riwayat Percakapan tidak diaktifkan, silakan tambahkan <histories> di prompt di atas.',
     },
     toolbox: {
       title: 'TOOLBOX',
@@ -318,6 +319,8 @@ const translation = {
     waitForResponse: 'Harap tunggu hingga respons terhadap pesan sebelumnya selesai.',
     waitForBatchResponse: 'Harap tunggu hingga respons terhadap tugas batch selesai.',
     waitForFileUpload: 'Harap tunggu file/file diunggah',
+    nameOfKeyRequired: 'nama kunci: {{key}} diperlukan',
+    valueOfVarRequired: 'Nilai {{key}} tidak boleh kosong',
   },
   warningMessage: {
     timeoutExceeded: 'Hasil tidak ditampilkan karena batas waktu. Silakan lihat log untuk mengumpulkan hasil lengkap.',
@@ -330,7 +333,13 @@ const translation = {
     key: 'Kunci Variabel',
     name: 'Nama Bidang Input Pengguna',
   },
-  varKeyError: {},
+  varKeyError: {
+    canNoBeEmpty: '{{key}} wajib diisi',
+    tooLong: '{{key}} terlalu panjang. Tidak boleh lebih dari 30 karakter',
+    notValid: '{{key}} tidak valid. Hanya boleh berisi huruf, angka, dan garis bawah',
+    notStartWithNumber: '{{key}} tidak dapat diawali dengan angka',
+    keyAlreadyExists: '{{key}} sudah ada',
+  },
   otherError: {
     queryNoBeEmpty: 'Kueri harus diatur dalam prompt',
     historyNoBeEmpty: 'Riwayat percakapan harus diatur dalam prompt',
@@ -408,6 +417,9 @@ const translation = {
     'startSelectedOption': 'Mulai opsi yang dipilih',
     'unitPlaceholder': 'Tampilkan unit setelah angka, misalnya token',
     'placeholderPlaceholder': 'Masukkan teks untuk ditampilkan saat bidang kosong',
+    'description': 'Pengaturan untuk variabel {{varName}}',
+    'notSet': 'Belum diatur, coba ketik {{input}} di prompt awalan',
+    'maxNumberTip': 'Dokumen < {{docLimit}}, gambar < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
   },
   vision: {
     visionSettings: {
@@ -420,6 +432,7 @@ const translation = {
       uploadLimit: 'Batas Unggahan',
       resolution: 'Resolusi',
       url: 'URL',
+      resolutionTooltip: 'res rendah akan memungkinkan model menerima versi gambar resolusi rendah 512 x 512, dan merepresentasikan gambar dengan anggaran 65 token. Ini memungkinkan API memberikan respons lebih cepat dan menggunakan lebih sedikit token input untuk kasus penggunaan yang tidak memerlukan detail tinggi.\n\nres tinggi pertama-tama memungkinkan model melihat gambar resolusi rendah dan kemudian membuat potongan gambar yang lebih detail sebagai kotak 512px berdasarkan ukuran gambar input. Setiap potongan detail menggunakan dua kali anggaran token sehingga totalnya menjadi 129 token.',
     },
     settings: 'Pengaturan',
     description: 'Aktifkan Penglihatan akan memungkinkan model untuk mengambil gambar dan menjawab pertanyaan tentangnya.',
@@ -448,6 +461,10 @@ const translation = {
     title: 'Pembuka Percakapan',
     noDataPlaceHolder: 'Memulai percakapan dengan pengguna dapat membantu AI menjalin hubungan yang lebih dekat dengan mereka dalam aplikasi percakapan.',
     tooShort: 'Setidaknya 20 kata prompt awal diperlukan untuk menghasilkan pidato pembuka untuk percakapan.',
+    placeholder: 'Tulis pesan pembuka Anda di sini, Anda bisa menggunakan variabel, coba ketik {{variable}}.',
+    openingQuestionPlaceholder: 'Anda bisa menggunakan variabel, coba ketik {{variable}}.',
+    varTip: 'Anda dapat menggunakan variabel, coba ketik {{variable}}',
+    notIncludeKey: 'Prompt awal tidak menyertakan variabel: {{key}}. Harap tambahkan ke prompt awal.',
   },
   modelConfig: {
     modeType: {
@@ -540,6 +557,8 @@ const translation = {
   duplicateModel: 'Duplikat',
   result: 'Teks Keluaran',
   noResult: 'Output akan ditampilkan di sini.',
+  promptTip: 'Prompts membimbing respons AI dengan instruksi dan batasan. Masukkan variabel seperti {{input}}. Prompt ini tidak akan terlihat oleh pengguna.',
+  notSetVar: 'Variabel memungkinkan pengguna untuk memasukkan kata pemicu atau ucapan pembuka saat mengisi formulir. Anda dapat mencoba memasukkan "{{input}}" pada kata pemicu.',
 }
 
 export default translation

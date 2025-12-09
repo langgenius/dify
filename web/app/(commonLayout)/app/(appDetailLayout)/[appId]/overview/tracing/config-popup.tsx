@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import TracingIcon from './tracing-icon'
 import ProviderPanel from './provider-panel'
-import type { AliyunConfig, ArizeConfig, LangFuseConfig, LangSmithConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
 import { TracingProvider } from './type'
 import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
@@ -30,8 +30,10 @@ export type PopupProps = {
   opikConfig: OpikConfig | null
   weaveConfig: WeaveConfig | null
   aliyunConfig: AliyunConfig | null
+  mlflowConfig: MLflowConfig | null
+  databricksConfig: DatabricksConfig | null
   tencentConfig: TencentConfig | null
-  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig) => void
+  onConfigUpdated: (provider: TracingProvider, payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig | MLflowConfig | DatabricksConfig) => void
   onConfigRemoved: (provider: TracingProvider) => void
 }
 
@@ -49,6 +51,8 @@ const ConfigPopup: FC<PopupProps> = ({
   opikConfig,
   weaveConfig,
   aliyunConfig,
+  mlflowConfig,
+  databricksConfig,
   tencentConfig,
   onConfigUpdated,
   onConfigRemoved,
@@ -73,7 +77,7 @@ const ConfigPopup: FC<PopupProps> = ({
     }
   }, [onChooseProvider])
 
-  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | TencentConfig) => {
+  const handleConfigUpdated = useCallback((payload: ArizeConfig | PhoenixConfig | LangSmithConfig | LangFuseConfig | OpikConfig | WeaveConfig | AliyunConfig | MLflowConfig | DatabricksConfig | TencentConfig) => {
     onConfigUpdated(currentProvider!, payload)
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigUpdated])
@@ -83,8 +87,8 @@ const ConfigPopup: FC<PopupProps> = ({
     hideConfigModal()
   }, [currentProvider, hideConfigModal, onConfigRemoved])
 
-  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig && aliyunConfig && tencentConfig
-  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig && !aliyunConfig && !tencentConfig
+  const providerAllConfigured = arizeConfig && phoenixConfig && langSmithConfig && langFuseConfig && opikConfig && weaveConfig && aliyunConfig && mlflowConfig && databricksConfig && tencentConfig
+  const providerAllNotConfigured = !arizeConfig && !phoenixConfig && !langSmithConfig && !langFuseConfig && !opikConfig && !weaveConfig && !aliyunConfig && !mlflowConfig && !databricksConfig && !tencentConfig
 
   const switchContent = (
     <Switch
@@ -185,6 +189,32 @@ const ConfigPopup: FC<PopupProps> = ({
     />
   )
 
+  const mlflowPanel = (
+    <ProviderPanel
+      type={TracingProvider.mlflow}
+      readOnly={readOnly}
+      config={mlflowConfig}
+      hasConfigured={!!mlflowConfig}
+      onConfig={handleOnConfig(TracingProvider.mlflow)}
+      isChosen={chosenProvider === TracingProvider.mlflow}
+      onChoose={handleOnChoose(TracingProvider.mlflow)}
+      key="mlflow-provider-panel"
+    />
+  )
+
+  const databricksPanel = (
+    <ProviderPanel
+      type={TracingProvider.databricks}
+      readOnly={readOnly}
+      config={databricksConfig}
+      hasConfigured={!!databricksConfig}
+      onConfig={handleOnConfig(TracingProvider.databricks)}
+      isChosen={chosenProvider === TracingProvider.databricks}
+      onChoose={handleOnChoose(TracingProvider.databricks)}
+      key="databricks-provider-panel"
+    />
+  )
+
   const tencentPanel = (
     <ProviderPanel
       type={TracingProvider.tencent}
@@ -221,6 +251,12 @@ const ConfigPopup: FC<PopupProps> = ({
     if (aliyunConfig)
       configuredPanels.push(aliyunPanel)
 
+    if (mlflowConfig)
+      configuredPanels.push(mlflowPanel)
+
+    if (databricksConfig)
+      configuredPanels.push(databricksPanel)
+
     if (tencentConfig)
       configuredPanels.push(tencentPanel)
 
@@ -251,6 +287,12 @@ const ConfigPopup: FC<PopupProps> = ({
     if (!aliyunConfig)
       notConfiguredPanels.push(aliyunPanel)
 
+    if (!mlflowConfig)
+      notConfiguredPanels.push(mlflowPanel)
+
+    if (!databricksConfig)
+      notConfiguredPanels.push(databricksPanel)
+
     if (!tencentConfig)
       notConfiguredPanels.push(tencentPanel)
 
@@ -258,6 +300,10 @@ const ConfigPopup: FC<PopupProps> = ({
   }
 
   const configuredProviderConfig = () => {
+    if (currentProvider === TracingProvider.mlflow)
+      return mlflowConfig
+    if (currentProvider === TracingProvider.databricks)
+      return databricksConfig
     if (currentProvider === TracingProvider.arize)
       return arizeConfig
     if (currentProvider === TracingProvider.phoenix)
@@ -316,6 +362,8 @@ const ConfigPopup: FC<PopupProps> = ({
                 {langfusePanel}
                 {langSmithPanel}
                 {opikPanel}
+                {mlflowPanel}
+                {databricksPanel}
                 {weavePanel}
                 {arizePanel}
                 {phoenixPanel}

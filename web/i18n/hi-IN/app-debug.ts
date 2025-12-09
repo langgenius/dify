@@ -117,8 +117,6 @@ const translation = {
     dataSet: {
       title: 'प्रसंग',
       noData: 'आप संदर्भ के रूप में ज्ञान आयात कर सकते हैं',
-      words: 'शब्द',
-      textBlocks: 'पाठ खंड',
       selectTitle: 'संदर्भ ज्ञान का चयन करें',
       selected: 'ज्ञान चुना गया',
       noDataSet: 'कोई ज्ञान नहीं मिला',
@@ -374,6 +372,7 @@ const translation = {
     'unitPlaceholder': 'संख्याओं के बाद इकाइयों को प्रदर्शित करें, जैसे कि टोकन',
     'placeholderPlaceholder': 'जब फ़ील्ड खाली हो तो दिखाने के लिए पाठ दर्ज करें',
     'defaultValuePlaceholder': 'फ़ील्ड को पूर्व-जनित करने के लिए डिफ़ॉल्ट मान दर्ज करें',
+    'maxNumberTip': 'दस्तावेज़ < {{docLimit}}, छवि < {{imgLimit}}, ऑडियो < {{audioLimit}}, वीडियो < {{videoLimit}}',
   },
   vision: {
     name: 'विजन',

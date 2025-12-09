@@ -1,12 +1,13 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, func, text
+from sqlalchemy import DateTime, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, MappedAsDataclass, mapped_column
 
 from libs.datetime_utils import naive_utc_now
 from libs.uuid_utils import uuidv7
-from models.engine import metadata
-from models.types import StringUUID
+
+from .engine import metadata
+from .types import StringUUID
 
 
 class Base(DeclarativeBase):
@@ -25,12 +26,11 @@ class DefaultFieldsMixin:
     id: Mapped[str] = mapped_column(
         StringUUID,
         primary_key=True,
-        # NOTE: The default and server_default serve as fallback mechanisms.
+        # NOTE: The default serve as fallback mechanisms.
         # The application can generate the `id` before saving to optimize
         # the insertion process (especially for interdependent models)
         # and reduce database roundtrips.
-        default=uuidv7,
-        server_default=text("uuidv7()"),
+        default=lambda: str(uuidv7()),
     )
 
     created_at: Mapped[datetime] = mapped_column(

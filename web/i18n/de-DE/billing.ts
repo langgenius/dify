@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Abrechnung und Abonnements verwalten',
   buyPermissionDeniedTip: 'Bitte kontaktieren Sie Ihren Unternehmensadministrator, um zu abonnieren',
   plansCommon: {
-    title: 'Wählen Sie einen Tarif, der zu Ihnen passt',
     yearlyTip: 'Erhalten Sie 2 Monate kostenlos durch jährliches Abonnieren!',
     mostPopular: 'Am beliebtesten',
     planRange: {
@@ -30,6 +29,7 @@ const translation = {
     vectorSpace: 'Vektorraum',
     vectorSpaceTooltip: 'Vektorraum ist das Langzeitspeichersystem, das erforderlich ist, damit LLMs Ihre Daten verstehen können.',
     documentProcessingPriority: 'Priorität der Dokumentenverarbeitung',
+    documentProcessingPriorityTip: 'Für eine höhere Priorität bei der Dokumentenverarbeitung upgraden Sie bitte Ihren Plan.',
     documentProcessingPriorityUpgrade: 'Mehr Daten mit höherer Genauigkeit bei schnelleren Geschwindigkeiten verarbeiten.',
     priority: {
       'standard': 'Standard',
@@ -83,7 +83,7 @@ const translation = {
     cloud: 'Cloud-Dienst',
     apiRateLimitTooltip: 'Die API-Datenbeschränkung gilt für alle Anfragen, die über die Dify-API gemacht werden, einschließlich Textgenerierung, Chat-Konversationen, Workflow-Ausführungen und Dokumentenverarbeitung.',
     getStarted: 'Loslegen',
-    apiRateLimitUnit: '{{count,number}}/Monat',
+    apiRateLimitUnit: '{{count,number}}',
     documentsTooltip: 'Vorgabe für die Anzahl der Dokumente, die aus der Wissensdatenquelle importiert werden.',
     apiRateLimit: 'API-Datenlimit',
     documents: '{{count,number}} Wissensdokumente',
@@ -96,6 +96,26 @@ const translation = {
     startBuilding: 'Beginnen Sie mit der Entwicklung',
     taxTipSecond: 'Wenn in Ihrer Region keine relevanten Steuervorschriften gelten, wird an der Kasse keine Steuer angezeigt und Ihnen werden während der gesamten Abonnementlaufzeit keine zusätzlichen Gebühren berechnet.',
     taxTip: 'Alle Abonnementspreise (monatlich/jährlich) verstehen sich zuzüglich der geltenden Steuern (z. B. MwSt., Umsatzsteuer).',
+    triggerEvents: {
+      tooltip: 'Die Anzahl der Ereignisse, die Workflows automatisch über Plugin-, Zeitplan- oder Webhook-Auslöser starten.',
+      unlimited: 'Unbegrenzte Auslöser-Ereignisse',
+      sandbox: '{{count,number}} Ereignisse auslösen',
+      professional: '{{count,number}} Auslöseereignisse/Monat',
+    },
+    workflowExecution: {
+      faster: 'Schnellere Arbeitsablauf-Ausführung',
+      tooltip: 'Priorität und Geschwindigkeit der Arbeitsablauf-Ausführungswarteschlange.',
+      priority: 'Prioritäts-Workflow-Ausführung',
+      standard: 'Standard-Workflow-Ausführung',
+    },
+    startNodes: {
+      unlimited: 'Unbegrenzte Auslöser/Workflows',
+      limited: 'Bis zu {{count}} Auslöser/Workflows',
+    },
+    title: {
+      plans: 'Pläne',
+      description: 'Wählen Sie den Plan, der am besten zu den Bedürfnissen Ihres Teams passt.',
+    },
   },
   plans: {
     sandbox: {
@@ -121,17 +141,7 @@ const translation = {
       price: 'Benutzerdefiniert',
       priceTip: 'Jährliche Abrechnung nur',
       for: 'Für große Teams',
-      features: [
-        'Skalierbare Bereitstellungslösungen in Unternehmensqualität',
-        'Kommerzielle Lizenzierung',
-        'Exklusive Enterprise-Funktionen',
-        'Mehrere Arbeitsbereiche und Unternehmensverwaltung',
-        'SSO (Single Sign-On)',
-        'Vereinbarte SLAs mit Dify-Partnern',
-        'Erweiterte Sicherheitsfunktionen und Kontrollen',
-        'Offizielle Updates und Wartung durch Dify',
-        'Professioneller technischer Support',
-      ],
+      features: ['Unternehmensgerechte skalierbare Bereitstellungslösungen', 'Gewerbliche Lizenzgenehmigung', 'Exklusive Unternehmensfunktionen', 'Mehrere Arbeitsbereiche & Unternehmensverwaltung', 'SSO', 'Von Dify-Partnern ausgehandelte SLAs', 'Erweiterte Sicherheit & Steuerungen', 'Updates und Wartung offiziell von Dify', 'Professioneller technischer Support'],
     },
     community: {
       description: 'Für Einzelbenutzer, kleine Teams oder nicht-kommerzielle Projekte',
@@ -140,11 +150,7 @@ const translation = {
       price: 'Kostenlos',
       includesTitle: 'Kostenlose Funktionen:',
       name: 'Gemeinschaft',
-      features: [
-        'Alle Kernfunktionen im öffentlichen Repository veröffentlicht',
-        'Einzelner Arbeitsbereich',
-        'Entspricht der Dify Open-Source-Lizenz',
-      ],
+      features: ['Alle Kernfunktionen im öffentlichen Repository veröffentlicht', 'Einzelarbeitsbereich', 'Entspricht der Dify Open-Source-Lizenz'],
     },
     premium: {
       includesTitle: 'Alles aus der Community, plus:',
@@ -155,12 +161,7 @@ const translation = {
       comingSoon: 'Microsoft Azure- und Google Cloud-Support demnächst verfügbar',
       description: 'Für mittelgroße Organisationen und Teams',
       price: 'Skalierbar',
-      features: [
-        'Selbstverwaltete Zuverlässigkeit durch verschiedene Cloud-Anbieter',
-        'Einzelner Arbeitsbereich',
-        'Anpassung von WebApp-Logo und Branding',
-        'Bevorzugter E-Mail- und Chat-Support',
-      ],
+      features: ['Selbstverwaltete Zuverlässigkeit durch verschiedene Cloud-Anbieter', 'Einzelarbeitsbereich', 'WebApp-Logo & Markenanpassung', 'Priorisierte E-Mail- und Chatsupport'],
     },
   },
   vectorSpace: {
@@ -186,8 +187,21 @@ const translation = {
     documentsUploadQuota: 'Dokumenten-Upload-Quota',
     vectorSpace: 'Wissensdatenbank',
     vectorSpaceTooltip: 'Dokumente mit dem Hochqualitäts-Indexierungsmodus verbrauchen Ressourcen des Knowledge Data Storage. Wenn der Knowledge Data Storage die Grenze erreicht, werden keine neuen Dokumente hochgeladen.',
+    perMonth: 'pro Monat',
+    triggerEvents: 'Auslöser-Ereignisse',
+    resetsIn: 'Setzt in {{count,number}} Tagen zurück',
   },
   teamMembers: 'Teammitglieder',
+  triggerLimitModal: {
+    dismiss: 'Schließen',
+    upgrade: 'Aktualisieren',
+    title: 'Upgrade, um mehr Auslöser-Ereignisse freizuschalten',
+    usageTitle: 'AUSLÖSEEREIGNISSE',
+    description: 'Sie haben das Limit der Workflow-Ereignisauslöser für diesen Plan erreicht.',
+  },
+  viewBillingTitle: 'Abrechnung und Abonnements',
+  viewBillingDescription: 'Zahlungsmethoden, Rechnungen und Abonnementänderungen verwalten',
+  viewBillingAction: 'Verwalten',
 }
 
 export default translation

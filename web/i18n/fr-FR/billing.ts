@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Gérer la facturation et les abonnements',
   buyPermissionDeniedTip: 'Veuillez contacter votre administrateur d\'entreprise pour vous abonner',
   plansCommon: {
-    title: 'Choisissez un plan qui vous convient',
     yearlyTip: 'Obtenez 2 mois gratuitement en vous abonnant annuellement !',
     mostPopular: 'Le Plus Populaire',
     planRange: {
@@ -30,6 +29,7 @@ const translation = {
     vectorSpace: 'Espace Vectoriel',
     vectorSpaceTooltip: 'L\'espace vectoriel est le système de mémoire à long terme nécessaire pour que les LLMs comprennent vos données.',
     documentProcessingPriority: 'Priorité de Traitement de Document',
+    documentProcessingPriorityTip: 'Pour une priorité de traitement des documents plus élevée, veuillez mettre à niveau votre plan.',
     documentProcessingPriorityUpgrade: 'Traitez plus de données avec une précision plus élevée à des vitesses plus rapides.',
     priority: {
       'standard': 'Standard',
@@ -73,7 +73,7 @@ const translation = {
     ragAPIRequestTooltip: 'Fait référence au nombre d\'appels API invoquant uniquement les capacités de traitement de la base de connaissances de Dify.',
     receiptInfo: 'Seuls le propriétaire de l\'équipe et l\'administrateur de l\'équipe peuvent s\'abonner et consulter les informations de facturation',
     annotationQuota: 'Quota d’annotation',
-    apiRateLimitUnit: '{{count,number}}/mois',
+    apiRateLimitUnit: '{{count,number}}',
     priceTip: 'par espace de travail/',
     freeTrialTipSuffix: 'Aucune carte de crédit requise',
     teamWorkspace: '{{count,number}} Espace de travail d\'équipe',
@@ -96,6 +96,26 @@ const translation = {
     startBuilding: 'Commencez à construire',
     taxTip: 'Tous les prix des abonnements (mensuels/annuels) s\'entendent hors taxes applicables (par exemple, TVA, taxe de vente).',
     taxTipSecond: 'Si votre région n\'a pas de exigences fiscales applicables, aucune taxe n\'apparaîtra lors de votre paiement et vous ne serez pas facturé de frais supplémentaires pendant toute la durée de l\'abonnement.',
+    triggerEvents: {
+      unlimited: 'Événements Déclencheurs Illimités',
+      tooltip: 'Le nombre d\'événements qui déclenchent automatiquement des flux de travail via des déclencheurs Plugin, Planification ou Webhook.',
+      sandbox: '{{count,number}} Déclencher des événements',
+      professional: '{{count,number}} Déclenchements par mois',
+    },
+    workflowExecution: {
+      priority: 'Exécution du flux de travail prioritaire',
+      standard: 'Exécution du flux de travail standard',
+      tooltip: 'Priorité et vitesse de la file d\'exécution des flux de travail.',
+      faster: 'Exécution de flux de travail plus rapide',
+    },
+    startNodes: {
+      unlimited: 'Déclencheurs/workflows illimités',
+      limited: 'Jusqu\'à {{count}} déclencheurs/workflow',
+    },
+    title: {
+      plans: 'plans',
+      description: 'Sélectionnez le plan qui correspond le mieux aux besoins de votre équipe.',
+    },
   },
   plans: {
     sandbox: {
@@ -106,7 +126,7 @@ const translation = {
     professional: {
       name: 'Professionnel',
       description: 'Pour les individus et les petites équipes afin de débloquer plus de puissance à un prix abordable.',
-      for: 'Pour les développeurs indépendants / petites équipes',
+      for: 'Pour les développeurs indépendants/petites équipes',
     },
     team: {
       name: 'Équipe',
@@ -117,28 +137,14 @@ const translation = {
       name: 'Entreprise',
       description: 'Obtenez toutes les capacités et le support pour les systèmes à grande échelle et critiques pour la mission.',
       includesTitle: 'Tout ce qui est inclus dans le plan Équipe, plus :',
-      features: {
-        6: 'Sécurité et contrôles avancés',
-        3: 'Espaces de travail multiples et gestion d’entreprise',
-        4: 'SSO',
-        1: 'Autorisation de licence commerciale',
-        2: 'Fonctionnalités exclusives à l’entreprise',
-        5: 'SLA négociés par les partenaires Dify',
-        8: 'Assistance technique professionnelle',
-        7: 'Mises à jour et maintenance par Dify officiellement',
-        0: 'Solutions de déploiement évolutives de niveau entreprise',
-      },
+      features: ['Solutions de déploiement évolutives de niveau entreprise', 'Autorisation de licence commerciale', 'Fonctionnalités exclusives pour les entreprises', 'Espaces de travail multiples et gestion d\'entreprise', 'SSO', 'Accords de niveau de service négociés par les partenaires de Dify', 'Sécurité et contrôles avancés', 'Mises à jour et maintenance par Dify Officiellement', 'Assistance technique professionnelle'],
       for: 'Pour les équipes de grande taille',
       btnText: 'Contacter les ventes',
       priceTip: 'Facturation Annuel Seulement',
       price: 'Personnalisé',
     },
     community: {
-      features: {
-        1: 'Espace de travail unique',
-        0: 'Toutes les fonctionnalités de base publiées dans le dépôt public',
-        2: 'Conforme à la licence Open Source Dify',
-      },
+      features: ['Toutes les fonctionnalités principales publiées dans le dépôt public', 'Espace de travail unique', 'Conforme à la licence open source Dify'],
       name: 'Communauté',
       btnText: 'Commencez avec la communauté',
       for: 'Pour les utilisateurs individuels, les petites équipes ou les projets non commerciaux',
@@ -147,12 +153,7 @@ const translation = {
       description: 'Pour les utilisateurs individuels, les petites équipes ou les projets non commerciaux',
     },
     premium: {
-      features: {
-        2: 'Personnalisation du logo et de l’image de marque WebApp',
-        1: 'Espace de travail unique',
-        3: 'Assistance prioritaire par e-mail et chat',
-        0: 'Fiabilité autogérée par différents fournisseurs de cloud',
-      },
+      features: ['Fiabilité autonome par divers fournisseurs de cloud', 'Espace de travail unique', 'Personnalisation du logo et de l\'image de marque de l\'application web', 'Assistance prioritaire par e-mail et chat'],
       for: 'Pour les organisations et les équipes de taille moyenne',
       includesTitle: 'Tout de la communauté, en plus :',
       name: 'Premium',
@@ -186,8 +187,21 @@ const translation = {
     teamMembers: 'Membres de l\'équipe',
     annotationQuota: 'Quota d\'annotation',
     documentsUploadQuota: 'Quota de téléchargement de documents',
+    perMonth: 'par mois',
+    triggerEvents: 'Événements déclencheurs',
+    resetsIn: 'Réinitialisations dans {{count,number}} jours',
   },
   teamMembers: 'Membres de l\'équipe',
+  triggerLimitModal: {
+    upgrade: 'Mettre à niveau',
+    usageTitle: 'ÉVÉNEMENTS DÉCLENCHEURS',
+    description: 'Vous avez atteint la limite des déclencheurs d\'événements de flux de travail pour ce plan.',
+    dismiss: 'Fermer',
+    title: 'Mettez à niveau pour débloquer plus d\'événements déclencheurs',
+  },
+  viewBillingTitle: 'Facturation et abonnements',
+  viewBillingDescription: 'Gérer les méthodes de paiement, les factures et les modifications d\'abonnement',
+  viewBillingAction: 'Gérer',
 }
 
 export default translation

@@ -21,8 +21,6 @@ const translation = {
   intro6:
     ' एक स्वतंत्र ChatGPT इंडेक्स प्लग-इन के रूप में प्रकाशित करने के लिए',
   unavailable: 'उपलब्ध नहीं',
-  unavailableTip:
-    'एम्बेडिंग मॉडल उपलब्ध नहीं है, डिफ़ॉल्ट एम्बेडिंग मॉडल को कॉन्फ़िगर किया जाना चाहिए',
   datasets: 'ज्ञान',
   datasetsApi: 'API पहुँच',
   retrieval: {
@@ -43,9 +41,6 @@ const translation = {
       recommend: 'सिफारिश',
     },
     invertedIndex: {
-      title: 'उल्टा सूचकांक',
-      description:
-        'उल्टा सूचकांक एक ऐसी संरचना है जो कुशल पुनर्प्राप्ति के लिए उपयोग की जाती है। यह शब्दों द्वारा व्यवस्थित होती है, प्रत्येक शब्द उन दस्तावेज़ों या वेब पेजों की ओर इंगित करता है जिनमें वह होता है।',
     },
     change: 'बदलें',
     changeRetrievalMethod: 'पुनर्प्राप्ति विधि बदलें',
@@ -243,6 +238,20 @@ const translation = {
     enabled: 'सेवा में',
     disabled: 'अक्षम',
     title: 'सेवा एपीआई',
+  },
+  docAllEnabled_one: '{{count}} दस्तावेज़ सक्षम किया गया',
+  docAllEnabled_other: 'सभी {{count}} दस्तावेज़ सक्षम हैं',
+  partialEnabled_one: 'कुल {{count}} दस्तावेज़, {{num}} उपलब्ध',
+  partialEnabled_other: 'कुल {{count}} दस्तावेज़, {{num}} उपलब्ध',
+  cornerLabel: {
+    unavailable: 'अनउपलब्ध',
+    pipeline: 'पाइपलाइन',
+  },
+  multimodal: 'बहु-मोडल',
+  imageUploader: {
+    button: 'फ़ाइल या फ़ोल्डर खींचें और छोड़ें, या',
+    browse: 'ब्राउज़',
+    tip: '{{supportTypes}} (अधिकतम {{batchCount}}, प्रत्येक {{size}}MB)',
   },
 }
 

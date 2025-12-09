@@ -118,6 +118,15 @@ const translation = {
     noHistory: '履歴がありません',
     tagBound: 'このタグを使用しているアプリの数',
     moreActions: 'さらにアクション',
+    listening: 'リッスン中',
+    features: '機能',
+    featuresDescription: 'ウェブアプリのユーザー体験を向上させる',
+    featuresDocLink: 'もっと詳しく知る',
+  },
+  publishLimit: {
+    startNodeTitlePrefix: 'アップグレードして、',
+    startNodeTitleSuffix: '各ワークフローのトリガーを制限なしで使用できます。',
+    startNodeDesc: 'このプランでは、各ワークフローのトリガー数は最大 2 個まで設定できます。公開するにはアップグレードが必要です。',
   },
   env: {
     envPanelTitle: '環境変数',
@@ -277,6 +286,13 @@ const translation = {
     'sources': 'ソース',
     'start': '始める',
     'startDisabledTip': 'トリガーノードとユーザー入力ノードは互いに排他です。',
+    'featuredTools': '特集',
+    'showMoreFeatured': 'もっと見る',
+    'showLessFeatured': '表示を減らす',
+    'installed': 'インストール済み',
+    'pluginByAuthor': '{{author}} によって',
+    'usePlugin': 'ツールを選択',
+    'hideActions': 'ツールを隠す',
   },
   blocks: {
     'start': 'ユーザー入力',
@@ -385,6 +401,7 @@ const translation = {
     minimize: '全画面を終了する',
     scrollToSelectedNode: '選択したノードまでスクロール',
     optional_and_hidden: '（オプションおよび非表示）',
+    openWorkflow: 'ワークフローを開く',
   },
   nodes: {
     common: {
@@ -553,6 +570,7 @@ const translation = {
         icon: 'セグメントアイコン',
         url: 'セグメント URL',
         metadata: 'メタデータ',
+        files: '取得したファイル',
       },
       metadata: {
         title: 'メタデータフィルタ',
@@ -582,6 +600,8 @@ const translation = {
           select: '変数選択...',
         },
       },
+      queryText: 'クエリテキスト',
+      queryAttachment: '画像を検索',
     },
     http: {
       inputVars: '入力変数',
@@ -832,6 +852,8 @@ const translation = {
       parallelModeEnableTitle: 'パラレルモード有効',
       MaxParallelismDesc: '最大並列処理は、1 回の反復で同時に実行されるタスクの数を制御するために使用されます。',
       answerNodeWarningDesc: '並列モードの警告：応答ノード、会話変数の割り当て、およびイテレーション内の永続的な読み取り/書き込み操作により、例外が発生する可能性があります。',
+      flattenOutput: '出力をフラット化',
+      flattenOutputDesc: '有効にすると、すべての反復出力が配列の場合、1つの配列にまとめてフラット化されます。無効の場合はネストされた配列構造のままです。',
     },
     loop: {
       deleteTitle: 'ループノードを削除しますか？',
@@ -1078,7 +1100,6 @@ const translation = {
       varName: '変数名',
       varType: 'タイプ',
       varNamePlaceholder: '変数名を入力...',
-      headerName: '変数名',
       required: '必須',
       addParameter: '追加',
       addHeader: '追加',
@@ -1101,6 +1122,7 @@ const translation = {
         webhookUrlRequired: 'Webhook URLが必要です',
         invalidParameterType: 'パラメータ"{{name}}"の無効なパラメータタイプ"{{type}}"です',
       },
+      debugUrlPrivateAddressWarning: 'このURLは内部アドレスのようです。Webhookリクエストが失敗する可能性があります。TRIGGER_URL を公開アドレスに変更できます。',
     },
     triggerPlugin: {
       authorized: '認可された',
@@ -1138,6 +1160,13 @@ const translation = {
       subscriptionNameDescription: 'このトリガーサブスクリプションの一意な名前を入力してください',
       subscriptionNamePlaceholder: 'サブスクリプション名を入力...',
       subscriptionNameRequired: 'サブスクリプション名は必須です',
+      notAuthorized: '認可されていません',
+      selectSubscription: 'サブスクリプションを選択',
+      availableSubscriptions: '利用可能なサブスクリプション',
+      addSubscription: '新しいサブスクリプションを追加',
+      removeSubscription: 'サブスクリプションを解除',
+      subscriptionRemoved: 'サブスクリプションが正常に削除されました',
+      subscriptionRequired: 'サブスクリプションが必要です',
     },
   },
   tracing: {

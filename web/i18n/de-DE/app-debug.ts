@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Kontext',
       noData: 'Sie können Wissen als Kontext importieren',
-      words: 'Wörter',
-      textBlocks: 'Textblöcke',
       selectTitle: 'Wählen Sie Referenzwissen',
       selected: 'Wissen ausgewählt',
       noDataSet: 'Kein Wissen gefunden',
@@ -328,6 +326,7 @@ const translation = {
     'both': 'Beide',
     'uploadFileTypes': 'Dateitypen hochladen',
     'maxNumberOfUploads': 'Maximale Anzahl von Uploads',
+    'maxNumberTip': 'Dokument < {{docLimit}}, Bild < {{imgLimit}}, Audio < {{audioLimit}}, Video < {{videoLimit}}',
     'number': 'Zahl',
     'editModalTitle': 'Eingabefeld bearbeiten',
     'required': 'Erforderlich',

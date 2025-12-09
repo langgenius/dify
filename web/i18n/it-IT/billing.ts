@@ -9,7 +9,6 @@ const translation = {
   buyPermissionDeniedTip:
     'Contatta l\'amministratore della tua azienda per abbonarti',
   plansCommon: {
-    title: 'Scegli un piano adatto a te',
     yearlyTip: 'Ottieni 2 mesi gratis abbonandoti annualmente!',
     mostPopular: 'Più Popolare',
     planRange: {
@@ -33,6 +32,7 @@ const translation = {
     vectorSpaceTooltip:
       'Lo Spazio Vettoriale è il sistema di memoria a lungo termine necessario per permettere agli LLM di comprendere i tuoi dati.',
     documentProcessingPriority: 'Priorità di Elaborazione Documenti',
+    documentProcessingPriorityTip: 'Per una maggiore priorità nell\'elaborazione dei documenti, aggiorna il tuo piano.',
     documentProcessingPriorityUpgrade:
       'Elabora più dati con maggiore precisione a velocità più elevate.',
     priority: {
@@ -88,7 +88,7 @@ const translation = {
     freeTrialTipPrefix: 'Iscriviti e ricevi un',
     teamMember_one: '{{count,number}} membro del team',
     documents: '{{count,number}} Documenti di Conoscenza',
-    apiRateLimitUnit: '{{count,number}}/mese',
+    apiRateLimitUnit: '{{count,number}}',
     documentsRequestQuota: '{{count,number}}/min Limite di richiesta di conoscenza',
     teamMember_other: '{{count,number}} membri del team',
     freeTrialTip: 'prova gratuita di 200 chiamate OpenAI.',
@@ -104,6 +104,26 @@ const translation = {
     startBuilding: 'Inizia a costruire',
     taxTip: 'Tutti i prezzi degli abbonamenti (mensili/annuali) non includono le tasse applicabili (ad esempio, IVA, imposta sulle vendite).',
     taxTipSecond: 'Se nella tua regione non ci sono requisiti fiscali applicabili, nessuna tassa apparirà al momento del pagamento e non ti verranno addebitate spese aggiuntive per l\'intera durata dell\'abbonamento.',
+    triggerEvents: {
+      unlimited: 'Eventi di attivazione illimitati',
+      tooltip: 'Il numero di eventi che avviano automaticamente i flussi di lavoro tramite trigger Plugin, Pianificazione o Webhook.',
+      sandbox: '{{count,number}} Eventi di attivazione',
+      professional: '{{count,number}} Eventi attivati/mese',
+    },
+    workflowExecution: {
+      priority: 'Esecuzione del flusso di lavoro prioritario',
+      faster: 'Esecuzione del flusso di lavoro più rapida',
+      standard: 'Esecuzione del flusso di lavoro standard',
+      tooltip: 'Priorità e velocità della coda di esecuzione del flusso di lavoro.',
+    },
+    startNodes: {
+      unlimited: 'Eventi di attivazione/workflow illimitati',
+      limited: 'Fino a {{count}} trigger/workflow',
+    },
+    title: {
+      plans: 'piani',
+      description: 'Seleziona il piano che meglio si adatta alle esigenze del tuo team.',
+    },
   },
   plans: {
     sandbox: {
@@ -115,7 +135,7 @@ const translation = {
       name: 'Professional',
       description:
         'Per individui e piccoli team per sbloccare più potenza a prezzi accessibili.',
-      for: 'Per sviluppatori indipendenti / piccoli team',
+      for: 'Per sviluppatori indipendenti/piccoli team',
     },
     team: {
       name: 'Team',
@@ -128,28 +148,14 @@ const translation = {
       description:
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
-      features: {
-        4: 'SSO',
-        8: 'Supporto tecnico professionale',
-        6: 'Sicurezza e controlli avanzati',
-        1: 'Autorizzazione Licenza Commerciale',
-        2: 'Funzionalità esclusive per le aziende',
-        3: 'Spazi di lavoro multipli e gestione aziendale',
-        0: 'Soluzioni di distribuzione scalabili di livello aziendale',
-        5: 'SLA negoziati dai partner Dify',
-        7: 'Aggiornamenti e manutenzione da parte di Dify ufficialmente',
-      },
+      features: ['Soluzioni di Distribuzione Scalabili di Classe Aziendale', 'Autorizzazione alla Licenza Commerciale', 'Funzionalità Esclusive per le Aziende', 'Molteplici Spazi di Lavoro e Gestione Aziendale', 'SSO', 'SLA negoziati dai partner Dify', 'Sicurezza e Controlli Avanzati', 'Aggiornamenti e manutenzione da Dify ufficialmente', 'Assistenza Tecnica Professionale'],
       price: 'Personalizzato',
       for: 'Per team di grandi dimensioni',
       btnText: 'Contatta le vendite',
       priceTip: 'Solo fatturazione annuale',
     },
     community: {
-      features: {
-        0: 'Tutte le funzionalità principali rilasciate nel repository pubblico',
-        2: 'Conforme alla licenza Open Source Dify',
-        1: 'Area di lavoro singola',
-      },
+      features: ['Tutte le funzionalità principali rilasciate nel repository pubblico', 'Spazio di lavoro singolo', 'Conforme alla Licenza Open Source Dify'],
       name: 'Comunità',
       btnText: 'Inizia con la comunità',
       includesTitle: 'Caratteristiche Gratuite:',
@@ -158,12 +164,7 @@ const translation = {
       for: 'Per utenti individuali, piccole squadre o progetti non commerciali',
     },
     premium: {
-      features: {
-        3: 'Supporto prioritario via e-mail e chat',
-        1: 'Area di lavoro singola',
-        0: 'Affidabilità autogestita da vari fornitori di servizi cloud',
-        2: 'Personalizzazione del logo e del marchio WebApp',
-      },
+      features: ['Affidabilità autogestita dai vari provider cloud', 'Spazio di lavoro singolo', 'Personalizzazione del Logo e del Marchio dell\'App Web', 'Assistenza Prioritaria via Email e Chat'],
       name: 'Premium',
       priceTip: 'Basato su Cloud Marketplace',
       includesTitle: 'Tutto dalla Community, oltre a:',
@@ -197,8 +198,21 @@ const translation = {
     teamMembers: 'Membri del team',
     documentsUploadQuota: 'Quota di Caricamento Documenti',
     vectorSpaceTooltip: 'I documenti con la modalità di indicizzazione ad alta qualità consumeranno risorse di Knowledge Data Storage. Quando il Knowledge Data Storage raggiunge il limite, nuovi documenti non verranno caricati.',
+    perMonth: 'al mese',
+    triggerEvents: 'Eventi di attivazione',
+    resetsIn: 'Si resetta tra {{count,number}} giorni',
   },
   teamMembers: 'Membri del team',
+  triggerLimitModal: {
+    upgrade: 'Aggiornamento',
+    dismiss: 'Ignora',
+    usageTitle: 'EVENTI DI ATTIVAZIONE',
+    title: 'Aggiorna per sbloccare più eventi di attivazione',
+    description: 'Hai raggiunto il limite degli eventi di attivazione del flusso di lavoro per questo piano.',
+  },
+  viewBillingTitle: 'Fatturazione e Abbonamenti',
+  viewBillingDescription: 'Gestisci metodi di pagamento, fatture e modifiche all\'abbonamento',
+  viewBillingAction: 'Gestire',
 }
 
 export default translation

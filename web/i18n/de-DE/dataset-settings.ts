@@ -26,6 +26,7 @@ const translation = {
       description: ' über die Abrufmethode.',
       longDescription: ' über die Abrufmethode, dies kann jederzeit in den Wissenseinstellungen geändert werden.',
       method: 'Abrufmethode',
+      multiModalTip: 'Wenn das Embedding-Modell multimodal unterstützt, wählen Sie bitte ein multimodales Reranking-Modell für eine bessere Leistung.',
     },
     save: 'Speichern',
     permissionsInvitedMembers: 'Teilweise Teammitglieder',

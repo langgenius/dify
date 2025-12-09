@@ -72,6 +72,7 @@ const translation = {
       moreThanMaxLengthLine: '第 {{rowIndex}} 行：{{varName}}值超过最大长度 {{maxLength}}',
       atLeastOne: '上传文件的内容不能少于一条',
     },
+    stopRun: '停止运行',
   },
   login: {
     backToHome: '返回首页',

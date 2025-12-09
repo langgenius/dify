@@ -11,6 +11,7 @@ const translation = {
     publishUpdate: '发布更新',
     run: '测试运行',
     running: '运行中',
+    listening: '监听中',
     chooseStartNodeToRun: '选择启动节点进行运行',
     runAllTriggers: '运行所有触发器',
     inRunMode: '在运行模式中',
@@ -121,6 +122,11 @@ const translation = {
     loadMore: '加载更多',
     noHistory: '没有历史版本',
     tagBound: '使用此标签的应用数量',
+  },
+  publishLimit: {
+    startNodeTitlePrefix: '升级以',
+    startNodeTitleSuffix: '解锁每个工作流无限制的触发器',
+    startNodeDesc: '您已达到此计划上每个工作流最多 2 个触发器的限制。请升级后再发布此工作流。',
   },
   env: {
     envPanelTitle: '环境变量',
@@ -377,6 +383,7 @@ const translation = {
     userInputField: '用户输入字段',
     changeBlock: '更改节点',
     helpLink: '查看帮助文档',
+    openWorkflow: '打开工作流',
     about: '关于',
     createdBy: '作者',
     nextStep: '下一步',
@@ -555,6 +562,8 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: '查询变量',
+      queryText: '查询文本',
+      queryAttachment: '查询图片',
       knowledge: '知识库',
       outputVars: {
         output: '召回的分段',
@@ -563,6 +572,7 @@ const translation = {
         icon: '分段图标',
         url: '分段链接',
         metadata: '其他元数据',
+        files: '召回的文件',
       },
       metadata: {
         title: '元数据过滤',
@@ -1090,7 +1100,6 @@ const translation = {
       varName: '变量名',
       varType: '类型',
       varNamePlaceholder: '输入变量名...',
-      headerName: '变量名',
       required: '必填',
       addParameter: '添加',
       addHeader: '添加',
@@ -1113,6 +1122,7 @@ const translation = {
         webhookUrlRequired: '需要提供Webhook URL',
         invalidParameterType: '参数"{{name}}"的参数类型"{{type}}"无效',
       },
+      debugUrlPrivateAddressWarning: '此 URL 似乎是内部地址，可能导致 webhook 请求失败。您可以将 TRIGGER_URL 更改为公共地址。',
     },
     triggerPlugin: {
       authorized: '已授权',
@@ -1151,6 +1161,12 @@ const translation = {
       subscriptionNamePlaceholder: '输入订阅名称...',
       subscriptionNameRequired: '订阅名称是必需的',
       subscriptionRequired: '需要配置订阅',
+      notAuthorized: '未授权',
+      selectSubscription: '选择订阅',
+      availableSubscriptions: '可用订阅',
+      addSubscription: '添加新订阅',
+      removeSubscription: '取消订阅',
+      subscriptionRemoved: '订阅已成功取消',
     },
   },
   tracing: {

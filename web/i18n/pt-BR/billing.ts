@@ -8,7 +8,6 @@ const translation = {
   viewBilling: 'Ver informações de cobrança',
   buyPermissionDeniedTip: 'Por favor, entre em contato com o administrador da sua empresa para assinar',
   plansCommon: {
-    title: 'Escolha o plano que melhor atende você',
     yearlyTip: 'Receba 2 meses grátis assinando anualmente!',
     mostPopular: 'Mais Popular',
     planRange: {
@@ -29,6 +28,7 @@ const translation = {
     vectorSpace: 'Espaço Vetorial',
     vectorSpaceTooltip: 'O Espaço Vetorial é o sistema de memória de longo prazo necessário para que LLMs compreendam seus dados.',
     documentProcessingPriority: 'Prioridade no Processamento de Documentos',
+    documentProcessingPriorityTip: 'Para maior prioridade no processamento de documentos, atualize seu plano.',
     documentProcessingPriorityUpgrade: 'Processe mais dados com maior precisão e velocidade.',
     priority: {
       'standard': 'Padrão',
@@ -80,7 +80,7 @@ const translation = {
     documentsRequestQuota: '{{count,number}}/min Limite de Taxa de Solicitação de Conhecimento',
     cloud: 'Serviço de Nuvem',
     teamWorkspace: '{{count,number}} Espaço de Trabalho da Equipe',
-    apiRateLimitUnit: '{{count,number}}/mês',
+    apiRateLimitUnit: '{{count,number}}',
     freeTrialTipSuffix: 'Nenhum cartão de crédito necessário',
     teamMember_other: '{{count,number}} Membros da Equipe',
     comparePlanAndFeatures: 'Compare planos e recursos',
@@ -96,6 +96,26 @@ const translation = {
     startBuilding: 'Comece a construir',
     taxTip: 'Todos os preços de assinatura (mensal/anual) não incluem os impostos aplicáveis (por exemplo, IVA, imposto sobre vendas).',
     taxTipSecond: 'Se a sua região não tiver requisitos fiscais aplicáveis, nenhum imposto aparecerá no seu checkout e você não será cobrado por taxas adicionais durante todo o período da assinatura.',
+    triggerEvents: {
+      unlimited: 'Eventos de Gatilho Ilimitados',
+      tooltip: 'O número de eventos que iniciam automaticamente fluxos de trabalho através de disparadores de Plugin, Agendamento ou Webhook.',
+      sandbox: '{{count,number}} Acionar Eventos',
+      professional: '{{count,number}} Eventos de disparo/mês',
+    },
+    workflowExecution: {
+      tooltip: 'Prioridade e velocidade da fila de execução de fluxo de trabalho.',
+      priority: 'Execução de Fluxo de Trabalho Prioritário',
+      faster: 'Execução de Fluxo de Trabalho Mais Rápida',
+      standard: 'Execução Padrão de Fluxo de Trabalho',
+    },
+    startNodes: {
+      unlimited: 'Eventos de Gatilho/fluxo de trabalho ilimitados',
+      limited: 'Até {{count}} Acionadores/workflow',
+    },
+    title: {
+      plans: 'planos',
+      description: 'Selecione o plano que melhor se adapta às necessidades da sua equipe.',
+    },
   },
   plans: {
     sandbox: {
@@ -117,28 +137,14 @@ const translation = {
       name: 'Empresa',
       description: 'Obtenha capacidades completas e suporte para sistemas críticos em larga escala.',
       includesTitle: 'Tudo no plano Equipe, além de:',
-      features: {
-        7: 'Atualizações e manutenção por Dify oficialmente',
-        6: 'Segurança e controles avançados',
-        0: 'Soluções de implantação escaláveis de nível empresarial',
-        2: 'Recursos exclusivos da empresa',
-        5: 'SLAs negociados pela Dify Partners',
-        1: 'Autorização de Licença Comercial',
-        8: 'Suporte Técnico Profissional',
-        4: 'SSO',
-        3: 'Vários espaços de trabalho e gerenciamento corporativo',
-      },
+      features: ['Soluções de Implantação Escaláveis de Nível Empresarial', 'Autorização de Licença Comercial', 'Recursos Exclusivos para Empresas', 'Múltiplos Espaços de Trabalho e Gestão Empresarial', 'SSO', 'SLAs negociados pelos parceiros da Dify', 'Segurança e Controles Avançados', 'Atualizações e Manutenção pela Dify Oficialmente', 'Suporte Técnico Profissional'],
       btnText: 'Contate Vendas',
       priceTip: 'Faturamento Anual Apenas',
       price: 'Custom',
       for: 'Para equipes de grande porte',
     },
     community: {
-      features: {
-        1: 'Espaço de trabalho individual',
-        0: 'Todos os principais recursos lançados no repositório público',
-        2: 'Está em conformidade com a licença de código aberto Dify',
-      },
+      features: ['Todos os Recursos Principais Lançados no Repositório Público', 'Espaço de Trabalho Único', 'Está em conformidade com a Licença de Código Aberto Dify'],
       name: 'Comunidade',
       description: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
       includesTitle: 'Recursos Gratuitos:',
@@ -147,12 +153,7 @@ const translation = {
       for: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
     },
     premium: {
-      features: {
-        0: 'Confiabilidade autogerenciada por vários provedores de nuvem',
-        1: 'Espaço de trabalho individual',
-        2: 'Personalização do logotipo e da marca do WebApp',
-        3: 'Suporte prioritário por e-mail e bate-papo',
-      },
+      features: ['Confiabilidade Autogerenciada por Diversos Provedores de Nuvem', 'Espaço de Trabalho Único', 'Personalização de Logo e Marca do WebApp', 'Suporte Prioritário por Email e Chat'],
       includesTitle: 'Tudo da Comunidade, além de:',
       for: 'Para organizações e equipes de médio porte',
       price: 'Escalável',
@@ -186,8 +187,21 @@ const translation = {
     vectorSpace: 'Armazenamento de Dados do Conhecimento',
     vectorSpaceTooltip: 'Documentos com o modo de indexação de Alta Qualidade consumirã recursos de Armazenamento de Dados de Conhecimento. Quando o Armazenamento de Dados de Conhecimento atingir o limite, novos documentos não serão carregados.',
     buildApps: 'Desenvolver Apps',
+    perMonth: 'por mês',
+    triggerEvents: 'Eventos de Gatilho',
+    resetsIn: 'Reinicia em {{count,number}} dias',
   },
   teamMembers: 'Membros da equipe',
+  triggerLimitModal: {
+    dismiss: 'Dispensar',
+    usageTitle: 'EVENTOS DE GATILHO',
+    title: 'Atualize para desbloquear mais eventos de gatilho',
+    upgrade: 'Atualizar',
+    description: 'Você atingiu o limite de eventos de gatilho de fluxo de trabalho para este plano.',
+  },
+  viewBillingTitle: 'Faturamento e Assinaturas',
+  viewBillingDescription: 'Gerencie métodos de pagamento, faturas e alterações de assinatura',
+  viewBillingAction: 'Gerenciar',
 }
 
 export default translation

@@ -38,7 +38,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import type { InputVar } from '@/app/components/workflow/types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -49,6 +49,7 @@ import { fetchInstalledAppList } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { basePath } from '@/utils/var'
+import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 
 const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
@@ -102,10 +103,12 @@ export type AppPublisherProps = {
   crossAxisOffset?: number
   toolPublished?: boolean
   inputs?: InputVar[]
+  outputs?: Variable[]
   onRefreshData?: () => void
   workflowToolAvailable?: boolean
   missingStartNode?: boolean
   hasTriggerNode?: boolean // Whether workflow currently contains any trigger nodes (used to hide missing-start CTA when triggers exist).
+  startNodeLimitExceeded?: boolean
 }
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
@@ -123,10 +126,12 @@ const AppPublisher = ({
   crossAxisOffset = 0,
   toolPublished,
   inputs,
+  outputs,
   onRefreshData,
   workflowToolAvailable = true,
   missingStartNode = false,
   hasTriggerNode = false,
+  startNodeLimitExceeded = false,
 }: AppPublisherProps) => {
   const { t } = useTranslation()
 
@@ -246,6 +251,13 @@ const AppPublisher = ({
   const hasPublishedVersion = !!publishedAt
   const workflowToolDisabled = !hasPublishedVersion || !workflowToolAvailable
   const workflowToolMessage = workflowToolDisabled ? t('workflow.common.workflowAsToolDisabledHint') : undefined
+  const showStartNodeLimitHint = Boolean(startNodeLimitExceeded)
+  const upgradeHighlightStyle = useMemo(() => ({
+    background: 'linear-gradient(97deg, var(--components-input-border-active-prompt-1, rgba(11, 165, 236, 0.95)) -3.64%, var(--components-input-border-active-prompt-2, rgba(21, 90, 239, 0.95)) 45.14%)',
+    WebkitBackgroundClip: 'text',
+    backgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+  }), [])
 
   return (
     <>
@@ -304,29 +316,49 @@ const AppPublisher = ({
                   />
                 )
                 : (
-                  <Button
-                    variant='primary'
-                    className='mt-3 w-full'
-                    onClick={() => handlePublish()}
-                    disabled={publishDisabled || published}
-                  >
-                    {
-                      published
-                        ? t('workflow.common.published')
-                        : (
-                          <div className='flex gap-1'>
-                            <span>{t('workflow.common.publishUpdate')}</span>
-                            <div className='flex gap-0.5'>
-                              {PUBLISH_SHORTCUT.map(key => (
-                                <span key={key} className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface'>
-                                  {getKeyboardKeyNameBySystem(key)}
-                                </span>
-                              ))}
+                  <>
+                    <Button
+                      variant='primary'
+                      className='mt-3 w-full'
+                      onClick={() => handlePublish()}
+                      disabled={publishDisabled || published}
+                    >
+                      {
+                        published
+                          ? t('workflow.common.published')
+                          : (
+                            <div className='flex gap-1'>
+                              <span>{t('workflow.common.publishUpdate')}</span>
+                              <div className='flex gap-0.5'>
+                                {PUBLISH_SHORTCUT.map(key => (
+                                  <span key={key} className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface'>
+                                    {getKeyboardKeyNameBySystem(key)}
+                                  </span>
+                                ))}
+                              </div>
                             </div>
-                          </div>
-                        )
-                    }
-                  </Button>
+                          )
+                      }
+                    </Button>
+                    {showStartNodeLimitHint && (
+                      <div className='mt-3 flex flex-col items-stretch'>
+                        <p
+                          className='text-sm font-semibold leading-5 text-transparent'
+                          style={upgradeHighlightStyle}
+                        >
+                          <span className='block'>{t('workflow.publishLimit.startNodeTitlePrefix')}</span>
+                          <span className='block'>{t('workflow.publishLimit.startNodeTitleSuffix')}</span>
+                        </p>
+                        <p className='mt-1 text-xs leading-4 text-text-secondary'>
+                          {t('workflow.publishLimit.startNodeDesc')}
+                        </p>
+                        <UpgradeBtn
+                          isShort
+                          className='mb-[12px] mt-[9px] h-[32px] w-[93px] self-start'
+                        />
+                      </div>
+                    )}
+                  </>
                 )
               }
             </div>
@@ -427,6 +459,7 @@ const AppPublisher = ({
                           name={appDetail?.name}
                           description={appDetail?.description}
                           inputs={inputs}
+                          outputs={outputs}
                           handlePublish={handlePublish}
                           onRefreshData={onRefreshData}
                           disabledReason={workflowToolMessage}

@@ -8,7 +8,6 @@ const translation = {
   viewBilling: '청구 및 구독 관리',
   buyPermissionDeniedTip: '구독하려면 엔터프라이즈 관리자에게 문의하세요',
   plansCommon: {
-    title: '당신에게 맞는 요금제를 선택하세요',
     yearlyTip: '연간 구독 시 2개월 무료!',
     mostPopular: '가장 인기 있는',
     planRange: {
@@ -31,6 +30,7 @@ const translation = {
     vectorSpaceTooltip:
       '벡터 공간은 LLM 이 데이터를 이해하는 데 필요한 장기 기억 시스템입니다.',
     documentProcessingPriority: '문서 처리 우선순위',
+    documentProcessingPriorityTip: '더 높은 문서 처리 우선순위가 필요하면 플랜을 업그레이드하세요.',
     documentProcessingPriorityUpgrade:
       '더 높은 정확성과 빠른 속도로 데이터를 처리합니다.',
     priority: {
@@ -88,7 +88,7 @@ const translation = {
     freeTrialTip: '200 회의 OpenAI 호출 무료 체험을 받으세요. ',
     annualBilling: '연간 청구',
     getStarted: '시작하기',
-    apiRateLimitUnit: '{{count,number}}/월',
+    apiRateLimitUnit: '{{count,number}}',
     freeTrialTipSuffix: '신용카드 없음',
     teamWorkspace: '{{count,number}} 팀 작업 공간',
     self: '자체 호스팅',
@@ -105,6 +105,26 @@ const translation = {
     startBuilding: '구축 시작',
     taxTip: '모든 구독 요금(월간/연간)에는 해당 세금(예: 부가가치세, 판매세)이 포함되어 있지 않습니다.',
     taxTipSecond: '귀하의 지역에 적용 가능한 세금 요구 사항이 없는 경우, 결제 시 세금이 표시되지 않으며 전체 구독 기간 동안 추가 요금이 부과되지 않습니다.',
+    triggerEvents: {
+      unlimited: '무제한 트리거 이벤트',
+      tooltip: '플러그인, 스케줄 또는 웹훅 트리거를 통해 워크플로를 자동으로 시작하는 이벤트 수입니다.',
+      sandbox: '{{count,number}} 트리거 이벤트',
+      professional: '{{count,number}} 트리거 이벤트/월',
+    },
+    workflowExecution: {
+      faster: '더 빠른 작업 흐름 실행',
+      standard: '표준 워크플로 실행',
+      priority: '우선 순위 작업 흐름 실행',
+      tooltip: '워크플로 실행 대기열 우선순위 및 속도.',
+    },
+    startNodes: {
+      unlimited: '무제한 트리거/워크플로',
+      limited: '{{count}}개의 트리거/워크플로까지',
+    },
+    title: {
+      plans: '계획',
+      description: '팀의 필요에 가장 적합한 요금제를 선택하세요.',
+    },
   },
   plans: {
     sandbox: {
@@ -132,17 +152,7 @@ const translation = {
       btnText: '판매 문의하기',
       for: '대규모 팀을 위해',
       priceTip: '연간 청구 전용',
-      features: [
-        '엔터프라이즈급 확장 가능한 배포 솔루션',
-        '상업용 라이선스 인증',
-        '전용 엔터프라이즈 기능',
-        '다중 워크스페이스 및 엔터프라이즈 관리',
-        'SSO(싱글 사인온)',
-        'Dify 파트너와의 협상을 통한 SLA',
-        '고급 보안 및 제어 기능',
-        'Dify의 공식 업데이트 및 유지 관리',
-        '전문 기술 지원',
-      ],
+      features: ['기업용 확장형 배포 솔루션', '상업용 라이선스 승인', '독점 기업 기능', '여러 작업 공간 및 기업 관리', '싱글 사인온', 'Dify 파트너가 협상한 SLA', '고급 보안 및 제어', 'Dify 공식 업데이트 및 유지보수', '전문 기술 지원'],
     },
     community: {
       btnText: '커뮤니티 시작하기',
@@ -151,11 +161,7 @@ const translation = {
       price: '무료',
       includesTitle: '무료 기능:',
       for: '개인 사용자, 소규모 팀 또는 비상업적 프로젝트를 위한',
-      features: [
-        '모든 핵심 기능이 공개 저장소에 공개됨',
-        '단일 워크스페이스',
-        'Dify 오픈소스 라이선스를 준수함',
-      ],
+      features: ['모든 핵심 기능이 공개 저장소에서 릴리스되었습니다', '단일 작업 공간', 'Dify 오픈 소스 라이선스를 준수합니다'],
     },
     premium: {
       btnText: '프리미엄 받기',
@@ -166,12 +172,7 @@ const translation = {
       price: '확장 가능',
       for: '중규모 조직 및 팀을 위한',
       includesTitle: '커뮤니티의 모든 것, 여기에 추가로:',
-      features: [
-        '다양한 클라우드 제공업체를 통한 자가 관리 신뢰성',
-        '단일 워크스페이스',
-        '웹앱 로고 및 브랜딩 커스터마이징',
-        '우선 이메일 및 채팅 지원',
-      ],
+      features: ['다양한 클라우드 제공업체에 의한 자체 관리 신뢰성', '단일 작업 공간', '웹앱 로고 및 브랜딩 맞춤 설정', '우선 이메일 및 채팅 지원'],
     },
   },
   vectorSpace: {
@@ -199,8 +200,21 @@ const translation = {
     documentsUploadQuota: '문서 업로드 한도',
     vectorSpaceTooltip:
       '고품질 색인 모드를 사용하는 문서는 지식 데이터 저장소 자원을 소모합니다. 지식 데이터 저장소가 한도에 도달하면 새 문서를 업로드할 수 없습니다.',
+    triggerEvents: '트리거 이벤트',
+    perMonth: '월별',
+    resetsIn: '{{count,number}}일 후 초기화',
   },
   teamMembers: '팀원들',
+  triggerLimitModal: {
+    usageTitle: '트리거 이벤트',
+    dismiss: '닫기',
+    title: '업그레이드하여 더 많은 트리거 이벤트 잠금 해제',
+    description: '이 요금제의 워크플로 이벤트 트리거 한도에 도달했습니다.',
+    upgrade: '업그레이드',
+  },
+  viewBillingTitle: '청구 및 구독',
+  viewBillingDescription: '결제 수단, 청구서 및 구독 변경 관리',
+  viewBillingAction: '관리하다',
 }
 
 export default translation

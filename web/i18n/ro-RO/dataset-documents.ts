@@ -81,6 +81,10 @@ const translation = {
     },
     addUrl: 'Adăugați adresa URL',
     learnMore: 'Află mai multe',
+    sort: {
+      uploadTime: 'Timp de încărcare',
+      hitCount: 'Număr de recuperări',
+    },
   },
   metadata: {
     title: 'Metadate',
@@ -397,6 +401,7 @@ const translation = {
     searchResults_other: 'REZULTATELE',
     keywordDuplicate: 'Cuvântul cheie există deja',
     keywordEmpty: 'Cuvântul cheie nu poate fi gol',
+    allFilesUploaded: 'Toate fișierele trebuie încărcate înainte de salvare',
   },
 }
 

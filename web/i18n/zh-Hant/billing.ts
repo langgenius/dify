@@ -8,7 +8,6 @@ const translation = {
   viewBilling: '管理賬單及訂閱',
   buyPermissionDeniedTip: '請聯絡企業管理員訂閱',
   plansCommon: {
-    title: '選擇適合您的套餐',
     yearlyTip: '訂閱年度計劃可免費獲得 2 個月！',
     mostPopular: '最受歡迎',
     planRange: {
@@ -30,6 +29,7 @@ const translation = {
     vectorSpace: '向量空間',
     vectorSpaceTooltip: '向量空間是 LLMs 理解您的資料所需的長期記憶系統。',
     documentProcessingPriority: '文件處理優先順序',
+    documentProcessingPriorityTip: '如需更高的文件處理優先順序，請升級您的方案。',
     documentProcessingPriorityUpgrade: '以更快的速度、更高的精度處理更多的資料。',
     priority: {
       'standard': '標準',
@@ -74,7 +74,7 @@ const translation = {
     receiptInfo: '只有團隊所有者和團隊管理員才能訂閱和檢視賬單資訊',
     annotationQuota: '註釋配額',
     self: '自我主持',
-    apiRateLimitUnit: '{{count,number}}/月',
+    apiRateLimitUnit: '{{count,number}} 次',
     freeTrialTipPrefix: '註冊並獲得一個',
     annualBilling: '年度計費',
     freeTrialTipSuffix: '無需信用卡',
@@ -96,6 +96,26 @@ const translation = {
     startBuilding: '開始建造',
     taxTip: '所有訂閱價格（月費/年費）不包含適用的稅費（例如增值稅、銷售稅）。',
     taxTipSecond: '如果您的地區沒有適用的稅務要求，結帳時將不會顯示任何稅款，且在整個訂閱期間您也不會被收取任何額外費用。',
+    triggerEvents: {
+      unlimited: '無限觸發事件',
+      tooltip: '透過插件、排程或 Webhook 觸發器自動啟動工作流程的事件數量。',
+      sandbox: '{{count,number}} 觸發事件',
+      professional: '{{count,number}} 觸發事件/月',
+    },
+    workflowExecution: {
+      standard: '標準工作流程執行',
+      priority: '優先工作流程執行',
+      faster: '更快速的工作流程執行',
+      tooltip: '工作流程執行隊列的優先順序與速度。',
+    },
+    startNodes: {
+      unlimited: '無限觸發器/工作流程',
+      limited: '最多 {{count}} 個觸發器/工作流程',
+    },
+    title: {
+      plans: '計劃',
+      description: '選擇最適合您團隊需求的方案。',
+    },
   },
   plans: {
     sandbox: {
@@ -117,28 +137,14 @@ const translation = {
       name: 'Enterprise',
       description: '獲得大規模關鍵任務系統的完整功能和支援。',
       includesTitle: 'Team 計劃中的一切，加上：',
-      features: {
-        8: '專業技術支持',
-        6: '進階安全與控制',
-        2: '獨家企業功能',
-        5: 'Dify 合作夥伴協商的 SLA',
-        4: '單一登入',
-        7: 'Dify 官方更新和維護',
-        3: '多個工作區和企業管理',
-        0: '企業級可擴展部署解決方案',
-        1: '商業許可證授權',
-      },
+      features: ['企業級可擴展部署解決方案', '商業許可授權', '企業專屬功能', '多工作區與企業管理', '單一登入', '由 Dify 合作夥伴協商的服務水平協議', '進階安全與控管', 'Dify 官方更新與維護', '專業技術支援'],
       price: '自訂',
       btnText: '聯繫銷售',
       priceTip: '年度計費のみ',
       for: '適用於大規模團隊',
     },
     community: {
-      features: {
-        1: '單一工作區',
-        2: '符合 Dify 開源許可證',
-        0: '所有核心功能在公共存儲庫下發布',
-      },
+      features: ['所有核心功能已在公共存儲庫中釋出', '單一工作區', '符合 Dify 開源授權'],
       includesTitle: '免費功能：',
       btnText: '開始使用社區',
       name: '社區',
@@ -147,12 +153,7 @@ const translation = {
       price: '免費',
     },
     premium: {
-      features: {
-        0: '各種雲端供應商的自我管理可靠性',
-        1: '單一工作區',
-        3: '優先電子郵件和聊天支持',
-        2: 'WebApp 標誌和品牌定制',
-      },
+      features: ['由各雲端服務提供商自主管理的可靠性', '單一工作區', 'WebApp 標誌與品牌自訂', '優先電子郵件與聊天支援'],
       for: '適用於中型組織和團隊',
       comingSoon: '微軟 Azure 與 Google Cloud 支持即將推出',
       priceTip: '根據雲端市場',
@@ -186,8 +187,21 @@ const translation = {
     vectorSpace: '知識數據儲存',
     buildApps: '建構應用程式',
     teamMembers: '團隊成員',
+    perMonth: '每月',
+    triggerEvents: '觸發事件',
+    resetsIn: '{{count,number}} 天後重置',
   },
   teamMembers: '團隊成員',
+  triggerLimitModal: {
+    dismiss: '關閉',
+    description: '您已達到此方案的工作流程事件觸發上限。',
+    usageTitle: '觸發事件',
+    title: '升級以解鎖更多觸發事件',
+    upgrade: '升級',
+  },
+  viewBillingTitle: '帳單與訂閱',
+  viewBillingDescription: '管理付款方式、發票和訂閱變更',
+  viewBillingAction: '管理',
 }
 
 export default translation

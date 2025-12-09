@@ -20,8 +20,6 @@ const translation = {
   intro5: 'może być utworzona',
   intro6: ' jako samodzielny wtyczka indeksująca ChatGPT do publikacji',
   unavailable: 'Niedostępny',
-  unavailableTip:
-    'Model osadzający jest niedostępny, domyślny model osadzający musi być skonfigurowany',
   datasets: 'WIEDZA',
   datasetsApi: 'DOSTĘP DO API',
   retrieval: {
@@ -42,9 +40,6 @@ const translation = {
       recommend: 'Polecany',
     },
     invertedIndex: {
-      title: 'Indeks odwrócony',
-      description:
-        'Indeks odwrócony to struktura używana do efektywnego odzyskiwania informacji. Zorganizowane według terminów, każdy termin wskazuje na dokumenty lub strony internetowe zawierające go.',
     },
     change: 'Zmień',
     changeRetrievalMethod: 'Zmień metodę odzyskiwania',
@@ -242,6 +237,20 @@ const translation = {
     title: 'Interfejs API usługi',
     disabled: 'Niepełnosprawny',
     enabled: 'W serwisie',
+  },
+  docAllEnabled_one: 'Dokument {{count}} włączony',
+  docAllEnabled_other: 'Wszystkie dokumenty {{count}} włączone',
+  partialEnabled_one: 'Łącznie {{count}} dokumentów, {{num}} dostępnych',
+  partialEnabled_other: 'Łącznie {{count}} dokumentów, {{num}} dostępnych',
+  cornerLabel: {
+    unavailable: 'Niedostępne',
+    pipeline: 'Rurociąg',
+  },
+  multimodal: 'Multimodalny',
+  imageUploader: {
+    button: 'Przeciągnij i upuść plik lub folder, lub',
+    browse: 'Przeglądaj',
+    tip: '{{supportTypes}} (maks. {{batchCount}}, {{size}} MB każdy)',
   },
 }
 
