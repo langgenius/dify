@@ -266,5 +266,3 @@ export default combine(
   },
   ...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 )
-
-// overrides for i18n files are applied inside combine(...) above
