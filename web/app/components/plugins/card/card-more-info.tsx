@@ -1,3 +1,4 @@
+import React from 'react'
 import DownloadCount from './base/download-count'
 
 type Props = {
@@ -5,7 +6,7 @@ type Props = {
   tags: string[]
 }
 
-const CardMoreInfo = ({
+const CardMoreInfoComponent = ({
   downloadCount,
   tags,
 }: Props) => {
@@ -32,5 +33,8 @@ const CardMoreInfo = ({
     </div>
   )
 }
+
+// Memoize to prevent unnecessary re-renders when tags array hasn't changed
+const CardMoreInfo = React.memo(CardMoreInfoComponent)
 
 export default CardMoreInfo

@@ -43,7 +43,7 @@ console_ns.schema_model(
 class WebhookTriggerApi(Resource):
     """Webhook Trigger API"""
 
-    @console_ns.expect(console_ns.models[Parser.__name__], validate=True)
+    @console_ns.expect(console_ns.models[Parser.__name__])
     @setup_required
     @login_required
     @account_initialization_required

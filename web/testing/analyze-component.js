@@ -834,6 +834,54 @@ function extractCopyContent(prompt) {
 // Main Function
 // ============================================================================
 
+/**
+ * Resolve directory to entry file
+ * Priority: index files > common entry files (node.tsx, panel.tsx, etc.)
+ */
+function resolveDirectoryEntry(absolutePath, componentPath) {
+  // Entry files in priority order: index files first, then common entry files
+  const entryFiles = [
+    'index.tsx', 'index.ts', // Priority 1: index files
+    'node.tsx', 'panel.tsx', 'component.tsx', 'main.tsx', 'container.tsx', // Priority 2: common entry files
+  ]
+  for (const entryFile of entryFiles) {
+    const entryPath = path.join(absolutePath, entryFile)
+    if (fs.existsSync(entryPath)) {
+      return {
+        absolutePath: entryPath,
+        componentPath: path.join(componentPath, entryFile),
+      }
+    }
+  }
+
+  return null
+}
+
+/**
+ * List analyzable files in directory (for user guidance)
+ */
+function listAnalyzableFiles(dirPath) {
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true })
+    return entries
+      .filter(entry => !entry.isDirectory() && /\.(tsx?|jsx?)$/.test(entry.name) && !entry.name.endsWith('.d.ts'))
+      .map(entry => entry.name)
+      .sort((a, b) => {
+        // Prioritize common entry files
+        const priority = ['index.tsx', 'index.ts', 'node.tsx', 'panel.tsx', 'component.tsx', 'main.tsx', 'container.tsx']
+        const aIdx = priority.indexOf(a)
+        const bIdx = priority.indexOf(b)
+        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx
+        if (aIdx !== -1) return -1
+        if (bIdx !== -1) return 1
+        return a.localeCompare(b)
+      })
+  }
+  catch {
+    return []
+  }
+}
+
 function showHelp() {
   console.log(`
 📋 Component Analyzer - Generate test prompts for AI assistants
@@ -898,24 +946,23 @@ function main() {
     process.exit(1)
   }
 
-  // If directory, try to find index file
+  // If directory, try to find entry file
   if (fs.statSync(absolutePath).isDirectory()) {
-    const indexFiles = ['index.tsx', 'index.ts', 'index.jsx', 'index.js']
-    let found = false
-
-    for (const indexFile of indexFiles) {
-      const indexPath = path.join(absolutePath, indexFile)
-      if (fs.existsSync(indexPath)) {
-        absolutePath = indexPath
-        componentPath = path.join(componentPath, indexFile)
-        found = true
-        break
-      }
+    const resolvedFile = resolveDirectoryEntry(absolutePath, componentPath)
+    if (resolvedFile) {
+      absolutePath = resolvedFile.absolutePath
+      componentPath = resolvedFile.componentPath
     }
-
-    if (!found) {
-      console.error(`❌ Error: Directory does not contain index file: ${componentPath}`)
-      console.error(`   Expected one of: ${indexFiles.join(', ')}`)
+    else {
+      // List available files for user to choose
+      const availableFiles = listAnalyzableFiles(absolutePath)
+      console.error(`❌ Error: Directory does not contain a recognizable entry file: ${componentPath}`)
+      if (availableFiles.length > 0) {
+        console.error(`\n   Available files to analyze:`)
+        availableFiles.forEach(f => console.error(`   - ${path.join(componentPath, f)}`))
+        console.error(`\n   Please specify the exact file path, e.g.:`)
+        console.error(`   pnpm analyze-component ${path.join(componentPath, availableFiles[0])}`)
+      }
       process.exit(1)
     }
   }

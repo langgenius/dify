@@ -231,6 +231,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             list={notInstalledPlugins}
             searchText={query}
             tags={DEFAULT_TAGS}
+            category={PluginCategoryEnum.agent}
             disableMaxWidth
           />}
         </main>

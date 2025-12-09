@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(isteğe bağlı ve gizli)',
     goTo: 'Git',
     startNode: 'Başlangıç Düğümü',
+    openWorkflow: 'İş Akışını Aç',
   },
   nodes: {
     common: {
@@ -595,7 +596,6 @@ const translation = {
         'authorizationType': 'Yetkilendirme Türü',
         'no-auth': 'Yok',
         'api-key': 'API Anahtarı',
-        'authType': 'Yetki Türü',
         'basic': 'Temel',
         'bearer': 'Bearer',
         'custom': 'Özel',
