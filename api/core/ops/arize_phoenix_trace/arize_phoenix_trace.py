@@ -208,10 +208,12 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         workflow_span = self.tracer.start_span(
             name=TraceTaskName.WORKFLOW_TRACE.value,
             attributes={
-                SpanAttributes.INPUT_VALUE: json.dumps(trace_info.workflow_run_inputs, ensure_ascii=False),
-                SpanAttributes.OUTPUT_VALUE: json.dumps(trace_info.workflow_run_outputs, ensure_ascii=False),
+                SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.workflow_run_inputs),
+                SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
+                SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.workflow_run_outputs),
+                SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
-                SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+                SpanAttributes.METADATA: safe_json_dumps(metadata),
                 SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
             },
             start_time=datetime_to_nanos(trace_info.start_time),
@@ -381,9 +383,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         attributes = {
             SpanAttributes.INPUT_VALUE: trace_info.message_data.query,
+            SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.TEXT.value,
             SpanAttributes.OUTPUT_VALUE: trace_info.message_data.answer,
+            SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.TEXT.value,
             SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
-            SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+            SpanAttributes.METADATA: safe_json_dumps(metadata),
             SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
         }
 
@@ -401,7 +405,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         try:
             # Convert outputs to string based on type
             if isinstance(trace_info.outputs, dict | list):
-                outputs_str = json.dumps(trace_info.outputs, ensure_ascii=False)
+                outputs_str = safe_json_dumps(trace_info.outputs)
             elif isinstance(trace_info.outputs, str):
                 outputs_str = trace_info.outputs
             else:
@@ -409,9 +413,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
             llm_attributes = {
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.LLM.value,
-                SpanAttributes.INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
+                SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
                 SpanAttributes.OUTPUT_VALUE: outputs_str,
-                SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+                SpanAttributes.METADATA: safe_json_dumps(metadata),
                 SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
             }
             llm_attributes.update(self._construct_llm_attributes(trace_info.inputs))
@@ -474,7 +478,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span = self.tracer.start_span(
             name=TraceTaskName.MODERATION_TRACE.value,
             attributes={
-                SpanAttributes.INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
+                SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
+                SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OUTPUT_VALUE: json.dumps(
                     {
                         "action": trace_info.action,
@@ -484,8 +489,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     },
                     ensure_ascii=False,
                 ),
+                SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
-                SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+                SpanAttributes.METADATA: safe_json_dumps(metadata),
             },
             start_time=datetime_to_nanos(trace_info.start_time),
             context=root_span_context,
@@ -525,10 +531,12 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span = self.tracer.start_span(
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
             attributes={
-                SpanAttributes.INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
-                SpanAttributes.OUTPUT_VALUE: json.dumps(trace_info.suggested_question, ensure_ascii=False),
+                SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
+                SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
+                SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.suggested_question),
+                SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
-                SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+                SpanAttributes.METADATA: safe_json_dumps(metadata),
             },
             start_time=datetime_to_nanos(start_time),
             context=root_span_context,
@@ -567,10 +575,12 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span = self.tracer.start_span(
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
             attributes={
-                SpanAttributes.INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
-                SpanAttributes.OUTPUT_VALUE: json.dumps({"documents": trace_info.documents}, ensure_ascii=False),
+                SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
+                SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
+                SpanAttributes.OUTPUT_VALUE: safe_json_dumps({"documents": trace_info.documents}),
+                SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.RETRIEVER.value,
-                SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+                SpanAttributes.METADATA: safe_json_dumps(metadata),
                 "start_time": start_time.isoformat() if start_time else "",
                 "end_time": end_time.isoformat() if end_time else "",
             },
@@ -610,10 +620,12 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span = self.tracer.start_span(
             name=trace_info.tool_name,
             attributes={
-                SpanAttributes.INPUT_VALUE: json.dumps(trace_info.tool_inputs, ensure_ascii=False),
+                SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.tool_inputs),
+                SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OUTPUT_VALUE: trace_info.tool_outputs,
+                SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.TEXT.value,
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
-                SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+                SpanAttributes.METADATA: safe_json_dumps(metadata),
                 SpanAttributes.TOOL_NAME: trace_info.tool_name,
                 SpanAttributes.TOOL_PARAMETERS: tool_params_str,
             },
@@ -649,10 +661,12 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span = self.tracer.start_span(
             name=TraceTaskName.GENERATE_NAME_TRACE.value,
             attributes={
-                SpanAttributes.INPUT_VALUE: json.dumps(trace_info.inputs, ensure_ascii=False),
-                SpanAttributes.OUTPUT_VALUE: json.dumps(trace_info.outputs, ensure_ascii=False),
+                SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
+                SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
+                SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.outputs),
+                SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
-                SpanAttributes.METADATA: json.dumps(metadata, ensure_ascii=False),
+                SpanAttributes.METADATA: safe_json_dumps(metadata),
                 SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
                 "start_time": trace_info.start_time.isoformat() if trace_info.start_time else "",
                 "end_time": trace_info.end_time.isoformat() if trace_info.end_time else "",
