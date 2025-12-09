@@ -1680,9 +1680,6 @@ class LLMNode(Node[LLMNodeData]):
                         "content": text,
                     },
                 },
-                metadata={
-                    WorkflowNodeExecutionMetadataKey.LLM_CONTENT_SEQUENCE: [],
-                },
                 inputs={
                     **node_inputs,
                     "tools": [

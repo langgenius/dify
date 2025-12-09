@@ -480,9 +480,10 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         if reasoning_content:
             # reasoning_content could be a string or already a list
             if isinstance(reasoning_content, str):
-                reasoning_list = [reasoning_content] if reasoning_content else []
+                reasoning_list = [reasoning_content] if reasoning_content.strip() else []
             elif isinstance(reasoning_content, list):
-                reasoning_list = reasoning_content
+                # Filter out empty or whitespace-only strings
+                reasoning_list = [r.strip() for r in reasoning_content if isinstance(r, str) and r.strip()]
 
         # Extract tool_calls from metadata.agent_log
         tool_calls_list: list[dict] = []
@@ -491,15 +492,24 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             for log in agent_log:
                 # Each log entry has label, data, status, etc.
                 log_data = log.data if hasattr(log, "data") else log.get("data", {})
-                if log_data.get("tool_name"):
+                tool_name = log_data.get("tool_name")
+                # Only include tool calls with valid tool_name
+                if tool_name and str(tool_name).strip():
                     tool_calls_list.append(
                         {
                             "id": log_data.get("tool_call_id", ""),
-                            "name": log_data.get("tool_name", ""),
+                            "name": tool_name,
                             "arguments": json.dumps(log_data.get("tool_args", {})),
                             "result": str(log_data.get("output", "")),
                         }
                     )
+
+        # Only save if there's meaningful generation detail (reasoning or tool calls)
+        has_valid_reasoning = bool(reasoning_list)
+        has_valid_tool_calls = bool(tool_calls_list)
+
+        if not has_valid_reasoning and not has_valid_tool_calls:
+            return
 
         # Build sequence based on content, reasoning, and tool_calls
         sequence: list[dict] = []
@@ -513,10 +523,6 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             sequence.append({"type": "reasoning", "index": i})
         for i in range(len(tool_calls_list)):
             sequence.append({"type": "tool_call", "index": i})
-
-        # Only save if there's meaningful generation detail
-        if not reasoning_list and not tool_calls_list:
-            return
 
         # Check if generation detail already exists for this node execution
         existing = (
