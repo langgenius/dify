@@ -1,3 +1,4 @@
+import re
 from collections.abc import Sequence
 from typing import cast
 
@@ -154,3 +155,94 @@ def deduct_llm_quota(tenant_id: str, model_instance: ModelInstance, usage: LLMUs
             )
             session.execute(stmt)
             session.commit()
+
+
+class ThinkTagStreamParser:
+    """Lightweight state machine to split streaming chunks by <think> tags."""
+
+    _START_PATTERN = re.compile(r"<think(?:\s[^>]*)?>", re.IGNORECASE)
+    _END_PATTERN = re.compile(r"</think>", re.IGNORECASE)
+    _START_PREFIX = "<think"
+    _END_PREFIX = "</think"
+
+    def __init__(self):
+        self._buffer = ""
+        self._in_think = False
+
+    @staticmethod
+    def _suffix_prefix_len(text: str, prefix: str) -> int:
+        """Return length of the longest suffix of `text` that is a prefix of `prefix`."""
+        max_len = min(len(text), len(prefix) - 1)
+        for i in range(max_len, 0, -1):
+            if text[-i:].lower() == prefix[:i].lower():
+                return i
+        return 0
+
+    def process(self, chunk: str) -> list[tuple[str, str]]:
+        """
+        Split incoming chunk into ('thought' | 'text', content) tuples.
+        Content excludes the <think> tags themselves and handles split tags across chunks.
+        """
+        parts: list[tuple[str, str]] = []
+        self._buffer += chunk
+
+        while self._buffer:
+            if self._in_think:
+                end_match = self._END_PATTERN.search(self._buffer)
+                if end_match:
+                    thought_text = self._buffer[: end_match.start()]
+                    if thought_text:
+                        parts.append(("thought", thought_text))
+                    self._buffer = self._buffer[end_match.end() :]
+                    self._in_think = False
+                    continue
+
+                hold_len = self._suffix_prefix_len(self._buffer, self._END_PREFIX)
+                emit = self._buffer[: len(self._buffer) - hold_len]
+                if emit:
+                    parts.append(("thought", emit))
+                self._buffer = self._buffer[-hold_len:] if hold_len > 0 else ""
+                break
+
+            start_match = self._START_PATTERN.search(self._buffer)
+            if start_match:
+                prefix = self._buffer[: start_match.start()]
+                if prefix:
+                    parts.append(("text", prefix))
+                self._buffer = self._buffer[start_match.end() :]
+                self._in_think = True
+                continue
+
+            hold_len = self._suffix_prefix_len(self._buffer, self._START_PREFIX)
+            emit = self._buffer[: len(self._buffer) - hold_len]
+            if emit:
+                parts.append(("text", emit))
+            self._buffer = self._buffer[-hold_len:] if hold_len > 0 else ""
+            break
+
+        cleaned_parts: list[tuple[str, str]] = []
+        for kind, content in parts:
+            # Extra safeguard: strip any stray tags that slipped through.
+            content = self._START_PATTERN.sub("", content)
+            content = self._END_PATTERN.sub("", content)
+            if content:
+                cleaned_parts.append((kind, content))
+
+        return cleaned_parts
+
+    def flush(self) -> list[tuple[str, str]]:
+        """Flush remaining buffer when the stream ends."""
+        if not self._buffer:
+            return []
+        kind = "thought" if self._in_think else "text"
+        content = self._buffer
+        # Drop dangling partial tags instead of emitting them
+        if content.lower().startswith(self._START_PREFIX) or content.lower().startswith(self._END_PREFIX):
+            content = ""
+        self._buffer = ""
+        if not content:
+            return []
+        # Strip any complete tags that might still be present.
+        content = self._START_PATTERN.sub("", content)
+        content = self._END_PATTERN.sub("", content)
+        return [(kind, content)] if content else []

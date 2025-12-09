@@ -29,9 +29,9 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
     })
   }, [buildInTools, customTools, providerName, workflowTools, mcpTools])
 
-  const providerNameParts = providerName.split('/')
-  const author = providerNameParts[0]
-  const name = providerNameParts[1]
+  const providerNameParts = providerName ? providerName.split('/') : []
+  const author = providerNameParts[0] || ''
+  const name = providerNameParts[1] || providerName || ''
   const icon = useMemo(() => {
     if (!isDataReady) return ''
     if (currentProvider) return currentProvider.icon

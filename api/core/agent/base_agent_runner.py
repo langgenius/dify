@@ -5,7 +5,7 @@ from typing import Union, cast
 
 from sqlalchemy import select
 
-from core.agent.entities import AgentEntity, AgentToolEntity
+from core.agent.entities import AgentEntity, AgentToolEntity, ExecutionContext
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -114,8 +114,19 @@ class BaseAgentRunner(AppRunner):
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
         self.files = application_generate_entity.files if ModelFeature.VISION in features else []
+        self.model_features = features
         self.query: str | None = ""
         self._current_thoughts: list[PromptMessage] = []
+
+    def build_execution_context(self) -> ExecutionContext:
+        """Build execution context."""
+        return ExecutionContext(
+            user_id=self.user_id,
+            app_id=self.app_config.app_id,
+            conversation_id=self.conversation.id,
+            message_id=self.message.id,
+            tenant_id=self.tenant_id,
+        )
 
     def _repack_app_generate_entity(
         self, app_generate_entity: AgentChatAppGenerateEntity

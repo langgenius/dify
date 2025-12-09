@@ -3,6 +3,7 @@ from .entities import (
     LLMNodeCompletionModelPromptTemplate,
     LLMNodeData,
     ModelConfig,
+    ToolMetadata,
     VisionConfig,
 )
 from .node import LLMNode
@@ -13,5 +14,6 @@ __all__ = [
     "LLMNodeCompletionModelPromptTemplate",
     "LLMNodeData",
     "ModelConfig",
+    "ToolMetadata",
     "VisionConfig",
 ]

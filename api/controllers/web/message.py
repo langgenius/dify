@@ -55,6 +55,7 @@ class MessageListApi(WebApiResource):
         "metadata": fields.Raw(attribute="message_metadata_dict"),
         "status": fields.String,
         "error": fields.String,
+        "generation_detail": fields.Raw,
     }
 
     message_infinite_scroll_pagination_fields = {

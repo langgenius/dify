@@ -129,6 +129,7 @@ workflow_run_node_execution_fields = {
     "inputs_truncated": fields.Boolean,
     "outputs_truncated": fields.Boolean,
     "process_data_truncated": fields.Boolean,
+    "generation_detail": fields.Raw,
 }
 
 workflow_run_node_execution_list_fields = {

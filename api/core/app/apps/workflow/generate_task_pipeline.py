@@ -13,6 +13,7 @@ from core.app.apps.common.workflow_response_converter import WorkflowResponseCon
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
+    ChunkType,
     MessageQueueMessage,
     QueueAgentLogEvent,
     QueueErrorEvent,
@@ -487,7 +488,17 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if tts_publisher and queue_message:
             tts_publisher.publish(queue_message)
 
-        yield self._text_chunk_to_stream_response(delta_text, from_variable_selector=event.from_variable_selector)
+        yield self._text_chunk_to_stream_response(
+            text=delta_text,
+            from_variable_selector=event.from_variable_selector,
+            chunk_type=event.chunk_type,
+            tool_call_id=event.tool_call_id,
+            tool_name=event.tool_name,
+            tool_arguments=event.tool_arguments,
+            tool_files=event.tool_files,
+            tool_error=event.tool_error,
+            round_index=event.round_index,
+        )
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
@@ -650,16 +661,37 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         session.add(workflow_app_log)
 
     def _text_chunk_to_stream_response(
-        self, text: str, from_variable_selector: list[str] | None = None
+        self,
+        text: str,
+        from_variable_selector: list[str] | None = None,
+        chunk_type: ChunkType | None = None,
+        tool_call_id: str | None = None,
+        tool_name: str | None = None,
+        tool_arguments: str | None = None,
+        tool_files: list[str] | None = None,
+        tool_error: str | None = None,
+        round_index: int | None = None,
     ) -> TextChunkStreamResponse:
         """
         Handle completed event.
         :param text: text
         :return:
         """
+        from core.app.entities.task_entities import ChunkType as ResponseChunkType
+
         response = TextChunkStreamResponse(
             task_id=self._application_generate_entity.task_id,
-            data=TextChunkStreamResponse.Data(text=text, from_variable_selector=from_variable_selector),
+            data=TextChunkStreamResponse.Data(
+                text=text,
+                from_variable_selector=from_variable_selector,
+                chunk_type=ResponseChunkType(chunk_type.value) if chunk_type else ResponseChunkType.TEXT,
+                tool_call_id=tool_call_id,
+                tool_name=tool_name,
+                tool_arguments=tool_arguments,
+                tool_files=tool_files or [],
+                tool_error=tool_error,
+                round_index=round_index,
+            ),
         )
 
         return response

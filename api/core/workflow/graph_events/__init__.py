@@ -36,6 +36,7 @@ from .loop import (
 
 # Node events
 from .node import (
+    ChunkType,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunPauseRequestedEvent,
@@ -48,6 +49,7 @@ from .node import (
 
 __all__ = [
     "BaseGraphEvent",
+    "ChunkType",
     "GraphEngineEvent",
     "GraphNodeEventBase",
     "GraphRunAbortedEvent",

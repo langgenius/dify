@@ -247,6 +247,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     ERROR_STRATEGY = "error_strategy"  # node in continue on error mode return the field
     LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
     DATASOURCE_INFO = "datasource_info"
+    LLM_CONTENT_SEQUENCE = "llm_content_sequence"
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

@@ -29,6 +29,7 @@ from models import (
     Account,
     CreatorUserRole,
     EndUser,
+    LLMGenerationDetail,
     WorkflowNodeExecutionModel,
     WorkflowNodeExecutionTriggeredFrom,
 )
@@ -456,6 +457,94 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         with self._session_factory() as session, session.begin():
             session.merge(db_model)
             session.flush()
+
+            # Save LLMGenerationDetail for LLM nodes with successful execution
+            if (
+                domain_model.node_type == NodeType.LLM
+                and domain_model.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                and domain_model.outputs is not None
+            ):
+                self._save_llm_generation_detail(session, domain_model)
+
+    def _save_llm_generation_detail(self, session, execution: WorkflowNodeExecution) -> None:
+        """
+        Save LLM generation detail for LLM nodes.
+        Extracts reasoning_content, tool_calls, and sequence from outputs and metadata.
+        """
+        outputs = execution.outputs or {}
+        metadata = execution.metadata or {}
+
+        # Extract reasoning_content from outputs
+        reasoning_content = outputs.get("reasoning_content")
+        reasoning_list: list[str] = []
+        if reasoning_content:
+            # reasoning_content could be a string or already a list
+            if isinstance(reasoning_content, str):
+                reasoning_list = [reasoning_content] if reasoning_content else []
+            elif isinstance(reasoning_content, list):
+                reasoning_list = reasoning_content
+
+        # Extract tool_calls from metadata.agent_log
+        tool_calls_list: list[dict] = []
+        agent_log = metadata.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
+        if agent_log and isinstance(agent_log, list):
+            for log in agent_log:
+                # Each log entry has label, data, status, etc.
+                log_data = log.data if hasattr(log, "data") else log.get("data", {})
+                if log_data.get("tool_name"):
+                    tool_calls_list.append(
+                        {
+                            "id": log_data.get("tool_call_id", ""),
+                            "name": log_data.get("tool_name", ""),
+                            "arguments": json.dumps(log_data.get("tool_args", {})),
+                            "result": str(log_data.get("output", "")),
+                        }
+                    )
+
+        # Build sequence based on content, reasoning, and tool_calls
+        sequence: list[dict] = []
+        text = outputs.get("text", "")
+
+        # For now, use a simple sequence: content -> reasoning -> tool_calls
+        # This can be enhanced later to track actual streaming order
+        if text:
+            sequence.append({"type": "content", "start": 0, "end": len(text)})
+        for i, _ in enumerate(reasoning_list):
+            sequence.append({"type": "reasoning", "index": i})
+        for i in range(len(tool_calls_list)):
+            sequence.append({"type": "tool_call", "index": i})
+
+        # Only save if there's meaningful generation detail
+        if not reasoning_list and not tool_calls_list:
+            return
+
+        # Check if generation detail already exists for this node execution
+        existing = (
+            session.query(LLMGenerationDetail)
+            .filter_by(
+                workflow_run_id=execution.workflow_execution_id,
+                node_id=execution.node_id,
+            )
+            .first()
+        )
+
+        if existing:
+            # Update existing record
+            existing.reasoning_content = json.dumps(reasoning_list) if reasoning_list else None
+            existing.tool_calls = json.dumps(tool_calls_list) if tool_calls_list else None
+            existing.sequence = json.dumps(sequence) if sequence else None
+        else:
+            # Create new record
+            generation_detail = LLMGenerationDetail(
+                tenant_id=self._tenant_id,
+                app_id=self._app_id,
+                workflow_run_id=execution.workflow_execution_id,
+                node_id=execution.node_id,
+                reasoning_content=json.dumps(reasoning_list) if reasoning_list else None,
+                tool_calls=json.dumps(tool_calls_list) if tool_calls_list else None,
+                sequence=json.dumps(sequence) if sequence else None,
+            )
+            session.add(generation_detail)
 
     def get_db_models_by_workflow_run(
         self,

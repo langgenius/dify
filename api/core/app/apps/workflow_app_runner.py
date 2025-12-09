@@ -455,12 +455,21 @@ class WorkflowBasedAppRunner:
                 )
             )
         elif isinstance(event, NodeRunStreamChunkEvent):
+            from core.app.entities.queue_entities import ChunkType as QueueChunkType
+
             self._publish_event(
                 QueueTextChunkEvent(
                     text=event.chunk,
                     from_variable_selector=list(event.selector),
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
+                    chunk_type=QueueChunkType(event.chunk_type.value),
+                    tool_call_id=event.tool_call_id,
+                    tool_name=event.tool_name,
+                    tool_arguments=event.tool_arguments,
+                    tool_files=event.tool_files,
+                    tool_error=event.tool_error,
+                    round_index=event.round_index,
                 )
             )
         elif isinstance(event, NodeRunRetrieverResourceEvent):
