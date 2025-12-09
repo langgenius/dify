@@ -1,3 +1,4 @@
+// This is an auto-generated translation file for ar-TN. It may be large.
 const translation = {
   common: {
     undo: 'تراجع',

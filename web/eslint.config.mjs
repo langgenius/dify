@@ -185,6 +185,14 @@ export default combine(
       sonarjs: sonar,
     },
   },
+  // allow generated i18n files (like i18n/*/workflow.ts) to exceed max-lines
+  {
+    files: ['i18n/**'],
+    rules: {
+      'sonarjs/max-lines': 'off',
+      'max-lines': 'off',
+    },
+  },
   // need further research
   {
     rules: {
@@ -258,3 +266,5 @@ export default combine(
   },
   ...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 )
+
+// overrides for i18n files are applied inside combine(...) above
