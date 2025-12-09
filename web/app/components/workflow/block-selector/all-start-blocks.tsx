@@ -209,7 +209,7 @@ const AllStartBlocks = ({
           // Footer - Same as Tools tab marketplace footer
           <Link
             className={marketplaceFooterClassName}
-            href={getMarketplaceUrl('', { category: 'trigger' })}
+            href={getMarketplaceUrl('', { category: PluginCategoryEnum.trigger })}
             target='_blank'
           >
             <span>{t('plugin.findMoreInMarketplace')}</span>
