@@ -361,23 +361,27 @@ def migrate_knowledge_vector_database():
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
 
-                index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
+                index_struct_dict = {
+                    "type": vector_type,
+                    "vector_store": {"class_prefix": collection_name},
+                    "original_type": dataset.index_struct_dict["type"],
+                }
                 dataset.index_struct = json.dumps(index_struct_dict)
                 vector = Vector(dataset)
                 click.echo(f"Migrating dataset {dataset.id}.")
 
-                try:
-                    vector.delete()
-                    click.echo(
-                        click.style(f"Deleted vector index {collection_name} for dataset {dataset.id}.", fg="green")
-                    )
-                except Exception as e:
-                    click.echo(
-                        click.style(
-                            f"Failed to delete vector index {collection_name} for dataset {dataset.id}.", fg="red"
-                        )
-                    )
-                    raise e
+                # try:
+                #     vector.delete()
+                #     click.echo(
+                #         click.style(f"Deleted vector index {collection_name} for dataset {dataset.id}.", fg="green")
+                #     )
+                # except Exception as e:
+                #     click.echo(
+                #         click.style(
+                #             f"Failed to delete vector index {collection_name} for dataset {dataset.id}.", fg="red"
+                #         )
+                #     )
+                #     raise e
 
                 dataset_documents = db.session.scalars(
                     select(DatasetDocument).where(
@@ -391,6 +395,7 @@ def migrate_knowledge_vector_database():
                 documents = []
                 segments_count = 0
                 for dataset_document in dataset_documents:
+                    
                     segments = db.session.scalars(
                         select(DocumentSegment).where(
                             DocumentSegment.document_id == dataset_document.id,

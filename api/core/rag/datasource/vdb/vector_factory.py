@@ -283,6 +283,9 @@ class Vector:
             }
         )
         return self._vector_processor.search_by_vector(multimodal_vector, **kwargs)
+    
+    def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
+        return self._vector_processor.search_by_metadata_field(key, value, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_full_text(query, **kwargs)
