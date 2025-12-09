@@ -32,9 +32,8 @@ import Records from './components/records'
 import {
   useExternalKnowledgeBaseHitTesting,
   useHitTesting,
-  useHitTestingRecords,
-  useInvalidateHitTestingRecords,
 } from '@/service/knowledge/use-hit-testing'
+import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
 
 const limit = 10
 
@@ -48,14 +47,13 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
+  const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>()
   const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
   const [queries, setQueries] = useState<Query[]>([])
   const [queryInputKey, setQueryInputKey] = useState(Date.now())
 
   const [currPage, setCurrPage] = useState<number>(0)
-  const { data: recordsRes, isLoading: isRecordsLoading } = useHitTestingRecords({ datasetId, page: currPage + 1, limit })
-  const invalidateHitTestingRecords = useInvalidateHitTestingRecords(datasetId)
+  const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 })
 
   const total = recordsRes?.total || 0
 
@@ -107,8 +105,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   )
 
   const handleClickRecord = useCallback((record: HitTestingRecord) => {
-    const { queries } = record
-    setQueries(queries)
+    setQueries(record.queries)
     setQueryInputKey(Date.now())
   }, [])
 
@@ -128,7 +125,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           setHitResult={setHitResult}
           setExternalHitResult={setExternalHitResult}
           onSubmit={showRightPanel}
-          onUpdateList={invalidateHitTestingRecords}
+          onUpdateList={recordsRefetch}
           loading={isRetrievalLoading}
           queries={queries}
           setQueries={setQueries}
@@ -140,11 +137,9 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
         />
         <div className='mb-3 mt-6 text-base font-semibold text-text-primary'>{t('datasetHitTesting.records')}</div>
-        {isRecordsLoading
-          && (
-            <div className='flex-1'><Loading type='app' /></div>
-          )
-        }
+        {isRecordsLoading && (
+          <div className='flex-1'><Loading type='app' /></div>
+        )}
         {!isRecordsLoading && recordsRes?.data && recordsRes.data.length > 0 && (
           <>
             <Records records={recordsRes?.data} onClickRecord={handleClickRecord}/>
