@@ -152,10 +152,10 @@ Treat component state as part of the public behavior: confirm the initial render
 **Rules**:
 
 1. **Import actual types**: Always import types from the source (`@/models/`, `@/types/`, etc.) instead of defining inline types.
-2. **Provide complete defaults**: Factory functions should return complete objects with all required fields filled with sensible defaults.
-3. **Allow partial overrides**: Accept `Partial<T>` to enable flexible customization for specific test cases.
-4. **Create list factories**: For array data, create a separate factory function that composes item factories.
-**Reference**: See `__mocks__/provider-context.ts` for reusable context mock factories used across multiple test files.
+1. **Provide complete defaults**: Factory functions should return complete objects with all required fields filled with sensible defaults.
+1. **Allow partial overrides**: Accept `Partial<T>` to enable flexible customization for specific test cases.
+1. **Create list factories**: For array data, create a separate factory function that composes item factories.
+   **Reference**: See `__mocks__/provider-context.ts` for reusable context mock factories used across multiple test files.
 
 ### 4. Performance Optimization
 
