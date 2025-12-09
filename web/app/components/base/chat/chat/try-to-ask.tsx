@@ -24,7 +24,7 @@ const TryToAsk: FC<TryToAskProps> = ({
         <div className='system-xs-medium-uppercase shrink-0 text-text-tertiary'>{t('appDebug.feature.suggestedQuestionsAfterAnswer.tryToAsk')}</div>
         <Divider bgStyle='gradient' className='h-px !w-auto grow' />
       </div>
-      <div className={'flex flex-wrap justify-center'}>
+      <div className="flex flex-wrap justify-center">
         {
           suggestedQuestions.map((suggestQuestion, index) => (
             <Button
