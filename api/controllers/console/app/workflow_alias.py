@@ -1,6 +1,9 @@
 import logging
+from dataclasses import dataclass
+from typing import Any, Dict, List
 
 from flask_restx import Resource, marshal_with, reqparse
+from flask_restx.inputs import int_range
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from controllers.console import api
@@ -20,6 +23,58 @@ from services.workflow_alias_service import WorkflowAliasArgs, WorkflowAliasServ
 from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PaginatedResponse:
+    """Structured pagination response object."""
+    items: List[Any]
+    limit: int
+    offset: int
+    has_more: bool
+
+    @property
+    def page(self) -> int:
+        """Calculate current page from offset and limit."""
+        return (self.offset // self.limit) + 1
+
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary format for API response."""
+        return {
+            "items": self.items,
+            "page": self.page,
+            "limit": self.limit,
+            "has_more": self.has_more,
+        }
+
+
+def _create_pagination_parser() -> reqparse.RequestParser:
+    """Create a parser with validated pagination parameters."""
+    parser = reqparse.RequestParser()
+    parser.add_argument(
+        "workflow_ids",
+        type=str,
+        required=False,
+        location="args",
+        help="Comma-separated list of workflow IDs"
+    )
+    parser.add_argument(
+        "limit",
+        type=int_range(1, 1000),
+        required=False,
+        default=100,
+        location="args",
+        help="Number of items to return (1-1000)"
+    )
+    parser.add_argument(
+        "offset",
+        type=int_range(0, 1000000),
+        required=False,
+        default=0,
+        location="args",
+        help="Number of items to skip (0-1000000)"
+    )
+    return parser
 
 
 class WorkflowAliasApi(Resource):
@@ -44,44 +99,32 @@ class WorkflowAliasApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("workflow_ids", type=str, required=False, location="args")
-        parser.add_argument("limit", type=int, required=False, default=100, location="args")
-        parser.add_argument("offset", type=int, required=False, default=0, location="args")
+        # Use validated pagination parser
+        parser = _create_pagination_parser()
         args = parser.parse_args()
 
         workflow_ids = args.get("workflow_ids")
         if workflow_ids:
             workflow_ids = [wid.strip() for wid in workflow_ids.split(",") if wid.strip()]
 
-        limit = args.get("limit", 100)
-        offset = args.get("offset", 0)
+        limit = args["limit"]
+        offset = args["offset"]
 
-        # Validate pagination parameters
-        if limit < 1:
-            limit = 1
-        elif limit > 1000:
-            limit = 1000
-
-        if offset < 0:
-            offset = 0
-
-        workflow_alias_service = WorkflowAliasService()
+        workflow_alias_service = WorkflowAliasService(session=db.session)
 
         aliases = workflow_alias_service.get_aliases_by_app(
-            session=db.session,
             app_id=app_model.id,
             workflow_ids=workflow_ids,
             limit=limit,
             offset=offset,
         )
 
-        return {
-            "items": aliases,
-            "page": (offset // limit) + 1,
-            "limit": limit,
-            "has_more": len(aliases) == limit,
-        }
+        return PaginatedResponse(
+            items=list(aliases or []),
+            limit=limit,
+            offset=offset,
+            has_more=len(aliases or []) == limit,
+        ).to_dict()
 
     @setup_required
     @login_required
@@ -116,7 +159,7 @@ class WorkflowAliasApi(Resource):
         name = args.get("name")
 
         workflow_service = WorkflowService()
-        workflow_alias_service = WorkflowAliasService()
+        workflow_alias_service = WorkflowAliasService(session=db.session)
         try:
             request = WorkflowAliasArgs(
                 app_id=app_model.id,
@@ -135,13 +178,11 @@ class WorkflowAliasApi(Resource):
             if existing_alias:
                 # Update existing alias
                 alias = workflow_alias_service.update_alias(
-                    session=db.session,
                     request=request,
                 )
             else:
                 # Create new alias
                 alias = workflow_alias_service.create_alias(
-                    session=db.session,
                     request=request,
                 )
 
@@ -175,11 +216,10 @@ class WorkflowAliasApi(Resource):
         if not current_user.has_edit_permission:
             raise Forbidden()
 
-        workflow_alias_service = WorkflowAliasService()
+        workflow_alias_service = WorkflowAliasService(session=db.session)
 
         try:
             workflow_alias_service.delete_alias(
-                session=db.session,
                 alias_id=alias_id,
                 app_id=app_model.id,
             )

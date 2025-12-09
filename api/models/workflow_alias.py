@@ -58,7 +58,7 @@ class WorkflowNameAlias(Base):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.is_transferred = False
-        self.old_workflow_id = None
+        self.old_workflow_id: str | None = None
 
     def __repr__(self):
         return f"<WorkflowNameAlias(id='{self.id}', app_id='{self.app_id}', name='{self.name}')>"

@@ -25,15 +25,30 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAliasService:
+    def __init__(self, session: Union[Session, "scoped_session"] | None = None):
+        """
+        Initialize WorkflowAliasService with optional database session.
+        
+        Args:
+            session: Database session. If provided, will be used for all operations.
+                    If None, session must be passed to each method call.
+        """
+        self._session = session
+
     def create_alias(
         self,
-        session: Union[Session, "scoped_session"],
         request: WorkflowAliasArgs,
+        session: Union[Session, "scoped_session"] | None = None,
     ) -> WorkflowNameAlias:
         """
         Create a new workflow alias. Raises an error if alias already exists.
         """
-        workflow = session.get(Workflow, request.workflow_id)
+        # Use instance session if provided, otherwise use method parameter
+        db_session = self._session or session
+        if not db_session:
+            raise ValueError("Database session is required")
+            
+        workflow = db_session.get(Workflow, request.workflow_id)
         if not workflow:
             raise ValueError(f"Workflow {request.workflow_id} not found")
 
@@ -41,7 +56,7 @@ class WorkflowAliasService:
             raise ValueError("Cannot create aliases for draft workflows")
 
         # Check if alias already exists
-        existing_alias = session.scalar(
+        existing_alias = db_session.scalar(
             select(WorkflowNameAlias).where(
                 and_(WorkflowNameAlias.app_id == request.app_id, WorkflowNameAlias.name == request.name)
             )
@@ -58,18 +73,23 @@ class WorkflowAliasService:
             created_by=request.created_by,
         )
 
-        session.add(alias)
+        db_session.add(alias)
         return alias
 
     def update_alias(
         self,
-        session: Union[Session, "scoped_session"],
         request: WorkflowAliasArgs,
+        session: Union[Session, "scoped_session"] | None = None,
     ) -> WorkflowNameAlias:
         """
         Update an existing workflow alias. Raises an error if alias doesn't exist.
         """
-        workflow = session.get(Workflow, request.workflow_id)
+        # Use instance session if provided, otherwise use method parameter
+        db_session = self._session or session
+        if not db_session:
+            raise ValueError("Database session is required")
+            
+        workflow = db_session.get(Workflow, request.workflow_id)
         if not workflow:
             raise ValueError(f"Workflow {request.workflow_id} not found")
 
@@ -77,7 +97,7 @@ class WorkflowAliasService:
             raise ValueError("Cannot update aliases for draft workflows")
 
         # Find existing alias to update
-        existing_alias = session.scalar(
+        existing_alias = db_session.scalar(
             select(WorkflowNameAlias).where(
                 and_(WorkflowNameAlias.app_id == request.app_id, WorkflowNameAlias.name == request.name)
             )
@@ -99,12 +119,17 @@ class WorkflowAliasService:
 
     def get_aliases_by_app(
         self,
-        session: Union[Session, "scoped_session"],
         app_id: str,
         workflow_ids: list[str] | None = None,
         limit: int = 100,
         offset: int = 0,
+        session: Union[Session, "scoped_session"] | None = None,
     ) -> Sequence[WorkflowNameAlias]:
+        # Use instance session if provided, otherwise use method parameter
+        db_session = self._session or session
+        if not db_session:
+            raise ValueError("Database session is required")
+            
         conditions = [WorkflowNameAlias.app_id == app_id]
 
         if workflow_ids:
@@ -118,17 +143,22 @@ class WorkflowAliasService:
             .offset(offset)
         )
 
-        return list(session.scalars(stmt))
+        return list(db_session.scalars(stmt))
 
     def delete_alias(
         self,
-        session: Union[Session, "scoped_session"],
         alias_id: str,
         app_id: str,
+        session: Union[Session, "scoped_session"] | None = None,
     ) -> bool:
-        alias = session.get(WorkflowNameAlias, alias_id)
+        # Use instance session if provided, otherwise use method parameter
+        db_session = self._session or session
+        if not db_session:
+            raise ValueError("Database session is required")
+            
+        alias = db_session.get(WorkflowNameAlias, alias_id)
         if not alias or alias.app_id != app_id:
             raise ValueError("Alias not found")
 
-        session.delete(alias)
+        db_session.delete(alias)
         return True
