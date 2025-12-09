@@ -73,8 +73,13 @@ const SettingBuiltInTool: FC<Props> = ({
   const [currType, setCurrType] = useState('info')
   const isInfoActive = currType === 'info'
   useEffect(() => {
-    if (!collection || hasPassedTools)
+    if (!collection)
       return
+    if (hasPassedTools && currTool) {
+      const formSchemas = toolParametersToFormSchemas(currTool.parameters)
+      setTempSetting(addDefaultValue(setting, formSchemas))
+      return
+    }
 
     (async () => {
       setIsLoading(true)
