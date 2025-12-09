@@ -51,9 +51,6 @@ class NodeRunStreamChunkEvent(GraphNodeEventBase):
     tool_files: list[str] = Field(default_factory=list, description="file IDs produced by tool")
     tool_error: str | None = Field(default=None, description="error message if tool failed")
 
-    # Thought fields (when chunk_type == THOUGHT)
-    round_index: int | None = Field(default=None, description="current iteration round")
-
 
 class NodeRunRetrieverResourceEvent(GraphNodeEventBase):
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")

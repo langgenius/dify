@@ -80,7 +80,7 @@ class ReActStrategy(AgentPattern):
                 label=f"ROUND {iteration_step}",
                 log_type=AgentLog.LogType.ROUND,
                 status=AgentLog.LogStatus.START,
-                data={"round_index": iteration_step},
+                data={},
             )
             yield round_log
 
@@ -385,18 +385,31 @@ class ReActStrategy(AgentPattern):
         else:
             tool_args_dict = tool_args
 
-        # Invoke tool using base class method
-        response_content, tool_files, tool_invoke_meta = self._invoke_tool(tool_instance, tool_args_dict, tool_name)
+        # Invoke tool using base class method with error handling
+        try:
+            response_content, tool_files, tool_invoke_meta = self._invoke_tool(tool_instance, tool_args_dict, tool_name)
 
-        # Finish tool log
-        yield self._finish_log(
-            tool_log,
-            data={
+            # Finish tool log
+            yield self._finish_log(
+                tool_log,
+                data={
+                    **tool_log.data,
+                    "output": response_content,
+                    "files": len(tool_files),
+                    "meta": tool_invoke_meta.to_dict() if tool_invoke_meta else None,
+                },
+            )
+
+            return response_content or "Tool executed successfully", tool_files
+        except Exception as e:
+            # Tool invocation failed, yield error log
+            error_message = str(e)
+            tool_log.status = AgentLog.LogStatus.ERROR
+            tool_log.error = error_message
+            tool_log.data = {
                 **tool_log.data,
-                "output": response_content,
-                "files": len(tool_files),
-                "meta": tool_invoke_meta.to_dict() if tool_invoke_meta else None,
-            },
-        )
+                "error": error_message,
+            }
+            yield tool_log
 
-        return response_content or "Tool executed successfully", tool_files
+            return f"Tool execution failed: {error_message}", []

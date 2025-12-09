@@ -74,7 +74,6 @@ class ThoughtChunkEvent(StreamChunkEvent):
     """Agent thought streaming event - Agent thinking process (ReAct)."""
 
     chunk_type: ChunkType = Field(default=ChunkType.THOUGHT, frozen=True)
-    round_index: int = Field(default=1, description="current iteration round")
 
 
 class StreamCompletedEvent(NodeEventBase):

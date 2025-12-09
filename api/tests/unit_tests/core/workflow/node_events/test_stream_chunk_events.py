@@ -239,7 +239,6 @@ class TestThoughtChunkEvent:
         assert event.selector == ["node1", "thought"]
         assert event.chunk == "I need to query the weather..."
         assert event.chunk_type == ChunkType.THOUGHT
-        assert event.round_index == 1  # default
 
     def test_chunk_type_is_thought(self):
         """Test that chunk_type is always THOUGHT."""
@@ -250,38 +249,17 @@ class TestThoughtChunkEvent:
 
         assert event.chunk_type == ChunkType.THOUGHT
 
-    def test_round_index_default(self):
-        """Test that round_index defaults to 1."""
-        event = ThoughtChunkEvent(
-            selector=["node1", "thought"],
-            chunk="thinking...",
-        )
-
-        assert event.round_index == 1
-
-    def test_round_index_custom(self):
-        """Test custom round_index."""
-        event = ThoughtChunkEvent(
-            selector=["node1", "thought"],
-            chunk="Second round thinking...",
-            round_index=2,
-        )
-
-        assert event.round_index == 2
-
     def test_serialization(self):
         """Test that event can be serialized to dict."""
         event = ThoughtChunkEvent(
             selector=["node1", "thought"],
             chunk="I need to analyze this...",
-            round_index=3,
             is_final=False,
         )
 
         data = event.model_dump()
 
         assert data["chunk_type"] == "thought"
-        assert data["round_index"] == 3
         assert data["chunk"] == "I need to analyze this..."
         assert data["is_final"] is False
 

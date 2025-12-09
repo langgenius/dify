@@ -224,7 +224,6 @@ class MessageCycleManager:
         tool_arguments: str | None = None,
         tool_files: list[str] | None = None,
         tool_error: str | None = None,
-        round_index: int | None = None,
     ) -> MessageStreamResponse:
         """
         Message to stream response.
@@ -237,7 +236,6 @@ class MessageCycleManager:
         :param tool_arguments: accumulated tool arguments JSON
         :param tool_files: file IDs produced by tool
         :param tool_error: error message if tool failed
-        :param round_index: current iteration round
         :return:
         """
         with Session(db.engine, expire_on_commit=False) as session:
@@ -256,7 +254,6 @@ class MessageCycleManager:
             tool_arguments=tool_arguments,
             tool_files=tool_files,
             tool_error=tool_error,
-            round_index=round_index,
         )
 
     def message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:

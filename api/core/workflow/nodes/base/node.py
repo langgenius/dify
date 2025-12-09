@@ -598,7 +598,6 @@ class Node(Generic[NodeDataT]):
             chunk=event.chunk,
             is_final=event.is_final,
             chunk_type=ChunkType.THOUGHT,
-            round_index=event.round_index,
         )
 
     @_dispatch.register

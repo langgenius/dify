@@ -277,7 +277,7 @@ class LLMNode(Node[LLMNodeData]):
             structured_output: LLMStructuredOutput | None = None
 
             for event in generator:
-                if isinstance(event, StreamChunkEvent):
+                if isinstance(event, (StreamChunkEvent, ThoughtChunkEvent)):
                     yield event
                 elif isinstance(event, ModelInvokeCompletedEvent):
                     # Raw text
@@ -337,6 +337,16 @@ class LLMNode(Node[LLMNodeData]):
             # Send final chunk event to indicate streaming is complete
             yield StreamChunkEvent(
                 selector=[self._node_id, "text"],
+                chunk="",
+                is_final=True,
+            )
+            yield StreamChunkEvent(
+                selector=[self._node_id, "generation", "content"],
+                chunk="",
+                is_final=True,
+            )
+            yield ThoughtChunkEvent(
+                selector=[self._node_id, "generation", "thought"],
                 chunk="",
                 is_final=True,
             )
@@ -470,6 +480,8 @@ class LLMNode(Node[LLMNodeData]):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         full_text_buffer = io.StringIO()
+        think_parser = llm_utils.ThinkTagStreamParser()
+        reasoning_chunks: list[str] = []
 
         # Initialize streaming metrics tracking
         start_time = request_start_time if request_start_time is not None else time.perf_counter()
@@ -498,11 +510,31 @@ class LLMNode(Node[LLMNodeData]):
                             has_content = True
 
                         full_text_buffer.write(text_part)
+                        # Text output: always forward raw chunk (keep <think> tags intact)
                         yield StreamChunkEvent(
                             selector=[node_id, "text"],
                             chunk=text_part,
                             is_final=False,
                         )
+
+                        # Generation output: split out thoughts, forward only non-thought content chunks
+                        for kind, segment in think_parser.process(text_part):
+                            if not segment:
+                                continue
+
+                            if kind == "thought":
+                                reasoning_chunks.append(segment)
+                                yield ThoughtChunkEvent(
+                                    selector=[node_id, "generation", "thought"],
+                                    chunk=segment,
+                                    is_final=False,
+                                )
+                            else:
+                                yield StreamChunkEvent(
+                                    selector=[node_id, "generation", "content"],
+                                    chunk=segment,
+                                    is_final=False,
+                                )
 
                     # Update the whole metadata
                     if not model and result.model:
@@ -518,16 +550,35 @@ class LLMNode(Node[LLMNodeData]):
         except OutputParserError as e:
             raise LLMNodeError(f"Failed to parse structured output: {e}")
 
+        for kind, segment in think_parser.flush():
+            if not segment:
+                continue
+            if kind == "thought":
+                reasoning_chunks.append(segment)
+                yield ThoughtChunkEvent(
+                    selector=[node_id, "generation", "thought"],
+                    chunk=segment,
+                    is_final=False,
+                )
+            else:
+                yield StreamChunkEvent(
+                    selector=[node_id, "generation", "content"],
+                    chunk=segment,
+                    is_final=False,
+                )
+
         # Extract reasoning content from <think> tags in the main text
         full_text = full_text_buffer.getvalue()
 
         if reasoning_format == "tagged":
             # Keep <think> tags in text for backward compatibility
             clean_text = full_text
-            reasoning_content = ""
+            reasoning_content = "".join(reasoning_chunks)
         else:
             # Extract clean text and reasoning from <think> tags
             clean_text, reasoning_content = LLMNode._split_reasoning(full_text, reasoning_format)
+            if reasoning_chunks and not reasoning_content:
+                reasoning_content = "".join(reasoning_chunks)
 
         # Calculate streaming metrics
         end_time = time.perf_counter()
@@ -1398,8 +1449,6 @@ class LLMNode(Node[LLMNodeData]):
         finish_reason = None
         agent_result: AgentResult | None = None
 
-        # Track current round for ThoughtChunkEvent
-        current_round = 1
         think_parser = llm_utils.ThinkTagStreamParser()
         reasoning_chunks: list[str] = []
 
@@ -1431,12 +1480,6 @@ class LLMNode(Node[LLMNodeData]):
                     else:
                         agent_logs.append(agent_log_event)
 
-                    # Extract round number from ROUND log type
-                    if output.log_type == AgentLog.LogType.ROUND:
-                        round_index = output.data.get("round_index")
-                        if isinstance(round_index, int):
-                            current_round = round_index
-
                     # Emit tool call events when tool call starts
                     if output.log_type == AgentLog.LogType.TOOL_CALL and output.status == AgentLog.LogStatus.START:
                         tool_name = output.data.get("tool_name", "")
@@ -1450,26 +1493,34 @@ class LLMNode(Node[LLMNodeData]):
                             tool_call_id=tool_call_id,
                             tool_name=tool_name,
                             tool_arguments=tool_arguments,
-                            is_final=True,
+                            is_final=False,
                         )
 
-                    # Emit tool result events when tool call completes
-                    if output.log_type == AgentLog.LogType.TOOL_CALL and output.status == AgentLog.LogStatus.SUCCESS:
+                    # Emit tool result events when tool call completes (both success and error)
+                    if output.log_type == AgentLog.LogType.TOOL_CALL and output.status != AgentLog.LogStatus.START:
                         tool_name = output.data.get("tool_name", "")
                         tool_output = output.data.get("output", "")
                         tool_call_id = output.data.get("tool_call_id", "")
                         tool_files = []
                         tool_error = None
 
-                        # Extract file IDs if present
+                        # Extract file IDs if present (only for success case)
                         files_data = output.data.get("files")
                         if files_data and isinstance(files_data, list):
                             tool_files = files_data
 
-                        # Check for error in meta
-                        meta = output.data.get("meta")
-                        if meta and isinstance(meta, dict) and meta.get("error"):
-                            tool_error = meta.get("error")
+                        # Check for error from multiple sources
+                        if output.status == AgentLog.LogStatus.ERROR:
+                            # Priority: output.error > data.error > meta.error
+                            tool_error = output.error or output.data.get("error")
+                            meta = output.data.get("meta")
+                            if not tool_error and meta and isinstance(meta, dict):
+                                tool_error = meta.get("error")
+                        else:
+                            # For success case, check meta for potential errors
+                            meta = output.data.get("meta")
+                            if meta and isinstance(meta, dict) and meta.get("error"):
+                                tool_error = meta.get("error")
 
                         yield ToolResultChunkEvent(
                             selector=[self._node_id, "generation", "tool_results"],
@@ -1478,7 +1529,7 @@ class LLMNode(Node[LLMNodeData]):
                             tool_name=tool_name,
                             tool_files=tool_files,
                             tool_error=tool_error,
-                            is_final=True,
+                            is_final=False,
                         )
 
                 elif isinstance(output, LLMResultChunk):
@@ -1502,7 +1553,6 @@ class LLMNode(Node[LLMNodeData]):
                                 yield ThoughtChunkEvent(
                                     selector=[self._node_id, "generation", "thought"],
                                     chunk=segment,
-                                    round_index=current_round,
                                     is_final=False,
                                 )
                             else:
@@ -1548,7 +1598,6 @@ class LLMNode(Node[LLMNodeData]):
                 yield ThoughtChunkEvent(
                     selector=[self._node_id, "generation", "thought"],
                     chunk=segment,
-                    round_index=current_round,
                     is_final=False,
                 )
             else:
@@ -1580,7 +1629,27 @@ class LLMNode(Node[LLMNodeData]):
         yield ThoughtChunkEvent(
             selector=[self._node_id, "generation", "thought"],
             chunk="",
-            round_index=current_round,
+            is_final=True,
+        )
+
+        # Close tool_calls stream (already sent via ToolCallChunkEvent)
+        yield ToolCallChunkEvent(
+            selector=[self._node_id, "generation", "tool_calls"],
+            chunk="",
+            tool_call_id="",
+            tool_name="",
+            tool_arguments="",
+            is_final=True,
+        )
+
+        # Close tool_results stream (already sent via ToolResultChunkEvent)
+        yield ToolResultChunkEvent(
+            selector=[self._node_id, "generation", "tool_results"],
+            chunk="",
+            tool_call_id="",
+            tool_name="",
+            tool_files=[],
+            tool_error=None,
             is_final=True,
         )
 

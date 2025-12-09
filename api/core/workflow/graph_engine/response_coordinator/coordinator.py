@@ -441,7 +441,6 @@ class ResponseStreamCoordinator:
                                     tool_arguments=event.tool_arguments,
                                     tool_files=event.tool_files,
                                     tool_error=event.tool_error,
-                                    round_index=event.round_index,
                                 )
                                 events.append(updated_event)
                             else:

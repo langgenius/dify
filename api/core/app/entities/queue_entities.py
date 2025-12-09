@@ -218,10 +218,6 @@ class QueueTextChunkEvent(AppQueueEvent):
     tool_error: str | None = None
     """error message if tool failed"""
 
-    # Thought fields (when chunk_type == THOUGHT)
-    round_index: int | None = None
-    """current iteration round"""
-
 
 class QueueAgentMessageEvent(AppQueueEvent):
     """

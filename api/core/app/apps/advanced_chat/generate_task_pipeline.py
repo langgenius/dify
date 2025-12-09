@@ -542,7 +542,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tool_arguments=event.tool_arguments,
             tool_files=event.tool_files,
             tool_error=event.tool_error,
-            round_index=event.round_index,
         )
 
     def _handle_iteration_start_event(

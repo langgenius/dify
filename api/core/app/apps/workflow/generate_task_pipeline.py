@@ -497,7 +497,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tool_arguments=event.tool_arguments,
             tool_files=event.tool_files,
             tool_error=event.tool_error,
-            round_index=event.round_index,
         )
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
@@ -670,7 +669,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tool_arguments: str | None = None,
         tool_files: list[str] | None = None,
         tool_error: str | None = None,
-        round_index: int | None = None,
     ) -> TextChunkStreamResponse:
         """
         Handle completed event.
@@ -690,7 +688,6 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 tool_arguments=tool_arguments,
                 tool_files=tool_files or [],
                 tool_error=tool_error,
-                round_index=round_index,
             ),
         )
 

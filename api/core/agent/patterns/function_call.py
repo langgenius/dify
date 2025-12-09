@@ -51,7 +51,7 @@ class FunctionCallStrategy(AgentPattern):
                 label=f"ROUND {iteration_step}",
                 log_type=AgentLog.LogType.ROUND,
                 status=AgentLog.LogStatus.START,
-                data={"round_index": iteration_step},
+                data={},
             )
             yield round_log
             # On last iteration, remove tools to force final answer
@@ -249,25 +249,47 @@ class FunctionCallStrategy(AgentPattern):
         )
         yield tool_call_log
 
-        # Invoke tool using base class method
-        response_content, tool_files, tool_invoke_meta = self._invoke_tool(tool_instance, tool_args, tool_name)
+        # Invoke tool using base class method with error handling
+        try:
+            response_content, tool_files, tool_invoke_meta = self._invoke_tool(tool_instance, tool_args, tool_name)
 
-        yield self._finish_log(
-            tool_call_log,
-            data={
-                **tool_call_log.data,
-                "output": response_content,
-                "files": len(tool_files),
-                "meta": tool_invoke_meta.to_dict() if tool_invoke_meta else None,
-            },
-        )
-        final_content = response_content or "Tool executed successfully"
-        # Add tool response to messages
-        messages.append(
-            ToolPromptMessage(
-                content=final_content,
-                tool_call_id=tool_call_id,
-                name=tool_name,
+            yield self._finish_log(
+                tool_call_log,
+                data={
+                    **tool_call_log.data,
+                    "output": response_content,
+                    "files": len(tool_files),
+                    "meta": tool_invoke_meta.to_dict() if tool_invoke_meta else None,
+                },
             )
-        )
-        return response_content, tool_files, tool_invoke_meta
+            final_content = response_content or "Tool executed successfully"
+            # Add tool response to messages
+            messages.append(
+                ToolPromptMessage(
+                    content=final_content,
+                    tool_call_id=tool_call_id,
+                    name=tool_name,
+                )
+            )
+            return response_content, tool_files, tool_invoke_meta
+        except Exception as e:
+            # Tool invocation failed, yield error log
+            error_message = str(e)
+            tool_call_log.status = AgentLog.LogStatus.ERROR
+            tool_call_log.error = error_message
+            tool_call_log.data = {
+                **tool_call_log.data,
+                "error": error_message,
+            }
+            yield tool_call_log
+
+            # Add error message to conversation
+            error_content = f"Tool execution failed: {error_message}"
+            messages.append(
+                ToolPromptMessage(
+                    content=error_content,
+                    tool_call_id=tool_call_id,
+                    name=tool_name,
+                )
+            )
+            return error_content, [], None

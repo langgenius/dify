@@ -134,10 +134,6 @@ class MessageStreamResponse(StreamResponse):
     tool_error: str | None = None
     """error message if tool failed"""
 
-    # Thought fields (when chunk_type == "thought")
-    round_index: int | None = None
-    """current iteration round"""
-
 
 class MessageAudioStreamResponse(StreamResponse):
     """
@@ -646,10 +642,6 @@ class TextChunkStreamResponse(StreamResponse):
         """file IDs produced by tool"""
         tool_error: str | None = None
         """error message if tool failed"""
-
-        # Thought fields (when chunk_type == THOUGHT)
-        round_index: int | None = None
-        """current iteration round"""
 
     event: StreamEvent = StreamEvent.TEXT_CHUNK
     data: Data
