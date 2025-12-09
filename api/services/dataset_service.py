@@ -2356,7 +2356,15 @@ class DocumentService:
 
         cut_length = 18
         cut_name = documents[0].name[:cut_length]
-        dataset.name = cut_name + "..."
+        proposed_name = cut_name + "..."
+
+        # Check for duplicate names and auto-increment if needed
+        existing_dataset_names = db.session.scalars(
+            select(Dataset.name).where(Dataset.tenant_id == tenant_id, Dataset.name.like(f"{proposed_name}%"))
+        ).all()
+        if existing_dataset_names:
+            proposed_name = generate_incremental_name(existing_dataset_names, proposed_name)
+        dataset.name = proposed_name
         dataset.description = "useful for when you want to answer queries about the " + documents[0].name
         db.session.commit()
 
