@@ -25,6 +25,9 @@ const translation = {
     encourageShort: 'Upgrade',
   },
   viewBilling: 'Manage billing and subscriptions',
+  viewBillingTitle: 'Billing and Subscriptions',
+  viewBillingDescription: 'Manage payment methods, invoices, and subscription changes',
+  viewBillingAction: 'Manage',
   buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe',
   plansCommon: {
     title: {
