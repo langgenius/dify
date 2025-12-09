@@ -72,11 +72,11 @@ class DatasetsHitTestingBase:
         try:
             response = HitTestingService.retrieve(
                 dataset=dataset,
-                query=args["query"],
+                query=args.get("query"),
                 account=current_user,
-                retrieval_model=args["retrieval_model"],
-                external_retrieval_model=args["external_retrieval_model"],
-                attachment_ids=args["attachment_ids"],
+                retrieval_model=args.get("retrieval_model"),
+                external_retrieval_model=args.get("external_retrieval_model"),
+                attachment_ids=args.get("attachment_ids"),
                 limit=10,
             )
             return {"query": response["query"], "records": marshal(response["records"], hit_testing_record_fields)}
