@@ -217,13 +217,19 @@ class Vector:
                 batch = file_documents[i : i + batch_size]
                 batch_start = time.time()
                 logger.info("Processing batch %s/%s (%s files)", i // batch_size + 1, total_batches, len(batch))
+
+                # Batch query all upload files to avoid N+1 queries
+                attachment_ids = [doc.metadata["doc_id"] for doc in batch]
+                stmt = select(UploadFile).where(UploadFile.id.in_(attachment_ids))
+                upload_files = db.session.scalars(stmt).all()
+                upload_file_map = {str(f.id): f for f in upload_files}
+
                 file_base64_list = []
                 real_batch = []
                 for document in batch:
                     attachment_id = document.metadata["doc_id"]
                     doc_type = document.metadata["doc_type"]
-                    # Query file info within db.session context to ensure thread-safe access
-                    upload_file = db.session.query(UploadFile).where(UploadFile.id == attachment_id).first()
+                    upload_file = upload_file_map.get(attachment_id)
                     if upload_file:
                         blob = storage.load_once(upload_file.key)
                         file_base64_str = base64.b64encode(blob).decode()

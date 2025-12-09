@@ -1550,13 +1550,16 @@ class SegmentAttachmentBinding(Base):
     __tablename__ = "segment_attachment_bindings"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="segment_attachment_binding_pkey"),
-        sa.Index("segment_attachment_binding_tenant_idx", "tenant_id"),
-        sa.Index("segment_attachment_binding_dataset_idx", "dataset_id"),
-        sa.Index("segment_attachment_binding_document_idx", "document_id"),
-        sa.Index("segment_attachment_binding_segment_idx", "segment_id"),
+        sa.Index(
+            "segment_attachment_binding_tenant_dataset_document_segment_idx",
+            "tenant_id",
+            "dataset_id",
+            "document_id",
+            "segment_id",
+        ),
         sa.Index("segment_attachment_binding_attachment_idx", "attachment_id"),
     )
-    id: Mapped[str] = mapped_column(StringUUID, server_default=sa.text("uuid_generate_v4()"))
+    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()))
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     dataset_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     document_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

@@ -23,6 +23,7 @@ from libs import helper
 from models import Account, Tenant
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from services.account_service import AccountService
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 
@@ -275,12 +276,10 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     attachments.append(file_document)
                 doc.attachments = attachments
             else:
-                account = db.session.query(Account).where(Account.id == document.created_by).first()
-                if account:
-                    tenant = db.session.query(Tenant).where(Tenant.id == dataset.tenant_id).first()
-                    if tenant:
-                        account.current_tenant = tenant
-                    doc.attachments = self._get_content_files(doc, current_user=account)
+                account = AccountService.load_user(document.created_by)
+                if not account:
+                    raise ValueError("Invalid account")
+                doc.attachments = self._get_content_files(doc, current_user=account)
             documents.append(doc)
         if documents:
             # update document parent mode
