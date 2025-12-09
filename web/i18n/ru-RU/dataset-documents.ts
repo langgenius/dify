@@ -401,6 +401,7 @@ const translation = {
     newChildChunk: 'Новый дочерний чанк',
     keywordEmpty: 'Ключевое слово не может быть пустым',
     keywordDuplicate: 'Ключевое слово уже существует',
+    allFilesUploaded: 'Все файлы должны быть загружены перед сохранением',
   },
 }
 

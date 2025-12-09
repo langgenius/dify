@@ -8,6 +8,7 @@ const translation = {
       source: 'ソース',
       text: 'テキスト',
       time: '時間',
+      queryContent: 'クエリ内容',
     },
   },
   input: {
@@ -29,6 +30,12 @@ const translation = {
   hitChunks: '{{num}}個の子チャンクをヒット',
   open: '開く',
   keyword: 'キーワード',
+  imageUploader: {
+    tip: '画像をアップロードまたはドラッグ＆ドロップしてください（各{{batchCount}}、{{size}}MBまで）',
+    tooltip: '画像をアップロード（最大 {{batchCount}}、各 {{size}}MB）',
+    dropZoneTip: 'ファイルをここにドラッグしてアップロード',
+    singleChunkAttachmentLimitTooltip: '単一チャンクの添付ファイルの数は {{limit}} を超えることはできません',
+  },
 }
 
 export default translation

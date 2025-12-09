@@ -243,6 +243,8 @@ const translation = {
   multimodal: '多模态',
   imageUploader: {
     tip: '支持 {{supportTypes}} (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)',
+    button: '拖拽文件或文件夹，或',
+    browse: '浏览',
   },
 }
 

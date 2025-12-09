@@ -30,6 +30,7 @@ const translation = {
       learnMore: '詳細はこちら',
       description: ' 検索方法についての詳細',
       longDescription: ' 検索方法についての詳細については、いつでもナレッジベースの設定で変更できます。',
+      multiModalTip: '埋め込みモデルがマルチモーダルに対応している場合、より高い性能を得るためにマルチモーダル再ランキングモデルを選択してください。',
     },
     save: '保存',
     externalKnowledgeID: '外部ナレッジベース ID',

@@ -236,6 +236,16 @@ const translation = {
       apiReference: 'APIリファレンス',
     },
   },
+  cornerLabel: {
+    unavailable: '利用不可',
+    pipeline: 'パイプライン',
+  },
+  multimodal: 'マルチモーダル',
+  imageUploader: {
+    button: 'ファイルまたはフォルダをドラッグアンドドロップ、または',
+    browse: '閲覧',
+    tip: '{{supportTypes}}（最大 {{batchCount}}、各 {{size}}MB）',
+  },
 }
 
 export default translation
