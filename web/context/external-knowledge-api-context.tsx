@@ -18,7 +18,7 @@ export type ExternalKnowledgeApiProviderProps = {
 }
 
 export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({ children }) => {
-  const { data, refetch, isLoading } = useExternalKnowledgeApiList()
+  const { data, refetch: mutateExternalKnowledgeApis, isLoading } = useExternalKnowledgeApiList()
 
   const mutateExternalKnowledgeApis = useCallback(() => {
     return refetch().then(res => res.data)
