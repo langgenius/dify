@@ -138,7 +138,7 @@ export const useProviderCredentialsAndLoadBalancing = (
 
 export const useModelList = (type: ModelTypeEnum) => {
   const { data, refetch, isPending } = useQuery({
-    queryKey: ['model-list', type],
+    queryKey: commonQueryKeys.modelList(type),
     queryFn: () => fetchModelList(`/workspaces/current/models/model-types/${type}`),
   })
 
@@ -217,7 +217,7 @@ export const useUpdateModelList = () => {
   const queryClient = useQueryClient()
 
   const updateModelList = useCallback((type: ModelTypeEnum) => {
-    queryClient.invalidateQueries({ queryKey: ['model-list', type] })
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(type) })
   }, [queryClient])
 
   return updateModelList
