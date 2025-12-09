@@ -1,4 +1,3 @@
-import type { Fetcher } from 'swr'
 import { get, post } from './base'
 import type {
   AgentLogDetailRequest,
@@ -22,59 +21,33 @@ import type {
 } from '@/models/log'
 import type { NodeTracingListResponse } from '@/types/workflow'
 
-export const fetchConversationList: Fetcher<ConversationListResponse, { name: string; appId: string; params?: Record<string, any> }> = ({ appId, params }) => {
-  return get<ConversationListResponse>(`/console/api/apps/${appId}/messages`, params)
-}
+export const fetchConversationList = ({ appId, params }: { name: string; appId: string; params?: Record<string, any> }): Promise<ConversationListResponse> => get<ConversationListResponse>(`/console/api/apps/${appId}/messages`, params)
 
 // (Text Generation Application) Session List
-export const fetchCompletionConversations: Fetcher<CompletionConversationsResponse, { url: string; params?: CompletionConversationsRequest }> = ({ url, params }) => {
-  return get<CompletionConversationsResponse>(url, { params })
-}
+export const fetchCompletionConversations = ({ url, params }: { url: string; params?: CompletionConversationsRequest }): Promise<CompletionConversationsResponse> => get<CompletionConversationsResponse>(url, { params })
 
 // (Text Generation Application) Session Detail
-export const fetchCompletionConversationDetail: Fetcher<CompletionConversationFullDetailResponse, { url: string }> = ({ url }) => {
-  return get<CompletionConversationFullDetailResponse>(url, {})
-}
+export const fetchCompletionConversationDetail = ({ url }: { url: string }): Promise<CompletionConversationFullDetailResponse> => get<CompletionConversationFullDetailResponse>(url, {})
 
 // (Chat Application) Session List
-export const fetchChatConversations: Fetcher<ChatConversationsResponse, { url: string; params?: ChatConversationsRequest }> = ({ url, params }) => {
-  return get<ChatConversationsResponse>(url, { params })
-}
+export const fetchChatConversations = ({ url, params }: { url: string; params?: ChatConversationsRequest }): Promise<ChatConversationsResponse> => get<ChatConversationsResponse>(url, { params })
 
 // (Chat Application) Session Detail
-export const fetchChatConversationDetail: Fetcher<ChatConversationFullDetailResponse, { url: string }> = ({ url }) => {
-  return get<ChatConversationFullDetailResponse>(url, {})
-}
+export const fetchChatConversationDetail = ({ url }: { url: string }): Promise<ChatConversationFullDetailResponse> => get<ChatConversationFullDetailResponse>(url, {})
 
 // (Chat Application) Message list in one session
-export const fetchChatMessages: Fetcher<ChatMessagesResponse, { url: string; params: ChatMessagesRequest }> = ({ url, params }) => {
-  return get<ChatMessagesResponse>(url, { params })
-}
+export const fetchChatMessages = ({ url, params }: { url: string; params: ChatMessagesRequest }): Promise<ChatMessagesResponse> => get<ChatMessagesResponse>(url, { params })
 
-export const updateLogMessageFeedbacks: Fetcher<LogMessageFeedbacksResponse, { url: string; body: LogMessageFeedbacksRequest }> = ({ url, body }) => {
-  return post<LogMessageFeedbacksResponse>(url, { body })
-}
+export const updateLogMessageFeedbacks = ({ url, body }: { url: string; body: LogMessageFeedbacksRequest }): Promise<LogMessageFeedbacksResponse> => post<LogMessageFeedbacksResponse>(url, { body })
 
-export const updateLogMessageAnnotations: Fetcher<LogMessageAnnotationsResponse, { url: string; body: LogMessageAnnotationsRequest }> = ({ url, body }) => {
-  return post<LogMessageAnnotationsResponse>(url, { body })
-}
+export const updateLogMessageAnnotations = ({ url, body }: { url: string; body: LogMessageAnnotationsRequest }): Promise<LogMessageAnnotationsResponse> => post<LogMessageAnnotationsResponse>(url, { body })
 
-export const fetchAnnotationsCount: Fetcher<AnnotationsCountResponse, { url: string }> = ({ url }) => {
-  return get<AnnotationsCountResponse>(url)
-}
+export const fetchAnnotationsCount = ({ url }: { url: string }): Promise<AnnotationsCountResponse> => get<AnnotationsCountResponse>(url)
 
-export const fetchWorkflowLogs: Fetcher<WorkflowLogsResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<WorkflowLogsResponse>(url, { params })
-}
+export const fetchWorkflowLogs = ({ url, params }: { url: string; params: Record<string, any> }): Promise<WorkflowLogsResponse> => get<WorkflowLogsResponse>(url, { params })
 
-export const fetchRunDetail = (url: string) => {
-  return get<WorkflowRunDetailResponse>(url)
-}
+export const fetchRunDetail = (url: string): Promise<WorkflowRunDetailResponse> => get<WorkflowRunDetailResponse>(url)
 
-export const fetchTracingList: Fetcher<NodeTracingListResponse, { url: string }> = ({ url }) => {
-  return get<NodeTracingListResponse>(url)
-}
+export const fetchTracingList = ({ url }: { url: string }): Promise<NodeTracingListResponse> => get<NodeTracingListResponse>(url)
 
-export const fetchAgentLogDetail = ({ appID, params }: { appID: string; params: AgentLogDetailRequest }) => {
-  return get<AgentLogDetailResponse>(`/apps/${appID}/agent/logs`, { params })
-}
+export const fetchAgentLogDetail = ({ appID, params }: { appID: string; params: AgentLogDetailRequest }): Promise<AgentLogDetailResponse> => get<AgentLogDetailResponse>(`/apps/${appID}/agent/logs`, { params })
