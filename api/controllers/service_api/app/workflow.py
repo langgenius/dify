@@ -179,7 +179,7 @@ class WorkflowRunApi(Resource):
 
 @service_api_ns.route("/workflows/<string:identifier>/run")
 class WorkflowRunByIdentifierApi(Resource):
-    @service_api_ns.expect(workflow_run_parser)
+    @service_api_ns.expect(service_api_ns.models[WorkflowRunPayload.__name__])
     @service_api_ns.doc("run_workflow_by_identifier")
     @service_api_ns.doc(description="Execute a specific workflow by ID or alias")
     @service_api_ns.doc(params={"identifier": "Workflow ID or alias to execute"})
