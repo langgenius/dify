@@ -116,31 +116,31 @@ const translation = {
         },
 
         way2: {
-          name: 'Write client-side code to call the API and deploy it to a server',
-          operation: 'Documentation',
+          name: 'كتابة كود من جانب العميل لاستدعاء API ونشره على خادم',
+          operation: 'التوثيق',
         },
       },
     },
     apiInfo: {
-      title: 'Backend Service API',
-      explanation: 'Easily integrated into your application',
-      accessibleAddress: 'Service API Endpoint',
-      doc: 'API Reference',
+      title: 'واجهة برمجة تطبيقات خدمة الخلفية',
+      explanation: 'سهلة الدمج في تطبيقك',
+      accessibleAddress: 'نقطة نهاية واجهة برمجة تطبيقات الخدمة',
+      doc: 'مرجع API',
     },
     triggerInfo: {
-      title: 'Triggers',
-      explanation: 'Workflow trigger management',
-      triggersAdded: '{{count}} Triggers added',
-      noTriggerAdded: 'No trigger added',
-      triggerStatusDescription: 'Trigger node status appears here. (May already exist in draft, takes effect after publishing)',
-      learnAboutTriggers: 'Learn about Triggers',
+      title: 'المشغلات',
+      explanation: 'إدارة مشغلات سير العمل',
+      triggersAdded: 'تمت إضافة {{count}} مشغلات',
+      noTriggerAdded: 'لم تتم إضافة أي مشغل',
+      triggerStatusDescription: 'تظهر حالة عقدة المشغل هنا. (قد تكون موجودة بالفعل في المسودة، وتدخل حيز التنفيذ بعد النشر)',
+      learnAboutTriggers: 'تعرف على المشغلات',
     },
     status: {
       running: 'في الخدمة',
       disable: 'تعطيل',
     },
     disableTooltip: {
-      triggerMode: 'The {{feature}} feature is not supported in Trigger Node mode.',
+      triggerMode: 'ميزة {{feature}} غير مدعومة في وضع عقدة المشغل.',
     },
   },
   analysis: {
@@ -152,8 +152,8 @@ const translation = {
       explanation: 'عدد تفاعلات الذكاء الاصطناعي اليومية؛ يمنع هندسة/تصحيح المطالبة.',
     },
     totalConversations: {
-      title: 'Total Conversations',
-      explanation: 'Daily AI conversations count; prompt engineering/debugging excluded.',
+      title: 'إجمالي المحادثات',
+      explanation: 'عدد المحادثات اليومية للذكاء الاصطناعي؛ باستثناء هندسة/تصحيح المطالبة.',
     },
     activeUsers: {
       title: 'المستخدمون النشطون',

@@ -61,7 +61,7 @@ const translation = {
   selectExternalKnowledgeAPI: {
     placeholder: 'اختر واجهة برمجة تطبيقات معرفة خارجية',
   },
-  connectDataset: 'التصال بقاعدة معرفة خارجية',
+  connectDataset: 'الاتصال بقاعدة معرفة خارجية',
   connectDatasetIntro: {
     title: 'كيفية الاتصال بقاعدة معرفة خارجية',
     content: {
@@ -144,7 +144,7 @@ const translation = {
     semantic_search: 'VECTOR',
     full_text_search: 'FULL TEXT',
     hybrid_search: 'HYBRID',
-    invertedIndex: 'INVERTED',
+    invertedIndex: 'فهرس معكوس',
   },
   defaultRetrievalTip: 'يستخدم الاسترجاع متعدد المسارات افتراضيًا. يتم استرجاع المعرفة من قواعد معرفة متعددة ثم إعادة ترتيبها.',
   mixtureHighQualityAndEconomicTip: 'مطلوب نموذج إعادة الترتيب لخلط قواعد المعرفة عالية الجودة والاقتصادية.',

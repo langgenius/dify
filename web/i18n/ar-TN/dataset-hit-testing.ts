@@ -25,7 +25,7 @@ const translation = {
   noRecentTip: 'لا توجد نتائج استعلام حديثة هنا',
   viewChart: 'عرض مخطط VECTOR',
   viewDetail: 'عرض التفاصيل',
-  chunkDetail: 'تفاضيل المقطع',
+  chunkDetail: 'تفاصيل المقطع',
   hitChunks: 'إصابة {{num}} مقاطع فرعية',
   open: 'فتح',
   keyword: 'الكلمات الرئيسية',

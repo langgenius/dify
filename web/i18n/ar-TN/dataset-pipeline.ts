@@ -20,7 +20,7 @@ const translation = {
     editInfo: 'تعديل المعلومات',
     useTemplate: 'استخدام سير عمل المعرفة هذا',
     backToDataSource: 'العودة إلى مصدر البيانات',
-    process: 'عملية',
+    process: 'معالجة',
     dataSource: 'مصدر البيانات',
     saveAndProcess: 'حفظ ومعالجة',
     preview: 'معاينة',
