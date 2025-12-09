@@ -49,6 +49,7 @@ select = [
     "S301", # suspicious-pickle-usage, disallow use of `pickle` and its wrappers.
     "S302", # suspicious-marshal-usage, disallow use of `marshal` module
     "S311", # suspicious-non-cryptographic-random-usage,
+    "TID",   # flake8-tidy-imports
 
 ]
 
@@ -84,6 +85,7 @@ ignore = [
     "SIM113",  # enumerate-for-loop
     "SIM117",  # multiple-with-statements
     "SIM210",  # if-expr-with-true-false
+    "TID252",  # allow relative imports from parent modules
 ]
 
 [lint.per-file-ignores]
@@ -112,3 +114,11 @@ allowed-unused-imports = [
     "tests.integration_tests",
     "tests.unit_tests",
 ]
+
+[lint.flake8-tidy-imports]
+
+[lint.flake8-tidy-imports.banned-api."flask_restx.reqparse"]
+msg = "Use Pydantic payload/query models instead of reqparse."
+
+[lint.flake8-tidy-imports.banned-api."flask_restx.reqparse.RequestParser"]
+msg = "Use Pydantic payload/query models instead of reqparse."
