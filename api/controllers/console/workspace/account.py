@@ -273,11 +273,15 @@ class AccountInterfaceLanguageApi(Resource):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
         logger = logging.getLogger(__name__)
-        logger.info('Interface-language payload received: %s', payload)
+        # Temporary debug logs for interface-language validation — gated behind DEBUG
+        if dify_config.DEBUG:
+            logger.debug('Interface-language payload received: %s', payload)
         try:
             args = AccountInterfaceLanguagePayload.model_validate(payload)
         except Exception as e:
-            logger.error('Validation error for interface-language payload: %s; error: %s', payload, str(e))
+            if dify_config.DEBUG:
+                logger.debug('Validation error for interface-language payload: %s; error: %s', payload, str(e))
+            # Re-raise the exception for standard error handling
             raise
 
         updated_account = AccountService.update_account(current_user, interface_language=args.interface_language)
