@@ -18,6 +18,8 @@ const translation = {
       tokens: 'الرموز',
       user: 'المستخدم',
       version: 'الإصدار',
+      updatedTime: 'الوقت المحدث',
+      triggered_from: 'محفّز بواسطة',
     },
     pagination: {
       previous: 'السابق',
@@ -51,6 +53,7 @@ const translation = {
     },
     variables: 'المتغيرات',
     uploadImages: 'الصور المحملة',
+    modelParams: 'معلمات النموذج',
   },
   filter: {
     period: {
@@ -63,18 +66,26 @@ const translation = {
       quarterToDate: 'الربع حتى الآن',
       yearToDate: 'السنة حتى الآن',
       allTime: 'كل الوقت',
+      last30days: 'آخر 30 يومًا',
+      custom: 'مخصص',
     },
     annotation: {
       all: 'الكل',
       annotated: 'تحسينات موصوفة ({{count}})',
       not_annotated: 'غير موصوفة',
     },
+    sortBy: 'رتب حسب:',
+    descending: 'تنازلي',
+    ascending: 'تصاعدي',
   },
   workflowTitle: 'سجلات سير العمل',
   workflowSubtitle: 'سجل تفاصيل تشغيل سير العمل.',
   runDetail: {
     title: 'سجل المحادثة',
     workflowTitle: 'تفاصيل السجل',
+    fileListLabel: 'تفاصيل الملف',
+    fileListDetail: 'تفاصيل',
+    testWithParams: 'اختبار مع المعلمات',
   },
   promptLog: 'سجل المطالبة',
   agentLog: 'سجل الوكيل',
@@ -95,7 +106,7 @@ const translation = {
     ragPipelineRun: 'تشغيل خط أنابيب RAG',
     ragPipelineDebugging: 'تصحيح أخطاء RAG',
   },
+  dateFormat: 'شهر/يوم/سنة',
 }
 
 export default translation
-

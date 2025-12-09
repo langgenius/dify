@@ -34,6 +34,7 @@ from controllers.console.wraps import (
     only_edition_cloud,
     setup_required,
 )
+import logging
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.datetime_utils import naive_utc_now
@@ -271,7 +272,13 @@ class AccountInterfaceLanguageApi(Resource):
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
-        args = AccountInterfaceLanguagePayload.model_validate(payload)
+        logger = logging.getLogger(__name__)
+        logger.info('Interface-language payload received: %s', payload)
+        try:
+            args = AccountInterfaceLanguagePayload.model_validate(payload)
+        except Exception as e:
+            logger.error('Validation error for interface-language payload: %s; error: %s', payload, str(e))
+            raise
 
         updated_account = AccountService.update_account(current_user, interface_language=args.interface_language)
 
