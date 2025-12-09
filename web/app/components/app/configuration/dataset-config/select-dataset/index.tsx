@@ -12,7 +12,7 @@ import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
-import { useInfiniteDatasets } from '@/service/use-datasets'
+import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
 
@@ -117,13 +117,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       className='w-[400px]'
       title={t('appDebug.feature.dataSet.selectTitle')}
     >
-      (isLoading && (
+      {(isLoading && datasets.length === 0) && (
         <div className='flex h-[200px]'>
           <Loading type='area' />
         </div>
       )}
 
-      {(!isLoading && hasNoData) && (
+      {hasNoData && (
         <div className='mt-6 flex h-[128px] items-center justify-center space-x-1  rounded-lg border text-[13px]'
           style={{
             background: 'rgba(0, 0, 0, 0.02)',

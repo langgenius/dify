@@ -33,7 +33,7 @@ import {
   useExternalKnowledgeBaseHitTesting,
   useHitTesting,
 } from '@/service/knowledge/use-hit-testing'
-import { useDatasetTestingRecords } from '@/service/use-datasets'
+import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
 
 const limit = 10
 

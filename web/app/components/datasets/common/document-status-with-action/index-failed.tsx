@@ -6,7 +6,7 @@ import StatusWithAction from './status-with-action'
 import { retryErrorDocs } from '@/service/datasets'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { noop } from 'lodash-es'
-import { useDatasetErrorDocs } from '@/service/use-datasets'
+import { useDatasetErrorDocs } from '@/service/knowledge/use-dataset'
 
 type Props = {
   datasetId: string

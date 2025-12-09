@@ -25,7 +25,7 @@ import Confirm from '@/app/components/base/confirm'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useAppContext } from '@/context/app-context'
 import { useAppApiKeys, useInvalidateAppApiKeys } from '@/service/use-apps'
-import { useDatasetApiKeys, useInvalidateDatasetApiKeys } from '@/service/use-datasets'
+import { useDatasetApiKeys, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
 
 type ISecretKeyModalProps = {
   isShow: boolean

@@ -38,7 +38,7 @@ import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import Divider from '@/app/components/base/divider'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from 'next/link'
-import { useProcessRule } from '@/service/use-datasets'
+import { useProcessRule } from '@/service/knowledge/use-dataset'
 
 type Props = {
   datasetId: string

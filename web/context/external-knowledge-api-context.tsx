@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useMemo } from 'react'
 import type { FC, ReactNode } from 'react'
 import type { ExternalAPIItem, ExternalAPIListResponse } from '@/models/datasets'
-import { useExternalKnowledgeApiList } from '@/service/use-datasets'
+import { useExternalKnowledgeApiList } from '@/service/knowledge/use-dataset'
 
 type ExternalKnowledgeApiContextType = {
   externalKnowledgeApiList: ExternalAPIItem[]
@@ -18,7 +18,7 @@ export type ExternalKnowledgeApiProviderProps = {
 }
 
 export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({ children }) => {
-  const { data, refetch: mutateExternalKnowledgeApis, isLoading } = useExternalKnowledgeApiList()
+  const { data, refetch, isLoading } = useExternalKnowledgeApiList()
 
   const mutateExternalKnowledgeApis = useCallback(() => {
     return refetch().then(res => res.data)

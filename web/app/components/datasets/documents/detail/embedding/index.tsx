@@ -22,7 +22,7 @@ import {
   pauseDocIndexing,
   resumeDocIndexing,
 } from '@/service/datasets'
-import { useProcessRule } from '@/service/use-datasets'
+import { useProcessRule } from '@/service/knowledge/use-dataset'
 
 type IEmbeddingDetailProps = {
   datasetId?: string
