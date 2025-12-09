@@ -24,6 +24,9 @@ const translation = {
     encourageShort: 'アップグレード',
   },
   viewBilling: '請求とサブスクリプションの管理',
+  viewBillingTitle: '請求とサブスクリプション',
+  viewBillingDescription: '支払い方法、請求書、サブスクリプションの変更の管理。',
+  viewBillingAction: '管理',
   buyPermissionDeniedTip: 'サブスクリプションするには、エンタープライズ管理者に連絡してください',
   plansCommon: {
     title: {

@@ -24,6 +24,9 @@ const translation = {
     encourageShort: '升级',
   },
   viewBilling: '管理账单及订阅',
+  viewBillingTitle: '账单与订阅',
+  viewBillingDescription: '管理支付方式、发票和订阅变更。',
+  viewBillingAction: '管理',
   buyPermissionDeniedTip: '请联系企业管理员订阅',
   plansCommon: {
     title: {
