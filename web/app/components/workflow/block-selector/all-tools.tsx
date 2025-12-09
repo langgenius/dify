@@ -316,7 +316,7 @@ const AllTools = ({
         {shouldShowMarketplaceFooter && (
           <Link
             className={marketplaceFooterClassName}
-            href={getMarketplaceUrl('', { category: 'tool' })}
+            href={getMarketplaceUrl('', { category: PluginCategoryEnum.tool })}
             target='_blank'
           >
             <span>{t('plugin.findMoreInMarketplace')}</span>
