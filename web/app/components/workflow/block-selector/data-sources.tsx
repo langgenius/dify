@@ -115,6 +115,7 @@ const DataSources = ({
             list={notInstalledPlugins}
             tags={[]}
             searchText={searchText}
+            category={PluginCategoryEnum.datasource}
             toolContentClassName={toolContentClassName}
           />
         )}

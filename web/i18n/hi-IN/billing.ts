@@ -210,6 +210,9 @@ const translation = {
     title: 'अधिक ट्रिगर इवेंट्स अनलॉक करने के लिए अपग्रेड करें',
     description: 'आप इस योजना के लिए वर्कफ़्लो इवेंट ट्रिगर्स की सीमा तक पहुँच चुके हैं।',
   },
+  viewBillingTitle: 'बिलिंग और सब्सक्रिप्शन',
+  viewBillingDescription: 'भुगतान के तरीकों, चालानों और सदस्यता में बदलावों का प्रबंधन करें',
+  viewBillingAction: 'प्रबंध करना',
 }
 
 export default translation

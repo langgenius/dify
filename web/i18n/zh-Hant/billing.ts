@@ -137,7 +137,7 @@ const translation = {
       name: 'Enterprise',
       description: '獲得大規模關鍵任務系統的完整功能和支援。',
       includesTitle: 'Team 計劃中的一切，加上：',
-      features: ['企業級可擴展部署解決方案', '商業許可授權', '專屬企業功能', '多工作區與企業管理', '單一登入', '由 Dify 合作夥伴協商的服務水平協議', '進階安全與控制', 'Dify 官方的更新與維護', '專業技術支援'],
+      features: ['企業級可擴展部署解決方案', '商業許可授權', '企業專屬功能', '多工作區與企業管理', '單一登入', '由 Dify 合作夥伴協商的服務水平協議', '進階安全與控管', 'Dify 官方更新與維護', '專業技術支援'],
       price: '自訂',
       btnText: '聯繫銷售',
       priceTip: '年度計費のみ',
@@ -199,6 +199,9 @@ const translation = {
     title: '升級以解鎖更多觸發事件',
     upgrade: '升級',
   },
+  viewBillingTitle: '帳單與訂閱',
+  viewBillingDescription: '管理付款方式、發票和訂閱變更',
+  viewBillingAction: '管理',
 }
 
 export default translation

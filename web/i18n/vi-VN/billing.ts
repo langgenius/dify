@@ -153,7 +153,7 @@ const translation = {
       includesTitle: 'Tính năng miễn phí:',
     },
     premium: {
-      features: ['Độ tin cậy tự quản lý bởi các nhà cung cấp đám mây khác nhau', 'Không gian làm việc đơn', 'Tùy chỉnh Logo & Thương hiệu WebApp', 'Hỗ trợ Email & Trò chuyện Ưu tiên'],
+      features: ['Độ tin cậy tự quản lý bởi các nhà cung cấp đám mây khác nhau', 'Không gian làm việc đơn', 'Tùy Chỉnh Logo & Thương Hiệu Ứng Dụng Web', 'Hỗ trợ Email & Trò chuyện Ưu tiên'],
       comingSoon: 'Hỗ trợ Microsoft Azure & Google Cloud Sẽ Đến Sớm',
       priceTip: 'Dựa trên Thị trường Đám mây',
       btnText: 'Nhận Premium trong',
@@ -199,6 +199,9 @@ const translation = {
     description: 'Bạn đã đạt đến giới hạn kích hoạt sự kiện quy trình cho gói này.',
     title: 'Nâng cấp để mở khóa thêm nhiều sự kiện kích hoạt',
   },
+  viewBillingTitle: 'Thanh toán và Đăng ký',
+  viewBillingDescription: 'Quản lý phương thức thanh toán, hóa đơn và thay đổi đăng ký',
+  viewBillingAction: 'Quản lý',
 }
 
 export default translation
