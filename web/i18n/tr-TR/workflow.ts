@@ -543,6 +543,7 @@ const translation = {
         icon: 'Parça simgesi',
         url: 'Parça URL\'si',
         metadata: 'Diğer meta veriler',
+        files: 'Alınan dosyalar',
       },
       metadata: {
         options: {
@@ -572,6 +573,8 @@ const translation = {
         title: 'Meta Verileri Filtreleme',
         tip: 'Metadata filtreleme, bir sistem içinde ilgili bilgilerin alınmasını ince ayar ve kontrol etmek için metadata özniteliklerini (etiketler, kategoriler veya erişim izinleri gibi) kullanma sürecidir.',
       },
+      queryText: 'Sorgu Metni',
+      queryAttachment: 'Sorgu Görüntüleri',
     },
     http: {
       inputVars: 'Giriş Değişkenleri',
