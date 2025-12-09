@@ -41,7 +41,7 @@ class DatasetPermissionEnum(enum.StrEnum):
     PARTIAL_TEAM = "partial_members"
 
 
-class Dataset(Base):
+class Dataset(TypeBase):
     __tablename__ = "datasets"
     __table_args__ = (
         sa.PrimaryKeyConstraint("id", name="dataset_pkey"),
@@ -52,39 +52,45 @@ class Dataset(Base):
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
     PROVIDER_LIST = ["vendor", "external", None]
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()))
+    id: Mapped[str] = mapped_column(StringUUID, default_factory=lambda: str(uuid4()), init=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     name: Mapped[str] = mapped_column(String(255))
-    description = mapped_column(LongText, nullable=True)
-    provider: Mapped[str] = mapped_column(String(255), server_default=sa.text("'vendor'"))
-    permission: Mapped[str] = mapped_column(String(255), server_default=sa.text("'only_me'"))
-    data_source_type = mapped_column(String(255))
-    indexing_technique: Mapped[str | None] = mapped_column(String(255))
-    index_struct = mapped_column(LongText, nullable=True)
-    created_by = mapped_column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
-    updated_by = mapped_column(StringUUID, nullable=True)
-    updated_at = mapped_column(
-        sa.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
-    )
-    embedding_model = mapped_column(sa.String(255), nullable=True)
-    embedding_model_provider = mapped_column(sa.String(255), nullable=True)
-    keyword_number = mapped_column(sa.Integer, nullable=True, server_default=sa.text("10"))
-    collection_binding_id = mapped_column(StringUUID, nullable=True)
-    retrieval_model = mapped_column(AdjustedJSON, nullable=True)
-    built_in_field_enabled = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("false"))
-    icon_info = mapped_column(AdjustedJSON, nullable=True)
-    runtime_mode = mapped_column(sa.String(255), nullable=True, server_default=sa.text("'general'"))
-    pipeline_id = mapped_column(StringUUID, nullable=True)
-    chunk_structure = mapped_column(sa.String(255), nullable=True)
-    enable_api = mapped_column(sa.Boolean, nullable=False, server_default=sa.text("true"))
-    is_multimodal = mapped_column(sa.Boolean, nullable=False, default=False, server_default=db.text("false"))
+    data_source_type: Mapped[str] = mapped_column(String(255))
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
 
-    def __init__(self, **kwargs):
-        # Ensure Python-side default aligns with DB default without requiring a round-trip.
-        if "is_multimodal" not in kwargs:
-            kwargs["is_multimodal"] = False
-        super().__init__(**kwargs)
+    description: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    provider: Mapped[str] = mapped_column(String(255), default="vendor", server_default=sa.text("'vendor'"))
+    permission: Mapped[str] = mapped_column(String(255), default="only_me", server_default=sa.text("'only_me'"))
+    indexing_technique: Mapped[str | None] = mapped_column(String(255), default=None)
+    index_struct: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, nullable=False, default=None, server_default=func.current_timestamp(), init=False
+    )
+    updated_by: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime,
+        nullable=False,
+        default=None,
+        server_default=func.current_timestamp(),
+        onupdate=func.current_timestamp(),
+        init=False,
+    )
+    embedding_model: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
+    embedding_model_provider: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
+    keyword_number: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=10, server_default=sa.text("10"))
+    collection_binding_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    retrieval_model: Mapped[Any | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    built_in_field_enabled: Mapped[bool] = mapped_column(
+        sa.Boolean, nullable=False, default=False, server_default=sa.text("false")
+    )
+    icon_info: Mapped[Any | None] = mapped_column(AdjustedJSON, nullable=True, default=None)
+    runtime_mode: Mapped[str | None] = mapped_column(
+        sa.String(255), nullable=True, default="general", server_default=sa.text("'general'")
+    )
+    pipeline_id: Mapped[str | None] = mapped_column(StringUUID, nullable=True, default=None)
+    chunk_structure: Mapped[str | None] = mapped_column(sa.String(255), nullable=True, default=None)
+    enable_api: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True, server_default=sa.text("true"))
+    is_multimodal: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False, server_default=db.text("false"))
 
     @property
     def total_documents(self):
