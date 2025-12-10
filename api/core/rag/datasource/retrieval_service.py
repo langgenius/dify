@@ -371,7 +371,7 @@ class RetrievalService:
             include_segment_ids = set()
             segment_child_map = {}
             segment_file_map = {}
-            with Session(db.engine) as session:
+            with Session(bind=db.engine, expire_on_commit=False) as session:
                 # Process documents
                 for document in documents:
                     segment_id = None
@@ -395,7 +395,7 @@ class RetrievalService:
                                 session,
                             )
                             if attachment_info_dict:
-                                attachment_info = attachment_info_dict["attchment_info"]
+                                attachment_info = attachment_info_dict["attachment_info"]
                                 segment_id = attachment_info_dict["segment_id"]
                         else:
                             child_index_node_id = document.metadata.get("doc_id")
@@ -416,13 +416,6 @@ class RetrievalService:
                                 DocumentSegment.enabled == True,
                                 DocumentSegment.status == "completed",
                                 DocumentSegment.id == segment_id,
-                            )
-                            .options(
-                                load_only(
-                                    DocumentSegment.id,
-                                    DocumentSegment.content,
-                                    DocumentSegment.answer,
-                                )
                             )
                             .first()
                         )
@@ -475,7 +468,7 @@ class RetrievalService:
                                 session,
                             )
                             if attachment_info_dict:
-                                attachment_info = attachment_info_dict["attchment_info"]
+                                attachment_info = attachment_info_dict["attachment_info"]
                                 segment_id = attachment_info_dict["segment_id"]
                                 document_segment_stmt = select(DocumentSegment).where(
                                     DocumentSegment.dataset_id == dataset_document.dataset_id,
@@ -684,7 +677,7 @@ class RetrievalService:
                 .first()
             )
             if attachment_binding:
-                attchment_info = {
+                attachment_info = {
                     "id": upload_file.id,
                     "name": upload_file.name,
                     "extension": "." + upload_file.extension,
@@ -692,5 +685,5 @@ class RetrievalService:
                     "source_url": sign_upload_file(upload_file.id, upload_file.extension),
                     "size": upload_file.size,
                 }
-                return {"attchment_info": attchment_info, "segment_id": attachment_binding.segment_id}
+                return {"attachment_info": attachment_info, "segment_id": attachment_binding.segment_id}
         return None
