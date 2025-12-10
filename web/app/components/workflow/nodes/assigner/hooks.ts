@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { useNodes } from 'reactflow'
 import { uniqBy } from 'lodash-es'
 import {
   useIsChatMode,

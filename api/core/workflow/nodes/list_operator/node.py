@@ -37,8 +37,6 @@ def _negation(filter_: Callable[[_T], bool]) -> Callable[[_T], bool]:
 class ListOperatorNode(Node[ListOperatorNodeData]):
     node_type = NodeType.LIST_OPERATOR
 
-    _node_data: ListOperatorNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
@@ -48,9 +46,9 @@ class ListOperatorNode(Node[ListOperatorNodeData]):
         process_data: dict[str, Sequence[object]] = {}
         outputs: dict[str, Any] = {}
 
-        variable = self.graph_runtime_state.variable_pool.get(self._node_data.variable)
+        variable = self.graph_runtime_state.variable_pool.get(self.node_data.variable)
         if variable is None:
-            error_message = f"Variable not found for selector: {self._node_data.variable}"
+            error_message = f"Variable not found for selector: {self.node_data.variable}"
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
@@ -69,7 +67,7 @@ class ListOperatorNode(Node[ListOperatorNodeData]):
                 outputs=outputs,
             )
         if not isinstance(variable, _SUPPORTED_TYPES_TUPLE):
-            error_message = f"Variable {self._node_data.variable} is not an array type, actual type: {type(variable)}"
+            error_message = f"Variable {self.node_data.variable} is not an array type, actual type: {type(variable)}"
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
@@ -83,19 +81,19 @@ class ListOperatorNode(Node[ListOperatorNodeData]):
 
         try:
             # Filter
-            if self._node_data.filter_by.enabled:
+            if self.node_data.filter_by.enabled:
                 variable = self._apply_filter(variable)
 
             # Extract
-            if self._node_data.extract_by.enabled:
+            if self.node_data.extract_by.enabled:
                 variable = self._extract_slice(variable)
 
             # Order
-            if self._node_data.order_by.enabled:
+            if self.node_data.order_by.enabled:
                 variable = self._apply_order(variable)
 
             # Slice
-            if self._node_data.limit.enabled:
+            if self.node_data.limit.enabled:
                 variable = self._apply_slice(variable)
 
             outputs = {
@@ -121,7 +119,7 @@ class ListOperatorNode(Node[ListOperatorNodeData]):
     def _apply_filter(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
         filter_func: Callable[[Any], bool]
         result: list[Any] = []
-        for condition in self._node_data.filter_by.conditions:
+        for condition in self.node_data.filter_by.conditions:
             if isinstance(variable, ArrayStringSegment):
                 if not isinstance(condition.value, str):
                     raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
@@ -160,22 +158,22 @@ class ListOperatorNode(Node[ListOperatorNodeData]):
 
     def _apply_order(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
         if isinstance(variable, (ArrayStringSegment, ArrayNumberSegment, ArrayBooleanSegment)):
-            result = sorted(variable.value, reverse=self._node_data.order_by.value == Order.DESC)
+            result = sorted(variable.value, reverse=self.node_data.order_by.value == Order.DESC)
             variable = variable.model_copy(update={"value": result})
         else:
             result = _order_file(
-                order=self._node_data.order_by.value, order_by=self._node_data.order_by.key, array=variable.value
+                order=self.node_data.order_by.value, order_by=self.node_data.order_by.key, array=variable.value
             )
             variable = variable.model_copy(update={"value": result})
 
         return variable
 
     def _apply_slice(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
-        result = variable.value[: self._node_data.limit.size]
+        result = variable.value[: self.node_data.limit.size]
         return variable.model_copy(update={"value": result})
 
     def _extract_slice(self, variable: _SUPPORTED_TYPES_ALIAS) -> _SUPPORTED_TYPES_ALIAS:
-        value = int(self.graph_runtime_state.variable_pool.convert_template(self._node_data.extract_by.serial).text)
+        value = int(self.graph_runtime_state.variable_pool.convert_template(self.node_data.extract_by.serial).text)
         if value < 1:
             raise ValueError(f"Invalid serial index: must be >= 1, got {value}")
         if value > len(variable.value):

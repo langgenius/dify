@@ -58,26 +58,15 @@ class OwnerTransferPayload(BaseModel):
     token: str
 
 
-console_ns.schema_model(
-    MemberInvitePayload.__name__,
-    MemberInvitePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    MemberRoleUpdatePayload.__name__,
-    MemberRoleUpdatePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    OwnerTransferEmailPayload.__name__,
-    OwnerTransferEmailPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    OwnerTransferCheckPayload.__name__,
-    OwnerTransferCheckPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-console_ns.schema_model(
-    OwnerTransferPayload.__name__,
-    OwnerTransferPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
+reg(MemberInvitePayload)
+reg(MemberRoleUpdatePayload)
+reg(OwnerTransferEmailPayload)
+reg(OwnerTransferCheckPayload)
+reg(OwnerTransferPayload)
 
 
 @console_ns.route("/workspaces/current/members")

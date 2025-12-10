@@ -30,6 +30,7 @@ const translation = {
     vectorSpace: 'Espacio Vectorial',
     vectorSpaceTooltip: 'El Espacio Vectorial es el sistema de memoria a largo plazo necesario para que los LLMs comprendan tus datos.',
     documentProcessingPriority: 'Prioridad de Procesamiento de Documentos',
+    documentProcessingPriorityTip: 'Para una mayor prioridad en el procesamiento de documentos, actualice su plan.',
     documentProcessingPriorityUpgrade: 'Procesa más datos con mayor precisión y velocidad.',
     priority: {
       'standard': 'Estándar',
@@ -160,7 +161,7 @@ const translation = {
       includesTitle: 'Todo de Community, además:',
       name: 'Premium',
       for: 'Para organizaciones y equipos de tamaño mediano',
-      features: ['Confiabilidad autogestionada por varios proveedores de la nube', 'Espacio de trabajo único', 'Personalización de Logotipo y Marca de la Aplicación Web', 'Soporte prioritario por correo electrónico y chat'],
+      features: ['Confiabilidad Autogestionada por Diversos Proveedores de Nube', 'Espacio de trabajo único', 'Personalización de Logotipo y Marca de la Aplicación Web', 'Soporte prioritario por correo electrónico y chat'],
     },
   },
   vectorSpace: {
@@ -198,6 +199,9 @@ const translation = {
     title: 'Actualiza para desbloquear más eventos desencadenantes',
     description: 'Has alcanzado el límite de activadores de eventos de flujo de trabajo para este plan.',
   },
+  viewBillingTitle: 'Facturación y Suscripciones',
+  viewBillingDescription: 'Gestiona métodos de pago, facturas y cambios de suscripción',
+  viewBillingAction: 'Gestionar',
 }
 
 export default translation

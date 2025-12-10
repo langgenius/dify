@@ -7,6 +7,7 @@ const translation = {
       source: 'Quelle',
       text: 'Text',
       time: 'Zeit',
+      queryContent: 'Inhaltsabfrage',
     },
   },
   input: {
@@ -29,6 +30,12 @@ const translation = {
   hitChunks: 'Klicken Sie auf {{num}} untergeordnete Chunks',
   keyword: 'Schlüsselwörter',
   chunkDetail: 'Chunk-Detail',
+  imageUploader: {
+    tip: 'Bilder hochladen oder ablegen (Max. {{batchCount}}, {{size}} MB pro Bild)',
+    tooltip: 'Bilder hochladen (Max. {{batchCount}}, jeweils {{size}} MB)',
+    dropZoneTip: 'Datei hierher ziehen, um sie hochzuladen',
+    singleChunkAttachmentLimitTooltip: 'Die Anzahl der Einzelblock-Anhänge darf {{limit}} nicht überschreiten',
+  },
 }
 
 export default translation

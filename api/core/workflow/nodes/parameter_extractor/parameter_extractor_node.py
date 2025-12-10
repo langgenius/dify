@@ -90,8 +90,6 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
     node_type = NodeType.PARAMETER_EXTRACTOR
 
-    _node_data: ParameterExtractorNodeData
-
     _model_instance: ModelInstance | None = None
     _model_config: ModelConfigWithCredentialsEntity | None = None
 
@@ -116,7 +114,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
         """
         Run the node.
         """
-        node_data = self._node_data
+        node_data = self.node_data
         variable = self.graph_runtime_state.variable_pool.get(node_data.query)
         query = variable.text if variable else ""
 

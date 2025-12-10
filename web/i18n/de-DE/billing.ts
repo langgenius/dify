@@ -29,6 +29,7 @@ const translation = {
     vectorSpace: 'Vektorraum',
     vectorSpaceTooltip: 'Vektorraum ist das Langzeitspeichersystem, das erforderlich ist, damit LLMs Ihre Daten verstehen können.',
     documentProcessingPriority: 'Priorität der Dokumentenverarbeitung',
+    documentProcessingPriorityTip: 'Für eine höhere Priorität bei der Dokumentenverarbeitung upgraden Sie bitte Ihren Plan.',
     documentProcessingPriorityUpgrade: 'Mehr Daten mit höherer Genauigkeit bei schnelleren Geschwindigkeiten verarbeiten.',
     priority: {
       'standard': 'Standard',
@@ -198,6 +199,9 @@ const translation = {
     usageTitle: 'AUSLÖSEEREIGNISSE',
     description: 'Sie haben das Limit der Workflow-Ereignisauslöser für diesen Plan erreicht.',
   },
+  viewBillingTitle: 'Abrechnung und Abonnements',
+  viewBillingDescription: 'Zahlungsmethoden, Rechnungen und Abonnementänderungen verwalten',
+  viewBillingAction: 'Verwalten',
 }
 
 export default translation

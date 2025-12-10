@@ -12,7 +12,6 @@ from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.tools.workflow_as_tool.tool import WorkflowTool
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.enums import (
@@ -47,8 +46,6 @@ class ToolNode(Node[ToolNodeData]):
 
     node_type = NodeType.TOOL
 
-    _node_data: ToolNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
@@ -59,13 +56,11 @@ class ToolNode(Node[ToolNodeData]):
         """
         from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 
-        node_data = self._node_data
-
         # fetch tool icon
         tool_info = {
-            "provider_type": node_data.provider_type.value,
-            "provider_id": node_data.provider_id,
-            "plugin_unique_identifier": node_data.plugin_unique_identifier,
+            "provider_type": self.node_data.provider_type.value,
+            "provider_id": self.node_data.provider_id,
+            "plugin_unique_identifier": self.node_data.plugin_unique_identifier,
         }
 
         # get tool runtime
@@ -77,10 +72,10 @@ class ToolNode(Node[ToolNodeData]):
             # But for backward compatibility with historical data
             # this version field judgment is still preserved here.
             variable_pool: VariablePool | None = None
-            if node_data.version != "1" or node_data.tool_node_version is not None:
+            if self.node_data.version != "1" or self.node_data.tool_node_version is not None:
                 variable_pool = self.graph_runtime_state.variable_pool
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self._node_id, self._node_data, self.invoke_from, variable_pool
+                self.tenant_id, self.app_id, self._node_id, self.node_data, self.invoke_from, variable_pool
             )
         except ToolNodeError as e:
             yield StreamCompletedEvent(
@@ -99,12 +94,12 @@ class ToolNode(Node[ToolNodeData]):
         parameters = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self._node_data,
+            node_data=self.node_data,
         )
         parameters_for_log = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self._node_data,
+            node_data=self.node_data,
             for_log=True,
         )
         # get conversation id
@@ -149,7 +144,7 @@ class ToolNode(Node[ToolNodeData]):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error=f"Failed to invoke tool {node_data.provider_name}: {str(e)}",
+                    error=f"Failed to invoke tool {self.node_data.provider_name}: {str(e)}",
                     error_type=type(e).__name__,
                 )
             )
@@ -159,7 +154,7 @@ class ToolNode(Node[ToolNodeData]):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error=e.to_user_friendly_error(plugin_name=node_data.provider_name),
+                    error=e.to_user_friendly_error(plugin_name=self.node_data.provider_name),
                     error_type=type(e).__name__,
                 )
             )
@@ -434,7 +429,7 @@ class ToolNode(Node[ToolNodeData]):
         metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
             WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
         }
-        if usage.total_tokens > 0:
+        if isinstance(usage.total_tokens, int) and usage.total_tokens > 0:
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = usage.total_tokens
             metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = usage.total_price
             metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] = usage.currency
@@ -453,8 +448,17 @@ class ToolNode(Node[ToolNodeData]):
 
     @staticmethod
     def _extract_tool_usage(tool_runtime: Tool) -> LLMUsage:
-        if isinstance(tool_runtime, WorkflowTool):
-            return tool_runtime.latest_usage
+        # Avoid importing WorkflowTool at module import time; rely on duck typing
+        # Some runtimes expose `latest_usage`; mocks may synthesize arbitrary attributes.
+        latest = getattr(tool_runtime, "latest_usage", None)
+        # Normalize into a concrete LLMUsage. MagicMock returns truthy attribute objects
+        # for any name, so we must type-check here.
+        if isinstance(latest, LLMUsage):
+            return latest
+        if isinstance(latest, dict):
+            # Allow dict payloads from external runtimes
+            return LLMUsage.model_validate(latest)
+        # Fallback to empty usage when attribute is missing or not a valid payload
         return LLMUsage.empty_usage()
 
     @classmethod
@@ -495,4 +499,4 @@ class ToolNode(Node[ToolNodeData]):
 
     @property
     def retry(self) -> bool:
-        return self._node_data.retry_config.retry_enabled
+        return self.node_data.retry_config.retry_enabled

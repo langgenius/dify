@@ -237,6 +237,16 @@ const translation = {
   partialEnabled_other: 'Total {{count}} dokumen, {{num}} tersedia',
   documentsDisabled: '{{num}} dokumen dinonaktifkan - tidak aktif lebih dari 30 hari',
   preprocessDocument: '{{num}} Prasekolah Dokumen',
+  cornerLabel: {
+    unavailable: 'Tidak tersedia',
+    pipeline: 'Saluran pipa',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Seret dan lepas file atau folder, atau',
+    browse: 'Telusuri',
+    tip: '{{supportTypes}} (Maks {{batchCount}}, {{size}}MB masing-masing)',
+  },
 }
 
 export default translation

@@ -21,7 +21,6 @@ import {
 import { useKeyPress } from 'ahooks'
 import Divider from '../../base/divider'
 import Loading from '../../base/loading'
-import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
@@ -38,7 +37,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import type { InputVar } from '@/app/components/workflow/types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
@@ -50,6 +49,7 @@ import { AppModeEnum } from '@/types/app'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { basePath } from '@/utils/var'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 
 const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
@@ -103,6 +103,7 @@ export type AppPublisherProps = {
   crossAxisOffset?: number
   toolPublished?: boolean
   inputs?: InputVar[]
+  outputs?: Variable[]
   onRefreshData?: () => void
   workflowToolAvailable?: boolean
   missingStartNode?: boolean
@@ -125,6 +126,7 @@ const AppPublisher = ({
   crossAxisOffset = 0,
   toolPublished,
   inputs,
+  outputs,
   onRefreshData,
   workflowToolAvailable = true,
   missingStartNode = false,
@@ -214,18 +216,23 @@ const AppPublisher = ({
       setPublished(false)
   }, [disabled, onToggle, open])
 
-  const handleOpenInExplore = useCallback(async () => {
-    try {
-      const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
-      if (installed_apps?.length > 0)
-        window.open(`${basePath}/explore/installed/${installed_apps[0].id}`, '_blank')
-      else
+  const { openAsync } = useAsyncWindowOpen()
+
+  const handleOpenInExplore = useCallback(() => {
+    if (!appDetail?.id) return
+
+    openAsync(
+      async () => {
+        const { installed_apps }: { installed_apps?: { id: string }[] } = await fetchInstalledAppList(appDetail.id) || {}
+        if (installed_apps && installed_apps.length > 0)
+          return `${basePath}/explore/installed/${installed_apps[0].id}`
         throw new Error('No app found in Explore')
-    }
-    catch (e: any) {
-      Toast.notify({ type: 'error', message: `${e.message || e}` })
-    }
-  }, [appDetail?.id])
+      },
+      {
+        errorMessage: 'Failed to open app in Explore',
+      },
+    )
+  }, [appDetail?.id, openAsync])
 
   const handleAccessControlUpdate = useCallback(async () => {
     if (!appDetail)
@@ -457,6 +464,7 @@ const AppPublisher = ({
                           name={appDetail?.name}
                           description={appDetail?.description}
                           inputs={inputs}
+                          outputs={outputs}
                           handlePublish={handlePublish}
                           onRefreshData={onRefreshData}
                           disabledReason={workflowToolMessage}

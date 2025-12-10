@@ -11,8 +11,6 @@ class IterationStartNode(Node[IterationStartNodeData]):
 
     node_type = NodeType.ITERATION_START
 
-    _node_data: IterationStartNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"

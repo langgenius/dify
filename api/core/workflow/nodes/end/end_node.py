@@ -9,8 +9,6 @@ class EndNode(Node[EndNodeData]):
     node_type = NodeType.END
     execution_type = NodeExecutionType.RESPONSE
 
-    _node_data: EndNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
@@ -22,7 +20,7 @@ class EndNode(Node[EndNodeData]):
         This method runs after streaming is complete (if streaming was enabled).
         It collects all output variables and returns them.
         """
-        output_variables = self._node_data.outputs
+        output_variables = self.node_data.outputs
 
         outputs = {}
         for variable_selector in output_variables:
@@ -44,6 +42,6 @@ class EndNode(Node[EndNodeData]):
             Template instance for this End node
         """
         outputs_config = [
-            {"variable": output.variable, "value_selector": output.value_selector} for output in self._node_data.outputs
+            {"variable": output.variable, "value_selector": output.value_selector} for output in self.node_data.outputs
         ]
         return Template.from_end_outputs(outputs_config)

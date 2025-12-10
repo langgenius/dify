@@ -7,7 +7,7 @@ import tempfile
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-import chardet
+import charset_normalizer
 import docx
 import pandas as pd
 import pypandoc
@@ -43,14 +43,12 @@ class DocumentExtractorNode(Node[DocumentExtractorNodeData]):
 
     node_type = NodeType.DOCUMENT_EXTRACTOR
 
-    _node_data: DocumentExtractorNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
 
     def _run(self):
-        variable_selector = self._node_data.variable_selector
+        variable_selector = self.node_data.variable_selector
         variable = self.graph_runtime_state.variable_pool.get(variable_selector)
 
         if variable is None:
@@ -230,9 +228,12 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
 
 def _extract_text_from_plain_text(file_content: bytes) -> str:
     try:
-        # Detect encoding using chardet
-        result = chardet.detect(file_content)
-        encoding = result["encoding"]
+        # Detect encoding using charset_normalizer
+        result = charset_normalizer.from_bytes(file_content, cp_isolation=["utf_8", "latin_1", "cp1252"]).best()
+        if result:
+            encoding = result.encoding
+        else:
+            encoding = "utf-8"
 
         # Fallback to utf-8 if detection fails
         if not encoding:
@@ -249,9 +250,12 @@ def _extract_text_from_plain_text(file_content: bytes) -> str:
 
 def _extract_text_from_json(file_content: bytes) -> str:
     try:
-        # Detect encoding using chardet
-        result = chardet.detect(file_content)
-        encoding = result["encoding"]
+        # Detect encoding using charset_normalizer
+        result = charset_normalizer.from_bytes(file_content).best()
+        if result:
+            encoding = result.encoding
+        else:
+            encoding = "utf-8"
 
         # Fallback to utf-8 if detection fails
         if not encoding:
@@ -271,9 +275,12 @@ def _extract_text_from_json(file_content: bytes) -> str:
 def _extract_text_from_yaml(file_content: bytes) -> str:
     """Extract the content from yaml file"""
     try:
-        # Detect encoding using chardet
-        result = chardet.detect(file_content)
-        encoding = result["encoding"]
+        # Detect encoding using charset_normalizer
+        result = charset_normalizer.from_bytes(file_content).best()
+        if result:
+            encoding = result.encoding
+        else:
+            encoding = "utf-8"
 
         # Fallback to utf-8 if detection fails
         if not encoding:
@@ -426,9 +433,12 @@ def _extract_text_from_file(file: File):
 
 def _extract_text_from_csv(file_content: bytes) -> str:
     try:
-        # Detect encoding using chardet
-        result = chardet.detect(file_content)
-        encoding = result["encoding"]
+        # Detect encoding using charset_normalizer
+        result = charset_normalizer.from_bytes(file_content).best()
+        if result:
+            encoding = result.encoding
+        else:
+            encoding = "utf-8"
 
         # Fallback to utf-8 if detection fails
         if not encoding:

@@ -24,8 +24,6 @@ from .exc import (
 class CodeNode(Node[CodeNodeData]):
     node_type = NodeType.CODE
 
-    _node_data: CodeNodeData
-
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
         """
@@ -48,12 +46,12 @@ class CodeNode(Node[CodeNodeData]):
 
     def _run(self) -> NodeRunResult:
         # Get code language
-        code_language = self._node_data.code_language
-        code = self._node_data.code
+        code_language = self.node_data.code_language
+        code = self.node_data.code
 
         # Get variables
         variables = {}
-        for variable_selector in self._node_data.variables:
+        for variable_selector in self.node_data.variables:
             variable_name = variable_selector.variable
             variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
             if isinstance(variable, ArrayFileSegment):
@@ -69,7 +67,7 @@ class CodeNode(Node[CodeNodeData]):
             )
 
             # Transform result
-            result = self._transform_result(result=result, output_schema=self._node_data.outputs)
+            result = self._transform_result(result=result, output_schema=self.node_data.outputs)
         except (CodeExecutionError, CodeNodeError) as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e), error_type=type(e).__name__
@@ -406,7 +404,7 @@ class CodeNode(Node[CodeNodeData]):
 
     @property
     def retry(self) -> bool:
-        return self._node_data.retry_config.retry_enabled
+        return self.node_data.retry_config.retry_enabled
 
     @staticmethod
     def _convert_boolean_to_int(value: bool | int | float | None) -> int | float | None:

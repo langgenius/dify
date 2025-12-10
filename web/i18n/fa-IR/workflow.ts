@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(اختیاری و پنهان)',
     goTo: 'برو به',
     startNode: 'گره شروع',
+    openWorkflow: 'باز کردن جریان کاری',
   },
   nodes: {
     common: {
@@ -542,6 +543,7 @@ const translation = {
         icon: 'آیکون تقسیم‌بندی شده',
         url: 'URL تقسیم‌بندی شده',
         metadata: 'سایر متاداده‌ها',
+        files: 'فایل‌های بازیابی‌شده',
       },
       metadata: {
         options: {
@@ -571,6 +573,8 @@ const translation = {
         title: 'فیلتر کردن فراداده',
         tip: 'فیلتر کردن متاداده فرایند استفاده از ویژگی‌های متاداده (مانند برچسب‌ها، دسته‌ها یا مجوزهای دسترسی) برای تصفیه و کنترل بازیابی اطلاعات مرتبط در یک سیستم است.',
       },
+      queryText: 'متن پرس و جو',
+      queryAttachment: 'تصاویر پرس‌وجو',
     },
     http: {
       inputVars: 'متغیرهای ورودی',

@@ -42,7 +42,6 @@ class DatasourceNode(Node[DatasourceNodeData]):
     Datasource Node
     """
 
-    _node_data: DatasourceNodeData
     node_type = NodeType.DATASOURCE
     execution_type = NodeExecutionType.ROOT
 
@@ -51,7 +50,7 @@ class DatasourceNode(Node[DatasourceNodeData]):
         Run the datasource node
         """
 
-        node_data = self._node_data
+        node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
         datasource_type_segement = variable_pool.get(["sys", SystemVariableKey.DATASOURCE_TYPE])
         if not datasource_type_segement:

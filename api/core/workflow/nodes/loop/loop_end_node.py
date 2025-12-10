@@ -11,8 +11,6 @@ class LoopEndNode(Node[LoopEndNodeData]):
 
     node_type = NodeType.LOOP_END
 
-    _node_data: LoopEndNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"

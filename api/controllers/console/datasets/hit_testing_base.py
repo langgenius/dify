@@ -1,6 +1,8 @@
 import logging
+from typing import Any
 
 from flask_restx import marshal, reqparse
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
@@ -27,6 +29,13 @@ from services.hit_testing_service import HitTestingService
 logger = logging.getLogger(__name__)
 
 
+class HitTestingPayload(BaseModel):
+    query: str = Field(max_length=250)
+    retrieval_model: dict[str, Any] | None = None
+    external_retrieval_model: dict[str, Any] | None = None
+    attachment_ids: list[str] | None = None
+
+
 class DatasetsHitTestingBase:
     @staticmethod
     def get_and_validate_dataset(dataset_id: str):
@@ -43,14 +52,15 @@ class DatasetsHitTestingBase:
         return dataset
 
     @staticmethod
-    def hit_testing_args_check(args):
+    def hit_testing_args_check(args: dict[str, Any]):
         HitTestingService.hit_testing_args_check(args)
 
     @staticmethod
     def parse_args():
         parser = (
             reqparse.RequestParser()
-            .add_argument("query", type=str, location="json")
+            .add_argument("query", type=str, required=False, location="json")
+            .add_argument("attachment_ids", type=list, required=False, location="json")
             .add_argument("retrieval_model", type=dict, required=False, location="json")
             .add_argument("external_retrieval_model", type=dict, required=False, location="json")
         )
@@ -62,10 +72,11 @@ class DatasetsHitTestingBase:
         try:
             response = HitTestingService.retrieve(
                 dataset=dataset,
-                query=args["query"],
+                query=args.get("query"),
                 account=current_user,
-                retrieval_model=args["retrieval_model"],
-                external_retrieval_model=args["external_retrieval_model"],
+                retrieval_model=args.get("retrieval_model"),
+                external_retrieval_model=args.get("external_retrieval_model"),
+                attachment_ids=args.get("attachment_ids"),
                 limit=10,
             )
             return {"query": response["query"], "records": marshal(response["records"], hit_testing_record_fields)}

@@ -16,8 +16,6 @@ class IfElseNode(Node[IfElseNodeData]):
     node_type = NodeType.IF_ELSE
     execution_type = NodeExecutionType.BRANCH
 
-    _node_data: IfElseNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
@@ -37,8 +35,8 @@ class IfElseNode(Node[IfElseNodeData]):
         condition_processor = ConditionProcessor()
         try:
             # Check if the new cases structure is used
-            if self._node_data.cases:
-                for case in self._node_data.cases:
+            if self.node_data.cases:
+                for case in self.node_data.cases:
                     input_conditions, group_result, final_result = condition_processor.process_conditions(
                         variable_pool=self.graph_runtime_state.variable_pool,
                         conditions=case.conditions,
@@ -64,8 +62,8 @@ class IfElseNode(Node[IfElseNodeData]):
                 input_conditions, group_result, final_result = _should_not_use_old_function(  # pyright: ignore [reportDeprecated]
                     condition_processor=condition_processor,
                     variable_pool=self.graph_runtime_state.variable_pool,
-                    conditions=self._node_data.conditions or [],
-                    operator=self._node_data.logical_operator or "and",
+                    conditions=self.node_data.conditions or [],
+                    operator=self.node_data.logical_operator or "and",
                 )
 
                 selected_case_id = "true" if final_result else "false"

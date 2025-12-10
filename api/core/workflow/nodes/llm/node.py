@@ -7,8 +7,10 @@ import time
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Literal
 
+from sqlalchemy import select
+
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file import FileType, file_manager
+from core.file import File, FileTransferMethod, FileType, file_manager
 from core.helper.code_executor import CodeExecutor, CodeLanguage
 from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.output_parser.structured_output import invoke_llm_with_structured_output
@@ -44,6 +46,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.tools.signature import sign_upload_file
 from core.variables import (
     ArrayFileSegment,
     ArraySegment,
@@ -72,6 +75,9 @@ from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.runtime import VariablePool
+from extensions.ext_database import db
+from models.dataset import SegmentAttachmentBinding
+from models.model import UploadFile
 
 from . import llm_utils
 from .entities import (
@@ -101,8 +107,6 @@ logger = logging.getLogger(__name__)
 
 class LLMNode(Node[LLMNodeData]):
     node_type = NodeType.LLM
-
-    _node_data: LLMNodeData
 
     # Compiled regex for extracting <think> blocks (with compatibility for attributes)
     _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)
@@ -154,13 +158,13 @@ class LLMNode(Node[LLMNodeData]):
 
         try:
             # init messages template
-            self._node_data.prompt_template = self._transform_chat_messages(self._node_data.prompt_template)
+            self.node_data.prompt_template = self._transform_chat_messages(self.node_data.prompt_template)
 
             # fetch variables and fetch values from variable pool
-            inputs = self._fetch_inputs(node_data=self._node_data)
+            inputs = self._fetch_inputs(node_data=self.node_data)
 
             # fetch jinja2 inputs
-            jinja_inputs = self._fetch_jinja_inputs(node_data=self._node_data)
+            jinja_inputs = self._fetch_jinja_inputs(node_data=self.node_data)
 
             # merge inputs
             inputs.update(jinja_inputs)
@@ -169,9 +173,9 @@ class LLMNode(Node[LLMNodeData]):
             files = (
                 llm_utils.fetch_files(
                     variable_pool=variable_pool,
-                    selector=self._node_data.vision.configs.variable_selector,
+                    selector=self.node_data.vision.configs.variable_selector,
                 )
-                if self._node_data.vision.enabled
+                if self.node_data.vision.enabled
                 else []
             )
 
@@ -179,17 +183,22 @@ class LLMNode(Node[LLMNodeData]):
                 node_inputs["#files#"] = [file.to_dict() for file in files]
 
             # fetch context value
-            generator = self._fetch_context(node_data=self._node_data)
+            generator = self._fetch_context(node_data=self.node_data)
             context = None
+            context_files: list[File] = []
             for event in generator:
                 context = event.context
+                context_files = event.context_files or []
                 yield event
             if context:
                 node_inputs["#context#"] = context
 
+            if context_files:
+                node_inputs["#context_files#"] = [file.model_dump() for file in context_files]
+
             # fetch model config
             model_instance, model_config = LLMNode._fetch_model_config(
-                node_data_model=self._node_data.model,
+                node_data_model=self.node_data.model,
                 tenant_id=self.tenant_id,
             )
 
@@ -197,13 +206,13 @@ class LLMNode(Node[LLMNodeData]):
             memory = llm_utils.fetch_memory(
                 variable_pool=variable_pool,
                 app_id=self.app_id,
-                node_data_memory=self._node_data.memory,
+                node_data_memory=self.node_data.memory,
                 model_instance=model_instance,
             )
 
             query: str | None = None
-            if self._node_data.memory:
-                query = self._node_data.memory.query_prompt_template
+            if self.node_data.memory:
+                query = self.node_data.memory.query_prompt_template
                 if not query and (
                     query_variable := variable_pool.get((SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY))
                 ):
@@ -215,29 +224,30 @@ class LLMNode(Node[LLMNodeData]):
                 context=context,
                 memory=memory,
                 model_config=model_config,
-                prompt_template=self._node_data.prompt_template,
-                memory_config=self._node_data.memory,
-                vision_enabled=self._node_data.vision.enabled,
-                vision_detail=self._node_data.vision.configs.detail,
+                prompt_template=self.node_data.prompt_template,
+                memory_config=self.node_data.memory,
+                vision_enabled=self.node_data.vision.enabled,
+                vision_detail=self.node_data.vision.configs.detail,
                 variable_pool=variable_pool,
-                jinja2_variables=self._node_data.prompt_config.jinja2_variables,
+                jinja2_variables=self.node_data.prompt_config.jinja2_variables,
                 tenant_id=self.tenant_id,
+                context_files=context_files,
             )
 
             # handle invoke result
             generator = LLMNode.invoke_llm(
-                node_data_model=self._node_data.model,
+                node_data_model=self.node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
                 stop=stop,
                 user_id=self.user_id,
-                structured_output_enabled=self._node_data.structured_output_enabled,
-                structured_output=self._node_data.structured_output,
+                structured_output_enabled=self.node_data.structured_output_enabled,
+                structured_output=self.node_data.structured_output,
                 file_saver=self._llm_file_saver,
                 file_outputs=self._file_outputs,
                 node_id=self._node_id,
                 node_type=self.node_type,
-                reasoning_format=self._node_data.reasoning_format,
+                reasoning_format=self.node_data.reasoning_format,
             )
 
             structured_output: LLMStructuredOutput | None = None
@@ -253,12 +263,12 @@ class LLMNode(Node[LLMNodeData]):
                     reasoning_content = event.reasoning_content or ""
 
                     # For downstream nodes, determine clean text based on reasoning_format
-                    if self._node_data.reasoning_format == "tagged":
+                    if self.node_data.reasoning_format == "tagged":
                         # Keep <think> tags for backward compatibility
                         clean_text = result_text
                     else:
                         # Extract clean text from <think> tags
-                        clean_text, _ = LLMNode._split_reasoning(result_text, self._node_data.reasoning_format)
+                        clean_text, _ = LLMNode._split_reasoning(result_text, self.node_data.reasoning_format)
 
                     # Process structured output if available from the event.
                     structured_output = (
@@ -324,6 +334,7 @@ class LLMNode(Node[LLMNodeData]):
                     inputs=node_inputs,
                     process_data=process_data,
                     error_type=type(e).__name__,
+                    llm_usage=usage,
                 )
             )
         except Exception as e:
@@ -334,6 +345,8 @@ class LLMNode(Node[LLMNodeData]):
                     error=str(e),
                     inputs=node_inputs,
                     process_data=process_data,
+                    error_type=type(e).__name__,
+                    llm_usage=usage,
                 )
             )
 
@@ -656,10 +669,13 @@ class LLMNode(Node[LLMNodeData]):
         context_value_variable = self.graph_runtime_state.variable_pool.get(node_data.context.variable_selector)
         if context_value_variable:
             if isinstance(context_value_variable, StringSegment):
-                yield RunRetrieverResourceEvent(retriever_resources=[], context=context_value_variable.value)
+                yield RunRetrieverResourceEvent(
+                    retriever_resources=[], context=context_value_variable.value, context_files=[]
+                )
             elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
                 original_retriever_resource: list[RetrievalSourceMetadata] = []
+                context_files: list[File] = []
                 for item in context_value_variable.value:
                     if isinstance(item, str):
                         context_str += item + "\n"
@@ -672,9 +688,34 @@ class LLMNode(Node[LLMNodeData]):
                         retriever_resource = self._convert_to_original_retriever_resource(item)
                         if retriever_resource:
                             original_retriever_resource.append(retriever_resource)
-
+                            attachments_with_bindings = db.session.execute(
+                                select(SegmentAttachmentBinding, UploadFile)
+                                .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+                                .where(
+                                    SegmentAttachmentBinding.segment_id == retriever_resource.segment_id,
+                                )
+                            ).all()
+                            if attachments_with_bindings:
+                                for _, upload_file in attachments_with_bindings:
+                                    attachment_info = File(
+                                        id=upload_file.id,
+                                        filename=upload_file.name,
+                                        extension="." + upload_file.extension,
+                                        mime_type=upload_file.mime_type,
+                                        tenant_id=self.tenant_id,
+                                        type=FileType.IMAGE,
+                                        transfer_method=FileTransferMethod.LOCAL_FILE,
+                                        remote_url=upload_file.source_url,
+                                        related_id=upload_file.id,
+                                        size=upload_file.size,
+                                        storage_key=upload_file.key,
+                                        url=sign_upload_file(upload_file.id, upload_file.extension),
+                                    )
+                                    context_files.append(attachment_info)
                 yield RunRetrieverResourceEvent(
-                    retriever_resources=original_retriever_resource, context=context_str.strip()
+                    retriever_resources=original_retriever_resource,
+                    context=context_str.strip(),
+                    context_files=context_files,
                 )
 
     def _convert_to_original_retriever_resource(self, context_dict: dict) -> RetrievalSourceMetadata | None:
@@ -702,6 +743,7 @@ class LLMNode(Node[LLMNodeData]):
                 content=context_dict.get("content"),
                 page=metadata.get("page"),
                 doc_metadata=metadata.get("doc_metadata"),
+                files=context_dict.get("files"),
             )
 
             return source
@@ -743,6 +785,7 @@ class LLMNode(Node[LLMNodeData]):
         variable_pool: VariablePool,
         jinja2_variables: Sequence[VariableSelector],
         tenant_id: str,
+        context_files: list["File"] | None = None,
     ) -> tuple[Sequence[PromptMessage], Sequence[str] | None]:
         prompt_messages: list[PromptMessage] = []
 
@@ -842,6 +885,23 @@ class LLMNode(Node[LLMNodeData]):
         if vision_enabled and sys_files:
             file_prompts = []
             for file in sys_files:
+                file_prompt = file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
+                file_prompts.append(file_prompt)
+            # If last prompt is a user prompt, add files into its contents,
+            # otherwise append a new user prompt
+            if (
+                len(prompt_messages) > 0
+                and isinstance(prompt_messages[-1], UserPromptMessage)
+                and isinstance(prompt_messages[-1].content, list)
+            ):
+                prompt_messages[-1] = UserPromptMessage(content=file_prompts + prompt_messages[-1].content)
+            else:
+                prompt_messages.append(UserPromptMessage(content=file_prompts))
+
+        # The context_files
+        if vision_enabled and context_files:
+            file_prompts = []
+            for file in context_files:
                 file_prompt = file_manager.to_prompt_message_content(file, image_detail_config=vision_detail)
                 file_prompts.append(file_prompt)
             # If last prompt is a user prompt, add files into its contents,
@@ -1204,7 +1264,7 @@ class LLMNode(Node[LLMNodeData]):
 
     @property
     def retry(self) -> bool:
-        return self._node_data.retry_config.retry_enabled
+        return self.node_data.retry_config.retry_enabled
 
 
 def _combine_message_content_with_role(

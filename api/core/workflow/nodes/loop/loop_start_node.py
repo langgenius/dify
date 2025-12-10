@@ -11,8 +11,6 @@ class LoopStartNode(Node[LoopStartNodeData]):
 
     node_type = NodeType.LOOP_START
 
-    _node_data: LoopStartNodeData
-
     @classmethod
     def version(cls) -> str:
         return "1"
