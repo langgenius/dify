@@ -10,6 +10,7 @@ import { useInvalidPreImportNotionPages, usePreImportNotionPages } from '@/servi
 import Header from '../../datasets/create/website/base/header'
 import type { DataSourceCredential } from '../../header/account-setting/data-source-page-new/types'
 import Loading from '../loading'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 type NotionPageSelectorProps = {
   value?: string[]
@@ -20,6 +21,7 @@ type NotionPageSelectorProps = {
   datasetId?: string
   credentialList: DataSourceCredential[]
   onSelectCredential?: (credentialId: string) => void
+  supportBatchUpload?: boolean
 }
 
 const NotionPageSelector = ({
@@ -31,6 +33,7 @@ const NotionPageSelector = ({
   datasetId = '',
   credentialList,
   onSelectCredential,
+  supportBatchUpload = false,
 }: NotionPageSelectorProps) => {
   const [searchValue, setSearchValue] = useState('')
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
@@ -109,7 +112,7 @@ const NotionPageSelector = ({
     setCurrentCredential(credential)
     onSelect([]) // Clear selected pages when changing credential
     onSelectCredential?.(credential.credentialId)
-  }, [invalidPreImportNotionPages, onSelect, onSelectCredential])
+  }, [datasetId, invalidPreImportNotionPages, notionCredentials, onSelect, onSelectCredential])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId])
@@ -124,7 +127,7 @@ const NotionPageSelector = ({
   }, [pagesMapAndSelectedPagesId, onPreview])
 
   const handleConfigureNotion = useCallback(() => {
-    setShowAccountSettingModal({ payload: 'data-source' })
+    setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })
   }, [setShowAccountSettingModal])
 
   if (isFetchingNotionPagesError) {
@@ -174,6 +177,7 @@ const NotionPageSelector = ({
               canPreview={canPreview}
               previewPageId={previewPageId}
               onPreview={handlePreviewPage}
+              isMultipleChoice={supportBatchUpload}
             />
           )}
         </div>

@@ -152,13 +152,15 @@ class WordExtractor(BaseExtractor):
         # Initialize a row, all of which are empty by default
         row_cells = [""] * total_cols
         col_index = 0
-        for cell in row.cells:
+        while col_index < len(row.cells):
             # make sure the col_index is not out of range
-            while col_index < total_cols and row_cells[col_index] != "":
+            while col_index < len(row.cells) and row_cells[col_index] != "":
                 col_index += 1
             # if col_index is out of range the loop is jumped
-            if col_index >= total_cols:
+            if col_index >= len(row.cells):
                 break
+            # get the correct cell
+            cell = row.cells[col_index]
             cell_content = self._parse_cell(cell, image_map).strip()
             cell_colspan = cell.grid_span or 1
             for i in range(cell_colspan):

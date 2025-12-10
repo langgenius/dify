@@ -19,6 +19,7 @@ import Header from './header'
 import { useTranslation } from 'react-i18next'
 import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import TimezoneLabel from '@/app/components/base/timezone-label'
 
 const to24Hour = (hour12: string, period: Period) => {
   const normalized = Number.parseInt(hour12, 10) % 12
@@ -35,6 +36,10 @@ const TimePicker = ({
   title,
   minuteFilter,
   popupClassName,
+  notClearable = false,
+  triggerFullWidth = false,
+  showTimezone = false,
+  placement = 'bottom-start',
 }: TimePickerProps) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
@@ -189,7 +194,7 @@ const TimePicker = ({
 
   const inputElem = (
     <input
-      className='system-xs-regular flex-1 cursor-pointer appearance-none truncate bg-transparent p-1
+      className='system-xs-regular flex-1 cursor-pointer select-none appearance-none truncate bg-transparent p-1
             text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder'
       readOnly
       value={isOpen ? '' : displayValue}
@@ -200,28 +205,34 @@ const TimePicker = ({
     <PortalToFollowElem
       open={isOpen}
       onOpenChange={setIsOpen}
-      placement='bottom-end'
+      placement={placement}
     >
-      <PortalToFollowElemTrigger>
+      <PortalToFollowElemTrigger className={triggerFullWidth ? '!block w-full' : undefined}>
         {renderTrigger ? (renderTrigger({
           inputElem,
           onClick: handleClickTrigger,
           isOpen,
         })) : (
           <div
-            className='group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt'
+            className={cn(
+              'group flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
+              triggerFullWidth ? 'w-full min-w-0' : 'w-[252px]',
+            )}
             onClick={handleClickTrigger}
           >
             {inputElem}
+            {showTimezone && timezone && (
+              <TimezoneLabel timezone={timezone} inline className='shrink-0 select-none text-xs' />
+            )}
             <RiTimeLine className={cn(
               'h-4 w-4 shrink-0 text-text-quaternary',
               isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-              (displayValue || (isOpen && selectedTime)) && 'group-hover:hidden',
+              (displayValue || (isOpen && selectedTime)) && !notClearable && 'group-hover:hidden',
             )} />
             <RiCloseCircleFill
               className={cn(
                 'hidden h-4 w-4 shrink-0 text-text-quaternary',
-                (displayValue || (isOpen && selectedTime)) && 'hover:text-text-secondary group-hover:inline-block',
+                (displayValue || (isOpen && selectedTime)) && !notClearable && 'hover:text-text-secondary group-hover:inline-block',
               )}
               role='button'
               aria-label={t('common.operation.clear')}

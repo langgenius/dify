@@ -82,6 +82,10 @@ const translation = {
     },
     addUrl: 'Dodaj adres URL',
     learnMore: 'Dowiedz się więcej',
+    sort: {
+      uploadTime: 'Czas przesyłania',
+      hitCount: 'Liczba wyszukiwań',
+    },
   },
   metadata: {
     title: 'Metadane',
@@ -398,6 +402,7 @@ const translation = {
     childChunks_one: 'FRAGMENT POTOMNY',
     keywordDuplicate: 'Słowo kluczowe już istnieje',
     keywordEmpty: 'Słowo kluczowe nie może być puste',
+    allFilesUploaded: 'Wszystkie pliki muszą zostać przesłane przed zapisaniem',
   },
 }
 

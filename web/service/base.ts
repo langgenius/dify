@@ -144,7 +144,7 @@ function requiredWebSSOLogin(message?: string, code?: number) {
     params.append('message', message)
   if (code)
     params.append('code', String(code))
-  globalThis.location.href = `${globalThis.location.origin}${basePath}/${WBB_APP_LOGIN_PATH}?${params.toString()}`
+  globalThis.location.href = `${globalThis.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
 }
 
 export function format(text: string) {
@@ -155,7 +155,7 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (
+export const handleStream = (
   response: Response,
   onData: IOnData,
   onCompleted?: IOnCompleted,

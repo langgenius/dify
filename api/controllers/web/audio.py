@@ -88,12 +88,6 @@ class AudioApi(WebApiResource):
 
 @web_ns.route("/text-to-audio")
 class TextApi(WebApiResource):
-    text_to_audio_response_fields = {
-        "audio_url": fields.String,
-        "duration": fields.Float,
-    }
-
-    @marshal_with(text_to_audio_response_fields)
     @web_ns.doc("Text to Audio")
     @web_ns.doc(description="Convert text to audio using text-to-speech service.")
     @web_ns.doc(

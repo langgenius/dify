@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
+import type { SyncCallback } from './use-nodes-sync-draft'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 
@@ -28,12 +29,19 @@ export const useNodeDataUpdate = () => {
     setNodes(newNodes)
   }, [store])
 
-  const handleNodeDataUpdateWithSyncDraft = useCallback((payload: NodeDataUpdatePayload) => {
+  const handleNodeDataUpdateWithSyncDraft = useCallback((
+    payload: NodeDataUpdatePayload,
+    options?: {
+      sync?: boolean
+      notRefreshWhenSyncError?: boolean
+      callback?: SyncCallback
+    },
+  ) => {
     if (getNodesReadOnly())
       return
 
     handleNodeDataUpdate(payload)
-    handleSyncWorkflowDraft()
+    handleSyncWorkflowDraft(options?.sync, options?.notRefreshWhenSyncError, options?.callback)
   }, [handleSyncWorkflowDraft, handleNodeDataUpdate, getNodesReadOnly])
 
   return {

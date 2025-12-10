@@ -245,6 +245,9 @@ class ToolEngine:
                     + "you do not need to create it, just tell the user to check it now."
                 )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
+                json_message = cast(ToolInvokeMessage.JsonMessage, response.message)
+                if json_message.suppress_output:
+                    continue
                 json_parts.append(
                     json.dumps(
                         safe_json_value(cast(ToolInvokeMessage.JsonMessage, response.message).json_object),

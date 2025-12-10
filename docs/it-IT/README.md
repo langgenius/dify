@@ -36,6 +36,12 @@
         <img alt="Issues closed" src="https://img.shields.io/github/issues-search?query=repo%3Alanggenius%2Fdify%20is%3Aclosed&label=issues%20closed&labelColor=%20%237d89b0&color=%20%235d6b98"></a>
     <a href="https://github.com/langgenius/dify/discussions/" target="_blank">
         <img alt="Discussion posts" src="https://img.shields.io/github/discussions/langgenius/dify?labelColor=%20%239b8afb&color=%20%237a5af8"></a>
+    <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
+        <img alt="LFX Health Score" src="https://insights.linuxfoundation.org/api/badge/health-score?project=langgenius-dify"></a>
+    <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
+        <img alt="LFX Contributors" src="https://insights.linuxfoundation.org/api/badge/contributors?project=langgenius-dify"></a>
+    <a href="https://insights.linuxfoundation.org/project/langgenius-dify" target="_blank">
+        <img alt="LFX Active Contributors" src="https://insights.linuxfoundation.org/api/badge/active-contributors?project=langgenius-dify"></a>
 </p>
 
 <p align="center">
@@ -117,7 +123,7 @@ Tutte le offerte di Dify sono dotate di API corrispondenti, permettendovi di int
   Avviate rapidamente Dify nel vostro ambiente con questa [guida di avvio rapido](#avvio-rapido). Utilizzate la nostra [documentazione](https://docs.dify.ai) per ulteriori informazioni e istruzioni dettagliate.
 
 - **Dify per Aziende / Organizzazioni<br/>**
-  Offriamo funzionalità aggiuntive specifiche per le aziende. [Potete comunicarci le vostre domande tramite questo chatbot](https://udify.app/chat/22L1zSxg6yW1cWQg) o [inviateci un'email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) per discutere le vostre esigenze aziendali. <br/>
+  Offriamo funzionalità aggiuntive specifiche per le aziende. Potete [scriverci via email](mailto:business@dify.ai?subject=%5BGitHub%5DBusiness%20License%20Inquiry) per discutere le vostre esigenze aziendali. <br/>
 
   > Per startup e piccole imprese che utilizzano AWS, date un'occhiata a [Dify Premium su AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) e distribuitelo con un solo clic nel vostro AWS VPC. Si tratta di un'offerta AMI conveniente con l'opzione di creare app con logo e branding personalizzati.
 

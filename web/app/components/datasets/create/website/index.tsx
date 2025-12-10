@@ -13,6 +13,7 @@ import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { DataSourceProvider } from '@/models/common'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
@@ -23,6 +24,7 @@ type Props = {
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
   authedDataSourceList: DataSourceAuth[]
+  supportBatchUpload?: boolean
 }
 
 const Website: FC<Props> = ({
@@ -34,6 +36,7 @@ const Website: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
   authedDataSourceList,
+  supportBatchUpload = false,
 }) => {
   const { t } = useTranslation()
   const { setShowAccountSettingModal } = useModalContext()
@@ -48,7 +51,7 @@ const Website: FC<Props> = ({
 
   const handleOnConfig = useCallback(() => {
     setShowAccountSettingModal({
-      payload: 'data-source',
+      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
   }, [setShowAccountSettingModal])
 
@@ -115,6 +118,7 @@ const Website: FC<Props> = ({
           onJobIdChange={onJobIdChange}
           crawlOptions={crawlOptions}
           onCrawlOptionsChange={onCrawlOptionsChange}
+          supportBatchUpload={supportBatchUpload}
         />
       )}
       {source && selectedProvider === DataSourceProvider.waterCrawl && (
@@ -125,6 +129,7 @@ const Website: FC<Props> = ({
           onJobIdChange={onJobIdChange}
           crawlOptions={crawlOptions}
           onCrawlOptionsChange={onCrawlOptionsChange}
+          supportBatchUpload={supportBatchUpload}
         />
       )}
       {source && selectedProvider === DataSourceProvider.jinaReader && (
@@ -135,6 +140,7 @@ const Website: FC<Props> = ({
           onJobIdChange={onJobIdChange}
           crawlOptions={crawlOptions}
           onCrawlOptionsChange={onCrawlOptionsChange}
+          supportBatchUpload={supportBatchUpload}
         />
       )}
       {!source && (

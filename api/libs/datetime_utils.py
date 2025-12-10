@@ -24,6 +24,17 @@ def naive_utc_now() -> datetime.datetime:
     return _now_func(datetime.UTC).replace(tzinfo=None)
 
 
+def ensure_naive_utc(dt: datetime.datetime) -> datetime.datetime:
+    """Return the datetime as naive UTC (tzinfo=None).
+
+    If the input is timezone-aware, convert to UTC and drop the tzinfo.
+    Assumes naive datetimes are already expressed in UTC.
+    """
+    if dt.tzinfo is None:
+        return dt
+    return dt.astimezone(datetime.UTC).replace(tzinfo=None)
+
+
 def parse_time_range(
     start: str | None, end: str | None, tzname: str
 ) -> tuple[datetime.datetime | None, datetime.datetime | None]:

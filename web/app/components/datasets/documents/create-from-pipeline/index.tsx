@@ -102,7 +102,7 @@ const CreateFormPipeline = () => {
       return onlineDriveFileList.length > 0 && isVectorSpaceFull && enableBilling
     return false
   }, [allFileLoaded, datasource, datasourceType, enableBilling, isVectorSpaceFull, onlineDocuments.length, onlineDriveFileList.length, websitePages.length])
-  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
+  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
 
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
@@ -125,15 +125,16 @@ const CreateFormPipeline = () => {
   const showSelect = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument) {
       const pagesCount = currentWorkspace?.pages.length ?? 0
-      return pagesCount > 0
+      return supportBatchUpload && pagesCount > 0
     }
     if (datasourceType === DatasourceType.onlineDrive) {
       const isBucketList = onlineDriveFileList.some(file => file.type === 'bucket')
-      return !isBucketList && onlineDriveFileList.filter((item) => {
+      return supportBatchUpload && !isBucketList && onlineDriveFileList.filter((item) => {
         return item.type !== 'bucket'
       }).length > 0
     }
-  }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList])
+    return false
+  }, [currentWorkspace?.pages.length, datasourceType, supportBatchUpload, onlineDriveFileList])
 
   const totalOptions = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument)
@@ -395,7 +396,7 @@ const CreateFormPipeline = () => {
       clearWebsiteCrawlData()
     else if (dataSource.nodeData.provider_type === DatasourceType.onlineDrive)
       clearOnlineDriveData()
-  }, [])
+  }, [clearOnlineDocumentData, clearOnlineDriveData, clearWebsiteCrawlData])
 
   const handleSwitchDataSource = useCallback((dataSource: Datasource) => {
     const {
@@ -406,13 +407,13 @@ const CreateFormPipeline = () => {
     setCurrentCredentialId('')
     currentNodeIdRef.current = dataSource.nodeId
     setDatasource(dataSource)
-  }, [dataSourceStore])
+  }, [clearDataSourceData, dataSourceStore])
 
   const handleCredentialChange = useCallback((credentialId: string) => {
     const { setCurrentCredentialId } = dataSourceStore.getState()
     clearDataSourceData(datasource!)
     setCurrentCredentialId(credentialId)
-  }, [dataSourceStore, datasource])
+  }, [clearDataSourceData, dataSourceStore, datasource])
 
   if (isFetchingPipelineInfo) {
     return (
@@ -443,7 +444,7 @@ const CreateFormPipeline = () => {
                   {datasourceType === DatasourceType.localFile && (
                     <LocalFile
                       allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                      notSupportBatchUpload={notSupportBatchUpload}
+                      supportBatchUpload={supportBatchUpload}
                     />
                   )}
                   {datasourceType === DatasourceType.onlineDocument && (
@@ -451,6 +452,7 @@ const CreateFormPipeline = () => {
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
                       onCredentialChange={handleCredentialChange}
+                      supportBatchUpload={supportBatchUpload}
                     />
                   )}
                   {datasourceType === DatasourceType.websiteCrawl && (
@@ -458,6 +460,7 @@ const CreateFormPipeline = () => {
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
                       onCredentialChange={handleCredentialChange}
+                      supportBatchUpload={supportBatchUpload}
                     />
                   )}
                   {datasourceType === DatasourceType.onlineDrive && (
@@ -465,6 +468,7 @@ const CreateFormPipeline = () => {
                       nodeId={datasource!.nodeId}
                       nodeData={datasource!.nodeData}
                       onCredentialChange={handleCredentialChange}
+                      supportBatchUpload={supportBatchUpload}
                     />
                   )}
                   {isShowVectorSpaceFull && (

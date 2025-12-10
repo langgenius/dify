@@ -18,7 +18,6 @@ const translation = {
   intro5: '이처럼',
   intro6: ' 독립적인 ChatGPT 인덱스 플러그인으로 공개할 수 있습니다',
   unavailable: '사용 불가',
-  unavailableTip: '임베딩 모델을 사용할 수 없습니다. 기본 임베딩 모델을 설정해야 합니다.',
   datasets: '지식',
   datasetsApi: 'API',
   retrieval: {
@@ -36,8 +35,6 @@ const translation = {
       recommend: '추천',
     },
     invertedIndex: {
-      title: '역 인덱스',
-      description: '효율적인 검색에 사용되는 구조입니다. 각 용어는 문서나 웹 페이지에 포함된 것을 가리키며, 용어마다 체계적으로 정리되어 있습니다.',
     },
     change: '변경',
     changeRetrievalMethod: '검색 방법 변경',
@@ -235,6 +232,20 @@ const translation = {
     enabled: '서비스 중',
     title: '서비스 API',
     disabled: '장애인',
+  },
+  docAllEnabled_one: '{{count}} 문서 활성화됨',
+  docAllEnabled_other: '모든 {{count}} 문서 사용 가능',
+  partialEnabled_one: '총 {{count}}개의 문서 중 {{num}}개 사용 가능',
+  partialEnabled_other: '총 {{count}}개의 문서 중 {{num}}개 사용 가능',
+  cornerLabel: {
+    unavailable: '사용 불가',
+    pipeline: '파이프라인',
+  },
+  multimodal: '멀티모달',
+  imageUploader: {
+    button: '파일 또는 폴더를 끌어다 놓거나',
+    browse: '둘러보기',
+    tip: '{{supportTypes}} (최대 {{batchCount}}, 각각 {{size}}MB)',
   },
 }
 

@@ -1,7 +1,7 @@
 'use client'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
+import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import Countdown from '@/app/components/signin/countdown'
@@ -11,6 +11,7 @@ import Toast from '@/app/components/base/toast'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 export default function CheckCode() {
   const { t, i18n } = useTranslation()
@@ -23,6 +24,7 @@ export default function CheckCode() {
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
   const { locale } = useContext(I18NContext)
+  const codeInputRef = useRef<HTMLInputElement>(null)
 
   const verify = async () => {
     try {
@@ -43,6 +45,12 @@ export default function CheckCode() {
       setIsLoading(true)
       const ret = await emailLoginWithCode({ email, code, token, language })
       if (ret.result === 'success') {
+        // Track login success event
+        trackEvent('user_login_success', {
+          method: 'email_code',
+          is_invite: !!invite_token,
+        })
+
         if (invite_token) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
@@ -57,6 +65,15 @@ export default function CheckCode() {
       setIsLoading(false)
     }
   }
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    verify()
+  }
+
+  useEffect(() => {
+    codeInputRef.current?.focus()
+  }, [])
 
   const resendCode = async () => {
     try {
@@ -86,10 +103,18 @@ export default function CheckCode() {
       </p>
     </div>
 
-    <form action="">
+    <form onSubmit={handleSubmit}>
       <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
-      <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
-      <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
+      <Input
+        ref={codeInputRef}
+        id='code'
+        value={code}
+        onChange={e => setVerifyCode(e.target.value)}
+        maxLength={6}
+        className='mt-1'
+        placeholder={t('login.checkCode.verificationCodePlaceholder') as string}
+      />
+      <Button type='submit' loading={loading} disabled={loading} className='my-3 w-full' variant='primary'>{t('login.checkCode.verify')}</Button>
       <Countdown onResend={resendCode} />
     </form>
     <div className='py-2'>

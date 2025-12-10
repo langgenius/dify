@@ -253,7 +253,7 @@ class ProviderConfiguration(BaseModel):
                 try:
                     credentials[key] = encrypter.decrypt_token(tenant_id=self.tenant_id, token=credentials[key])
                 except Exception:
-                    pass
+                    logger.exception("Failed to decrypt credential secret variable %s", key)
 
         return self.obfuscated_credentials(
             credentials=credentials,
@@ -765,7 +765,7 @@ class ProviderConfiguration(BaseModel):
                 try:
                     credentials[key] = encrypter.decrypt_token(tenant_id=self.tenant_id, token=credentials[key])
                 except Exception:
-                    pass
+                    logger.exception("Failed to decrypt model credential secret variable %s", key)
 
         current_credential_id = credential_record.id
         current_credential_name = credential_record.credential_name
@@ -1532,6 +1532,9 @@ class ProviderConfiguration(BaseModel):
 
             # Return composite sort key: (model_type value, model position index)
             return (model.model_type.value, position_index)
+
+        # Deduplicate
+        provider_models = list({(m.model, m.model_type, m.fetch_from): m for m in provider_models}.values())
 
         # Sort using the composite sort key
         return sorted(provider_models, key=get_sort_key)

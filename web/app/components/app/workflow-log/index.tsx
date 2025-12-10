@@ -41,6 +41,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   const query = {
     page: currPage + 1,
+    detail: true,
     limit,
     ...(debouncedQueryParams.status !== 'all' ? { status: debouncedQueryParams.status } : {}),
     ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),

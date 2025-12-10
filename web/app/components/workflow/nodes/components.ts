@@ -42,6 +42,12 @@ import DataSourceNode from './data-source/node'
 import DataSourcePanel from './data-source/panel'
 import KnowledgeBaseNode from './knowledge-base/node'
 import KnowledgeBasePanel from './knowledge-base/panel'
+import TriggerScheduleNode from './trigger-schedule/node'
+import TriggerSchedulePanel from './trigger-schedule/panel'
+import TriggerWebhookNode from './trigger-webhook/node'
+import TriggerWebhookPanel from './trigger-webhook/panel'
+import TriggerPluginNode from './trigger-plugin/node'
+import TriggerPluginPanel from './trigger-plugin/panel'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
@@ -66,6 +72,9 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Agent]: AgentNode,
   [BlockEnum.DataSource]: DataSourceNode,
   [BlockEnum.KnowledgeBase]: KnowledgeBaseNode,
+  [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
+  [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
+  [BlockEnum.TriggerPlugin]: TriggerPluginNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -91,4 +100,7 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Agent]: AgentPanel,
   [BlockEnum.DataSource]: DataSourcePanel,
   [BlockEnum.KnowledgeBase]: KnowledgeBasePanel,
+  [BlockEnum.TriggerSchedule]: TriggerSchedulePanel,
+  [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
+  [BlockEnum.TriggerPlugin]: TriggerPluginPanel,
 }

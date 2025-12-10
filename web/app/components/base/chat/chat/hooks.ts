@@ -29,6 +29,7 @@ import type { Annotation } from '@/models/log'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import {
   getProcessedFiles,
@@ -308,7 +309,15 @@ export const useChat = (
       else
         ttsUrl = `/apps/${params.appId}/text-to-audio`
     }
-    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
+    // Lazy initialization: Only create AudioPlayer when TTS is actually needed
+    // This prevents opening audio channel unnecessarily
+    let player: AudioPlayer | null = null
+    const getOrCreatePlayer = () => {
+      if (!player)
+        player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', noop)
+
+      return player
+    }
     ssePost(
       url,
       {
@@ -582,11 +591,16 @@ export const useChat = (
         onTTSChunk: (messageId: string, audio: string) => {
           if (!audio || audio === '')
             return
-          player.playAudioWithAudio(audio, true)
-          AudioPlayerManager.getInstance().resetMsgId(messageId)
+          const audioPlayer = getOrCreatePlayer()
+          if (audioPlayer) {
+            audioPlayer.playAudioWithAudio(audio, true)
+            AudioPlayerManager.getInstance().resetMsgId(messageId)
+          }
         },
         onTTSEnd: (messageId: string, audio: string) => {
-          player.playAudioWithAudio(audio, false)
+          const audioPlayer = getOrCreatePlayer()
+          if (audioPlayer)
+            audioPlayer.playAudioWithAudio(audio, false)
         },
         onLoopStart: ({ data: loopStartedData }) => {
           responseItem.workflowProcess!.tracing!.push({

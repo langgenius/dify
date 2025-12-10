@@ -2,7 +2,6 @@ const translation = {
   title: 'Outils',
   createCustomTool: 'Créer un Outil Personnalisé',
   type: {
-    all: 'Tout',
     builtIn: 'Intégré',
     custom: 'Personnalisé',
     workflow: 'Flux de travail',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'Après avoir configuré les identifiants, tous les membres de l\'espace de travail peuvent utiliser cet outil lors de l\'orchestration des applications.',
   },
   includeToolNum: '{{num}} outils inclus',
-  addTool: 'Ajouter un outil',
   createTool: {
     title: 'Créer un Outil Personnalisé',
     editAction: 'Configurer',
@@ -100,6 +98,13 @@ const translation = {
     description: 'Description',
     nameForToolCallPlaceHolder: 'Utilisé pour la reconnaissance automatique, tels que getCurrentWeather, list_pets',
     descriptionPlaceholder: 'Brève description de l’objectif de l’outil, par exemple, obtenir la température d’un endroit spécifique.',
+    toolOutput: {
+      title: 'Sortie de l\'outil',
+      name: 'Nom',
+      reserved: 'Réservé',
+      reservedParameterDuplicateTip: 'text, json et files sont des variables réservées. Les variables portant ces noms ne peuvent pas apparaître dans le schéma de sortie.',
+      description: 'Description',
+    },
   },
   test: {
     title: 'Test',
@@ -143,9 +148,7 @@ const translation = {
   addToolModal: {
     type: 'type',
     added: 'supplémentaire',
-    add: 'ajouter',
     category: 'catégorie',
-    manageInTools: 'Gérer dans Outils',
     custom: {
       title: 'Aucun outil personnalisé disponible',
       tip: 'Créer un outil personnalisé',
@@ -209,6 +212,7 @@ const translation = {
       authentication: 'Authentification',
       useDynamicClientRegistration: 'Utiliser l\'enregistrement dynamique des clients',
       clientSecret: 'Secret client',
+      redirectUrlWarning: 'Veuillez configurer votre URL de redirection OAuth sur :',
     },
     delete: 'Supprimer le Serveur MCP',
     deleteConfirmTitle: 'Souhaitez-vous supprimer {mcp}?',

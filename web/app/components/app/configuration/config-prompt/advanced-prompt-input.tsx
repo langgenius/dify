@@ -25,7 +25,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
 import { getNewVar, getVars } from '@/utils/var'
-import { AppType } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
 import { useToastContext } from '@/app/components/base/toast'
@@ -102,7 +102,7 @@ const AdvancedPromptInput: FC<Props> = ({
       },
     })
   }
-  const isChatApp = mode !== AppType.completion
+  const isChatApp = mode !== AppModeEnum.COMPLETION
   const [isCopied, setIsCopied] = React.useState(false)
 
   const promptVariablesObj = (() => {

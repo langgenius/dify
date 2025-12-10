@@ -54,6 +54,12 @@ class LicenseLimitationModel(BaseModel):
         return (self.limit - self.size) >= required
 
 
+class Quota(BaseModel):
+    usage: int = 0
+    limit: int = 0
+    reset_date: int = -1
+
+
 class LicenseStatus(StrEnum):
     NONE = "none"
     INACTIVE = "inactive"
@@ -129,6 +135,8 @@ class FeatureModel(BaseModel):
     webapp_copyright_enabled: bool = False
     workspace_members: LicenseLimitationModel = LicenseLimitationModel(enabled=False, size=0, limit=0)
     is_allow_transfer_workspace: bool = True
+    trigger_event: Quota = Quota(usage=0, limit=3000, reset_date=0)
+    api_rate_limit: Quota = Quota(usage=0, limit=5000, reset_date=0)
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
     knowledge_pipeline: KnowledgePipeline = KnowledgePipeline()
@@ -236,6 +244,8 @@ class FeatureService:
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
         billing_info = BillingService.get_info(tenant_id)
 
+        features_usage_info = BillingService.get_tenant_feature_plan_usage_info(tenant_id)
+
         features.billing.enabled = billing_info["enabled"]
         features.billing.subscription.plan = billing_info["subscription"]["plan"]
         features.billing.subscription.interval = billing_info["subscription"]["interval"]
@@ -245,6 +255,16 @@ class FeatureService:
             features.webapp_copyright_enabled = True
         else:
             features.is_allow_transfer_workspace = False
+
+        if "trigger_event" in features_usage_info:
+            features.trigger_event.usage = features_usage_info["trigger_event"]["usage"]
+            features.trigger_event.limit = features_usage_info["trigger_event"]["limit"]
+            features.trigger_event.reset_date = features_usage_info["trigger_event"].get("reset_date", -1)
+
+        if "api_rate_limit" in features_usage_info:
+            features.api_rate_limit.usage = features_usage_info["api_rate_limit"]["usage"]
+            features.api_rate_limit.limit = features_usage_info["api_rate_limit"]["limit"]
+            features.api_rate_limit.reset_date = features_usage_info["api_rate_limit"].get("reset_date", -1)
 
         if "members" in billing_info:
             features.members.size = billing_info["members"]["size"]

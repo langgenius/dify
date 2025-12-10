@@ -14,6 +14,7 @@ import Toast from '@/app/components/base/toast'
 import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import Header from '../base/header'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const ERROR_I18N_PREFIX = 'common.errorMsg'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
@@ -25,6 +26,7 @@ type Props = {
   onJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
+  supportBatchUpload: boolean
 }
 
 enum Step {
@@ -40,6 +42,7 @@ const WaterCrawl: FC<Props> = ({
   onJobIdChange,
   crawlOptions,
   onCrawlOptionsChange,
+  supportBatchUpload,
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
@@ -51,7 +54,7 @@ const WaterCrawl: FC<Props> = ({
   const { setShowAccountSettingModal } = useModalContext()
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
-      payload: 'data-source',
+      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
   }, [setShowAccountSettingModal])
 
@@ -131,7 +134,7 @@ const WaterCrawl: FC<Props> = ({
         },
       }
     }
-  }, [crawlOptions.limit])
+  }, [crawlOptions.limit, onCheckedCrawlResultChange])
 
   const handleRun = useCallback(async (url: string) => {
     const { isValid, errorMsg } = checkValid(url)
@@ -162,7 +165,7 @@ const WaterCrawl: FC<Props> = ({
       }
       else {
         setCrawlResult(data)
-        onCheckedCrawlResultChange(data.data || []) // default select the crawl result
+        onCheckedCrawlResultChange(supportBatchUpload ? (data.data || []) : (data.data?.slice(0, 1) || [])) // default select the crawl result
         setCrawlErrorMessage('')
       }
     }
@@ -173,7 +176,7 @@ const WaterCrawl: FC<Props> = ({
     finally {
       setStep(Step.finished)
     }
-  }, [checkValid, crawlOptions, onJobIdChange, t, waitForCrawlFinished])
+  }, [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, supportBatchUpload, t, waitForCrawlFinished])
 
   return (
     <div>
@@ -212,6 +215,7 @@ const WaterCrawl: FC<Props> = ({
                 onSelectedChange={onCheckedCrawlResultChange}
                 onPreview={onPreview}
                 usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
+                isMultipleChoice={supportBatchUpload}
               />
             }
           </div>

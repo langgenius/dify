@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'สร้างเครื่องมือที่กําหนดเอง',
   customToolTip: 'เรียนรู้เพิ่มเติมเกี่ยวกับเครื่องมือแบบกําหนดเองของ Dify',
   type: {
-    all: 'ทั้งหมด',
     builtIn: 'ในตัว',
     custom: 'ธรรมเนียม',
     workflow: 'เวิร์กโฟลว์',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'หลังจากกําหนดค่าข้อมูลประจําตัวแล้ว สมาชิกทั้งหมดภายในพื้นที่ทํางานสามารถใช้เครื่องมือนี้เมื่อประสานงานแอปพลิเคชันได้',
   },
   includeToolNum: '{{num}} รวมเครื่องมือ',
-  addTool: 'เพิ่มเครื่องมือ',
   addToolModal: {
     type: 'ประเภท',
     category: 'ประเภท',
-    add: 'เพิ่ม',
     added: 'เพิ่ม',
-    manageInTools: 'จัดการในเครื่องมือ',
     custom: {
       title: 'ไม่มีเครื่องมือกำหนดเอง',
       tip: 'สร้างเครื่องมือกำหนดเอง',
@@ -123,6 +119,13 @@ const translation = {
     confirmTip: 'แอปที่ใช้เครื่องมือนี้จะได้รับผลกระทบ',
     deleteToolConfirmTitle: 'ลบเครื่องมือนี้?',
     deleteToolConfirmContent: 'การลบเครื่องมือนั้นไม่สามารถย้อนกลับได้ ผู้ใช้จะไม่สามารถเข้าถึงเครื่องมือของคุณได้อีกต่อไป',
+    toolOutput: {
+      title: 'เอาต์พุตของเครื่องมือ',
+      name: 'ชื่อ',
+      reserved: 'สงวน',
+      reservedParameterDuplicateTip: 'text, json และ files เป็นตัวแปรที่สงวนไว้ ไม่สามารถใช้ชื่อตัวแปรเหล่านี้ในโครงสร้างผลลัพธ์ได้',
+      description: 'คำอธิบาย',
+    },
   },
   test: {
     title: 'ทดสอบ',
@@ -209,6 +212,7 @@ const translation = {
       clientSecretPlaceholder: 'รหัสลับของลูกค้า',
       useDynamicClientRegistration: 'ใช้การลงทะเบียนลูกค้าแบบไดนามิก',
       clientID: 'รหัสลูกค้า',
+      redirectUrlWarning: 'กรุณากำหนด URL การเปลี่ยนเส้นทาง OAuth ของคุณเป็น:',
     },
     delete: 'ลบเซิร์ฟเวอร์ MCP',
     deleteConfirmTitle: 'คุณต้องการลบ {mcp} หรือไม่?',

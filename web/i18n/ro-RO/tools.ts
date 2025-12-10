@@ -2,7 +2,6 @@ const translation = {
   title: 'Instrumente',
   createCustomTool: 'Creează Instrument Personalizat',
   type: {
-    all: 'Toate',
     builtIn: 'Incorporat',
     custom: 'Personalizat',
     workflow: 'Flux de lucru',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'După configurarea credențialelor, toți membrii din spațiul de lucru pot utiliza acest instrument la orchestrarea aplicațiilor.',
   },
   includeToolNum: '{{num}} instrumente incluse',
-  addTool: 'Adaugă Instrument',
   createTool: {
     title: 'Creează Instrument Personalizat',
     editAction: 'Configurează',
@@ -100,6 +98,13 @@ const translation = {
     confirmTitle: 'Confirmați pentru a salva?',
     customDisclaimerPlaceholder: 'Vă rugăm să introduceți declinarea responsabilității personalizate',
     nameForToolCallTip: 'Acceptă doar numere, litere și caractere de subliniere.',
+    toolOutput: {
+      title: 'Ieșire instrument',
+      name: 'Nume',
+      reserved: 'Rezervat',
+      reservedParameterDuplicateTip: 'text, json și fișiere sunt variabile rezervate. Variabilele cu aceste nume nu pot apărea în schema de ieșire.',
+      description: 'Descriere',
+    },
   },
   test: {
     title: 'Testează',
@@ -143,8 +148,6 @@ const translation = {
   addToolModal: {
     added: 'adăugat',
     category: 'categorie',
-    manageInTools: 'Gestionați în Instrumente',
-    add: 'adăuga',
     type: 'tip',
     custom: {
       title: 'Niciun instrument personalizat disponibil',
@@ -209,6 +212,7 @@ const translation = {
       clientID: 'ID client',
       useDynamicClientRegistration: 'Utilizați înregistrarea dinamică a clientului',
       clientSecret: 'Secretul Clientului',
+      redirectUrlWarning: 'Vă rugăm să configurați URL-ul de redirecționare OAuth astfel:',
     },
     delete: 'Eliminare Server MCP',
     deleteConfirmTitle: 'Ștergeți {mcp}?',

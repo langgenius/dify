@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import type { App } from '@/types/app'
+import { type App, AppModeEnum } from '@/types/app'
 import Toast, { ToastContext } from '@/app/components/base/toast'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
@@ -27,6 +27,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import Tooltip from '@/app/components/base/tooltip'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { formatTime } from '@/utils/time'
@@ -64,6 +65,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
@@ -171,7 +173,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   }
 
   const exportCheck = async () => {
-    if (app.mode !== 'workflow' && app.mode !== 'advanced-chat') {
+    if (app.mode !== AppModeEnum.WORKFLOW && app.mode !== AppModeEnum.ADVANCED_CHAT) {
       onExport()
       return
     }
@@ -247,11 +249,16 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       props.onClick?.()
       e.preventDefault()
       try {
-        const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
-        if (installed_apps?.length > 0)
-          window.open(`${basePath}/explore/installed/${installed_apps[0].id}`, '_blank')
-        else
+        await openAsyncWindow(async () => {
+          const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
+          if (installed_apps?.length > 0)
+            return `${basePath}/explore/installed/${installed_apps[0].id}`
           throw new Error('No app found in Explore')
+        }, {
+          onError: (err) => {
+            Toast.notify({ type: 'error', message: `${err.message || err}` })
+          },
+        })
       }
       catch (e: any) {
         Toast.notify({ type: 'error', message: `${e.message || e}` })
@@ -269,7 +276,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickExport}>
           <span className='system-sm-regular text-text-secondary'>{t('app.export')}</span>
         </button>
-        {(app.mode === 'completion' || app.mode === 'chat') && (
+        {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
           <>
             <Divider className="my-1" />
             <button
@@ -282,21 +289,23 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </>
         )}
         {
-          (!systemFeatures.webapp_auth.enabled)
-            ? <>
-              <Divider className="my-1" />
-              <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
-                <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
-              </button>
-            </>
-            : !(isGettingUserCanAccessApp || !userCanAccessApp?.result) && (
-              <>
+          !app.has_draft_trigger && (
+            (!systemFeatures.webapp_auth.enabled)
+              ? <>
                 <Divider className="my-1" />
                 <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
                   <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
                 </button>
               </>
-            )
+              : !(isGettingUserCanAccessApp || !userCanAccessApp?.result) && (
+                <>
+                  <Divider className="my-1" />
+                  <button type="button" className='mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover' onClick={onClickInstalledApp}>
+                    <span className='system-sm-regular text-text-secondary'>{t('app.openInExplore')}</span>
+                  </button>
+                </>
+              )
+          )
         }
         <Divider className="my-1" />
         {
@@ -425,7 +434,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                     )
                   }
                   popupClassName={
-                    (app.mode === 'completion' || app.mode === 'chat')
+                    (app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT)
                       ? '!w-[256px] translate-x-[-224px]'
                       : '!w-[216px] translate-x-[-128px]'
                   }

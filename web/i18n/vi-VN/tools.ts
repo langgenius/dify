@@ -2,7 +2,6 @@ const translation = {
   title: 'Công cụ',
   createCustomTool: 'Tạo công cụ tùy chỉnh',
   type: {
-    all: 'Tất cả',
     builtIn: 'Tích hợp sẵn',
     custom: 'Tùy chỉnh',
     workflow: 'Quy trình làm việc',
@@ -20,7 +19,6 @@ const translation = {
     setupModalTitleDescription: 'Sau khi cấu hình thông tin đăng nhập, tất cả thành viên trong không gian làm việc có thể sử dụng công cụ này khi triển khai ứng dụng.',
   },
   includeToolNum: 'Bao gồm {{num}} công cụ',
-  addTool: 'Thêm công cụ',
   createTool: {
     title: 'Tạo công cụ tùy chỉnh',
     editAction: 'Cấu hình',
@@ -100,6 +98,13 @@ const translation = {
     description: 'Sự miêu tả',
     confirmTitle: 'Xác nhận để lưu ?',
     confirmTip: 'Các ứng dụng sử dụng công cụ này sẽ bị ảnh hưởng',
+    toolOutput: {
+      title: 'Đầu ra của công cụ',
+      name: 'Tên',
+      reserved: 'Dành riêng',
+      reservedParameterDuplicateTip: 'text, json và files là các biến dành riêng. Các biến có tên này không thể xuất hiện trong sơ đồ đầu ra.',
+      description: 'Mô tả',
+    },
   },
   test: {
     title: 'Kiểm tra',
@@ -142,9 +147,7 @@ const translation = {
   howToGet: 'Cách nhận',
   addToolModal: {
     category: 'loại',
-    manageInTools: 'Quản lý trong Công cụ',
     type: 'kiểu',
-    add: 'thêm',
     added: 'Thêm',
     custom: {
       title: 'Không có công cụ tùy chỉnh nào',
@@ -209,6 +212,7 @@ const translation = {
       configurations: 'Cấu hình',
       useDynamicClientRegistration: 'Sử dụng Đăng ký Khách hàng Động',
       clientSecretPlaceholder: 'Bí mật của khách hàng',
+      redirectUrlWarning: 'Vui lòng cấu hình URL chuyển hướng OAuth của bạn thành:',
     },
     delete: 'Xóa Máy chủ MCP',
     deleteConfirmTitle: 'Xóa {mcp}?',

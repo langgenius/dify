@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Trans, useTranslation } from 'react-i18next'
 import { basePath } from '@/utils/var'
 import { getRedirectionPath } from '@/utils/app-redirection'
-import type { App, AppMode } from '@/types/app'
+import type { App } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 
 const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -16,9 +17,9 @@ const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
 const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
   const { t } = useTranslation()
 
-  const getWebAppType = (appType: AppMode) => {
-    if (appType !== 'completion' && appType !== 'workflow')
-      return 'chat'
+  const getWebAppType = (appType: AppModeEnum) => {
+    if (appType !== AppModeEnum.COMPLETION && appType !== AppModeEnum.WORKFLOW)
+      return AppModeEnum.CHAT
     return appType
   }
 

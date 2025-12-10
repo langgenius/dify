@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Kontekst',
       noData: 'Uvozi znanje kot kontekst',
-      words: 'Besede',
-      textBlocks: 'Bloki besedila',
       selectTitle: 'Izberi referenčno znanje',
       selected: 'Izbrano znanje',
       noDataSet: 'Znanje ni bilo najdeno',
@@ -344,6 +342,8 @@ const translation = {
     waitForBatchResponse: 'Počakajte, da se konča odgovor na paketno nalogo.',
     queryRequired: 'Besedilo zahteve je obvezno.',
     waitForFileUpload: 'Prosimo, počakajte, da se datoteka/datoteke naložijo',
+    nameOfKeyRequired: 'ime ključa: {{key}} obvezno',
+    valueOfVarRequired: 'Vrednost {{key}} ne sme biti prazna',
   },
   warningMessage: {
     timeoutExceeded: 'Rezultati niso prikazani zaradi časovne omejitve. Prosimo, glejte dnevnike, da zberete popolne rezultate.',
@@ -356,7 +356,13 @@ const translation = {
     key: 'Spremenljivi ključ',
     name: 'Ime uporabniškega vnosnega polja',
   },
-  varKeyError: {},
+  varKeyError: {
+    canNoBeEmpty: '{{key}} je obvezno',
+    tooLong: '{{key}} je predolg. Ne sme biti daljši od 30 znakov',
+    notValid: '{{key}} ni veljaven. Lahko vsebuje samo črke, številke in podčrtaje',
+    notStartWithNumber: '{{key}} se ne more začeti s številko',
+    keyAlreadyExists: '{{key}} že obstaja',
+  },
   otherError: {
     promptNoBeEmpty: 'Poziv ne more biti prazen',
     historyNoBeEmpty: 'Zgodovina pogovorov mora biti nastavljena v pozivu',
@@ -434,6 +440,9 @@ const translation = {
     'tooltipsPlaceholder': 'Vnos uporabnega besedila, ki se prikaže, ko premaknete kazalec miške nad oznako',
     'uploadMethod': 'Način nalaganja',
     'unitPlaceholder': 'Prikažite enote za številkami, npr. žetoni',
+    'description': 'Nastavitev za spremenljivko {{varName}}',
+    'notSet': 'Ni nastavljeno, poskusite v predpono vnesti {{input}}',
+    'maxNumberTip': 'Dokument < {{docLimit}}, slika < {{imgLimit}}, avdio < {{audioLimit}}, video < {{videoLimit}}',
   },
   vision: {
     visionSettings: {
@@ -446,6 +455,7 @@ const translation = {
       title: 'Nastavitve vida',
       both: 'Oba',
       low: 'Nizek',
+      resolutionTooltip: 'nizka ločljivost bo modelu omogočila, da prejme različico slike nizke ločljivosti 512 x 512 in predstavi sliko z omejitvijo 65 tokenov. To omogoča API-ju, da vrne hitrejše odgovore in porabi manj vhodnih tokenov za primere uporabe, kjer visoka podrobnost ni potrebna.\n\nvisoka ločljivost bo modelu najprej omogočila, da vidi sliko nizke ločljivosti, nato pa ustvari podrobne izrezke vhodnih slik kot 512px kvadrate glede na velikost vhodne slike. Vsak od podrobnih izrezkov uporablja dvakrat večji proračun tokenov, za skupno 129 tokenov.',
     },
     name: 'Vid',
     settings: 'Nastavitve',
@@ -474,6 +484,10 @@ const translation = {
     noDataPlaceHolder: 'Začetek pogovora z uporabnikom lahko AI pomaga vzpostaviti tesnejšo povezavo z njimi v pogovornih aplikacijah.',
     add: 'Dodati',
     writeOpener: 'Odpiralnik za urejanje',
+    placeholder: 'Tukaj napišite svoje uvodno sporočilo, lahko uporabljate spremenljivke, poskusite tip {{variable}}.',
+    openingQuestionPlaceholder: 'Lahko uporabljaš spremenljivke, poskusi vpisati {{variable}}.',
+    varTip: 'Lahko uporabiš spremenljivke, poskusi tip {{variable}}',
+    notIncludeKey: 'Začetni poziv ne vključuje spremenljivke: {{key}}. Prosimo, dodajte jo v začetni poziv.',
   },
   modelConfig: {
     modeType: {
@@ -565,6 +579,8 @@ const translation = {
   publishAs: 'Objavi kot',
   result: 'Izhodno besedilo',
   variableTip: 'Uporabniki izpolnijo spremenljivke v obrazcu in samodejno zamenjajo spremenljivke v pozivu.',
+  promptTip: 'Pozivi usmerjajo odgovore umetne inteligence z navodili in omejitvami. Vstavite spremenljivke, kot je {{input}}. Ta poziv ne bo viden uporabnikom.',
+  notSetVar: 'Spremenljivke uporabnikom omogočajo, da pri izpolnjevanju obrazcev vnesejo začetne besede ali uvodne opombe. Poskusite vnesti "{{input}}" v začetne besede.',
 }
 
 export default translation

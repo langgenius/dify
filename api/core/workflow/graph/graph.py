@@ -117,7 +117,7 @@ class Graph:
             node_type = node_data.get("type")
             if not isinstance(node_type, str):
                 continue
-            if node_type in [NodeType.START, NodeType.DATASOURCE]:
+            if NodeType(node_type).is_start_node:
                 start_node_id = nid
                 break
 

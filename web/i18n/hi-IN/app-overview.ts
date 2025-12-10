@@ -125,6 +125,11 @@ const translation = {
         },
       },
       launch: 'लॉन्च',
+      enableTooltip: {
+        description: 'इस सुविधा को सक्षम करने के लिए कृपया कैनवास में एक उपयोगकर्ता इनपुट नोड जोड़ें। (शायद यह ड्राफ्ट में पहले से मौजूद हो, प्रकाशित करने के बाद प्रभावी होगा)',
+        learnMore: 'और जानें',
+      },
+      title: 'वेब एप',
     },
     apiInfo: {
       title: 'बैकएंड सेवा एपीआई',
@@ -135,6 +140,17 @@ const translation = {
     status: {
       running: 'सेवा में',
       disable: 'अक्षम करें',
+    },
+    triggerInfo: {
+      title: 'ट्रिगर्स',
+      explanation: 'वर्कफ़्लो ट्रिगर प्रबंधन',
+      triggersAdded: '{{count}} ट्रिगर्स जोड़े गए',
+      noTriggerAdded: 'कोई ट्रिगर जोड़ा नहीं गया',
+      triggerStatusDescription: 'ट्रिगर नोड की स्थिति यहाँ दिखाई देगी। (शायद पहले से ड्राफ्ट में मौजूद है, प्रकाशित करने के बाद प्रभावी होगी)',
+      learnAboutTriggers: 'ट्रिगर्स के बारे में जानें',
+    },
+    disableTooltip: {
+      triggerMode: 'ट्रिगर नोड मोड में {{feature}} फ़ीचर समर्थित नहीं है।',
     },
   },
   analysis: {

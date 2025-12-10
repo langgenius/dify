@@ -31,6 +31,10 @@ import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
 import Input from '@/app/components/base/input'
+import {
+  ACCOUNT_SETTING_TAB,
+  type AccountSettingTab,
+} from '@/app/components/header/account-setting/constants'
 
 const iconClassName = `
   w-5 h-5 mr-2
@@ -38,11 +42,12 @@ const iconClassName = `
 
 type IAccountSettingProps = {
   onCancel: () => void
-  activeTab?: string
+  activeTab?: AccountSettingTab
+  onTabChange?: (tab: AccountSettingTab) => void
 }
 
 type GroupItem = {
-  key: string
+  key: AccountSettingTab
   name: string
   description?: string
   icon: React.JSX.Element
@@ -51,56 +56,71 @@ type GroupItem = {
 
 export default function AccountSetting({
   onCancel,
-  activeTab = 'members',
+  activeTab = ACCOUNT_SETTING_TAB.MEMBERS,
+  onTabChange,
 }: IAccountSettingProps) {
-  const [activeMenu, setActiveMenu] = useState(activeTab)
+  const [activeMenu, setActiveMenu] = useState<AccountSettingTab>(activeTab)
+  useEffect(() => {
+    setActiveMenu(activeTab)
+  }, [activeTab])
   const { t } = useTranslation()
   const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
-  const workplaceGroupItems = (() => {
+  const workplaceGroupItems: GroupItem[] = (() => {
     if (isCurrentWorkspaceDatasetOperator)
       return []
-    return [
+
+    const items: GroupItem[] = [
       {
-        key: 'provider',
+        key: ACCOUNT_SETTING_TAB.PROVIDER,
         name: t('common.settings.provider'),
         icon: <RiBrain2Line className={iconClassName} />,
         activeIcon: <RiBrain2Fill className={iconClassName} />,
       },
       {
-        key: 'members',
+        key: ACCOUNT_SETTING_TAB.MEMBERS,
         name: t('common.settings.members'),
         icon: <RiGroup2Line className={iconClassName} />,
         activeIcon: <RiGroup2Fill className={iconClassName} />,
       },
-      {
-        // Use key false to hide this item
-        key: enableBilling ? 'billing' : false,
+    ]
+
+    if (enableBilling) {
+      items.push({
+        key: ACCOUNT_SETTING_TAB.BILLING,
         name: t('common.settings.billing'),
         description: t('billing.plansCommon.receiptInfo'),
         icon: <RiMoneyDollarCircleLine className={iconClassName} />,
         activeIcon: <RiMoneyDollarCircleFill className={iconClassName} />,
-      },
+      })
+    }
+
+    items.push(
       {
-        key: 'data-source',
+        key: ACCOUNT_SETTING_TAB.DATA_SOURCE,
         name: t('common.settings.dataSource'),
         icon: <RiDatabase2Line className={iconClassName} />,
         activeIcon: <RiDatabase2Fill className={iconClassName} />,
       },
       {
-        key: 'api-based-extension',
+        key: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION,
         name: t('common.settings.apiBasedExtension'),
         icon: <RiPuzzle2Line className={iconClassName} />,
         activeIcon: <RiPuzzle2Fill className={iconClassName} />,
       },
-      {
-        key: (enableReplaceWebAppLogo || enableBilling) ? 'custom' : false,
+    )
+
+    if (enableReplaceWebAppLogo || enableBilling) {
+      items.push({
+        key: ACCOUNT_SETTING_TAB.CUSTOM,
         name: t('custom.custom'),
         icon: <RiColorFilterLine className={iconClassName} />,
         activeIcon: <RiColorFilterFill className={iconClassName} />,
-      },
-    ].filter(item => !!item.key) as GroupItem[]
+      })
+    }
+
+    return items
   })()
 
   const media = useBreakpoints()
@@ -117,7 +137,7 @@ export default function AccountSetting({
       name: t('common.settings.generalGroup'),
       items: [
         {
-          key: 'language',
+          key: ACCOUNT_SETTING_TAB.LANGUAGE,
           name: t('common.settings.language'),
           icon: <RiTranslate2 className={iconClassName} />,
           activeIcon: <RiTranslate2 className={iconClassName} />,
@@ -167,7 +187,10 @@ export default function AccountSetting({
                             'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
                             activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text')}
                           title={item.name}
-                          onClick={() => setActiveMenu(item.key)}
+                          onClick={() => {
+                            setActiveMenu(item.key)
+                            onTabChange?.(item.key)
+                          }}
                         >
                           {activeMenu === item.key ? item.activeIcon : item.icon}
                           {!isMobile && <div className='truncate'>{item.name}</div>}

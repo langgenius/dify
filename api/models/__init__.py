@@ -26,7 +26,14 @@ from .dataset import (
     TidbAuthBinding,
     Whitelist,
 )
-from .enums import CreatorUserRole, UserFrom, WorkflowRunTriggeredFrom
+from .enums import (
+    AppTriggerStatus,
+    AppTriggerType,
+    CreatorUserRole,
+    UserFrom,
+    WorkflowRunTriggeredFrom,
+    WorkflowTriggerStatus,
+)
 from .model import (
     ApiRequest,
     ApiToken,
@@ -79,6 +86,13 @@ from .tools import (
     ToolModelInvoke,
     WorkflowToolProvider,
 )
+from .trigger import (
+    AppTrigger,
+    TriggerOAuthSystemClient,
+    TriggerOAuthTenantClient,
+    TriggerSubscription,
+    WorkflowSchedulePlan,
+)
 from .web import PinnedConversation, SavedMessage
 from .workflow import (
     ConversationVariable,
@@ -106,9 +120,12 @@ __all__ = [
     "AppAnnotationHitHistory",
     "AppAnnotationSetting",
     "AppDatasetJoin",
-    "AppMCPServer",  # Added
+    "AppMCPServer",
     "AppMode",
     "AppModelConfig",
+    "AppTrigger",
+    "AppTriggerStatus",
+    "AppTriggerType",
     "BuiltinToolProvider",
     "CeleryTask",
     "CeleryTaskSet",
@@ -169,6 +186,9 @@ __all__ = [
     "ToolLabelBinding",
     "ToolModelInvoke",
     "TraceAppConfig",
+    "TriggerOAuthSystemClient",
+    "TriggerOAuthTenantClient",
+    "TriggerSubscription",
     "UploadFile",
     "UserFrom",
     "Whitelist",
@@ -181,6 +201,8 @@ __all__ = [
     "WorkflowPause",
     "WorkflowRun",
     "WorkflowRunTriggeredFrom",
+    "WorkflowSchedulePlan",
     "WorkflowToolProvider",
+    "WorkflowTriggerStatus",
     "WorkflowType",
 ]

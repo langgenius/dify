@@ -2,6 +2,8 @@ name: autofix.ci
 on:
   pull_request:
     branches: ["main"]
+  push:
+    branches: ["main"]
 permissions:
   contents: read
 
@@ -25,6 +27,11 @@ jobs:
           uv run ruff check --fix .
           # Format code
           uv run ruff format ..
+
+      - name: count migration progress
+        run: |
+          cd api
+          ./cnt_base.sh
 
       - name: ast-grep
         run: |

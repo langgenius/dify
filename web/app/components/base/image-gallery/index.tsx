@@ -1,9 +1,9 @@
 'use client'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import cn from '@/utils/classnames'
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import s from './style.module.css'
-import cn from '@/utils/classnames'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 type Props = {
   srcs: string[]
@@ -36,10 +36,8 @@ const ImageGallery: FC<Props> = ({
   const imgStyle = getWidthStyle(imgNum)
   return (
     <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
-      {/* TODO: support preview */}
       {srcs.map((src, index) => (
-
-        <img
+        !src ? null : <img
           key={index}
           className={s.item}
           style={imgStyle}
@@ -53,7 +51,9 @@ const ImageGallery: FC<Props> = ({
         imagePreviewUrl && (
           <ImagePreview
             url={imagePreviewUrl}
-            onCancel={() => setImagePreviewUrl('')} title={''} />
+            onCancel={() => setImagePreviewUrl('')}
+            title={''}
+          />
         )
       }
     </div>

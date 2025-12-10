@@ -12,7 +12,7 @@ import SearchInput from '@/app/components/base/search-input'
 import Tools from '../../../block-selector/tools'
 import { useTranslation } from 'react-i18next'
 import { useStrategyProviders } from '@/service/use-strategy'
-import { PluginType, type StrategyPluginDetail } from '@/app/components/plugins/types'
+import { PluginCategoryEnum, type StrategyPluginDetail } from '@/app/components/plugins/types'
 import type { ToolWithProvider } from '../../../types'
 import { CollectionType } from '@/app/components/tools/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
@@ -140,7 +140,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
     if (query) {
       fetchPlugins({
         query,
-        category: PluginType.agent,
+        category: PluginCategoryEnum.agent,
       })
     }
   }, [query])
@@ -231,6 +231,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             list={notInstalledPlugins}
             searchText={query}
             tags={DEFAULT_TAGS}
+            category={PluginCategoryEnum.agent}
             disableMaxWidth
           />}
         </main>

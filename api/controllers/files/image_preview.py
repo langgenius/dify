@@ -1,7 +1,8 @@
 from urllib.parse import quote
 
 from flask import Response, request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
 
 import services
@@ -10,6 +11,26 @@ from controllers.files import files_ns
 from extensions.ext_database import db
 from services.account_service import TenantService
 from services.file_service import FileService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class FileSignatureQuery(BaseModel):
+    timestamp: str = Field(..., description="Unix timestamp used in the signature")
+    nonce: str = Field(..., description="Random string for signature")
+    sign: str = Field(..., description="HMAC signature")
+
+
+class FilePreviewQuery(FileSignatureQuery):
+    as_attachment: bool = Field(default=False, description="Whether to download as attachment")
+
+
+files_ns.schema_model(
+    FileSignatureQuery.__name__, FileSignatureQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+files_ns.schema_model(
+    FilePreviewQuery.__name__, FilePreviewQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
 
 
 @files_ns.route("/<uuid:file_id>/image-preview")
@@ -36,12 +57,10 @@ class ImagePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
 
-        timestamp = request.args.get("timestamp")
-        nonce = request.args.get("nonce")
-        sign = request.args.get("sign")
-
-        if not timestamp or not nonce or not sign:
-            return {"content": "Invalid request."}, 400
+        args = FileSignatureQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+        timestamp = args.timestamp
+        nonce = args.nonce
+        sign = args.sign
 
         try:
             generator, mimetype = FileService(db.engine).get_image_preview(
@@ -80,25 +99,14 @@ class FilePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("timestamp", type=str, required=True, location="args")
-            .add_argument("nonce", type=str, required=True, location="args")
-            .add_argument("sign", type=str, required=True, location="args")
-            .add_argument("as_attachment", type=bool, required=False, default=False, location="args")
-        )
-
-        args = parser.parse_args()
-
-        if not args["timestamp"] or not args["nonce"] or not args["sign"]:
-            return {"content": "Invalid request."}, 400
+        args = FilePreviewQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         try:
             generator, upload_file = FileService(db.engine).get_file_generator_by_file_id(
                 file_id=file_id,
-                timestamp=args["timestamp"],
-                nonce=args["nonce"],
-                sign=args["sign"],
+                timestamp=args.timestamp,
+                nonce=args.nonce,
+                sign=args.sign,
             )
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
@@ -125,7 +133,7 @@ class FilePreviewApi(Resource):
             response.headers["Accept-Ranges"] = "bytes"
         if upload_file.size > 0:
             response.headers["Content-Length"] = str(upload_file.size)
-        if args["as_attachment"]:
+        if args.as_attachment:
             encoded_filename = quote(upload_file.name)
             response.headers["Content-Disposition"] = f"attachment; filename*=UTF-8''{encoded_filename}"
             response.headers["Content-Type"] = "application/octet-stream"
