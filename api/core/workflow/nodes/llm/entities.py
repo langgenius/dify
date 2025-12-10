@@ -111,8 +111,9 @@ class LLMNodeData(BaseNodeData):
         ),
     )
 
-    # Tool support (from Agent V2)
+    # Tool support
     tools: Sequence[ToolMetadata] = Field(default_factory=list)
+    max_iterations: int | None = Field(default=None, description="Maximum number of iterations for the LLM node")
 
     @field_validator("prompt_config", mode="before")
     @classmethod

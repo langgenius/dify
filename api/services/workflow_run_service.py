@@ -1,8 +1,8 @@
 import threading
-from typing import Any
+from collections.abc import Sequence
 
 from sqlalchemy import Engine
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 import contexts
 from extensions.ext_database import db
@@ -11,12 +11,12 @@ from models import (
     Account,
     App,
     EndUser,
+    WorkflowNodeExecutionModel,
     WorkflowRun,
     WorkflowRunTriggeredFrom,
 )
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
-from services.llm_generation_service import LLMGenerationService
 
 
 class WorkflowRunService:
@@ -137,9 +137,9 @@ class WorkflowRunService:
         app_model: App,
         run_id: str,
         user: Account | EndUser,
-    ) -> list[dict[str, Any]]:
+    ) -> Sequence[WorkflowNodeExecutionModel]:
         """
-        Get workflow run node execution list with generation details attached.
+        Get workflow run node execution list
         """
         workflow_run = self.get_workflow_run(app_model, run_id)
 
@@ -154,18 +154,8 @@ class WorkflowRunService:
         if tenant_id is None:
             raise ValueError("User tenant_id cannot be None")
 
-        node_executions = self._node_execution_service_repo.get_executions_by_workflow_run(
+        return self._node_execution_service_repo.get_executions_by_workflow_run(
             tenant_id=tenant_id,
             app_id=app_model.id,
             workflow_run_id=run_id,
         )
-
-        # Attach generation details using batch query
-        with Session(db.engine) as session:
-            generation_service = LLMGenerationService(session)
-            return generation_service.attach_generation_details_to_node_executions(
-                node_executions=node_executions,
-                workflow_run_id=run_id,
-                tenant_id=tenant_id,
-                app_id=app_model.id,
-            )
