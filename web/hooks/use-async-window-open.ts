@@ -24,21 +24,21 @@ export const useAsyncWindowOpen = () => {
 
     const newWindow = window.open('', '_blank', windowFeatures)
 
-    if (!newWindow) {
-      const error = new Error('Popup blocked by browser')
-      onError?.(error)
-      Toast.notify({
-        type: 'error',
-        message: 'Popup blocked. Please allow popups for this site.',
-      })
-      return
-    }
-
     try {
       const url = await fetchUrl()
 
       if (url) {
-        newWindow.location.href = url
+        if (newWindow) {
+          try {
+            newWindow.opener = null
+          }
+          catch { /* noop */ }
+          newWindow.location.href = url
+        }
+        else {
+          // Fallback: navigate current tab if we couldn't get a window reference
+          window.location.href = url
+        }
         onSuccess?.(url)
 
         if (successMessage) {
@@ -49,7 +49,7 @@ export const useAsyncWindowOpen = () => {
         }
       }
       else {
-        newWindow.close()
+        newWindow?.close()
         const error = new Error('Invalid URL received')
         onError?.(error)
         Toast.notify({
@@ -59,7 +59,7 @@ export const useAsyncWindowOpen = () => {
       }
     }
     catch (error) {
-      newWindow.close()
+      newWindow?.close()
       onError?.(error)
       Toast.notify({
         type: 'error',
