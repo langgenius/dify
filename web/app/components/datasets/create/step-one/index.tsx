@@ -22,6 +22,8 @@ import classNames from '@/utils/classnames'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import NotionConnector from '@/app/components/base/notion-connector'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { noop } from 'lodash-es'
 
 type IStepOneProps = {
   datasetId?: string
@@ -330,6 +332,15 @@ const StepOne = ({
             />
           )}
           {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+          {
+            <PlanUpgradeModal
+              show
+              onClose={noop}
+              onUpgrade={noop}
+              title='Upgrade to upload multiple pages at once'
+              description='You’ve reached the upload limit — only one page can be selected and uploaded at a time on your current plan.'
+            />
+          }
         </div>
       </div>
     </div>
