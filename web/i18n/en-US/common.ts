@@ -743,6 +743,7 @@ const translation = {
     pasteFileLinkInvalid: 'Invalid file link',
     fileExtensionNotSupport: 'File extension not supported',
     fileExtensionBlocked: 'This file type is blocked for security reasons',
+    uploadDisabled: 'File upload is disabled',
   },
   tag: {
     placeholder: 'All Tags',
