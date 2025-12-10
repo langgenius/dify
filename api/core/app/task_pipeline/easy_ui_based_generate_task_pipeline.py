@@ -51,6 +51,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
 )
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.moderation.moderation_coordinator import ModerationCoordinator
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
@@ -81,6 +82,10 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message: Message,
         stream: bool,
     ):
+        self._conversation_name_generate_thread: Thread | None = None
+        self.moderation_coordinator = ModerationCoordinator()
+        if hasattr(queue_manager, "set_moderation_coordinator"):
+            queue_manager.set_moderation_coordinator(self.moderation_coordinator)
         super().__init__(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
@@ -108,8 +113,6 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             application_generate_entity=application_generate_entity,
             task_state=self._task_state,
         )
-
-        self._conversation_name_generate_thread: Thread | None = None
 
     def process(
         self,
@@ -291,6 +294,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                     self._save_message(session=session, trace_manager=trace_manager)
                     session.commit()
                 message_end_resp = self._message_end_to_stream_response()
+                self.moderation_coordinator.mark_stream_end_seen()
+                self.moderation_coordinator.async_done.wait(timeout=2.0)
                 yield message_end_resp
             elif isinstance(event, QueueRetrieverResourcesEvent):
                 self._message_cycle_manager.handle_retriever_resources(event)
