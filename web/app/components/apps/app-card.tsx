@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { type App, AppModeEnum } from '@/types/app'
-import Toast, { ToastContext } from '@/app/components/base/toast'
+import { ToastContext } from '@/app/components/base/toast'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
@@ -31,6 +31,7 @@ import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { formatTime } from '@/utils/time'
 import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import dynamic from 'next/dynamic'
 
 const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
@@ -242,20 +243,24 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       setShowAccessControl(true)
     }
-    const onClickInstalledApp = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const { openAsync } = useAsyncWindowOpen()
+
+    const onClickInstalledApp = (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      try {
-        const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
-        if (installed_apps?.length > 0)
-          window.open(`${basePath}/explore/installed/${installed_apps[0].id}`, '_blank')
-        else
+
+      openAsync(
+        async () => {
+          const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
+          if (installed_apps?.length > 0)
+            return `${basePath}/explore/installed/${installed_apps[0].id}`
           throw new Error('No app found in Explore')
-      }
-      catch (e: any) {
-        Toast.notify({ type: 'error', message: `${e.message || e}` })
-      }
+        },
+        {
+          errorMessage: 'Failed to open app in Explore',
+        },
+      )
     }
     return (
       <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
