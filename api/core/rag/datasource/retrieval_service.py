@@ -417,13 +417,6 @@ class RetrievalService:
                                 DocumentSegment.status == "completed",
                                 DocumentSegment.id == segment_id,
                             )
-                            .options(
-                                load_only(
-                                    DocumentSegment.id,
-                                    DocumentSegment.content,
-                                    DocumentSegment.answer,
-                                )
-                            )
                             .first()
                         )
 
