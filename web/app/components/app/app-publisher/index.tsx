@@ -42,6 +42,7 @@ import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -153,6 +154,7 @@ const AppPublisher = ({
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const noAccessPermission = useMemo(() => systemFeatures.webapp_auth.enabled && appDetail && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result, [systemFeatures, appDetail, userCanAccessApp])
   const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])
@@ -217,29 +219,19 @@ const AppPublisher = ({
   }, [disabled, onToggle, open])
 
   const handleOpenInExplore = useCallback(async () => {
-    // Open synchronously to keep the user gesture; use a blank page to avoid Safari returning null
-    const newWindow = window.open('about:blank', '_blank')
-    if (!newWindow) {
-      Toast.notify({ type: 'error', message: 'Failed to open new window' })
-      return
-    }
-    try {
-      newWindow.opener = null
-    }
-    catch { /* noop */ }
-    try {
+    await openAsyncWindow(async () => {
+      if (!appDetail?.id)
+        throw new Error('App not found')
       const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
-      if (installed_apps?.length > 0) {
-        newWindow.location.href = `${basePath}/explore/installed/${installed_apps[0].id}`
-        return
-      }
+      if (installed_apps?.length > 0)
+        return `${basePath}/explore/installed/${installed_apps[0].id}`
       throw new Error('No app found in Explore')
-    }
-    catch (e: any) {
-      newWindow.close()
-      Toast.notify({ type: 'error', message: `${e.message || e}` })
-    }
-  }, [appDetail?.id])
+    }, {
+      onError: (err) => {
+        Toast.notify({ type: 'error', message: `${err.message || err}` })
+      },
+    })
+  }, [appDetail?.id, openAsyncWindow])
 
   const handleAccessControlUpdate = useCallback(async () => {
     if (!appDetail)

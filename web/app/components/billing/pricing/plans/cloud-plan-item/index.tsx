@@ -9,6 +9,7 @@ import Toast from '../../../../base/toast'
 import { PlanRange } from '../../plan-switcher/plan-range-switcher'
 import { useAppContext } from '@/context/app-context'
 import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import List from './list'
 import Button from './button'
 import { Professional, Sandbox, Team } from '../../assets'
@@ -42,6 +43,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isCurrentPaidPlan = isCurrent && !isFreePlan
   const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
   const { isCurrentWorkspaceManager } = useAppContext()
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const btnText = useMemo(() => {
     if (isCurrent)
@@ -72,24 +74,17 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     setLoading(true)
     try {
       if (isCurrentPaidPlan) {
-        // Open synchronously to keep the user gesture; Safari prefers about:blank with no noreferrer
-        const newWindow = window.open('about:blank', '_blank')
-        if (!newWindow) {
-          Toast.notify({ type: 'error', message: 'Failed to open billing page' })
-          return
-        }
-        try {
-          newWindow.opener = null
-        }
-        catch { /* noop */ }
-
-        const res = await fetchBillingUrl()
-        if (res.url) {
-          newWindow.location.href = res.url
-          return
-        }
-        newWindow.close()
-        throw new Error('Failed to open billing page')
+        await openAsyncWindow(async () => {
+          const res = await fetchBillingUrl()
+          if (res.url)
+            return res.url
+          throw new Error('Failed to open billing page')
+        }, {
+          onError: (err) => {
+            Toast.notify({ type: 'error', message: err.message || String(err) })
+          },
+        })
+        return
       }
 
       if (isFreePlan)

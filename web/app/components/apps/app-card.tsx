@@ -27,6 +27,7 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import Tooltip from '@/app/components/base/tooltip'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { formatTime } from '@/utils/time'
@@ -64,6 +65,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
@@ -247,23 +249,16 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       props.onClick?.()
       e.preventDefault()
       try {
-        // Open synchronously to keep user gesture and get a window handle in Safari
-        const newWindow = window.open('about:blank', '_blank')
-        if (!newWindow)
-          throw new Error('Failed to open new window')
-
-        try {
-          newWindow.opener = null
-        }
-        catch { /* noop */ }
-
-        const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
-        if (installed_apps?.length > 0) {
-          newWindow.location.href = `${basePath}/explore/installed/${installed_apps[0].id}`
-          return
-        }
-        newWindow.close()
-        throw new Error('No app found in Explore')
+        await openAsyncWindow(async () => {
+          const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
+          if (installed_apps?.length > 0)
+            return `${basePath}/explore/installed/${installed_apps[0].id}`
+          throw new Error('No app found in Explore')
+        }, {
+          onError: (err) => {
+            Toast.notify({ type: 'error', message: `${err.message || err}` })
+          },
+        })
       }
       catch (e: any) {
         Toast.notify({ type: 'error', message: `${e.message || e}` })
