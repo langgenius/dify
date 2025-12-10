@@ -10,7 +10,7 @@ from typing import Union
 from uuid import uuid4
 
 import httpx
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from core.helper import ssrf_proxy
@@ -31,6 +31,7 @@ class ToolFileManager:
         if engine is None:
             engine = global_db.engine
         self._engine = engine
+        self._session_maker = sessionmaker(bind=self._engine, expire_on_commit=False)
 
     @staticmethod
     def sign_file(tool_file_id: str, extension: str) -> str:
@@ -89,7 +90,7 @@ class ToolFileManager:
         filepath = f"tools/{tenant_id}/{unique_filename}"
         storage.save(filepath, file_binary)
 
-        with Session(self._engine, expire_on_commit=False) as session:
+        with self._session_maker() as session:
             tool_file = ToolFile(
                 user_id=user_id,
                 tenant_id=tenant_id,
@@ -132,7 +133,7 @@ class ToolFileManager:
         filename = f"{unique_name}{extension}"
         filepath = f"tools/{tenant_id}/{filename}"
         storage.save(filepath, blob)
-        with Session(self._engine, expire_on_commit=False) as session:
+        with self._session_maker() as session:
             tool_file = ToolFile(
                 user_id=user_id,
                 tenant_id=tenant_id,

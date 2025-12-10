@@ -5,7 +5,6 @@ from flask import request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest
 
 from controllers.console import console_ns
@@ -20,7 +19,7 @@ from controllers.console.wraps import (
 )
 from core.ops.ops_trace_manager import OpsTraceManager
 from core.workflow.enums import NodeType
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from fields.app_fields import (
     deleted_tool_fields,
     model_config_fields,
@@ -440,7 +439,8 @@ class AppCopyApi(Resource):
 
         args = CopyAppPayload.model_validate(console_ns.payload or {})
 
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             import_service = AppDslService(session)
             yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
             result = import_service.import_app(

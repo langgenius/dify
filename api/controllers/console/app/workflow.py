@@ -31,7 +31,7 @@ from core.trigger.debug.event_selectors import (
 )
 from core.workflow.enums import NodeType
 from core.workflow.graph_engine.manager import GraphEngineManager
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from factories import file_factory, variable_factory
 from fields.member_fields import simple_account_fields
 from fields.workflow_fields import workflow_fields, workflow_pagination_fields
@@ -679,7 +679,8 @@ class PublishedWorkflowApi(Resource):
         args = PublishWorkflowPayload.model_validate(console_ns.payload or {})
 
         workflow_service = WorkflowService()
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             workflow = workflow_service.publish_workflow(
                 session=session,
                 app_model=app_model,
@@ -874,7 +875,8 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine, expire_on_commit=False) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             workflow = workflow_service.update_workflow(
                 session=session,
                 workflow_id=workflow_id,
@@ -903,7 +905,8 @@ class WorkflowByIdApi(Resource):
         workflow_service = WorkflowService()
 
         # Create a session and manage the transaction
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             try:
                 workflow_service.delete_workflow(
                     session=session, workflow_id=workflow_id, tenant_id=app_model.tenant_id

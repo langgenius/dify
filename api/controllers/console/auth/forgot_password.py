@@ -86,6 +86,7 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
+        # use SQLAlchemy Session bound to the engine so tests can patch Session/db
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=args.email)).scalar_one_or_none()
 
@@ -188,6 +189,7 @@ class ForgotPasswordResetApi(Resource):
 
         email = reset_data.get("email", "")
 
+        # use SQLAlchemy Session bound to the engine so tests can patch Session/db
         with Session(db.engine) as session:
             account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
 

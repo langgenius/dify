@@ -9,7 +9,7 @@ from controllers.console.wraps import (
     edit_permission_required,
     setup_required,
 )
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from fields.app_fields import (
     app_import_check_dependencies_fields,
     app_import_fields,
@@ -71,7 +71,8 @@ class AppImportApi(Resource):
         args = AppImportPayload.model_validate(console_ns.payload)
 
         # Create service with session
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             import_service = AppDslService(session)
             # Import app
             account = current_user
@@ -112,7 +113,8 @@ class AppImportConfirmApi(Resource):
         current_user, _ = current_account_with_tenant()
 
         # Create service with session
-        with Session(db.engine) as session:
+        session_maker = get_session_maker()
+        with session_maker() as session:
             import_service = AppDslService(session)
             # Confirm import
             account = current_user

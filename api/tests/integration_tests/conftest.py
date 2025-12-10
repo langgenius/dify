@@ -2,6 +2,7 @@ import pathlib
 import random
 import secrets
 from collections.abc import Generator
+from typing import Any
 
 import pytest
 from flask import Flask
@@ -33,23 +34,31 @@ def _load_env():
 
 _load_env()
 
-_CACHED_APP = create_app()
+_cached_app = None
+
+
+def get_cached_app():
+    global _cached_app
+    if _cached_app is None:
+        _cached_app = create_app()
+    return _cached_app
 
 
 @pytest.fixture
 def flask_app() -> Flask:
-    return _CACHED_APP
+    return get_cached_app()
 
 
 @pytest.fixture(scope="session")
-def setup_account(request) -> Generator[Account, None, None]:
+def setup_account(request: Any) -> Generator[Account, None, None]:
     """`dify_setup` completes the setup process for the Dify application.
 
     It creates `Account` and `Tenant`, and inserts a `DifySetup` record into the database.
 
     Most tests in the `controllers` package may require dify has been successfully setup.
     """
-    with _CACHED_APP.test_request_context():
+    app = get_cached_app()
+    with app.test_request_context():
         rand_suffix = random.randint(int(1e6), int(1e7))  # noqa
         name = f"test-user-{rand_suffix}"
         email = f"{name}@example.com"
@@ -61,13 +70,13 @@ def setup_account(request) -> Generator[Account, None, None]:
             language="en-US",
         )
 
-    with _CACHED_APP.test_request_context():
+    with app.test_request_context():
         with Session(bind=db.engine, expire_on_commit=False) as session:
             account = session.query(Account).filter_by(email=email).one()
 
     yield account
 
-    with _CACHED_APP.test_request_context():
+    with app.test_request_context():
         db.session.query(DifySetup).delete()
         db.session.query(TenantAccountJoin).delete()
         db.session.query(Account).delete()
@@ -77,17 +86,19 @@ def setup_account(request) -> Generator[Account, None, None]:
 
 @pytest.fixture
 def flask_req_ctx():
-    with _CACHED_APP.test_request_context():
+    app = get_cached_app()
+    with app.test_request_context():
         yield
 
 
 @pytest.fixture
-def auth_header(setup_account) -> dict[str, str]:
+def auth_header(setup_account: Account) -> dict[str, str]:
     token = AccountService.get_account_jwt_token(setup_account)
     return {"Authorization": f"Bearer {token}"}
 
 
 @pytest.fixture
 def test_client() -> Generator[FlaskClient, None, None]:
-    with _CACHED_APP.test_client() as client:
+    app = get_cached_app()
+    with app.test_client() as client:
         yield client

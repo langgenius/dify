@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from extensions.ext_storage import storage
 from models.account import Tenant
 from models.model import (
@@ -117,32 +117,34 @@ class ClearFreePlanTenantExpiredLogs:
     @classmethod
     def process_tenant(cls, flask_app: Flask, tenant_id: str, days: int, batch: int):
         with flask_app.app_context():
+            session_maker = get_session_maker()
             apps = db.session.scalars(select(App).where(App.tenant_id == tenant_id)).all()
             app_ids = [app.id for app in apps]
             while True:
-                with Session(db.engine).no_autoflush as session:
-                    messages = (
-                        session.query(Message)
-                        .where(
-                            Message.app_id.in_(app_ids),
-                            Message.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
+                with session_maker() as session:
+                    with session.no_autoflush:
+                        messages = (
+                            session.query(Message)
+                            .where(
+                                Message.app_id.in_(app_ids),
+                                Message.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
+                            )
+                            .limit(batch)
+                            .all()
                         )
-                        .limit(batch)
-                        .all()
-                    )
-                    if len(messages) == 0:
-                        break
+                        if len(messages) == 0:
+                            break
 
-                    storage.save(
-                        f"free_plan_tenant_expired_logs/"
-                        f"{tenant_id}/messages/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                        f"-{time.time()}.json",
-                        json.dumps(
-                            jsonable_encoder(
-                                [message.to_dict() for message in messages],
-                            ),
-                        ).encode("utf-8"),
-                    )
+                        storage.save(
+                            f"free_plan_tenant_expired_logs/"
+                            f"{tenant_id}/messages/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                            f"-{time.time()}.json",
+                            json.dumps(
+                                jsonable_encoder(
+                                    [message.to_dict() for message in messages],
+                                ),
+                            ).encode("utf-8"),
+                        )
 
                     message_ids = [message.id for message in messages]
 
@@ -161,30 +163,31 @@ class ClearFreePlanTenantExpiredLogs:
                     )
 
             while True:
-                with Session(db.engine).no_autoflush as session:
-                    conversations = (
-                        session.query(Conversation)
-                        .where(
-                            Conversation.app_id.in_(app_ids),
-                            Conversation.updated_at < datetime.datetime.now() - datetime.timedelta(days=days),
+                with session_maker() as session:
+                    with session.no_autoflush:
+                        conversations = (
+                            session.query(Conversation)
+                            .where(
+                                Conversation.app_id.in_(app_ids),
+                                Conversation.updated_at < datetime.datetime.now() - datetime.timedelta(days=days),
+                            )
+                            .limit(batch)
+                            .all()
                         )
-                        .limit(batch)
-                        .all()
-                    )
 
-                    if len(conversations) == 0:
-                        break
+                        if len(conversations) == 0:
+                            break
 
-                    storage.save(
-                        f"free_plan_tenant_expired_logs/"
-                        f"{tenant_id}/conversations/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                        f"-{time.time()}.json",
-                        json.dumps(
-                            jsonable_encoder(
-                                [conversation.to_dict() for conversation in conversations],
-                            ),
-                        ).encode("utf-8"),
-                    )
+                        storage.save(
+                            f"free_plan_tenant_expired_logs/"
+                            f"{tenant_id}/conversations/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                            f"-{time.time()}.json",
+                            json.dumps(
+                                jsonable_encoder(
+                                    [conversation.to_dict() for conversation in conversations],
+                                ),
+                            ).encode("utf-8"),
+                        )
 
                     conversation_ids = [conversation.id for conversation in conversations]
                     session.query(Conversation).where(
@@ -294,31 +297,32 @@ class ClearFreePlanTenantExpiredLogs:
                     break
 
             while True:
-                with Session(db.engine).no_autoflush as session:
-                    workflow_app_logs = (
-                        session.query(WorkflowAppLog)
-                        .where(
-                            WorkflowAppLog.tenant_id == tenant_id,
-                            WorkflowAppLog.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
+                with session_maker() as session:
+                    with session.no_autoflush:
+                        workflow_app_logs = (
+                            session.query(WorkflowAppLog)
+                            .where(
+                                WorkflowAppLog.tenant_id == tenant_id,
+                                WorkflowAppLog.created_at < datetime.datetime.now() - datetime.timedelta(days=days),
+                            )
+                            .limit(batch)
+                            .all()
                         )
-                        .limit(batch)
-                        .all()
-                    )
 
-                    if len(workflow_app_logs) == 0:
-                        break
+                        if len(workflow_app_logs) == 0:
+                            break
 
-                    # save workflow app logs
-                    storage.save(
-                        f"free_plan_tenant_expired_logs/"
-                        f"{tenant_id}/workflow_app_logs/{datetime.datetime.now().strftime('%Y-%m-%d')}"
-                        f"-{time.time()}.json",
-                        json.dumps(
-                            jsonable_encoder(
-                                [workflow_app_log.to_dict() for workflow_app_log in workflow_app_logs],
-                            ),
-                        ).encode("utf-8"),
-                    )
+                        # save workflow app logs
+                        storage.save(
+                            f"free_plan_tenant_expired_logs/"
+                            f"{tenant_id}/workflow_app_logs/{datetime.datetime.now().strftime('%Y-%m-%d')}"
+                            f"-{time.time()}.json",
+                            json.dumps(
+                                jsonable_encoder(
+                                    [workflow_app_log.to_dict() for workflow_app_log in workflow_app_logs],
+                                ),
+                            ).encode("utf-8"),
+                        )
 
                     workflow_app_log_ids = [workflow_app_log.id for workflow_app_log in workflow_app_logs]
 

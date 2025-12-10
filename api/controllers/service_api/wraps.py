@@ -11,17 +11,16 @@ from flask_login import user_logged_in
 from flask_restx import Resource
 from pydantic import BaseModel
 from sqlalchemy import select, update
-from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
 from enums.cloud_plan import CloudPlan
-from extensions.ext_database import db
+from extensions.ext_database import db, get_session_maker
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App
+from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser
 from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
@@ -310,7 +309,8 @@ def validate_and_get_api_token(scope: str | None = None):
 
     current_time = naive_utc_now()
     cutoff_time = current_time - timedelta(minutes=1)
-    with Session(db.engine, expire_on_commit=False) as session:
+    session_maker = get_session_maker()
+    with session_maker() as session:
         update_stmt = (
             update(ApiToken)
             .where(
@@ -331,6 +331,40 @@ def validate_and_get_api_token(scope: str | None = None):
             raise Unauthorized("Access token is invalid")
 
     return api_token
+
+
+def create_or_update_end_user_for_user_id(app_model: App, user_id: str | None = None) -> EndUser:
+    """
+    Create or update session terminal based on user ID.
+    """
+    if not user_id:
+        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
+
+    session_maker = get_session_maker()
+    with session_maker() as session:
+        end_user = (
+            session.query(EndUser)
+            .where(
+                EndUser.tenant_id == app_model.tenant_id,
+                EndUser.app_id == app_model.id,
+                EndUser.session_id == user_id,
+                EndUser.type == "service_api",
+            )
+            .first()
+        )
+
+        if end_user is None:
+            end_user = EndUser(
+                tenant_id=app_model.tenant_id,
+                app_id=app_model.id,
+                type="service_api",
+                is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID,
+                session_id=user_id,
+            )
+            session.add(end_user)
+            session.commit()
+
+    return end_user
 
 
 class DatasetApiResource(Resource):

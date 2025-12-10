@@ -1,7 +1,9 @@
 import logging
+from typing import Any, Optional
 
 import gevent
 from sqlalchemy import event
+from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import Pool
 
 from dify_app import DifyApp
@@ -13,7 +15,7 @@ logger = logging.getLogger(__name__)
 _gevent_compatibility_setup: bool = False
 
 
-def _safe_rollback(connection):
+def _safe_rollback(connection: Any) -> None:
     """Safely rollback database connection.
 
     Args:
@@ -33,7 +35,7 @@ def _setup_gevent_compatibility():
         return
 
     @event.listens_for(Pool, "reset")
-    def _safe_reset(dbapi_connection, connection_record, reset_state):  # pyright: ignore[reportUnusedFunction]
+    def _safe_reset(dbapi_connection: Any, connection_record: Any, reset_state: Any) -> None:  # pyright: ignore[reportUnusedFunction]
         if reset_state.terminate_only:
             return
 
@@ -50,6 +52,18 @@ def _setup_gevent_compatibility():
     _gevent_compatibility_setup = True
 
 
-def init_app(app: DifyApp):
+_session_maker: Optional[sessionmaker[Session]] = None
+
+
+def get_session_maker() -> sessionmaker[Session]:
+    global _session_maker
+    if _session_maker is None:
+        _session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+    return _session_maker
+
+
+def init_app(app: DifyApp) -> None:
     db.init_app(app)
+    global _session_maker
+    _session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
     _setup_gevent_compatibility()
