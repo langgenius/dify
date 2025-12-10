@@ -9,6 +9,14 @@
 # Backend (default owner, more specific rules below will override)
 api/ @QuantumGhost
 
+# Backend - MCP
+api/core/mcp/ @Nov1c444
+api/core/entities/mcp_provider.py @Nov1c444
+api/services/tools/mcp_tools_manage_service.py @Nov1c444
+api/controllers/mcp/ @Nov1c444
+api/controllers/console/app/mcp_server.py @Nov1c444
+api/tests/**/*mcp* @Nov1c444
+
 # Backend - Workflow - Engine (Core graph execution engine)
 api/core/workflow/graph_engine/ @laipz8200 @QuantumGhost
 api/core/workflow/runtime/ @laipz8200 @QuantumGhost
