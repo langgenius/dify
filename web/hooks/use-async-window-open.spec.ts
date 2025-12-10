@@ -12,8 +12,9 @@ describe('useAsyncWindowOpen', () => {
     window.open = originalOpen
   })
 
-  it('opens immediate url synchronously without calling async getter', async () => {
-    const openSpy = jest.fn()
+  it('opens immediate url synchronously, clears opener, without calling async getter', async () => {
+    const mockWindow: any = { opener: 'should-clear' }
+    const openSpy = jest.fn(() => mockWindow)
     window.open = openSpy
     const getUrl = jest.fn()
     const { result } = renderHook(() => useAsyncWindowOpen())
@@ -22,11 +23,53 @@ describe('useAsyncWindowOpen', () => {
       await result.current(getUrl, {
         immediateUrl: 'https://example.com',
         target: '_blank',
-        features: 'noopener,noreferrer',
+        features: undefined,
       })
     })
 
     expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer')
+    expect(getUrl).not.toHaveBeenCalled()
+    expect(mockWindow.opener).toBeNull()
+  })
+
+  it('appends noopener,noreferrer when immediate open passes custom features', async () => {
+    const mockWindow: any = { opener: 'should-clear' }
+    const openSpy = jest.fn(() => mockWindow)
+    window.open = openSpy
+    const getUrl = jest.fn()
+    const { result } = renderHook(() => useAsyncWindowOpen())
+
+    await act(async () => {
+      await result.current(getUrl, {
+        immediateUrl: 'https://example.com',
+        target: '_blank',
+        features: 'width=500',
+      })
+    })
+
+    expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'width=500,noopener,noreferrer')
+    expect(getUrl).not.toHaveBeenCalled()
+    expect(mockWindow.opener).toBeNull()
+  })
+
+  it('reports error when immediate window fails to open', async () => {
+    const openSpy = jest.fn(() => null)
+    window.open = openSpy
+    const getUrl = jest.fn()
+    const onError = jest.fn()
+    const { result } = renderHook(() => useAsyncWindowOpen())
+
+    await act(async () => {
+      await result.current(getUrl, {
+        immediateUrl: 'https://example.com',
+        target: '_blank',
+        onError,
+      })
+    })
+
+    expect(onError).toHaveBeenCalled()
+    const errArg = onError.mock.calls[0][0] as Error
+    expect(errArg.message).toBe('Failed to open new window')
     expect(getUrl).not.toHaveBeenCalled()
   })
 
@@ -73,6 +116,30 @@ describe('useAsyncWindowOpen', () => {
     expect(close).toHaveBeenCalled()
     expect(onError).toHaveBeenCalledWith(error)
     expect(mockWindow.location.href).toBe('')
+  })
+
+  it('preserves custom features as-is for async open', async () => {
+    const close = jest.fn()
+    const mockWindow: any = {
+      location: { href: '' },
+      close,
+      opener: 'should-be-cleared',
+    }
+    const openSpy = jest.fn(() => mockWindow)
+    window.open = openSpy
+    const { result } = renderHook(() => useAsyncWindowOpen())
+
+    await act(async () => {
+      await result.current(async () => 'https://example.com/path', {
+        target: '_blank',
+        features: 'width=500',
+      })
+    })
+
+    expect(openSpy).toHaveBeenCalledWith('about:blank', '_blank', 'width=500')
+    expect(mockWindow.opener).toBeNull()
+    expect(mockWindow.location.href).toBe('https://example.com/path')
+    expect(close).not.toHaveBeenCalled()
   })
 
   it('closes placeholder and reports when no url is returned', async () => {
