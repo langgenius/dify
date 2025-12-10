@@ -1296,9 +1296,9 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     case BlockEnum.KnowledgeRetrieval: {
       const {
         query_variable_selector,
-        query_attachment_selector,
+        query_attachment_selector = [],
       } = data as KnowledgeRetrievalNodeType
-      res = [query_variable_selector, query_attachment_selector || []]
+      res = [query_variable_selector, query_attachment_selector]
       break
     }
     case BlockEnum.IfElse: {
