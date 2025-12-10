@@ -199,6 +199,9 @@ const translation = {
     usageTitle: 'AUSLÖSEEREIGNISSE',
     description: 'Sie haben das Limit der Workflow-Ereignisauslöser für diesen Plan erreicht.',
   },
+  viewBillingTitle: 'Abrechnung und Abonnements',
+  viewBillingDescription: 'Zahlungsmethoden, Rechnungen und Abonnementänderungen verwalten',
+  viewBillingAction: 'Verwalten',
 }
 
 export default translation
