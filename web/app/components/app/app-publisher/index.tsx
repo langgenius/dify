@@ -21,6 +21,7 @@ import {
 import { useKeyPress } from 'ahooks'
 import Divider from '../../base/divider'
 import Loading from '../../base/loading'
+import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
@@ -49,7 +50,6 @@ import { AppModeEnum } from '@/types/app'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { basePath } from '@/utils/var'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 
 const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
@@ -216,23 +216,18 @@ const AppPublisher = ({
       setPublished(false)
   }, [disabled, onToggle, open])
 
-  const { openAsync } = useAsyncWindowOpen()
-
-  const handleOpenInExplore = useCallback(() => {
-    if (!appDetail?.id) return
-
-    openAsync(
-      async () => {
-        const { installed_apps }: { installed_apps?: { id: string }[] } = await fetchInstalledAppList(appDetail.id) || {}
-        if (installed_apps && installed_apps.length > 0)
-          return `${basePath}/explore/installed/${installed_apps[0].id}`
+  const handleOpenInExplore = useCallback(async () => {
+    try {
+      const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
+      if (installed_apps?.length > 0)
+        window.open(`${basePath}/explore/installed/${installed_apps[0].id}`, '_blank')
+      else
         throw new Error('No app found in Explore')
-      },
-      {
-        errorMessage: 'Failed to open app in Explore',
-      },
-    )
-  }, [appDetail?.id, openAsync])
+    }
+    catch (e: any) {
+      Toast.notify({ type: 'error', message: `${e.message || e}` })
+    }
+  }, [appDetail?.id])
 
   const handleAccessControlUpdate = useCallback(async () => {
     if (!appDetail)
