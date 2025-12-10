@@ -483,7 +483,7 @@ class RetrievalService:
                                     DocumentSegment.status == "completed",
                                     DocumentSegment.id == segment_id,
                                 )
-                                segment = db.session.scalar(document_segment_stmt)
+                                segment = session.scalar(document_segment_stmt)
                                 if segment:
                                     segment_file_map[segment.id] = [attachment_info]
                         else:
@@ -496,7 +496,7 @@ class RetrievalService:
                                 DocumentSegment.status == "completed",
                                 DocumentSegment.index_node_id == index_node_id,
                             )
-                            segment = db.session.scalar(document_segment_stmt)
+                            segment = session.scalar(document_segment_stmt)
 
                         if not segment:
                             continue
