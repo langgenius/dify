@@ -217,14 +217,26 @@ const AppPublisher = ({
   }, [disabled, onToggle, open])
 
   const handleOpenInExplore = useCallback(async () => {
+    // Open synchronously to keep the user gesture; use a blank page to avoid Safari returning null
+    const newWindow = window.open('about:blank', '_blank')
+    if (!newWindow) {
+      Toast.notify({ type: 'error', message: 'Failed to open new window' })
+      return
+    }
+    try {
+      newWindow.opener = null
+    }
+    catch { /* noop */ }
     try {
       const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
-      if (installed_apps?.length > 0)
-        window.open(`${basePath}/explore/installed/${installed_apps[0].id}`, '_blank')
-      else
-        throw new Error('No app found in Explore')
+      if (installed_apps?.length > 0) {
+        newWindow.location.href = `${basePath}/explore/installed/${installed_apps[0].id}`
+        return
+      }
+      throw new Error('No app found in Explore')
     }
     catch (e: any) {
+      newWindow.close()
       Toast.notify({ type: 'error', message: `${e.message || e}` })
     }
   }, [appDetail?.id])
