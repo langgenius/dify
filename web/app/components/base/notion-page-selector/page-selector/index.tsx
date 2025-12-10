@@ -7,6 +7,7 @@ import Checkbox from '../../checkbox'
 import NotionIcon from '../../notion-icon'
 import cn from '@/utils/classnames'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import Radio from '@/app/components/base/radio/ui'
 
 type PageSelectorProps = {
   value: Set<string>
@@ -18,6 +19,7 @@ type PageSelectorProps = {
   canPreview?: boolean
   previewPageId?: string
   onPreview?: (selectedPageId: string) => void
+  isMultipleChoice?: boolean
 }
 type NotionPageTreeItem = {
   children: Set<string>
@@ -80,6 +82,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
   searchValue: string
   previewPageId: string
   pagesMap: DataSourceNotionPageMap
+  isMultipleChoice?: boolean
 }>) => {
   const { t } = useTranslation()
   const {
@@ -94,6 +97,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
     searchValue,
     previewPageId,
     pagesMap,
+    isMultipleChoice,
   } = data
   const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
@@ -134,16 +138,24 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
         previewPageId === current.page_id && 'bg-state-base-hover')}
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
     >
-      <Checkbox
-        className='mr-2 shrink-0'
-        checked={checkedIds.has(current.page_id)}
-        disabled={disabled}
-        onCheck={() => {
-          if (disabled)
-            return
-          handleCheck(index)
-        }}
-      />
+      {isMultipleChoice ? (
+        <Checkbox
+          className='mr-2 shrink-0'
+          checked={checkedIds.has(current.page_id)}
+          disabled={disabled}
+          onCheck={() => {
+            handleCheck(index)
+          }}
+        />) : (
+        <Radio
+          className='mr-2 shrink-0'
+          isChecked={checkedIds.has(current.page_id)}
+          disabled={disabled}
+          onCheck={() => {
+            handleCheck(index)
+          }}
+        />
+      )}
       {!searchValue && renderArrow()}
       <NotionIcon
         className='mr-1 shrink-0'
@@ -192,6 +204,7 @@ const PageSelector = ({
   canPreview = true,
   previewPageId,
   onPreview,
+  isMultipleChoice = true,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
   const [dataList, setDataList] = useState<NotionPageItem[]>([])
@@ -265,7 +278,7 @@ const PageSelector = ({
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
 
     if (copyValue.has(pageId)) {
-      if (!searchValue) {
+      if (!searchValue && isMultipleChoice) {
         for (const item of currentWithChildrenAndDescendants.descendants)
           copyValue.delete(item)
       }
@@ -273,12 +286,18 @@ const PageSelector = ({
       copyValue.delete(pageId)
     }
     else {
-      if (!searchValue) {
+      if (!searchValue && isMultipleChoice) {
         for (const item of currentWithChildrenAndDescendants.descendants)
           copyValue.add(item)
       }
-
-      copyValue.add(pageId)
+      // Single choice mode, clear previous selection
+      if (!isMultipleChoice && copyValue.size > 0) {
+        copyValue.clear()
+        copyValue.add(pageId)
+      }
+      else {
+        copyValue.add(pageId)
+      }
     }
 
     onSelect(new Set(copyValue))
@@ -322,6 +341,7 @@ const PageSelector = ({
         searchValue,
         previewPageId: currentPreviewPageId,
         pagesMap,
+        isMultipleChoice,
       }}
     >
       {Item}

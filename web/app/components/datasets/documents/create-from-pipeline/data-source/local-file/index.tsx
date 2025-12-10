@@ -23,12 +23,12 @@ const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-ch
 
 export type LocalFileProps = {
   allowedExtensions: string[]
-  notSupportBatchUpload?: boolean
+  supportBatchUpload?: boolean
 }
 
 const LocalFile = ({
   allowedExtensions,
-  notSupportBatchUpload,
+  supportBatchUpload = false,
 }: LocalFileProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -42,7 +42,7 @@ const LocalFile = ({
   const fileUploader = useRef<HTMLInputElement>(null)
   const fileListRef = useRef<FileItem[]>([])
 
-  const hideUpload = notSupportBatchUpload && localFileList.length > 0
+  const hideUpload = !supportBatchUpload && localFileList.length > 0
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const supportTypesShowNames = useMemo(() => {
@@ -64,9 +64,9 @@ const LocalFile = ({
   const ACCEPTS = allowedExtensions.map((ext: string) => `.${ext}`)
   const fileUploadConfig = useMemo(() => ({
     file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
-    batch_count_limit: fileUploadConfigResponse?.batch_count_limit ?? 5,
-    file_upload_limit: fileUploadConfigResponse?.file_upload_limit ?? 5,
-  }), [fileUploadConfigResponse])
+    batch_count_limit: supportBatchUpload ? (fileUploadConfigResponse?.batch_count_limit ?? 5) : 1,
+    file_upload_limit: supportBatchUpload ? (fileUploadConfigResponse?.file_upload_limit ?? 5) : 1,
+  }), [fileUploadConfigResponse, supportBatchUpload])
 
   const updateFile = useCallback((fileItem: FileItem, progress: number, list: FileItem[]) => {
     const { setLocalFileList } = dataSourceStore.getState()
@@ -119,7 +119,7 @@ const LocalFile = ({
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
-  }, [fileUploadConfig, notify, t, ACCEPTS])
+  }, [notify, t, ACCEPTS, fileUploadConfig.file_size_limit])
 
   type UploadResult = Awaited<ReturnType<typeof upload>>
 
@@ -230,12 +230,12 @@ const LocalFile = ({
       return
 
     let files = [...e.dataTransfer.files] as File[]
-    if (notSupportBatchUpload)
+    if (!supportBatchUpload)
       files = files.slice(0, 1)
 
     const validFiles = files.filter(isValid)
     initialUpload(validFiles)
-  }, [initialUpload, isValid, notSupportBatchUpload])
+  }, [initialUpload, isValid, supportBatchUpload])
 
   const selectHandle = useCallback(() => {
     if (fileUploader.current)
@@ -280,7 +280,7 @@ const LocalFile = ({
           id='fileUploader'
           className='hidden'
           type='file'
-          multiple={!notSupportBatchUpload}
+          multiple={supportBatchUpload}
           accept={ACCEPTS.join(',')}
           onChange={fileChangeHandle}
         />
@@ -296,7 +296,7 @@ const LocalFile = ({
             <RiUploadCloud2Line className='mr-2 size-5' />
 
             <span>
-              {notSupportBatchUpload ? t('datasetCreation.stepOne.uploader.buttonSingleFile') : t('datasetCreation.stepOne.uploader.button')}
+              {supportBatchUpload ? t('datasetCreation.stepOne.uploader.button') : t('datasetCreation.stepOne.uploader.buttonSingleFile')}
               {allowedExtensions.length > 0 && (
                 <label className='ml-1 cursor-pointer text-text-accent' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
               )}
@@ -305,7 +305,7 @@ const LocalFile = ({
           <div>{t('datasetCreation.stepOne.uploader.tip', {
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
-            batchCount: notSupportBatchUpload ? 1 : fileUploadConfig.batch_count_limit,
+            batchCount: fileUploadConfig.batch_count_limit,
             totalCount: fileUploadConfig.file_upload_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
