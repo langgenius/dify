@@ -54,7 +54,7 @@ const StepOne = ({
   dataSourceTypeDisable,
   changeType,
   onSetting,
-  onStepChange,
+  onStepChange: doOnStepChange,
   files,
   updateFileList,
   updateFile,
@@ -113,6 +113,31 @@ const StepOne = ({
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && enableBilling
   const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
+
+  const [isShowPlanUpgradeModal, {
+    setTrue: showPlanUpgradeModal,
+    setFalse: hidePlanUpgradeModal,
+  }] = useBoolean(false)
+  const onStepChange = useCallback(() => {
+    if (notSupportBatchUpload) {
+      let isMultiple = false
+      if (dataSourceType === DataSourceType.FILE && files.length > 1)
+        isMultiple = true
+
+      if (dataSourceType === DataSourceType.NOTION && notionPages.length > 1)
+        isMultiple = true
+
+      if (dataSourceType === DataSourceType.WEB && websitePages.length > 1)
+        isMultiple = true
+
+      if (isMultiple) {
+        showPlanUpgradeModal()
+        return
+      }
+    }
+    doOnStepChange()
+  }, [dataSourceType, doOnStepChange, files.length, notSupportBatchUpload, notionPages.length, showPlanUpgradeModal, websitePages.length])
+
   const nextDisabled = useMemo(() => {
     if (!files.length)
       return true
@@ -131,11 +156,6 @@ const StepOne = ({
   const notionCredentialList = useMemo(() => {
     return authedDataSourceList.find(item => item.provider === 'notion_datasource')?.credentials_list || []
   }, [authedDataSourceList])
-
-  const [isShowPlanUpgradeModal, {
-    // setTrue: showPlanUpgradeModal,
-    setFalse: hidePlanUpgradeModal,
-  }] = useBoolean(true)
 
   return (
     <div className='h-full w-full overflow-x-auto'>
