@@ -132,7 +132,7 @@ class TestMCPAppApi:
         return session
 
     def test_handle_initialize_request_success(
-        self, app, mock_mcp_server, mock_app, mock_db_session
+        self, app, mock_mcp_server, mock_app
     ):
         """Test successful handling of initialize request.
 
