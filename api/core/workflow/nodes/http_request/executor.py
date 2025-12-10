@@ -423,7 +423,7 @@ class Executor:
                 # If content is bytes, do not decode it; show a placeholder with size.
                 # Provides content size information for binary data without exposing the raw bytes.
                 if isinstance(self.content, bytes):
-                    body_string = f"<binary_content, size={len(self.content)} bytes>"
+                    body_string = f"<binary_content: size={len(self.content)} bytes>"
                 else:
                     body_string = self.content
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
