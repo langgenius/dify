@@ -81,7 +81,10 @@ const translation = {
     },
     addUrl: 'Thêm URL',
     learnMore: 'Tìm hiểu thêm',
-    sort: {},
+    sort: {
+      uploadTime: 'Thời gian tải lên',
+      hitCount: 'Số lần truy xuất',
+    },
   },
   metadata: {
     title: 'Siêu dữ liệu',
@@ -397,6 +400,7 @@ const translation = {
     edited: 'EDITED',
     keywordDuplicate: 'Từ khóa đã tồn tại',
     keywordEmpty: 'Từ khóa không được để trống',
+    allFilesUploaded: 'Tất cả các tệp phải được tải lên trước khi lưu',
   },
 }
 

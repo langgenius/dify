@@ -7,6 +7,7 @@ const translation = {
     agents: 'エージェント戦略',
     models: 'モデル',
     datasources: 'データソース',
+    triggers: 'トリガー',
   },
   categorySingle: {
     agent: 'エージェント戦略',
@@ -15,6 +16,7 @@ const translation = {
     tool: 'ツール',
     extension: '拡張',
     datasource: 'データソース',
+    trigger: 'トリガー',
   },
   list: {
     source: {
@@ -45,6 +47,7 @@ const translation = {
       update: '更新',
       detail: '詳細',
       remove: '削除',
+      back: '戻る',
     },
     toolSelector: {
       descriptionPlaceholder: 'ツールの目的の簡単な説明、例えば、特定の場所の温度を取得すること。',
@@ -205,6 +208,11 @@ const translation = {
     installedError: '{{errorLength}} プラグインのインストールに失敗しました',
     installingWithError: '{{installingLength}}個のプラグインをインストール中、{{successLength}}件成功、{{errorLength}}件失敗',
     installing: '{{installingLength}}個のプラグインをインストール中、0 個完了。',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   from: 'インストール元',
   install: '{{num}} インストール',
@@ -305,6 +313,12 @@ const translation = {
     changeTimezone: 'タイムゾーンを変更するには、<setTimezone>設定</setTimezone>に移動してください。',
     specifyPluginsToUpdate: '更新するプラグインを指定してください',
     partialUPdate: '以下の{{num}}プラグインのみが自動更新されます',
+  },
+  readmeInfo: {
+    title: 'リードミー',
+    needHelpCheckReadme: '助けが必要ですか？READMEを確認してください。',
+    noReadmeAvailable: 'READMEは利用できません',
+    failedToFetch: 'README の取得に失敗しました',
   },
 }
 

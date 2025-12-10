@@ -5,14 +5,12 @@ import Item from './item'
 type ListProps = {
   currentCredentialId: string
   credentials: Array<DataSourceCredential>
-  pluginName: string
   onCredentialChange: (credentialId: string) => void
 }
 
 const List = ({
   currentCredentialId,
   credentials,
-  pluginName,
   onCredentialChange,
 }: ListProps) => {
   return (
@@ -24,7 +22,6 @@ const List = ({
             <Item
               key={credential.id}
               credential={credential}
-              pluginName={pluginName}
               isSelected={isSelected}
               onCredentialChange={onCredentialChange}
             />

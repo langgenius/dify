@@ -24,6 +24,7 @@ type Props = {
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
   authedDataSourceList: DataSourceAuth[]
+  supportBatchUpload?: boolean
 }
 
 const Website: FC<Props> = ({
@@ -35,6 +36,7 @@ const Website: FC<Props> = ({
   crawlOptions,
   onCrawlOptionsChange,
   authedDataSourceList,
+  supportBatchUpload = false,
 }) => {
   const { t } = useTranslation()
   const { setShowAccountSettingModal } = useModalContext()
@@ -116,6 +118,7 @@ const Website: FC<Props> = ({
           onJobIdChange={onJobIdChange}
           crawlOptions={crawlOptions}
           onCrawlOptionsChange={onCrawlOptionsChange}
+          supportBatchUpload={supportBatchUpload}
         />
       )}
       {source && selectedProvider === DataSourceProvider.waterCrawl && (
@@ -126,6 +129,7 @@ const Website: FC<Props> = ({
           onJobIdChange={onJobIdChange}
           crawlOptions={crawlOptions}
           onCrawlOptionsChange={onCrawlOptionsChange}
+          supportBatchUpload={supportBatchUpload}
         />
       )}
       {source && selectedProvider === DataSourceProvider.jinaReader && (
@@ -136,6 +140,7 @@ const Website: FC<Props> = ({
           onJobIdChange={onJobIdChange}
           crawlOptions={crawlOptions}
           onCrawlOptionsChange={onCrawlOptionsChange}
+          supportBatchUpload={supportBatchUpload}
         />
       )}
       {!source && (

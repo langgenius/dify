@@ -2,7 +2,7 @@ from flask import request
 from flask_restx import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from fields.tag_fields import dataset_tag_fields
 from libs.login import current_account_with_tenant, login_required
@@ -43,7 +43,7 @@ class TagListApi(Resource):
 
         return tags, 200
 
-    @api.expect(parser_tags)
+    @console_ns.expect(parser_tags)
     @setup_required
     @login_required
     @account_initialization_required
@@ -68,7 +68,7 @@ parser_tag_id = reqparse.RequestParser().add_argument(
 
 @console_ns.route("/tags/<uuid:tag_id>")
 class TagUpdateDeleteApi(Resource):
-    @api.expect(parser_tag_id)
+    @console_ns.expect(parser_tag_id)
     @setup_required
     @login_required
     @account_initialization_required
@@ -110,7 +110,7 @@ parser_create = (
 
 @console_ns.route("/tag-bindings/create")
 class TagBindingCreateApi(Resource):
-    @api.expect(parser_create)
+    @console_ns.expect(parser_create)
     @setup_required
     @login_required
     @account_initialization_required
@@ -136,7 +136,7 @@ parser_remove = (
 
 @console_ns.route("/tag-bindings/remove")
 class TagBindingDeleteApi(Resource):
-    @api.expect(parser_remove)
+    @console_ns.expect(parser_remove)
     @setup_required
     @login_required
     @account_initialization_required

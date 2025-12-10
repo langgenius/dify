@@ -114,7 +114,11 @@ const translation = {
         },
       },
       launch: 'Lanzar',
-      enableTooltip: {},
+      enableTooltip: {
+        description: 'Para habilitar esta función, por favor agrega un nodo de Entrada de Usuario al lienzo. (Puede que ya exista en el borrador, surte efecto después de publicar)',
+        learnMore: 'Aprender más',
+      },
+      title: 'Aplicación web',
     },
     apiInfo: {
       title: 'API del servicio backend',
@@ -126,7 +130,14 @@ const translation = {
       running: 'En servicio',
       disable: 'Deshabilitar',
     },
-    triggerInfo: {},
+    triggerInfo: {
+      title: 'Desencadenantes',
+      explanation: 'Gestión de activadores de flujo de trabajo',
+      triggersAdded: 'Se añadieron los disparadores de {{count}}',
+      noTriggerAdded: 'No se agregó ningún disparador',
+      triggerStatusDescription: 'El estado del nodo de activación aparece aquí. (Puede que ya exista en el borrador, surte efecto después de publicar)',
+      learnAboutTriggers: 'Aprende sobre los desencadenantes',
+    },
     disableTooltip: {
       triggerMode: 'La función {{feature}} no es compatible en el modo Nodo de disparo.',
     },

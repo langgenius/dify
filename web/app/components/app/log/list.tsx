@@ -816,9 +816,12 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
     try {
-      await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
+      await updateLogMessageFeedbacks({
+        url: `/apps/${appId}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      })
       conversationDetailMutate()
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
@@ -861,9 +864,12 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating, content }: FeedbackType): Promise<boolean> => {
     try {
-      await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
+      await updateLogMessageFeedbacks({
+        url: `/apps/${appId}/feedbacks`,
+        body: { message_id: mid, rating, content: content ?? undefined },
+      })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }

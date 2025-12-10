@@ -191,11 +191,11 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       onClose={noop}
       className='!w-[640px] !max-w-none !p-8 !pb-6'
     >
-      <div className='mb-2 text-xl font-semibold text-gray-900'>
+      <div className='mb-2 text-xl font-semibold text-text-primary'>
         {`${action} ${t('appDebug.variableConfig.apiBasedVar')}`}
       </div>
       <div className='py-2'>
-        <div className='text-sm font-medium leading-9 text-gray-900'>
+        <div className='text-sm font-medium leading-9 text-text-primary'>
           {t('common.apiBasedExtension.type')}
         </div>
         <SimpleSelect
@@ -210,46 +210,46 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         />
       </div>
       <div className='py-2'>
-        <div className='text-sm font-medium leading-9 text-gray-900'>
+        <div className='text-sm font-medium leading-9 text-text-primary'>
           {t('appDebug.feature.tools.modal.name.title')}
         </div>
         <div className='flex items-center'>
           <input
             value={localeData.label || ''}
             onChange={e => handleValueChange({ label: e.target.value })}
-            className='mr-2 block h-9 grow appearance-none rounded-lg bg-gray-100 px-3 text-sm text-gray-900 outline-none'
+            className='mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none'
             placeholder={t('appDebug.feature.tools.modal.name.placeholder') || ''}
           />
           <AppIcon size='large'
             onClick={() => { setShowEmojiPicker(true) }}
-            className='!h-9 !w-9 cursor-pointer rounded-lg border-[0.5px] border-black/5 '
+            className='!h-9 !w-9 cursor-pointer rounded-lg border-[0.5px] border-components-panel-border '
             icon={localeData.icon}
             background={localeData.icon_background}
           />
         </div>
       </div>
       <div className='py-2'>
-        <div className='text-sm font-medium leading-9 text-gray-900'>
+        <div className='text-sm font-medium leading-9 text-text-primary'>
           {t('appDebug.feature.tools.modal.variableName.title')}
         </div>
         <input
           value={localeData.variable || ''}
           onChange={e => handleValueChange({ variable: e.target.value })}
-          className='block h-9 w-full appearance-none rounded-lg bg-gray-100 px-3 text-sm text-gray-900 outline-none'
+          className='block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none'
           placeholder={t('appDebug.feature.tools.modal.variableName.placeholder') || ''}
         />
       </div>
       {
         localeData.type === 'api' && (
           <div className='py-2'>
-            <div className='flex h-9 items-center justify-between text-sm font-medium text-gray-900'>
+            <div className='flex h-9 items-center justify-between text-sm font-medium text-text-primary'>
               {t('common.apiBasedExtension.selector.title')}
               <a
                 href={docLink('/guides/extension/api-based-extension/README')}
                 target='_blank' rel='noopener noreferrer'
-                className='group flex items-center text-xs font-normal text-gray-500 hover:text-primary-600'
+                className='group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent'
               >
-                <BookOpen01 className='mr-1 h-3 w-3 text-gray-500 group-hover:text-primary-600' />
+                <BookOpen01 className='mr-1 h-3 w-3 text-text-tertiary group-hover:text-text-accent' />
                 {t('common.apiBasedExtension.link')}
               </a>
             </div>
