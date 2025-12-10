@@ -184,6 +184,7 @@
     "@types/semver": "^7.7.1",
     "@types/sortablejs": "^1.15.8",
     "@types/uuid": "^10.0.0",
+    "@typescript-eslint/parser": "^8.48.0",
     "@typescript/native-preview": "^7.0.0-dev",
     "autoprefixer": "^10.4.21",
     "babel-loader": "^10.0.0",
