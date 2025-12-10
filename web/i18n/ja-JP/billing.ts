@@ -202,6 +202,12 @@ const translation = {
     quotaTitle: '注釈返信クォータ',
   },
   teamMembers: 'チームメンバー',
+  upgrade: {
+    uploadMultiplePages: {
+      title: '複数ページを一度にアップロードするにはアップグレード',
+      description: '現在のプランではアップロード上限に達しています。1回の操作で選択・アップロードできるページは1つのみです。',
+    },
+  },
 }
 
 export default translation

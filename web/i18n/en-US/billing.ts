@@ -221,6 +221,12 @@ const translation = {
     fullTipLine2: 'annotate more conversations.',
     quotaTitle: 'Annotation Reply Quota',
   },
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Upgrade to upload multiple pages at once',
+      description: 'You’ve reached the upload limit — only one page can be selected and uploaded at a time on your current plan.',
+    },
+  },
 }
 
 export default translation

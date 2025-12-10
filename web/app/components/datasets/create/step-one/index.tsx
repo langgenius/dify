@@ -361,8 +361,8 @@ const StepOne = ({
             <PlanUpgradeModal
               show
               onClose={hidePlanUpgradeModal}
-              title='Upgrade to upload multiple pages at once'
-              description='You’ve reached the upload limit — only one page can be selected and uploaded at a time on your current plan.'
+              title={t('billing.upgrade.uploadMultiplePages.title')!}
+              description={t('billing.upgrade.uploadMultiplePages.description')!}
             />
           )}
         </div>
