@@ -1,32 +1,40 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
-import UsageInfo from '@/app/components/billing/usage-info'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import styles from './index.module.css'
+import styles from './style.module.css'
+import { SquareChecklist } from '../../base/icons/src/vender/other'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = {
+  Icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>
+  title: string
+  description: string
+  extraInfo?: React.ReactNode
   show: boolean
   onClose: () => void
-  onUpgrade: () => void
-  usage: number
-  total: number
-  resetInDays?: number
+  onUpgrade?: () => void
 }
 
-const TriggerEventsLimitModal: FC<Props> = ({
+const PlanUpgradeModal: FC<Props> = ({
+  Icon = SquareChecklist,
+  title,
+  description,
+  extraInfo,
   show,
   onClose,
   onUpgrade,
-  usage,
-  total,
-  resetInDays,
 }) => {
   const { t } = useTranslation()
+  const { setShowPricingModal } = useModalContext()
+
+  const handleUpgrade = useCallback(() => {
+    onClose()
+    onUpgrade ? onUpgrade() : setShowPricingModal()
+  }, [onClose, onUpgrade, setShowPricingModal])
 
   return (
     <Modal
@@ -43,25 +51,17 @@ const TriggerEventsLimitModal: FC<Props> = ({
         />
         <div className='px-8 pt-8'>
           <div className={`${styles.icon} flex size-12 items-center justify-center rounded-xl shadow-lg backdrop-blur-[5px]`}>
-            <TriggerAll className='size-6 text-text-primary-on-surface' />
+            <Icon className='size-6 text-text-primary-on-surface' />
           </div>
           <div className='mt-6 space-y-2'>
             <div className={`${styles.highlight} title-3xl-semi-bold`}>
-              {t('billing.triggerLimitModal.title')}
+              {title}
             </div>
             <div className='system-md-regular text-text-tertiary'>
-              {t('billing.triggerLimitModal.description')}
+              {description}
             </div>
           </div>
-          <UsageInfo
-            className='mt-4 w-full rounded-[12px] bg-components-panel-on-panel-item-bg'
-            Icon={TriggerAll}
-            name={t('billing.triggerLimitModal.usageTitle')}
-            usage={usage}
-            total={total}
-            resetInDays={resetInDays}
-            hideIcon
-          />
+          {extraInfo}
         </div>
       </div>
 
@@ -72,9 +72,10 @@ const TriggerEventsLimitModal: FC<Props> = ({
           {t('billing.triggerLimitModal.dismiss')}
         </Button>
         <UpgradeBtn
+          size='custom'
           isShort
-          onClick={onUpgrade}
-          className='!h-8 !rounded-lg'
+          onClick={handleUpgrade}
+          className='!h-8 !rounded-lg px-2'
           labelKey='billing.triggerLimitModal.upgrade'
           loc='trigger-events-limit-modal'
         />
@@ -83,4 +84,4 @@ const TriggerEventsLimitModal: FC<Props> = ({
   )
 }
 
-export default React.memo(TriggerEventsLimitModal)
+export default React.memo(PlanUpgradeModal)
