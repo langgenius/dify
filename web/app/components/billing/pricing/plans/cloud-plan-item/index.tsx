@@ -72,9 +72,24 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     setLoading(true)
     try {
       if (isCurrentPaidPlan) {
+        // Open synchronously to keep the user gesture; Safari prefers about:blank with no noreferrer
+        const newWindow = window.open('about:blank', '_blank')
+        if (!newWindow) {
+          Toast.notify({ type: 'error', message: 'Failed to open billing page' })
+          return
+        }
+        try {
+          newWindow.opener = null
+        }
+        catch { /* noop */ }
+
         const res = await fetchBillingUrl()
-        window.open(res.url, '_blank')
-        return
+        if (res.url) {
+          newWindow.location.href = res.url
+          return
+        }
+        newWindow.close()
+        throw new Error('Failed to open billing page')
       }
 
       if (isFreePlan)
