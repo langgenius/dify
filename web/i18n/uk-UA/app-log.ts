@@ -19,6 +19,7 @@ const translation = {
       tokens: 'ТОКЕНИ',
       user: 'КІНЦЕВИЙ КОРИСТУВАЧ АБО ОБЛІКОВИЙ ЗАПИС',
       version: 'ВЕРСІЯ',
+      triggered_from: 'АКТИВУЄТЬСЯ ВІД',
     },
     pagination: {
       previous: 'Попередня',
@@ -97,6 +98,15 @@ const translation = {
     finalProcessing: 'Остаточна обробка',
   },
   dateFormat: 'ДД/ММ/РРРР',
+  triggerBy: {
+    debugging: 'Налагодження',
+    appRun: 'Веб-додаток',
+    webhook: 'Вебхук',
+    schedule: 'Розклад',
+    plugin: 'Плагін',
+    ragPipelineRun: 'Конвеєр RAG',
+    ragPipelineDebugging: 'Виправлення помилок RAG',
+  },
 }
 
 export default translation

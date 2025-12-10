@@ -113,7 +113,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     return [{
       title: websiteInfo.title,
       source_url: websiteInfo.source_url,
-      content: websiteInfo.content,
+      markdown: websiteInfo.content,
       description: websiteInfo.description,
     }]
   }, [websiteInfo])

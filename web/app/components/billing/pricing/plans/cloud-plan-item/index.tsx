@@ -8,7 +8,8 @@ import { ALL_PLANS } from '../../../config'
 import Toast from '../../../../base/toast'
 import { PlanRange } from '../../plan-switcher/plan-range-switcher'
 import { useAppContext } from '@/context/app-context'
-import { fetchSubscriptionUrls } from '@/service/billing'
+import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import List from './list'
 import Button from './button'
 import { Professional, Sandbox, Team } from '../../assets'
@@ -39,8 +40,10 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const planInfo = ALL_PLANS[plan]
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
-  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level
+  const isCurrentPaidPlan = isCurrent && !isFreePlan
+  const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
   const { isCurrentWorkspaceManager } = useAppContext()
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const btnText = useMemo(() => {
     if (isCurrent)
@@ -60,10 +63,6 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     if (isPlanDisabled)
       return
 
-    if (isFreePlan)
-      return
-
-    // Only workspace manager can buy plan
     if (!isCurrentWorkspaceManager) {
       Toast.notify({
         type: 'error',
@@ -74,6 +73,23 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     }
     setLoading(true)
     try {
+      if (isCurrentPaidPlan) {
+        await openAsyncWindow(async () => {
+          const res = await fetchBillingUrl()
+          if (res.url)
+            return res.url
+          throw new Error('Failed to open billing page')
+        }, {
+          onError: (err) => {
+            Toast.notify({ type: 'error', message: err.message || String(err) })
+          },
+        })
+        return
+      }
+
+      if (isFreePlan)
+        return
+
       const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = res.url

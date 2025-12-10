@@ -33,6 +33,7 @@ const translation = {
       longDescription:
         ' sul metodo di recupero, puoi cambiare questo in qualsiasi momento nelle impostazioni della Conoscenza.',
       method: 'Metodo di recupero',
+      multiModalTip: 'Quando il modello di embedding supporta il multi-modale, seleziona un modello di riordinamento multi-modale per ottenere migliori prestazioni.',
     },
     save: 'Salva',
     retrievalSettings: 'Impostazioni di recupero',

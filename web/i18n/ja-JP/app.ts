@@ -322,6 +322,8 @@ const translation = {
       docDesc: 'ヘルプドキュメントを開く',
       communityDesc: 'オープンDiscordコミュニティ',
       feedbackDesc: 'オープンなコミュニティフィードバックディスカッション',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: 'アプリが見つかりません',

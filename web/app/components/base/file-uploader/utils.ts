@@ -26,10 +26,21 @@ export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t:
   return defaultMessage
 }
 
+type FileUploadResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  preview_url: string | null
+  size: number
+  source_url: string
+}
 type FileUploadParams = {
   file: File
   onProgressCallback: (progress: number) => void
-  onSuccessCallback: (res: { id: string }) => void
+  onSuccessCallback: (res: FileUploadResponse) => void
   onErrorCallback: (error?: any) => void
 }
 type FileUpload = (v: FileUploadParams, isPublic?: boolean, url?: string) => void
@@ -53,8 +64,8 @@ export const fileUpload: FileUpload = ({
     data: formData,
     onprogress: onProgress,
   }, isPublic, url)
-    .then((res: { id: string }) => {
-      onSuccessCallback(res)
+    .then((res) => {
+      onSuccessCallback(res as FileUploadResponse)
     })
     .catch((error) => {
       onErrorCallback(error)
@@ -174,9 +185,9 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
       const detectedTypeFromMime = getSupportFileType('', fileItem.mime_type)
 
       if (detectedTypeFromFileName
-          && detectedTypeFromMime
-          && detectedTypeFromFileName === detectedTypeFromMime
-          && detectedTypeFromFileName !== fileItem.type)
+        && detectedTypeFromMime
+        && detectedTypeFromFileName === detectedTypeFromMime
+        && detectedTypeFromFileName !== fileItem.type)
         supportFileType = detectedTypeFromFileName
     }
 

@@ -1,0 +1,65 @@
+{
+  "$id": "https://dify.ai/schemas/v1/multimodal_general_structure.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "version": "1.0.0",
+  "type": "array",
+  "title": "Multimodal General Structure",
+  "description": "Schema for multimodal general structure (v1) - array of objects",
+  "properties": {
+    "general_chunks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "content": {
+            "type": "string",
+            "description": "The content"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "file name"
+                },
+                "size": {
+                  "type": "number",
+                  "description": "file size"
+                },
+                "extension": {
+                  "type": "string",
+                  "description": "file extension"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "file type"
+                },
+                "mime_type": {
+                  "type": "string",
+                  "description": "file mime type"
+                },
+                "transfer_method": {
+                  "type": "string",
+                  "description": "file transfer method"
+                },
+                "url": {
+                  "type": "string",
+                  "description": "file url"
+                },
+                "related_id": {
+                  "type": "string",
+                  "description": "file related id"
+                }
+            },
+            "description": "List of files"
+          }
+        }
+        },
+        "required": ["content"]
+      },
+      "description": "List of content and files"
+    }
+  }
+}

@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: 'Keine Sorge - das wird sich nicht auf Ihr aktuelles Abonnement auswirken, aber Sie werden den Bildungspreis beim nächsten Verzicht nicht erhalten, es sei denn, Sie überprüfen Ihren Status erneut.',
+      title: 'Ihr Bildungsstatus läuft am {{date}} ab',
     },
     stillInEducation: {
       title: 'Immer noch in der Ausbildung?',
