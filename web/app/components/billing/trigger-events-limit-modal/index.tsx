@@ -7,22 +7,20 @@ import Button from '@/app/components/base/button'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UsageInfo from '@/app/components/billing/usage-info'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import type { Plan } from '@/app/components/billing/type'
 import styles from './index.module.css'
 
 type Props = {
   show: boolean
-  onDismiss: () => void
+  onClose: () => void
   onUpgrade: () => void
   usage: number
   total: number
   resetInDays?: number
-  planType: Plan
 }
 
 const TriggerEventsLimitModal: FC<Props> = ({
   show,
-  onDismiss,
+  onClose,
   onUpgrade,
   usage,
   total,
@@ -33,30 +31,30 @@ const TriggerEventsLimitModal: FC<Props> = ({
   return (
     <Modal
       isShow={show}
-      onClose={onDismiss}
+      onClose={onClose}
       closable={false}
       clickOutsideNotClose
-      className={`${styles.surface} flex h-[360px] w-[580px] flex-col overflow-hidden rounded-2xl !p-0 shadow-xl`}
+      className={`${styles.surface} w-[580px] rounded-2xl !p-0`}
     >
-      <div className='relative flex w-full flex-1 items-stretch justify-center'>
+      <div className='relative'>
         <div
           aria-hidden
           className={`${styles.heroOverlay} pointer-events-none absolute inset-0`}
         />
-        <div className='relative z-10 flex w-full flex-col items-start gap-4 px-8 pt-8'>
-          <div className={`${styles.icon} flex h-12 w-12 items-center justify-center rounded-[12px]`}>
-            <TriggerAll className='h-5 w-5 text-text-primary-on-surface' />
+        <div className='px-8 pt-8'>
+          <div className={`${styles.icon} flex size-12 items-center justify-center rounded-xl shadow-lg backdrop-blur-[5px]`}>
+            <TriggerAll className='size-6 text-text-primary-on-surface' />
           </div>
-          <div className='flex flex-col items-start gap-2'>
-            <div className={`${styles.highlight} title-lg-semi-bold`}>
+          <div className='mt-6 space-y-2'>
+            <div className={`${styles.highlight} title-3xl-semi-bold`}>
               {t('billing.triggerLimitModal.title')}
             </div>
-            <div className='body-md-regular text-text-secondary'>
+            <div className='system-md-regular text-text-tertiary'>
               {t('billing.triggerLimitModal.description')}
             </div>
           </div>
           <UsageInfo
-            className='mb-5 w-full rounded-[12px] bg-components-panel-on-panel-item-bg'
+            className='mt-4 w-full rounded-[12px] bg-components-panel-on-panel-item-bg'
             Icon={TriggerAll}
             name={t('billing.triggerLimitModal.usageTitle')}
             usage={usage}
@@ -67,18 +65,16 @@ const TriggerEventsLimitModal: FC<Props> = ({
         </div>
       </div>
 
-      <div className='flex h-[76px] w-full items-center justify-end gap-2 px-8 pb-8 pt-5'>
+      <div className='mb-8 mt-10 flex justify-end space-x-2 px-8'>
         <Button
-          className='h-8 w-[77px] min-w-[72px] !rounded-lg !border-[0.5px] px-3 py-2'
-          onClick={onDismiss}
+          onClick={onClose}
         >
           {t('billing.triggerLimitModal.dismiss')}
         </Button>
         <UpgradeBtn
           isShort
           onClick={onUpgrade}
-          className='flex w-[93px] items-center justify-center !rounded-lg !px-2'
-          style={{ height: 32 }}
+          className='!h-8 !rounded-lg'
           labelKey='billing.triggerLimitModal.upgrade'
           loc='trigger-events-limit-modal'
         />
