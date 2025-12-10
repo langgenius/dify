@@ -40,6 +40,9 @@ const Trigger = ({
           {t('datasetPipeline.credentialSelector.name', {
             credentialName: name,
             pluginName,
+            interpolation: {
+              escapeValue: false,
+            },
           })}
         </span>
         <RiArrowDownSLine className='size-4 shrink-0 text-text-secondary' />

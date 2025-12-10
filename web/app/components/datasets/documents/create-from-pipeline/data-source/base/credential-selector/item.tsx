@@ -38,6 +38,9 @@ const Item = ({
         {t('datasetPipeline.credentialSelector.name', {
           credentialName: name,
           pluginName,
+          interpolation: {
+            escapeValue: false,
+          },
         })}
       </span>
       {
