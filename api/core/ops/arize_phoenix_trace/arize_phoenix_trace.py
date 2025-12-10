@@ -190,15 +190,26 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             raise
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
+        file_list = cast(list[str], trace_info.file_list) or []
+
         metadata = wrap_metadata(
             trace_info.metadata,
-            workflow_run_id=trace_info.workflow_run_id or "",
+            trace_id=trace_info.trace_id or "",
             message_id=trace_info.message_id or "",
-            workflow_app_log_id=trace_info.workflow_app_log_id or "",
             status=trace_info.workflow_run_status or "",
             status_message=trace_info.error or "",
             level="ERROR" if trace_info.error else "DEFAULT",
+            trace_entity_type="workflow",
+            conversation_id=trace_info.conversation_id or "",
+            workflow_app_log_id=trace_info.workflow_app_log_id or "",
+            workflow_id=trace_info.workflow_id or "",
+            tenant_id=trace_info.tenant_id or "",
+            workflow_run_id=trace_info.workflow_run_id or "",
+            workflow_run_elapsed_time=trace_info.workflow_run_elapsed_time or 0,
+            workflow_run_version=trace_info.workflow_run_version or "",
             total_tokens=trace_info.total_tokens or 0,
+            file_list=safe_json_dumps(file_list),
+            query=trace_info.query or "",
         )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id or trace_info.workflow_run_id
@@ -208,11 +219,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         workflow_span = self.tracer.start_span(
             name=TraceTaskName.WORKFLOW_TRACE.value,
             attributes={
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.workflow_run_inputs),
                 SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.workflow_run_outputs),
                 SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
                 SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
             },
@@ -266,6 +277,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                         "app_id": app_id,
                         "app_name": node_execution.title,
                         "status": node_execution.status,
+                        "status_message": node_execution.error or "",
                         "level": "ERROR" if node_execution.status == "failed" else "DEFAULT",
                     }
                 )
@@ -299,11 +311,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 node_span = self.tracer.start_span(
                     name=node_execution.node_type,
                     attributes={
+                        SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind.value,
                         SpanAttributes.INPUT_VALUE: safe_json_dumps(inputs_value),
                         SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                         SpanAttributes.OUTPUT_VALUE: safe_json_dumps(outputs_value),
                         SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-                        SpanAttributes.OPENINFERENCE_SPAN_KIND: span_kind.value,
                         SpanAttributes.METADATA: safe_json_dumps(node_metadata),
                         SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
                     },
@@ -348,6 +360,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
     def message_trace(self, trace_info: MessageTraceInfo):
         if trace_info.message_data is None:
+            logger.warning("[Arize/Phoenix] Message data is None, skipping message trace.")
             return
 
         file_list = cast(list[str], trace_info.file_list) or []
@@ -359,18 +372,24 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         metadata = wrap_metadata(
             trace_info.metadata,
+            trace_id=trace_info.trace_id or "",
             message_id=trace_info.message_id or "",
-            conversation_mode=str(trace_info.conversation_mode or ""),
-            user_id=trace_info.message_data.from_account_id or "",
-            file_list=json.dumps(file_list),
             status=trace_info.message_data.status or "",
             status_message=trace_info.error or "",
             level="ERROR" if trace_info.error else "DEFAULT",
+            trace_entity_type="message",
+            conversation_model=trace_info.conversation_model or "",
+            message_tokens=trace_info.message_tokens or 0,
+            answer_tokens=trace_info.answer_tokens or 0,
             total_tokens=trace_info.total_tokens or 0,
-            prompt_tokens=trace_info.message_tokens or 0,
-            completion_tokens=trace_info.answer_tokens or 0,
-            ls_provider=trace_info.message_data.model_provider or "",
-            ls_model_name=trace_info.message_data.model_id or "",
+            conversation_mode=trace_info.conversation_mode or "",
+            gen_ai_server_time_to_first_token=trace_info.gen_ai_server_time_to_first_token or 0,
+            llm_streaming_time_to_generate=trace_info.llm_streaming_time_to_generate or 0,
+            is_streaming_request=trace_info.is_streaming_request or False,
+            user_id=trace_info.message_data.from_account_id or "",
+            file_list=safe_json_dumps(file_list),
+            model_provider=trace_info.message_data.model_provider or "",
+            model_id=trace_info.message_data.model_id or "",
         )
 
         # Add end user data if available
@@ -382,13 +401,13 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 metadata["end_user_id"] = end_user_data.session_id
 
         attributes = {
+            SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
             SpanAttributes.INPUT_VALUE: trace_info.message_data.query,
             SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.TEXT.value,
             SpanAttributes.OUTPUT_VALUE: trace_info.message_data.answer,
             SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.TEXT.value,
-            SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
             SpanAttributes.METADATA: safe_json_dumps(metadata),
-            SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
+            SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id or "",
         }
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
@@ -404,8 +423,10 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         try:
             # Convert outputs to string based on type
+            outputs_mime_type = OpenInferenceMimeTypeValues.TEXT.value
             if isinstance(trace_info.outputs, dict | list):
                 outputs_str = safe_json_dumps(trace_info.outputs)
+                outputs_mime_type = OpenInferenceMimeTypeValues.JSON.value
             elif isinstance(trace_info.outputs, str):
                 outputs_str = trace_info.outputs
             else:
@@ -414,9 +435,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             llm_attributes = {
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.LLM.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
+                SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OUTPUT_VALUE: outputs_str,
+                SpanAttributes.OUTPUT_MIME_TYPE: outputs_mime_type,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
-                SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
+                SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id or "",
             }
             llm_attributes.update(self._construct_llm_attributes(trace_info.inputs))
             if trace_info.total_tokens is not None and trace_info.total_tokens > 0:
@@ -460,15 +483,19 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
     def moderation_trace(self, trace_info: ModerationTraceInfo):
         if trace_info.message_data is None:
+            logger.warning("[Arize/Phoenix] Message data is None, skipping moderation trace.")
             return
 
         metadata = wrap_metadata(
             trace_info.metadata,
-            message_id=trace_info.message_id,
-            tool_name="moderation",
-            status=trace_info.message_data.status,
+            trace_id=trace_info.trace_id or "",
+            message_id=trace_info.message_id or "",
+            status=trace_info.message_data.status or "",
             status_message=trace_info.message_data.error or "",
             level="ERROR" if trace_info.message_data.error else "DEFAULT",
+            trace_entity_type="moderation",
+            model_provider=trace_info.message_data.model_provider or "",
+            model_id=trace_info.message_data.model_id or "",
         )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
@@ -478,19 +505,17 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span = self.tracer.start_span(
             name=TraceTaskName.MODERATION_TRACE.value,
             attributes={
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
                 SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-                SpanAttributes.OUTPUT_VALUE: json.dumps(
-                    {
-                        "action": trace_info.action,
+                SpanAttributes.OUTPUT_VALUE: safe_json_dumps({
                         "flagged": trace_info.flagged,
+                        "action": trace_info.action,
                         "preset_response": trace_info.preset_response,
-                        "inputs": trace_info.inputs,
-                    },
-                    ensure_ascii=False,
+                        "query": trace_info.query,
+                    }
                 ),
                 SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
             },
             start_time=datetime_to_nanos(trace_info.start_time),
@@ -507,6 +532,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
     def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
         if trace_info.message_data is None:
+            logger.warning("[Arize/Phoenix] Message data is None, skipping suggested question trace.")
             return
 
         start_time = trace_info.start_time or trace_info.message_data.created_at
@@ -514,14 +540,19 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         metadata = wrap_metadata(
             trace_info.metadata,
-            message_id=trace_info.message_id,
-            tool_name="suggested_question",
-            status=trace_info.status,
-            status_message=trace_info.error or "",
-            level="ERROR" if trace_info.error else "DEFAULT",
-            total_tokens=trace_info.total_tokens,
-            ls_provider=trace_info.model_provider or "",
-            ls_model_name=trace_info.model_id or "",
+            trace_id=trace_info.trace_id or "",
+            message_id=trace_info.message_id or "",
+            status=trace_info.status or "",
+            status_message=trace_info.status_message or "",
+            level=trace_info.level or "",
+            trace_entity_type="suggested_question",
+            total_tokens=trace_info.total_tokens or 0,
+            from_account_id=trace_info.from_account_id or "",
+            agent_based=trace_info.agent_based or False,
+            from_source=trace_info.from_source or "",
+            model_provider=trace_info.model_provider or "",
+            model_id=trace_info.model_id or "",
+            workflow_run_id=trace_info.workflow_run_id or "",
         )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
@@ -531,11 +562,11 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span = self.tracer.start_span(
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
             attributes={
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
                 SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.suggested_question),
                 SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
             },
             start_time=datetime_to_nanos(start_time),
@@ -552,6 +583,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
     def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
         if trace_info.message_data is None:
+            logger.warning("[Arize/Phoenix] Message data is None, skipping dataset retrieval trace.")
             return
 
         start_time = trace_info.start_time or trace_info.message_data.created_at
@@ -559,13 +591,14 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         metadata = wrap_metadata(
             trace_info.metadata,
-            message_id=trace_info.message_id,
-            tool_name="dataset_retrieval",
-            status=trace_info.message_data.status,
-            status_message=trace_info.message_data.error or "",
-            level="ERROR" if trace_info.message_data.error else "DEFAULT",
-            ls_provider=trace_info.message_data.model_provider or "",
-            ls_model_name=trace_info.message_data.model_id or "",
+            trace_id=trace_info.trace_id or "",
+            message_id=trace_info.message_id or "",
+            status=trace_info.message_data.status or "",
+            status_message=trace_info.error or "",
+            level="ERROR" if trace_info.error else "DEFAULT",
+            trace_entity_type="dataset_retrieval",
+            model_provider=trace_info.message_data.model_provider or "",
+            model_id=trace_info.message_data.model_id or "",
         )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
@@ -575,22 +608,20 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span = self.tracer.start_span(
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
             attributes={
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.RETRIEVER.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
                 SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OUTPUT_VALUE: safe_json_dumps({"documents": trace_info.documents}),
                 SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.RETRIEVER.value,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
-                "start_time": start_time.isoformat() if start_time else "",
-                "end_time": end_time.isoformat() if end_time else "",
             },
             start_time=datetime_to_nanos(start_time),
             context=root_span_context,
         )
 
         try:
-            if trace_info.message_data.error:
-                set_span_status(span, trace_info.message_data.error)
+            if trace_info.error:
+                set_span_status(span, trace_info.error)
             else:
                 set_span_status(span)
         finally:
@@ -603,31 +634,32 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
         metadata = wrap_metadata(
             trace_info.metadata,
-            message_id=trace_info.message_id,
-            tool_config=json.dumps(trace_info.tool_config, ensure_ascii=False),
+            trace_id=trace_info.trace_id or "",
+            message_id=trace_info.message_id or "",
+            status=trace_info.message_data.status or "",
+            status_message=trace_info.error or "",
+            level="ERROR" if trace_info.error else "DEFAULT",
+            trace_entity_type="tool",
+            tool_config=safe_json_dumps(trace_info.tool_config),
+            time_cost=trace_info.time_cost or 0,
+            file_url=trace_info.file_url or "",
         )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id
         self.ensure_root_span(dify_trace_id)
         root_span_context = self.propagator.extract(carrier=self.carrier)
 
-        tool_params_str = (
-            json.dumps(trace_info.tool_parameters, ensure_ascii=False)
-            if isinstance(trace_info.tool_parameters, dict)
-            else str(trace_info.tool_parameters)
-        )
-
         span = self.tracer.start_span(
             name=trace_info.tool_name,
             attributes={
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.tool_inputs),
                 SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OUTPUT_VALUE: trace_info.tool_outputs,
                 SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.TEXT.value,
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
                 SpanAttributes.TOOL_NAME: trace_info.tool_name,
-                SpanAttributes.TOOL_PARAMETERS: tool_params_str,
+                SpanAttributes.TOOL_PARAMETERS: safe_json_dumps(trace_info.tool_parameters),
             },
             start_time=datetime_to_nanos(trace_info.start_time),
             context=root_span_context,
@@ -643,15 +675,21 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
         if trace_info.message_data is None:
+            logger.warning("[Arize/Phoenix] Message data is None, skipping generate name trace.")
             return
 
         metadata = wrap_metadata(
             trace_info.metadata,
-            project_name=self.project,
-            message_id=trace_info.message_id,
-            status=trace_info.message_data.status,
+            trace_id=trace_info.trace_id or "",
+            message_id=trace_info.message_id or "",
+            status=trace_info.message_data.status or "",
             status_message=trace_info.message_data.error or "",
             level="ERROR" if trace_info.message_data.error else "DEFAULT",
+            trace_entity_type="generate_name",
+            model_provider=trace_info.message_data.model_provider or "",
+            model_id=trace_info.message_data.model_id or "",
+            conversation_id=trace_info.conversation_id or "",
+            tenant_id=trace_info.tenant_id,
         )
 
         dify_trace_id = trace_info.trace_id or trace_info.message_id or trace_info.conversation_id
@@ -661,15 +699,13 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         span = self.tracer.start_span(
             name=TraceTaskName.GENERATE_NAME_TRACE.value,
             attributes={
+                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
                 SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
                 SpanAttributes.OUTPUT_VALUE: safe_json_dumps(trace_info.outputs),
                 SpanAttributes.OUTPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-                SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.CHAIN.value,
                 SpanAttributes.METADATA: safe_json_dumps(metadata),
-                SpanAttributes.SESSION_ID: trace_info.message_data.conversation_id,
-                "start_time": trace_info.start_time.isoformat() if trace_info.start_time else "",
-                "end_time": trace_info.end_time.isoformat() if trace_info.end_time else "",
+                SpanAttributes.SESSION_ID: trace_info.conversation_id or "",
             },
             start_time=datetime_to_nanos(trace_info.start_time),
             context=root_span_context,
