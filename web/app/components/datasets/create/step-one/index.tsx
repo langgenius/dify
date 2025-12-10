@@ -25,6 +25,7 @@ import type { DataSourceAuth } from '@/app/components/header/account-setting/dat
 import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
 import { useBoolean } from 'ahooks'
 import { Plan } from '@/app/components/billing/type'
+import UpgradeCard from './upgrade-card'
 
 type IStepOneProps = {
   datasetId?: string
@@ -273,6 +274,14 @@ const StepOne = ({
                       </span>
                     </Button>
                   </div>
+                  {
+                    enableBilling && plan.type === Plan.sandbox && files.length > 0 && (
+                      <div className='mt-5'>
+                        <div className='mb-4 h-px bg-divider-subtle'></div>
+                        <UpgradeCard />
+                      </div>
+                    )
+                  }
                 </>
               )}
               {dataSourceType === DataSourceType.NOTION && (
