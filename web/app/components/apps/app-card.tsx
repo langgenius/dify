@@ -247,11 +247,23 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       props.onClick?.()
       e.preventDefault()
       try {
+        // Open synchronously to keep user gesture and get a window handle in Safari
+        const newWindow = window.open('about:blank', '_blank')
+        if (!newWindow) {
+          throw new Error('Failed to open new window')
+        }
+        try {
+          newWindow.opener = null
+        }
+        catch { /* noop */ }
+
         const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
-        if (installed_apps?.length > 0)
-          window.open(`${basePath}/explore/installed/${installed_apps[0].id}`, '_blank')
-        else
-          throw new Error('No app found in Explore')
+        if (installed_apps?.length > 0) {
+          newWindow.location.href = `${basePath}/explore/installed/${installed_apps[0].id}`
+          return
+        }
+        newWindow.close()
+        throw new Error('No app found in Explore')
       }
       catch (e: any) {
         Toast.notify({ type: 'error', message: `${e.message || e}` })
