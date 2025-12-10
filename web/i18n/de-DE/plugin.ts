@@ -230,6 +230,11 @@ const translation = {
     installing: 'Installation von {{installingLength}} Plugins, 0 erledigt.',
     installError:
       '{{errorLength}} Plugins konnten nicht installiert werden, klicken Sie hier, um sie anzusehen',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   allCategories: 'Alle Kategorien',
   install: '{{num}} Installationen',
