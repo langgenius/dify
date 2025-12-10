@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useMemo,
   useState,
 } from 'react'
 import {
@@ -22,6 +23,7 @@ import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
+import Tooltip from '@/app/components/base/tooltip'
 
 const PluginTasks = () => {
   const { t } = useTranslation()
@@ -73,6 +75,30 @@ const PluginTasks = () => {
       setOpen(false)
   }, [handleClearErrorPlugin, runningPluginsLength])
 
+  const tip = useMemo(() => {
+    if (isInstallingWithError)
+      return t('plugin.task.installingWithError', { installingLength: runningPluginsLength, successLength: successPluginsLength, errorLength: errorPluginsLength })
+    if (isInstallingWithSuccess)
+      return t('plugin.task.installingWithSuccess', { installingLength: runningPluginsLength, successLength: successPluginsLength })
+    if (isInstalling)
+      return t('plugin.task.installing')
+    if (isFailed)
+      return t('plugin.task.installedError', { errorLength: errorPluginsLength })
+    if (isSuccess)
+      return t('plugin.task.installSuccess', { successLength: successPluginsLength })
+    return t('plugin.task.installed')
+  }, [
+    errorPluginsLength,
+    isFailed,
+    isInstalling,
+    isInstallingWithError,
+    isInstallingWithSuccess,
+    isSuccess,
+    runningPluginsLength,
+    successPluginsLength,
+    t,
+  ])
+
   // Show icon if there are any plugin tasks (completed, running, or failed)
   // Only hide when there are absolutely no plugin tasks
   if (totalPluginsLength === 0)
@@ -95,60 +121,66 @@ const PluginTasks = () => {
               setOpen(v => !v)
           }}
         >
-          <div
-            className={cn(
-              'relative flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-components-button-secondary-bg-hover',
-              (isInstallingWithError || isFailed) && 'cursor-pointer border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt',
-              (isInstalling || isInstallingWithSuccess || isSuccess) && 'cursor-pointer hover:bg-components-button-secondary-bg-hover',
-            )}
-            id="plugin-task-trigger"
+          <Tooltip
+            popupContent={tip}
+            asChild
+            offset={8}
           >
-            {
-              (isInstalling || isInstallingWithError) && (
-                <DownloadingIcon />
-              )
-            }
-            {
-              !(isInstalling || isInstallingWithError) && (
-                <RiInstallLine
-                  className={cn(
-                    'h-4 w-4 text-components-button-secondary-text',
-                    (isInstallingWithError || isFailed) && 'text-components-button-destructive-secondary-text',
-                  )}
-                />
-              )
-            }
-            <div className='absolute -right-1 -top-1'>
+            <div
+              className={cn(
+                'relative flex h-8 w-8 items-center justify-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-components-button-secondary-bg-hover',
+                (isInstallingWithError || isFailed) && 'cursor-pointer border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt',
+                (isInstalling || isInstallingWithSuccess || isSuccess) && 'cursor-pointer hover:bg-components-button-secondary-bg-hover',
+              )}
+              id="plugin-task-trigger"
+            >
               {
-                (isInstalling || isInstallingWithSuccess) && (
-                  <ProgressCircle
-                    percentage={successPluginsLength / totalPluginsLength * 100}
-                    circleFillColor='fill-components-progress-brand-bg'
+                (isInstalling || isInstallingWithError) && (
+                  <DownloadingIcon />
+                )
+              }
+              {
+                !(isInstalling || isInstallingWithError) && (
+                  <RiInstallLine
+                    className={cn(
+                      'h-4 w-4 text-components-button-secondary-text',
+                      (isInstallingWithError || isFailed) && 'text-components-button-destructive-secondary-text',
+                    )}
                   />
                 )
               }
-              {
-                isInstallingWithError && (
-                  <ProgressCircle
-                    percentage={runningPluginsLength / totalPluginsLength * 100}
-                    circleFillColor='fill-components-progress-brand-bg'
-                    sectorFillColor='fill-components-progress-error-border'
-                    circleStrokeColor='stroke-components-progress-error-border'
-                  />
-                )
-              }
-              {
-                (isSuccess || (successPluginsLength > 0 && runningPluginsLength === 0 && errorPluginsLength === 0)) && (
-                  <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
-                )
-              }
-              {
-                isFailed && (
-                  <RiErrorWarningFill className='h-3.5 w-3.5 text-text-destructive' />
-                )
-              }
+              <div className='absolute -right-1 -top-1'>
+                {
+                  (isInstalling || isInstallingWithSuccess) && (
+                    <ProgressCircle
+                      percentage={successPluginsLength / totalPluginsLength * 100}
+                      circleFillColor='fill-components-progress-brand-bg'
+                    />
+                  )
+                }
+                {
+                  isInstallingWithError && (
+                    <ProgressCircle
+                      percentage={runningPluginsLength / totalPluginsLength * 100}
+                      circleFillColor='fill-components-progress-brand-bg'
+                      sectorFillColor='fill-components-progress-error-border'
+                      circleStrokeColor='stroke-components-progress-error-border'
+                    />
+                  )
+                }
+                {
+                  (isSuccess || (successPluginsLength > 0 && runningPluginsLength === 0 && errorPluginsLength === 0)) && (
+                    <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
+                  )
+                }
+                {
+                  isFailed && (
+                    <RiErrorWarningFill className='h-3.5 w-3.5 text-text-destructive' />
+                  )
+                }
+              </div>
             </div>
-          </div>
+          </Tooltip>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[11]'>
           <div className='w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
