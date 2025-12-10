@@ -43,6 +43,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isCurrentPaidPlan = isCurrent && !isFreePlan
   const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
   const { isCurrentWorkspaceManager } = useAppContext()
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const btnText = useMemo(() => {
     if (isCurrent)
@@ -54,8 +55,6 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
       [Plan.team]: t('billing.plansCommon.getStarted'),
     })[plan]
   }, [isCurrent, plan, t])
-
-  const { openAsync } = useAsyncWindowOpen()
 
   const handleGetPayUrl = async () => {
     if (loading)
@@ -75,13 +74,16 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     setLoading(true)
     try {
       if (isCurrentPaidPlan) {
-        await openAsync(
-          () => fetchBillingUrl().then(res => res.url),
-          {
-            errorMessage: 'Failed to open billing page',
-            windowFeatures: 'noopener,noreferrer',
+        await openAsyncWindow(async () => {
+          const res = await fetchBillingUrl()
+          if (res.url)
+            return res.url
+          throw new Error('Failed to open billing page')
+        }, {
+          onError: (err) => {
+            Toast.notify({ type: 'error', message: err.message || String(err) })
           },
-        )
+        })
         return
       }
 

@@ -21,6 +21,7 @@ import {
 import { useKeyPress } from 'ahooks'
 import Divider from '../../base/divider'
 import Loading from '../../base/loading'
+import Toast from '../../base/toast'
 import Tooltip from '../../base/tooltip'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
 import AccessControl from '../app-access-control'
@@ -41,6 +42,7 @@ import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
@@ -49,7 +51,6 @@ import { AppModeEnum } from '@/types/app'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { basePath } from '@/utils/var'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 
 const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
@@ -153,6 +154,7 @@ const AppPublisher = ({
 
   const { data: userCanAccessApp, isLoading: isGettingUserCanAccessApp, refetch } = useGetUserCanAccessApp({ appId: appDetail?.id, enabled: false })
   const { data: appAccessSubjects, isLoading: isGettingAppWhiteListSubjects } = useAppWhiteListSubjects(appDetail?.id, open && systemFeatures.webapp_auth.enabled && appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS)
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const noAccessPermission = useMemo(() => systemFeatures.webapp_auth.enabled && appDetail && appDetail.access_mode !== AccessMode.EXTERNAL_MEMBERS && !userCanAccessApp?.result, [systemFeatures, appDetail, userCanAccessApp])
   const disabledFunctionButton = useMemo(() => (!publishedAt || missingStartNode || noAccessPermission), [publishedAt, missingStartNode, noAccessPermission])
@@ -216,23 +218,20 @@ const AppPublisher = ({
       setPublished(false)
   }, [disabled, onToggle, open])
 
-  const { openAsync } = useAsyncWindowOpen()
-
-  const handleOpenInExplore = useCallback(() => {
-    if (!appDetail?.id) return
-
-    openAsync(
-      async () => {
-        const { installed_apps }: { installed_apps?: { id: string }[] } = await fetchInstalledAppList(appDetail.id) || {}
-        if (installed_apps && installed_apps.length > 0)
-          return `${basePath}/explore/installed/${installed_apps[0].id}`
-        throw new Error('No app found in Explore')
+  const handleOpenInExplore = useCallback(async () => {
+    await openAsyncWindow(async () => {
+      if (!appDetail?.id)
+        throw new Error('App not found')
+      const { installed_apps }: any = await fetchInstalledAppList(appDetail?.id) || {}
+      if (installed_apps?.length > 0)
+        return `${basePath}/explore/installed/${installed_apps[0].id}`
+      throw new Error('No app found in Explore')
+    }, {
+      onError: (err) => {
+        Toast.notify({ type: 'error', message: `${err.message || err}` })
       },
-      {
-        errorMessage: 'Failed to open app in Explore',
-      },
-    )
-  }, [appDetail?.id, openAsync])
+    })
+  }, [appDetail?.id, openAsyncWindow])
 
   const handleAccessControlUpdate = useCallback(async () => {
     if (!appDetail)
