@@ -18,7 +18,7 @@ export const useAsyncWindowOpen = () => useCallback(async (getUrl: GetUrl, optio
   } = options ?? {}
 
   if (immediateUrl) {
-    const newWindow = window.open(immediateUrl, target, features ?? 'noopener,noreferrer')
+    const newWindow = window.open(immediateUrl, target, features ? `${features},noopener,noreferrer` : 'noopener,noreferrer')
     if (!newWindow) {
       onError?.(new Error('Failed to open new window'))
       return
