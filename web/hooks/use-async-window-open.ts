@@ -17,28 +17,32 @@ export const useAsyncWindowOpen = () => {
     const {
       successMessage,
       errorMessage = 'Failed to open page',
-      windowFeatures = 'noopener,noreferrer',
+      windowFeatures = 'noopener',
       onError,
       onSuccess,
     } = options
 
     const newWindow = window.open('', '_blank', windowFeatures)
 
+    if (!newWindow) {
+      const error = new Error('Failed to open new window')
+      onError?.(error)
+      Toast.notify({
+        type: 'error',
+        message: errorMessage,
+      })
+      return
+    }
+
     try {
       const url = await fetchUrl()
 
       if (url) {
-        if (newWindow) {
-          try {
-            newWindow.opener = null
-          }
-          catch { /* noop */ }
-          newWindow.location.href = url
+        try {
+          newWindow.opener = null
         }
-        else {
-          // Fallback: navigate current tab if we couldn't get a window reference
-          window.location.href = url
-        }
+        catch { /* noop */ }
+        newWindow.location.href = url
         onSuccess?.(url)
 
         if (successMessage) {
