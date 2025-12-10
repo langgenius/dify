@@ -44,7 +44,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
   }] = useBoolean(false)
   const { plan, enableBilling } = useProviderContext()
   const { usage, total } = plan
-  const canAdd = enableBilling && (usage.vectorSpace < total.vectorSpace)
+  const canAdd = enableBilling ? (usage.vectorSpace < total.vectorSpace) : true
 
   const withNeedUpgradeCheck = useCallback((fn: () => void) => {
     return () => {

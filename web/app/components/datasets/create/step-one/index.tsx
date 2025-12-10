@@ -24,6 +24,7 @@ import NotionConnector from '@/app/components/base/notion-connector'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
 import { useBoolean } from 'ahooks'
+import { Plan } from '@/app/components/billing/type'
 
 type IStepOneProps = {
   datasetId?: string
@@ -112,7 +113,7 @@ const StepOne = ({
   const hasNotin = notionPages.length > 0
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && enableBilling
-  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
+  const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
   const notSupportBatchUpload = !supportBatchUpload
 
   const [isShowPlanUpgradeModal, {
