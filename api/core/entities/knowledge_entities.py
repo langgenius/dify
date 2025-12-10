@@ -1,4 +1,5 @@
-from pydantic import BaseModel
+from typing import Optional
+from pydantic import BaseModel, Field
 
 
 class PreviewDetail(BaseModel):
@@ -20,7 +21,7 @@ class IndexingEstimate(BaseModel):
 class PipelineDataset(BaseModel):
     id: str
     name: str
-    description: str
+    description: Optional[str] = Field(default="", description="knowledge dataset description")
     chunk_structure: str
 
 
