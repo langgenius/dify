@@ -297,7 +297,6 @@ const StepOne = ({
                           credentialList={notionCredentialList}
                           onSelectCredential={updateNotionCredentialId}
                           datasetId={datasetId}
-                          supportBatchUpload={supportBatchUpload}
                         />
                       </div>
                       {isShowVectorSpaceFull && (
