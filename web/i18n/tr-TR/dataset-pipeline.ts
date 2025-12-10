@@ -137,9 +137,6 @@ const translation = {
     notConnected: '{{name}} bağlı değil',
     notConnectedTip: '{{name}} ile senkronize olmak için önce {{name}} bağlantısının kurulması gerekir.',
   },
-  credentialSelector: {
-    name: '{{credentialName}}\'un {{pluginName}}',
-  },
   conversion: {
     confirm: {
       title: 'Onay',
