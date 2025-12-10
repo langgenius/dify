@@ -9,6 +9,7 @@ import Toast from '../../../../base/toast'
 import { PlanRange } from '../../plan-switcher/plan-range-switcher'
 import { useAppContext } from '@/context/app-context'
 import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import List from './list'
 import Button from './button'
 import { Professional, Sandbox, Team } from '../../assets'
@@ -54,6 +55,8 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     })[plan]
   }, [isCurrent, plan, t])
 
+  const { openAsync } = useAsyncWindowOpen()
+
   const handleGetPayUrl = async () => {
     if (loading)
       return
@@ -72,8 +75,13 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     setLoading(true)
     try {
       if (isCurrentPaidPlan) {
-        const res = await fetchBillingUrl()
-        window.open(res.url, '_blank')
+        await openAsync(
+          () => fetchBillingUrl().then(res => res.url),
+          {
+            errorMessage: 'Failed to open billing page',
+            windowFeatures: 'noopener,noreferrer',
+          },
+        )
         return
       }
 
