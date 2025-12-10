@@ -559,7 +559,7 @@ class LLMGenerator:
             last_brace = generated_raw.rfind("}")
             if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
                 raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
-            json_str = generated_raw[first_brace: last_brace + 1]
+            json_str = generated_raw[first_brace : last_brace + 1]
             data = json_repair.loads(json_str)
             if not isinstance(data, dict):
                 raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
