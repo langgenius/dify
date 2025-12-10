@@ -110,7 +110,7 @@ const StepOne = ({
   const hasNotin = notionPages.length > 0
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && enableBilling
-  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
+  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
   const nextDisabled = useMemo(() => {
     if (!files.length)
       return true
@@ -229,7 +229,7 @@ const StepOne = ({
                     onFileListUpdate={updateFileList}
                     onFileUpdate={updateFile}
                     onPreview={updateCurrentFile}
-                    notSupportBatchUpload={notSupportBatchUpload}
+                    supportBatchUpload={supportBatchUpload}
                   />
                   {isShowVectorSpaceFull && (
                     <div className='mb-4 max-w-[640px]'>
@@ -259,6 +259,7 @@ const StepOne = ({
                           credentialList={notionCredentialList}
                           onSelectCredential={updateNotionCredentialId}
                           datasetId={datasetId}
+                          supportBatchUpload={supportBatchUpload}
                         />
                       </div>
                       {isShowVectorSpaceFull && (
