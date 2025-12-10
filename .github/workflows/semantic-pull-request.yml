@@ -11,6 +11,8 @@ on:
 jobs:
   lint:
     name: Validate PR title
+    permissions:
+      pull-requests: read
     runs-on: ubuntu-latest
     steps:
       - name: Check title
