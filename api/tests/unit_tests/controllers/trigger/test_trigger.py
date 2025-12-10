@@ -660,10 +660,7 @@ class TestTriggerEndpoint:
                 trigger_endpoint(valid_uuid)
 
                 # Assert: Verify error was logged
-                mock_logger.exception.assert_called_once()
-                # Verify log message includes endpoint ID
-                call_args = mock_logger.exception.call_args[0][0]
-                assert valid_uuid in call_args or "endpoint_id" in call_args.lower()
+                mock_logger.exception.assert_called_once_with(f"Webhook processing failed for {valid_uuid}")
 
     def test_trigger_endpoint_empty_request_body(
         self, app, valid_uuid, mock_request
