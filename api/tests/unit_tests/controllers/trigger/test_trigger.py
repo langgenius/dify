@@ -261,7 +261,7 @@ class TestTriggerEndpoint:
                 mock_process_builder.assert_called_once_with(valid_uuid, mock_request)
                 
                 # Verify error was logged
-                mock_logger.error.assert_called_once()
+                mock_logger.error.assert_called_once_with(f"Endpoint not found for {valid_uuid}")
 
     def test_trigger_endpoint_value_error_handling(
         self, app, valid_uuid, mock_request
