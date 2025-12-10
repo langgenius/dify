@@ -1,8 +1,8 @@
 """add_index_to_dataset_name
 
-Revision ID: c0dc2235f174
-Revises: 09cfdda155d1
-Create Date: 2025-12-10 09:25:54.480660
+Revision ID: 8797680b6263
+Revises: d57accd375ae
+Create Date: 2025-12-10 11:26:04.884783
 
 """
 from alembic import op
@@ -11,8 +11,8 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = 'c0dc2235f174'
-down_revision = '09cfdda155d1'
+revision = '8797680b6263'
+down_revision = 'd57accd375ae'
 branch_labels = None
 depends_on = None
 
