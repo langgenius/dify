@@ -75,7 +75,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     setLoading(true)
     try {
       if (isCurrentPaidPlan) {
-        openAsync(
+        await openAsync(
           () => fetchBillingUrl().then(res => res.url),
           {
             errorMessage: 'Failed to open billing page',
