@@ -341,6 +341,7 @@ const PageSelector = ({
         searchValue,
         previewPageId: currentPreviewPageId,
         pagesMap,
+        isMultipleChoice,
       }}
     >
       {Item}
