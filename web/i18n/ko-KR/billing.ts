@@ -152,7 +152,7 @@ const translation = {
       btnText: '판매 문의하기',
       for: '대규모 팀을 위해',
       priceTip: '연간 청구 전용',
-      features: ['기업용 확장 가능한 배포 솔루션', '상업용 라이선스 승인', '독점 기업 기능', '여러 작업 공간 및 기업 관리', '싱글 사인온', 'Dify 파트너가 협상한 SLA', '고급 보안 및 제어', 'Dify 공식 업데이트 및 유지 관리', '전문 기술 지원'],
+      features: ['기업용 확장형 배포 솔루션', '상업용 라이선스 승인', '독점 기업 기능', '여러 작업 공간 및 기업 관리', '싱글 사인온', 'Dify 파트너가 협상한 SLA', '고급 보안 및 제어', 'Dify 공식 업데이트 및 유지보수', '전문 기술 지원'],
     },
     community: {
       btnText: '커뮤니티 시작하기',
@@ -172,7 +172,7 @@ const translation = {
       price: '확장 가능',
       for: '중규모 조직 및 팀을 위한',
       includesTitle: '커뮤니티의 모든 것, 여기에 추가로:',
-      features: ['다양한 클라우드 제공업체의 자체 관리 신뢰성', '단일 작업 공간', '웹앱 로고 및 브랜딩 맞춤 설정', '우선 이메일 및 채팅 지원'],
+      features: ['다양한 클라우드 제공업체에 의한 자체 관리 신뢰성', '단일 작업 공간', '웹앱 로고 및 브랜딩 맞춤 설정', '우선 이메일 및 채팅 지원'],
     },
   },
   vectorSpace: {
@@ -212,6 +212,9 @@ const translation = {
     description: '이 요금제의 워크플로 이벤트 트리거 한도에 도달했습니다.',
     upgrade: '업그레이드',
   },
+  viewBillingTitle: '청구 및 구독',
+  viewBillingDescription: '결제 수단, 청구서 및 구독 변경 관리',
+  viewBillingAction: '관리하다',
 }
 
 export default translation
