@@ -415,7 +415,7 @@ class Executor:
                 # Do not decode binary content; use a placeholder with file metadata instead.
                 # Includes filename, size, and MIME type for better logging context.
                 body_string += (
-                    f"<file_content_binary: '{file_entry[1][0] or 'unknown'}', size={len(content)} bytes'>\r\n"
+                    f"<file_content_binary: '{file_entry[1][0] or 'unknown'}', type='{file_entry[1][2] if len(file_entry[1]) > 2 else 'unknown'}', size={len(content)} bytes>\r\n"
                 )
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
