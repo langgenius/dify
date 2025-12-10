@@ -249,9 +249,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       try {
         // Open synchronously to keep user gesture and get a window handle in Safari
         const newWindow = window.open('about:blank', '_blank')
-        if (!newWindow) {
+        if (!newWindow)
           throw new Error('Failed to open new window')
-        }
+
         try {
           newWindow.opener = null
         }
