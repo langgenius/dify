@@ -323,7 +323,9 @@ class TestEndpointListApi:
 
         # Assert
         assert result == {"endpoints": []}
-        mock_endpoint_service.list_endpoints.assert_called_once()
+        mock_endpoint_service.list_endpoints.assert_called_once_with(
+            tenant_id="tenant-456", user_id="user-123", page=page, page_size=page_size
+        )
 
     def test_list_endpoints_pagination(self, app, mock_account, mock_endpoint_service, mock_decorators):
         """Test endpoint listing with different pagination parameters."""
