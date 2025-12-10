@@ -9,6 +9,7 @@ import Toast from '../../../../base/toast'
 import { PlanRange } from '../../plan-switcher/plan-range-switcher'
 import { useAppContext } from '@/context/app-context'
 import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import List from './list'
 import Button from './button'
 import { Professional, Sandbox, Team } from '../../assets'
@@ -42,6 +43,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const isCurrentPaidPlan = isCurrent && !isFreePlan
   const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
   const { isCurrentWorkspaceManager } = useAppContext()
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const btnText = useMemo(() => {
     if (isCurrent)
@@ -72,8 +74,16 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     setLoading(true)
     try {
       if (isCurrentPaidPlan) {
-        const res = await fetchBillingUrl()
-        window.open(res.url, '_blank')
+        await openAsyncWindow(async () => {
+          const res = await fetchBillingUrl()
+          if (res.url)
+            return res.url
+          throw new Error('Failed to open billing page')
+        }, {
+          onError: (err) => {
+            Toast.notify({ type: 'error', message: err.message || String(err) })
+          },
+        })
         return
       }
 

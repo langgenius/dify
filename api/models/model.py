@@ -259,7 +259,7 @@ class App(Base):
                 provider_id = tool.get("provider_id", "")
 
                 if provider_type == ToolProviderType.API:
-                    if uuid.UUID(provider_id) not in existing_api_providers:
+                    if provider_id not in existing_api_providers:
                         deleted_tools.append(
                             {
                                 "type": ToolProviderType.API,

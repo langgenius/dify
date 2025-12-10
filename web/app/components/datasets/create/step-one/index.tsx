@@ -259,7 +259,7 @@ const StepOne = ({
                     onFileListUpdate={updateFileList}
                     onFileUpdate={updateFile}
                     onPreview={updateCurrentFile}
-                    notSupportBatchUpload={notSupportBatchUpload}
+                    supportBatchUpload={supportBatchUpload}
                   />
                   {isShowVectorSpaceFull && (
                     <div className='mb-4 max-w-[640px]'>
@@ -297,6 +297,7 @@ const StepOne = ({
                           credentialList={notionCredentialList}
                           onSelectCredential={updateNotionCredentialId}
                           datasetId={datasetId}
+                          supportBatchUpload={supportBatchUpload}
                         />
                       </div>
                       {isShowVectorSpaceFull && (
