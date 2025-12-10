@@ -23,7 +23,7 @@ import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WAT
 import NotionConnector from '@/app/components/base/notion-connector'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
-import { noop } from 'lodash-es'
+import { useBoolean } from 'ahooks'
 
 type IStepOneProps = {
   datasetId?: string
@@ -131,6 +131,11 @@ const StepOne = ({
   const notionCredentialList = useMemo(() => {
     return authedDataSourceList.find(item => item.provider === 'notion_datasource')?.credentials_list || []
   }, [authedDataSourceList])
+
+  const [isShowPlanUpgradeModal, {
+    // setTrue: showPlanUpgradeModal,
+    setFalse: hidePlanUpgradeModal,
+  }] = useBoolean(true)
 
   return (
     <div className='h-full w-full overflow-x-auto'>
@@ -332,15 +337,14 @@ const StepOne = ({
             />
           )}
           {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
-          {
+          {isShowPlanUpgradeModal && (
             <PlanUpgradeModal
               show
-              onClose={noop}
-              onUpgrade={noop}
+              onClose={hidePlanUpgradeModal}
               title='Upgrade to upload multiple pages at once'
               description='You’ve reached the upload limit — only one page can be selected and uploaded at a time on your current plan.'
             />
-          }
+          )}
         </div>
       </div>
     </div>

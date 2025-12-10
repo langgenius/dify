@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import styles from './style.module.css'
+import { SquareChecklist } from '../../base/icons/src/vender/other'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = {
   Icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>
@@ -19,38 +20,44 @@ type Props = {
 }
 
 const PlanUpgradeModal: FC<Props> = ({
-  Icon = TriggerAll,
+  Icon = SquareChecklist,
   title,
   description,
   extraInfo,
   show,
-  onClose: onClose,
+  onClose,
   onUpgrade,
 }) => {
   const { t } = useTranslation()
-  // const { plan } = useProviderContext()
+  const { setShowPricingModal } = useModalContext()
+
+  const handleUpgrade = useCallback(() => {
+    onClose()
+    onUpgrade ? onUpgrade() : setShowPricingModal()
+  }, [onClose, onUpgrade, setShowPricingModal])
+
   return (
     <Modal
       isShow={show}
       onClose={onClose}
       closable={false}
       clickOutsideNotClose
-      className={`${styles.surface} flex w-[580px] flex-col overflow-hidden rounded-2xl !p-0 shadow-xl`}
+      className={`${styles.surface} w-[580px] rounded-2xl !p-0`}
     >
-      <div className='relative flex w-full flex-1 items-stretch justify-center'>
+      <div className='relative'>
         <div
           aria-hidden
           className={`${styles.heroOverlay} pointer-events-none absolute inset-0`}
         />
-        <div className='relative z-10 flex w-full flex-col items-start gap-4 px-8 pt-8'>
-          <div className={`${styles.icon} flex h-12 w-12 items-center justify-center rounded-[12px]`}>
-            <Icon className='h-5 w-5 text-text-primary-on-surface' />
+        <div className='px-8 pt-8'>
+          <div className={`${styles.icon} flex size-12 items-center justify-center rounded-xl shadow-lg backdrop-blur-[5px]`}>
+            <Icon className='size-6 text-text-primary-on-surface' />
           </div>
-          <div className='flex flex-col items-start gap-2'>
-            <div className={`${styles.highlight} title-lg-semi-bold`}>
+          <div className='mt-6 space-y-2'>
+            <div className={`${styles.highlight} title-3xl-semi-bold`}>
               {title}
             </div>
-            <div className='body-md-regular text-text-secondary'>
+            <div className='system-md-regular text-text-tertiary'>
               {description}
             </div>
           </div>
@@ -58,7 +65,7 @@ const PlanUpgradeModal: FC<Props> = ({
         </div>
       </div>
 
-      <div className='flex h-[76px] w-full items-center justify-end gap-2 px-8 pb-8 pt-5'>
+      <div className='mb-8 mt-10 flex justify-end space-x-2 px-8'>
         <Button
           onClick={onClose}
         >
@@ -66,8 +73,8 @@ const PlanUpgradeModal: FC<Props> = ({
         </Button>
         <UpgradeBtn
           isShort
-          onClick={onUpgrade}
-          style={{ height: 32 }}
+          onClick={handleUpgrade}
+          className='!h-8 !rounded-lg'
           labelKey='billing.triggerLimitModal.upgrade'
           loc='trigger-events-limit-modal'
         />
