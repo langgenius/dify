@@ -163,7 +163,13 @@ class TestLoadBalancingCredentialsValidateApi:
 
         # Assert
         assert result == {"result": "error", "error": error_message}
-        mock_service_instance.validate_load_balancing_credentials.assert_called_once()
+        mock_service_instance.validate_load_balancing_credentials.assert_called_once_with(
+            tenant_id="tenant-456",
+            provider=provider,
+            model=model,
+            model_type=model_type,
+            credentials=credentials,
+        )
 
     def test_validate_credentials_unauthorized(self, app, mock_account_normal, mock_load_balancing_service, mock_decorators):
         """Test that non-privileged users cannot validate credentials."""
