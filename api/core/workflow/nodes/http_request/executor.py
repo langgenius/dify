@@ -412,16 +412,16 @@ class Executor:
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
                 # decode content safely
-                # RED: Modification - Do not directly decode content, show a placeholder with file metadata instead
-                # Includes filename, size, and MIME type for better logging context without exposing raw content
+                # Do not decode binary content; use a placeholder with file metadata instead.
+                # Includes filename, size, and MIME type for better logging context.
                 body_string += (
-                    f"<file_content_binary: '{file_entry[1][0] or 'unknown'}', size={len(content)} bytes>\r\n"
+                    f"<file_content_binary: '{file_entry[1][0] or 'unknown'}', size={len(content)} bytes'>\r\n"
                 )
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
-                # RED: Modification - If content is bytes, do not directly decode it, show a placeholder with size
-                # Provides content size information for binary data without exposing the raw bytes
+                # If content is bytes, do not decode it; show a placeholder with size.
+                # Provides content size information for binary data without exposing the raw bytes.
                 if isinstance(self.content, bytes):
                     body_string = f"<binary_content, size={len(self.content)} bytes>"
                 else:
