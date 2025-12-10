@@ -35,6 +35,133 @@ class AbstractVectorFactory(ABC):
         return index_struct_dict
 
 
+VECTOR_FACTORY_CLS: type[AbstractVectorFactory]
+
+match dify_config.VECTOR_STORE:
+    case VectorType.CHROMA:
+        from core.rag.datasource.vdb.chroma.chroma_vector import ChromaVectorFactory
+
+        VECTOR_FACTORY_CLS = ChromaVectorFactory
+    case VectorType.MILVUS:
+        from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
+
+        VECTOR_FACTORY_CLS = MilvusVectorFactory
+    case VectorType.ALIBABACLOUD_MYSQL:
+        from core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector import (
+            AlibabaCloudMySQLVectorFactory,
+        )
+
+        VECTOR_FACTORY_CLS = AlibabaCloudMySQLVectorFactory
+    case VectorType.MYSCALE:
+        from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
+
+        VECTOR_FACTORY_CLS = MyScaleVectorFactory
+    case VectorType.PGVECTOR:
+        from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
+
+        VECTOR_FACTORY_CLS = PGVectorFactory
+    case VectorType.VASTBASE:
+        from core.rag.datasource.vdb.pyvastbase.vastbase_vector import VastbaseVectorFactory
+
+        VECTOR_FACTORY_CLS = VastbaseVectorFactory
+    case VectorType.PGVECTO_RS:
+        from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
+
+        VECTOR_FACTORY_CLS = PGVectoRSFactory
+    case VectorType.QDRANT:
+        from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
+
+        VECTOR_FACTORY_CLS = QdrantVectorFactory
+    case VectorType.RELYT:
+        from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
+
+        VECTOR_FACTORY_CLS = RelytVectorFactory
+    case VectorType.ELASTICSEARCH:
+        from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchVectorFactory
+
+        VECTOR_FACTORY_CLS = ElasticSearchVectorFactory
+    case VectorType.ELASTICSEARCH_JA:
+        from core.rag.datasource.vdb.elasticsearch.elasticsearch_ja_vector import (
+            ElasticSearchJaVectorFactory,
+        )
+
+        VECTOR_FACTORY_CLS = ElasticSearchJaVectorFactory
+    case VectorType.TIDB_VECTOR:
+        from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
+
+        VECTOR_FACTORY_CLS = TiDBVectorFactory
+    case VectorType.WEAVIATE:
+        from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
+
+        VECTOR_FACTORY_CLS = WeaviateVectorFactory
+    case VectorType.TENCENT:
+        from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
+
+        VECTOR_FACTORY_CLS = TencentVectorFactory
+    case VectorType.ORACLE:
+        from core.rag.datasource.vdb.oracle.oraclevector import OracleVectorFactory
+
+        VECTOR_FACTORY_CLS = OracleVectorFactory
+    case VectorType.OPENSEARCH:
+        from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
+
+        VECTOR_FACTORY_CLS = OpenSearchVectorFactory
+    case VectorType.ANALYTICDB:
+        from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
+
+        VECTOR_FACTORY_CLS = AnalyticdbVectorFactory
+    case VectorType.COUCHBASE:
+        from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseVectorFactory
+
+        VECTOR_FACTORY_CLS = CouchbaseVectorFactory
+    case VectorType.BAIDU:
+        from core.rag.datasource.vdb.baidu.baidu_vector import BaiduVectorFactory
+
+        VECTOR_FACTORY_CLS = BaiduVectorFactory
+    case VectorType.VIKINGDB:
+        from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBVectorFactory
+
+        VECTOR_FACTORY_CLS = VikingDBVectorFactory
+    case VectorType.UPSTASH:
+        from core.rag.datasource.vdb.upstash.upstash_vector import UpstashVectorFactory
+
+        VECTOR_FACTORY_CLS = UpstashVectorFactory
+    case VectorType.TIDB_ON_QDRANT:
+        from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
+
+        VECTOR_FACTORY_CLS = TidbOnQdrantVectorFactory
+    case VectorType.LINDORM:
+        from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStoreFactory
+
+        VECTOR_FACTORY_CLS = LindormVectorStoreFactory
+    case VectorType.OCEANBASE:
+        from core.rag.datasource.vdb.oceanbase.oceanbase_vector import OceanBaseVectorFactory
+
+        VECTOR_FACTORY_CLS = OceanBaseVectorFactory
+    case VectorType.OPENGAUSS:
+        from core.rag.datasource.vdb.opengauss.opengauss import OpenGaussFactory
+
+        VECTOR_FACTORY_CLS = OpenGaussFactory
+    case VectorType.TABLESTORE:
+        from core.rag.datasource.vdb.tablestore.tablestore_vector import TableStoreVectorFactory
+
+        VECTOR_FACTORY_CLS = TableStoreVectorFactory
+    case VectorType.HUAWEI_CLOUD:
+        from core.rag.datasource.vdb.huawei.huawei_cloud_vector import HuaweiCloudVectorFactory
+
+        VECTOR_FACTORY_CLS = HuaweiCloudVectorFactory
+    case VectorType.MATRIXONE:
+        from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
+
+        VECTOR_FACTORY_CLS = MatrixoneVectorFactory
+    case VectorType.CLICKZETTA:
+        from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
+
+        VECTOR_FACTORY_CLS = ClickzettaVectorFactory
+    case _:
+        raise ValueError(f"Vector store {dify_config.VECTOR_STORE} is not supported.")
+
+
 class Vector:
     def __init__(self, dataset: Dataset, attributes: list | None = None):
         if attributes is None:
@@ -61,134 +188,7 @@ class Vector:
         if not vector_type:
             raise ValueError("Vector store must be specified.")
 
-        vector_factory_cls = self.get_vector_factory(vector_type)
-        return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
-
-    @staticmethod
-    def get_vector_factory(vector_type: str) -> type[AbstractVectorFactory]:
-        match vector_type:
-            case VectorType.CHROMA:
-                from core.rag.datasource.vdb.chroma.chroma_vector import ChromaVectorFactory
-
-                return ChromaVectorFactory
-            case VectorType.MILVUS:
-                from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
-
-                return MilvusVectorFactory
-            case VectorType.ALIBABACLOUD_MYSQL:
-                from core.rag.datasource.vdb.alibabacloud_mysql.alibabacloud_mysql_vector import (
-                    AlibabaCloudMySQLVectorFactory,
-                )
-
-                return AlibabaCloudMySQLVectorFactory
-            case VectorType.MYSCALE:
-                from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
-
-                return MyScaleVectorFactory
-            case VectorType.PGVECTOR:
-                from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
-
-                return PGVectorFactory
-            case VectorType.VASTBASE:
-                from core.rag.datasource.vdb.pyvastbase.vastbase_vector import VastbaseVectorFactory
-
-                return VastbaseVectorFactory
-            case VectorType.PGVECTO_RS:
-                from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRSFactory
-
-                return PGVectoRSFactory
-            case VectorType.QDRANT:
-                from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantVectorFactory
-
-                return QdrantVectorFactory
-            case VectorType.RELYT:
-                from core.rag.datasource.vdb.relyt.relyt_vector import RelytVectorFactory
-
-                return RelytVectorFactory
-            case VectorType.ELASTICSEARCH:
-                from core.rag.datasource.vdb.elasticsearch.elasticsearch_vector import ElasticSearchVectorFactory
-
-                return ElasticSearchVectorFactory
-            case VectorType.ELASTICSEARCH_JA:
-                from core.rag.datasource.vdb.elasticsearch.elasticsearch_ja_vector import (
-                    ElasticSearchJaVectorFactory,
-                )
-
-                return ElasticSearchJaVectorFactory
-            case VectorType.TIDB_VECTOR:
-                from core.rag.datasource.vdb.tidb_vector.tidb_vector import TiDBVectorFactory
-
-                return TiDBVectorFactory
-            case VectorType.WEAVIATE:
-                from core.rag.datasource.vdb.weaviate.weaviate_vector import WeaviateVectorFactory
-
-                return WeaviateVectorFactory
-            case VectorType.TENCENT:
-                from core.rag.datasource.vdb.tencent.tencent_vector import TencentVectorFactory
-
-                return TencentVectorFactory
-            case VectorType.ORACLE:
-                from core.rag.datasource.vdb.oracle.oraclevector import OracleVectorFactory
-
-                return OracleVectorFactory
-            case VectorType.OPENSEARCH:
-                from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
-
-                return OpenSearchVectorFactory
-            case VectorType.ANALYTICDB:
-                from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
-
-                return AnalyticdbVectorFactory
-            case VectorType.COUCHBASE:
-                from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseVectorFactory
-
-                return CouchbaseVectorFactory
-            case VectorType.BAIDU:
-                from core.rag.datasource.vdb.baidu.baidu_vector import BaiduVectorFactory
-
-                return BaiduVectorFactory
-            case VectorType.VIKINGDB:
-                from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBVectorFactory
-
-                return VikingDBVectorFactory
-            case VectorType.UPSTASH:
-                from core.rag.datasource.vdb.upstash.upstash_vector import UpstashVectorFactory
-
-                return UpstashVectorFactory
-            case VectorType.TIDB_ON_QDRANT:
-                from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
-
-                return TidbOnQdrantVectorFactory
-            case VectorType.LINDORM:
-                from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStoreFactory
-
-                return LindormVectorStoreFactory
-            case VectorType.OCEANBASE:
-                from core.rag.datasource.vdb.oceanbase.oceanbase_vector import OceanBaseVectorFactory
-
-                return OceanBaseVectorFactory
-            case VectorType.OPENGAUSS:
-                from core.rag.datasource.vdb.opengauss.opengauss import OpenGaussFactory
-
-                return OpenGaussFactory
-            case VectorType.TABLESTORE:
-                from core.rag.datasource.vdb.tablestore.tablestore_vector import TableStoreVectorFactory
-
-                return TableStoreVectorFactory
-            case VectorType.HUAWEI_CLOUD:
-                from core.rag.datasource.vdb.huawei.huawei_cloud_vector import HuaweiCloudVectorFactory
-
-                return HuaweiCloudVectorFactory
-            case VectorType.MATRIXONE:
-                from core.rag.datasource.vdb.matrixone.matrixone_vector import MatrixoneVectorFactory
-
-                return MatrixoneVectorFactory
-            case VectorType.CLICKZETTA:
-                from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
-
-                return ClickzettaVectorFactory
-            case _:
-                raise ValueError(f"Vector store {vector_type} is not supported.")
+        return VECTOR_FACTORY_CLS().init_vector(self._dataset, self._attributes, self._embeddings)
 
     def create(self, texts: list | None = None, **kwargs):
         if texts:
