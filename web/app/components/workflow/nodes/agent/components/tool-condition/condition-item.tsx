@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { memo, useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { produce } from 'immer'
@@ -190,4 +190,4 @@ const ConditionItem = ({
   )
 }
 
-export default ConditionItem
+export default memo(ConditionItem)

@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
+import { memo, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import { produce } from 'immer'
@@ -155,4 +155,4 @@ const AgentToolConditionEditor = ({
   )
 }
 
-export default AgentToolConditionEditor
+export default memo(AgentToolConditionEditor)

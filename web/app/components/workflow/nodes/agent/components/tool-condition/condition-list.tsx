@@ -1,5 +1,5 @@
 import { RiLoopLeftLine } from '@remixicon/react'
-import { useMemo } from 'react'
+import { memo, useMemo } from 'react'
 import ConditionItem from './condition-item'
 import type {
   AgentToolCondition,
@@ -69,4 +69,4 @@ const ConditionList = ({
   )
 }
 
-export default ConditionList
+export default memo(ConditionList)
