@@ -207,6 +207,10 @@ const translation = {
       title: '升级以一次性上传多个页面',
       description: '您已达到当前套餐的上传限制 —— 该套餐每次只能选择并上传 1 个页面。',
     },
+    addChunks: {
+      title: '升级以继续添加分段',
+      description: '您已达到此计划的添加分段上限。',
+    },
   },
 }
 

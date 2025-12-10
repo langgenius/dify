@@ -226,6 +226,10 @@ const translation = {
       title: 'Upgrade to upload multiple pages at once',
       description: 'You’ve reached the upload limit — only one page can be selected and uploaded at a time on your current plan.',
     },
+    addChunks: {
+      title: 'Upgrade to continue adding chunks',
+      description: 'You’ve reached the limit of adding chunks for this plan. ',
+    },
   },
 }
 
