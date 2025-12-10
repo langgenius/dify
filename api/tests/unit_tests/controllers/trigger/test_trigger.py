@@ -550,7 +550,7 @@ class TestTriggerEndpoint:
         # Arrange: Set up test data
         response_data = {"status": "processed", "endpoint_id": valid_uuid}
         response = Response(
-            response=str(response_data),
+            response=json.dumps(response_data),
             status=200,
             mimetype="application/json",
         )
