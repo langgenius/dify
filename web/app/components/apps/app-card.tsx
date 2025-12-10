@@ -252,8 +252,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
       openAsync(
         async () => {
-          const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
-          if (installed_apps?.length > 0)
+          const { installed_apps }: { installed_apps?: { id: string }[] } = await fetchInstalledAppList(app.id) || {}
+          if (installed_apps && installed_apps.length > 0)
             return `${basePath}/explore/installed/${installed_apps[0].id}`
           throw new Error('No app found in Explore')
         },
