@@ -25,7 +25,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask, Response
-from pydantic import ValidationError
 
 from controllers.console.app.mcp_server import AppMCPServerStatus
 from controllers.mcp.mcp import MCPAppApi, MCPRequestError
@@ -88,7 +87,7 @@ class TestMCPAppApi:
         app.tenant_id = "tenant-789"
         app.mode = AppMode.WORKFLOW
         app.name = "Test App"
-        
+
         # Mock workflow with user_input_form method
         mock_workflow = MagicMock()
         mock_workflow.user_input_form.return_value = [
@@ -102,7 +101,7 @@ class TestMCPAppApi:
             }
         ]
         app.workflow = mock_workflow
-        
+
         return app
 
     @pytest.fixture
@@ -131,9 +130,7 @@ class TestMCPAppApi:
         session = MagicMock()
         return session
 
-    def test_handle_initialize_request_success(
-        self, app, mock_mcp_server, mock_app
-    ):
+    def test_handle_initialize_request_success(self, app, mock_mcp_server, mock_app):
         """Test successful handling of initialize request.
 
         This test verifies that:
@@ -152,7 +149,7 @@ class TestMCPAppApi:
         # Arrange: Set up test data
         server_code = "test-server-code"
         request_id = 1
-        
+
         # Create valid initialize request payload
         initialize_payload = {
             "jsonrpc": "2.0",
@@ -186,7 +183,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 mock_session_instance.query.return_value.where.return_value.first.side_effect = [
                     mock_mcp_server,  # First query returns server
@@ -215,7 +212,7 @@ class TestMCPAppApi:
                 # Assert: Verify the response
                 assert isinstance(result, Response)
                 assert result.status_code == 200
-                
+
                 # Verify handle_mcp_request was called with correct parameters
                 mock_handle_request.assert_called_once()
                 call_args = mock_handle_request.call_args
@@ -223,9 +220,7 @@ class TestMCPAppApi:
                 assert call_args[0][1].root.method == "initialize"  # request parameter
                 assert call_args[0][4] == request_id  # request_id parameter
 
-    def test_handle_list_tools_request_success(
-        self, app, mock_mcp_server, mock_app, mock_end_user, mock_db_session
-    ):
+    def test_handle_list_tools_request_success(self, app, mock_mcp_server, mock_app, mock_end_user, mock_db_session):
         """Test successful handling of tools/list request.
 
         This test verifies that:
@@ -244,7 +239,7 @@ class TestMCPAppApi:
         # Arrange: Set up test data
         server_code = "test-server-code"
         request_id = 2
-        
+
         # Create valid tools/list request payload
         list_tools_payload = {
             "jsonrpc": "2.0",
@@ -267,7 +262,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results - server and app lookup
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -317,9 +312,7 @@ class TestMCPAppApi:
                 assert result.status_code == 200
                 mock_handle_request.assert_called_once()
 
-    def test_handle_notification_success(
-        self, app, mock_mcp_server, mock_app, mock_db_session
-    ):
+    def test_handle_notification_success(self, app, mock_mcp_server, mock_app, mock_db_session):
         """Test successful handling of notification (notifications/initialized).
 
         This test verifies that:
@@ -336,7 +329,7 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data for notification
         server_code = "test-server-code"
-        
+
         # Create valid notification payload (no id field)
         notification_payload = {
             "jsonrpc": "2.0",
@@ -357,7 +350,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -375,9 +368,7 @@ class TestMCPAppApi:
                 assert result.status_code == 202  # Accepted status for notifications
                 assert result.data == b""  # No response body for notifications
 
-    def test_handle_invalid_notification_method(
-        self, app, mock_mcp_server, mock_app, mock_db_session
-    ):
+    def test_handle_invalid_notification_method(self, app, mock_mcp_server, mock_app, mock_db_session):
         """Test handling of invalid notification method.
 
         This test verifies that:
@@ -393,7 +384,7 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data with invalid notification
         server_code = "test-server-code"
-        
+
         # Create invalid notification payload (unsupported method)
         invalid_notification_payload = {
             "jsonrpc": "2.0",
@@ -414,7 +405,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -427,7 +418,7 @@ class TestMCPAppApi:
                 resource = MCPAppApi()
                 with pytest.raises(MCPRequestError) as exc_info:
                     resource.post(server_code)
-                
+
                 # Verify error details
                 assert exc_info.value.error_code == mcp_types.INVALID_REQUEST
                 assert "Invalid notification method" in exc_info.value.message
@@ -446,7 +437,7 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data with non-existent server
         server_code = "non-existent-server"
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -471,7 +462,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query to return None (server not found)
                 mock_session_instance.query.return_value.where.return_value.first.return_value = None
 
@@ -479,7 +470,7 @@ class TestMCPAppApi:
                 resource = MCPAppApi()
                 with pytest.raises(MCPRequestError) as exc_info:
                     resource.post(server_code)
-                
+
                 # Verify error details
                 assert exc_info.value.error_code == mcp_types.INVALID_REQUEST
                 assert "Server Not Found" in exc_info.value.message
@@ -499,7 +490,7 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data where app doesn't exist
         server_code = "test-server-code"
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -524,7 +515,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results - server found, app not found
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -537,7 +528,7 @@ class TestMCPAppApi:
                 resource = MCPAppApi()
                 with pytest.raises(MCPRequestError) as exc_info:
                     resource.post(server_code)
-                
+
                 # Verify error details
                 assert exc_info.value.error_code == mcp_types.INVALID_REQUEST
                 assert "App Not Found" in exc_info.value.message
@@ -558,10 +549,10 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data with inactive server
         server_code = "test-server-code"
-        
+
         # Set server status to inactive
         mock_mcp_server.status = AppMCPServerStatus.INACTIVE
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -586,7 +577,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -599,7 +590,7 @@ class TestMCPAppApi:
                 resource = MCPAppApi()
                 with pytest.raises(MCPRequestError) as exc_info:
                     resource.post(server_code)
-                
+
                 # Verify error details
                 assert exc_info.value.error_code == mcp_types.INVALID_REQUEST
                 assert "Server is not active" in exc_info.value.message
@@ -620,7 +611,7 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data with invalid JSON-RPC format
         server_code = "test-server-code"
-        
+
         # Create invalid payload (missing required fields)
         invalid_payload = {
             "jsonrpc": "1.0",  # Wrong version
@@ -641,7 +632,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -654,7 +645,7 @@ class TestMCPAppApi:
                 resource = MCPAppApi()
                 with pytest.raises(MCPRequestError) as exc_info:
                     resource.post(server_code)
-                
+
                 # Verify error details
                 assert exc_info.value.error_code == mcp_types.INVALID_PARAMS
                 assert "Invalid MCP request" in exc_info.value.message
@@ -675,7 +666,7 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data with request missing id
         server_code = "test-server-code"
-        
+
         # Create request payload without id (should be notification or have id)
         request_payload = {
             "jsonrpc": "2.0",
@@ -698,7 +689,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -711,19 +702,17 @@ class TestMCPAppApi:
                 # Actually, the controller should check for id before calling handle_mcp_request
                 # So we need to test the _handle_request method behavior
                 resource = MCPAppApi()
-                
+
                 # The request will be parsed as a request (not notification) but without id
                 # This should raise an error in _handle_request
                 with pytest.raises(MCPRequestError) as exc_info:
                     resource.post(server_code)
-                
+
                 # Verify error details
                 assert exc_info.value.error_code == mcp_types.INVALID_REQUEST
                 assert "Request ID is required" in exc_info.value.message
 
-    def test_user_input_form_extraction_workflow_mode(
-        self, app, mock_mcp_server, mock_app, mock_db_session
-    ):
+    def test_user_input_form_extraction_workflow_mode(self, app, mock_mcp_server, mock_app, mock_db_session):
         """Test user input form extraction for workflow mode apps.
 
         This test verifies that:
@@ -740,7 +729,7 @@ class TestMCPAppApi:
         # Arrange: Set up test data
         server_code = "test-server-code"
         request_id = 1
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -762,7 +751,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -793,13 +782,11 @@ class TestMCPAppApi:
                 # Assert: Verify workflow form extraction
                 assert isinstance(result, Response)
                 assert result.status_code == 200
-                
+
                 # Verify that workflow.user_input_form was called
                 mock_app.workflow.user_input_form.assert_called_once_with(to_old_structure=True)
 
-    def test_user_input_form_extraction_chat_mode(
-        self, app, mock_mcp_server, mock_app, mock_db_session
-    ):
+    def test_user_input_form_extraction_chat_mode(self, app, mock_mcp_server, mock_app, mock_db_session):
         """Test user input form extraction for chat mode apps.
 
         This test verifies that:
@@ -816,11 +803,11 @@ class TestMCPAppApi:
         # Arrange: Set up test data with chat mode app
         server_code = "test-server-code"
         request_id = 1
-        
+
         # Change app mode to CHAT
         mock_app.mode = AppMode.CHAT
         mock_app.workflow = None  # Chat apps don't have workflow
-        
+
         # Mock app_model_config
         mock_app_config = MagicMock()
         mock_app_config.to_dict.return_value = {
@@ -835,7 +822,7 @@ class TestMCPAppApi:
             ]
         }
         mock_app.app_model_config = mock_app_config
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -857,7 +844,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -888,7 +875,7 @@ class TestMCPAppApi:
                 # Assert: Verify chat form extraction
                 assert isinstance(result, Response)
                 assert result.status_code == 200
-                
+
                 # Verify that app_model_config.to_dict was called
                 mock_app_config.to_dict.assert_called_once()
 
@@ -908,11 +895,11 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data with workflow app but no workflow
         server_code = "test-server-code"
-        
+
         # Set app to workflow mode but remove workflow
         mock_app.mode = AppMode.WORKFLOW
         mock_app.workflow = None  # No workflow configuration
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -937,7 +924,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -950,7 +937,7 @@ class TestMCPAppApi:
                 resource = MCPAppApi()
                 with pytest.raises(MCPRequestError) as exc_info:
                     resource.post(server_code)
-                
+
                 # Verify error details
                 assert exc_info.value.error_code == mcp_types.INVALID_REQUEST
                 assert "App is unavailable" in exc_info.value.message
@@ -971,12 +958,12 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data with chat app but no config
         server_code = "test-server-code"
-        
+
         # Set app to chat mode but remove app_model_config
         mock_app.mode = AppMode.CHAT
         mock_app.workflow = None
         mock_app.app_model_config = None  # No app config
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -1001,7 +988,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -1014,14 +1001,12 @@ class TestMCPAppApi:
                 resource = MCPAppApi()
                 with pytest.raises(MCPRequestError) as exc_info:
                     resource.post(server_code)
-                
+
                 # Verify error details
                 assert exc_info.value.error_code == mcp_types.INVALID_REQUEST
                 assert "App is unavailable" in exc_info.value.message
 
-    def test_end_user_creation_on_initialize(
-        self, app, mock_mcp_server, mock_app, mock_db_session
-    ):
+    def test_end_user_creation_on_initialize(self, app, mock_mcp_server, mock_app, mock_db_session):
         """Test end user creation when initialize request is received.
 
         This test verifies that:
@@ -1038,7 +1023,7 @@ class TestMCPAppApi:
         # Arrange: Set up test data for initialize with new user
         server_code = "test-server-code"
         request_id = 1
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -1067,15 +1052,15 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_create_session = MagicMock()
                 mock_create_session_instance = MagicMock()
-                
+
                 # First session for main request
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Second session for end user creation
                 mock_create_session.__enter__.return_value = mock_create_session_instance
                 mock_create_session.__exit__.return_value = None
-                
+
                 # Mock query results - server and app found
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -1093,18 +1078,18 @@ class TestMCPAppApi:
                 mock_create_session_instance.add = MagicMock()
                 mock_create_session_instance.flush = MagicMock()
                 mock_create_session_instance.refresh = MagicMock()
-                
+
                 # Create mock end user for creation
                 created_end_user = MagicMock(spec=EndUser)
                 created_end_user.id = "new-user-123"
                 mock_create_session_instance.refresh.side_effect = lambda obj: setattr(obj, "id", "new-user-123")
-                
+
                 # Mock Session for end user creation
                 def session_factory(*args, **kwargs):
                     if "expire_on_commit" in kwargs and kwargs["expire_on_commit"] is False:
                         return mock_create_session
                     return mock_session_class.return_value
-                
+
                 mock_session_class.side_effect = session_factory
 
                 # Create expected response
@@ -1126,10 +1111,10 @@ class TestMCPAppApi:
                 # Assert: Verify end user creation
                 assert isinstance(result, Response)
                 assert result.status_code == 200
-                
+
                 # Verify that session.commit was called before creating end user
                 mock_session_instance.commit.assert_called_once()
-                
+
                 # Verify that add was called to create end user
                 mock_create_session_instance.add.assert_called_once()
                 created_user = mock_create_session_instance.add.call_args[0][0]
@@ -1139,9 +1124,7 @@ class TestMCPAppApi:
                 assert created_user.name == "TestClient@2.0.0"
                 assert created_user.session_id == mock_mcp_server.id
 
-    def test_invalid_user_input_form_validation_error(
-        self, app, mock_mcp_server, mock_app, mock_db_session
-    ):
+    def test_invalid_user_input_form_validation_error(self, app, mock_mcp_server, mock_app, mock_db_session):
         """Test error handling for invalid user input form structure.
 
         This test verifies that:
@@ -1158,12 +1141,12 @@ class TestMCPAppApi:
         """
         # Arrange: Set up test data with invalid form structure
         server_code = "test-server-code"
-        
+
         # Mock workflow to return invalid form structure
         mock_app.workflow.user_input_form.return_value = [
             "invalid-form-structure"  # Should be dict, not string
         ]
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": 1,
@@ -1188,7 +1171,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -1201,14 +1184,12 @@ class TestMCPAppApi:
                 resource = MCPAppApi()
                 with pytest.raises(MCPRequestError) as exc_info:
                     resource.post(server_code)
-                
+
                 # Verify error details
                 assert exc_info.value.error_code == mcp_types.INVALID_PARAMS
                 assert "Invalid user_input_form" in exc_info.value.message
 
-    def test_call_tool_request_processing(
-        self, app, mock_mcp_server, mock_app, mock_end_user, mock_db_session
-    ):
+    def test_call_tool_request_processing(self, app, mock_mcp_server, mock_app, mock_end_user, mock_db_session):
         """Test successful processing of tools/call request.
 
         This test verifies that:
@@ -1227,7 +1208,7 @@ class TestMCPAppApi:
         # Arrange: Set up test data for tool call
         server_code = "test-server-code"
         request_id = 3
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -1254,7 +1235,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -1293,16 +1274,14 @@ class TestMCPAppApi:
                 # Assert: Verify tool call processing
                 assert isinstance(result, Response)
                 assert result.status_code == 200
-                
+
                 # Verify handle_mcp_request was called with end user
                 mock_handle_request.assert_called_once()
                 call_args = mock_handle_request.call_args
                 assert call_args[0][4] == mock_end_user  # end_user parameter
                 assert call_args[0][1].root.method == "tools/call"  # request method
 
-    def test_ping_request_processing(
-        self, app, mock_mcp_server, mock_app, mock_end_user, mock_db_session
-    ):
+    def test_ping_request_processing(self, app, mock_mcp_server, mock_app, mock_end_user, mock_db_session):
         """Test successful processing of ping request.
 
         This test verifies that:
@@ -1320,7 +1299,7 @@ class TestMCPAppApi:
         # Arrange: Set up test data for ping
         server_code = "test-server-code"
         request_id = 4
-        
+
         request_payload = {
             "jsonrpc": "2.0",
             "id": request_id,
@@ -1342,7 +1321,7 @@ class TestMCPAppApi:
                 mock_session_instance = MagicMock()
                 mock_session_class.return_value.__enter__.return_value = mock_session_instance
                 mock_session_class.return_value.__exit__.return_value = None
-                
+
                 # Mock query results
                 query_mock = MagicMock()
                 query_mock.where.return_value.first.side_effect = [
@@ -1374,4 +1353,3 @@ class TestMCPAppApi:
                 assert isinstance(result, Response)
                 assert result.status_code == 200
                 mock_handle_request.assert_called_once()
-
