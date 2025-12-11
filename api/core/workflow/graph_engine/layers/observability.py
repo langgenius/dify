@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from typing import cast, final
 
 from opentelemetry import context as context_api
-from opentelemetry.trace import Span, SpanKind, get_tracer, set_span_in_context
+from opentelemetry.trace import Span, SpanKind, Tracer, get_tracer, set_span_in_context
 from typing_extensions import override
 
 from configs import dify_config
@@ -52,7 +52,7 @@ class ObservabilityLayer(GraphEngineLayer):
         self._parsers: dict[NodeType, NodeOTelParser] = {}
         self._default_parser: NodeOTelParser = cast(NodeOTelParser, DefaultNodeOTelParser())
         self._is_disabled: bool = False
-        self._tracer = None
+        self._tracer: Tracer | None = None
         self._build_parser_registry()
         self._init_tracer()
 
