@@ -149,11 +149,9 @@ def test_run_exits_on_empty_batch() -> None:
 def test_between_sets_window_bounds() -> None:
     start_after = datetime.datetime(2024, 5, 1, 0, 0, 0)
     end_before = datetime.datetime(2024, 6, 1, 0, 0, 0)
-    cleanup = WorkflowRunCleanup(days=30, 
-                                 batch_size=10, 
-                                 start_after=start_after, 
-                                 end_before=end_before, 
-                                 repo=FakeRepo([]))
+    cleanup = WorkflowRunCleanup(
+        days=30, batch_size=10, start_after=start_after, end_before=end_before, repo=FakeRepo([])
+    )
 
     assert cleanup.window_start == start_after
     assert cleanup.window_end == end_before
@@ -162,19 +160,11 @@ def test_between_sets_window_bounds() -> None:
 def test_between_requires_both_boundaries() -> None:
     with pytest.raises(ValueError):
         WorkflowRunCleanup(
-            days=30, 
-            batch_size=10, 
-            start_after=datetime.datetime.now(), 
-            end_before=None, 
-            repo=FakeRepo([])
+            days=30, batch_size=10, start_after=datetime.datetime.now(), end_before=None, repo=FakeRepo([])
         )
     with pytest.raises(ValueError):
         WorkflowRunCleanup(
-            days=30, 
-            batch_size=10, 
-            start_after=None, 
-            end_before=datetime.datetime.now(), 
-            repo=FakeRepo([])
+            days=30, batch_size=10, start_after=None, end_before=datetime.datetime.now(), repo=FakeRepo([])
         )
 
 
