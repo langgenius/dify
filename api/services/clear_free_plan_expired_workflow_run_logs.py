@@ -8,7 +8,6 @@ import sqlalchemy as sa
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from models import WorkflowAppLog, WorkflowNodeExecutionModel, WorkflowRun
@@ -140,9 +139,6 @@ class WorkflowRunCleanup:
         return [WorkflowRunRow(id=row.id, tenant_id=row.tenant_id, created_at=row.created_at) for row in rows]
 
     def _filter_free_tenants(self, tenant_ids: Iterable[str]) -> set[str]:
-        if not dify_config.BILLING_ENABLED:
-            return set(tenant_ids)
-
         tenant_id_list = list(tenant_ids)
         uncached_tenants = [tenant_id for tenant_id in tenant_id_list if tenant_id not in self.billing_cache]
 
@@ -158,8 +154,7 @@ class WorkflowRunCleanup:
                 info = bulk_info.get(tenant_id)
                 if info:
                     try:
-                        raw_plan = info.get("subscription", {}).get("plan")
-                        plan = CloudPlan(raw_plan)
+                        plan = CloudPlan(info)
                     except Exception:
                         logger.exception("Failed to parse billing plan for tenant %s", tenant_id)
                 else:

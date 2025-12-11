@@ -31,21 +31,20 @@ class BillingService:
     @classmethod
     def get_info_bulk(cls, tenant_ids: list[str]) -> dict[str, dict]:
         """
-        Temporary bulk billing info fetch. Will be replaced by a real batch API.
+        Bulk billing info fetch via billing API.
 
-        Args:
-            tenant_ids: list of tenant ids
+        Payload: {"tenant_ids": ["t1", "t2", ...]} (max 200 per request)
 
         Returns:
-            Mapping of tenant_id -> billing info dict
+            Mapping of tenant_id -> plan
         """
-        result: dict[str, dict] = {}
-        for tenant_id in tenant_ids:
-            try:
-                result[tenant_id] = cls.get_info(tenant_id)
-            except Exception:
-                logger.exception("Failed to fetch billing info for tenant %s in bulk mode", tenant_id)
-        return result
+
+        try:
+            resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": tenant_ids})
+        except Exception:
+            logger.exception("Failed to fetch billing info batch for tenants: %s", tenant_ids)
+
+        return resp.get("data", {})
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
