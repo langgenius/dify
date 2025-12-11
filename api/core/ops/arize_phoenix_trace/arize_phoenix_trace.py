@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any, Union, cast
 from urllib.parse import urlparse
 
-from openinference.semconv.trace import OpenInferenceMimeTypeValues, OpenInferenceSpanKindValues, SpanAttributes
+from openinference.semconv.trace import MessageAttributes, OpenInferenceMimeTypeValues, OpenInferenceSpanKindValues, SpanAttributes, ToolCallAttributes
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GrpcOTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HttpOTLPSpanExporter
 from opentelemetry.sdk import trace as trace_sdk
@@ -756,22 +756,73 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             raise ValueError(f"[Arize/Phoenix] Get run url failed: {str(e)}")
 
     def _construct_llm_attributes(self, prompts: dict | list | str | None) -> dict[str, str]:
-        """Helper method to construct LLM attributes with passed prompts."""
-        attributes = {}
+        """Construct LLM attributes with passed prompts for Arize/Phoenix."""
+        attributes: dict[str, str] = {}
+
+        def set_attribute(path: str, value: object) -> None:
+            """Store an attribute safely as a string."""
+            if value is None:
+                return
+            try:
+                if isinstance(value, (dict, list)):
+                    value = safe_json_dumps(value)
+                attributes[path] = str(value)
+            except Exception:
+                attributes[path] = str(value)
+
+        def set_message_attribute(message_index: int, key: str, value: object) -> None:
+            path = f"{SpanAttributes.LLM_INPUT_MESSAGES}.{message_index}.{key}"
+            set_attribute(path, value)
+
+        def set_tool_call_attributes(message_index: int, tool_index: int, tool_call: dict | object | None) -> None:
+            """Extract and assign tool call details safely."""
+            if not tool_call:
+                return
+
+            def safe_get(obj, key, default=None):
+                if isinstance(obj, dict):
+                    return obj.get(key, default)
+                return getattr(obj, key, default)
+
+            function_obj = safe_get(tool_call, "function", {})
+            function_name = safe_get(function_obj, "name", "")
+            function_args = safe_get(function_obj, "arguments", {})
+            call_id = safe_get(tool_call, "id", "")
+
+            base_path = (
+                f"{SpanAttributes.LLM_INPUT_MESSAGES}."
+                f"{message_index}.{MessageAttributes.MESSAGE_TOOL_CALLS}.{tool_index}"
+            )
+
+            set_attribute(f"{base_path}.{ToolCallAttributes.TOOL_CALL_FUNCTION_NAME}", function_name)
+            set_attribute(f"{base_path}.{ToolCallAttributes.TOOL_CALL_FUNCTION_ARGUMENTS_JSON}", function_args)
+            set_attribute(f"{base_path}.{ToolCallAttributes.TOOL_CALL_ID}", call_id)
+
+        # Handle list of messages
         if isinstance(prompts, list):
-            for i, msg in enumerate(prompts):
-                if isinstance(msg, dict):
-                    attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}.message.content"] = msg.get("text", "")
-                    attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.{i}.message.role"] = msg.get("role", "user")
-                    # todo: handle assistant and tool role messages, as they don't always
-                    # have a text field, but may have a tool_calls field instead
-                    # e.g. 'tool_calls': [{'id': '98af3a29-b066-45a5-b4b1-46c74ddafc58',
-                    # 'type': 'function', 'function': {'name': 'current_time', 'arguments': '{}'}}]}
+            for message_index, message in enumerate(prompts):
+                if not isinstance(message, dict):
+                    continue
+
+                role = message.get("role", "user")
+                content = message.get("text") or message.get("content") or ""
+
+                set_message_attribute(message_index, MessageAttributes.MESSAGE_ROLE, role)
+                set_message_attribute(message_index, MessageAttributes.MESSAGE_CONTENT, content)
+
+                tool_calls = message.get("tool_calls") or []
+                if isinstance(tool_calls, list):
+                    for tool_index, tool_call in enumerate(tool_calls):
+                        set_tool_call_attributes(message_index, tool_index, tool_call)
+
+        # Handle single dict prompt
         elif isinstance(prompts, dict):
-            attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.content"] = json.dumps(prompts)
-            attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.role"] = "user"
+            set_message_attribute(0, MessageAttributes.MESSAGE_CONTENT, prompts)
+            set_message_attribute(0, MessageAttributes.MESSAGE_ROLE, "user")
+
+        # Handle plain string prompt
         elif isinstance(prompts, str):
-            attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.content"] = prompts
-            attributes[f"{SpanAttributes.LLM_INPUT_MESSAGES}.0.message.role"] = "user"
+            set_message_attribute(0, MessageAttributes.MESSAGE_CONTENT, prompts)
+            set_message_attribute(0, MessageAttributes.MESSAGE_ROLE, "user")
 
         return attributes
