@@ -8,6 +8,7 @@ const translation = {
     header: {
       source: 'المصدر',
       time: 'وقت',
+      queryContent: 'محتوى الاستعلام',
     },
   },
   input: {
@@ -28,6 +29,12 @@ const translation = {
   hitChunks: 'إصابة {{num}} مقاطع فرعية',
   open: 'فتح',
   keyword: 'الكلمات الرئيسية',
+  imageUploader: {
+    tip: 'قم بتحميل الصور أو إسقاطها (الحد الأقصى {{batchCount}}، {{size}} ميغابايت لكل صورة)',
+    tooltip: 'رفع الصور (الحد الأقصى {{batchCount}}، {{size}} ميغابايت لكل صورة)',
+    dropZoneTip: 'اسحب الملف هنا للتحميل',
+    singleChunkAttachmentLimitTooltip: 'لا يمكن أن يتجاوز عدد المرفقات ذات القطعة الواحدة {{limit}}',
+  },
 }
 
 export default translation

@@ -236,6 +236,16 @@ const translation = {
       apiReference: 'مرجع API',
     },
   },
+  cornerLabel: {
+    unavailable: 'غير متاح',
+    pipeline: 'خط أنابيب',
+  },
+  multimodal: 'متعدد الوسائط',
+  imageUploader: {
+    button: 'اسحب وأفلت الملف أو المجلد، أو',
+    browse: 'تصفح',
+    tip: '{{supportTypes}} (الحد الأقصى {{batchCount}}، {{size}} ميغابايت لكل منها)',
+  },
 }
 
 export default translation

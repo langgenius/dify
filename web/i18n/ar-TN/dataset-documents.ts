@@ -401,6 +401,7 @@ const translation = {
     dateTimeFormat: 'MM/DD/YYYY h:mm',
     expandChunks: 'توسيع القطع',
     collapseChunks: 'طي القطع',
+    allFilesUploaded: 'يجب تحميل جميع الملفات قبل الحفظ',
   },
 }
 
