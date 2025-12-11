@@ -3,8 +3,9 @@ from typing import Any, Literal
 from uuid import UUID
 
 from flask import request
-from flask_restx import Resource
+from flask_restx import Resource, reqparse
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -29,12 +30,15 @@ from core.errors.error import (
 )
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
+from extensions.ext_database import db
 from libs import helper
+from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +51,36 @@ class CompletionRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
 
 
+# Define parser for chat API
+chat_parser = (
+    reqparse.RequestParser()
+    .add_argument("inputs", type=dict, required=True, location="json", help="Input parameters for chat")
+    .add_argument("query", type=str, required=True, location="json", help="The chat query")
+    .add_argument("files", type=list, required=False, location="json", help="List of file attachments")
+    .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode")
+    .add_argument("conversation_id", type=uuid_value, location="json", help="Existing conversation ID")
+    .add_argument("retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source")
+    .add_argument(
+        "auto_generate_name",
+        type=bool,
+        required=False,
+        default=True,
+        location="json",
+        help="Auto generate conversation name",
+    )
+    .add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
+)
+chat_parser.add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
+chat_parser.add_argument(
+    "workflow_alias",
+    type=str,
+    required=False,
+    default="",
+    location="json",
+    help="Workflow alias for advanced chat",
+)
+
+
 class ChatRequestPayload(BaseModel):
     inputs: dict[str, Any]
     query: str
@@ -56,6 +90,7 @@ class ChatRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+    workflow_alias: str | None = Field(default=None, description="Workflow alias for advanced chat")
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
@@ -182,9 +217,14 @@ class ChatApi(Resource):
             raise NotChatAppError()
 
         payload = ChatRequestPayload.model_validate(service_api_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
+
+        workflow_alias = args.get("workflow_alias")
+        if workflow_alias:
+            workflow_id = self._fetch_workflow_id_by_alias(app_model=app_model, workflow_alias=workflow_alias)
+            args["workflow_id"] = workflow_id
 
         external_trace_id = get_external_trace_id(request)
-        args = payload.model_dump(exclude_none=True)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
@@ -224,6 +264,26 @@ class ChatApi(Resource):
         except Exception:
             logger.exception("internal server error.")
             raise InternalServerError()
+
+    def _fetch_workflow_id_by_alias(self, *, app_model: App, workflow_alias: str) -> str:
+        """
+        Resolve workflow_alias to workflow_id
+        Priority: workflow_alias > workflow_id > latest published workflow
+        """
+        workflow_service = WorkflowService()
+        with Session(db.engine) as session:
+            workflow = workflow_service.get_workflow_by_alias(
+                session=session,
+                app_id=app_model.id,
+                name=workflow_alias,
+            )
+
+            if not workflow:
+                raise WorkflowNotFoundError(f"Workflow with alias '{workflow_alias}' not found")
+
+            workflow_id = workflow.id
+
+        return workflow_id
 
 
 @service_api_ns.route("/chat-messages/<string:task_id>/stop")
