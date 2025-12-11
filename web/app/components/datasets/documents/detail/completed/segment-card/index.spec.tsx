@@ -867,8 +867,9 @@ describe('SegmentCard', () => {
         />,
       )
 
+      // The Switch component uses CSS classes for disabled state, not the native disabled attribute
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toBeDisabled()
+      expect(switchElement).toHaveClass('!cursor-not-allowed', '!opacity-50')
     })
 
     it('should handle zero word count', () => {

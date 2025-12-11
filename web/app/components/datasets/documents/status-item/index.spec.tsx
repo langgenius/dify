@@ -344,12 +344,13 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Assert - check if switch is semantically disabled
+      // Assert - check if switch is visually disabled (via CSS classes)
+      // The Switch component uses CSS classes for disabled state, not the native disabled attribute
       const switchEl = screen.getByRole('switch')
       if (isEmbedding)
-        expect(switchEl).toBeDisabled()
+        expect(switchEl).toHaveClass('!cursor-not-allowed', '!opacity-50')
       else
-        expect(switchEl).not.toBeDisabled()
+        expect(switchEl).not.toHaveClass('!cursor-not-allowed')
     })
 
     it('should disable switch when archived', () => {
@@ -362,9 +363,9 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Assert - semantically disabled
+      // Assert - visually disabled via CSS classes
       const switchEl = screen.getByRole('switch')
-      expect(switchEl).toBeDisabled()
+      expect(switchEl).toHaveClass('!cursor-not-allowed', '!opacity-50')
     })
 
     it('should disable switch when both embedding and archived', () => {
@@ -377,9 +378,9 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Assert - semantically disabled
+      // Assert - visually disabled via CSS classes
       const switchEl = screen.getByRole('switch')
-      expect(switchEl).toBeDisabled()
+      expect(switchEl).toHaveClass('!cursor-not-allowed', '!opacity-50')
     })
   })
 
