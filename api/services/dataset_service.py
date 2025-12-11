@@ -2801,20 +2801,20 @@ class SegmentService:
                     db.session.add(binding)
                 db.session.commit()
 
-                # save vector index
-                try:
-                    VectorService.create_segments_vector(
-                        [args["keywords"]], [segment_document], dataset, document.doc_form
-                    )
-                except Exception as e:
-                    logger.exception("create segment index failed")
-                    segment_document.enabled = False
-                    segment_document.disabled_at = naive_utc_now()
-                    segment_document.status = "error"
-                    segment_document.error = str(e)
-                    db.session.commit()
-                segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
-                return segment
+            # save vector index
+            try:
+                VectorService.create_segments_vector(
+                    [args["keywords"]] if "keywords" in args else None, [segment_document], dataset, document.doc_form
+                )
+            except Exception as e:
+                logger.exception("create segment index failed")
+                segment_document.enabled = False
+                segment_document.disabled_at = naive_utc_now()
+                segment_document.status = "error"
+                segment_document.error = str(e)
+                db.session.commit()
+            segment = db.session.query(DocumentSegment).where(DocumentSegment.id == segment_document.id).first()
+            return segment
         except LockNotOwnedError:
             pass
 
