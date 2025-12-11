@@ -68,11 +68,13 @@ jobs:
   vdb-tests:
     name: VDB Tests
     needs: check-changes
-    if: needs.check-changes.outputs.vdb-changed == 'true'
+    # Run when vdb files changed OR when a maintainer adds the 'run-vdb' label to the PR
+    if: needs.check-changes.outputs.vdb-changed == 'true' || contains(join(github.event.pull_request.labels.*.name, ','), 'run-vdb')
     uses: ./.github/workflows/vdb-tests.yml
 
   db-migration-test:
     name: DB Migration Test
     needs: check-changes
-    if: needs.check-changes.outputs.migration-changed == 'true'
+    # Run when migration files changed OR when a maintainer adds the 'run-db-migration' label to the PR
+    if: needs.check-changes.outputs.migration-changed == 'true' || contains(join(github.event.pull_request.labels.*.name, ','), 'run-db-migration')
     uses: ./.github/workflows/db-migration-test.yml
