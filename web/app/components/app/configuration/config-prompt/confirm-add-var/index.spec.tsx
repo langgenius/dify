@@ -27,15 +27,23 @@ describe('ConfirmAddVar', () => {
     expect(highlights[1]).toHaveTextContent('bar')
   })
 
-  it('should trigger cancel and confirm actions', () => {
+  it('should trigger cancel actions', () => {
     const onConfirm = jest.fn()
     const onCancel = jest.fn()
     render(<ConfirmAddVar varNameArr={['foo']} onConfirm={onConfirm} onCancel={onCancel} onHide={jest.fn()} />)
 
     fireEvent.click(screen.getByText('common.operation.cancel'))
-    fireEvent.click(screen.getByText('common.operation.add'))
 
     expect(onCancel).toHaveBeenCalledTimes(1)
+  })
+
+  it('should trigger confirm actions', () => {
+    const onConfirm = jest.fn()
+    const onCancel = jest.fn()
+    render(<ConfirmAddVar varNameArr={['foo']} onConfirm={onConfirm} onCancel={onCancel} onHide={jest.fn()} />)
+
+    fireEvent.click(screen.getByText('common.operation.add'))
+
     expect(onConfirm).toHaveBeenCalledTimes(1)
   })
 })

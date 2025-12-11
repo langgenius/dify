@@ -4,6 +4,7 @@ import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 
 describe('PromptEditorHeightResizeWrap', () => {
   beforeEach(() => {
+    jest.clearAllMocks()
     jest.useFakeTimers()
   })
 
