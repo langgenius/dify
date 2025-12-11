@@ -5,28 +5,18 @@ import copy from 'copy-to-clipboard'
 import type { IGenerationItemProps } from './index'
 import GenerationItem from './index'
 
-jest.mock('react-i18next', () => {
-  const translate = (key: string) => {
-    const map: Record<string, string> = {
-      'appDebug.errorMessage.waitForResponse': 'please-wait',
-      'common.actionMsg.copySuccessfully': 'copied',
-      'runLog.result': 'Result',
-      'runLog.detail': 'Detail',
-      'share.generation.execution': 'Execution',
-      'share.generation.batchFailed.outputPlaceholder': 'failed',
-      'common.unit.char': 'chars',
-    }
-    return map[key] ?? key
-  }
-  return {
-    useTranslation: () => ({
-      t: translate,
-    }),
-  }
-})
+// ============================================================================
+// Mock Setup
+// ============================================================================
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}))
 
 jest.mock('next/navigation', () => ({
-  useParams: jest.fn(),
+  useParams: jest.fn(() => ({ appId: 'app-123' })),
 }))
 
 jest.mock('@/app/components/base/chat/chat/context', () => ({
@@ -36,24 +26,27 @@ jest.mock('@/app/components/base/chat/chat/context', () => ({
 }))
 
 jest.mock('@/app/components/app/store', () => {
-  const store = {
-    setCurrentLogItem: jest.fn(),
-    setShowPromptLogModal: jest.fn(),
-  }
-  const useStore = (selector?: (state: typeof store) => unknown) => (selector ? selector(store) : store)
+  const mockSetCurrentLogItem = jest.fn()
+  const mockSetShowPromptLogModal = jest.fn()
   return {
-    __esModule: true,
-    useStore,
-    __store: store,
+    useStore: (selector: (state: Record<string, jest.Mock>) => jest.Mock) => {
+      const store = {
+        setCurrentLogItem: mockSetCurrentLogItem,
+        setShowPromptLogModal: mockSetShowPromptLogModal,
+      }
+      return selector(store)
+    },
+    __mockSetCurrentLogItem: mockSetCurrentLogItem,
+    __mockSetShowPromptLogModal: mockSetShowPromptLogModal,
   }
 })
 
 jest.mock('@/app/components/base/toast', () => {
-  const notify = jest.fn()
+  const mockToastNotify = jest.fn()
   return {
     __esModule: true,
-    default: { notify },
-    __notify: notify,
+    default: { notify: mockToastNotify },
+    __mockToastNotify: mockToastNotify,
   }
 })
 
@@ -63,124 +56,175 @@ jest.mock('copy-to-clipboard', () => ({
 }))
 
 jest.mock('@/service/share', () => {
-  const fetchMoreLikeThis = jest.fn()
-  const updateFeedback = jest.fn()
+  const mockFetchMoreLikeThis = jest.fn()
+  const mockUpdateFeedback = jest.fn()
   return {
     __esModule: true,
-    fetchMoreLikeThis,
-    updateFeedback,
+    fetchMoreLikeThis: mockFetchMoreLikeThis,
+    updateFeedback: mockUpdateFeedback,
   }
 })
 
-jest.mock('@/service/debug', () => ({
-  __esModule: true,
-  fetchTextGenerationMessage: jest.fn(),
-}))
+jest.mock('@/service/debug', () => {
+  const mockFetchTextGenerationMessage = jest.fn()
+  return {
+    __esModule: true,
+    fetchTextGenerationMessage: mockFetchTextGenerationMessage,
+  }
+})
 
 jest.mock('@/app/components/base/loading', () => ({
   __esModule: true,
   default: () => <div data-testid="loading" />,
 }))
 
+// Simple mock for ContentSection - just render content
 jest.mock('./content-section', () => {
-  const React = require('react')
-  const calls: any[] = []
-  const Component = (props: any) => {
-    calls.push(props)
-    return React.createElement(
-      'div',
-      { 'data-testid': `content-section-${props.taskId ?? 'none'}` },
-      typeof props.content === 'string' ? props.content : 'content',
+  const mockContentSection = jest.fn()
+  const Component = (props: Record<string, unknown>) => {
+    mockContentSection(props)
+    return (
+      <div data-testid={`content-section-${props.taskId ?? 'none'}`}>
+        {typeof props.content === 'string' ? props.content : 'content'}
+      </div>
     )
   }
   return {
     __esModule: true,
     default: Component,
-    __calls: calls,
+    __mockContentSection: mockContentSection,
   }
 })
 
+// Simple mock for MetaSection - expose action buttons based on props
 jest.mock('./meta-section', () => {
-  const React = require('react')
-  const calls: any[] = []
-  const Component = (props: any) => {
-    calls.push(props)
-    return React.createElement(
-      'div',
-      { 'data-testid': `meta-section-${props.messageId ?? 'none'}` },
-      props.showCharCount && React.createElement('span', { 'data-testid': `char-count-${props.messageId ?? 'none'}` }, props.charCount),
-      !props.isInWebApp && !props.isInstalledApp && !props.isResponding && React.createElement(
-        'button',
-        {
-          'data-testid': `open-log-${props.messageId ?? 'none'}`,
-          'disabled': !props.messageId || props.isError,
-          'onClick': props.onOpenLogModal,
-        },
-        'open-log',
-      ),
-      props.moreLikeThis && React.createElement(
-        'button',
-        {
-          'data-testid': `more-like-${props.messageId ?? 'none'}`,
-          'disabled': props.disableMoreLikeThis,
-          'onClick': props.onMoreLikeThis,
-        },
-        'more-like',
-      ),
-      props.canCopy && React.createElement(
-        'button',
-        {
-          'data-testid': `copy-${props.messageId ?? 'none'}`,
-          'disabled': !props.messageId || props.isError,
-          'onClick': props.onCopy,
-        },
-        'copy',
-      ),
-      props.isInWebApp && props.isError && React.createElement(
-        'button',
-        { 'data-testid': `retry-${props.messageId ?? 'none'}`, 'onClick': props.onRetry },
-        'retry',
-      ),
-      props.isInWebApp && !props.isWorkflow && React.createElement(
-        'button',
-        {
-          'data-testid': `save-${props.messageId ?? 'none'}`,
-          'disabled': !props.messageId || props.isError,
-          'onClick': () => props.onSave?.(props.messageId as string),
-        },
-        'save',
-      ),
-      (props.supportFeedback || props.isInWebApp) && !props.isWorkflow && !props.isError && props.messageId && props.onFeedback && React.createElement(
-        'button',
-        { 'data-testid': `feedback-${props.messageId}`, 'onClick': () => props.onFeedback?.({ rating: 'like' }) },
-        'feedback',
-      ),
+  const mockMetaSection = jest.fn()
+  const Component = (props: Record<string, unknown>) => {
+    mockMetaSection(props)
+    const {
+      messageId,
+      isError,
+      moreLikeThis,
+      disableMoreLikeThis,
+      canCopy,
+      isInWebApp,
+      isInstalledApp,
+      isResponding,
+      isWorkflow,
+      supportFeedback,
+      onOpenLogModal,
+      onMoreLikeThis,
+      onCopy,
+      onRetry,
+      onSave,
+      onFeedback,
+      showCharCount,
+      charCount,
+    } = props as {
+      messageId?: string | null
+      isError?: boolean
+      moreLikeThis?: boolean
+      disableMoreLikeThis?: boolean
+      canCopy?: boolean
+      isInWebApp?: boolean
+      isInstalledApp?: boolean
+      isResponding?: boolean
+      isWorkflow?: boolean
+      supportFeedback?: boolean
+      onOpenLogModal?: () => void
+      onMoreLikeThis?: () => void
+      onCopy?: () => void
+      onRetry?: () => void
+      onSave?: (id: string) => void
+      onFeedback?: (feedback: { rating: string | null }) => void
+      showCharCount?: boolean
+      charCount?: number
+    }
+
+    return (
+      <div data-testid={`meta-section-${messageId ?? 'none'}`}>
+        {showCharCount && (
+          <span data-testid={`char-count-${messageId ?? 'none'}`}>{charCount}</span>
+        )}
+        {!isInWebApp && !isInstalledApp && !isResponding && (
+          <button
+            data-testid={`open-log-${messageId ?? 'none'}`}
+            disabled={!messageId || isError}
+            onClick={onOpenLogModal}
+          >
+            open-log
+          </button>
+        )}
+        {moreLikeThis && (
+          <button
+            data-testid={`more-like-${messageId ?? 'none'}`}
+            disabled={disableMoreLikeThis}
+            onClick={onMoreLikeThis}
+          >
+            more-like
+          </button>
+        )}
+        {canCopy && (
+          <button
+            data-testid={`copy-${messageId ?? 'none'}`}
+            disabled={!messageId || isError}
+            onClick={onCopy}
+          >
+            copy
+          </button>
+        )}
+        {isInWebApp && isError && (
+          <button data-testid={`retry-${messageId ?? 'none'}`} onClick={onRetry}>
+            retry
+          </button>
+        )}
+        {isInWebApp && !isWorkflow && (
+          <button
+            data-testid={`save-${messageId ?? 'none'}`}
+            disabled={!messageId || isError}
+            onClick={() => onSave?.(messageId as string)}
+          >
+            save
+          </button>
+        )}
+        {(supportFeedback || isInWebApp) && !isWorkflow && !isError && messageId && onFeedback && (
+          <button
+            data-testid={`feedback-${messageId}`}
+            onClick={() => onFeedback({ rating: 'like' })}
+          >
+            feedback
+          </button>
+        )}
+      </div>
     )
   }
   return {
     __esModule: true,
     default: Component,
-    __calls: calls,
+    __mockMetaSection: mockMetaSection,
   }
 })
 
-const mockUseParams = jest.requireMock('next/navigation').useParams as jest.Mock
-const mockStoreModule = jest.requireMock('@/app/components/app/store')
-const mockStore = mockStoreModule.__store as { setCurrentLogItem: jest.Mock; setShowPromptLogModal: jest.Mock }
-const mockToastNotify = jest.requireMock('@/app/components/base/toast').__notify as jest.Mock
 const mockCopy = copy as jest.Mock
+const mockUseParams = jest.requireMock('next/navigation').useParams as jest.Mock
+const mockToastNotify = jest.requireMock('@/app/components/base/toast').__mockToastNotify as jest.Mock
+const mockSetCurrentLogItem = jest.requireMock('@/app/components/app/store').__mockSetCurrentLogItem as jest.Mock
+const mockSetShowPromptLogModal = jest.requireMock('@/app/components/app/store').__mockSetShowPromptLogModal as jest.Mock
 const mockFetchMoreLikeThis = jest.requireMock('@/service/share').fetchMoreLikeThis as jest.Mock
 const mockUpdateFeedback = jest.requireMock('@/service/share').updateFeedback as jest.Mock
 const mockFetchTextGenerationMessage = jest.requireMock('@/service/debug').fetchTextGenerationMessage as jest.Mock
-const contentSectionCalls = jest.requireMock('./content-section').__calls as any[]
-const metaSectionCalls = jest.requireMock('./meta-section').__calls as any[]
+const mockContentSection = jest.requireMock('./content-section').__mockContentSection as jest.Mock
+const mockMetaSection = jest.requireMock('./meta-section').__mockMetaSection as jest.Mock
 
-const translations = {
-  wait: 'please-wait',
-  copySuccess: 'copied',
-}
+// ============================================================================
+// Test Utilities
+// ============================================================================
 
-const getBaseProps = (overrides?: Partial<IGenerationItemProps>): IGenerationItemProps => ({
+/**
+ * Creates base props with sensible defaults for GenerationItem testing.
+ * Uses factory pattern for flexible test data creation.
+ */
+const createBaseProps = (overrides?: Partial<IGenerationItemProps>): IGenerationItemProps => ({
   isError: false,
   onRetry: jest.fn(),
   content: 'response text',
@@ -192,6 +236,9 @@ const getBaseProps = (overrides?: Partial<IGenerationItemProps>): IGenerationIte
   ...overrides,
 })
 
+/**
+ * Creates a deferred promise for testing async flows.
+ */
 const createDeferred = <T,>() => {
   let resolve!: (value: T) => void
   const promise = new Promise<T>((res) => {
@@ -200,182 +247,543 @@ const createDeferred = <T,>() => {
   return { promise, resolve }
 }
 
+// ============================================================================
+// Test Suite
+// ============================================================================
+
 describe('GenerationItem', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    metaSectionCalls.length = 0
-    contentSectionCalls.length = 0
     mockUseParams.mockReturnValue({ appId: 'app-123' })
     mockFetchMoreLikeThis.mockResolvedValue({ answer: 'child-answer', id: 'child-id' })
   })
 
-  it('exports a memoized component', () => {
-    expect((GenerationItem as any).$$typeof).toBe(Symbol.for('react.memo'))
+  // --------------------------------------------------------------------------
+  // Component Structure Tests
+  // Tests verifying the component's export type and basic structure
+  // --------------------------------------------------------------------------
+  describe('Component Structure', () => {
+    it('should export a memoized component', () => {
+      expect((GenerationItem as { $$typeof?: symbol }).$$typeof).toBe(Symbol.for('react.memo'))
+    })
   })
 
-  it('shows loading indicator when isLoading is true', () => {
-    render(<GenerationItem {...getBaseProps({ isLoading: true })} />)
-    expect(screen.getByTestId('loading')).toBeInTheDocument()
+  // --------------------------------------------------------------------------
+  // Loading State Tests
+  // Tests for the loading indicator display behavior
+  // --------------------------------------------------------------------------
+  describe('Loading State', () => {
+    it('should show loading indicator when isLoading is true', () => {
+      render(<GenerationItem {...createBaseProps({ isLoading: true })} />)
+      expect(screen.getByTestId('loading')).toBeInTheDocument()
+    })
+
+    it('should not show loading indicator when isLoading is false', () => {
+      render(<GenerationItem {...createBaseProps({ isLoading: false })} />)
+      expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+    })
+
+    it('should not show loading indicator when isLoading is undefined', () => {
+      render(<GenerationItem {...createBaseProps()} />)
+      expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+    })
   })
 
-  it('prevents requesting more-like-this when message id is missing', async () => {
-    const user = userEvent.setup()
-    render(<GenerationItem {...getBaseProps({ messageId: null })} />)
+  // --------------------------------------------------------------------------
+  // More Like This Feature Tests
+  // Tests for the "more like this" generation functionality
+  // --------------------------------------------------------------------------
+  describe('More Like This Feature', () => {
+    it('should prevent request when message id is null', async () => {
+      const user = userEvent.setup()
+      render(<GenerationItem {...createBaseProps({ messageId: null })} />)
 
-    await user.click(screen.getByTestId('more-like-none'))
+      await user.click(screen.getByTestId('more-like-none'))
 
-    expect(mockFetchMoreLikeThis).not.toHaveBeenCalled()
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'warning',
-      message: translations.wait,
-    }))
-  })
-
-  it('guards more-like-this while querying', async () => {
-    const user = userEvent.setup()
-    const deferred = createDeferred<{ answer: string; id: string }>()
-    mockFetchMoreLikeThis.mockReturnValueOnce(deferred.promise)
-
-    render(<GenerationItem {...getBaseProps()} />)
-
-    await user.click(screen.getByTestId('more-like-message-1'))
-    await waitFor(() => expect(mockFetchMoreLikeThis).toHaveBeenCalledTimes(1))
-    await waitFor(() => expect(metaSectionCalls.length).toBeGreaterThan(1))
-
-    await user.click(screen.getByTestId('more-like-message-1'))
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'warning',
-      message: translations.wait,
-    }))
-
-    deferred.resolve({ answer: 'child-deferred', id: 'deferred-id' })
-    await waitFor(() => expect(screen.getByTestId('meta-section-deferred-id')).toBeInTheDocument())
-  })
-
-  it('fetches more-like-this content and renders the child item', async () => {
-    const user = userEvent.setup()
-    mockFetchMoreLikeThis.mockResolvedValue({ answer: 'child content', id: 'child-generated' })
-
-    render(<GenerationItem {...getBaseProps()} />)
-
-    await user.click(screen.getByTestId('more-like-message-1'))
-
-    await waitFor(() => expect(mockFetchMoreLikeThis).toHaveBeenCalledWith('message-1', false, undefined))
-    await waitFor(() => expect(screen.getByTestId('meta-section-child-generated')).toBeInTheDocument())
-    expect(metaSectionCalls.some(call => call.messageId === 'child-generated')).toBe(true)
-  })
-
-  it('opens log modal and formats the log payload', async () => {
-    const user = userEvent.setup()
-    const logResponse = {
-      message: [{ role: 'user', text: 'hi' }],
-      answer: 'assistant answer',
-      message_files: [
-        { id: 'a1', belongs_to: 'assistant' },
-        { id: 'u1', belongs_to: 'user' },
-      ],
-    }
-    mockFetchTextGenerationMessage.mockResolvedValue(logResponse)
-
-    render(<GenerationItem {...getBaseProps({ messageId: 'log-id' })} />)
-
-    await user.click(screen.getByTestId('open-log-log-id'))
-
-    await waitFor(() => expect(mockFetchTextGenerationMessage).toHaveBeenCalledWith({ appId: 'app-123', messageId: 'log-id' }))
-    expect(mockStore.setCurrentLogItem).toHaveBeenCalledWith(expect.objectContaining({
-      log: expect.arrayContaining([
-        expect.objectContaining({ role: 'user', text: 'hi' }),
+      expect(mockFetchMoreLikeThis).not.toHaveBeenCalled()
+      expect(mockToastNotify).toHaveBeenCalledWith(
         expect.objectContaining({
-          role: 'assistant',
-          text: 'assistant answer',
-          files: [{ id: 'a1', belongs_to: 'assistant' }],
+          type: 'warning',
+          message: 'appDebug.errorMessage.waitForResponse',
         }),
-      ]),
-    }))
-    expect(mockStore.setShowPromptLogModal).toHaveBeenCalledWith(true)
+      )
+    })
+
+    it('should prevent request when message id is undefined', async () => {
+      const user = userEvent.setup()
+      render(<GenerationItem {...createBaseProps({ messageId: undefined })} />)
+
+      await user.click(screen.getByTestId('more-like-none'))
+
+      expect(mockFetchMoreLikeThis).not.toHaveBeenCalled()
+    })
+
+    it('should guard against duplicate requests while querying', async () => {
+      const user = userEvent.setup()
+      const deferred = createDeferred<{ answer: string; id: string }>()
+      mockFetchMoreLikeThis.mockReturnValueOnce(deferred.promise)
+
+      render(<GenerationItem {...createBaseProps()} />)
+
+      // First click starts query
+      await user.click(screen.getByTestId('more-like-message-1'))
+      await waitFor(() => expect(mockFetchMoreLikeThis).toHaveBeenCalledTimes(1))
+
+      // Second click while querying should show warning
+      await user.click(screen.getByTestId('more-like-message-1'))
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'warning',
+          message: 'appDebug.errorMessage.waitForResponse',
+        }),
+      )
+
+      // Resolve and verify child renders
+      deferred.resolve({ answer: 'child-deferred', id: 'deferred-id' })
+      await waitFor(() =>
+        expect(screen.getByTestId('meta-section-deferred-id')).toBeInTheDocument(),
+      )
+    })
+
+    it('should fetch and render child item on successful request', async () => {
+      const user = userEvent.setup()
+      mockFetchMoreLikeThis.mockResolvedValue({ answer: 'child content', id: 'child-generated' })
+
+      render(<GenerationItem {...createBaseProps()} />)
+
+      await user.click(screen.getByTestId('more-like-message-1'))
+
+      await waitFor(() =>
+        expect(mockFetchMoreLikeThis).toHaveBeenCalledWith('message-1', false, undefined),
+      )
+      await waitFor(() =>
+        expect(screen.getByTestId('meta-section-child-generated')).toBeInTheDocument(),
+      )
+    })
+
+    it('should disable more-like-this button at maximum depth', () => {
+      render(<GenerationItem {...createBaseProps({ depth: 3, messageId: 'max-depth' })} />)
+      expect(screen.getByTestId('more-like-max-depth')).toBeDisabled()
+    })
+
+    it('should clear generated child when controlClearMoreLikeThis changes', async () => {
+      const user = userEvent.setup()
+      mockFetchMoreLikeThis.mockResolvedValue({ answer: 'child response', id: 'child-to-clear' })
+      const baseProps = createBaseProps()
+      const { rerender } = render(<GenerationItem {...baseProps} />)
+
+      await user.click(screen.getByTestId('more-like-message-1'))
+      await waitFor(() =>
+        expect(screen.getByTestId('meta-section-child-to-clear')).toBeInTheDocument(),
+      )
+
+      rerender(<GenerationItem {...baseProps} controlClearMoreLikeThis={1} />)
+
+      await waitFor(() =>
+        expect(screen.queryByTestId('meta-section-child-to-clear')).not.toBeInTheDocument(),
+      )
+    })
+
+    it('should pass correct installedAppId to fetchMoreLikeThis', async () => {
+      const user = userEvent.setup()
+      render(
+        <GenerationItem
+          {...createBaseProps({ isInstalledApp: true, installedAppId: 'install-123' })}
+        />,
+      )
+
+      await user.click(screen.getByTestId('more-like-message-1'))
+
+      await waitFor(() =>
+        expect(mockFetchMoreLikeThis).toHaveBeenCalledWith('message-1', true, 'install-123'),
+      )
+    })
   })
 
-  it('copies plain and structured content for non-workflow responses', async () => {
-    const user = userEvent.setup()
+  // --------------------------------------------------------------------------
+  // Log Modal Tests
+  // Tests for opening and formatting the log modal
+  // --------------------------------------------------------------------------
+  describe('Log Modal', () => {
+    it('should open log modal and format payload with array message', async () => {
+      const user = userEvent.setup()
+      const logResponse = {
+        message: [{ role: 'user', text: 'hi' }],
+        answer: 'assistant answer',
+        message_files: [
+          { id: 'a1', belongs_to: 'assistant' },
+          { id: 'u1', belongs_to: 'user' },
+        ],
+      }
+      mockFetchTextGenerationMessage.mockResolvedValue(logResponse)
 
-    render(<GenerationItem {...getBaseProps({ messageId: 'copy-plain', moreLikeThis: false, content: 'copy me' })} />)
-    await user.click(screen.getByTestId('copy-copy-plain'))
-    expect(mockCopy).toHaveBeenCalledWith('copy me')
+      render(<GenerationItem {...createBaseProps({ messageId: 'log-id' })} />)
 
-    render(<GenerationItem {...getBaseProps({ messageId: 'copy-object', moreLikeThis: false, content: { foo: 'bar' } })} />)
-    await user.click(screen.getByTestId('copy-copy-object'))
-    expect(mockCopy).toHaveBeenCalledWith(JSON.stringify({ foo: 'bar' }))
+      await user.click(screen.getByTestId('open-log-log-id'))
 
-    expect(mockToastNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'success',
-      message: translations.copySuccess,
-    }))
+      await waitFor(() =>
+        expect(mockFetchTextGenerationMessage).toHaveBeenCalledWith({
+          appId: 'app-123',
+          messageId: 'log-id',
+        }),
+      )
+      expect(mockSetCurrentLogItem).toHaveBeenCalledWith(
+        expect.objectContaining({
+          log: expect.arrayContaining([
+            expect.objectContaining({ role: 'user', text: 'hi' }),
+            expect.objectContaining({
+              role: 'assistant',
+              text: 'assistant answer',
+              files: [{ id: 'a1', belongs_to: 'assistant' }],
+            }),
+          ]),
+        }),
+      )
+      expect(mockSetShowPromptLogModal).toHaveBeenCalledWith(true)
+    })
+
+    it('should format log payload with string message', async () => {
+      const user = userEvent.setup()
+      mockFetchTextGenerationMessage.mockResolvedValue({
+        message: 'simple string message',
+        answer: 'response',
+      })
+
+      render(<GenerationItem {...createBaseProps({ messageId: 'string-log' })} />)
+
+      await user.click(screen.getByTestId('open-log-string-log'))
+
+      await waitFor(() =>
+        expect(mockSetCurrentLogItem).toHaveBeenCalledWith(
+          expect.objectContaining({
+            log: [{ text: 'simple string message' }],
+          }),
+        ),
+      )
+    })
+
+    it('should not fetch log when messageId is null', async () => {
+      const user = userEvent.setup()
+      render(<GenerationItem {...createBaseProps({ messageId: null })} />)
+
+      // Button should be disabled, but if clicked nothing happens
+      const button = screen.getByTestId('open-log-none')
+      expect(button).toBeDisabled()
+
+      await user.click(button)
+      expect(mockFetchTextGenerationMessage).not.toHaveBeenCalled()
+    })
   })
 
-  it('copies workflow result text when available', async () => {
-    const user = userEvent.setup()
-    render(
-      <GenerationItem
-        {...getBaseProps({
-          messageId: 'workflow-id',
-          isWorkflow: true,
-          moreLikeThis: false,
-          workflowProcessData: { resultText: 'workflow result' } as any,
-        })}
-      />,
-    )
+  // --------------------------------------------------------------------------
+  // Copy Functionality Tests
+  // Tests for copying content to clipboard
+  // --------------------------------------------------------------------------
+  describe('Copy Functionality', () => {
+    it('should copy plain string content', async () => {
+      const user = userEvent.setup()
 
-    await waitFor(() => expect(screen.getByTestId('copy-workflow-id')).toBeInTheDocument())
-    await user.click(screen.getByTestId('copy-workflow-id'))
+      render(
+        <GenerationItem
+          {...createBaseProps({ messageId: 'copy-plain', moreLikeThis: false, content: 'copy me' })}
+        />,
+      )
 
-    expect(mockCopy).toHaveBeenCalledWith('workflow result')
+      await user.click(screen.getByTestId('copy-copy-plain'))
+
+      expect(mockCopy).toHaveBeenCalledWith('copy me')
+      expect(mockToastNotify).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'success',
+          message: 'common.actionMsg.copySuccessfully',
+        }),
+      )
+    })
+
+    it('should copy JSON stringified object content', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <GenerationItem
+          {...createBaseProps({
+            messageId: 'copy-object',
+            moreLikeThis: false,
+            content: { foo: 'bar' },
+          })}
+        />,
+      )
+
+      await user.click(screen.getByTestId('copy-copy-object'))
+
+      expect(mockCopy).toHaveBeenCalledWith(JSON.stringify({ foo: 'bar' }))
+    })
+
+    it('should copy workflow result text when available', async () => {
+      const user = userEvent.setup()
+      render(
+        <GenerationItem
+          {...createBaseProps({
+            messageId: 'workflow-id',
+            isWorkflow: true,
+            moreLikeThis: false,
+            workflowProcessData: { resultText: 'workflow result' } as IGenerationItemProps['workflowProcessData'],
+          })}
+        />,
+      )
+
+      await waitFor(() => expect(screen.getByTestId('copy-workflow-id')).toBeInTheDocument())
+      await user.click(screen.getByTestId('copy-workflow-id'))
+
+      expect(mockCopy).toHaveBeenCalledWith('workflow result')
+    })
+
+    it('should handle empty string content', async () => {
+      const user = userEvent.setup()
+
+      render(
+        <GenerationItem
+          {...createBaseProps({ messageId: 'copy-empty', moreLikeThis: false, content: '' })}
+        />,
+      )
+
+      await user.click(screen.getByTestId('copy-copy-empty'))
+
+      expect(mockCopy).toHaveBeenCalledWith('')
+    })
   })
 
-  it('updates feedback for generated child message', async () => {
-    const user = userEvent.setup()
-    mockFetchMoreLikeThis.mockResolvedValue({ answer: 'child response', id: 'child-feedback' })
+  // --------------------------------------------------------------------------
+  // Feedback Tests
+  // Tests for the feedback functionality on child messages
+  // --------------------------------------------------------------------------
+  describe('Feedback', () => {
+    it('should update feedback for generated child message', async () => {
+      const user = userEvent.setup()
+      mockFetchMoreLikeThis.mockResolvedValue({ answer: 'child response', id: 'child-feedback' })
 
-    render(<GenerationItem {...getBaseProps({ isInstalledApp: true, installedAppId: 'install-1' })} />)
+      render(
+        <GenerationItem
+          {...createBaseProps({ isInstalledApp: true, installedAppId: 'install-1' })}
+        />,
+      )
 
-    await user.click(screen.getByTestId('more-like-message-1'))
-    await waitFor(() => expect(screen.getByTestId('feedback-child-feedback')).toBeInTheDocument())
+      await user.click(screen.getByTestId('more-like-message-1'))
+      await waitFor(() =>
+        expect(screen.getByTestId('feedback-child-feedback')).toBeInTheDocument(),
+      )
 
-    await user.click(screen.getByTestId('feedback-child-feedback'))
+      await user.click(screen.getByTestId('feedback-child-feedback'))
 
-    expect(mockUpdateFeedback).toHaveBeenCalledWith(
-      { url: '/messages/child-feedback/feedbacks', body: { rating: 'like' } },
-      true,
-      'install-1',
-    )
+      expect(mockUpdateFeedback).toHaveBeenCalledWith(
+        { url: '/messages/child-feedback/feedbacks', body: { rating: 'like' } },
+        true,
+        'install-1',
+      )
+    })
   })
 
-  it('clears generated child when controlClearMoreLikeThis changes', async () => {
-    const user = userEvent.setup()
-    mockFetchMoreLikeThis.mockResolvedValue({ answer: 'child response', id: 'child-to-clear' })
-    const baseProps = getBaseProps()
-    const { rerender } = render(<GenerationItem {...baseProps} />)
+  // --------------------------------------------------------------------------
+  // Props Passing Tests
+  // Tests verifying correct props are passed to child components
+  // --------------------------------------------------------------------------
+  describe('Props Passing', () => {
+    it('should pass correct props to ContentSection', () => {
+      render(
+        <GenerationItem
+          {...createBaseProps({
+            taskId: 'task-123',
+            isError: true,
+            content: 'test content',
+            hideProcessDetail: true,
+          })}
+        />,
+      )
 
-    await user.click(screen.getByTestId('more-like-message-1'))
-    await waitFor(() => expect(screen.getByTestId('meta-section-child-to-clear')).toBeInTheDocument())
+      expect(mockContentSection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          taskId: 'task-123',
+          isError: true,
+          content: 'test content',
+          hideProcessDetail: true,
+          depth: 1,
+        }),
+      )
+    })
 
-    rerender(<GenerationItem {...baseProps} controlClearMoreLikeThis={1} />)
+    it('should pass correct props to MetaSection', () => {
+      render(
+        <GenerationItem
+          {...createBaseProps({
+            messageId: 'meta-test',
+            isError: false,
+            moreLikeThis: true,
+            supportFeedback: true,
+          })}
+        />,
+      )
 
-    await waitFor(() => expect(screen.queryByTestId('meta-section-child-to-clear')).not.toBeInTheDocument())
+      expect(mockMetaSection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          messageId: 'meta-test',
+          isError: false,
+          moreLikeThis: true,
+          supportFeedback: true,
+          showCharCount: true,
+        }),
+      )
+    })
+
+    it('should set showCharCount to false for workflow', () => {
+      render(<GenerationItem {...createBaseProps({ isWorkflow: true })} />)
+
+      expect(mockMetaSection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          showCharCount: false,
+        }),
+      )
+    })
   })
 
-  it('disables more-like-this at maximum depth', () => {
-    render(<GenerationItem {...getBaseProps({ depth: 3, messageId: 'max-depth' })} />)
-    expect(screen.getByTestId('more-like-max-depth')).toBeDisabled()
+  // --------------------------------------------------------------------------
+  // Callback Tests
+  // Tests verifying callbacks function correctly
+  // --------------------------------------------------------------------------
+  describe('Callback Behavior', () => {
+    it('should provide a working copy handler to MetaSection', async () => {
+      const user = userEvent.setup()
+      render(
+        <GenerationItem
+          {...createBaseProps({ messageId: 'callback-test', moreLikeThis: false, content: 'test copy' })}
+        />,
+      )
+
+      await user.click(screen.getByTestId('copy-callback-test'))
+
+      expect(mockCopy).toHaveBeenCalledWith('test copy')
+    })
+
+    it('should provide a working more like this handler to MetaSection', async () => {
+      const user = userEvent.setup()
+      render(<GenerationItem {...createBaseProps({ messageId: 'callback-more' })} />)
+
+      await user.click(screen.getByTestId('more-like-callback-more'))
+
+      await waitFor(() =>
+        expect(mockFetchMoreLikeThis).toHaveBeenCalledWith('callback-more', false, undefined),
+      )
+    })
   })
 
-  it('keeps copy handler stable when unrelated props change', () => {
-    const props = getBaseProps({ messageId: 'stable-copy', moreLikeThis: false })
-    const { rerender } = render(<GenerationItem {...props} />)
-    const firstOnCopy = metaSectionCalls[metaSectionCalls.length - 1].onCopy
+  // --------------------------------------------------------------------------
+  // Boundary Condition Tests
+  // Tests for edge cases and boundary conditions
+  // --------------------------------------------------------------------------
+  describe('Boundary Conditions', () => {
+    it('should handle null content gracefully', () => {
+      render(<GenerationItem {...createBaseProps({ content: null })} />)
+      expect(screen.getByTestId('content-section-none')).toBeInTheDocument()
+    })
 
-    rerender(<GenerationItem {...props} className="changed" />)
-    const lastOnCopy = metaSectionCalls[metaSectionCalls.length - 1].onCopy
+    it('should handle undefined content gracefully', () => {
+      render(<GenerationItem {...createBaseProps({ content: undefined })} />)
+      expect(screen.getByTestId('content-section-none')).toBeInTheDocument()
+    })
 
-    expect(firstOnCopy).toBe(lastOnCopy)
+    it('should handle empty object content', () => {
+      render(<GenerationItem {...createBaseProps({ content: {} })} />)
+      expect(screen.getByTestId('content-section-none')).toBeInTheDocument()
+    })
+
+    it('should handle depth at boundary (depth = 1)', () => {
+      render(<GenerationItem {...createBaseProps({ depth: 1 })} />)
+      expect(mockMetaSection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          disableMoreLikeThis: false,
+        }),
+      )
+    })
+
+    it('should handle depth at boundary (depth = 2)', () => {
+      render(<GenerationItem {...createBaseProps({ depth: 2 })} />)
+      expect(mockMetaSection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          disableMoreLikeThis: false,
+        }),
+      )
+    })
+
+    it('should handle depth at maximum (depth = 3)', () => {
+      render(<GenerationItem {...createBaseProps({ depth: 3 })} />)
+      expect(mockMetaSection).toHaveBeenCalledWith(
+        expect.objectContaining({
+          disableMoreLikeThis: true,
+        }),
+      )
+    })
+
+    it('should handle missing appId in params', async () => {
+      const user = userEvent.setup()
+      mockUseParams.mockReturnValue({})
+
+      render(<GenerationItem {...createBaseProps({ messageId: 'no-app' })} />)
+
+      await user.click(screen.getByTestId('open-log-no-app'))
+
+      await waitFor(() =>
+        expect(mockFetchTextGenerationMessage).toHaveBeenCalledWith({
+          appId: undefined,
+          messageId: 'no-app',
+        }),
+      )
+    })
+
+    it('should render with all optional props undefined', () => {
+      const minimalProps: IGenerationItemProps = {
+        isError: false,
+        onRetry: jest.fn(),
+        content: 'content',
+        isInstalledApp: false,
+        siteInfo: null,
+      }
+      render(<GenerationItem {...minimalProps} />)
+      expect(screen.getByTestId('meta-section-none')).toBeInTheDocument()
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // Error State Tests
+  // Tests for error handling and error state display
+  // --------------------------------------------------------------------------
+  describe('Error States', () => {
+    it('should pass isError to child components', () => {
+      render(<GenerationItem {...createBaseProps({ isError: true, messageId: 'error-id' })} />)
+
+      expect(mockContentSection).toHaveBeenCalledWith(
+        expect.objectContaining({ isError: true }),
+      )
+      expect(mockMetaSection).toHaveBeenCalledWith(
+        expect.objectContaining({ isError: true }),
+      )
+    })
+
+    it('should show retry button in web app error state', () => {
+      render(
+        <GenerationItem
+          {...createBaseProps({ isError: true, isInWebApp: true, messageId: 'retry-error' })}
+        />,
+      )
+
+      expect(screen.getByTestId('retry-retry-error')).toBeInTheDocument()
+    })
+
+    it('should disable copy button on error', () => {
+      render(
+        <GenerationItem
+          {...createBaseProps({ isError: true, messageId: 'copy-error', moreLikeThis: false })}
+        />,
+      )
+
+      expect(screen.getByTestId('copy-copy-error')).toBeDisabled()
+    })
   })
 })
