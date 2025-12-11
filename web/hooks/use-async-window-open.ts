@@ -1,76 +1,59 @@
 import { useCallback } from 'react'
-import Toast from '@/app/components/base/toast'
 
-export type AsyncWindowOpenOptions = {
-  successMessage?: string
-  errorMessage?: string
-  windowFeatures?: string
-  onError?: (error: any) => void
-  onSuccess?: (url: string) => void
+type GetUrl = () => Promise<string | null | undefined>
+
+type AsyncWindowOpenOptions = {
+  immediateUrl?: string | null
+  target?: string
+  features?: string
+  onError?: (error: Error) => void
 }
 
-export const useAsyncWindowOpen = () => {
-  const openAsync = useCallback(async (
-    fetchUrl: () => Promise<string>,
-    options: AsyncWindowOpenOptions = {},
-  ) => {
-    const {
-      successMessage,
-      errorMessage = 'Failed to open page',
-      windowFeatures = 'noopener',
-      onError,
-      onSuccess,
-    } = options
+export const useAsyncWindowOpen = () => useCallback(async (getUrl: GetUrl, options?: AsyncWindowOpenOptions) => {
+  const {
+    immediateUrl,
+    target = '_blank',
+    features,
+    onError,
+  } = options ?? {}
 
-    const newWindow = window.open('', '_blank', windowFeatures)
+  const secureImmediateFeatures = features ? `${features},noopener,noreferrer` : 'noopener,noreferrer'
 
+  if (immediateUrl) {
+    const newWindow = window.open(immediateUrl, target, secureImmediateFeatures)
     if (!newWindow) {
-      const error = new Error('Failed to open new window')
-      onError?.(error)
-      Toast.notify({
-        type: 'error',
-        message: errorMessage,
-      })
+      onError?.(new Error('Failed to open new window'))
       return
     }
-
     try {
-      const url = await fetchUrl()
-
-      if (url) {
-        try {
-          newWindow.opener = null
-        }
-        catch { /* noop */ }
-        newWindow.location.href = url
-        onSuccess?.(url)
-
-        if (successMessage) {
-          Toast.notify({
-            type: 'success',
-            message: successMessage,
-          })
-        }
-      }
-      else {
-        newWindow?.close()
-        const error = new Error('Invalid URL received')
-        onError?.(error)
-        Toast.notify({
-          type: 'error',
-          message: errorMessage,
-        })
-      }
+      newWindow.opener = null
     }
-    catch (error) {
-      newWindow?.close()
-      onError?.(error)
-      Toast.notify({
-        type: 'error',
-        message: errorMessage,
-      })
-    }
-  }, [])
+    catch { /* noop */ }
+    return
+  }
 
-  return { openAsync }
-}
+  const newWindow = window.open('about:blank', target, features)
+  if (!newWindow) {
+    onError?.(new Error('Failed to open new window'))
+    return
+  }
+
+  try {
+    newWindow.opener = null
+  }
+  catch { /* noop */ }
+
+  try {
+    const url = await getUrl()
+    if (url) {
+      newWindow.location.href = url
+      return
+    }
+    newWindow.close()
+    onError?.(new Error('No url resolved for new window'))
+  }
+  catch (error) {
+    newWindow.close()
+    onError?.(error instanceof Error ? error : new Error(String(error)))
+  }
+}, [])

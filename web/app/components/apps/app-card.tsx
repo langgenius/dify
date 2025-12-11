@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { RiBuildingLine, RiGlobalLine, RiLockLine, RiMoreFill, RiVerifiedBadgeLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { type App, AppModeEnum } from '@/types/app'
-import { ToastContext } from '@/app/components/base/toast'
+import Toast, { ToastContext } from '@/app/components/base/toast'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import AppIcon from '@/app/components/base/app-icon'
@@ -27,11 +27,11 @@ import { fetchWorkflowDraft } from '@/service/workflow'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import Tooltip from '@/app/components/base/tooltip'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { AccessMode } from '@/models/access-control'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { formatTime } from '@/utils/time'
 import { useGetUserCanAccessApp } from '@/service/access-control'
-import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import dynamic from 'next/dynamic'
 
 const EditAppModal = dynamic(() => import('@/app/components/explore/create-app-modal'), {
@@ -65,6 +65,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const [showEditModal, setShowEditModal] = useState(false)
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
@@ -243,24 +244,25 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.preventDefault()
       setShowAccessControl(true)
     }
-    const { openAsync } = useAsyncWindowOpen()
-
-    const onClickInstalledApp = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const onClickInstalledApp = async (e: React.MouseEvent<HTMLButtonElement>) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-
-      openAsync(
-        async () => {
-          const { installed_apps }: { installed_apps?: { id: string }[] } = await fetchInstalledAppList(app.id) || {}
-          if (installed_apps && installed_apps.length > 0)
+      try {
+        await openAsyncWindow(async () => {
+          const { installed_apps }: any = await fetchInstalledAppList(app.id) || {}
+          if (installed_apps?.length > 0)
             return `${basePath}/explore/installed/${installed_apps[0].id}`
           throw new Error('No app found in Explore')
-        },
-        {
-          errorMessage: 'Failed to open app in Explore',
-        },
-      )
+        }, {
+          onError: (err) => {
+            Toast.notify({ type: 'error', message: `${err.message || err}` })
+          },
+        })
+      }
+      catch (e: any) {
+        Toast.notify({ type: 'error', message: `${e.message || e}` })
+      }
     }
     return (
       <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
