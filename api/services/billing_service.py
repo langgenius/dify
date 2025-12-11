@@ -41,10 +41,10 @@ class BillingService:
 
         try:
             resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": tenant_ids})
+            return resp.get("data", {})
         except Exception:
             logger.exception("Failed to fetch billing info batch for tenants: %s", tenant_ids)
-
-        return resp.get("data", {})
+            return {}
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
