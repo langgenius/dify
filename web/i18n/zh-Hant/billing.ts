@@ -153,7 +153,7 @@ const translation = {
       price: '免費',
     },
     premium: {
-      features: ['由各種雲端服務提供商自我管理的可靠性', '單一工作區', 'WebApp 標誌與品牌自訂', '優先電子郵件與聊天支援'],
+      features: ['由各雲端服務提供商自主管理的可靠性', '單一工作區', 'WebApp 標誌與品牌自訂', '優先電子郵件與聊天支援'],
       for: '適用於中型組織和團隊',
       comingSoon: '微軟 Azure 與 Google Cloud 支持即將推出',
       priceTip: '根據雲端市場',
