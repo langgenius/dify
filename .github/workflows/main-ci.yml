@@ -1,7 +1,10 @@
 name: Main CI Pipeline
 
 on:
+  # Trigger on pull requests against `main`. Include `synchronize` explicitly
+  # to make it clear that pushing to a PR branch will retrigger the workflow.
   pull_request:
+    types: [opened, synchronize, reopened]
     branches: ["main"]
   push:
     branches: ["main"]
