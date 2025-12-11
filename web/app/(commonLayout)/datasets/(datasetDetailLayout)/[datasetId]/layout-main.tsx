@@ -121,7 +121,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     <div
       className={cn(
         'flex grow overflow-hidden',
-        hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl border-t border-effects-highlight',
+        hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl',
       )}
     >
       <DatasetDetailContext.Provider value={{

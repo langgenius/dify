@@ -82,6 +82,7 @@ const translation = {
     annualBilling: 'Penagihan Tahunan',
     contractSales: 'Hubungi penjualan',
     documentProcessingPriority: 'Pemrosesan Dokumen',
+    documentProcessingPriorityTip: 'Untuk prioritas pemrosesan dokumen yang lebih tinggi, silakan tingkatkan paket Anda.',
     startForFree: 'Mulai Gratis',
     documentsRequestQuotaTooltip: 'Menentukan jumlah total tindakan yang dapat dilakukan ruang kerja per menit dalam pangkalan pengetahuan, termasuk pembuatan, penghapusan, pembaruan, pengunggahan dokumen, modifikasi, pengarsipan, dan kueri basis pengetahuan himpunan data. Metrik ini digunakan untuk mengevaluasi performa permintaan basis pengetahuan. Misalnya, jika pengguna Sandbox melakukan 10 pengujian hit berturut-turut dalam satu menit, ruang kerja mereka akan dibatasi sementara untuk melakukan tindakan berikut selama menit berikutnya: pembuatan, penghapusan, pembaruan, dan unggahan atau modifikasi himpunan data.',
     unlimited: 'Unlimited',
@@ -197,6 +198,23 @@ const translation = {
     usageTitle: 'PERISTIWA PEMICU',
     title: 'Tingkatkan untuk membuka lebih banyak peristiwa pemicu',
     description: 'Anda telah mencapai batas pemicu acara alur kerja untuk paket ini.',
+  },
+  viewBillingTitle: 'Penagihan dan Langganan',
+  viewBillingDescription: 'Kelola metode pembayaran, faktur, dan perubahan langganan',
+  viewBillingAction: 'Kelola',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Tingkatkan untuk mengunggah beberapa dokumen sekaligus',
+      description: 'Anda telah mencapai batas unggah — hanya satu dokumen yang dapat dipilih dan diunggah sekaligus dengan paket Anda saat ini.',
+    },
+    uploadMultipleFiles: {
+      title: 'Tingkatkan untuk membuka unggahan dokumen batch',
+      description: 'Unggah lebih banyak dokumen sekaligus untuk menghemat waktu dan meningkatkan efisiensi.',
+    },
+    addChunks: {
+      title: 'Tingkatkan untuk terus menambahkan potongan',
+      description: 'Anda telah mencapai batas penambahan potongan untuk paket ini.',
+    },
   },
 }
 

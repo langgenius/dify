@@ -32,6 +32,7 @@ const translation = {
     vectorSpaceTooltip:
       'Lo Spazio Vettoriale è il sistema di memoria a lungo termine necessario per permettere agli LLM di comprendere i tuoi dati.',
     documentProcessingPriority: 'Priorità di Elaborazione Documenti',
+    documentProcessingPriorityTip: 'Per una maggiore priorità nell\'elaborazione dei documenti, aggiorna il tuo piano.',
     documentProcessingPriorityUpgrade:
       'Elabora più dati con maggiore precisione a velocità più elevate.',
     priority: {
@@ -147,7 +148,7 @@ const translation = {
       description:
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
-      features: ['Soluzioni di Distribuzione Scalabili di Classe Aziendale', 'Autorizzazione alla Licenza Commerciale', 'Funzionalità Esclusive per le Aziende', 'Molteplici Spazi di Lavoro e Gestione Aziendale', 'SSO', 'SLA negoziati dai partner Dify', 'Sicurezza e Controlli Avanzati', 'Aggiornamenti e manutenzione ufficiali di Dify', 'Assistenza Tecnica Professionale'],
+      features: ['Soluzioni di Distribuzione Scalabili di Classe Aziendale', 'Autorizzazione alla Licenza Commerciale', 'Funzionalità Esclusive per le Aziende', 'Molteplici Spazi di Lavoro e Gestione Aziendale', 'SSO', 'SLA negoziati dai partner Dify', 'Sicurezza e Controlli Avanzati', 'Aggiornamenti e manutenzione da Dify ufficialmente', 'Assistenza Tecnica Professionale'],
       price: 'Personalizzato',
       for: 'Per team di grandi dimensioni',
       btnText: 'Contatta le vendite',
@@ -208,6 +209,23 @@ const translation = {
     usageTitle: 'EVENTI DI ATTIVAZIONE',
     title: 'Aggiorna per sbloccare più eventi di attivazione',
     description: 'Hai raggiunto il limite degli eventi di attivazione del flusso di lavoro per questo piano.',
+  },
+  viewBillingTitle: 'Fatturazione e Abbonamenti',
+  viewBillingDescription: 'Gestisci metodi di pagamento, fatture e modifiche all\'abbonamento',
+  viewBillingAction: 'Gestire',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Aggiorna per caricare più documenti contemporaneamente',
+      description: 'Hai raggiunto il limite di caricamento: sul tuo piano attuale può essere selezionato e caricato un solo documento alla volta.',
+    },
+    uploadMultipleFiles: {
+      title: 'Aggiorna per sbloccare il caricamento di documenti in batch',
+      description: 'Carica più documenti contemporaneamente per risparmiare tempo e migliorare l\'efficienza.',
+    },
+    addChunks: {
+      title: 'Aggiorna per continuare ad aggiungere blocchi',
+      description: 'Hai raggiunto il limite di aggiunta di blocchi per questo piano.',
+    },
   },
 }
 

@@ -38,6 +38,7 @@ const translation = {
       learnMore: '了解更多',
       description: '关于检索方法。',
       longDescription: '关于检索方法，您可以随时在知识库设置中更改此设置。',
+      multiModalTip: '当 Embedding 模型支持多模态时，请选择多模态 Rerank 模型以获得更好的检索效果。',
     },
     externalKnowledgeAPI: '外部知识 API',
     externalKnowledgeID: '外部知识库 ID',

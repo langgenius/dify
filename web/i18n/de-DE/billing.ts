@@ -29,6 +29,7 @@ const translation = {
     vectorSpace: 'Vektorraum',
     vectorSpaceTooltip: 'Vektorraum ist das Langzeitspeichersystem, das erforderlich ist, damit LLMs Ihre Daten verstehen können.',
     documentProcessingPriority: 'Priorität der Dokumentenverarbeitung',
+    documentProcessingPriorityTip: 'Für eine höhere Priorität bei der Dokumentenverarbeitung upgraden Sie bitte Ihren Plan.',
     documentProcessingPriorityUpgrade: 'Mehr Daten mit höherer Genauigkeit bei schnelleren Geschwindigkeiten verarbeiten.',
     priority: {
       'standard': 'Standard',
@@ -197,6 +198,23 @@ const translation = {
     title: 'Upgrade, um mehr Auslöser-Ereignisse freizuschalten',
     usageTitle: 'AUSLÖSEEREIGNISSE',
     description: 'Sie haben das Limit der Workflow-Ereignisauslöser für diesen Plan erreicht.',
+  },
+  viewBillingTitle: 'Abrechnung und Abonnements',
+  viewBillingDescription: 'Zahlungsmethoden, Rechnungen und Abonnementänderungen verwalten',
+  viewBillingAction: 'Verwalten',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Upgrade, um mehrere Dokumente gleichzeitig hochzuladen',
+      description: 'Sie haben das Upload-Limit erreicht – in Ihrem aktuellen Tarif kann jeweils nur ein Dokument ausgewählt und hochgeladen werden.',
+    },
+    uploadMultipleFiles: {
+      title: 'Upgrade, um den Massen-Upload von Dokumenten freizuschalten',
+      description: 'Lade mehrere Dokumente gleichzeitig hoch, um Zeit zu sparen und die Effizienz zu steigern.',
+    },
+    addChunks: {
+      title: 'Upgraden, um weiterhin Abschnitte hinzuzufügen',
+      description: 'Sie haben das Limit für das Hinzufügen von Abschnitten in diesem Tarif erreicht.',
+    },
   },
 }
 

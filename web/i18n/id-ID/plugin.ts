@@ -261,6 +261,11 @@ const translation = {
     installingWithError: 'Memasang {{installingLength}} plugin, {{successLength}} berhasil, {{errorLength}} gagal',
     installError: 'Gagal menginstal plugin {{errorLength}}, klik untuk melihat',
     installedError: 'Gagal menginstal {{errorLength}} plugin',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   auth: {
     customCredentialUnavailable: 'Kredensial kustom saat ini tidak tersedia',
