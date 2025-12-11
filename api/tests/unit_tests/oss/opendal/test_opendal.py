@@ -27,14 +27,11 @@ class TestOpenDAL:
         def cleanup():
             folder = Path(get_opendal_bucket())
             if folder.exists() and folder.is_dir():
-                for item in folder.iterdir():
-                    if item.is_file():
-                        item.unlink()
-                    elif item.is_dir():
-                        item.rmdir()
-                folder.rmdir()
+                import shutil
 
-        return cleanup()
+                shutil.rmtree(folder, ignore_errors=True)
+
+        request.addfinalizer(cleanup)
 
     def test_save_and_exists(self):
         """Test saving data and checking existence."""
