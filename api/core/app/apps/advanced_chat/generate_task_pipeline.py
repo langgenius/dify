@@ -62,8 +62,7 @@ from core.app.task_pipeline.message_cycle_manager import MessageCycleManager
 from core.base.tts import AppGeneratorTTSPublisher, AudioTrunk
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import WorkflowExecutionStatus
 from core.workflow.nodes import NodeType
 from core.workflow.repositories.draft_variable_repository import DraftVariableSaverFactory
@@ -73,7 +72,7 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models import Account, Conversation, EndUser, Message, MessageFile
 from models.enums import CreatorUserRole
-from models.workflow import Workflow, WorkflowNodeExecutionModel
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -581,7 +580,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
             with self._database_session() as session:
                 # Save message
-                self._save_message(session=session, graph_runtime_state=resolved_state, trace_manager=trace_manager)
+                self._save_message(session=session, graph_runtime_state=resolved_state)
 
             yield workflow_finish_resp
         elif event.stopped_by in (
@@ -591,7 +590,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             # When hitting input-moderation or annotation-reply, the workflow will not start
             with self._database_session() as session:
                 # Save message
-                self._save_message(session=session, trace_manager=trace_manager)
+                self._save_message(session=session)
 
         yield self._message_end_to_stream_response()
 
@@ -600,7 +599,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         event: QueueAdvancedChatMessageEndEvent,
         *,
         graph_runtime_state: GraphRuntimeState | None = None,
-        trace_manager: TraceQueueManager | None = None,
         **kwargs,
     ) -> Generator[StreamResponse, None, None]:
         """Handle advanced chat message end events."""
@@ -618,7 +616,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         # Save message
         with self._database_session() as session:
-            self._save_message(session=session, graph_runtime_state=resolved_state, trace_manager=trace_manager)
+            self._save_message(session=session, graph_runtime_state=resolved_state)
 
         yield self._message_end_to_stream_response()
 
@@ -772,13 +770,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if self._conversation_name_generate_thread:
             logger.debug("Conversation name generation running as daemon thread")
 
-    def _save_message(
-        self,
-        *,
-        session: Session,
-        graph_runtime_state: GraphRuntimeState | None = None,
-        trace_manager: TraceQueueManager | None = None,
-    ):
+    def _save_message(self, *, session: Session, graph_runtime_state: GraphRuntimeState | None = None):
         message = self._get_message(session=session)
 
         # If there are assistant files, remove markdown image links from answer
@@ -817,14 +809,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         metadata = self._task_state.metadata.model_dump()
         message.message_metadata = json.dumps(jsonable_encoder(metadata))
-
-        # Extract model provider and model_id from workflow node executions for tracing
-        if message.workflow_run_id:
-            model_info = self._extract_model_info_from_workflow(session, message.workflow_run_id)
-            if model_info:
-                message.model_provider = model_info.get("provider")
-                message.model_id = model_info.get("model")
-
         message_files = [
             MessageFile(
                 message_id=message.id,
@@ -841,68 +825,6 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             for file in self._recorded_files
         ]
         session.add_all(message_files)
-
-        # Trigger MESSAGE_TRACE for tracing integrations
-        if trace_manager:
-            trace_manager.add_trace_task(
-                TraceTask(
-                    TraceTaskName.MESSAGE_TRACE, conversation_id=self._conversation_id, message_id=self._message_id
-                )
-            )
-
-    def _extract_model_info_from_workflow(self, session: Session, workflow_run_id: str) -> dict[str, str] | None:
-        """
-        Extract model provider and model_id from workflow node executions.
-        Returns dict with 'provider' and 'model' keys, or None if not found.
-        """
-        try:
-            # Query workflow node executions for LLM or Agent nodes
-            stmt = (
-                select(WorkflowNodeExecutionModel)
-                .where(WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id)
-                .where(WorkflowNodeExecutionModel.node_type.in_(["llm", "agent"]))
-                .order_by(WorkflowNodeExecutionModel.created_at.desc())
-                .limit(1)
-            )
-            node_execution = session.scalar(stmt)
-
-            if not node_execution:
-                return None
-
-            # Try to extract from execution_metadata for agent nodes
-            if node_execution.execution_metadata:
-                try:
-                    metadata = json.loads(node_execution.execution_metadata)
-                    agent_log = metadata.get("agent_log", [])
-                    # Look for the first agent thought with provider info
-                    for log_entry in agent_log:
-                        entry_metadata = log_entry.get("metadata", {})
-                        provider_str = entry_metadata.get("provider")
-                        if provider_str:
-                            # Parse format like "langgenius/deepseek/deepseek"
-                            parts = provider_str.split("/")
-                            if len(parts) >= 3:
-                                return {"provider": parts[1], "model": parts[2]}
-                            elif len(parts) == 2:
-                                return {"provider": parts[0], "model": parts[1]}
-                except (json.JSONDecodeError, KeyError, AttributeError) as e:
-                    logger.debug("Failed to parse execution_metadata: %s", e)
-
-            # Try to extract from process_data for llm nodes
-            if node_execution.process_data:
-                try:
-                    process_data = json.loads(node_execution.process_data)
-                    provider = process_data.get("model_provider")
-                    model = process_data.get("model_name")
-                    if provider and model:
-                        return {"provider": provider, "model": model}
-                except (json.JSONDecodeError, KeyError) as e:
-                    logger.debug("Failed to parse process_data: %s", e)
-
-            return None
-        except Exception as e:
-            logger.warning("Failed to extract model info from workflow: %s", e)
-            return None
 
     def _seed_graph_runtime_state_from_queue_manager(self) -> None:
         """Bootstrap the cached runtime state from the queue manager when present."""

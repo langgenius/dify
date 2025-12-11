@@ -467,6 +467,9 @@ importers:
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
+      '@typescript-eslint/parser':
+        specifier: ^8.48.0
+        version: 8.49.0(eslint@9.39.1(jiti@1.21.7))(typescript@5.9.3)
       '@typescript/native-preview':
         specifier: ^7.0.0-dev
         version: 7.0.0-dev.20251209.1
@@ -11458,6 +11461,7 @@ snapshots:
   '@playwright/test@1.57.0':
     dependencies:
       playwright: 1.57.0
+    optional: true
 
   '@pmmmwh/react-refresh-webpack-plugin@0.5.17(react-refresh@0.14.2)(type-fest@4.2.0)(webpack-hot-middleware@2.26.1)(webpack@5.103.0(esbuild@0.25.0)(uglify-js@3.19.3))':
     dependencies:

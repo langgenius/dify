@@ -80,7 +80,7 @@ const useSingleRunFormParams = ({
       },
     ]
     if (hasMultiModalDatasets) {
-      const currentVariable = findVariableWhenOnLLMVision(payload.query_attachment_selector, availableFileVars)
+      const currentVariable = findVariableWhenOnLLMVision(payload.query_attachment_selector || [], availableFileVars)
       inputFields.push(
         {
           inputs: [{
@@ -98,13 +98,13 @@ const useSingleRunFormParams = ({
   }, [query, setQuery, t, datasetsDetail, payload.dataset_ids, payload.query_attachment_selector, availableFileVars, queryAttachment, setQueryAttachment])
 
   const getDependentVars = () => {
-    return [payload.query_variable_selector, payload.query_attachment_selector]
+    return [payload.query_variable_selector, payload.query_attachment_selector || []]
   }
   const getDependentVar = (variable: string) => {
     if (variable === 'query')
       return payload.query_variable_selector
     if (variable === 'queryAttachment')
-      return payload.query_attachment_selector
+      return payload.query_attachment_selector || []
   }
 
   return {

@@ -11,12 +11,14 @@ type HeaderProps = {
   docTitle: string
   docLink: string
   onClickConfiguration?: () => void
+  pluginName: string
 } & CredentialSelectorProps
 
 const Header = ({
   docTitle,
   docLink,
   onClickConfiguration,
+  pluginName,
   ...rest
 }: HeaderProps) => {
   const { t } = useTranslation()
@@ -29,7 +31,7 @@ const Header = ({
         />
         <Divider type='vertical' className='mx-1 h-3.5 shrink-0' />
         <Tooltip
-          popupContent={t('datasetPipeline.configurationTip', { pluginName: rest.pluginName })}
+          popupContent={t('datasetPipeline.configurationTip', { pluginName })}
           position='top'
         >
           <Button

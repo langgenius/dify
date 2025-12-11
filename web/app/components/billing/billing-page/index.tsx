@@ -9,33 +9,28 @@ import PlanComp from '../plan'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { useBillingUrl } from '@/service/use-billing'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const { enableBilling } = useProviderContext()
   const { data: billingUrl, isFetching, refetch } = useBillingUrl(enableBilling && isCurrentWorkspaceManager)
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const handleOpenBilling = async () => {
-    // Open synchronously to preserve user gesture for popup blockers
-    if (billingUrl) {
-      window.open(billingUrl, '_blank', 'noopener,noreferrer')
-      return
-    }
-
-    const newWindow = window.open('', '_blank', 'noopener,noreferrer')
-    try {
+    await openAsyncWindow(async () => {
       const url = (await refetch()).data
-      if (url && newWindow) {
-        newWindow.location.href = url
-        return
-      }
-    }
-    catch (err) {
-      console.error('Failed to fetch billing url', err)
-    }
-    // Close the placeholder window if we failed to fetch the URL
-    newWindow?.close()
+      if (url)
+        return url
+      return null
+    }, {
+      immediateUrl: billingUrl,
+      features: 'noopener,noreferrer',
+      onError: (err) => {
+        console.error('Failed to fetch billing url', err)
+      },
+    })
   }
 
   return (

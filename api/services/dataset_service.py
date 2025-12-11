@@ -673,6 +673,8 @@ class DatasetService:
         Returns:
             str: Action to perform ('add', 'remove', 'update', or None)
         """
+        if "indexing_technique" not in data:
+            return None
         if dataset.indexing_technique != data["indexing_technique"]:
             if data["indexing_technique"] == "economy":
                 # Remove embedding model configuration for economy mode
