@@ -223,59 +223,6 @@ class TencentSpanBuilder:
         )
 
     @staticmethod
-    def build_message_llm_span(
-        trace_info: MessageTraceInfo, trace_id: int, parent_span_id: int, user_id: str
-    ) -> SpanData:
-        """Build LLM span for message traces with detailed LLM attributes."""
-        status = Status(StatusCode.OK)
-        if trace_info.error:
-            status = Status(StatusCode.ERROR, trace_info.error)
-
-        # Extract model information from `metadata`` or `message_data`
-        trace_metadata = trace_info.metadata or {}
-        message_data = trace_info.message_data or {}
-
-        model_provider = trace_metadata.get("ls_provider") or (
-            message_data.get("model_provider", "") if isinstance(message_data, dict) else ""
-        )
-        model_name = trace_metadata.get("ls_model_name") or (
-            message_data.get("model_id", "") if isinstance(message_data, dict) else ""
-        )
-
-        inputs_str = str(trace_info.inputs or "")
-        outputs_str = str(trace_info.outputs or "")
-
-        attributes = {
-            GEN_AI_SESSION_ID: trace_metadata.get("conversation_id", ""),
-            GEN_AI_USER_ID: str(user_id),
-            GEN_AI_SPAN_KIND: GenAISpanKind.GENERATION.value,
-            GEN_AI_FRAMEWORK: "dify",
-            GEN_AI_MODEL_NAME: str(model_name),
-            GEN_AI_PROVIDER: str(model_provider),
-            GEN_AI_USAGE_INPUT_TOKENS: str(trace_info.message_tokens or 0),
-            GEN_AI_USAGE_OUTPUT_TOKENS: str(trace_info.answer_tokens or 0),
-            GEN_AI_USAGE_TOTAL_TOKENS: str(trace_info.total_tokens or 0),
-            GEN_AI_PROMPT: inputs_str,
-            GEN_AI_COMPLETION: outputs_str,
-            INPUT_VALUE: inputs_str,
-            OUTPUT_VALUE: outputs_str,
-        }
-
-        if trace_info.is_streaming_request:
-            attributes[GEN_AI_IS_STREAMING_REQUEST] = "true"
-
-        return SpanData(
-            trace_id=trace_id,
-            parent_span_id=parent_span_id,
-            span_id=TencentTraceUtils.convert_to_span_id(trace_info.message_id, "llm"),
-            name="GENERATION",
-            start_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.start_time),
-            end_time=TencentSpanBuilder._get_time_nanoseconds(trace_info.end_time),
-            attributes=attributes,
-            status=status,
-        )
-
-    @staticmethod
     def build_tool_span(trace_info: ToolTraceInfo, trace_id: int, parent_span_id: int) -> SpanData:
         """Build tool span."""
         status = Status(StatusCode.OK)
