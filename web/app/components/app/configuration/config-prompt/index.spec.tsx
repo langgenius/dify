@@ -332,4 +332,22 @@ describe('Prompt config component', () => {
 
     expect(screen.queryByText('appDebug.promptMode.operation.addMessage')).toBeNull()
   })
+
+  // Completion mode
+  it('should update completion prompt value and flag as user change', () => {
+    const setCurrentAdvancedPrompt = jest.fn()
+    renderComponent(
+      {},
+      {
+        isAdvancedMode: true,
+        currentAdvancedPrompt: { role: PromptRole.user, text: 'single' },
+        modelModeType: ModelModeType.completion,
+        setCurrentAdvancedPrompt,
+      },
+    )
+
+    fireEvent.click(screen.getByText('change'))
+
+    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith({ role: PromptRole.user, text: 'updated text' }, true)
+  })
 })
