@@ -1,7 +1,6 @@
 import json
 import logging
 from typing import Any, Literal, cast
-from uuid import UUID
 
 from flask import abort, request
 from flask_restx import Resource, marshal_with, reqparse  # type: ignore
@@ -38,7 +37,7 @@ from fields.workflow_run_fields import (
     workflow_run_pagination_fields,
 )
 from libs import helper
-from libs.helper import TimestampField
+from libs.helper import TimestampField, UUIDStrOrEmpty
 from libs.login import current_account_with_tenant, current_user, login_required
 from models import Account
 from models.dataset import Pipeline
@@ -110,7 +109,7 @@ class NodeIdQuery(BaseModel):
 
 
 class WorkflowRunQuery(BaseModel):
-    last_id: UUID | None = None
+    last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
 

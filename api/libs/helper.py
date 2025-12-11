@@ -119,6 +119,9 @@ def uuid_value(value: Any) -> str:
         raise ValueError(error)
 
 
+UUIDStrOrEmpty = Annotated[str, AfterValidator(uuid_value)]
+
+
 def alphanumeric(value: str):
     # check if the value is alphanumeric and underlined
     if re.match(r"^[a-zA-Z0-9_]+$", value):

@@ -1,3 +1,4 @@
+from libs.helper import UUIDStrOrEmpty
 from flask import request
 from flask_restx import fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
@@ -26,25 +27,11 @@ message_fields = {
 
 
 class SavedMessageListQuery(BaseModel):
-    last_id: str | None = None
+    last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
-    @field_validator("last_id")
-    @classmethod
-    def validate_last_id(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return uuid_value(value)
-
-
 class SavedMessageCreatePayload(BaseModel):
-    message_id: str
-
-    @field_validator("message_id")
-    @classmethod
-    def validate_message_id(cls, value: str) -> str:
-        return uuid_value(value)
-
+    message_id: UUIDStrOrEmpty
 
 register_schema_models(web_ns, SavedMessageListQuery, SavedMessageCreatePayload)
 
