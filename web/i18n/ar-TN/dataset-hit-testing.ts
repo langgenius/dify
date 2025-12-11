@@ -7,7 +7,6 @@ const translation = {
   table: {
     header: {
       source: 'المصدر',
-      text: 'نص',
       time: 'وقت',
     },
   },
