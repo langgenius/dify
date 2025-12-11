@@ -23,8 +23,8 @@ class DefaultNodeOTelParser:
 
     def parse(self, *, node: Node, span: "Span", error: Exception | None) -> None:
         span.set_attribute("node.id", node.id)
-        if getattr(node, "_node_execution_id", None):
-            span.set_attribute("node.execution_id", node._node_execution_id)
+        if node.execution_id:
+            span.set_attribute("node.execution_id", node.execution_id)
         if hasattr(node, "node_type") and node.node_type:
             span.set_attribute("node.type", node.node_type.value)
 
