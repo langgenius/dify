@@ -1,5 +1,6 @@
 import logging
 import os
+from collections.abc import Sequence
 from typing import Literal
 
 import httpx
@@ -29,7 +30,7 @@ class BillingService:
         return billing_info
 
     @classmethod
-    def get_info_bulk(cls, tenant_ids: list[str]) -> dict[str, dict]:
+    def get_info_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, dict]:
         """
         Bulk billing info fetch via billing API.
 
@@ -39,12 +40,21 @@ class BillingService:
             Mapping of tenant_id -> plan
         """
 
-        try:
-            resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": tenant_ids})
-            return resp.get("data", {})
-        except Exception:
-            logger.exception("Failed to fetch billing info batch for tenants: %s", tenant_ids)
-            return {}
+        results: dict[str, dict] = {}
+
+        chunk_size = 200
+        for i in range(0, len(tenant_ids), chunk_size):
+            chunk = tenant_ids[i : i + chunk_size]
+            try:
+                resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
+                data = resp.get("data", {}) if isinstance(resp, dict) else {}
+                if data:
+                    results.update(data)
+            except Exception:
+                logger.exception("Failed to fetch billing info batch for tenants: %s", chunk)
+                continue
+
+        return results
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
