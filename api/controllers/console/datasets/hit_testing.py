@@ -1,13 +1,17 @@
-from flask_restx import Resource, fields
+from flask_restx import Resource
 
-from controllers.console import console_ns
-from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase
-from controllers.console.wraps import (
+from controllers.common.schema import register_schema_model
+from libs.login import login_required
+
+from .. import console_ns
+from ..datasets.hit_testing_base import DatasetsHitTestingBase, HitTestingPayload
+from ..wraps import (
     account_initialization_required,
     cloud_edition_billing_rate_limit_check,
     setup_required,
 )
-from libs.login import login_required
+
+register_schema_model(console_ns, HitTestingPayload)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/hit-testing")
@@ -15,17 +19,7 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
     @console_ns.doc("test_dataset_retrieval")
     @console_ns.doc(description="Test dataset knowledge retrieval")
     @console_ns.doc(params={"dataset_id": "Dataset ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "HitTestingRequest",
-            {
-                "query": fields.String(required=True, description="Query text for testing"),
-                "retrieval_model": fields.Raw(description="Retrieval model configuration"),
-                "top_k": fields.Integer(description="Number of top results to return"),
-                "score_threshold": fields.Float(description="Score threshold for filtering results"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[HitTestingPayload.__name__])
     @console_ns.response(200, "Hit testing completed successfully")
     @console_ns.response(404, "Dataset not found")
     @console_ns.response(400, "Invalid parameters")
@@ -37,7 +31,8 @@ class HitTestingApi(Resource, DatasetsHitTestingBase):
         dataset_id_str = str(dataset_id)
 
         dataset = self.get_and_validate_dataset(dataset_id_str)
-        args = self.parse_args()
+        payload = HitTestingPayload.model_validate(console_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
         self.hit_testing_args_check(args)
 
         return self.perform_hit_testing(dataset, args)

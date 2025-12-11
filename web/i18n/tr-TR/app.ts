@@ -298,6 +298,8 @@ const translation = {
       accountDesc: 'Hesap sayfasına gidin',
       feedbackDesc: 'Açık topluluk geri bildirim tartışmaları',
       docDesc: 'Yardım belgelerini aç',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: 'Uygulama bulunamadı',

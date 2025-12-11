@@ -22,7 +22,12 @@ from services.trigger.trigger_subscription_builder_service import TriggerSubscri
 from services.trigger.trigger_subscription_operator_service import TriggerSubscriptionOperatorService
 
 from .. import console_ns
-from ..wraps import account_initialization_required, is_admin_or_owner_required, setup_required
+from ..wraps import (
+    account_initialization_required,
+    edit_permission_required,
+    is_admin_or_owner_required,
+    setup_required,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -72,7 +77,7 @@ class TriggerProviderInfoApi(Resource):
 class TriggerSubscriptionListApi(Resource):
     @setup_required
     @login_required
-    @is_admin_or_owner_required
+    @edit_permission_required
     @account_initialization_required
     def get(self, provider):
         """List all trigger subscriptions for the current tenant's provider"""
@@ -104,7 +109,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
     @console_ns.expect(parser)
     @setup_required
     @login_required
-    @is_admin_or_owner_required
+    @edit_permission_required
     @account_initialization_required
     def post(self, provider):
         """Add a new subscription instance for a trigger provider"""
@@ -133,6 +138,7 @@ class TriggerSubscriptionBuilderCreateApi(Resource):
 class TriggerSubscriptionBuilderGetApi(Resource):
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     def get(self, provider, subscription_builder_id):
         """Get a subscription instance for a trigger provider"""
@@ -155,7 +161,7 @@ class TriggerSubscriptionBuilderVerifyApi(Resource):
     @console_ns.expect(parser_api)
     @setup_required
     @login_required
-    @is_admin_or_owner_required
+    @edit_permission_required
     @account_initialization_required
     def post(self, provider, subscription_builder_id):
         """Verify a subscription instance for a trigger provider"""
@@ -200,6 +206,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
     @console_ns.expect(parser_update_api)
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     def post(self, provider, subscription_builder_id):
         """Update a subscription instance for a trigger provider"""
@@ -233,6 +240,7 @@ class TriggerSubscriptionBuilderUpdateApi(Resource):
 class TriggerSubscriptionBuilderLogsApi(Resource):
     @setup_required
     @login_required
+    @edit_permission_required
     @account_initialization_required
     def get(self, provider, subscription_builder_id):
         """Get the request logs for a subscription instance for a trigger provider"""
@@ -255,7 +263,7 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
     @console_ns.expect(parser_update_api)
     @setup_required
     @login_required
-    @is_admin_or_owner_required
+    @edit_permission_required
     @account_initialization_required
     def post(self, provider, subscription_builder_id):
         """Build a subscription instance for a trigger provider"""

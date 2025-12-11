@@ -47,10 +47,8 @@ const ChatWrapper = (
   const startVariables = startNode?.data.variables
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
-  const { inputs, setInputs } = useStore(s => ({
-    inputs: s.inputs,
-    setInputs: s.setInputs,
-  }))
+  const inputs = useStore(s => s.inputs)
+  const setInputs = useStore(s => s.setInputs)
 
   const initialInputs = useMemo(() => {
     const initInputs: Record<string, any> = {}

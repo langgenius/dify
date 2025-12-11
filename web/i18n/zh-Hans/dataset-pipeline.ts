@@ -145,9 +145,6 @@ const translation = {
     emptySearchResult: '未找到任何项目',
     resetKeywords: '重置关键词',
   },
-  credentialSelector: {
-    name: '{{credentialName}} 的 {{pluginName}}',
-  },
   configurationTip: '配置 {{pluginName}}',
   conversion: {
     title: '转换为知识流水线',

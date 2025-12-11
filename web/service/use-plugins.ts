@@ -612,12 +612,11 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
     const taskAllFailed = lastData?.tasks.every(task => task.status === TaskStatus.failed)
     if (taskDone && lastData?.tasks.length && !taskAllFailed)
       refreshPluginList(category ? { category } as any : undefined, !category)
-  }, [initialized, isRefetching, data, category, refreshPluginList])
+  }, [isRefetching])
 
   useEffect(() => {
-    if (isFetched && !initialized)
-      setInitialized(true)
-  }, [isFetched, initialized])
+    setInitialized(true)
+  }, [])
 
   const handleRefetch = useCallback(() => {
     refetch()
@@ -635,7 +634,8 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
 export const useMutationClearTaskPlugin = () => {
   return useMutation({
     mutationFn: ({ taskId, pluginId }: { taskId: string; pluginId: string }) => {
-      return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${pluginId}`)
+      const encodedPluginId = encodeURIComponent(pluginId)
+      return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${encodedPluginId}`)
     },
   })
 }

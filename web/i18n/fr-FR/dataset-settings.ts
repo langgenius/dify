@@ -26,6 +26,7 @@ const translation = {
       description: 'à propos de la méthode de récupération.',
       longDescription: 'À propos de la méthode de récupération, vous pouvez la modifier à tout moment dans les paramètres de Connaissance.',
       method: 'Méthode de récupération',
+      multiModalTip: 'Lorsque le modèle d\'intégration prend en charge le multimodal, veuillez sélectionner un modèle de réévaluation multimodal pour de meilleures performances.',
     },
     save: 'Enregistrer',
     me: '(Vous)',

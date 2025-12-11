@@ -6,6 +6,7 @@ const translation = {
       longDescription: 'tentang metode pengambilan, Anda dapat mengunduhnya kapan saja di pengaturan Pengetahuan.',
       method: 'Metode Pengambilan',
       learnMore: 'Pelajari lebih lanjut',
+      multiModalTip: 'Saat model embedding mendukung multi-modal, harap pilih model rerank multi-modal untuk kinerja yang lebih baik.',
     },
     save: 'Simpan',
     embeddingModel: 'Menyematkan Model',

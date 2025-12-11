@@ -137,9 +137,6 @@ const translation = {
     notConnected: '{{name}} कनेक्ट नहीं है',
     notConnectedTip: '{{name}} के साथ सिंक करने के लिए, पहले {{name}} से कनेक्शन स्थापित करना आवश्यक है।',
   },
-  credentialSelector: {
-    name: '{{credentialName}} का {{pluginName}}',
-  },
   conversion: {
     confirm: {
       title: 'पुष्टि',

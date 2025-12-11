@@ -70,8 +70,27 @@ class ModelProviderService:
                     continue
 
             provider_config = provider_configuration.custom_configuration.provider
-            model_config = provider_configuration.custom_configuration.models
+            models = provider_configuration.custom_configuration.models
             can_added_models = provider_configuration.custom_configuration.can_added_models
+
+            # IMPORTANT: Never expose decrypted credentials in the provider list API.
+            # Sanitize custom model configurations by dropping the credentials payload.
+            sanitized_model_config = []
+            if models:
+                from core.entities.provider_entities import CustomModelConfiguration  # local import to avoid cycles
+
+                for model in models:
+                    sanitized_model_config.append(
+                        CustomModelConfiguration(
+                            model=model.model,
+                            model_type=model.model_type,
+                            credentials=None,  # strip secrets from list view
+                            current_credential_id=model.current_credential_id,
+                            current_credential_name=model.current_credential_name,
+                            available_model_credentials=model.available_model_credentials,
+                            unadded_to_model_list=model.unadded_to_model_list,
+                        )
+                    )
 
             provider_response = ProviderResponse(
                 tenant_id=tenant_id,
@@ -79,6 +98,7 @@ class ModelProviderService:
                 label=provider_configuration.provider.label,
                 description=provider_configuration.provider.description,
                 icon_small=provider_configuration.provider.icon_small,
+                icon_small_dark=provider_configuration.provider.icon_small_dark,
                 icon_large=provider_configuration.provider.icon_large,
                 background=provider_configuration.provider.background,
                 help=provider_configuration.provider.help,
@@ -94,7 +114,7 @@ class ModelProviderService:
                     current_credential_id=getattr(provider_config, "current_credential_id", None),
                     current_credential_name=getattr(provider_config, "current_credential_name", None),
                     available_credentials=getattr(provider_config, "available_credentials", []),
-                    custom_models=model_config,
+                    custom_models=sanitized_model_config,
                     can_added_models=can_added_models,
                 ),
                 system_configuration=SystemConfigurationResponse(
@@ -402,6 +422,7 @@ class ModelProviderService:
                     provider=provider,
                     label=first_model.provider.label,
                     icon_small=first_model.provider.icon_small,
+                    icon_small_dark=first_model.provider.icon_small_dark,
                     icon_large=first_model.provider.icon_large,
                     status=CustomConfigurationStatus.ACTIVE,
                     models=[

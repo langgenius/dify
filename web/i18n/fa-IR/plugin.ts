@@ -223,6 +223,11 @@ const translation = {
       'نصب پلاگین های {{installingLength}}، {{successLength}} موفقیت آمیز است.',
     installingWithError:
       'نصب پلاگین های {{installingLength}}، {{successLength}} با موفقیت مواجه شد، {{errorLength}} ناموفق بود',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   searchTools: 'ابزارهای جستجو...',
   findMoreInMarketplace: 'اطلاعات بیشتر در Marketplace',

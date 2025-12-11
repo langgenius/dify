@@ -237,6 +237,16 @@ const translation = {
   docAllEnabled_other: 'เอกสาร {{count}} ทั้งหมดเปิดใช้งานแล้ว',
   partialEnabled_one: 'รวม {{count}} เอกสาร, {{num}} ใช้งานได้',
   partialEnabled_other: 'รวม {{count}} เอกสาร, {{num}} ใช้งานได้',
+  cornerLabel: {
+    unavailable: 'ไม่สามารถใช้ได้',
+    pipeline: 'ท่อส่ง',
+  },
+  multimodal: 'หลายรูปแบบ',
+  imageUploader: {
+    button: 'ลากและวางไฟล์หรือโฟลเดอร์ หรือ',
+    browse: 'เรียกดู',
+    tip: '{{supportTypes}} (สูงสุด {{batchCount}}, {{size}}MB ต่อชิ้น)',
+  },
 }
 
 export default translation

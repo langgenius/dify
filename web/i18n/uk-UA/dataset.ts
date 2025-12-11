@@ -239,6 +239,16 @@ const translation = {
   docAllEnabled_other: 'Усі документи {{count}} увімкнено',
   partialEnabled_one: 'Всього {{count}} документів, доступно {{num}}',
   partialEnabled_other: 'Всього {{count}} документів, доступно {{num}}',
+  cornerLabel: {
+    unavailable: 'Немає у наявності',
+    pipeline: 'Трубопровід',
+  },
+  multimodal: 'Мультимодальний',
+  imageUploader: {
+    button: 'Перетягніть файл або папку, або',
+    browse: 'Перегляд',
+    tip: '{{supportTypes}} (Макс {{batchCount}}, по {{size}} МБ кожен)',
+  },
 }
 
 export default translation

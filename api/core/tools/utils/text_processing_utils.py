@@ -13,5 +13,5 @@ def remove_leading_symbols(text: str) -> str:
     """
     # Match Unicode ranges for punctuation and symbols
     # FIXME this pattern is confused quick fix for #11868 maybe refactor it later
-    pattern = r"^[\u2000-\u206F\u2E00-\u2E7F\u3000-\u303F!\"#$%&'()*+,./:;<=>?@^_`~]+"
+    pattern = r'^[\[\]\u2000-\u2025\u2027-\u206F\u2E00-\u2E7F\u3000-\u300F\u3011-\u303F"#$%&\'()*+,./:;<=>?@^_`~]+'
     return re.sub(pattern, "", text)

@@ -238,6 +238,16 @@ const translation = {
   docAllEnabled_other: '所有 {{count}} 文件已啟用',
   partialEnabled_one: '共 {{count}} 份文件，{{num}} 份可用',
   partialEnabled_other: '共 {{count}} 份文件，{{num}} 份可用',
+  cornerLabel: {
+    unavailable: '無法使用',
+    pipeline: '管道',
+  },
+  multimodal: '多模態',
+  imageUploader: {
+    button: '拖放檔案或資料夾，或',
+    browse: '瀏覽',
+    tip: '{{supportTypes}}（最多 {{batchCount}}，每個 {{size}}MB）',
+  },
 }
 
 export default translation

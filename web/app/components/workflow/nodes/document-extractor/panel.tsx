@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import React from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -9,11 +8,11 @@ import Split from '../_base/components/split'
 import { useNodeHelpLink } from '../_base/hooks/use-node-help-link'
 import useConfig from './use-config'
 import type { DocExtractorNodeType } from './types'
-import { fetchSupportFileTypes } from '@/service/datasets'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { BlockEnum, type NodePanelProps } from '@/app/components/workflow/types'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
+import { useFileSupportTypes } from '@/service/use-common'
 
 const i18nPrefix = 'workflow.nodes.docExtractor'
 
@@ -24,7 +23,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const link = useNodeHelpLink(BlockEnum.DocExtractor)
-  const { data: supportFileTypesResponse } = useSWR({ url: '/files/support-type' }, fetchSupportFileTypes)
+  const { data: supportFileTypesResponse } = useFileSupportTypes()
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []
   const supportTypesShowNames = (() => {
     const extensionMap: { [key: string]: string } = {

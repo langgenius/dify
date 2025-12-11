@@ -137,9 +137,6 @@ const translation = {
     notConnected: '{{name}} не підключено',
     notConnectedTip: 'Щоб синхронізувати з {{name}}, спершу потрібно встановити з’єднання з {{name}}.',
   },
-  credentialSelector: {
-    name: '{{credentialName}}\'s {{pluginName}}',
-  },
   conversion: {
     confirm: {
       title: 'Підтвердження',

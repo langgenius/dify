@@ -332,6 +332,12 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 if not self._task_state.llm_result.prompt_messages:
                     self._task_state.llm_result.prompt_messages = chunk.prompt_messages
 
+                # Track streaming response times
+                if self._task_state.first_token_time is None:
+                    self._task_state.first_token_time = time.perf_counter()
+                    self._task_state.is_streaming_response = True
+                self._task_state.last_token_time = time.perf_counter()
+
                 # handle output moderation chunk
                 should_direct_answer = self._handle_output_moderation_chunk(cast(str, delta_text))
                 if should_direct_answer:
@@ -360,7 +366,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if publisher:
             publisher.publish(None)
         if self._conversation_name_generate_thread:
-            self._conversation_name_generate_thread.join()
+            logger.debug("Conversation name generation running as daemon thread")
 
     def _save_message(self, *, session: Session, trace_manager: TraceQueueManager | None = None):
         """
@@ -398,6 +404,18 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         message.total_price = usage.total_price
         message.currency = usage.currency
         self._task_state.llm_result.usage.latency = message.provider_response_latency
+
+        # Add streaming metrics to usage if available
+        if self._task_state.is_streaming_response and self._task_state.first_token_time:
+            start_time = self.start_at
+            first_token_time = self._task_state.first_token_time
+            last_token_time = self._task_state.last_token_time or first_token_time
+            usage.time_to_first_token = round(first_token_time - start_time, 3)
+            usage.time_to_generate = round(last_token_time - first_token_time, 3)
+
+        # Update metadata with the complete usage info
+        self._task_state.metadata.usage = usage
+
         message.message_metadata = self._task_state.metadata.model_dump_json()
 
         if trace_manager:

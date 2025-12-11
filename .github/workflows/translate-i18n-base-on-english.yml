@@ -77,12 +77,15 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          commit-message: Update i18n files and type definitions based on en-US changes
-          title: 'chore: translate i18n files and update type definitions'
+          commit-message: 'chore(i18n): update translations based on en-US changes'
+          title: 'chore(i18n): translate i18n files and update type definitions'
           body: |
             This PR was automatically created to update i18n files and TypeScript type definitions based on changes in en-US locale.
-            
+
+            **Triggered by:** ${{ github.sha }}
+
             **Changes included:**
             - Updated translation files for all locales
             - Regenerated TypeScript type definitions for type safety
-          branch: chore/automated-i18n-updates
+          branch: chore/automated-i18n-updates-${{ github.sha }}
+          delete-branch: true

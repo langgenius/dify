@@ -238,6 +238,16 @@ const translation = {
   docAllEnabled_other: 'Tất cả các tài liệu {{count}} đã được kích hoạt',
   partialEnabled_one: 'Tổng cộng {{count}} tài liệu, {{num}} có sẵn',
   partialEnabled_other: 'Tổng cộng {{count}} tài liệu, {{num}} có sẵn',
+  cornerLabel: {
+    unavailable: 'Không khả dụng',
+    pipeline: 'Đường ống',
+  },
+  multimodal: 'Đa phương thức',
+  imageUploader: {
+    button: 'Kéo và thả tệp hoặc thư mục, hoặc',
+    browse: 'Duyệt',
+    tip: '{{supportTypes}} (Tối đa {{batchCount}}, {{size}}MB mỗi cái)',
+  },
 }
 
 export default translation

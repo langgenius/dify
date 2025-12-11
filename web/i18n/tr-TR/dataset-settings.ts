@@ -28,6 +28,7 @@ const translation = {
       description: ' geri alım yöntemi hakkında.',
       longDescription: ' geri alım yöntemi hakkında, bunu Bilgi ayarlarında istediğiniz zaman değiştirebilirsiniz.',
       method: 'Retrieval Yöntemi',
+      multiModalTip: 'Embedding modeli çok modlu destekliyorsa, daha iyi performans için çok modlu bir yeniden sıralama modeli seçin.',
     },
     save: 'Kaydet',
     retrievalSettings: 'Alma Ayarları',

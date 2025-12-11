@@ -55,7 +55,7 @@ const PipelineSettings = ({
     if (lastRunData?.datasource_type === DatasourceType.websiteCrawl) {
       const { content, description, source_url, title } = lastRunData.datasource_info
       websitePages.push({
-        content,
+        markdown: content,
         description,
         source_url,
         title,
@@ -135,7 +135,7 @@ const PipelineSettings = ({
         push(`/datasets/${datasetId}/documents`)
       },
     })
-  }, [datasetId, invalidDocumentDetail, invalidDocumentList, lastRunData, pipelineId, push, runPublishedPipeline])
+  }, [datasetId, documentId, invalidDocumentDetail, invalidDocumentList, lastRunData, pipelineId, push, runPublishedPipeline])
 
   const onClickProcess = useCallback(() => {
     isPreview.current = false

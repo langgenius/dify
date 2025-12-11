@@ -400,6 +400,7 @@ const translation = {
     paragraphs: 'Paragraf',
     newQaSegment: 'Segmen Tanya Jawab Baru',
     searchResults_other: 'HASIL',
+    allFilesUploaded: 'Semua file harus diunggah sebelum disimpan',
   },
 }
 

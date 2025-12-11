@@ -1,9 +1,8 @@
 'use client'
-import { useTranslation } from 'react-i18next'
 import React, { Fragment, useMemo } from 'react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
-import NotionIcon from '../../notion-icon'
+import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 
 export type NotionCredential = {
   credentialId: string
@@ -23,14 +22,10 @@ const CredentialSelector = ({
   items,
   onSelect,
 }: CredentialSelectorProps) => {
-  const { t } = useTranslation()
   const currentCredential = items.find(item => item.credentialId === value)!
 
   const getDisplayName = (item: NotionCredential) => {
-    return item.workspaceName || t('datasetPipeline.credentialSelector.name', {
-      credentialName: item.credentialName,
-      pluginName: 'Notion',
-    })
+    return item.workspaceName || item.credentialName
   }
 
   const currentDisplayName = useMemo(() => {
@@ -43,10 +38,11 @@ const CredentialSelector = ({
         ({ open }) => (
           <>
             <MenuButton className={`flex h-7 items-center justify-center rounded-md p-1 pr-2 hover:bg-state-base-hover ${open && 'bg-state-base-hover'} cursor-pointer`}>
-              <NotionIcon
+              <CredentialIcon
                 className='mr-2'
-                src={currentCredential?.workspaceIcon}
+                avatarUrl={currentCredential?.workspaceIcon}
                 name={currentDisplayName}
+                size={20}
               />
               <div
                 className='mr-1 w-[90px] truncate text-left text-sm font-medium text-text-secondary'
@@ -80,10 +76,11 @@ const CredentialSelector = ({
                             className='flex h-9 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
                             onClick={() => onSelect(item.credentialId)}
                           >
-                            <NotionIcon
+                            <CredentialIcon
                               className='mr-2 shrink-0'
-                              src={item.workspaceIcon}
+                              avatarUrl={item.workspaceIcon}
                               name={displayName}
+                              size={20}
                             />
                             <div
                               className='system-sm-medium mr-2 grow truncate text-text-secondary'

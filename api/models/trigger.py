@@ -41,7 +41,9 @@ class TriggerSubscription(TypeBase):
         UniqueConstraint("tenant_id", "provider_id", "name", name="unique_trigger_provider"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     name: Mapped[str] = mapped_column(String(255), nullable=False, comment="Subscription instance name")
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -111,7 +113,9 @@ class TriggerOAuthSystemClient(TypeBase):
         sa.UniqueConstraint("plugin_id", "provider", name="trigger_oauth_system_client_plugin_id_provider_idx"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
     provider: Mapped[str] = mapped_column(String(255), nullable=False)
     # oauth params of the trigger provider
@@ -136,7 +140,9 @@ class TriggerOAuthTenantClient(TypeBase):
         sa.UniqueConstraint("tenant_id", "plugin_id", "provider", name="unique_trigger_oauth_tenant_client"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     # tenant id
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     plugin_id: Mapped[str] = mapped_column(String(255), nullable=False)
@@ -202,7 +208,9 @@ class WorkflowTriggerLog(TypeBase):
         sa.Index("workflow_trigger_log_workflow_id_idx", "workflow_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -294,7 +302,9 @@ class WorkflowWebhookTrigger(TypeBase):
         sa.UniqueConstraint("webhook_id", name="uniq_webhook_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -351,7 +361,9 @@ class WorkflowPluginTrigger(TypeBase):
         sa.UniqueConstraint("app_id", "node_id", name="uniq_app_node_subscription"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -395,7 +407,9 @@ class AppTrigger(TypeBase):
         sa.Index("app_trigger_tenant_app_idx", "tenant_id", "app_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuidv7()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuidv7()), default_factory=lambda: str(uuidv7()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str | None] = mapped_column(String(64), nullable=False)
@@ -443,7 +457,13 @@ class WorkflowSchedulePlan(TypeBase):
         sa.Index("workflow_schedule_plan_next_idx", "next_run_at"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, primary_key=True, default=lambda: str(uuidv7()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID,
+        primary_key=True,
+        insert_default=lambda: str(uuidv7()),
+        default_factory=lambda: str(uuidv7()),
+        init=False,
+    )
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     node_id: Mapped[str] = mapped_column(String(64), nullable=False)
     tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)

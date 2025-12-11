@@ -29,6 +29,7 @@ from core.workflow.constants import (
     CONVERSATION_VARIABLE_NODE_ID,
     SYSTEM_VARIABLE_NODE_ID,
 )
+from core.workflow.entities.pause_reason import HumanInputRequired, PauseReason, PauseReasonType, SchedulingPause
 from core.workflow.enums import NodeType
 from extensions.ext_storage import Storage
 from factories.variable_factory import TypeMismatchError, build_segment_with_type
@@ -906,19 +907,29 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     @property
     def extras(self) -> dict[str, Any]:
         from core.tools.tool_manager import ToolManager
+        from core.trigger.trigger_manager import TriggerManager
 
         extras: dict[str, Any] = {}
-        if self.execution_metadata_dict:
-            if self.node_type == NodeType.TOOL and "tool_info" in self.execution_metadata_dict:
-                tool_info: dict[str, Any] = self.execution_metadata_dict["tool_info"]
+        execution_metadata = self.execution_metadata_dict
+        if execution_metadata:
+            if self.node_type == NodeType.TOOL and "tool_info" in execution_metadata:
+                tool_info: dict[str, Any] = execution_metadata["tool_info"]
                 extras["icon"] = ToolManager.get_tool_icon(
                     tenant_id=self.tenant_id,
                     provider_type=tool_info["provider_type"],
                     provider_id=tool_info["provider_id"],
                 )
-            elif self.node_type == NodeType.DATASOURCE and "datasource_info" in self.execution_metadata_dict:
-                datasource_info = self.execution_metadata_dict["datasource_info"]
+            elif self.node_type == NodeType.DATASOURCE and "datasource_info" in execution_metadata:
+                datasource_info = execution_metadata["datasource_info"]
                 extras["icon"] = datasource_info.get("icon")
+            elif self.node_type == NodeType.TRIGGER_PLUGIN and "trigger_info" in execution_metadata:
+                trigger_info = execution_metadata["trigger_info"] or {}
+                provider_id = trigger_info.get("provider_id")
+                if provider_id:
+                    extras["icon"] = TriggerManager.get_trigger_plugin_icon(
+                        tenant_id=self.tenant_id,
+                        provider_id=provider_id,
+                    )
         return extras
 
     def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> Optional["WorkflowNodeExecutionOffload"]:
@@ -1102,7 +1113,9 @@ class WorkflowAppLog(TypeBase):
         sa.Index("workflow_app_log_workflow_run_id_idx", "workflow_run_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=lambda: str(uuid4()), init=False)
+    id: Mapped[str] = mapped_column(
+        StringUUID, insert_default=lambda: str(uuid4()), default_factory=lambda: str(uuid4()), init=False
+    )
     tenant_id: Mapped[str] = mapped_column(StringUUID)
     app_id: Mapped[str] = mapped_column(StringUUID)
     workflow_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
@@ -1728,3 +1741,68 @@ class WorkflowPause(DefaultFieldsMixin, Base):
         primaryjoin="WorkflowPause.workflow_run_id == WorkflowRun.id",
         back_populates="pause",
     )
+
+
+class WorkflowPauseReason(DefaultFieldsMixin, Base):
+    __tablename__ = "workflow_pause_reasons"
+
+    # `pause_id` represents the identifier of the pause,
+    # correspond to the `id` field of `WorkflowPause`.
+    pause_id: Mapped[str] = mapped_column(StringUUID, nullable=False, index=True)
+
+    type_: Mapped[PauseReasonType] = mapped_column(EnumText(PauseReasonType), nullable=False)
+
+    # form_id is not empty if and if only type_ == PauseReasonType.HUMAN_INPUT_REQUIRED
+    #
+    form_id: Mapped[str] = mapped_column(
+        String(36),
+        nullable=False,
+        default="",
+    )
+
+    # message records the text description of this pause reason. For example,
+    # "The workflow has been paused due to scheduling."
+    #
+    # Empty message means that this pause reason is not speified.
+    message: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="",
+    )
+
+    # `node_id` is the identifier of node causing the pasue, correspond to
+    # `Node.id`. Empty `node_id` means that this pause reason is not caused by any specific node
+    # (E.G. time slicing pauses.)
+    node_id: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        default="",
+    )
+
+    # Relationship to WorkflowPause
+    pause: Mapped[WorkflowPause] = orm.relationship(
+        foreign_keys=[pause_id],
+        # require explicit preloading.
+        lazy="raise",
+        uselist=False,
+        primaryjoin="WorkflowPauseReason.pause_id == WorkflowPause.id",
+    )
+
+    @classmethod
+    def from_entity(cls, pause_reason: PauseReason) -> "WorkflowPauseReason":
+        if isinstance(pause_reason, HumanInputRequired):
+            return cls(
+                type_=PauseReasonType.HUMAN_INPUT_REQUIRED, form_id=pause_reason.form_id, node_id=pause_reason.node_id
+            )
+        elif isinstance(pause_reason, SchedulingPause):
+            return cls(type_=PauseReasonType.SCHEDULED_PAUSE, message=pause_reason.message, node_id="")
+        else:
+            raise AssertionError(f"Unknown pause reason type: {pause_reason}")
+
+    def to_entity(self) -> PauseReason:
+        if self.type_ == PauseReasonType.HUMAN_INPUT_REQUIRED:
+            return HumanInputRequired(form_id=self.form_id, node_id=self.node_id)
+        elif self.type_ == PauseReasonType.SCHEDULED_PAUSE:
+            return SchedulingPause(message=self.message)
+        else:
+            raise AssertionError(f"Unknown pause reason type: {self.type_}")

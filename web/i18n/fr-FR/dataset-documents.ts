@@ -401,6 +401,7 @@ const translation = {
     editChildChunk: 'Modifier le morceau enfant',
     keywordDuplicate: 'Le mot-clé existe déjà',
     keywordEmpty: 'Le mot-clé ne peut pas être vide.',
+    allFilesUploaded: 'Tous les fichiers doivent être téléchargés avant de sauvegarder',
   },
 }
 

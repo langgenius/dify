@@ -17,6 +17,7 @@ type FileListProps = {
   handleSelectFile: (file: OnlineDriveFile) => void
   handleOpenFolder: (file: OnlineDriveFile) => void
   isLoading: boolean
+  supportBatchUpload: boolean
 }
 
 const FileList = ({
@@ -32,6 +33,7 @@ const FileList = ({
   handleOpenFolder,
   isInPipeline,
   isLoading,
+  supportBatchUpload,
 }: FileListProps) => {
   const [inputValue, setInputValue] = useState(keywords)
 
@@ -72,8 +74,8 @@ const FileList = ({
         handleResetKeywords={handleResetKeywords}
         handleOpenFolder={handleOpenFolder}
         handleSelectFile={handleSelectFile}
-        isInPipeline={isInPipeline}
         isLoading={isLoading}
+        supportBatchUpload={supportBatchUpload}
       />
     </div>
   )

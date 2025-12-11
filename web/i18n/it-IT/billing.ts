@@ -32,6 +32,7 @@ const translation = {
     vectorSpaceTooltip:
       'Lo Spazio Vettoriale è il sistema di memoria a lungo termine necessario per permettere agli LLM di comprendere i tuoi dati.',
     documentProcessingPriority: 'Priorità di Elaborazione Documenti',
+    documentProcessingPriorityTip: 'Per una maggiore priorità nell\'elaborazione dei documenti, aggiorna il tuo piano.',
     documentProcessingPriorityUpgrade:
       'Elabora più dati con maggiore precisione a velocità più elevate.',
     priority: {
@@ -147,7 +148,7 @@ const translation = {
       description:
         'Ottieni tutte le capacità e il supporto per sistemi mission-critical su larga scala.',
       includesTitle: 'Tutto nel piano Team, più:',
-      features: ['Soluzioni di Distribuzione Scalabili di Classe Aziendale', 'Autorizzazione alla Licenza Commerciale', 'Funzionalità Esclusive per le Aziende', 'Molteplici Spazi di Lavoro e Gestione Aziendale', 'SSO', 'SLA negoziati dai partner Dify', 'Sicurezza e Controlli Avanzati', 'Aggiornamenti e manutenzione ufficiali di Dify', 'Assistenza Tecnica Professionale'],
+      features: ['Soluzioni di Distribuzione Scalabili di Classe Aziendale', 'Autorizzazione alla Licenza Commerciale', 'Funzionalità Esclusive per le Aziende', 'Molteplici Spazi di Lavoro e Gestione Aziendale', 'SSO', 'SLA negoziati dai partner Dify', 'Sicurezza e Controlli Avanzati', 'Aggiornamenti e manutenzione da Dify ufficialmente', 'Assistenza Tecnica Professionale'],
       price: 'Personalizzato',
       for: 'Per team di grandi dimensioni',
       btnText: 'Contatta le vendite',
@@ -163,7 +164,7 @@ const translation = {
       for: 'Per utenti individuali, piccole squadre o progetti non commerciali',
     },
     premium: {
-      features: ['Affidabilità Autogestita dai Vari Provider Cloud', 'Spazio di lavoro singolo', 'Personalizzazione del Logo e del Marchio dell\'App Web', 'Assistenza Prioritaria via Email e Chat'],
+      features: ['Affidabilità autogestita dai vari provider cloud', 'Spazio di lavoro singolo', 'Personalizzazione del Logo e del Marchio dell\'App Web', 'Assistenza Prioritaria via Email e Chat'],
       name: 'Premium',
       priceTip: 'Basato su Cloud Marketplace',
       includesTitle: 'Tutto dalla Community, oltre a:',
@@ -209,6 +210,9 @@ const translation = {
     title: 'Aggiorna per sbloccare più eventi di attivazione',
     description: 'Hai raggiunto il limite degli eventi di attivazione del flusso di lavoro per questo piano.',
   },
+  viewBillingTitle: 'Fatturazione e Abbonamenti',
+  viewBillingDescription: 'Gestisci metodi di pagamento, fatture e modifiche all\'abbonamento',
+  viewBillingAction: 'Gestire',
 }
 
 export default translation

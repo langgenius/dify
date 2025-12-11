@@ -1,7 +1,9 @@
 import logging
+from typing import Any, Literal
 
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -35,6 +37,41 @@ from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class BaseMessagePayload(BaseModel):
+    inputs: dict[str, Any]
+    model_config_data: dict[str, Any] = Field(..., alias="model_config")
+    files: list[Any] | None = Field(default=None, description="Uploaded files")
+    response_mode: Literal["blocking", "streaming"] = Field(default="blocking", description="Response mode")
+    retriever_from: str = Field(default="dev", description="Retriever source")
+
+
+class CompletionMessagePayload(BaseMessagePayload):
+    query: str = Field(default="", description="Query text")
+
+
+class ChatMessagePayload(BaseMessagePayload):
+    query: str = Field(..., description="User query")
+    conversation_id: str | None = Field(default=None, description="Conversation ID")
+    parent_message_id: str | None = Field(default=None, description="Parent message ID")
+
+    @field_validator("conversation_id", "parent_message_id")
+    @classmethod
+    def validate_uuid(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+        return uuid_value(value)
+
+
+console_ns.schema_model(
+    CompletionMessagePayload.__name__,
+    CompletionMessagePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+console_ns.schema_model(
+    ChatMessagePayload.__name__, ChatMessagePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
 
 
 # define completion message api for user
@@ -43,19 +80,7 @@ class CompletionMessageApi(Resource):
     @console_ns.doc("create_completion_message")
     @console_ns.doc(description="Generate completion message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "CompletionMessageRequest",
-            {
-                "inputs": fields.Raw(required=True, description="Input variables"),
-                "query": fields.String(description="Query text", default=""),
-                "files": fields.List(fields.Raw(), description="Uploaded files"),
-                "model_config": fields.Raw(required=True, description="Model configuration"),
-                "response_mode": fields.String(enum=["blocking", "streaming"], description="Response mode"),
-                "retriever_from": fields.String(default="dev", description="Retriever source"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[CompletionMessagePayload.__name__])
     @console_ns.response(200, "Completion generated successfully")
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App not found")
@@ -64,18 +89,10 @@ class CompletionMessageApi(Resource):
     @account_initialization_required
     @get_app_model(mode=AppMode.COMPLETION)
     def post(self, app_model):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, location="json")
-            .add_argument("query", type=str, location="json", default="")
-            .add_argument("files", type=list, required=False, location="json")
-            .add_argument("model_config", type=dict, required=True, location="json")
-            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-            .add_argument("retriever_from", type=str, required=False, default="dev", location="json")
-        )
-        args = parser.parse_args()
+        args_model = CompletionMessagePayload.model_validate(console_ns.payload)
+        args = args_model.model_dump(exclude_none=True, by_alias=True)
 
-        streaming = args["response_mode"] != "blocking"
+        streaming = args_model.response_mode != "blocking"
         args["auto_generate_name"] = False
 
         try:
@@ -137,21 +154,7 @@ class ChatMessageApi(Resource):
     @console_ns.doc("create_chat_message")
     @console_ns.doc(description="Generate chat message for debugging")
     @console_ns.doc(params={"app_id": "Application ID"})
-    @console_ns.expect(
-        console_ns.model(
-            "ChatMessageRequest",
-            {
-                "inputs": fields.Raw(required=True, description="Input variables"),
-                "query": fields.String(required=True, description="User query"),
-                "files": fields.List(fields.Raw(), description="Uploaded files"),
-                "model_config": fields.Raw(required=True, description="Model configuration"),
-                "conversation_id": fields.String(description="Conversation ID"),
-                "parent_message_id": fields.String(description="Parent message ID"),
-                "response_mode": fields.String(enum=["blocking", "streaming"], description="Response mode"),
-                "retriever_from": fields.String(default="dev", description="Retriever source"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
     @console_ns.response(200, "Chat message generated successfully")
     @console_ns.response(400, "Invalid request parameters")
     @console_ns.response(404, "App or conversation not found")
@@ -161,20 +164,10 @@ class ChatMessageApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT])
     @edit_permission_required
     def post(self, app_model):
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, location="json")
-            .add_argument("query", type=str, required=True, location="json")
-            .add_argument("files", type=list, required=False, location="json")
-            .add_argument("model_config", type=dict, required=True, location="json")
-            .add_argument("conversation_id", type=uuid_value, location="json")
-            .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
-            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-            .add_argument("retriever_from", type=str, required=False, default="dev", location="json")
-        )
-        args = parser.parse_args()
+        args_model = ChatMessagePayload.model_validate(console_ns.payload)
+        args = args_model.model_dump(exclude_none=True, by_alias=True)
 
-        streaming = args["response_mode"] != "blocking"
+        streaming = args_model.response_mode != "blocking"
         args["auto_generate_name"] = False
 
         external_trace_id = get_external_trace_id(request)

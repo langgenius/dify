@@ -238,6 +238,16 @@ const translation = {
   docAllEnabled_other: 'Tüm {{count}} belgeleri etkinleştirildi',
   partialEnabled_one: 'Toplam {{count}} belge, {{num}} mevcut',
   partialEnabled_other: 'Toplam {{count}} belge, {{num}} mevcut',
+  cornerLabel: {
+    unavailable: 'Mevcut değil',
+    pipeline: 'Boruhattı',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Dosya veya klasörü sürükleyip bırakın, veya',
+    browse: 'Gözat',
+    tip: '{{supportTypes}} (Her biri Maks. {{batchCount}}, {{size}}MB)',
+  },
 }
 
 export default translation

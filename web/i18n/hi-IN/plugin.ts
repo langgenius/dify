@@ -227,6 +227,11 @@ const translation = {
       '{{installingLength}} प्लगइन्स स्थापित कर रहे हैं, {{successLength}} सफल, {{errorLength}} विफल',
     installingWithSuccess:
       '{{installingLength}} प्लगइन्स स्थापित कर रहे हैं, {{successLength}} सफल।',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   installFrom: 'से इंस्टॉल करें',
   fromMarketplace: 'मार्केटप्लेस से',

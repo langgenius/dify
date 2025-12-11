@@ -25,6 +25,9 @@ const translation = {
     encourageShort: 'Upgrade',
   },
   viewBilling: 'Manage billing and subscriptions',
+  viewBillingTitle: 'Billing and Subscriptions',
+  viewBillingDescription: 'Manage payment methods, invoices, and subscription changes',
+  viewBillingAction: 'Manage',
   buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe',
   plansCommon: {
     title: {
@@ -76,6 +79,7 @@ const translation = {
     unlimitedApiRate: 'No Dify API Rate Limit',
     apiRateLimitTooltip: 'API Rate Limit applies to all requests made through the Dify API, including text generation, chat conversations, workflow executions, and document processing.',
     documentProcessingPriority: ' Document Processing',
+    documentProcessingPriorityTip: 'For higher document processing priority, please upgrade your plan.',
     documentProcessingPriorityUpgrade: 'Process more data with higher accuracy at faster speeds.',
     priority: {
       'standard': 'Standard',

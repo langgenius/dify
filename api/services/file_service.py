@@ -1,3 +1,4 @@
+import base64
 import hashlib
 import os
 import uuid
@@ -122,6 +123,15 @@ class FileService:
             file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
 
         return file_size <= file_size_limit
+
+    def get_file_base64(self, file_id: str) -> str:
+        upload_file = (
+            self._session_maker(expire_on_commit=False).query(UploadFile).where(UploadFile.id == file_id).first()
+        )
+        if not upload_file:
+            raise NotFound("File not found")
+        blob = storage.load_once(upload_file.key)
+        return base64.b64encode(blob).decode()
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
         if len(text_name) > 200:

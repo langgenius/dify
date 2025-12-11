@@ -243,6 +243,16 @@ const translation = {
   docAllEnabled_other: 'सभी {{count}} दस्तावेज़ सक्षम हैं',
   partialEnabled_one: 'कुल {{count}} दस्तावेज़, {{num}} उपलब्ध',
   partialEnabled_other: 'कुल {{count}} दस्तावेज़, {{num}} उपलब्ध',
+  cornerLabel: {
+    unavailable: 'अनउपलब्ध',
+    pipeline: 'पाइपलाइन',
+  },
+  multimodal: 'बहु-मोडल',
+  imageUploader: {
+    button: 'फ़ाइल या फ़ोल्डर खींचें और छोड़ें, या',
+    browse: 'ब्राउज़',
+    tip: '{{supportTypes}} (अधिकतम {{batchCount}}, प्रत्येक {{size}}MB)',
+  },
 }
 
 export default translation

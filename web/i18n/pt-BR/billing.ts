@@ -28,6 +28,7 @@ const translation = {
     vectorSpace: 'Espaço Vetorial',
     vectorSpaceTooltip: 'O Espaço Vetorial é o sistema de memória de longo prazo necessário para que LLMs compreendam seus dados.',
     documentProcessingPriority: 'Prioridade no Processamento de Documentos',
+    documentProcessingPriorityTip: 'Para maior prioridade no processamento de documentos, atualize seu plano.',
     documentProcessingPriorityUpgrade: 'Processe mais dados com maior precisão e velocidade.',
     priority: {
       'standard': 'Padrão',
@@ -152,7 +153,7 @@ const translation = {
       for: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
     },
     premium: {
-      features: ['Confiabilidade Autogerenciada por Diversos Provedores de Nuvem', 'Espaço de Trabalho Único', 'Personalização de Logo e Marca do WebApp', 'Suporte Prioritário por E-mail e Chat'],
+      features: ['Confiabilidade Autogerenciada por Diversos Provedores de Nuvem', 'Espaço de Trabalho Único', 'Personalização de Logo e Marca do WebApp', 'Suporte Prioritário por Email e Chat'],
       includesTitle: 'Tudo da Comunidade, além de:',
       for: 'Para organizações e equipes de médio porte',
       price: 'Escalável',
@@ -198,6 +199,9 @@ const translation = {
     upgrade: 'Atualizar',
     description: 'Você atingiu o limite de eventos de gatilho de fluxo de trabalho para este plano.',
   },
+  viewBillingTitle: 'Faturamento e Assinaturas',
+  viewBillingDescription: 'Gerencie métodos de pagamento, faturas e alterações de assinatura',
+  viewBillingAction: 'Gerenciar',
 }
 
 export default translation

@@ -403,6 +403,7 @@ const translation = {
     childChunks_other: 'BLOCCHI FIGLIO',
     keywordEmpty: 'La parola chiave non può essere vuota',
     keywordDuplicate: 'La parola chiave esiste già',
+    allFilesUploaded: 'Tutti i file devono essere caricati prima di salvare',
   },
 }
 

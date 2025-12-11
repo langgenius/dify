@@ -302,6 +302,8 @@ const translation = {
       accountDesc: 'به صفحه حساب کاربری بروید',
       communityDesc: 'جامعه دیسکورد باز',
       docDesc: 'مستندات کمک را باز کنید',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noKnowledgeBasesFound: 'هیچ پایگاه دانش یافت نشد',

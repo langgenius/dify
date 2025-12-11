@@ -1,10 +1,9 @@
 'use client'
 
-import { createContext, useContext, useMemo } from 'react'
+import { createContext, useCallback, useContext, useMemo } from 'react'
 import type { FC, ReactNode } from 'react'
-import useSWR from 'swr'
 import type { ExternalAPIItem, ExternalAPIListResponse } from '@/models/datasets'
-import { fetchExternalAPIList } from '@/service/datasets'
+import { useExternalKnowledgeApiList } from '@/service/knowledge/use-dataset'
 
 type ExternalKnowledgeApiContextType = {
   externalKnowledgeApiList: ExternalAPIItem[]
@@ -19,10 +18,11 @@ export type ExternalKnowledgeApiProviderProps = {
 }
 
 export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps> = ({ children }) => {
-  const { data, mutate: mutateExternalKnowledgeApis, isLoading } = useSWR<ExternalAPIListResponse>(
-    { url: '/datasets/external-knowledge-api' },
-    fetchExternalAPIList,
-  )
+  const { data, refetch, isLoading } = useExternalKnowledgeApiList()
+
+  const mutateExternalKnowledgeApis = useCallback(() => {
+    return refetch().then(res => res.data)
+  }, [refetch])
 
   const contextValue = useMemo<ExternalKnowledgeApiContextType>(() => ({
     externalKnowledgeApiList: data?.data || [],

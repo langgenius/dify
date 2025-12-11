@@ -237,6 +237,16 @@ const translation = {
   docAllEnabled_other: '모든 {{count}} 문서 사용 가능',
   partialEnabled_one: '총 {{count}}개의 문서 중 {{num}}개 사용 가능',
   partialEnabled_other: '총 {{count}}개의 문서 중 {{num}}개 사용 가능',
+  cornerLabel: {
+    unavailable: '사용 불가',
+    pipeline: '파이프라인',
+  },
+  multimodal: '멀티모달',
+  imageUploader: {
+    button: '파일 또는 폴더를 끌어다 놓거나',
+    browse: '둘러보기',
+    tip: '{{supportTypes}} (최대 {{batchCount}}, 각각 {{size}}MB)',
+  },
 }
 
 export default translation

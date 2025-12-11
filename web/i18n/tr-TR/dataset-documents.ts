@@ -400,6 +400,7 @@ const translation = {
     addChildChunk: 'Alt Parça Ekle',
     keywordDuplicate: 'Anahtar kelime zaten var',
     keywordEmpty: 'Anahtar kelime boş olamaz',
+    allFilesUploaded: 'Kaydetmeden önce tüm dosyaların yüklenmesi gerekir',
   },
 }
 

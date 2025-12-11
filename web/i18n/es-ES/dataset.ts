@@ -238,6 +238,16 @@ const translation = {
   docAllEnabled_other: 'Todos los documentos {{count}} habilitados',
   partialEnabled_one: 'Total de {{count}} documentos, {{num}} disponibles',
   partialEnabled_other: 'Total de {{count}} documentos, {{num}} disponibles',
+  cornerLabel: {
+    unavailable: 'No disponible',
+    pipeline: 'Tubería',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Arrastra y suelta el archivo o la carpeta, o',
+    browse: 'Examinar',
+    tip: '{{supportTypes}} (Máx. {{batchCount}}, {{size}} MB cada uno)',
+  },
 }
 
 export default translation

@@ -27,7 +27,7 @@ const WebsitePreview = ({
             <span className='uppercase' title={currentWebsite.source_url}>{currentWebsite.source_url}</span>
             <span>·</span>
             <span>·</span>
-            <span>{`${formatNumberAbbreviated(currentWebsite.content.length)} ${t('datasetPipeline.addDocuments.characters')}`}</span>
+            <span>{`${formatNumberAbbreviated(currentWebsite.markdown.length)} ${t('datasetPipeline.addDocuments.characters')}`}</span>
           </div>
         </div>
         <button
@@ -39,7 +39,7 @@ const WebsitePreview = ({
         </button>
       </div>
       <div className='body-md-regular grow overflow-hidden px-6 py-5 text-text-secondary'>
-        {currentWebsite.content}
+        {currentWebsite.markdown}
       </div>
     </div>
   )

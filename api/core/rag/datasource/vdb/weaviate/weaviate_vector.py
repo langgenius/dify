@@ -79,6 +79,18 @@ class WeaviateVector(BaseVector):
         self._client = self._init_client(config)
         self._attributes = attributes
 
+    def __del__(self):
+        """
+        Destructor to properly close the Weaviate client connection.
+        Prevents connection leaks and resource warnings.
+        """
+        if hasattr(self, "_client") and self._client is not None:
+            try:
+                self._client.close()
+            except Exception as e:
+                # Ignore errors during cleanup as object is being destroyed
+                logger.warning("Error closing Weaviate client %s", e, exc_info=True)
+
     def _init_client(self, config: WeaviateConfig) -> weaviate.WeaviateClient:
         """
         Initializes and returns a connected Weaviate client.

@@ -242,6 +242,16 @@ const translation = {
   docAllEnabled_other: 'Wszystkie dokumenty {{count}} włączone',
   partialEnabled_one: 'Łącznie {{count}} dokumentów, {{num}} dostępnych',
   partialEnabled_other: 'Łącznie {{count}} dokumentów, {{num}} dostępnych',
+  cornerLabel: {
+    unavailable: 'Niedostępne',
+    pipeline: 'Rurociąg',
+  },
+  multimodal: 'Multimodalny',
+  imageUploader: {
+    button: 'Przeciągnij i upuść plik lub folder, lub',
+    browse: 'Przeglądaj',
+    tip: '{{supportTypes}} (maks. {{batchCount}}, {{size}} MB każdy)',
+  },
 }
 
 export default translation

@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React, { useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import StatusWithAction from './status-with-action'
-import { getErrorDocs, retryErrorDocs } from '@/service/datasets'
+import { retryErrorDocs } from '@/service/datasets'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import { noop } from 'lodash-es'
+import { useDatasetErrorDocs } from '@/service/knowledge/use-dataset'
 
 type Props = {
   datasetId: string
@@ -35,16 +35,19 @@ const indexStateReducer = (state: IIndexState, action: IAction) => {
 const RetryButton: FC<Props> = ({ datasetId }) => {
   const { t } = useTranslation()
   const [indexState, dispatch] = useReducer(indexStateReducer, { value: 'success' })
-  const { data: errorDocs, isLoading } = useSWR({ datasetId }, getErrorDocs)
+  const { data: errorDocs, isLoading, refetch: refetchErrorDocs } = useDatasetErrorDocs(datasetId)
 
   const onRetryErrorDocs = async () => {
     dispatch({ type: 'retry' })
     const document_ids = errorDocs?.data.map((doc: IndexingStatusResponse) => doc.id) || []
     const res = await retryErrorDocs({ datasetId, document_ids })
-    if (res.result === 'success')
+    if (res.result === 'success') {
+      refetchErrorDocs()
       dispatch({ type: 'success' })
-    else
+    }
+    else {
       dispatch({ type: 'error' })
+    }
   }
 
   useEffect(() => {

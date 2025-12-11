@@ -230,6 +230,11 @@ const translation = {
       'Los complementos {{errorLength}} no se pudieron instalar, haga clic para ver',
     installingWithError:
       'Instalando plugins {{installingLength}}, {{successLength}} éxito, {{errorLength}} fallido',
+    installSuccess: '{{successLength}} plugins installed successfully',
+    installed: 'Installed',
+    runningPlugins: 'Installing Plugins',
+    successPlugins: 'Successfully Installed Plugins',
+    errorPlugins: 'Failed to Install Plugins',
   },
   fromMarketplace: 'De Marketplace',
   endpointsEnabled: '{{num}} conjuntos de puntos finales habilitados',

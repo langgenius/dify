@@ -238,6 +238,16 @@ const translation = {
   docAllEnabled_other: 'Toate documentele {{count}} activate',
   partialEnabled_one: 'Total de {{count}} documente, {{num}} disponibile',
   partialEnabled_other: 'Total de {{count}} documente, {{num}} disponibile',
+  cornerLabel: {
+    unavailable: 'Indisponibil',
+    pipeline: 'Conductă',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Trage și plasează fișierul sau folderul, sau',
+    browse: 'Răsfoiește',
+    tip: '{{supportTypes}} (Maxim {{batchCount}}, {{size}}MB fiecare)',
+  },
 }
 
 export default translation

@@ -163,7 +163,6 @@ class WorkflowEntry:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        node.init_node_data(node_config_data)
 
         try:
             # variable selector to variable mapping
@@ -307,7 +306,6 @@ class WorkflowEntry:
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        node.init_node_data(node_data)
 
         try:
             # variable selector to variable mapping

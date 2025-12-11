@@ -7,6 +7,7 @@ const translation = {
       source: 'Source',
       text: 'Texte',
       time: 'Temps',
+      queryContent: 'Contenu de la requête',
     },
   },
   input: {
@@ -29,6 +30,12 @@ const translation = {
   chunkDetail: 'Détail du morceau',
   open: 'Ouvrir',
   keyword: 'Mots-clés',
+  imageUploader: {
+    tip: 'Téléchargez ou glissez-déposez des images (Max {{batchCount}}, {{size}} Mo chacune)',
+    tooltip: 'Télécharger des images (Max {{batchCount}}, {{size}} Mo chacune)',
+    dropZoneTip: 'Faites glisser le fichier ici pour le télécharger',
+    singleChunkAttachmentLimitTooltip: 'Le nombre de pièces jointes à bloc unique ne peut pas dépasser {{limit}}',
+  },
 }
 
 export default translation

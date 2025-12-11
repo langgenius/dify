@@ -87,7 +87,7 @@ class OpenDALStorage(BaseStorage):
         if not self.exists(path):
             raise FileNotFoundError("Path not found")
 
-        all_files = self.op.list(path=path)
+        all_files = self.op.scan(path=path)
         if files and directories:
             logger.debug("files and directories on %s scanned", path)
             return [f.path for f in all_files]

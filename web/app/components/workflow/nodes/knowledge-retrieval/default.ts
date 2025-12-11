@@ -15,6 +15,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
   metaData,
   defaultValue: {
     query_variable_selector: [],
+    query_attachment_selector: [],
     dataset_ids: [],
     retrieval_mode: RETRIEVE_TYPE.multiWay,
     multiple_retrieval_config: {
@@ -25,8 +26,6 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
   },
   checkValid(payload: KnowledgeRetrievalNodeType, t: any) {
     let errorMessages = ''
-    if (!errorMessages && (!payload.query_variable_selector || payload.query_variable_selector.length === 0))
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.knowledgeRetrieval.queryVariable`) })
 
     if (!errorMessages && (!payload.dataset_ids || payload.dataset_ids.length === 0))
       errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.knowledgeRetrieval.knowledge`) })

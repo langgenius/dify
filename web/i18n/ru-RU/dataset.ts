@@ -238,6 +238,16 @@ const translation = {
   docAllEnabled_other: 'Все документы {{count}} включены',
   partialEnabled_one: 'Всего {{count}} документов, доступно {{num}}',
   partialEnabled_other: 'Всего {{count}} документов, доступно {{num}}',
+  cornerLabel: {
+    unavailable: 'Недоступно',
+    pipeline: 'Трубопровод',
+  },
+  multimodal: 'Мультимодальный',
+  imageUploader: {
+    button: 'Перетащите файл или папку, или',
+    browse: 'Просматривать',
+    tip: '{{supportTypes}} (макс. {{batchCount}}, {{size}} МБ каждый)',
+  },
 }
 
 export default translation

@@ -137,9 +137,6 @@ const translation = {
     notConnected: '{{name}}가 연결되어 있지 않습니다',
     notConnectedTip: '{{name}}와(과) 동기화하려면 먼저 {{name}}에 연결해야 합니다.',
   },
-  credentialSelector: {
-    name: '{{credentialName}}의 {{pluginName}}',
-  },
   conversion: {
     confirm: {
       title: '확인',

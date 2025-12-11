@@ -402,6 +402,7 @@ const translation = {
     childChunks_one: 'FRAGMENT POTOMNY',
     keywordDuplicate: 'Słowo kluczowe już istnieje',
     keywordEmpty: 'Słowo kluczowe nie może być puste',
+    allFilesUploaded: 'Wszystkie pliki muszą zostać przesłane przed zapisaniem',
   },
 }
 

@@ -114,7 +114,13 @@ def _document_indexing_with_tenant_queue(
     try:
         _document_indexing(dataset_id, document_ids)
     except Exception:
-        logger.exception("Error processing document indexing %s for tenant %s: %s", dataset_id, tenant_id)
+        logger.exception(
+            "Error processing document indexing %s for tenant %s: %s",
+            dataset_id,
+            tenant_id,
+            document_ids,
+            exc_info=True,
+        )
     finally:
         tenant_isolated_task_queue = TenantIsolatedTaskQueue(tenant_id, "document_indexing")
 
@@ -122,7 +128,7 @@ def _document_indexing_with_tenant_queue(
         # Use rpop to get the next task from the queue (FIFO order)
         next_tasks = tenant_isolated_task_queue.pull_tasks(count=dify_config.TENANT_ISOLATED_TASK_CONCURRENCY)
 
-        logger.info("document indexing tenant isolation queue next tasks: %s", next_tasks)
+        logger.info("document indexing tenant isolation queue %s next tasks: %s", tenant_id, next_tasks)
 
         if next_tasks:
             for next_task in next_tasks:
