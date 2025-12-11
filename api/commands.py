@@ -856,7 +856,7 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 
 @click.command("clean-workflow-runs", help="Clean expired workflow runs and related data for free tenants.")
 @click.option("--days", default=30, show_default=True, help="Delete workflow runs created before N days ago.")
-@click.option("--batch-size", default=1000, show_default=True, help="Batch size for selecting workflow runs.")
+@click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
 @click.option(
     "--start-after",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
