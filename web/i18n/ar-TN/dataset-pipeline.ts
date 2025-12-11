@@ -146,7 +146,6 @@ const translation = {
     resetKeywords: 'إعادة تعيين الكلمات الرئيسية',
   },
   credentialSelector: {
-    name: '{{credentialName}}\'s {{pluginName}}',
   },
   configurationTip: 'تكوين {{pluginName}}',
   conversion: {
