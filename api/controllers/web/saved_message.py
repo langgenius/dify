@@ -1,7 +1,6 @@
-from libs.helper import UUIDStrOrEmpty
 from flask import request
 from flask_restx import fields, marshal_with
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
@@ -9,7 +8,7 @@ from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
 from fields.conversation_fields import message_file_fields
-from libs.helper import TimestampField, uuid_value
+from libs.helper import TimestampField, UUIDStrOrEmpty
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
@@ -30,8 +29,10 @@ class SavedMessageListQuery(BaseModel):
     last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
+
 class SavedMessageCreatePayload(BaseModel):
     message_id: UUIDStrOrEmpty
+
 
 register_schema_models(web_ns, SavedMessageListQuery, SavedMessageCreatePayload)
 
