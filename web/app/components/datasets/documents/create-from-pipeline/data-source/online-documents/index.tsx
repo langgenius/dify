@@ -19,16 +19,18 @@ import { useDocLink } from '@/context/i18n'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 type OnlineDocumentsProps = {
-  isInPipeline?: boolean
   nodeId: string
   nodeData: DataSourceNodeType
   onCredentialChange: (credentialId: string) => void
+  isInPipeline?: boolean
+  supportBatchUpload?: boolean
 }
 
 const OnlineDocuments = ({
   nodeId,
   nodeData,
   isInPipeline = false,
+  supportBatchUpload = false,
   onCredentialChange,
 }: OnlineDocumentsProps) => {
   const docLink = useDocLink()
@@ -157,7 +159,7 @@ const OnlineDocuments = ({
               onSelect={handleSelectPages}
               canPreview={!isInPipeline}
               onPreview={handlePreviewPage}
-              isMultipleChoice={!isInPipeline}
+              isMultipleChoice={supportBatchUpload}
               currentCredentialId={currentCredentialId}
             />
           ) : (

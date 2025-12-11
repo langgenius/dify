@@ -422,7 +422,6 @@ class DatasetApi(Resource):
             raise NotFound("Dataset not found.")
 
         payload = DatasetUpdatePayload.model_validate(console_ns.payload or {})
-        payload_data = payload.model_dump(exclude_unset=True)
         current_user, current_tenant_id = current_account_with_tenant()
         # check embedding model setting
         if (
@@ -434,6 +433,7 @@ class DatasetApi(Resource):
                 dataset.tenant_id, payload.embedding_model_provider, payload.embedding_model
             )
             payload.is_multimodal = is_multimodal
+        payload_data = payload.model_dump(exclude_unset=True)
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
             current_user, dataset, payload.permission, payload.partial_member_list

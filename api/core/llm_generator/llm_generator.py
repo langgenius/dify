@@ -554,11 +554,16 @@ class LLMGenerator:
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            generated_raw = cast(str, response.message.content)
+            generated_raw = response.message.get_text_content()
             first_brace = generated_raw.find("{")
             last_brace = generated_raw.rfind("}")
-            return {**json.loads(generated_raw[first_brace : last_brace + 1])}
-
+            if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
+                raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
+            json_str = generated_raw[first_brace : last_brace + 1]
+            data = json_repair.loads(json_str)
+            if not isinstance(data, dict):
+                raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
+            return data
         except InvokeError as e:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}

@@ -137,9 +137,6 @@ const translation = {
     notConnected: '{{name}} متصل نیست',
     notConnectedTip: 'برای همگام‌سازی با {{name}}، ابتدا باید اتصال به {{name}} برقرار شود.',
   },
-  credentialSelector: {
-    name: '{{pluginName}} {{credentialName}}',
-  },
   conversion: {
     confirm: {
       title: 'تایید',
