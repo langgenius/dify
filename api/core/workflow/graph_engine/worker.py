@@ -127,9 +127,7 @@ class Worker(threading.Thread):
         Args:
             node: The node instance to execute
         """
-        # Generate execution ID before node.run() to ensure consistency across hooks
-        if not node._node_execution_id:
-            node._node_execution_id = str(uuid4())
+        node.ensure_execution_id()
 
         error: Exception | None = None
 
