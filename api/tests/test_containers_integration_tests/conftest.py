@@ -501,8 +501,9 @@ def mock_ssrf_proxy_requests():
     Avoid outbound network during containerized tests by stubbing SSRF proxy helpers.
     """
 
-    import httpx
     from unittest.mock import patch
+
+    import httpx
 
     def _fake_request(method, url, **kwargs):
         request = httpx.Request(method=method, url=url)

@@ -48,7 +48,7 @@ def _patch_redis_clients_on_loaded_modules():
         if module is None:
             continue
         if hasattr(module, "redis_client"):
-            setattr(module, "redis_client", redis_mock)
+            module.redis_client = redis_mock
 
 
 @pytest.fixture

@@ -21,17 +21,16 @@ class TestOpenDAL:
         )
 
     @pytest.fixture(scope="class", autouse=True)
-    def teardown_class(self, request):
+    def teardown_class(self):
         """Clean up after all tests in the class."""
 
-        def cleanup():
-            folder = Path(get_opendal_bucket())
-            if folder.exists() and folder.is_dir():
-                import shutil
+        yield
 
-                shutil.rmtree(folder, ignore_errors=True)
+        folder = Path(get_opendal_bucket())
+        if folder.exists() and folder.is_dir():
+            import shutil
 
-        request.addfinalizer(cleanup)
+            shutil.rmtree(folder, ignore_errors=True)
 
     def test_save_and_exists(self):
         """Test saving data and checking existence."""

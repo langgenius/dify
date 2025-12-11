@@ -1,7 +1,7 @@
+import os
 import pathlib
 import random
 import secrets
-import os
 from collections.abc import Generator
 
 import pytest

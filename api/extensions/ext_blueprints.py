@@ -18,7 +18,7 @@ def _apply_cors_once(bp, /, **cors_kwargs):
     from flask_cors import CORS
 
     CORS(bp, **cors_kwargs)
-    setattr(bp, "_dify_cors_applied", True)
+    bp._dify_cors_applied = True
 
 
 def init_app(app: DifyApp):
