@@ -21,6 +21,7 @@ type NotionPageSelectorProps = {
   datasetId?: string
   credentialList: DataSourceCredential[]
   onSelectCredential?: (credentialId: string) => void
+  supportBatchUpload?: boolean
 }
 
 const NotionPageSelector = ({
@@ -32,6 +33,7 @@ const NotionPageSelector = ({
   datasetId = '',
   credentialList,
   onSelectCredential,
+  supportBatchUpload = false,
 }: NotionPageSelectorProps) => {
   const [searchValue, setSearchValue] = useState('')
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
@@ -110,7 +112,7 @@ const NotionPageSelector = ({
     setCurrentCredential(credential)
     onSelect([]) // Clear selected pages when changing credential
     onSelectCredential?.(credential.credentialId)
-  }, [invalidPreImportNotionPages, onSelect, onSelectCredential])
+  }, [datasetId, invalidPreImportNotionPages, notionCredentials, onSelect, onSelectCredential])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId])
@@ -175,6 +177,7 @@ const NotionPageSelector = ({
               canPreview={canPreview}
               previewPageId={previewPageId}
               onPreview={handlePreviewPage}
+              isMultipleChoice={supportBatchUpload}
             />
           )}
         </div>

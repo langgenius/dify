@@ -9,7 +9,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment
+from models.dataset import Dataset, DatasetMetadataBinding, DocumentSegment, SegmentAttachmentBinding
 from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
@@ -36,6 +36,16 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
             raise Exception("Document has no dataset")
 
         segments = db.session.scalars(select(DocumentSegment).where(DocumentSegment.document_id == document_id)).all()
+        # Use JOIN to fetch attachments with bindings in a single query
+        attachments_with_bindings = db.session.execute(
+            select(SegmentAttachmentBinding, UploadFile)
+            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+            .where(
+                SegmentAttachmentBinding.tenant_id == dataset.tenant_id,
+                SegmentAttachmentBinding.dataset_id == dataset_id,
+                SegmentAttachmentBinding.document_id == document_id,
+            )
+        ).all()
         # check segment is exist
         if segments:
             index_node_ids = [segment.index_node_id for segment in segments]
@@ -69,6 +79,19 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                     logger.exception("Delete file failed when document deleted, file_id: %s", file_id)
                 db.session.delete(file)
                 db.session.commit()
+        # delete segment attachments
+        if attachments_with_bindings:
+            for binding, attachment_file in attachments_with_bindings:
+                try:
+                    storage.delete(attachment_file.key)
+                except Exception:
+                    logger.exception(
+                        "Delete attachment_file failed when storage deleted, \
+                                        attachment_file_id: %s",
+                        binding.attachment_id,
+                    )
+                db.session.delete(attachment_file)
+                db.session.delete(binding)
 
         # delete dataset metadata binding
         db.session.query(DatasetMetadataBinding).where(
