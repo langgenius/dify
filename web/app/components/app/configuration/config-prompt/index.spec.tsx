@@ -99,9 +99,7 @@ jest.mock('./advanced-prompt-input', () => ({
   },
 }))
 const getContextValue = (overrides: Partial<DebugConfiguration> = {}): DebugConfiguration => {
-  const defaultValue = debugConfigDefaultValue
   return {
-    ...defaultValue,
     setCurrentAdvancedPrompt: jest.fn(),
     isAdvancedMode: false,
     currentAdvancedPrompt: [],
