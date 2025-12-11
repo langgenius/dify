@@ -155,6 +155,12 @@ class AppAnnotationService:
 
     @classmethod
     def export_annotation_list_by_app_id(cls, app_id: str):
+        """
+        Export all annotations for an app with CSV injection protection.
+
+        Sanitizes question and content fields to prevent formula injection attacks
+        when exported to CSV format.
+        """
         # get app info
         _, current_tenant_id = current_account_with_tenant()
         app = (
@@ -171,6 +177,18 @@ class AppAnnotationService:
             .order_by(MessageAnnotation.created_at.desc())
             .all()
         )
+
+        # Sanitize CSV-injectable fields to prevent formula injection
+        from core.helper.csv_sanitizer import CSVSanitizer
+
+        for annotation in annotations:
+            # Sanitize question field if present
+            if annotation.question:
+                annotation.question = CSVSanitizer.sanitize_value(annotation.question)
+            # Sanitize content field (answer)
+            if annotation.content:
+                annotation.content = CSVSanitizer.sanitize_value(annotation.content)
+
         return annotations
 
     @classmethod
