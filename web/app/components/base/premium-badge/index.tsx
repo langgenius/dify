@@ -12,6 +12,7 @@ const PremiumBadgeVariants = cva(
       size: {
         s: 'premium-badge-s',
         m: 'premium-badge-m',
+        custom: '',
       },
       color: {
         blue: 'premium-badge-blue',
@@ -33,7 +34,7 @@ const PremiumBadgeVariants = cva(
 )
 
 type PremiumBadgeProps = {
-  size?: 's' | 'm'
+  size?: 's' | 'm' | 'custom'
   color?: 'blue' | 'indigo' | 'gray' | 'orange'
   allowHover?: boolean
   styleCss?: CSSProperties

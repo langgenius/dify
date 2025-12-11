@@ -485,9 +485,8 @@ export const ModalContextProvider = ({
               show
               usage={showTriggerEventsLimitModal.payload.usage}
               total={showTriggerEventsLimitModal.payload.total}
-              planType={showTriggerEventsLimitModal.payload.planType}
               resetInDays={showTriggerEventsLimitModal.payload.resetInDays}
-              onDismiss={() => {
+              onClose={() => {
                 persistTriggerEventsLimitModalDismiss()
                 setShowTriggerEventsLimitModal(null)
               }}

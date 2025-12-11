@@ -11,7 +11,7 @@ type Props = {
   className?: string
   style?: CSSProperties
   isFull?: boolean
-  size?: 'md' | 'lg'
+  size?: 's' | 'm' | 'custom'
   isPlain?: boolean
   isShort?: boolean
   onClick?: () => void
@@ -21,6 +21,7 @@ type Props = {
 
 const UpgradeBtn: FC<Props> = ({
   className,
+  size = 'm',
   style,
   isPlain = false,
   isShort = false,
@@ -62,7 +63,7 @@ const UpgradeBtn: FC<Props> = ({
 
   return (
     <PremiumBadge
-      size='m'
+      size={size}
       color='blue'
       allowHover={true}
       onClick={onClick}

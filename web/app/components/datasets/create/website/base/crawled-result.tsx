@@ -16,7 +16,6 @@ type Props = {
   onSelectedChange: (selected: CrawlResultItem[]) => void
   onPreview: (payload: CrawlResultItem) => void
   usedTime: number
-  isMultipleChoice: boolean
 }
 
 const CrawledResult: FC<Props> = ({
@@ -26,7 +25,6 @@ const CrawledResult: FC<Props> = ({
   onSelectedChange,
   onPreview,
   usedTime,
-  isMultipleChoice,
 }) => {
   const { t } = useTranslation()
 
@@ -42,17 +40,13 @@ const CrawledResult: FC<Props> = ({
 
   const handleItemCheckChange = useCallback((item: CrawlResultItem) => {
     return (checked: boolean) => {
-      if (checked) {
-        if (isMultipleChoice)
-          onSelectedChange([...checkedList, item])
-        else
-          onSelectedChange([item])
-      }
-      else {
+      if (checked)
+        onSelectedChange([...checkedList, item])
+
+      else
         onSelectedChange(checkedList.filter(checkedItem => checkedItem.source_url !== item.source_url))
-      }
     }
-  }, [checkedList, isMultipleChoice, onSelectedChange])
+  }, [checkedList, onSelectedChange])
 
   const [previewIndex, setPreviewIndex] = React.useState<number>(-1)
   const handlePreview = useCallback((index: number) => {
@@ -65,13 +59,11 @@ const CrawledResult: FC<Props> = ({
   return (
     <div className={cn(className, 'border-t-[0.5px] border-divider-regular shadow-xs shadow-shadow-shadow-3')}>
       <div className='flex h-[34px] items-center justify-between px-4'>
-        {isMultipleChoice && (
-          <CheckboxWithLabel
-            isChecked={isCheckAll}
-            onChange={handleCheckedAll} label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
-            labelClassName='system-[13px] leading-[16px] font-medium text-text-secondary'
-          />
-        )}
+        <CheckboxWithLabel
+          isChecked={isCheckAll}
+          onChange={handleCheckedAll} label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
+          labelClassName='system-[13px] leading-[16px] font-medium text-text-secondary'
+        />
         <div className='text-xs text-text-tertiary'>
           {t(`${I18N_PREFIX}.scrapTimeInfo`, {
             total: list.length,
@@ -88,7 +80,6 @@ const CrawledResult: FC<Props> = ({
             payload={item}
             isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
             onCheckChange={handleItemCheckChange(item)}
-            isMultipleChoice={isMultipleChoice}
           />
         ))}
       </div>

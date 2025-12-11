@@ -11,13 +11,19 @@ export type IAmplitudeProps = {
   sessionReplaySampleRate?: number
 }
 
+// Check if Amplitude should be enabled
+export const isAmplitudeEnabled = () => {
+  const apiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
+  return IS_CLOUD_EDITION && !!apiKey
+}
+
 const AmplitudeProvider: FC<IAmplitudeProps> = ({
   apiKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY ?? '',
   sessionReplaySampleRate = 1,
 }) => {
   useEffect(() => {
-    // Only enable in Saas edition
-    if (!IS_CLOUD_EDITION)
+    // Only enable in Saas edition with valid API key
+    if (!isAmplitudeEnabled())
       return
 
     // Initialize Amplitude
