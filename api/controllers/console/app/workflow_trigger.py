@@ -114,7 +114,7 @@ class AppTriggersApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/trigger-enable")
 class AppTriggerEnableApi(Resource):
-    @console_ns.expect(console_ns.models[ParserEnable.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ParserEnable.__name__])
     @setup_required
     @login_required
     @account_initialization_required
