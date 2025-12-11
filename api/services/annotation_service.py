@@ -390,7 +390,7 @@ class AppAnnotationService:
                 )
             
             # Build result list with validation
-            result = []
+            result: list[dict] = []
             for idx, row in df.iterrows():
                 # Stop if we exceed the limit
                 if len(result) >= max_records:
@@ -399,15 +399,19 @@ class AppAnnotationService:
                         f"Please split your file into smaller batches."
                     )
                 
-                # Validate row has required columns
-                if pd.isna(row.iloc[0]) or pd.isna(row.iloc[1]):
-                    continue  # Skip rows with empty question or answer
+                # Extract and validate question and answer
+                try:
+                    question_raw = row.iloc[0]
+                    answer_raw = row.iloc[1]
+                except (IndexError, KeyError):
+                    continue  # Skip malformed rows
                 
-                question = str(row.iloc[0]).strip()
-                answer = str(row.iloc[1]).strip()
+                # Convert to string and strip whitespace
+                question = str(question_raw).strip() if question_raw is not None else ""
+                answer = str(answer_raw).strip() if answer_raw is not None else ""
                 
-                # Skip empty entries
-                if not question or not answer:
+                # Skip empty entries or NaN values
+                if not question or not answer or question.lower() == 'nan' or answer.lower() == 'nan':
                     continue
                 
                 # Validate length constraints (idx is pandas index, convert to int for display)
@@ -451,8 +455,6 @@ class AppAnnotationService:
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_import_annotations_task.delay(str(job_id), result, app_id, current_tenant_id, current_user.id)
             
-        except pd.errors.ParserError as e:
-            return {"error_msg": f"Failed to parse CSV file: {str(e)}. Please ensure the file is valid CSV format."}
         except ValueError as e:
             return {"error_msg": str(e)}
         except Exception as e:
@@ -464,7 +466,10 @@ class AppAnnotationService:
                 except Exception:
                     # Silently ignore cleanup errors - the job will be auto-expired
                     logger.debug("Failed to clean up active job tracking during error handling")
-            return {"error_msg": f"An error occurred while processing the file: {str(e)}"}
+            
+            # Check if it's a CSV parsing error
+            error_str = str(e)
+            return {"error_msg": f"An error occurred while processing the file: {error_str}"}
         
         return {"job_id": job_id, "job_status": "waiting", "record_count": len(result)}
 
