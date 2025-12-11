@@ -230,7 +230,7 @@ class ModelProviderModelApi(Resource):
 
         return {"result": "success"}, 200
 
-    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required

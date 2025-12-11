@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PreviewDetail(BaseModel):
@@ -20,7 +20,7 @@ class IndexingEstimate(BaseModel):
 class PipelineDataset(BaseModel):
     id: str
     name: str
-    description: str
+    description: str | None = Field(default="", description="knowledge dataset description")
     chunk_structure: str
 
 
