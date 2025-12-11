@@ -3,7 +3,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import marshal_with
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -30,8 +30,15 @@ class ConversationListQuery(BaseModel):
 
 
 class ConversationRenamePayload(BaseModel):
-    name: str
+    name: str | None = None
     auto_generate: bool = False
+
+    @model_validator(mode="after")
+    def validate_name_requirement(self):
+        if not self.auto_generate:
+            if self.name is None or not self.name.strip():
+                raise ValueError("name is required when auto_generate is false")
+        return self
 
 
 register_schema_models(console_ns, ConversationListQuery, ConversationRenamePayload)
