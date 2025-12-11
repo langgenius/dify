@@ -164,9 +164,7 @@ class TestAnnotationImportFileValidation:
         max_size = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
         large_content = b"x" * (max_size + 1024)  # Exceed by 1KB
 
-        file = FileStorage(
-            stream=io.BytesIO(large_content), filename="test.csv", content_type="text/csv"
-        )
+        file = FileStorage(stream=io.BytesIO(large_content), filename="test.csv", content_type="text/csv")
 
         # Should be rejected in controller
         # This would be tested in integration tests with actual endpoint
@@ -212,9 +210,7 @@ class TestAnnotationImportServiceValidation:
         for i in range(max_records + 100):
             csv_content += f"Question {i},Answer {i}\n"
 
-        file = FileStorage(
-            stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv"
-        )
+        file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
@@ -237,9 +233,7 @@ class TestAnnotationImportServiceValidation:
         # Create CSV with only header (no data rows)
         csv_content = "question,answer\n"
 
-        file = FileStorage(
-            stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv"
-        )
+        file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
@@ -257,11 +251,9 @@ class TestAnnotationImportServiceValidation:
         from services.annotation_service import AppAnnotationService
 
         # Create invalid CSV content
-        csv_content = "invalid,csv,format\nwith,unbalanced,quotes,and\"stuff"
+        csv_content = 'invalid,csv,format\nwith,unbalanced,quotes,and"stuff'
 
-        file = FileStorage(
-            stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv"
-        )
+        file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
@@ -280,9 +272,7 @@ class TestAnnotationImportServiceValidation:
         # Create valid CSV
         csv_content = "question,answer\nWhat is AI?,Artificial Intelligence\nWhat is ML?,Machine Learning\n"
 
-        file = FileStorage(
-            stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv"
-        )
+        file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
