@@ -152,7 +152,7 @@ const translation = {
       btnText: '판매 문의하기',
       for: '대규모 팀을 위해',
       priceTip: '연간 청구 전용',
-      features: ['기업용 확장형 배포 솔루션', '상업용 라이선스 승인', '독점 기업 기능', '여러 작업 공간 및 기업 관리', '싱글 사인온', 'Dify 파트너가 협상한 SLA', '고급 보안 및 제어', 'Dify 공식 업데이트 및 유지보수', '전문 기술 지원'],
+      features: ['기업용 확장형 배포 솔루션', '상업용 라이선스 승인', '독점 기업 기능', '여러 작업 공간 및 기업 관리', '싱글 사인온', 'Dify 파트너가 협상한 SLA', '고급 보안 및 제어', 'Dify 공식 업데이트 및 유지 관리', '전문 기술 지원'],
     },
     community: {
       btnText: '커뮤니티 시작하기',
@@ -215,6 +215,20 @@ const translation = {
   viewBillingTitle: '청구 및 구독',
   viewBillingDescription: '결제 수단, 청구서 및 구독 변경 관리',
   viewBillingAction: '관리하다',
+  upgrade: {
+    uploadMultiplePages: {
+      title: '한 번에 여러 문서를 업로드하려면 업그레이드하세요',
+      description: '업로드 한도에 도달했습니다 — 현재 요금제에서는 한 번에 한 개의 문서만 선택하고 업로드할 수 있습니다.',
+    },
+    uploadMultipleFiles: {
+      title: '업그레이드하여 대량 문서 업로드 기능 잠금 해제',
+      description: '한 번에 더 많은 문서를 일괄 업로드하여 시간 절약과 효율성을 높이세요.',
+    },
+    addChunks: {
+      title: '계속해서 조각을 추가하려면 업그레이드하세요',
+      description: '이 요금제에서는 더 이상 청크를 추가할 수 있는 한도에 도달했습니다.',
+    },
+  },
 }
 
 export default translation

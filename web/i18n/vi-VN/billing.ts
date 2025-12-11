@@ -202,6 +202,20 @@ const translation = {
   viewBillingTitle: 'Thanh toán và Đăng ký',
   viewBillingDescription: 'Quản lý phương thức thanh toán, hóa đơn và thay đổi đăng ký',
   viewBillingAction: 'Quản lý',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Nâng cấp để tải lên nhiều tài liệu cùng lúc',
+      description: 'Bạn đã đạt đến giới hạn tải lên — chỉ có thể chọn và tải lên một tài liệu trong một lần với gói hiện tại của bạn.',
+    },
+    uploadMultipleFiles: {
+      title: 'Nâng cấp để mở khóa tải lên nhiều tài liệu',
+      description: 'Tải lên nhiều tài liệu cùng lúc để tiết kiệm thời gian và nâng cao hiệu quả.',
+    },
+    addChunks: {
+      title: 'Nâng cấp để tiếp tục thêm các phần',
+      description: 'Bạn đã đạt đến giới hạn thêm phần cho gói này.',
+    },
+  },
 }
 
 export default translation

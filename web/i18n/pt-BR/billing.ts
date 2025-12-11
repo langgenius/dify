@@ -153,7 +153,7 @@ const translation = {
       for: 'Para Usuários Individuais, Pequenas Equipes ou Projetos Não Comerciais',
     },
     premium: {
-      features: ['Confiabilidade Autogerenciada por Diversos Provedores de Nuvem', 'Espaço de Trabalho Único', 'Personalização de Logo e Marca do WebApp', 'Suporte Prioritário por Email e Chat'],
+      features: ['Confiabilidade Autogerenciada por Diversos Provedores de Nuvem', 'Espaço de Trabalho Único', 'Personalização de Logo e Branding do WebApp', 'Suporte Prioritário por E-mail e Chat'],
       includesTitle: 'Tudo da Comunidade, além de:',
       for: 'Para organizações e equipes de médio porte',
       price: 'Escalável',
@@ -202,6 +202,20 @@ const translation = {
   viewBillingTitle: 'Faturamento e Assinaturas',
   viewBillingDescription: 'Gerencie métodos de pagamento, faturas e alterações de assinatura',
   viewBillingAction: 'Gerenciar',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Atualize para enviar vários documentos de uma vez',
+      description: 'Você atingiu o limite de upload — apenas um documento pode ser selecionado e enviado por vez no seu plano atual.',
+    },
+    uploadMultipleFiles: {
+      title: 'Atualize para desbloquear o envio de documentos em lote',
+      description: 'Faça upload de mais documentos de uma vez para economizar tempo e aumentar a eficiência.',
+    },
+    addChunks: {
+      title: 'Faça upgrade para continuar adicionando blocos',
+      description: 'Você atingiu o limite de adição de blocos para este plano.',
+    },
+  },
 }
 
 export default translation

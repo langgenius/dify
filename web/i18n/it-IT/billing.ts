@@ -164,7 +164,7 @@ const translation = {
       for: 'Per utenti individuali, piccole squadre o progetti non commerciali',
     },
     premium: {
-      features: ['Affidabilità autogestita dai vari provider cloud', 'Spazio di lavoro singolo', 'Personalizzazione del Logo e del Marchio dell\'App Web', 'Assistenza Prioritaria via Email e Chat'],
+      features: ['Affidabilità Autogestita dai Vari Provider Cloud', 'Spazio di lavoro singolo', 'Personalizzazione del Logo e del Marchio dell\'App Web', 'Assistenza Prioritaria via Email e Chat'],
       name: 'Premium',
       priceTip: 'Basato su Cloud Marketplace',
       includesTitle: 'Tutto dalla Community, oltre a:',
@@ -213,6 +213,20 @@ const translation = {
   viewBillingTitle: 'Fatturazione e Abbonamenti',
   viewBillingDescription: 'Gestisci metodi di pagamento, fatture e modifiche all\'abbonamento',
   viewBillingAction: 'Gestire',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Aggiorna per caricare più documenti contemporaneamente',
+      description: 'Hai raggiunto il limite di caricamento: sul tuo piano attuale può essere selezionato e caricato un solo documento alla volta.',
+    },
+    uploadMultipleFiles: {
+      title: 'Aggiorna per sbloccare il caricamento di documenti in batch',
+      description: 'Carica più documenti contemporaneamente per risparmiare tempo e migliorare l\'efficienza.',
+    },
+    addChunks: {
+      title: 'Aggiorna per continuare ad aggiungere blocchi',
+      description: 'Hai raggiunto il limite di aggiunta di blocchi per questo piano.',
+    },
+  },
 }
 
 export default translation

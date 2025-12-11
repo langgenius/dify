@@ -202,6 +202,20 @@ const translation = {
   viewBillingTitle: '帳單與訂閱',
   viewBillingDescription: '管理付款方式、發票和訂閱變更',
   viewBillingAction: '管理',
+  upgrade: {
+    uploadMultiplePages: {
+      title: '升級以一次上傳多個文件',
+      description: '您已達到上傳限制 — 在您目前的方案下，每次只能選擇並上傳一個文件。',
+    },
+    uploadMultipleFiles: {
+      title: '升級以解鎖批量上傳文件功能',
+      description: '一次批量上傳更多文件，以節省時間並提高效率。',
+    },
+    addChunks: {
+      title: '升級以繼續添加區塊',
+      description: '您已達到此方案可新增區塊的上限。',
+    },
+  },
 }
 
 export default translation
