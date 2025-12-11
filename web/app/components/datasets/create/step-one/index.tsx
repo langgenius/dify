@@ -328,7 +328,6 @@ const StepOne = ({
                       crawlOptions={crawlOptions}
                       onCrawlOptionsChange={onCrawlOptionsChange}
                       authedDataSourceList={authedDataSourceList}
-                      supportBatchUpload={supportBatchUpload}
                     />
                   </div>
                   {isShowVectorSpaceFull && (
