@@ -75,15 +75,24 @@ workflow:
         selected: false
         title: 用户输入
         type: start
-        variables: []
-      height: 73
+        variables:
+        - default: ''
+          hint: ''
+          label: query
+          max_length: 48
+          options: []
+          placeholder: ''
+          required: true
+          type: text-input
+          variable: query
+      height: 109
       id: '1765423445456'
       position:
-        x: 80
-        y: 282
+        x: -48
+        y: 261
       positionAbsolute:
-        x: 80
-        y: 282
+        x: -48
+        y: 261
       selected: false
       sourcePosition: right
       targetPosition: left
@@ -92,13 +101,13 @@ workflow:
     - data:
         outputs:
         - value_selector:
-          - sys
-          - app_id
-          variable: app_id
-        selected: false
+          - '1765423445456'
+          - query
+          variable: query
+        selected: true
         title: 输出
         type: end
-      height: 89
+      height: 88
       id: '1765423454810'
       position:
         x: 382
@@ -112,7 +121,7 @@ workflow:
       type: custom
       width: 242
     viewport:
-      x: 35
-      y: -101
+      x: 139
+      y: -135
       zoom: 1
   rag_pipeline_variables: []
