@@ -9,7 +9,6 @@ import io
 from unittest.mock import MagicMock, patch
 
 import pytest
-from flask import Flask
 from werkzeug.datastructures import FileStorage
 
 from configs import dify_config
@@ -320,6 +319,7 @@ class TestAnnotationImportTaskOptimization:
         # Hard limit should be 6 minutes (360s)
         # Soft limit should be 5 minutes (300s)
         # Note: actual values depend on Celery configuration
+
 
 class TestConfigurationValues:
     """Test that security configuration values are properly set."""
