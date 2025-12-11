@@ -217,8 +217,11 @@ class MCPProviderEntity(BaseModel):
         if not self.credentials:
             return None
         credentials = self.decrypt_credentials()
+        access_token = credentials.get("access_token", "")
+        if not access_token:
+            return None
         return OAuthTokens(
-            access_token=credentials.get("access_token", ""),
+            access_token=access_token,
             token_type=credentials.get("token_type", DEFAULT_TOKEN_TYPE),
             expires_in=int(credentials.get("expires_in", str(DEFAULT_EXPIRES_IN)) or DEFAULT_EXPIRES_IN),
             refresh_token=credentials.get("refresh_token", ""),
