@@ -4,7 +4,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from flask_restx._http import HTTPStatus
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -37,8 +37,15 @@ class ConversationListQuery(BaseModel):
 
 
 class ConversationRenamePayload(BaseModel):
-    name: str = Field(description="New conversation name")
+    name: str | None = Field(default=None, description="New conversation name (required if auto_generate is false)")
     auto_generate: bool = Field(default=False, description="Auto-generate conversation name")
+
+    @model_validator(mode="after")
+    def validate_name_requirement(self):
+        if not self.auto_generate:
+            if self.name is None or not self.name.strip():
+                raise ValueError("name is required when auto_generate is false")
+        return self
 
 
 class ConversationVariablesQuery(BaseModel):
