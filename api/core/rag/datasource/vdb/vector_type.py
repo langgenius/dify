@@ -27,6 +27,7 @@ class VectorType(StrEnum):
     UPSTASH = "upstash"
     TIDB_ON_QDRANT = "tidb_on_qdrant"
     OCEANBASE = "oceanbase"
+    SEEKDB = "seekdb"
     OPENGAUSS = "opengauss"
     TABLESTORE = "tablestore"
     HUAWEI_CLOUD = "huawei_cloud"
