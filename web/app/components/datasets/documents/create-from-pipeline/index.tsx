@@ -421,11 +421,12 @@ const CreateFormPipeline = () => {
   }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType])
 
   const clearDataSourceData = useCallback((dataSource: Datasource) => {
-    if (dataSource.nodeData.provider_type === DatasourceType.onlineDocument)
+    const providerType = dataSource.nodeData.provider_type
+    if (providerType === DatasourceType.onlineDocument)
       clearOnlineDocumentData()
-    else if (dataSource.nodeData.provider_type === DatasourceType.websiteCrawl)
+    else if (providerType === DatasourceType.websiteCrawl)
       clearWebsiteCrawlData()
-    else if (dataSource.nodeData.provider_type === DatasourceType.onlineDrive)
+    else if (providerType === DatasourceType.onlineDrive)
       clearOnlineDriveData()
   }, [clearOnlineDocumentData, clearOnlineDriveData, clearWebsiteCrawlData])
 
@@ -512,7 +513,7 @@ const CreateFormPipeline = () => {
                     tip={tip}
                   />
                   {
-                    !supportBatchUpload && localFileList.length > 0 && (
+                    !supportBatchUpload && datasourceType === DatasourceType.localFile && localFileList.length > 0 && (
                       <>
                         <Divider type='horizontal' className='my-4 h-px bg-divider-subtle' />
                         <UpgradeCard />
