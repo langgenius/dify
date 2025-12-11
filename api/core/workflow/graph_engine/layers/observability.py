@@ -9,7 +9,7 @@ associates with the node span.
 
 import logging
 from dataclasses import dataclass
-from typing import final
+from typing import cast, final
 
 from opentelemetry import context as context_api
 from opentelemetry.trace import Span, SpanKind, get_tracer, set_span_in_context
@@ -24,6 +24,7 @@ from core.workflow.graph_engine.layers.node_parsers import (
     ToolNodeOTelParser,
 )
 from core.workflow.nodes.base.node import Node
+from extensions.otel.runtime import is_instrument_flag_enabled
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class ObservabilityLayer(GraphEngineLayer):
         super().__init__()
         self._node_contexts: dict[str, _NodeSpanContext] = {}
         self._parsers: dict[NodeType, NodeOTelParser] = {}
-        self._default_parser: NodeOTelParser = DefaultNodeOTelParser()
+        self._default_parser: NodeOTelParser = cast(NodeOTelParser, DefaultNodeOTelParser())
         self._is_disabled: bool = False
         self._tracer = None
         self._build_parser_registry()
@@ -57,7 +58,7 @@ class ObservabilityLayer(GraphEngineLayer):
 
     def _init_tracer(self) -> None:
         """Initialize OpenTelemetry tracer in constructor."""
-        if not dify_config.ENABLE_OTEL:
+        if not (dify_config.ENABLE_OTEL or is_instrument_flag_enabled()):
             self._is_disabled = True
             return
 
@@ -111,7 +112,7 @@ class ObservabilityLayer(GraphEngineLayer):
             self._node_contexts[node._node_execution_id] = _NodeSpanContext(span=span, token=token)
 
         except Exception as e:
-            logger.debug("Failed to create OpenTelemetry span for node %s: %s", node.id, e)
+            logger.warning("Failed to create OpenTelemetry span for node %s: %s", node.id, e)
 
     @override
     def on_node_run_end(self, node: Node, error: Exception | None) -> None:
@@ -126,12 +127,11 @@ class ObservabilityLayer(GraphEngineLayer):
         try:
             if not node._node_execution_id:
                 return
-
             node_context = self._node_contexts.get(node._node_execution_id)
             if not node_context:
                 return
-            span = node_context.span
 
+            span = node_context.span
             parser = self._get_parser(node)
             try:
                 parser.parse(node=node, span=span, error=error)
@@ -142,11 +142,11 @@ class ObservabilityLayer(GraphEngineLayer):
                     try:
                         context_api.detach(token)
                     except Exception:
-                        pass
+                        logger.warning("Failed to detach OpenTelemetry token: %s", token)
                 self._node_contexts.pop(node._node_execution_id, None)
 
         except Exception as e:
-            logger.debug("Failed to end OpenTelemetry span for node %s: %s", node.id, e)
+            logger.warning("Failed to end OpenTelemetry span for node %s: %s", node.id, e)
 
     @override
     def on_event(self, event) -> None:
