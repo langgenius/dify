@@ -1,6 +1,6 @@
 """Abstract interface for document loader implementations."""
 
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.processor.paragraph_index_processor import ParagraphIndexProcessor
 from core.rag.index_processor.processor.parent_child_index_processor import ParentChildIndexProcessor
@@ -19,11 +19,11 @@ class IndexProcessorFactory:
         if not self._index_type:
             raise ValueError("Index type must be specified.")
 
-        if self._index_type == IndexType.PARAGRAPH_INDEX:
+        if self._index_type == IndexStructureType.PARAGRAPH_INDEX:
             return ParagraphIndexProcessor()
-        elif self._index_type == IndexType.QA_INDEX:
+        elif self._index_type == IndexStructureType.QA_INDEX:
             return QAIndexProcessor()
-        elif self._index_type == IndexType.PARENT_CHILD_INDEX:
+        elif self._index_type == IndexStructureType.PARENT_CHILD_INDEX:
             return ParentChildIndexProcessor()
         else:
             raise ValueError(f"Index type {self._index_type} is not supported.")

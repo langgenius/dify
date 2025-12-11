@@ -2,6 +2,9 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { Linter } = require('eslint')
+const sonarPlugin = require('eslint-plugin-sonarjs')
+const tsParser = require('@typescript-eslint/parser')
 
 // ============================================================================
 // Simple Analyzer
@@ -12,7 +15,11 @@ class ComponentAnalyzer {
     const resolvedPath = absolutePath ?? path.resolve(process.cwd(), filePath)
     const fileName = path.basename(filePath, path.extname(filePath))
     const lineCount = code.split('\n').length
-    const complexity = this.calculateComplexity(code, lineCount)
+
+    // Calculate complexity metrics
+    const { total: rawComplexity, max: rawMaxComplexity } = this.calculateCognitiveComplexity(code)
+    const complexity = this.normalizeComplexity(rawComplexity)
+    const maxComplexity = this.normalizeComplexity(rawMaxComplexity)
 
     // Count usage references (may take a few seconds)
     const usageCount = this.countUsageReferences(filePath, resolvedPath)
@@ -41,6 +48,9 @@ class ComponentAnalyzer {
       hasReactQuery: code.includes('useQuery') || code.includes('useMutation'),
       hasAhooks: code.includes("from 'ahooks'"),
       complexity,
+      maxComplexity,
+      rawComplexity,
+      rawMaxComplexity,
       lineCount,
       usageCount,
       priority,
@@ -64,193 +74,96 @@ class ComponentAnalyzer {
   }
 
   /**
-   * Calculate component complexity score
-   * Based on Cognitive Complexity + React-specific metrics
+   * Calculate Cognitive Complexity using SonarJS ESLint plugin
+   * Reference: https://www.sonarsource.com/blog/5-clean-code-tips-for-reducing-cognitive-complexity/
    *
-   * Score Ranges:
-   *   0-10: 🟢 Simple (5-10 min to test)
-   *   11-30: 🟡 Medium (15-30 min to test)
-   *   31-50: 🟠 Complex (30-60 min to test)
-   *   51+: 🔴 Very Complex (60+ min, consider splitting)
+   * Returns raw (unnormalized) complexity values:
+   *   - total: sum of all functions' complexity in the file
+   *   - max: highest single function complexity in the file
+   *
+   * Raw Score Thresholds (per function):
+   *   0-15: Simple | 16-30: Medium | 31-50: Complex | 51+: Very Complex
+   *
+   * @returns {{ total: number, max: number }} raw total and max complexity
    */
-  calculateComplexity(code, lineCount) {
-    let score = 0
+  calculateCognitiveComplexity(code) {
+    const linter = new Linter()
+    const baseConfig = {
+      languageOptions: {
+        parser: tsParser,
+        parserOptions: {
+          ecmaVersion: 'latest',
+          sourceType: 'module',
+          ecmaFeatures: { jsx: true },
+        },
+      },
+      plugins: { sonarjs: sonarPlugin },
+    }
 
-    const count = pattern => this.countMatches(code, pattern)
+    try {
+      // Get total complexity using 'metric' option (more stable)
+      const totalConfig = {
+        ...baseConfig,
+        rules: { 'sonarjs/cognitive-complexity': ['error', 0, 'metric'] },
+      }
+      const totalMessages = linter.verify(code, totalConfig)
+      const totalMsg = totalMessages.find(
+        msg => msg.ruleId === 'sonarjs/cognitive-complexity'
+          && msg.messageId === 'fileComplexity',
+      )
+      const total = totalMsg ? parseInt(totalMsg.message, 10) : 0
 
-    // ===== React Hooks (State Management Complexity) =====
-    const stateHooks = count(/useState/g)
-    const reducerHooks = count(/useReducer/g)
-    const effectHooks = count(/useEffect/g)
-    const callbackHooks = count(/useCallback/g)
-    const memoHooks = count(/useMemo/g)
-    const refHooks = count(/useRef/g)
-    const imperativeHandleHooks = count(/useImperativeHandle/g)
+      // Get max function complexity by analyzing each function
+      const maxConfig = {
+        ...baseConfig,
+        rules: { 'sonarjs/cognitive-complexity': ['error', 0] },
+      }
+      const maxMessages = linter.verify(code, maxConfig)
+      let max = 0
+      const complexityPattern = /reduce its Cognitive Complexity from (\d+)/
 
-    const builtinHooks = stateHooks + reducerHooks + effectHooks
-      + callbackHooks + memoHooks + refHooks + imperativeHandleHooks
-    const totalHooks = count(/use[A-Z]\w+/g)
-    const customHooks = Math.max(0, totalHooks - builtinHooks)
+      maxMessages.forEach((msg) => {
+        if (msg.ruleId === 'sonarjs/cognitive-complexity') {
+          const match = msg.message.match(complexityPattern)
+          if (match && match[1])
+            max = Math.max(max, parseInt(match[1], 10))
+        }
+      })
 
-    score += stateHooks * 5 // Each state +5 (need to test state changes)
-    score += reducerHooks * 6 // Each reducer +6 (complex state management)
-    score += effectHooks * 6 // Each effect +6 (need to test deps & cleanup)
-    score += callbackHooks * 2 // Each callback +2
-    score += memoHooks * 2 // Each memo +2
-    score += refHooks * 1 // Each ref +1
-    score += imperativeHandleHooks * 4 // Each imperative handle +4 (exposes methods)
-    score += customHooks * 3 // Each custom hook +3
-
-    // ===== Control Flow Complexity (Cyclomatic Complexity) =====
-    score += count(/if\s*\(/g) * 2 // if statement
-    score += count(/else\s+if/g) * 2 // else if
-    score += count(/\?\s*[^:]+\s*:/g) * 1 // ternary operator
-    score += count(/switch\s*\(/g) * 3 // switch
-    score += count(/case\s+/g) * 1 // case branch
-    score += count(/&&/g) * 1 // logical AND
-    score += count(/\|\|/g) * 1 // logical OR
-    score += count(/\?\?/g) * 1 // nullish coalescing
-
-    // ===== Loop Complexity =====
-    score += count(/\.map\(/g) * 2 // map
-    score += count(/\.filter\(/g) * 1 // filter
-    score += count(/\.reduce\(/g) * 3 // reduce (complex)
-    score += count(/for\s*\(/g) * 2 // for loop
-    score += count(/while\s*\(/g) * 3 // while loop
-
-    // ===== Props and Events Complexity =====
-    // Count unique props from interface/type definitions only (avoid duplicates)
-    const propsCount = this.countUniqueProps(code)
-    score += Math.floor(propsCount / 2) // Every 2 props +1
-
-    // Count unique event handler names (avoid duplicates from type defs, params, usage)
-    const uniqueEventHandlers = this.countUniqueEventHandlers(code)
-    score += uniqueEventHandlers * 2 // Each unique event handler +2
-
-    // ===== API Call Complexity =====
-    score += count(/fetch\(/g) * 4 // fetch
-    score += count(/axios\./g) * 4 // axios
-    score += count(/useSWR/g) * 4 // SWR
-    score += count(/useQuery/g) * 4 // React Query
-    score += count(/\.then\(/g) * 2 // Promise
-    score += count(/await\s+/g) * 2 // async/await
-
-    // ===== Third-party Library Integration =====
-    // Only count complex UI libraries that require integration testing
-    // Data fetching libs (swr, react-query, ahooks) don't add complexity
-    // because they are already well-tested; we only need to mock them
-    const complexUILibs = [
-      { pattern: /reactflow|ReactFlow/, weight: 15 },
-      { pattern: /@monaco-editor/, weight: 12 },
-      { pattern: /echarts/, weight: 8 },
-      { pattern: /lexical/, weight: 10 },
-    ]
-
-    complexUILibs.forEach(({ pattern, weight }) => {
-      if (pattern.test(code)) score += weight
-    })
-
-    // ===== Code Size Complexity =====
-    if (lineCount > 500) score += 10
-    else if (lineCount > 300) score += 6
-    else if (lineCount > 150) score += 3
-
-    // ===== Nesting Depth (deep nesting reduces readability) =====
-    const maxNesting = this.calculateNestingDepth(code)
-    score += Math.max(0, (maxNesting - 3)) * 2 // Over 3 levels, +2 per level
-
-    // ===== Context and Global State =====
-    score += count(/useContext/g) * 3
-    score += count(/useStore|useAppStore/g) * 4
-    score += count(/zustand|redux/g) * 3
-
-    // ===== React Advanced Features =====
-    score += count(/React\.memo|memo\(/g) * 2 // Component memoization
-    score += count(/forwardRef/g) * 3 // Ref forwarding
-    score += count(/Suspense/g) * 4 // Suspense boundaries
-    score += count(/\blazy\(/g) * 3 // Lazy loading
-    score += count(/createPortal/g) * 3 // Portal rendering
-
-    return Math.min(score, 100) // Max 100 points
+      return { total, max }
+    }
+    catch {
+      return { total: 0, max: 0 }
+    }
   }
 
   /**
-   * Calculate maximum nesting depth
+   * Normalize cognitive complexity to 0-100 scale
+   *
+   * Mapping (aligned with SonarJS thresholds):
+   *   Raw 0-15 (Simple)       -> Normalized 0-25
+   *   Raw 16-30 (Medium)      -> Normalized 25-50
+   *   Raw 31-50 (Complex)     -> Normalized 50-75
+   *   Raw 51+ (Very Complex)  -> Normalized 75-100 (asymptotic)
    */
-  calculateNestingDepth(code) {
-    let maxDepth = 0
-    let currentDepth = 0
-    let inString = false
-    let stringChar = ''
-    let escapeNext = false
-    let inSingleLineComment = false
-    let inMultiLineComment = false
-
-    for (let i = 0; i < code.length; i++) {
-      const char = code[i]
-      const nextChar = code[i + 1]
-
-      if (inSingleLineComment) {
-        if (char === '\n') inSingleLineComment = false
-        continue
-      }
-
-      if (inMultiLineComment) {
-        if (char === '*' && nextChar === '/') {
-          inMultiLineComment = false
-          i++
-        }
-        continue
-      }
-
-      if (inString) {
-        if (escapeNext) {
-          escapeNext = false
-          continue
-        }
-
-        if (char === '\\') {
-          escapeNext = true
-          continue
-        }
-
-        if (char === stringChar) {
-          inString = false
-          stringChar = ''
-        }
-        continue
-      }
-
-      if (char === '/' && nextChar === '/') {
-        inSingleLineComment = true
-        i++
-        continue
-      }
-
-      if (char === '/' && nextChar === '*') {
-        inMultiLineComment = true
-        i++
-        continue
-      }
-
-      if (char === '"' || char === '\'' || char === '`') {
-        inString = true
-        stringChar = char
-        continue
-      }
-
-      if (char === '{') {
-        currentDepth++
-        maxDepth = Math.max(maxDepth, currentDepth)
-        continue
-      }
-
-      if (char === '}') {
-        currentDepth = Math.max(currentDepth - 1, 0)
-      }
+  normalizeComplexity(rawComplexity) {
+    if (rawComplexity <= 15) {
+      // Linear: 0-15 -> 0-25
+      return Math.round((rawComplexity / 15) * 25)
     }
-
-    return maxDepth
+    else if (rawComplexity <= 30) {
+      // Linear: 16-30 -> 25-50
+      return Math.round(25 + ((rawComplexity - 15) / 15) * 25)
+    }
+    else if (rawComplexity <= 50) {
+      // Linear: 31-50 -> 50-75
+      return Math.round(50 + ((rawComplexity - 30) / 20) * 25)
+    }
+    else {
+      // Asymptotic: 51+ -> 75-100
+      // Formula ensures score approaches but never exceeds 100
+      return Math.round(75 + 25 * (1 - 1 / (1 + (rawComplexity - 50) / 100)))
+    }
   }
 
   /**
@@ -379,86 +292,41 @@ class ComponentAnalyzer {
     return true
   }
 
-  countMatches(code, pattern) {
-    const matches = code.match(pattern)
-    return matches ? matches.length : 0
-  }
-
-  /**
-   * Count unique props from interface/type definitions
-   * Only counts props defined in type/interface blocks, not usage
-   */
-  countUniqueProps(code) {
-    const uniqueProps = new Set()
-
-    // Match interface or type definition blocks
-    const typeBlockPattern = /(?:interface|type)\s+\w*Props[^{]*\{([^}]+)\}/g
-    let match
-
-    while ((match = typeBlockPattern.exec(code)) !== null) {
-      const blockContent = match[1]
-      // Match prop names (word followed by optional ? and :)
-      const propPattern = /(\w+)\s*\??:/g
-      let propMatch
-      while ((propMatch = propPattern.exec(blockContent)) !== null) {
-        uniqueProps.add(propMatch[1])
-      }
-    }
-
-    return Math.min(uniqueProps.size, 20) // Max 20 props
-  }
-
-  /**
-   * Count unique event handler names (on[A-Z]...)
-   * Avoids counting the same handler multiple times across type defs, params, and usage
-   */
-  countUniqueEventHandlers(code) {
-    const uniqueHandlers = new Set()
-    const pattern = /on[A-Z]\w+/g
-    let match
-
-    while ((match = pattern.exec(code)) !== null) {
-      uniqueHandlers.add(match[0])
-    }
-
-    return uniqueHandlers.size
-  }
-
   static escapeRegExp(value) {
     return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   }
 
   /**
-   * Calculate test priority based on complexity and usage
+   * Calculate test priority based on cognitive complexity and usage
    *
-   * Priority Score = Complexity Score + Usage Score
-   * - Complexity: 0-100
-   * - Usage: 0-50
-   * - Total: 0-150
+   * Priority Score = 0.7 * Complexity + 0.3 * Usage Score (all normalized to 0-100)
+   * - Complexity Score: 0-100 (normalized from SonarJS)
+   * - Usage Score: 0-100 (based on reference count)
    *
-   * Priority Levels:
-   * - 0-30: Low
-   * - 31-70: Medium
-   * - 71-100: High
-   * - 100+: Critical
+   * Priority Levels (0-100):
+   * - 0-25: 🟢 LOW
+   * - 26-50: 🟡 MEDIUM
+   * - 51-75: 🟠 HIGH
+   * - 76-100: 🔴 CRITICAL
    */
   calculateTestPriority(complexity, usageCount) {
     const complexityScore = complexity
 
-    // Usage score calculation
+    // Normalize usage score to 0-100
     let usageScore
     if (usageCount === 0)
       usageScore = 0
     else if (usageCount <= 5)
-      usageScore = 10
-    else if (usageCount <= 20)
       usageScore = 20
+    else if (usageCount <= 20)
+      usageScore = 40
     else if (usageCount <= 50)
-      usageScore = 35
+      usageScore = 70
     else
-      usageScore = 50
+      usageScore = 100
 
-    const totalScore = complexityScore + usageScore
+    // Weighted average: complexity (70%) + usage (30%)
+    const totalScore = Math.round(0.7 * complexityScore + 0.3 * usageScore)
 
     return {
       score: totalScore,
@@ -469,12 +337,12 @@ class ComponentAnalyzer {
   }
 
   /**
-   * Get priority level based on score
+   * Get priority level based on score (0-100 scale)
    */
   getPriorityLevel(score) {
-    if (score > 100) return '🔴 CRITICAL'
-    if (score > 70) return '🟠 HIGH'
-    if (score > 30) return '🟡 MEDIUM'
+    if (score > 75) return '🔴 CRITICAL'
+    if (score > 50) return '🟠 HIGH'
+    if (score > 25) return '🟡 MEDIUM'
     return '🟢 LOW'
   }
 }
@@ -498,10 +366,11 @@ class TestPromptBuilder {
 
 📊 Component Analysis:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Type:          ${analysis.type}
-Complexity:    ${analysis.complexity} ${this.getComplexityLevel(analysis.complexity)}
-Lines:         ${analysis.lineCount}
-Usage:         ${analysis.usageCount} reference${analysis.usageCount !== 1 ? 's' : ''}
+Type:               ${analysis.type}
+Total Complexity:   ${analysis.complexity}/100 ${this.getComplexityLevel(analysis.complexity)}
+Max Func Complexity: ${analysis.maxComplexity}/100 ${this.getComplexityLevel(analysis.maxComplexity)}
+Lines:              ${analysis.lineCount}
+Usage:              ${analysis.usageCount} reference${analysis.usageCount !== 1 ? 's' : ''}
 Test Priority: ${analysis.priority.score} ${analysis.priority.level}
 
 Features Detected:
@@ -549,10 +418,10 @@ Create the test file at: ${testPath}
   }
 
   getComplexityLevel(score) {
-    // Aligned with testing.md guidelines
-    if (score <= 10) return '🟢 Simple'
-    if (score <= 30) return '🟡 Medium'
-    if (score <= 50) return '🟠 Complex'
+    // Normalized complexity thresholds (0-100 scale)
+    if (score <= 25) return '🟢 Simple'
+    if (score <= 50) return '🟡 Medium'
+    if (score <= 75) return '🟠 Complex'
     return '🔴 Very Complex'
   }
 
@@ -605,18 +474,29 @@ Create the test file at: ${testPath}
     }
 
     // ===== Complexity Warning =====
-    if (analysis.complexity > 50) {
-      guidelines.push('🔴 VERY COMPLEX component detected. Consider:')
+    if (analysis.complexity > 75) {
+      guidelines.push(`🔴 HIGH Total Complexity (${analysis.complexity}/100). Consider:`)
       guidelines.push('   - Splitting component into smaller pieces before testing')
       guidelines.push('   - Creating integration tests for complex workflows')
       guidelines.push('   - Using test.each() for data-driven tests')
-      guidelines.push('   - Adding performance benchmarks')
     }
-    else if (analysis.complexity > 30) {
-      guidelines.push('⚠️  This is a COMPLEX component. Consider:')
+    else if (analysis.complexity > 50) {
+      guidelines.push(`⚠️  MODERATE Total Complexity (${analysis.complexity}/100). Consider:`)
       guidelines.push('   - Breaking tests into multiple describe blocks')
       guidelines.push('   - Testing integration scenarios')
       guidelines.push('   - Grouping related test cases')
+    }
+
+    // ===== Max Function Complexity Warning =====
+    if (analysis.maxComplexity > 75) {
+      guidelines.push(`🔴 HIGH Single Function Complexity (max: ${analysis.maxComplexity}/100). Consider:`)
+      guidelines.push('   - Breaking down the complex function into smaller helpers')
+      guidelines.push('   - Extracting logic into custom hooks or utility functions')
+    }
+    else if (analysis.maxComplexity > 50) {
+      guidelines.push(`⚠️  MODERATE Single Function Complexity (max: ${analysis.maxComplexity}/100). Consider:`)
+      guidelines.push('   - Simplifying conditional logic')
+      guidelines.push('   - Using early returns to reduce nesting')
     }
 
     // ===== State Management =====
@@ -976,7 +856,7 @@ function main() {
 
   // Check if component is too complex - suggest refactoring instead of testing
   // Skip this check in JSON mode to always output analysis result
-  if (!isReviewMode && !isJsonMode && (analysis.complexity > 50 || analysis.lineCount > 300)) {
+  if (!isReviewMode && !isJsonMode && (analysis.complexity > 75 || analysis.lineCount > 300)) {
     console.log(`
 ╔════════════════════════════════════════════════════════════════════════════╗
 ║                     ⚠️  COMPONENT TOO COMPLEX TO TEST                       ║
@@ -987,8 +867,9 @@ function main() {
 
 📊 Component Metrics:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Complexity:    ${analysis.complexity} ${analysis.complexity > 50 ? '🔴 TOO HIGH' : '⚠️  WARNING'}
-Lines:         ${analysis.lineCount} ${analysis.lineCount > 300 ? '🔴 TOO LARGE' : '⚠️  WARNING'}
+Total Complexity:     ${analysis.complexity}/100 ${analysis.complexity > 75 ? '🔴 TOO HIGH' : analysis.complexity > 50 ? '⚠️  WARNING' : '🟢 OK'}
+Max Func Complexity:  ${analysis.maxComplexity}/100 ${analysis.maxComplexity > 75 ? '🔴 TOO HIGH' : analysis.maxComplexity > 50 ? '⚠️  WARNING' : '🟢 OK'}
+Lines:                ${analysis.lineCount} ${analysis.lineCount > 300 ? '🔴 TOO LARGE' : '🟢 OK'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 🚫 RECOMMENDATION: REFACTOR BEFORE TESTING
@@ -1017,7 +898,7 @@ This component is too complex to test effectively. Please consider:
    - Tests will be easier to write and maintain
 
 💡 TIP: Aim for components with:
-   - Complexity score < 30 (preferably < 20)
+   - Cognitive Complexity < 50/100 (preferably < 25/100)
    - Line count < 300 (preferably < 200)
    - Single responsibility principle
 

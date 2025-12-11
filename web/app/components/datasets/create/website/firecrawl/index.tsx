@@ -26,6 +26,7 @@ type Props = {
   onJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
+  supportBatchUpload: boolean
 }
 
 enum Step {
@@ -41,6 +42,7 @@ const FireCrawl: FC<Props> = ({
   onJobIdChange,
   crawlOptions,
   onCrawlOptionsChange,
+  supportBatchUpload,
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<Step>(Step.init)
@@ -171,7 +173,7 @@ const FireCrawl: FC<Props> = ({
           content: item.markdown,
         }))
         setCrawlResult(data)
-        onCheckedCrawlResultChange(data.data || []) // default select the crawl result
+        onCheckedCrawlResultChange(supportBatchUpload ? (data.data || []) : (data.data?.slice(0, 1) || [])) // default select the crawl result
         setCrawlErrorMessage('')
       }
     }
@@ -182,7 +184,7 @@ const FireCrawl: FC<Props> = ({
     finally {
       setStep(Step.finished)
     }
-  }, [checkValid, crawlOptions, onJobIdChange, t, waitForCrawlFinished, onCheckedCrawlResultChange])
+  }, [checkValid, crawlOptions, onJobIdChange, waitForCrawlFinished, t, onCheckedCrawlResultChange, supportBatchUpload])
 
   return (
     <div>
@@ -221,6 +223,7 @@ const FireCrawl: FC<Props> = ({
                 onSelectedChange={onCheckedCrawlResultChange}
                 onPreview={onPreview}
                 usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
+                isMultipleChoice={supportBatchUpload}
               />
             }
           </div>
