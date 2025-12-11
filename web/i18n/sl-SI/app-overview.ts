@@ -114,7 +114,11 @@ const translation = {
         },
       },
       launch: 'Začetek',
-      enableTooltip: {},
+      enableTooltip: {
+        description: 'Za omogočanje te funkcije prosimo dodajte vozlišče Uporabniški vnos na platno. (Morda že obstaja v osnutku, začne veljati po objavi)',
+        learnMore: 'Izvedi več',
+      },
+      title: 'Spletna aplikacija',
     },
     apiInfo: {
       title: 'API storitev v ozadju',
@@ -126,7 +130,14 @@ const translation = {
       running: 'V storitvi',
       disable: 'Onemogočeno',
     },
-    triggerInfo: {},
+    triggerInfo: {
+      title: 'Sprožilci',
+      explanation: 'Upravljanje sprožilcev poteka dela',
+      triggersAdded: '{{count}} sprožilci dodani',
+      noTriggerAdded: 'Sprožilec ni dodan',
+      triggerStatusDescription: 'Stanje sprožilnega vozlišča se prikaže tukaj. (Morda že obstaja v osnutku, začne veljati po objavi)',
+      learnAboutTriggers: 'Spoznajte sprožilce',
+    },
     disableTooltip: {
       triggerMode: 'Funkcija {{feature}} ni podprta v načinu vozlišča sprožilca.',
     },

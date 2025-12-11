@@ -65,6 +65,12 @@ const translation = {
     confirmAction: 'Prosimo, potrdite svoje dejanje.',
     deleteConfirmTitle: 'Izbrisati?',
     yes: 'Da',
+    noSearchResults: 'Ni bilo najdenih {{content}}',
+    resetKeywords: 'Ponastavi ključne besede',
+    selectCount: '{{count}} Izbrano',
+    searchCount: 'Najdi {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Zdaj',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -73,6 +79,7 @@ const translation = {
   placeholder: {
     input: 'Vnesite prosim',
     select: 'Izberite prosim',
+    search: 'Išči...',
   },
   voice: {
     language: {
@@ -472,87 +479,6 @@ const translation = {
     loadBalancingLeastKeyWarning: 'Za omogočanje uravnoteženja obremenitev morata biti omogočena vsaj 2 ključa.',
     loadBalancingInfo: 'Privzeto uravnoteženje obremenitev uporablja strategijo Round-robin. Če se sproži omejitev hitrosti, se uporabi 1-minutno obdobje ohlajanja.',
     upgradeForLoadBalancing: 'Nadgradite svoj načrt, da omogočite uravnoteženje obremenitev.',
-    dataSource: {
-      notion: {
-        selector: {
-        },
-      },
-      website: {
-      },
-    },
-    plugin: {
-      serpapi: {
-      },
-    },
-    apiBasedExtension: {
-      selector: {
-      },
-      modal: {
-        name: {
-        },
-        apiEndpoint: {
-        },
-        apiKey: {
-        },
-      },
-    },
-    about: {
-    },
-    appMenus: {
-    },
-    environment: {
-    },
-    appModes: {
-    },
-    datasetMenus: {
-    },
-    voiceInput: {
-    },
-    modelName: {
-      'gpt-3.5-turbo': 'GPT-3.5-Turbo',
-      'gpt-3.5-turbo-16k': 'GPT-3.5-Turbo-16K',
-      'gpt-4': 'GPT-4',
-      'gpt-4-32k': 'GPT-4-32K',
-      'text-davinci-003': 'Text-Davinci-003',
-      'text-embedding-ada-002': 'Text-Embedding-Ada-002',
-      'whisper-1': 'Whisper-1',
-      'claude-instant-1': 'Claude-Instant',
-      'claude-2': 'Claude-2',
-    },
-    chat: {
-      citation: {
-      },
-    },
-    promptEditor: {
-      context: {
-        item: {
-        },
-        modal: {
-        },
-      },
-      history: {
-        item: {
-        },
-        modal: {
-        },
-      },
-      variable: {
-        item: {
-        },
-        outputToolDisabledItem: {
-        },
-        modal: {
-        },
-      },
-      query: {
-        item: {
-        },
-      },
-    },
-    imageUploader: {
-    },
-    tag: {
-    },
     discoverMore: 'Odkrijte več v',
     installProvider: 'Namestitev ponudnikov modelov',
     emptyProviderTitle: 'Ponudnik modelov ni nastavljen',
@@ -849,6 +775,13 @@ const translation = {
   },
   label: {
     optional: '(neobvezno)',
+  },
+  noData: 'Ni podatkov',
+  dynamicSelect: {
+    error: 'Nalaganje možnosti ni uspelo',
+    noData: 'Ni na voljo nobenih možnosti',
+    loading: 'Nalaganje možnosti...',
+    selected: '{{count}} izbrano',
   },
 }
 

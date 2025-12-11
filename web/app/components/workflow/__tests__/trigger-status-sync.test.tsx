@@ -2,10 +2,12 @@ import React, { useCallback } from 'react'
 import { act, render } from '@testing-library/react'
 import { useTriggerStatusStore } from '../store/trigger-status'
 import { isTriggerNode } from '../types'
+import type { BlockEnum } from '../types'
 import type { EntryNodeStatus } from '../store/trigger-status'
 
-// Mock the isTriggerNode function
+// Mock the isTriggerNode function while preserving BlockEnum
 jest.mock('../types', () => ({
+  ...jest.requireActual('../types'),
   isTriggerNode: jest.fn(),
 }))
 
@@ -17,7 +19,7 @@ const TestTriggerNode: React.FC<{
   nodeType: string
 }> = ({ nodeId, nodeType }) => {
   const triggerStatus = useTriggerStatusStore(state =>
-    mockIsTriggerNode(nodeType) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled',
+    mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled',
   )
 
   return (
@@ -271,7 +273,7 @@ describe('Trigger Status Synchronization Integration', () => {
       nodeType: string
     }> = ({ nodeId, nodeType }) => {
       const triggerStatusSelector = useCallback((state: any) =>
-        mockIsTriggerNode(nodeType) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled',
+        mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled',
       [nodeId, nodeType],
       )
       const triggerStatus = useTriggerStatusStore(triggerStatusSelector)
@@ -313,7 +315,7 @@ describe('Trigger Status Synchronization Integration', () => {
 
       const TestComponent: React.FC<{ nodeType: string }> = ({ nodeType }) => {
         const triggerStatusSelector = useCallback((state: any) =>
-          mockIsTriggerNode(nodeType) ? (state.triggerStatuses['test-node'] || 'disabled') : 'enabled',
+          mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses['test-node'] || 'disabled') : 'enabled',
         ['test-node', nodeType], // Dependencies should match implementation
         )
         const status = useTriggerStatusStore(triggerStatusSelector)

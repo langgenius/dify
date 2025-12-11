@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiLoader2Line,
   RiPlayLargeLine,
 } from '@remixicon/react'
 import Select from '@/app/components/base/select'
@@ -20,6 +21,7 @@ import cn from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 
 export type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -30,6 +32,10 @@ export type IRunOnceProps = {
   onSend: () => void
   visionConfig: VisionSettings
   onVisionFilesChange: (files: VisionFile[]) => void
+  runControl?: {
+    onStop: () => Promise<void> | void
+    isStopping: boolean
+  } | null
 }
 const RunOnce: FC<IRunOnceProps> = ({
   promptConfig,
@@ -39,6 +45,7 @@ const RunOnce: FC<IRunOnceProps> = ({
   onSend,
   visionConfig,
   onVisionFilesChange,
+  runControl,
 }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
@@ -62,6 +69,14 @@ const RunOnce: FC<IRunOnceProps> = ({
     e.preventDefault()
     onSend()
   }
+  const isRunning = !!runControl
+  const stopLabel = t('share.generation.stopRun', { defaultValue: 'Stop Run' })
+  const handlePrimaryClick = useCallback((e: React.MouseEvent<HTMLButtonElement>) => {
+    if (!isRunning)
+      return
+    e.preventDefault()
+    runControl?.onStop?.()
+  }, [isRunning, runControl])
 
   const handleInputsChange = useCallback((newInputs: Record<string, any>) => {
     onInputsChange(newInputs)
@@ -97,7 +112,7 @@ const RunOnce: FC<IRunOnceProps> = ({
         {/* input form */}
         <form onSubmit={onSubmit}>
           {(inputs === null || inputs === undefined || Object.keys(inputs).length === 0) || !isInitialized ? null
-            : promptConfig.prompt_variables.map(item => (
+            : promptConfig.prompt_variables.filter(item => item.hide !== true).map(item => (
               <div className='mt-4 w-full' key={item.key}>
                 {item.type !== 'checkbox' && (
                   <div className='system-md-semibold flex h-6 items-center gap-1 text-text-secondary'>
@@ -211,12 +226,25 @@ const RunOnce: FC<IRunOnceProps> = ({
               </Button>
               <Button
                 className={cn(!isPC && 'grow')}
-                type='submit'
-                variant="primary"
-                disabled={false}
+                type={isRunning ? 'button' : 'submit'}
+                variant={isRunning ? 'secondary' : 'primary'}
+                disabled={isRunning && runControl?.isStopping}
+                onClick={handlePrimaryClick}
               >
-                <RiPlayLargeLine className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
-                <span className='text-[13px]'>{t('share.generation.run')}</span>
+                {isRunning ? (
+                  <>
+                    {runControl?.isStopping
+                      ? <RiLoader2Line className='mr-1 h-4 w-4 shrink-0 animate-spin' aria-hidden="true" />
+                      : <StopCircle className='mr-1 h-4 w-4 shrink-0' aria-hidden="true" />
+                    }
+                    <span className='text-[13px]'>{stopLabel}</span>
+                  </>
+                ) : (
+                  <>
+                    <RiPlayLargeLine className="mr-1 h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span className='text-[13px]'>{t('share.generation.run')}</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>

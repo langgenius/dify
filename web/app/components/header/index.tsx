@@ -35,6 +35,7 @@ const Header = () => {
   const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   const isFreePlan = plan.type === Plan.sandbox
+  const isBrandingEnabled = systemFeatures.branding.enabled
   const handlePlanClick = useCallback(() => {
     if (isFreePlan)
       setShowPricingModal()
@@ -42,20 +43,27 @@ const Header = () => {
       setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.BILLING })
   }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
 
+  const renderLogo = () => (
+    <h1>
+      <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center overflow-hidden whitespace-nowrap px-0.5 indent-[-9999px]'>
+        {isBrandingEnabled && systemFeatures.branding.application_title ? systemFeatures.branding.application_title : 'Dify'}
+        {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
+          ? <img
+            src={systemFeatures.branding.workspace_logo}
+            className='block h-[22px] w-auto object-contain'
+            alt='logo'
+          />
+          : <DifyLogo />}
+      </Link>
+    </h1>
+  )
+
   if (isMobile) {
     return (
       <div className=''>
         <div className='flex items-center justify-between px-2'>
           <div className='flex items-center'>
-            <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center px-0.5'>
-              {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                ? <img
-                  src={systemFeatures.branding.workspace_logo}
-                  className='block h-[22px] w-auto object-contain'
-                  alt='logo'
-                />
-                : <DifyLogo />}
-            </Link>
+            {renderLogo()}
             <div className='mx-1.5 shrink-0 font-light text-divider-deep'>/</div>
             <WorkspaceProvider>
               <WorkplaceSelector />
@@ -82,15 +90,7 @@ const Header = () => {
   return (
     <div className='flex h-[56px] items-center'>
       <div className='flex min-w-0 flex-[1]  items-center pl-3 pr-2 min-[1280px]:pr-3'>
-        <Link href="/apps" className='flex h-8 shrink-0 items-center justify-center px-0.5'>
-          {systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-            ? <img
-              src={systemFeatures.branding.workspace_logo}
-              className='block h-[22px] w-auto object-contain'
-              alt='logo'
-            />
-            : <DifyLogo />}
-        </Link>
+        {renderLogo()}
         <div className='mx-1.5 shrink-0 font-light text-divider-deep'>/</div>
         <WorkspaceProvider>
           <WorkplaceSelector />
