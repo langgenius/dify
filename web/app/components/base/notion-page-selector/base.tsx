@@ -21,7 +21,6 @@ type NotionPageSelectorProps = {
   datasetId?: string
   credentialList: DataSourceCredential[]
   onSelectCredential?: (credentialId: string) => void
-  supportBatchUpload?: boolean
 }
 
 const NotionPageSelector = ({
@@ -33,7 +32,6 @@ const NotionPageSelector = ({
   datasetId = '',
   credentialList,
   onSelectCredential,
-  supportBatchUpload = false,
 }: NotionPageSelectorProps) => {
   const [searchValue, setSearchValue] = useState('')
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
@@ -177,7 +175,6 @@ const NotionPageSelector = ({
               canPreview={canPreview}
               previewPageId={previewPageId}
               onPreview={handlePreviewPage}
-              isMultipleChoice={supportBatchUpload}
             />
           )}
         </div>
