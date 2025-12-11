@@ -23,8 +23,14 @@ from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
 from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from models.model import App
-from models.trigger import AppTrigger, WorkflowSchedulePlan, WorkflowTriggerLog, WorkflowWebhookTrigger, \
-    TriggerSubscription, WorkflowPluginTrigger
+from models.trigger import (
+    AppTrigger,
+    TriggerSubscription,
+    WorkflowPluginTrigger,
+    WorkflowSchedulePlan,
+    WorkflowTriggerLog,
+    WorkflowWebhookTrigger,
+)
 from models.workflow import Workflow
 from schedule import workflow_schedule_task
 from schedule.workflow_schedule_task import poll_workflow_schedules
