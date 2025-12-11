@@ -137,7 +137,7 @@ const translation = {
       name: 'Entreprise',
       description: 'Obtenez toutes les capacités et le support pour les systèmes à grande échelle et critiques pour la mission.',
       includesTitle: 'Tout ce qui est inclus dans le plan Équipe, plus :',
-      features: ['Solutions de déploiement évolutives de niveau entreprise', 'Autorisation de licence commerciale', 'Fonctionnalités exclusives pour les entreprises', 'Espaces de travail multiples et gestion d\'entreprise', 'SSO', 'Accords de niveau de service négociés par les partenaires de Dify', 'Sécurité et contrôles avancés', 'Mises à jour et maintenance par Dify Officiellement', 'Assistance technique professionnelle'],
+      features: ['Solutions de déploiement évolutives de niveau entreprise', 'Autorisation de licence commerciale', 'Fonctionnalités exclusives pour les entreprises', 'Espaces de travail multiples et gestion d\'entreprise', 'SSO', 'Accords sur les SLA négociés par les partenaires Dify', 'Sécurité et contrôles avancés', 'Mises à jour et maintenance par Dify Officiellement', 'Assistance technique professionnelle'],
       for: 'Pour les équipes de grande taille',
       btnText: 'Contacter les ventes',
       priceTip: 'Facturation Annuel Seulement',
@@ -202,6 +202,20 @@ const translation = {
   viewBillingTitle: 'Facturation et abonnements',
   viewBillingDescription: 'Gérer les méthodes de paiement, les factures et les modifications d\'abonnement',
   viewBillingAction: 'Gérer',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Passez à la version supérieure pour télécharger plusieurs documents à la fois',
+      description: 'Vous avez atteint la limite de téléchargement — un seul document peut être sélectionné et téléchargé à la fois avec votre abonnement actuel.',
+    },
+    uploadMultipleFiles: {
+      title: 'Passez à la version supérieure pour débloquer le téléchargement de documents en lot',
+      description: 'Téléchargez plusieurs documents à la fois pour gagner du temps et améliorer l\'efficacité.',
+    },
+    addChunks: {
+      title: 'Mettez à niveau pour continuer à ajouter des morceaux',
+      description: 'Vous avez atteint la limite d\'ajout de morceaux pour ce plan.',
+    },
+  },
 }
 
 export default translation
