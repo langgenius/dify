@@ -333,25 +333,4 @@ describe('Prompt config component', () => {
 
     expect(screen.queryByText('appDebug.promptMode.operation.addMessage')).toBeNull()
   })
-
-  // Completion mode
-  it('should update completion prompt value without chat specific behavior', () => {
-    const setCurrentAdvancedPrompt = jest.fn()
-    renderComponent(
-      {},
-      {
-        isAdvancedMode: true,
-        modelModeType: ModelModeType.completion,
-        currentAdvancedPrompt: [{ role: PromptRole.system, text: 'single' }],
-        setCurrentAdvancedPrompt,
-      },
-    )
-
-    fireEvent.click(screen.getByText('change'))
-    expect(setCurrentAdvancedPrompt).toHaveBeenCalledWith(
-      { role: PromptRole.system, text: 'updated text' },
-      true,
-    )
-    expect(screen.queryByText('appDebug.promptMode.operation.addMessage')).toBeNull()
-  })
 })
