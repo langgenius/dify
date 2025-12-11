@@ -1,36 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiBookmark3Line,
-  RiClipboardLine,
-  RiFileList3Line,
-  RiPlayList2Line,
-  RiReplay15Line,
-  RiSparklingFill,
-  RiSparklingLine,
-  RiThumbDownLine,
-  RiThumbUpLine,
-} from '@remixicon/react'
+import { RiSparklingFill } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useParams } from 'next/navigation'
-import { useBoolean } from 'ahooks'
-import ResultTab from './result-tab'
-import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 import { fetchTextGenerationMessage } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import NewAudioButton from '@/app/components/base/new-audio-button'
 import cn from '@/utils/classnames'
+import ContentSection from './content-section'
+import MetaSection from './meta-section'
+import { useMoreLikeThisState, useWorkflowTabs } from './hooks'
 
 const MAX_DEPTH = 3
 
@@ -69,6 +56,35 @@ export const copyIcon = (
   </svg>
 )
 
+const formatLogItem = (data: any) => {
+  if (Array.isArray(data.message)) {
+    const assistantLog = data.message[data.message.length - 1]?.role !== 'assistant'
+      ? [{
+        role: 'assistant',
+        text: data.answer,
+        files: data.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+      }]
+      : []
+
+    return {
+      ...data,
+      log: [
+        ...data.message,
+        ...assistantLog,
+      ],
+    }
+  }
+
+  const message = typeof data.message === 'string'
+    ? { text: data.message }
+    : data.message
+
+  return {
+    ...data,
+    log: [message],
+  }
+}
+
 const GenerationItem: FC<IGenerationItemProps> = ({
   isWorkflow,
   workflowProcessData,
@@ -99,33 +115,97 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const { t } = useTranslation()
   const params = useParams()
   const isTop = depth === 1
-  const [completionRes, setCompletionRes] = useState('')
-  const [childMessageId, setChildMessageId] = useState<string | null>(null)
-  const [childFeedback, setChildFeedback] = useState<FeedbackType>({
-    rating: null,
-  })
   const {
-    config,
-  } = useChatContext()
-
+    completionRes,
+    setCompletionRes,
+    childMessageId,
+    setChildMessageId,
+    childFeedback,
+    setChildFeedback,
+    isQuerying,
+    startQuerying,
+    stopQuerying,
+  } = useMoreLikeThisState({ controlClearMoreLikeThis, isLoading })
+  const { currentTab, setCurrentTab, showResultTabs } = useWorkflowTabs(workflowProcessData)
+  const { config } = useChatContext()
   const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
   const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
 
-  const handleFeedback = async (childFeedback: FeedbackType) => {
-    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
-    setChildFeedback(childFeedback)
-  }
+  const handleFeedback = useCallback(async (nextFeedback: FeedbackType) => {
+    if (!childMessageId)
+      return
+    await updateFeedback(
+      { url: `/messages/${childMessageId}/feedbacks`, body: { rating: nextFeedback.rating } },
+      isInstalledApp,
+      installedAppId,
+    )
+    setChildFeedback(nextFeedback)
+  }, [childMessageId, installedAppId, isInstalledApp, setChildFeedback])
 
-  const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
+  const handleMoreLikeThis = useCallback(async () => {
+    if (isQuerying || !messageId) {
+      Toast.notify({ type: 'warning', message: t('appDebug.errorMessage.waitForResponse') })
+      return
+    }
+    startQuerying()
+    try {
+      const res: any = await fetchMoreLikeThis(messageId as string, isInstalledApp, installedAppId)
+      setCompletionRes(res.answer)
+      setChildFeedback({ rating: null })
+      setChildMessageId(res.id)
+    }
+    finally {
+      stopQuerying()
+    }
+  }, [
+    installedAppId,
+    isInstalledApp,
+    isQuerying,
+    messageId,
+    setChildFeedback,
+    setChildMessageId,
+    setCompletionRes,
+    startQuerying,
+    stopQuerying,
+    t,
+  ])
 
-  const childProps = {
-    isInWebApp: true,
+  const handleOpenLogModal = useCallback(async () => {
+    if (!messageId)
+      return
+    const data = await fetchTextGenerationMessage({
+      appId: params.appId as string,
+      messageId,
+    })
+    const logItem = formatLogItem(data)
+    setCurrentLogItem(logItem)
+    setShowPromptLogModal(true)
+  }, [messageId, params.appId, setCurrentLogItem, setShowPromptLogModal])
+
+  const copyContent = isWorkflow ? workflowProcessData?.resultText : content
+  const handleCopy = useCallback(() => {
+    if (typeof copyContent === 'string')
+      copy(copyContent)
+    else
+      copy(JSON.stringify(copyContent))
+    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+  }, [copyContent, t])
+
+  const shouldIndentForChild = Boolean(isMobile && (childMessageId || isQuerying) && depth < MAX_DEPTH)
+  const shouldRenderChild = (childMessageId || isQuerying) && depth < MAX_DEPTH
+  const canCopy = (currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow
+  const childProps: IGenerationItemProps = {
+    isWorkflow,
+    className,
+    isError: false,
+    onRetry,
     content: completionRes,
     messageId: childMessageId,
-    depth: depth + 1,
-    moreLikeThis: true,
-    onFeedback: handleFeedback,
     isLoading: isQuerying,
+    isResponding,
+    moreLikeThis: true,
+    depth: depth + 1,
+    onFeedback: handleFeedback,
     feedback: childFeedback,
     onSave,
     isShowTextToSpeech,
@@ -133,79 +213,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     isInstalledApp,
     installedAppId,
     controlClearMoreLikeThis,
-    isWorkflow,
+    isInWebApp: true,
     siteInfo,
     taskId,
+    inSidePanel,
+    hideProcessDetail,
   }
-
-  const handleMoreLikeThis = async () => {
-    if (isQuerying || !messageId) {
-      Toast.notify({ type: 'warning', message: t('appDebug.errorMessage.waitForResponse') })
-      return
-    }
-    startQuerying()
-    const res: any = await fetchMoreLikeThis(messageId as string, isInstalledApp, installedAppId)
-    setCompletionRes(res.answer)
-    setChildFeedback({
-      rating: null,
-    })
-    setChildMessageId(res.id)
-    stopQuerying()
-  }
-
-  useEffect(() => {
-    if (controlClearMoreLikeThis) {
-      setChildMessageId(null)
-      setCompletionRes('')
-    }
-  }, [controlClearMoreLikeThis])
-
-  // regeneration clear child
-  useEffect(() => {
-    if (isLoading)
-      setChildMessageId(null)
-  }, [isLoading])
-
-  const handleOpenLogModal = async () => {
-    const data = await fetchTextGenerationMessage({
-      appId: params.appId as string,
-      messageId: messageId!,
-    })
-    const logItem = Array.isArray(data.message) ? {
-      ...data,
-      log: [
-        ...data.message,
-        ...(data.message[data.message.length - 1].role !== 'assistant'
-          ? [
-            {
-              role: 'assistant',
-              text: data.answer,
-              files: data.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-            },
-          ]
-          : []),
-      ],
-    } : {
-      ...data,
-      log: [typeof data.message === 'string' ? {
-        text: data.message,
-      } : data.message],
-    }
-    setCurrentLogItem(logItem)
-    setShowPromptLogModal(true)
-  }
-
-  const [currentTab, setCurrentTab] = useState<string>('DETAIL')
-  const showResultTabs = !!workflowProcessData?.resultText || !!workflowProcessData?.files?.length
-  const switchTab = async (tab: string) => {
-    setCurrentTab(tab)
-  }
-  useEffect(() => {
-    if (workflowProcessData?.resultText || !!workflowProcessData?.files?.length)
-      switchTab('RESULT')
-    else
-      switchTab('DETAIL')
-  }, [workflowProcessData?.files?.length, workflowProcessData?.resultText])
 
   return (
     <>
@@ -215,152 +228,45 @@ const GenerationItem: FC<IGenerationItemProps> = ({
         )}
         {!isLoading && (
           <>
-            {/* result content */}
-            <div className={cn(
-              'relative',
-              !inSidePanel && 'rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg',
-            )}>
-              {workflowProcessData && (
-                <>
-                  <div className={cn(
-                    'p-3',
-                    showResultTabs && 'border-b border-divider-subtle',
-                  )}>
-                    {taskId && (
-                      <div className={cn('system-2xs-medium-uppercase mb-2 flex items-center text-text-accent-secondary', isError && 'text-text-destructive')}>
-                        <RiPlayList2Line className='mr-1 h-3 w-3' />
-                        <span>{t('share.generation.execution')}</span>
-                        <span className='px-1'>·</span>
-                        <span>{taskId}</span>
-                      </div>
-                    )}
-                    {siteInfo && workflowProcessData && (
-                      <WorkflowProcessItem
-                        data={workflowProcessData}
-                        expand={workflowProcessData.expand}
-                        hideProcessDetail={hideProcessDetail}
-                        hideInfo={hideProcessDetail}
-                        readonly={!siteInfo.show_workflow_steps}
-                      />
-                    )}
-                    {showResultTabs && (
-                      <div className='flex items-center space-x-6 px-1'>
-                        <div
-                          className={cn(
-                            'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
-                            currentTab === 'RESULT' && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
-                          )}
-                          onClick={() => switchTab('RESULT')}
-                        >{t('runLog.result')}</div>
-                        <div
-                          className={cn(
-                            'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
-                            currentTab === 'DETAIL' && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',
-                          )}
-                          onClick={() => switchTab('DETAIL')}
-                        >{t('runLog.detail')}</div>
-                      </div>
-                    )}
-                  </div>
-                  {!isError && (
-                    <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} />
-                  )}
-                </>
-              )}
-              {!workflowProcessData && taskId && (
-                <div className={cn('system-2xs-medium-uppercase sticky left-0 top-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 text-text-accent-secondary', isError && 'text-text-destructive')}>
-                  <RiPlayList2Line className='mr-1 h-3 w-3' />
-                  <span>{t('share.generation.execution')}</span>
-                  <span className='px-1'>·</span>
-                  <span>{`${taskId}${depth > 1 ? `-${depth - 1}` : ''}`}</span>
-                </div>
-              )}
-              {isError && (
-                <div className='body-lg-regular p-4 pt-0 text-text-quaternary'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
-              )}
-              {!workflowProcessData && !isError && (typeof content === 'string') && (
-                <div className={cn('p-4', taskId && 'pt-0')}>
-                  <Markdown content={content} />
-                </div>
-              )}
-            </div>
-            {/* meta data */}
-            <div className={cn(
-              'system-xs-regular relative mt-1 h-4 px-4 text-text-quaternary',
-              isMobile && ((childMessageId || isQuerying) && depth < 3) && 'pl-10',
-            )}>
-              {!isWorkflow && <span>{content?.length} {t('common.unit.char')}</span>}
-              {/* action buttons */}
-              <div className='absolute bottom-1 right-2 flex items-center'>
-                {!isInWebApp && !isInstalledApp && !isResponding && (
-                  <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
-                    <ActionButton disabled={isError || !messageId} onClick={handleOpenLogModal}>
-                      <RiFileList3Line className='h-4 w-4' />
-                      {/* <div>{t('common.operation.log')}</div> */}
-                    </ActionButton>
-                  </div>
-                )}
-                <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
-                  {moreLikeThis && (
-                    <ActionButton state={depth === MAX_DEPTH ? ActionButtonState.Disabled : ActionButtonState.Default} disabled={depth === MAX_DEPTH} onClick={handleMoreLikeThis}>
-                      <RiSparklingLine className='h-4 w-4' />
-                    </ActionButton>
-                  )}
-                  {isShowTextToSpeech && (
-                    <NewAudioButton
-                      id={messageId!}
-                      voice={config?.text_to_speech?.voice}
-                    />
-                  )}
-                  {((currentTab === 'RESULT' && workflowProcessData?.resultText) || !isWorkflow) && (
-                    <ActionButton disabled={isError || !messageId} onClick={() => {
-                      const copyContent = isWorkflow ? workflowProcessData?.resultText : content
-                      if (typeof copyContent === 'string')
-                        copy(copyContent)
-                      else
-                        copy(JSON.stringify(copyContent))
-                      Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-                    }}>
-                      <RiClipboardLine className='h-4 w-4' />
-                    </ActionButton>
-                  )}
-                  {isInWebApp && isError && (
-                    <ActionButton onClick={onRetry}>
-                      <RiReplay15Line className='h-4 w-4' />
-                    </ActionButton>
-                  )}
-                  {isInWebApp && !isWorkflow && (
-                    <ActionButton disabled={isError || !messageId} onClick={() => { onSave?.(messageId as string) }}>
-                      <RiBookmark3Line className='h-4 w-4' />
-                    </ActionButton>
-                  )}
-                </div>
-                {(supportFeedback || isInWebApp) && !isWorkflow && !isError && messageId && (
-                  <div className='ml-1 flex items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm'>
-                    {!feedback?.rating && (
-                      <>
-                        <ActionButton onClick={() => onFeedback?.({ rating: 'like' })}>
-                          <RiThumbUpLine className='h-4 w-4' />
-                        </ActionButton>
-                        <ActionButton onClick={() => onFeedback?.({ rating: 'dislike' })}>
-                          <RiThumbDownLine className='h-4 w-4' />
-                        </ActionButton>
-                      </>
-                    )}
-                    {feedback?.rating === 'like' && (
-                      <ActionButton state={ActionButtonState.Active} onClick={() => onFeedback?.({ rating: null })}>
-                        <RiThumbUpLine className='h-4 w-4' />
-                      </ActionButton>
-                    )}
-                    {feedback?.rating === 'dislike' && (
-                      <ActionButton state={ActionButtonState.Destructive} onClick={() => onFeedback?.({ rating: null })}>
-                        <RiThumbDownLine className='h-4 w-4' />
-                      </ActionButton>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
+            <ContentSection
+              workflowProcessData={workflowProcessData}
+              taskId={taskId}
+              depth={depth}
+              isError={isError}
+              content={content}
+              hideProcessDetail={hideProcessDetail}
+              siteInfo={siteInfo}
+              currentTab={currentTab}
+              onSwitchTab={setCurrentTab}
+              showResultTabs={showResultTabs}
+              t={t}
+              inSidePanel={inSidePanel}
+            />
+            <MetaSection
+              showCharCount={!isWorkflow}
+              charCount={content?.length}
+              t={t}
+              shouldIndentForChild={shouldIndentForChild}
+              isInWebApp={isInWebApp}
+              isInstalledApp={isInstalledApp}
+              isResponding={isResponding}
+              isError={isError}
+              messageId={messageId}
+              onOpenLogModal={handleOpenLogModal}
+              moreLikeThis={moreLikeThis}
+              onMoreLikeThis={handleMoreLikeThis}
+              disableMoreLikeThis={depth === MAX_DEPTH}
+              isShowTextToSpeech={isShowTextToSpeech}
+              textToSpeechVoice={config?.text_to_speech?.voice}
+              canCopy={!!canCopy}
+              onCopy={handleCopy}
+              onRetry={onRetry}
+              isWorkflow={isWorkflow}
+              onSave={onSave}
+              feedback={feedback}
+              onFeedback={onFeedback}
+              supportFeedback={supportFeedback}
+            />
             {/* more like this elements */}
             {!isTop && (
               <div className={cn(
@@ -379,8 +285,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
           </>
         )}
       </div>
-      {((childMessageId || isQuerying) && depth < 3) && (
-        <GenerationItem {...childProps as any} />
+      {shouldRenderChild && (
+        <GenerationItem {...childProps} />
       )}
     </>
   )
