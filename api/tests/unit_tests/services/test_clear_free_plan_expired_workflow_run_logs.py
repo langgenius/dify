@@ -85,9 +85,7 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
 
     batches_returned = 0
 
-    def fake_load_batch(
-        session: DummySession, last_seen: tuple[datetime.datetime, str] | None
-    ) -> list[WorkflowRunRow]:
+    def fake_load_batch(session: DummySession, last_seen: tuple[datetime.datetime, str] | None) -> list[WorkflowRunRow]:
         nonlocal batches_returned
         if batches_returned > 0:
             return []
@@ -130,7 +128,7 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup.run()
 
     assert deleted_ids == [["run-free"]]
-    assert created_sessions 
+    assert created_sessions
     assert created_sessions[0].committed is True
 
 
@@ -142,16 +140,12 @@ def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_info_bulk",
-        staticmethod(
-            lambda tenant_ids: {tenant_id: {"subscription": {"plan": "TEAM"}} for tenant_id in tenant_ids}
-        ),
+        staticmethod(lambda tenant_ids: {tenant_id: {"subscription": {"plan": "TEAM"}} for tenant_id in tenant_ids}),
     )
 
     batches_returned = 0
 
-    def fake_load_batch(
-        session: DummySession, last_seen: tuple[datetime.datetime, str] | None
-    ) -> list[WorkflowRunRow]:
+    def fake_load_batch(session: DummySession, last_seen: tuple[datetime.datetime, str] | None) -> list[WorkflowRunRow]:
         nonlocal batches_returned
         if batches_returned > 0:
             return []
@@ -164,14 +158,14 @@ def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None
         nonlocal delete_called
         delete_called = True
         return {
-            "runs": 0, 
-            "node_executions": 0, 
-            "offloads": 0, 
-            "app_logs": 0, 
-            "trigger_logs": 0, 
-            "pauses": 0, 
-            "pause_reasons": 0
-            }
+            "runs": 0,
+            "node_executions": 0,
+            "offloads": 0,
+            "app_logs": 0,
+            "trigger_logs": 0,
+            "pauses": 0,
+            "pause_reasons": 0,
+        }
 
     def fake_session_factory(engine: object | None = None) -> DummySession:  # pragma: no cover - simple factory
         return DummySession()
@@ -189,9 +183,7 @@ def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None
 def test_run_exits_on_empty_batch(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup = WorkflowRunCleanup(days=30, batch_size=10)
 
-    def fake_load_batch(
-        session: DummySession, last_seen: tuple[datetime.datetime, str] | None
-    ) -> list[WorkflowRunRow]:
+    def fake_load_batch(session: DummySession, last_seen: tuple[datetime.datetime, str] | None) -> list[WorkflowRunRow]:
         return []
 
     def fake_delete_runs(session: DummySession, workflow_run_ids: list[str]) -> dict[str, int]:

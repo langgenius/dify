@@ -114,9 +114,7 @@ class WorkflowRunCleanup:
 
         click.echo(click.style(summary_message, fg="white"))
 
-    def _load_batch(
-        self, session: Session, last_seen: tuple[datetime.datetime, str] | None
-    ) -> list[WorkflowRunRow]:
+    def _load_batch(self, session: Session, last_seen: tuple[datetime.datetime, str] | None) -> list[WorkflowRunRow]:
         stmt = (
             select(WorkflowRun.id, WorkflowRun.tenant_id, WorkflowRun.created_at)
             .where(WorkflowRun.created_at < self.window_end)
@@ -166,7 +164,9 @@ class WorkflowRunCleanup:
 
     def _delete_runs(self, session: Session, workflow_run_ids: Sequence[str]) -> dict[str, int]:
         node_execution_ids = session.scalars(
-            select(WorkflowNodeExecutionModel.id).where(WorkflowNodeExecutionModel.workflow_run_id.in_(workflow_run_ids))
+            select(WorkflowNodeExecutionModel.id).where(
+                WorkflowNodeExecutionModel.workflow_run_id.in_(workflow_run_ids)
+            )
         ).all()
 
         offloads_deleted = 0
@@ -199,14 +199,12 @@ class WorkflowRunCleanup:
 
         if pause_ids:
             pause_reasons_deleted = (
-                session.query(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids)).delete(
-                    synchronize_session=False
-                )
+                session.query(WorkflowPauseReason)
+                .where(WorkflowPauseReason.pause_id.in_(pause_ids))
+                .delete(synchronize_session=False)
             )
             pauses_deleted = (
-                session.query(WorkflowPause)
-                .where(WorkflowPause.id.in_(pause_ids))
-                .delete(synchronize_session=False)
+                session.query(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)).delete(synchronize_session=False)
             )
 
         trigger_logs_deleted = (
