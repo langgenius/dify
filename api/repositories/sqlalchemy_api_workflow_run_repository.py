@@ -40,8 +40,17 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowPause as WorkflowPauseModel
-from models.workflow import WorkflowPauseReason, WorkflowRun
+from models.trigger import WorkflowTriggerLog
+from models.workflow import (
+    WorkflowAppLog,
+    WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
+    WorkflowPauseReason,
+    WorkflowRun,
+)
+from models.workflow import (
+    WorkflowPause as WorkflowPauseModel,
+)
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
@@ -313,6 +322,115 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
         logger.info("Total deleted %s workflow runs for app %s", total_deleted, app_id)
         return total_deleted
+
+    def get_runs_batch_for_cleanup(
+        self,
+        start_after: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+    ) -> Sequence[WorkflowRun]:
+        with self._session_maker() as session:
+            stmt = (
+                select(WorkflowRun)
+                .where(WorkflowRun.created_at < end_before)
+                .order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
+                .limit(batch_size)
+            )
+
+            if start_after:
+                stmt = stmt.where(WorkflowRun.created_at >= start_after)
+
+            if last_seen:
+                stmt = stmt.where(
+                    or_(
+                        WorkflowRun.created_at > last_seen[0],
+                        and_(WorkflowRun.created_at == last_seen[0], WorkflowRun.id > last_seen[1]),
+                    )
+                )
+
+            return session.scalars(stmt).all()
+
+    def delete_runs_with_related(self, run_ids: Sequence[str]) -> dict[str, int]:
+        if not run_ids:
+            return {
+                "runs": 0,
+                "node_executions": 0,
+                "offloads": 0,
+                "app_logs": 0,
+                "trigger_logs": 0,
+                "pauses": 0,
+                "pause_reasons": 0,
+            }
+
+        with self._session_maker() as session:
+            node_execution_ids = session.scalars(
+                select(WorkflowNodeExecutionModel.id).where(
+                    WorkflowNodeExecutionModel.workflow_run_id.in_(run_ids)
+                )
+            ).all()
+
+            offloads_deleted = 0
+            if node_execution_ids:
+                offloads_deleted = (
+                    session.query(WorkflowNodeExecutionOffload)
+                    .where(WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids))
+                    .delete(synchronize_session=False)
+                )
+
+            node_executions_deleted = 0
+            if node_execution_ids:
+                node_executions_deleted = (
+                    session.query(WorkflowNodeExecutionModel)
+                    .where(WorkflowNodeExecutionModel.id.in_(node_execution_ids))
+                    .delete(synchronize_session=False)
+                )
+
+            app_logs_deleted = (
+                session.query(WorkflowAppLog)
+                .where(WorkflowAppLog.workflow_run_id.in_(run_ids))
+                .delete(synchronize_session=False)
+            )
+
+            pause_ids = session.scalars(
+                select(WorkflowPauseModel.id).where(WorkflowPauseModel.workflow_run_id.in_(run_ids))
+            ).all()
+            pause_reasons_deleted = 0
+            pauses_deleted = 0
+
+            if pause_ids:
+                pause_reasons_deleted = (
+                    session.query(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids)).delete(
+                        synchronize_session=False
+                    )
+                )
+                pauses_deleted = (
+                    session.query(WorkflowPauseModel)
+                    .where(WorkflowPauseModel.id.in_(pause_ids))
+                    .delete(synchronize_session=False)
+                )
+
+            trigger_logs_deleted = (
+                session.query(WorkflowTriggerLog)
+                .where(WorkflowTriggerLog.workflow_run_id.in_(run_ids))
+                .delete(synchronize_session=False)
+            )
+
+            runs_deleted = (
+                session.query(WorkflowRun).where(WorkflowRun.id.in_(run_ids)).delete(synchronize_session=False)
+            )
+
+            session.commit()
+
+            return {
+                "runs": runs_deleted,
+                "node_executions": node_executions_deleted,
+                "offloads": offloads_deleted,
+                "app_logs": app_logs_deleted,
+                "trigger_logs": trigger_logs_deleted,
+                "pauses": pauses_deleted,
+                "pause_reasons": pause_reasons_deleted,
+            }
 
     def create_workflow_pause(
         self,
