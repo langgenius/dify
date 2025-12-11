@@ -278,8 +278,8 @@ describe('PipelineSettings', () => {
       // Act
       renderWithProviders(<PipelineSettings {...props} />)
 
-      // Assert - Back button should exist
-      const backButton = screen.getByRole('button', { name: '' })
+      // Assert - Back button should exist with proper aria-label
+      const backButton = screen.getByRole('button', { name: 'common.operation.back' })
       expect(backButton).toBeInTheDocument()
     })
 
@@ -289,10 +289,8 @@ describe('PipelineSettings', () => {
 
       // Act
       renderWithProviders(<PipelineSettings {...props} />)
-      const buttons = screen.getAllByRole('button')
-      // Find the back button (first button with specific class)
-      const backButton = buttons.find(btn => btn.className.includes('rounded-full'))
-      fireEvent.click(backButton!)
+      const backButton = screen.getByRole('button', { name: 'common.operation.back' })
+      fireEvent.click(backButton)
 
       // Assert
       expect(mockBack).toHaveBeenCalledTimes(1)

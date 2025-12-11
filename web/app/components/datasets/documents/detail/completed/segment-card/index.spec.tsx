@@ -191,7 +191,7 @@ describe('SegmentCard', () => {
       render(<SegmentCard loading={true} focused={defaultFocused} />)
 
       // ParentChunkCardSkeleton should render
-      expect(screen.getByText('common.operation.viewMore')).toBeInTheDocument()
+      expect(screen.getByTestId('parent-chunk-card-skeleton')).toBeInTheDocument()
     })
 
     it('should render segment card content when loading is false', () => {
@@ -230,11 +230,11 @@ describe('SegmentCard', () => {
     it('should apply custom className', () => {
       const detail = createMockSegmentDetail()
 
-      const { container } = render(
+      render(
         <SegmentCard loading={false} detail={detail} className="custom-class" focused={defaultFocused} />,
       )
 
-      const card = container.querySelector('.chunk-card')
+      const card = screen.getByTestId('segment-card')
       expect(card).toHaveClass('custom-class')
     })
   })
@@ -300,7 +300,7 @@ describe('SegmentCard', () => {
     it('should apply focused styles when segmentContent is focused', () => {
       const detail = createMockSegmentDetail()
 
-      const { container } = render(
+      render(
         <SegmentCard
           loading={false}
           detail={detail}
@@ -308,7 +308,7 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const card = container.querySelector('.chunk-card')
+      const card = screen.getByTestId('segment-card')
       expect(card).toHaveClass('bg-dataset-chunk-detail-card-hover-bg')
     })
   })
@@ -329,10 +329,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const tooltips = screen.getAllByTestId('tooltip')
-      const deleteTooltip = tooltips.find(t => t.getAttribute('data-popup-content') === 'Delete')
-      const deleteButton = deleteTooltip!.querySelector('div[class*="group/delete"]')
-      fireEvent.click(deleteButton!)
+      const deleteButton = screen.getByTestId('segment-delete-button')
+      fireEvent.click(deleteButton)
 
       await waitFor(() => {
         expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
@@ -351,10 +349,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const tooltips = screen.getAllByTestId('tooltip')
-      const deleteTooltip = tooltips.find(t => t.getAttribute('data-popup-content') === 'Delete')
-      const deleteButton = deleteTooltip!.querySelector('div[class*="group/delete"]')
-      fireEvent.click(deleteButton!)
+      const deleteButton = screen.getByTestId('segment-delete-button')
+      fireEvent.click(deleteButton)
 
       await waitFor(() => {
         expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
@@ -377,12 +373,12 @@ describe('SegmentCard', () => {
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.text
 
-      const { container } = render(
+      render(
         <SegmentCard loading={false} detail={detail} onClick={onClick} focused={defaultFocused} />,
       )
 
-      const card = container.querySelector('.chunk-card')
-      fireEvent.click(card!)
+      const card = screen.getByTestId('segment-card')
+      fireEvent.click(card)
 
       expect(onClick).toHaveBeenCalledTimes(1)
     })
@@ -393,12 +389,12 @@ describe('SegmentCard', () => {
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'full-doc'
 
-      const { container } = render(
+      render(
         <SegmentCard loading={false} detail={detail} onClick={onClick} focused={defaultFocused} />,
       )
 
-      const card = container.querySelector('.chunk-card')
-      fireEvent.click(card!)
+      const card = screen.getByTestId('segment-card')
+      fireEvent.click(card)
 
       expect(onClick).not.toHaveBeenCalled()
     })
@@ -431,10 +427,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const tooltips = screen.getAllByTestId('tooltip')
-      const editTooltip = tooltips.find(t => t.getAttribute('data-popup-content') === 'Edit')
-      const editButton = editTooltip!.querySelector('div[class*="cursor-pointer"]')
-      fireEvent.click(editButton!)
+      const editButton = screen.getByTestId('segment-edit-button')
+      fireEvent.click(editButton)
 
       expect(onClickEdit).toHaveBeenCalledTimes(1)
     })
@@ -453,10 +447,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const tooltips = screen.getAllByTestId('tooltip')
-      const deleteTooltip = tooltips.find(t => t.getAttribute('data-popup-content') === 'Delete')
-      const deleteButton = deleteTooltip!.querySelector('div[class*="group/delete"]')
-      fireEvent.click(deleteButton!)
+      const deleteButton = screen.getByTestId('segment-delete-button')
+      fireEvent.click(deleteButton)
 
       await waitFor(() => {
         expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
@@ -507,10 +499,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const tooltips = screen.getAllByTestId('tooltip')
-      const editTooltip = tooltips.find(t => t.getAttribute('data-popup-content') === 'Edit')
-      const editButton = editTooltip!.querySelector('div[class*="cursor-pointer"]')
-      fireEvent.click(editButton!)
+      const editButton = screen.getByTestId('segment-edit-button')
+      fireEvent.click(editButton)
 
       expect(onClickEdit).toHaveBeenCalledTimes(1)
       expect(onClick).not.toHaveBeenCalled()
@@ -680,9 +670,9 @@ describe('SegmentCard', () => {
       mockParentMode.current = 'full-doc'
       const detail = createMockSegmentDetail()
 
-      const { container } = render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
+      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
-      const card = container.querySelector('.chunk-card')
+      const card = screen.getByTestId('segment-card')
       expect(card).not.toHaveClass('pb-2')
       expect(card).not.toHaveClass('pt-2.5')
     })
@@ -691,9 +681,9 @@ describe('SegmentCard', () => {
       mockDocForm.current = ChunkingMode.text
       const detail = createMockSegmentDetail()
 
-      const { container } = render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
+      render(<SegmentCard loading={false} detail={detail} focused={defaultFocused} />)
 
-      const card = container.querySelector('.chunk-card')
+      const card = screen.getByTestId('segment-card')
       expect(card).toHaveClass('pb-2')
       expect(card).toHaveClass('pt-2.5')
     })
@@ -848,7 +838,7 @@ describe('SegmentCard', () => {
     it('should handle missing callback functions gracefully', () => {
       const detail = createMockSegmentDetail()
 
-      const { container } = render(
+      render(
         <SegmentCard
           loading={false}
           detail={detail}
@@ -861,8 +851,8 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const card = container.querySelector('.chunk-card')
-      expect(() => fireEvent.click(card!)).not.toThrow()
+      const card = screen.getByTestId('segment-card')
+      expect(() => fireEvent.click(card)).not.toThrow()
     })
 
     it('should handle switch being disabled when status is not completed', () => {
@@ -878,7 +868,7 @@ describe('SegmentCard', () => {
       )
 
       const switchElement = screen.getByRole('switch')
-      expect(switchElement).toHaveClass('!cursor-not-allowed')
+      expect(switchElement).toBeDisabled()
     })
 
     it('should handle zero word count', () => {

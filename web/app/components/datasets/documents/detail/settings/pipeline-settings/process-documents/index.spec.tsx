@@ -215,7 +215,7 @@ describe('ProcessDocuments', () => {
 
         // Assert
         const input = screen.getByTestId('input-chunk_size') as HTMLInputElement
-        expect(input.defaultValue).toBe('100')
+        expect(input.value).toBe('100')
       })
     })
 

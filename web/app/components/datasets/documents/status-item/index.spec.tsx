@@ -77,10 +77,10 @@ describe('StatusItem', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       // Arrange & Act
-      const { container } = renderWithProviders(<StatusItem status="available" />)
+      renderWithProviders(<StatusItem status="available" />)
 
       // Assert - check indicator element exists (real Indicator component)
-      const indicator = container.querySelector('.rounded-\\[3px\\]')
+      const indicator = screen.getByTestId('status-indicator')
       expect(indicator).toBeInTheDocument()
     })
 
@@ -95,10 +95,10 @@ describe('StatusItem', () => {
       ['archived', 'bg-components-badge-status-light-disabled-bg'],
     ] as const)('should render status "%s" with correct indicator background', (status, expectedBg) => {
       // Arrange & Act
-      const { container } = renderWithProviders(<StatusItem status={status} />)
+      renderWithProviders(<StatusItem status={status} />)
 
       // Assert
-      const indicator = container.querySelector('.rounded-\\[3px\\]')
+      const indicator = screen.getByTestId('status-indicator')
       expect(indicator).toHaveClass(expectedBg)
     })
 
@@ -112,12 +112,12 @@ describe('StatusItem', () => {
 
     it('should handle case-insensitive status', () => {
       // Arrange & Act
-      const { container } = renderWithProviders(
+      renderWithProviders(
         <StatusItem status={'AVAILABLE' as DocumentDisplayStatus} />,
       )
 
       // Assert
-      const indicator = container.querySelector('.rounded-\\[3px\\]')
+      const indicator = screen.getByTestId('status-indicator')
       expect(indicator).toHaveClass('bg-components-badge-status-light-success-bg')
     })
   })
@@ -147,19 +147,19 @@ describe('StatusItem', () => {
 
       it('should apply ml-2 to indicator when reversed', () => {
         // Arrange & Act
-        const { container } = renderWithProviders(<StatusItem status="available" reverse />)
+        renderWithProviders(<StatusItem status="available" reverse />)
 
         // Assert
-        const indicator = container.querySelector('.rounded-\\[3px\\]')
+        const indicator = screen.getByTestId('status-indicator')
         expect(indicator).toHaveClass('ml-2')
       })
 
       it('should apply mr-2 to indicator when not reversed', () => {
         // Arrange & Act
-        const { container } = renderWithProviders(<StatusItem status="available" reverse={false} />)
+        renderWithProviders(<StatusItem status="available" reverse={false} />)
 
         // Assert
-        const indicator = container.querySelector('.rounded-\\[3px\\]')
+        const indicator = screen.getByTestId('status-indicator')
         expect(indicator).toHaveClass('mr-2')
       })
     })
@@ -235,25 +235,24 @@ describe('StatusItem', () => {
     describe('errorMessage prop', () => {
       it('should render tooltip trigger when errorMessage is provided', () => {
         // Arrange & Act
-        const { container } = renderWithProviders(
+        renderWithProviders(
           <StatusItem status="error" errorMessage="Something went wrong" />,
         )
 
         // Assert - tooltip trigger element should exist
-        const tooltipTrigger = container.querySelector('.ml-1.w-4.h-4')
+        const tooltipTrigger = screen.getByTestId('error-tooltip-trigger')
         expect(tooltipTrigger).toBeInTheDocument()
       })
 
       it('should show error message on hover', async () => {
         // Arrange
-        const { container } = renderWithProviders(
+        renderWithProviders(
           <StatusItem status="error" errorMessage="Something went wrong" />,
         )
 
         // Act - hover the tooltip trigger
-        const tooltipTrigger = container.querySelector('.ml-1.w-4.h-4')
-        expect(tooltipTrigger).toBeInTheDocument()
-        fireEvent.mouseEnter(tooltipTrigger!)
+        const tooltipTrigger = screen.getByTestId('error-tooltip-trigger')
+        fireEvent.mouseEnter(tooltipTrigger)
 
         // Assert - wait for tooltip content to appear
         expect(await screen.findByText('Something went wrong')).toBeInTheDocument()
@@ -261,19 +260,19 @@ describe('StatusItem', () => {
 
       it('should not render tooltip trigger when errorMessage is not provided', () => {
         // Arrange & Act
-        const { container } = renderWithProviders(<StatusItem status="error" />)
+        renderWithProviders(<StatusItem status="error" />)
 
         // Assert - tooltip trigger should not exist
-        const tooltipTrigger = container.querySelector('.ml-1.w-4.h-4')
+        const tooltipTrigger = screen.queryByTestId('error-tooltip-trigger')
         expect(tooltipTrigger).not.toBeInTheDocument()
       })
 
       it('should not render tooltip trigger when errorMessage is empty', () => {
         // Arrange & Act
-        const { container } = renderWithProviders(<StatusItem status="error" errorMessage="" />)
+        renderWithProviders(<StatusItem status="error" errorMessage="" />)
 
         // Assert - tooltip trigger should not exist
-        const tooltipTrigger = container.querySelector('.ml-1.w-4.h-4')
+        const tooltipTrigger = screen.queryByTestId('error-tooltip-trigger')
         expect(tooltipTrigger).not.toBeInTheDocument()
       })
     })
@@ -345,13 +344,12 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Assert - check if switch has disabled styling
+      // Assert - check if switch is semantically disabled
       const switchEl = screen.getByRole('switch')
       if (isEmbedding)
-        expect(switchEl).toHaveClass('!cursor-not-allowed')
-
+        expect(switchEl).toBeDisabled()
       else
-        expect(switchEl).not.toHaveClass('!cursor-not-allowed')
+        expect(switchEl).not.toBeDisabled()
     })
 
     it('should disable switch when archived', () => {
@@ -364,9 +362,9 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Assert
+      // Assert - semantically disabled
       const switchEl = screen.getByRole('switch')
-      expect(switchEl).toHaveClass('!cursor-not-allowed')
+      expect(switchEl).toBeDisabled()
     })
 
     it('should disable switch when both embedding and archived', () => {
@@ -379,9 +377,9 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Assert
+      // Assert - semantically disabled
       const switchEl = screen.getByRole('switch')
-      expect(switchEl).toHaveClass('!cursor-not-allowed')
+      expect(switchEl).toBeDisabled()
     })
   })
 
@@ -460,8 +458,8 @@ describe('StatusItem', () => {
       expect(mockDisableDocument).not.toHaveBeenCalled()
     })
 
-    it('should not call enable when already enabled', () => {
-      // Arrange - Component starts with enabled: true
+    it('should render switch as checked when enabled is true', () => {
+      // Arrange & Act
       renderWithProviders(
         <StatusItem
           status="enabled"
@@ -471,13 +469,13 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Assert - verify component renders correctly with checked state
+      // Assert - verify switch shows checked state
       const switchEl = screen.getByRole('switch')
       expect(switchEl).toHaveAttribute('aria-checked', 'true')
     })
 
-    it('should not call disable when already disabled', () => {
-      // Arrange - Component starts with enabled: false
+    it('should render switch as unchecked when enabled is false', () => {
+      // Arrange & Act
       renderWithProviders(
         <StatusItem
           status="disabled"
@@ -487,13 +485,16 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Assert - component renders correctly with unchecked state
+      // Assert - verify switch shows unchecked state
       const switchEl = screen.getByRole('switch')
       expect(switchEl).toHaveAttribute('aria-checked', 'false')
     })
 
-    it('should skip enable operation when already enabled (guard branch)', () => {
+    it('should skip enable operation when props.enabled is true (guard branch)', () => {
       // Covers guard condition: if (operationName === 'enable' && enabled) return
+      // Note: The guard checks props.enabled, NOT the Switch's internal UI state.
+      // This prevents redundant API calls when the UI toggles back to a state
+      // that already matches the server-side data (props haven't been updated yet).
       const mockOnUpdate = jest.fn()
       renderWithProviders(
         <StatusItem
@@ -505,18 +506,23 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Click twice: first disable, then enable (but enabled=true, should skip)
       const switchEl = screen.getByRole('switch')
+      // First click: Switch UI toggles OFF, calls disable (props.enabled=true, so allowed)
       fireEvent.click(switchEl)
+      // Second click: Switch UI toggles ON, tries to call enable
+      // BUT props.enabled is still true (not updated), so guard skips the API call
       fireEvent.click(switchEl)
 
-      // Assert - disable was called, enable should be skipped
+      // Assert - disable was called once, enable was skipped because props.enabled=true
       expect(mockDisableDocument).toHaveBeenCalledTimes(1)
       expect(mockEnableDocument).not.toHaveBeenCalled()
     })
 
-    it('should skip disable operation when already disabled (guard branch)', () => {
+    it('should skip disable operation when props.enabled is false (guard branch)', () => {
       // Covers guard condition: if (operationName === 'disable' && !enabled) return
+      // Note: The guard checks props.enabled, NOT the Switch's internal UI state.
+      // This prevents redundant API calls when the UI toggles back to a state
+      // that already matches the server-side data (props haven't been updated yet).
       const mockOnUpdate = jest.fn()
       renderWithProviders(
         <StatusItem
@@ -528,12 +534,14 @@ describe('StatusItem', () => {
         />,
       )
 
-      // Click twice: first enable, then disable (but enabled=false, should skip)
       const switchEl = screen.getByRole('switch')
+      // First click: Switch UI toggles ON, calls enable (props.enabled=false, so allowed)
       fireEvent.click(switchEl)
+      // Second click: Switch UI toggles OFF, tries to call disable
+      // BUT props.enabled is still false (not updated), so guard skips the API call
       fireEvent.click(switchEl)
 
-      // Assert - enable was called, disable should be skipped
+      // Assert - enable was called once, disable was skipped because props.enabled=false
       expect(mockEnableDocument).toHaveBeenCalledTimes(1)
       expect(mockDisableDocument).not.toHaveBeenCalled()
     })
@@ -795,14 +803,13 @@ describe('StatusItem', () => {
     it('should handle very long error messages', async () => {
       // Arrange
       const longErrorMessage = 'A'.repeat(500)
-      const { container } = renderWithProviders(
+      renderWithProviders(
         <StatusItem status="error" errorMessage={longErrorMessage} />,
       )
 
       // Act - hover to show tooltip
-      const tooltipTrigger = container.querySelector('.ml-1.w-4.h-4')
-      expect(tooltipTrigger).toBeInTheDocument()
-      fireEvent.mouseEnter(tooltipTrigger!)
+      const tooltipTrigger = screen.getByTestId('error-tooltip-trigger')
+      fireEvent.mouseEnter(tooltipTrigger)
 
       // Assert
       await waitFor(() => {
@@ -813,14 +820,13 @@ describe('StatusItem', () => {
     it('should handle special characters in error message', async () => {
       // Arrange
       const specialChars = '<script>alert("xss")</script> & < > " \''
-      const { container } = renderWithProviders(
+      renderWithProviders(
         <StatusItem status="error" errorMessage={specialChars} />,
       )
 
       // Act - hover to show tooltip
-      const tooltipTrigger = container.querySelector('.ml-1.w-4.h-4')
-      expect(tooltipTrigger).toBeInTheDocument()
-      fireEvent.mouseEnter(tooltipTrigger!)
+      const tooltipTrigger = screen.getByTestId('error-tooltip-trigger')
+      fireEvent.mouseEnter(tooltipTrigger)
 
       // Assert
       await waitFor(() => {
@@ -837,8 +843,8 @@ describe('StatusItem', () => {
 
       // Act & Assert
       statuses.forEach((status) => {
-        const { container, unmount } = renderWithProviders(<StatusItem status={status} />)
-        const indicator = container.querySelector('.rounded-\\[3px\\]')
+        const { unmount } = renderWithProviders(<StatusItem status={status} />)
+        const indicator = screen.getByTestId('status-indicator')
         expect(indicator).toBeInTheDocument()
         unmount()
       })
@@ -862,7 +868,7 @@ describe('StatusItem', () => {
       }
 
       // Act
-      const { container, rerender } = renderWithProviders(<StatusItem {...props} />)
+      const { rerender } = renderWithProviders(<StatusItem {...props} />)
       rerender(
         <QueryClientProvider client={createQueryClient()}>
           <StatusItem {...props} />
@@ -870,16 +876,16 @@ describe('StatusItem', () => {
       )
 
       // Assert
-      const indicator = container.querySelector('.rounded-\\[3px\\]')
+      const indicator = screen.getByTestId('status-indicator')
       expect(indicator).toBeInTheDocument()
     })
 
     it('should update when status prop changes', () => {
       // Arrange
-      const { container, rerender } = renderWithProviders(<StatusItem status="available" />)
+      const { rerender } = renderWithProviders(<StatusItem status="available" />)
 
       // Assert initial - green/success background
-      let indicator = container.querySelector('.rounded-\\[3px\\]')
+      let indicator = screen.getByTestId('status-indicator')
       expect(indicator).toHaveClass('bg-components-badge-status-light-success-bg')
 
       // Act
@@ -890,7 +896,7 @@ describe('StatusItem', () => {
       )
 
       // Assert updated - red/error background
-      indicator = container.querySelector('.rounded-\\[3px\\]')
+      indicator = screen.getByTestId('status-indicator')
       expect(indicator).toHaveClass('bg-components-badge-status-light-error-bg')
     })
   })
