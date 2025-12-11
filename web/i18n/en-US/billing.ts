@@ -232,7 +232,7 @@ const translation = {
     },
     addChunks: {
       title: 'Upgrade to continue adding chunks',
-      description: 'You’ve reached the limit of adding chunks for this plan. ',
+      description: 'You’ve reached the limit of adding chunks for this plan.',
     },
   },
 }
