@@ -401,6 +401,7 @@ const translation = {
     searchResults_other: 'REZULTATELE',
     keywordDuplicate: 'Cuvântul cheie există deja',
     keywordEmpty: 'Cuvântul cheie nu poate fi gol',
+    allFilesUploaded: 'Toate fișierele trebuie încărcate înainte de salvare',
   },
 }
 

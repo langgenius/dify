@@ -10,14 +10,12 @@ import Trigger from './trigger'
 import List from './list'
 
 export type CredentialSelectorProps = {
-  pluginName: string
   currentCredentialId: string
   onCredentialChange: (credentialId: string) => void
   credentials: Array<DataSourceCredential>
 }
 
 const CredentialSelector = ({
-  pluginName,
   currentCredentialId,
   onCredentialChange,
   credentials,
@@ -50,7 +48,6 @@ const CredentialSelector = ({
       <PortalToFollowElemTrigger onClick={toggle} className='grow overflow-hidden'>
         <Trigger
           currentCredential={currentCredential}
-          pluginName={pluginName}
           isOpen={open}
         />
       </PortalToFollowElemTrigger>
@@ -58,7 +55,6 @@ const CredentialSelector = ({
         <List
           currentCredentialId={currentCredentialId}
           credentials={credentials}
-          pluginName={pluginName}
           onCredentialChange={handleCredentialChange}
         />
       </PortalToFollowElemContent>
