@@ -365,9 +365,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
         with self._session_maker() as session:
             node_execution_ids = session.scalars(
-                select(WorkflowNodeExecutionModel.id).where(
-                    WorkflowNodeExecutionModel.workflow_run_id.in_(run_ids)
-                )
+                select(WorkflowNodeExecutionModel.id).where(WorkflowNodeExecutionModel.workflow_run_id.in_(run_ids))
             ).all()
 
             offloads_deleted = 0
@@ -400,9 +398,9 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             if pause_ids:
                 pause_reasons_deleted = (
-                    session.query(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids)).delete(
-                        synchronize_session=False
-                    )
+                    session.query(WorkflowPauseReason)
+                    .where(WorkflowPauseReason.pause_id.in_(pause_ids))
+                    .delete(synchronize_session=False)
                 )
                 pauses_deleted = (
                     session.query(WorkflowPauseModel)
