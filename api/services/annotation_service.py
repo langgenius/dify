@@ -436,13 +436,8 @@ class AppAnnotationService:
             if features.billing.enabled:
                 annotation_quota_limit = features.annotation_quota_limit
                 if annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
-                    raise ValueError(
-                        f"The number of annotations ({len(result)}) would exceed your subscription limit. "
-                        f"Current usage: {annotation_quota_limit.size}/{annotation_quota_limit.limit}. "
-                        f"Available: {annotation_quota_limit.limit - annotation_quota_limit.size}."
-                    )
-            
-            # Create async job
+                    raise ValueError("The number of annotations exceeds the limit of your subscription.")
+            # async job
             job_id = str(uuid.uuid4())
             indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
             
@@ -454,9 +449,6 @@ class AppAnnotationService:
             
             # Set job status
             redis_client.setnx(indexing_cache_key, "waiting")
-            redis_client.expire(indexing_cache_key, 3600)  # 1 hour TTL
-            
-            # Send batch import task
             batch_import_annotations_task.delay(str(job_id), result, app_id, current_tenant_id, current_user.id)
             
         except pd.errors.ParserError as e:
