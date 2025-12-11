@@ -11,6 +11,7 @@ Test coverage:
 
 from unittest.mock import patch
 
+import pytest
 from opentelemetry.trace import StatusCode
 
 from core.workflow.enums import NodeType
@@ -21,10 +22,8 @@ class TestObservabilityLayerInitialization:
     """Test ObservabilityLayer initialization logic."""
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
-    def test_initialization_when_otel_enabled(
-        self, _mock_is_instrument_flag_enabled, tracer_provider_with_memory_exporter  # noqa: PT019
-    ):
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_initialization_when_otel_enabled(self, tracer_provider_with_memory_exporter):
         """Test that layer initializes correctly when OTel is enabled."""
         layer = ObservabilityLayer()
         assert not layer._is_disabled
@@ -33,10 +32,8 @@ class TestObservabilityLayerInitialization:
         assert layer._default_parser is not None
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", False)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=True)
-    def test_initialization_when_instrument_flag_enabled(
-        self, _mock_is_instrument_flag_enabled, tracer_provider_with_memory_exporter  # noqa: PT019
-    ):
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_true")
+    def test_initialization_when_instrument_flag_enabled(self, tracer_provider_with_memory_exporter):
         """Test that layer enables when instrument flag is enabled."""
         layer = ObservabilityLayer()
         assert not layer._is_disabled
@@ -49,13 +46,9 @@ class TestObservabilityLayerNodeSpanLifecycle:
     """Test node span creation and lifecycle management."""
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
     def test_node_span_created_and_ended(
-        self,
-        _mock_is_instrument_flag_enabled,  # noqa: PT019
-        tracer_provider_with_memory_exporter,
-        memory_span_exporter,
-        mock_llm_node,
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node
     ):
         """Test that span is created on node start and ended on node end."""
         layer = ObservabilityLayer()
@@ -70,13 +63,9 @@ class TestObservabilityLayerNodeSpanLifecycle:
         assert spans[0].status.status_code == StatusCode.OK
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
     def test_node_error_recorded_in_span(
-        self,
-        _mock_is_instrument_flag_enabled,  # noqa: PT019
-        tracer_provider_with_memory_exporter,
-        memory_span_exporter,
-        mock_llm_node,
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node
     ):
         """Test that node execution errors are recorded in span."""
         layer = ObservabilityLayer()
@@ -93,13 +82,9 @@ class TestObservabilityLayerNodeSpanLifecycle:
         assert any("exception" in event.name.lower() for event in spans[0].events)
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
     def test_node_end_without_start_handled_gracefully(
-        self,
-        _mock_is_instrument_flag_enabled,  # noqa: PT019
-        tracer_provider_with_memory_exporter,
-        memory_span_exporter,
-        mock_llm_node,
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node
     ):
         """Test that ending a node without start doesn't crash."""
         layer = ObservabilityLayer()
@@ -115,13 +100,9 @@ class TestObservabilityLayerParserIntegration:
     """Test parser integration for different node types."""
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
     def test_default_parser_used_for_regular_node(
-        self,
-        _mock_is_instrument_flag_enabled,  # noqa: PT019
-        tracer_provider_with_memory_exporter,
-        memory_span_exporter,
-        mock_start_node,
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_start_node
     ):
         """Test that default parser is used for non-tool nodes."""
         layer = ObservabilityLayer()
@@ -138,13 +119,9 @@ class TestObservabilityLayerParserIntegration:
         assert attrs["node.type"] == mock_start_node.node_type.value
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
     def test_tool_parser_used_for_tool_node(
-        self,
-        _mock_is_instrument_flag_enabled,  # noqa: PT019
-        tracer_provider_with_memory_exporter,
-        memory_span_exporter,
-        mock_tool_node,
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_tool_node
     ):
         """Test that tool parser is used for tool nodes."""
         layer = ObservabilityLayer()
@@ -166,10 +143,8 @@ class TestObservabilityLayerGraphLifecycle:
     """Test graph lifecycle management."""
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
-    def test_on_graph_start_clears_contexts(
-        self, _mock_is_instrument_flag_enabled, tracer_provider_with_memory_exporter, mock_llm_node  # noqa: PT019
-    ):
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_on_graph_start_clears_contexts(self, tracer_provider_with_memory_exporter, mock_llm_node):
         """Test that on_graph_start clears node contexts."""
         layer = ObservabilityLayer()
         layer.on_graph_start()
@@ -181,13 +156,9 @@ class TestObservabilityLayerGraphLifecycle:
         assert len(layer._node_contexts) == 0
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
     def test_on_graph_end_with_no_unfinished_spans(
-        self,
-        _mock_is_instrument_flag_enabled,  # noqa: PT019
-        tracer_provider_with_memory_exporter,
-        memory_span_exporter,
-        mock_llm_node,
+        self, tracer_provider_with_memory_exporter, memory_span_exporter, mock_llm_node
     ):
         """Test that on_graph_end handles normal completion."""
         layer = ObservabilityLayer()
@@ -201,13 +172,9 @@ class TestObservabilityLayerGraphLifecycle:
         assert len(spans) == 1
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", True)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
     def test_on_graph_end_with_unfinished_spans_logs_warning(
-        self,
-        _mock_is_instrument_flag_enabled,  # noqa: PT019
-        tracer_provider_with_memory_exporter,
-        mock_llm_node,
-        caplog,
+        self, tracer_provider_with_memory_exporter, mock_llm_node, caplog
     ):
         """Test that on_graph_end logs warning for unfinished spans."""
         layer = ObservabilityLayer()
@@ -226,10 +193,8 @@ class TestObservabilityLayerDisabledMode:
     """Test behavior when layer is disabled."""
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", False)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
-    def test_disabled_mode_skips_node_start(
-        self, _mock_is_instrument_flag_enabled, memory_span_exporter, mock_start_node  # noqa: PT019
-    ):
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_disabled_mode_skips_node_start(self, memory_span_exporter, mock_start_node):
         """Test that disabled layer doesn't create spans on node start."""
         layer = ObservabilityLayer()
         assert layer._is_disabled
@@ -242,10 +207,8 @@ class TestObservabilityLayerDisabledMode:
         assert len(spans) == 0
 
     @patch("core.workflow.graph_engine.layers.observability.dify_config.ENABLE_OTEL", False)
-    @patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False)
-    def test_disabled_mode_skips_node_end(
-        self, _mock_is_instrument_flag_enabled, memory_span_exporter, mock_llm_node  # noqa: PT019
-    ):
+    @pytest.mark.usefixtures("mock_is_instrument_flag_enabled_false")
+    def test_disabled_mode_skips_node_end(self, memory_span_exporter, mock_llm_node):
         """Test that disabled layer doesn't process node end."""
         layer = ObservabilityLayer()
         assert layer._is_disabled

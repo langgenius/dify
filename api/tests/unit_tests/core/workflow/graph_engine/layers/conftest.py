@@ -2,7 +2,7 @@
 Shared fixtures for ObservabilityLayer tests.
 """
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from opentelemetry.sdk.trace import TracerProvider
@@ -85,3 +85,17 @@ def mock_tool_node():
     node._node_data = tool_data
 
     return node
+
+
+@pytest.fixture
+def mock_is_instrument_flag_enabled_false():
+    """Mock is_instrument_flag_enabled to return False."""
+    with patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=False):
+        yield
+
+
+@pytest.fixture
+def mock_is_instrument_flag_enabled_true():
+    """Mock is_instrument_flag_enabled to return True."""
+    with patch("core.workflow.graph_engine.layers.observability.is_instrument_flag_enabled", return_value=True):
+        yield
