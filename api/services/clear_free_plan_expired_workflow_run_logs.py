@@ -5,10 +5,10 @@ from collections.abc import Iterable
 import click
 from sqlalchemy.orm import sessionmaker
 
+from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
-from repositories.factory import DifyAPIRepositoryFactory
 from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
@@ -35,9 +35,15 @@ class WorkflowRunCleanup:
 
         self.batch_size = batch_size
         self.billing_cache: dict[str, CloudPlan | None] = {}
-        self.repo = repo or DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-            sessionmaker(bind=db.engine, expire_on_commit=False)
-        )
+        if repo:
+            self.repo = repo
+        else:
+            # Lazy import to avoid circular dependency during module import
+            from repositories.factory import DifyAPIRepositoryFactory
+
+            self.repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+                sessionmaker(bind=db.engine, expire_on_commit=False)
+            )
 
     def run(self) -> None:
         click.echo(
@@ -110,6 +116,9 @@ class WorkflowRunCleanup:
         click.echo(click.style(summary_message, fg="white"))
 
     def _filter_free_tenants(self, tenant_ids: Iterable[str]) -> set[str]:
+        if not dify_config.BILLING_ENABLED:
+            return set(tenant_ids)
+
         tenant_id_list = list(tenant_ids)
         uncached_tenants = [tenant_id for tenant_id in tenant_id_list if tenant_id not in self.billing_cache]
 
