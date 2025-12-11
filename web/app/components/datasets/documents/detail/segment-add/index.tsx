@@ -14,6 +14,7 @@ import Popover from '@/app/components/base/popover'
 import { useBoolean } from 'ahooks'
 import { useProviderContext } from '@/context/provider-context'
 import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
 
 export type ISegmentAddProps = {
   importStatus: ProcessStatus | string | undefined
@@ -43,8 +44,8 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
     setFalse: hidePlanUpgradeModal,
   }] = useBoolean(false)
   const { plan, enableBilling } = useProviderContext()
-  const { usage, total } = plan
-  const canAdd = enableBilling ? (usage.vectorSpace < total.vectorSpace) : true
+  const { type } = plan
+  const canAdd = enableBilling ? type !== Plan.sandbox : true
 
   const withNeedUpgradeCheck = useCallback((fn: () => void) => {
     return () => {
