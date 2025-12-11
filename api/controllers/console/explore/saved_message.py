@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from flask import request
 from flask_restx import fields, marshal_with
 from pydantic import BaseModel, Field
