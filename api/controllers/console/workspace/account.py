@@ -1,4 +1,3 @@
-import logging
 from datetime import datetime
 from typing import Literal
 
@@ -182,7 +181,7 @@ class AccountInitApi(Resource):
         if account.status == "active":
             raise AccountAlreadyInitedError()
 
-        payload = console_ns.payload or request.get_json(silent=True) or {}
+        payload = console_ns.payload or {}
         args = AccountInitPayload.model_validate(payload)
 
         if dify_config.EDITION == "CLOUD":
@@ -272,11 +271,6 @@ class AccountInterfaceLanguageApi(Resource):
     def post(self):
         current_user, _ = current_account_with_tenant()
         payload = console_ns.payload or {}
-        logger = logging.getLogger(__name__)
-        # Temporary debug logs for interface-language validation — gated behind DEBUG
-        if dify_config.DEBUG:
-            logger.debug("Interface-language payload received: %s", payload)
-        # Validate payload — let framework/global error handling manage exceptions
         args = AccountInterfaceLanguagePayload.model_validate(payload)
 
         updated_account = AccountService.update_account(current_user, interface_language=args.interface_language)
