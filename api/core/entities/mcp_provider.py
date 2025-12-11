@@ -213,7 +213,11 @@ class MCPProviderEntity(BaseModel):
         return None
 
     def retrieve_tokens(self) -> OAuthTokens | None:
-        """OAuth tokens if available"""
+        """Retrieve OAuth tokens if authentication is complete.
+
+        Returns:
+            OAuthTokens if the provider has been authenticated, None otherwise.
+        """
         if not self.credentials:
             return None
         credentials = self.decrypt_credentials()
