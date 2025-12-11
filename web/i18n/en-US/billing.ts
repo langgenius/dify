@@ -223,12 +223,12 @@ const translation = {
   },
   upgrade: {
     uploadMultiplePages: {
-      title: 'Upgrade to upload multiple pages at once',
-      description: 'You’ve reached the upload limit — only one page can be selected and uploaded at a time on your current plan.',
+      title: 'Upgrade to upload multiple documents at once',
+      description: 'You’ve reached the upload limit — only one document can be selected and uploaded at a time on your current plan.',
     },
     uploadMultipleFiles: {
-      title: 'Upgrade to unlock batch file upload',
-      description: 'Batch-upload more files at once to save time and improve efficiency.',
+      title: 'Upgrade to unlock batch document upload',
+      description: 'Batch-upload more documents at once to save time and improve efficiency.',
     },
     addChunks: {
       title: 'Upgrade to continue adding chunks',

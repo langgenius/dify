@@ -204,16 +204,16 @@ const translation = {
   teamMembers: 'チームメンバー',
   upgrade: {
     uploadMultiplePages: {
-      title: '複数ページを一度にアップロードするにはアップグレード',
-      description: '現在のプランではアップロード上限に達しています。1回の操作で選択・アップロードできるページは1つのみです。',
+      title: '複数ドキュメントを一度にアップロードするにはアップグレード',
+      description: '現在のプランではアップロード上限に達しています。1回の操作で選択・アップロードできるドキュメントは1つのみです。',
     },
     uploadMultipleFiles: {
-      title: 'Upgrade to unlock batch file upload',
-      description: 'Batch-upload more files at once to save time and improve efficiency.',
+      title: '一括ドキュメントアップロード機能を解放するにはアップグレードが必要です',
+      description: '複数のドキュメントを一度にバッチアップロードすることで、時間を節約し、作業効率を向上できます。',
     },
     addChunks: {
-      title: '一括ファイルアップロード機能を解放するにはアップグレードが必要です',
-      description: '複数のファイルを一度にバッチアップロードすることで、時間を節約し、作業効率を向上できます。 ',
+      title: 'アップグレードして、チャンクを引き続き追加できるようにしてください。',
+      description: 'このプランでは、チャンク追加の上限に達しています。',
     },
   },
 }
