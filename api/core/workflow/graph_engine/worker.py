@@ -41,10 +41,10 @@ class Worker(threading.Thread):
         ready_queue: ReadyQueue,
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
+        layers: Sequence[GraphEngineLayer],
         worker_id: int = 0,
         flask_app: Flask | None = None,
         context_vars: contextvars.Context | None = None,
-        layers: Sequence[GraphEngineLayer] | None = None,
     ) -> None:
         """
         Initialize worker thread.
@@ -53,6 +53,7 @@ class Worker(threading.Thread):
             ready_queue: Ready queue containing node IDs ready for execution
             event_queue: Queue for pushing execution events
             graph: Graph containing nodes to execute
+            layers: Graph engine layers for node execution hooks
             worker_id: Unique identifier for this worker
             flask_app: Optional Flask application for context preservation
             context_vars: Optional context variables to preserve in worker thread

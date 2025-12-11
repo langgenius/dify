@@ -162,13 +162,13 @@ class GraphEngine:
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
             graph=self._graph,
+            layers=self._layers,
             flask_app=flask_app,
             context_vars=context_vars,
             min_workers=self._min_workers,
             max_workers=self._max_workers,
             scale_up_threshold=self._scale_up_threshold,
             scale_down_idle_time=self._scale_down_idle_time,
-            layers=self._layers,
         )
 
         # === Orchestration ===

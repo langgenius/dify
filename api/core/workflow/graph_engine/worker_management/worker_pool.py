@@ -40,13 +40,13 @@ class WorkerPool:
         ready_queue: ReadyQueue,
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
+        layers: list[GraphEngineLayer],
         flask_app: "Flask | None" = None,
         context_vars: "Context | None" = None,
         min_workers: int | None = None,
         max_workers: int | None = None,
         scale_up_threshold: int | None = None,
         scale_down_idle_time: float | None = None,
-        layers: list[GraphEngineLayer] | None = None,
     ) -> None:
         """
         Initialize the simple worker pool.
@@ -55,6 +55,7 @@ class WorkerPool:
             ready_queue: Ready queue for nodes ready for execution
             event_queue: Queue for worker events
             graph: The workflow graph
+            layers: Graph engine layers for node execution hooks
             flask_app: Optional Flask app for context preservation
             context_vars: Optional context variables
             min_workers: Minimum number of workers
@@ -147,10 +148,10 @@ class WorkerPool:
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
             graph=self._graph,
+            layers=self._layers,
             worker_id=worker_id,
             flask_app=self._flask_app,
             context_vars=self._context_vars,
-            layers=self._layers or [],
         )
 
         worker.start()
