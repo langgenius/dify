@@ -619,6 +619,26 @@ services:
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
 
+  # InterSystems IRIS vector database
+  iris:
+    image: containers.intersystems.com/intersystems/iris-community:2025.3
+    profiles:
+      - iris
+    container_name: iris
+    restart: always
+    init: true
+    ports:
+      - "${IRIS_SUPER_SERVER_PORT:-1972}:1972"
+      - "${IRIS_WEB_SERVER_PORT:-52773}:52773"
+    volumes:
+      - ./volumes/iris:/opt/iris
+      - ./iris/iris-init.script:/iris-init.script
+      - ./iris/docker-entrypoint.sh:/custom-entrypoint.sh
+    entrypoint: ["/custom-entrypoint.sh"]
+    tty: true
+    environment:
+      TZ: ${IRIS_TIMEZONE:-UTC}
+
   # Oracle vector database
   oracle:
     image: container-registry.oracle.com/database/free:latest

@@ -183,6 +183,10 @@ class Vector:
                 from core.rag.datasource.vdb.clickzetta.clickzetta_vector import ClickzettaVectorFactory
 
                 return ClickzettaVectorFactory
+            case VectorType.IRIS:
+                from core.rag.datasource.vdb.iris.iris_vector import IrisVectorFactory
+
+                return IrisVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
