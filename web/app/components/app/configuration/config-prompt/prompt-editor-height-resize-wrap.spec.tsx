@@ -33,7 +33,6 @@ describe('PromptEditorHeightResizeWrap', () => {
 
   it('should resize height with mouse events and clamp to minHeight', () => {
     const onHeightChange = jest.fn()
-    document.body.style.userSelect = ''
 
     const { container } = render(
       <PromptEditorHeightResizeWrap
