@@ -13,21 +13,24 @@ from flask.testing import FlaskClient
 from sqlalchemy.orm import Session
 
 from configs import dify_config
+from core.plugin.entities.request import TriggerInvokeEventResponse
 from core.trigger.debug import event_selectors
 from core.trigger.debug.event_bus import TriggerDebugEventBus
 from core.trigger.debug.event_selectors import PluginTriggerDebugEventPoller, WebhookTriggerDebugEventPoller
-from core.trigger.debug.events import PluginTriggerDebugEvent
+from core.trigger.debug.events import PluginTriggerDebugEvent, build_plugin_pool_key
 from core.workflow.enums import NodeType
 from libs.datetime_utils import naive_utc_now
 from models.account import Account, Tenant
 from models.enums import AppTriggerStatus, AppTriggerType, CreatorUserRole, WorkflowTriggerStatus
 from models.model import App
-from models.trigger import AppTrigger, WorkflowSchedulePlan, WorkflowTriggerLog, WorkflowWebhookTrigger
+from models.trigger import AppTrigger, WorkflowSchedulePlan, WorkflowTriggerLog, WorkflowWebhookTrigger, \
+    TriggerSubscription, WorkflowPluginTrigger
 from models.workflow import Workflow
 from schedule import workflow_schedule_task
 from schedule.workflow_schedule_task import poll_workflow_schedules
 from services import feature_service as feature_service_module
 from services.trigger import webhook_service
+from services.trigger.schedule_service import ScheduleService
 from services.workflow_service import WorkflowService
 from tasks import trigger_processing_tasks
 
@@ -179,7 +182,7 @@ def test_webhook_trigger_creates_trigger_log(
     db_session_with_containers.add_all([webhook_trigger, app_trigger])
     db_session_with_containers.commit()
 
-    def _fake_trigger_workflow_async(session: Session, user: Any, trigger_data: Any) -> SimpleNamespace:
+    def _fake_trigger_workflow_async(session: Session, trigger_data: Any) -> SimpleNamespace:
         log = WorkflowTriggerLog(
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,
@@ -558,7 +561,7 @@ def test_schedule_trigger_creates_trigger_log(
     db_session_with_containers.commit()
 
     # Mock AsyncWorkflowService to create WorkflowTriggerLog
-    def _fake_trigger_workflow_async(session: Session, user: Any, trigger_data: Any) -> SimpleNamespace:
+    def _fake_trigger_workflow_async(session: Session, trigger_data: Any) -> SimpleNamespace:
         log = WorkflowTriggerLog(
             tenant_id=trigger_data.tenant_id,
             app_id=trigger_data.app_id,
@@ -626,7 +629,6 @@ def test_schedule_visual_cron_conversion(
     expected_cron: str,
 ) -> None:
     """Schedule visual config should correctly convert to cron expression."""
-    from services.trigger.schedule_service import ScheduleService
 
     node_config: dict[str, Any] = {
         "id": "schedule-node",
@@ -658,7 +660,6 @@ def test_plugin_trigger_full_chain_with_db_verification(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Plugin trigger should create WorkflowTriggerLog and WorkflowPluginTrigger records."""
-    from models.trigger import TriggerSubscription, WorkflowPluginTrigger
 
     tenant, account = tenant_and_account
 
@@ -705,11 +706,14 @@ def test_plugin_trigger_full_chain_with_db_verification(
 
     # Create trigger subscription
     subscription = TriggerSubscription(
+        name="test-subscription",
         tenant_id=tenant.id,
         user_id=account.id,
         provider_id=provider_id,
         endpoint_id=endpoint_id,
-        credentials=json.dumps({"token": "test-secret"}),
+        parameters={},
+        properties={},
+        credentials={"token": "test-secret"},
         credential_type="api-key",
     )
     db_session_with_containers.add(subscription)
@@ -789,22 +793,23 @@ def test_plugin_debug_via_http_endpoint(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Plugin single-step debug via HTTP endpoint should dispatch debug event and be pollable."""
-    from models.trigger import TriggerSubscription
 
     tenant, account = tenant_and_account
 
     provider_id = "langgenius/debug-provider/debug-provider"
-    subscription_id = "sub-debug-test"
     endpoint_id = "3cc7fa12-3f7b-4f6a-9c8d-1234567890ab"
     event_name = "debug_event"
 
     # Create subscription
     subscription = TriggerSubscription(
+        name="debug-subscription",
         tenant_id=tenant.id,
         user_id=account.id,
         provider_id=provider_id,
         endpoint_id=endpoint_id,
-        credentials=json.dumps({"token": "debug-secret"}),
+        parameters={},
+        properties={},
+        credentials={"token": "debug-secret"},
         credential_type="api-key",
     )
     db_session_with_containers.add(subscription)
@@ -827,7 +832,6 @@ def test_plugin_debug_via_http_endpoint(
     }
 
     # Start listening with poller
-    from core.trigger.debug.events import build_plugin_pool_key
 
     poller = PluginTriggerDebugEventPoller(
         tenant_id=tenant.id,
@@ -884,7 +888,6 @@ def test_plugin_debug_via_http_endpoint(
     assert debug_events[0]["event"].name == event_name
 
     # Mock invoke_trigger_event for poller
-    from core.plugin.entities.request import TriggerInvokeEventResponse
 
     monkeypatch.setattr(
         "services.trigger.trigger_service.TriggerService.invoke_trigger_event",
