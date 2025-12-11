@@ -98,7 +98,7 @@ def enable_annotation_reply_task(
         if annotations:
             for annotation in annotations:
                 document = Document(
-                    page_content=annotation.question,
+                    page_content=annotation.question_text,
                     metadata={"annotation_id": annotation.id, "app_id": app_id, "doc_id": annotation.id},
                 )
                 documents.append(document)
