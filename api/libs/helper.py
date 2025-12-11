@@ -107,7 +107,7 @@ def email(email):
 EmailStr = Annotated[str, AfterValidator(email)]
 
 
-def uuid_value(value):
+def uuid_value(value: Any) -> str:
     if value == "":
         return str(value)
 
