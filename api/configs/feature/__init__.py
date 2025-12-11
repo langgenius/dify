@@ -1116,6 +1116,11 @@ class CeleryScheduleTasksConfig(BaseSettings):
         default=60 * 60,
     )
 
+    ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
+        description="Enable scheduled workflow run cleanup task",
+        default=False,
+    )
+
 
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(

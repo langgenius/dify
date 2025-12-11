@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Literal
 
@@ -10,6 +11,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account, TenantAccountJoin, TenantAccountRole
+
+logger = logging.getLogger(__name__)
 
 
 class BillingService:
@@ -24,6 +27,25 @@ class BillingService:
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
         return billing_info
+
+    @classmethod
+    def get_info_bulk(cls, tenant_ids: list[str]) -> dict[str, dict]:
+        """
+        Temporary bulk billing info fetch. Will be replaced by a real batch API.
+
+        Args:
+            tenant_ids: list of tenant ids
+
+        Returns:
+            Mapping of tenant_id -> billing info dict
+        """
+        result: dict[str, dict] = {}
+        for tenant_id in tenant_ids:
+            try:
+                result[tenant_id] = cls.get_info(tenant_id)
+            except Exception:
+                logger.exception("Failed to fetch billing info for tenant %s in bulk mode", tenant_id)
+        return result
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
