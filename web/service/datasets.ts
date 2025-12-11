@@ -185,8 +185,8 @@ export const fetchFileIndexingEstimate = (body: IndexingEstimateParams): Promise
   return post<FileIndexingEstimateResponse>('/datasets/indexing-estimate', { body })
 }
 
-export const fetchNotionPagePreview = ({ workspaceID, pageID, pageType, credentialID }: { workspaceID: string; pageID: string; pageType: string; credentialID: string }): Promise<{ content: string }> => {
-  return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`, {
+export const fetchNotionPagePreview = ({ pageID, pageType, credentialID }: { pageID: string; pageType: string; credentialID: string }): Promise<{ content: string }> => {
+  return get<{ content: string }>(`notion/pages/${pageID}/${pageType}/preview`, {
     params: {
       credential_id: credentialID,
     },
