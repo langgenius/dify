@@ -333,7 +333,17 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         with self._session_maker() as session:
             stmt = (
                 select(WorkflowRun)
-                .where(WorkflowRun.created_at < end_before)
+                .where(
+                    WorkflowRun.created_at < end_before,
+                    WorkflowRun.status.in_(
+                        [
+                            WorkflowExecutionStatus.SUCCEEDED.value,
+                            WorkflowExecutionStatus.FAILED.value,
+                            WorkflowExecutionStatus.STOPPED.value,
+                            WorkflowExecutionStatus.PARTIAL_SUCCEEDED.value,
+                        ]
+                    ),
+                )
                 .order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
                 .limit(batch_size)
             )

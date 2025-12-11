@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from unittest.mock import Mock, patch
 
 import pytest
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.workflow.enums import WorkflowExecutionStatus
@@ -102,6 +103,42 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         pause.resumed_at = None
         pause.created_at = datetime.now(UTC)
         return pause
+
+
+class TestGetRunsBatchForCleanup(TestDifyAPISQLAlchemyWorkflowRunRepository):
+    def test_get_runs_batch_for_cleanup_filters_terminal_statuses(
+        self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock
+    ):
+        scalar_result = Mock()
+        scalar_result.all.return_value = []
+        mock_session.scalars.return_value = scalar_result
+
+        repository.get_runs_batch_for_cleanup(
+            start_after=None,
+            end_before=datetime(2024, 1, 1),
+            last_seen=None,
+            batch_size=50,
+        )
+
+        stmt = mock_session.scalars.call_args[0][0]
+        compiled_sql = str(
+            stmt.compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": True},
+            )
+        )
+
+        assert "workflow_runs.status" in compiled_sql
+        for status in (
+            WorkflowExecutionStatus.SUCCEEDED,
+            WorkflowExecutionStatus.FAILED,
+            WorkflowExecutionStatus.STOPPED,
+            WorkflowExecutionStatus.PARTIAL_SUCCEEDED,
+        ):
+            assert f"'{status.value}'" in compiled_sql
+
+        assert "'running'" not in compiled_sql
+        assert "'paused'" not in compiled_sql
 
 
 class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
