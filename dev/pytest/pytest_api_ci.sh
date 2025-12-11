@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-set -x
+set -ex
 
 SCRIPT_DIR="$(dirname "$(realpath "$0")")"
 cd "$SCRIPT_DIR/../.."
