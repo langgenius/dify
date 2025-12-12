@@ -112,7 +112,7 @@ describe('CSVUploader', () => {
     clickSpy.mockRestore()
 
     const valueSetter = jest.spyOn(fileInput, 'value', 'set')
-    const removeTrigger = container.querySelector('div.cursor-pointer.p-2') as HTMLDivElement
+    const removeTrigger = screen.getByTestId('remove-file-button')
     fireEvent.click(removeTrigger)
 
     expect(updateFile).toHaveBeenCalledWith()
