@@ -144,8 +144,9 @@ def clean_dataset_task(
             db.session.query(Pipeline).where(Pipeline.id == pipeline_id).delete()
             db.session.query(Workflow).where(
                 Workflow.tenant_id == tenant_id,
-                Workflow.app_id == pipeline_id, 
-                Workflow.type == WorkflowType.RAG_PIPELINE).delete()
+                Workflow.app_id == pipeline_id,
+                Workflow.type == WorkflowType.RAG_PIPELINE,
+            ).delete()
         # delete files
         if documents:
             for document in documents:
