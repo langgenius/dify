@@ -10,6 +10,7 @@ import { cleanup, render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import BlockInput from '../app/components/base/block-input'
 import SupportVarInput from '../app/components/workflow/nodes/_base/components/support-var-input'
+import { sanitizeMarkdownContent } from '../app/components/base/markdown'
 
 // Mock styles
 jest.mock('../app/components/app/configuration/base/var-highlight/style.module.css', () => ({
@@ -69,6 +70,18 @@ describe('XSS Prevention - Block Input and Support Var Input Security', () => {
 
       expect(spanElement?.textContent).toBe('<script>alert("xss")</script>')
       expect(scriptElements).toHaveLength(0)
+    })
+  })
+
+  describe('Markdown Sanitization', () => {
+    it('strips dangerous attributes and protocols from raw HTML blocks', () => {
+      const jsProtocol = 'java' + 'script:alert(1)'
+      const malicious = `<img src="x" onerror="alert(1)"><a href="${jsProtocol}">click</a><script>alert(1)</script>`
+      const sanitized = sanitizeMarkdownContent(malicious)
+      expect(sanitized).not.toContain('onerror')
+      expect(sanitized).not.toContain('<script')
+      const protoLower = jsProtocol.toLowerCase().split('alert')[0] // java + script:
+      expect(sanitized.toLowerCase()).not.toContain(protoLower)
     })
   })
 })
