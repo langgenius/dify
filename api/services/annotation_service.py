@@ -5,6 +5,7 @@ from sqlalchemy import or_, select
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
+from core.helper.csv_sanitizer import CSVSanitizer
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -179,8 +180,6 @@ class AppAnnotationService:
         )
 
         # Sanitize CSV-injectable fields to prevent formula injection
-        from core.helper.csv_sanitizer import CSVSanitizer
-
         for annotation in annotations:
             # Sanitize question field if present
             if annotation.question:

@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from flask import request
+from flask import make_response, request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
 
@@ -270,8 +270,6 @@ class AnnotationExportApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def get(self, app_id):
-        from flask import make_response
-
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
         response_data = {"data": marshal(annotation_list, annotation_fields)}
