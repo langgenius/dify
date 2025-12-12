@@ -21,7 +21,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.11.0
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -62,7 +62,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.11.0
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -101,7 +101,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.11.0
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -131,7 +131,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.11.0
+    image: langgenius/dify-web:1.11.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
