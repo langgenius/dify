@@ -7,7 +7,7 @@ const translation = {
   table: {
     header: {
       source: '数据源',
-      text: '文本',
+      queryContent: '查询内容',
       time: '时间',
     },
   },
@@ -29,6 +29,12 @@ const translation = {
   hitChunks: '命中 {{num}} 个子段落',
   open: '打开',
   keyword: '关键词',
+  imageUploader: {
+    tip: '上传或拖拽图片 (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)',
+    tooltip: '上传图片 (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)',
+    dropZoneTip: '拖拽文件到这里上传',
+    singleChunkAttachmentLimitTooltip: '单个分段附件数量不能超过 {{limit}}',
+  },
 }
 
 export default translation

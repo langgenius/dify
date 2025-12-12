@@ -5,7 +5,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
-import useSWR from 'swr'
 import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
 import ActionButton from '@/app/components/base/action-button'
@@ -19,7 +18,6 @@ import {
 import {
   createApikey as createDatasetApikey,
   delApikey as delDatasetApikey,
-  fetchApiKeysList as fetchDatasetApiKeysList,
 } from '@/service/datasets'
 import type { CreateApiKeyResponse } from '@/models/app'
 import Loading from '@/app/components/base/loading'
@@ -27,6 +25,7 @@ import Confirm from '@/app/components/base/confirm'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useAppContext } from '@/context/app-context'
 import { useAppApiKeys, useInvalidateAppApiKeys } from '@/service/use-apps'
+import { useDatasetApiKeys, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
 
 type ISecretKeyModalProps = {
   isShow: boolean
@@ -46,11 +45,9 @@ const SecretKeyModal = ({
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
   const invalidateAppApiKeys = useInvalidateAppApiKeys()
+  const invalidateDatasetApiKeys = useInvalidateDatasetApiKeys()
   const { data: appApiKeys, isLoading: isAppApiKeysLoading } = useAppApiKeys(appId, { enabled: !!appId && isShow })
-  const { data: datasetApiKeys, isLoading: isDatasetApiKeysLoading, mutate: mutateDatasetApiKeys } = useSWR(
-    !appId && isShow ? { url: '/datasets/api-keys', params: {} } : null,
-    fetchDatasetApiKeysList,
-  )
+  const { data: datasetApiKeys, isLoading: isDatasetApiKeysLoading } = useDatasetApiKeys({ enabled: !appId && isShow })
   const apiKeysList = appId ? appApiKeys : datasetApiKeys
   const isApiKeysLoading = appId ? isAppApiKeysLoading : isDatasetApiKeysLoading
 
@@ -69,7 +66,7 @@ const SecretKeyModal = ({
     if (appId)
       invalidateAppApiKeys(appId)
     else
-      mutateDatasetApiKeys()
+      invalidateDatasetApiKeys()
   }
 
   const onCreate = async () => {
@@ -83,7 +80,7 @@ const SecretKeyModal = ({
     if (appId)
       invalidateAppApiKeys(appId)
     else
-      mutateDatasetApiKeys()
+      invalidateDatasetApiKeys()
   }
 
   const generateToken = (token: string) => {
