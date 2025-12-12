@@ -2,3 +2,4 @@
 omit =
     api/tests/*
     api/migrations/*
+    api/core/rag/datasource/vdb/*
