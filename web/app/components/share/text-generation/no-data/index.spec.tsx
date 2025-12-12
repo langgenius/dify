@@ -9,7 +9,7 @@ jest.mock('react-i18next', () => ({
 }))
 
 describe('NoData', () => {
-  it('should render empty state icon and text', () => {
+  it('should render empty state icon and text when mounted', () => {
     const { container } = render(<NoData />)
 
     expect(container.querySelector('svg')).toBeInTheDocument()

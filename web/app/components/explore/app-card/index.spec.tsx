@@ -65,7 +65,7 @@ describe('AppCard', () => {
     jest.clearAllMocks()
   })
 
-  it('should render app info with mode label', () => {
+  it('should render app info with correct mode label when mode is CHAT', () => {
     renderComponent({ app: createApp({ app: { ...createApp().app, mode: AppModeEnum.CHAT } }) })
 
     expect(screen.getByText('Sample App')).toBeInTheDocument()
