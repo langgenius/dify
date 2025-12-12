@@ -10,7 +10,6 @@ from urllib.parse import urlparse
 from xml.etree import ElementTree
 
 import httpx
-import requests
 from docx import Document as DocxDocument
 
 from configs import dify_config
@@ -260,6 +259,18 @@ class WordExtractor(BaseExtractor):
 
         def parse_paragraph(paragraph):
             paragraph_content = []
+
+            def append_image_link(image_id, has_drawing):
+                """Helper to append image link from image_map based on relationship type."""
+                rel = doc.part.rels[image_id]
+                if rel.is_external:
+                    if image_id in image_map and not has_drawing:
+                        paragraph_content.append(image_map[image_id])
+                else:
+                    image_part = rel.target_part
+                    if image_part in image_map and not has_drawing:
+                        paragraph_content.append(image_map[image_part])
+
             for run in paragraph.runs:
                 if hasattr(run.element, "tag") and isinstance(run.element.tag, str) and run.element.tag.endswith("r"):
                     # Process drawing type images
@@ -302,14 +313,7 @@ class WordExtractor(BaseExtractor):
                                 "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
                             )
                             if image_id and image_id in doc.part.rels:
-                                rel = doc.part.rels[image_id]
-                                if rel.is_external:
-                                    if image_id in image_map and not has_drawing:
-                                        paragraph_content.append(image_map[image_id])
-                                else:
-                                    image_part = rel.target_part
-                                    if image_part in image_map and not has_drawing:
-                                        paragraph_content.append(image_map[image_part])
+                                append_image_link(image_id, has_drawing)
                         # Find imagedata element in VML
                         image_data = shape.find(".//{urn:schemas-microsoft-com:vml}imagedata")
                         if image_data is not None:
@@ -317,14 +321,7 @@ class WordExtractor(BaseExtractor):
                                 "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
                             )
                             if image_id and image_id in doc.part.rels:
-                                rel = doc.part.rels[image_id]
-                                if rel.is_external:
-                                    if image_id in image_map and not has_drawing:
-                                        paragraph_content.append(image_map[image_id])
-                                else:
-                                    image_part = rel.target_part
-                                    if image_part in image_map and not has_drawing:
-                                        paragraph_content.append(image_map[image_part])
+                                append_image_link(image_id, has_drawing)
                 if run.text.strip():
                     paragraph_content.append(run.text.strip())
             return "".join(paragraph_content) if paragraph_content else ""
