@@ -54,7 +54,7 @@
     "@formatjs/intl-localematcher": "^0.5.10",
     "@headlessui/react": "2.2.1",
     "@heroicons/react": "^2.2.0",
-    "@hookform/resolvers": "^3.10.0",
+    "@hookform/resolvers": "^5.2.2",
     "@lexical/code": "^0.38.2",
     "@lexical/link": "^0.38.2",
     "@lexical/list": "^0.38.2",
