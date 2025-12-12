@@ -248,6 +248,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     LOOP_VARIABLE_MAP = "loop_variable_map"  # single loop variable output
     DATASOURCE_INFO = "datasource_info"
     LLM_CONTENT_SEQUENCE = "llm_content_sequence"
+    LLM_TRACE = "llm_trace"
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

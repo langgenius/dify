@@ -19,6 +19,31 @@ class ModelConfig(BaseModel):
     completion_params: dict[str, Any] = Field(default_factory=dict)
 
 
+class LLMTraceSegment(BaseModel):
+    """
+    Streaming trace segment for LLM tool-enabled runs.
+
+    We keep order as-is to allow direct replay: thought/content/tool_call/tool_result appear
+    exactly in the sequence they were emitted.
+    """
+
+    type: Literal["thought", "content", "tool_call", "tool_result"]
+    turn: int = Field(0, description="0-based turn index, increments after each tool_result")
+
+    # Common optional fields
+    text: str | None = Field(None, description="Text chunk for thought/content")
+
+    # Tool call fields
+    tool_call_id: str | None = None
+    tool_name: str | None = None
+    tool_arguments: str | None = None
+
+    # Tool result fields
+    tool_output: str | None = None
+    tool_error: str | None = None
+    files: list[str] = Field(default_factory=list, description="File IDs from tool result if any")
+
+
 class LLMGenerationData(BaseModel):
     """Generation data from LLM invocation with tools.
 
@@ -33,6 +58,7 @@ class LLMGenerationData(BaseModel):
     usage: LLMUsage = Field(..., description="LLM usage statistics")
     finish_reason: str | None = Field(None, description="Finish reason from LLM")
     files: list[File] = Field(default_factory=list, description="Generated files")
+    trace: list[LLMTraceSegment] = Field(default_factory=list, description="Streaming trace in emitted order")
 
 
 class ContextConfig(BaseModel):
