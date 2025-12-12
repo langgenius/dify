@@ -61,8 +61,13 @@ class ChatRequestPayload(BaseModel):
     @classmethod
     def normalize_conversation_id(cls, value: str | UUID | None) -> str | None:
         """Allow missing or blank conversation IDs; enforce UUID format when provided."""
-        if not value:
+        if value is None:
             return None
+
+        if isinstance(value, str):
+            value = value.strip()
+            if not value:
+                return None
 
         try:
             return helper.uuid_value(value)
