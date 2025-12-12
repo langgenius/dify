@@ -1,7 +1,6 @@
 'use client'
 import React from 'react'
 import { useContext } from 'use-context-selector'
-import Image from 'next/image'
 import LocaleSigninSelect from '@/app/components/base/select/locale-signin'
 import Divider from '@/app/components/base/divider'
 import { languages } from '@/i18n-config/language'
@@ -27,16 +26,12 @@ const Header = () => {
   return (
     <div className='flex w-full items-center justify-between p-6'>
       {systemFeatures.branding.enabled && systemFeatures.branding.login_page_logo
-        ? (
-          <Image
-            src={systemFeatures.branding.login_page_logo}
-            alt='logo'
-            height={28}
-            width={140}
-            unoptimized
-            className='block h-7 w-auto object-contain'
-          />
-        ) : <DifyLogo size='large' />}
+        ? <img
+          src={systemFeatures.branding.login_page_logo}
+          className='block h-7 w-auto object-contain'
+          alt='logo'
+        />
+        : <DifyLogo size='large' />}
       <div className='flex items-center gap-1'>
         <LocaleSigninSelect
           value={locale}

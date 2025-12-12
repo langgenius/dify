@@ -1,10 +1,7 @@
 name: Main CI Pipeline
 
 on:
-  # Trigger on pull requests against `main`. Include `synchronize` explicitly
-  # to make it clear that pushing to a PR branch will retrigger the workflow.
   pull_request:
-    types: [opened, synchronize, reopened]
     branches: ["main"]
   push:
     branches: ["main"]
@@ -71,13 +68,11 @@ jobs:
   vdb-tests:
     name: VDB Tests
     needs: check-changes
-    # Run when vdb files changed OR when a maintainer adds the 'run-vdb' label to the PR
-    if: needs.check-changes.outputs.vdb-changed == 'true' || contains(join(github.event.pull_request.labels.*.name, ','), 'run-vdb')
+    if: needs.check-changes.outputs.vdb-changed == 'true'
     uses: ./.github/workflows/vdb-tests.yml
 
   db-migration-test:
     name: DB Migration Test
     needs: check-changes
-    # Run when migration files changed OR when a maintainer adds the 'run-db-migration' label to the PR
-    if: needs.check-changes.outputs.migration-changed == 'true' || contains(join(github.event.pull_request.labels.*.name, ','), 'run-db-migration')
+    if: needs.check-changes.outputs.migration-changed == 'true'
     uses: ./.github/workflows/db-migration-test.yml
