@@ -21,7 +21,7 @@ Implementation Notes:
 
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, cast
@@ -52,7 +52,6 @@ from models.workflow import (
 )
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_pause import WorkflowPauseEntity
-from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -361,7 +360,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             return session.scalars(stmt).all()
 
-    def delete_runs_with_related(self, run_ids: Sequence[str]) -> dict[str, int]:
+    def delete_runs_with_related(
+        self,
+        run_ids: Sequence[str],
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
         if not run_ids:
             return {
                 "runs": 0,
@@ -411,7 +414,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 pauses_result = session.execute(delete(WorkflowPauseModel).where(WorkflowPauseModel.id.in_(pause_ids)))
                 pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
 
-            trigger_logs_deleted = SQLAlchemyWorkflowTriggerLogRepository(session).delete_by_run_ids(run_ids)
+            trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
 
             runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
             runs_deleted = cast(CursorResult, runs_result).rowcount or 0

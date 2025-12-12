@@ -1,14 +1,15 @@
 import datetime
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 
 import click
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,6 @@ class WorkflowRunCleanup:
         batch_size: int,
         start_after: datetime.datetime | None = None,
         end_before: datetime.datetime | None = None,
-        repo: APIWorkflowRunRepository | None = None,
     ):
         if (start_after is None) ^ (end_before is None):
             raise ValueError("start_after and end_before must be both set or both omitted.")
@@ -35,15 +35,12 @@ class WorkflowRunCleanup:
 
         self.batch_size = batch_size
         self.billing_cache: dict[str, CloudPlan | None] = {}
-        if repo:
-            self.repo = repo
-        else:
-            # Lazy import to avoid circular dependency during module import
-            from repositories.factory import DifyAPIRepositoryFactory
+        # Lazy import to avoid circular dependency during module import
+        from repositories.factory import DifyAPIRepositoryFactory
 
-            self.repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-                sessionmaker(bind=db.engine, expire_on_commit=False)
-            )
+        self.workflow_run_repo: APIWorkflowRunRepository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+            sessionmaker(bind=db.engine, expire_on_commit=False)
+        )
 
     def run(self) -> None:
         click.echo(
@@ -60,7 +57,7 @@ class WorkflowRunCleanup:
         last_seen: tuple[datetime.datetime, str] | None = None
 
         while True:
-            run_rows = self.repo.get_runs_batch_by_time_range(
+            run_rows = self.workflow_run_repo.get_runs_batch_by_time_range(
                 start_after=self.window_start,
                 end_before=self.window_end,
                 last_seen=last_seen,
@@ -86,7 +83,10 @@ class WorkflowRunCleanup:
                 continue
 
             try:
-                counts = self.repo.delete_runs_with_related(free_run_ids)
+                counts = self.workflow_run_repo.delete_runs_with_related(
+                    free_run_ids,
+                    delete_trigger_logs=self._delete_trigger_logs,
+                )
             except Exception:
                 logger.exception("Failed to delete workflow runs batch ending at %s", last_seen[0])
                 raise
@@ -143,3 +143,7 @@ class WorkflowRunCleanup:
                 self.billing_cache[tenant_id] = plan
 
         return {tenant_id for tenant_id in tenant_id_list if self.billing_cache.get(tenant_id) == CloudPlan.SANDBOX}
+
+    def _delete_trigger_logs(self, session: Session, run_ids: Sequence[str]) -> int:
+        trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
+        return trigger_repo.delete_by_run_ids(run_ids)
