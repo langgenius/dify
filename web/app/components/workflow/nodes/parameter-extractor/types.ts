@@ -1,4 +1,5 @@
 import type { CommonNodeType, Memory, ModelConfig, ValueSelector, VisionSetting } from '@/app/components/workflow/types'
+import type { CredentialOverride } from '../llm/types'
 
 export enum ParamType {
   string = 'string',
@@ -25,7 +26,9 @@ export enum ReasoningModeType {
 }
 
 export type ParameterExtractorNodeType = CommonNodeType & {
-  model: ModelConfig
+  model: ModelConfig & {
+    credential_override?: CredentialOverride
+  }
   query: ValueSelector
   reasoning_mode: ReasoningModeType
   parameters: Param[]

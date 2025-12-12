@@ -18,6 +18,7 @@ import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use
 import { supportFunctionCall } from '@/utils/tool-call'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 import { AppModeEnum } from '@/types/app'
+import type { CredentialOverride } from '../llm/types'
 
 const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
   const {
@@ -222,6 +223,13 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleCredentialOverrideChange = useCallback((override?: CredentialOverride) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.model.credential_override = override
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     handleInputVarChange,
@@ -245,6 +253,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     isVisionModel,
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
+    handleCredentialOverrideChange,
   }
 }
 

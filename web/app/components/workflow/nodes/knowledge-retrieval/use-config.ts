@@ -42,6 +42,7 @@ import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProvid
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
+import type { CredentialOverride } from '../llm/types'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -56,10 +57,24 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   const setInputs = useCallback((s: KnowledgeRetrievalNodeType) => {
     const newInputs = produce(s, (draft) => {
-      if (s.retrieval_mode === RETRIEVE_TYPE.multiWay)
+      if (s.retrieval_mode === RETRIEVE_TYPE.multiWay) {
+        // Preserve credential_override from single_retrieval_config before deleting it
+        const singleCredentialOverride = draft.single_retrieval_config?.model?.credential_override
         delete draft.single_retrieval_config
-      else
+
+        // If switching to multiWay and there's a metadata model, preserve its credential_override
+        if (singleCredentialOverride && draft.metadata_model_config && !draft.metadata_model_config.credential_override)
+          draft.metadata_model_config.credential_override = singleCredentialOverride
+      }
+      else {
+        // Preserve credential_override from multiple_retrieval_config before deleting it
+        const metadataCredentialOverride = draft.metadata_model_config?.credential_override
         delete draft.multiple_retrieval_config
+
+        // If switching to singleWay and there's no credential_override on the single model, preserve from metadata
+        if (metadataCredentialOverride && draft.single_retrieval_config?.model && !draft.single_retrieval_config.model.credential_override)
+          draft.single_retrieval_config.model.credential_override = metadataCredentialOverride
+      }
     })
     // not work in pass to draft...
     doSetInputs(newInputs)
@@ -140,6 +155,21 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
         }
       }
       draft.single_retrieval_config.model.completion_params = newParams
+    })
+    setInputs(newInputs)
+  }, [setInputs])
+
+  const handleMetadataCredentialOverrideChange = useCallback((override?: CredentialOverride) => {
+    const newInputs = produce(inputRef.current, (draft) => {
+      if (!draft.metadata_model_config) {
+        draft.metadata_model_config = {
+          provider: '',
+          name: '',
+          mode: AppModeEnum.CHAT,
+          completion_params: { temperature: 0.7 },
+        }
+      }
+      draft.metadata_model_config.credential_override = override
     })
     setInputs(newInputs)
   }, [setInputs])
@@ -424,6 +454,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     handleToggleConditionLogicalOperator,
     handleMetadataModelChange,
     handleMetadataCompletionParamsChange,
+    handleMetadataCredentialOverrideChange,
     availableStringVars,
     availableStringNodesWithParent,
     availableNumberVars,

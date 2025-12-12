@@ -199,6 +199,14 @@ export const fetchModelProviderCredentials: Fetcher<ModelProviderCredentials, st
   return get<ModelProviderCredentials>(url)
 }
 
+export type AvailableCredentialsRes = {
+  provider_available_credentials: { credential_id: string; credential_name?: string }[]
+  model_available_credentials: { credential_id: string; credential_name?: string }[]
+}
+export const fetchAvailableCredentials: Fetcher<AvailableCredentialsRes, string> = (url) => {
+  return get<AvailableCredentialsRes>(url)
+}
+
 export const fetchModelLoadBalancingConfig: Fetcher<{
   credentials?: Record<string, string | undefined | boolean>
   load_balancing: ModelLoadBalancingConfig
