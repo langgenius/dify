@@ -87,7 +87,7 @@ class ExcelExtractor(BaseExtractor):
             raise ValueError(f"Unsupported file extension: {file_extension}")
 
         return documents
-    
+
     def _find_header_and_columns(self, sheet, scan_rows=10) -> tuple[int, dict[int, str], int]:
         """
         Scan first N rows to find the most likely header row.
@@ -98,49 +98,42 @@ class ExcelExtractor(BaseExtractor):
         """
         # Store potential candidates: (row_index, non_empty_count, column_map)
         candidates: list[Candidate] = []
-        
+
         # Limit scan to avoid performance issues on huge files
         # We iterate manually to control the read scope
-        for current_row_idx, row in enumerate(
-            sheet.iter_rows(min_row=1, max_row=scan_rows, values_only=True), start=1
-        ):
-            
+        for current_row_idx, row in enumerate(sheet.iter_rows(min_row=1, max_row=scan_rows, values_only=True), start=1):
             # Filter out empty cells and build a temp map for this row
             # col_idx is 0-based
             row_map = {}
             for col_idx, cell_value in enumerate(row):
                 if cell_value is not None and str(cell_value).strip():
                     row_map[col_idx] = str(cell_value).strip().replace('"', '\\"')
-            
+
             if not row_map:
                 continue
-                
+
             non_empty_count = len(row_map)
-            
+
             # Header selection heuristic (implemented):
             # - Prefer the first row with at least 2 non-empty columns.
             # - Fallback: choose the row with the most non-empty columns
             #   (tie-breaker: smaller row index).
-            candidates.append({
-                "idx": current_row_idx,
-                "count": non_empty_count,
-                "map": row_map
-            })
+            candidates.append({"idx": current_row_idx, "count": non_empty_count, "map": row_map})
 
         if not candidates:
             return 0, {}, 0
 
         # Choose the best candidate header row.
-        
+
         best_candidate: Candidate | None = None
-        
+
         # Strategy: prefer the first row with >= 2 non-empty columns; otherwise fallback.
-        
+
         for cand in candidates:
             if cand["count"] >= 2:
                 best_candidate = cand
                 break
-        
+
         # Fallback: if no row has >= 2 columns, or all have 1, just take the one with max columns
         if not best_candidate:
             # Sort by count desc, then index asc
@@ -150,5 +143,5 @@ class ExcelExtractor(BaseExtractor):
         # Determine max_col_idx (1-based for openpyxl)
         # It is the index of the last valid column in our map + 1
         max_col_idx = max(best_candidate["map"].keys()) + 1
-        
+
         return best_candidate["idx"], best_candidate["map"], max_col_idx
