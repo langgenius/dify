@@ -328,20 +328,26 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         if not node_execution_ids:
             return 0, 0
 
-        offloads_deleted = cast(
-            CursorResult,
-            session.execute(
-                delete(WorkflowNodeExecutionOffload).where(
-                    WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
-                )
-            ),
-        ).rowcount or 0
+        offloads_deleted = (
+            cast(
+                CursorResult,
+                session.execute(
+                    delete(WorkflowNodeExecutionOffload).where(
+                        WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
+                    )
+                ),
+            ).rowcount
+            or 0
+        )
 
-        node_executions_deleted = cast(
-            CursorResult,
-            session.execute(
-                delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(node_execution_ids))
-            ),
-        ).rowcount or 0
+        node_executions_deleted = (
+            cast(
+                CursorResult,
+                session.execute(
+                    delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(node_execution_ids))
+                ),
+            ).rowcount
+            or 0
+        )
 
         return node_executions_deleted, offloads_deleted

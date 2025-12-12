@@ -54,9 +54,9 @@ class FakeRepo:
         self.call_idx += 1
         return batch
 
-    def delete_runs_with_related(self, runs: list[FakeRun], 
-                                 delete_node_executions=None, 
-                                 delete_trigger_logs=None) -> dict[str, int]:
+    def delete_runs_with_related(
+        self, runs: list[FakeRun], delete_node_executions=None, delete_trigger_logs=None
+    ) -> dict[str, int]:
         self.deleted.append([run.id for run in runs])
         result = self.delete_result.copy()
         result["runs"] = len(runs)
