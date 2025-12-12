@@ -3,6 +3,7 @@ from typing import Any
 
 import pytest
 
+import repositories.factory as repo_factory_module
 from services import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
@@ -42,15 +43,24 @@ class FakeRepo:
         self.call_idx += 1
         return batch
 
-    def delete_runs_with_related(self, run_ids: list[str]) -> dict[str, int]:
+    def delete_runs_with_related(self, run_ids: list[str], delete_trigger_logs=None) -> dict[str, int]:
         self.deleted.append(list(run_ids))
         result = self.delete_result.copy()
         result["runs"] = len(run_ids)
         return result
 
 
+def create_cleanup(monkeypatch: pytest.MonkeyPatch, repo: FakeRepo, **kwargs: Any) -> WorkflowRunCleanup:
+    monkeypatch.setattr(
+        repo_factory_module.DifyAPIRepositoryFactory,
+        "create_api_workflow_run_repository",
+        classmethod(lambda _cls, session_maker: repo),
+    )
+    return WorkflowRunCleanup(**kwargs)
+
+
 def test_filter_free_tenants_billing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
-    cleanup = WorkflowRunCleanup(days=30, batch_size=10, repo=FakeRepo([]))
+    cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
 
@@ -66,7 +76,7 @@ def test_filter_free_tenants_billing_disabled(monkeypatch: pytest.MonkeyPatch) -
 
 
 def test_filter_free_tenants_bulk_mixed(monkeypatch: pytest.MonkeyPatch) -> None:
-    cleanup = WorkflowRunCleanup(days=30, batch_size=10, repo=FakeRepo([]))
+    cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
     cleanup.billing_cache["t_free"] = cleanup_module.CloudPlan.SANDBOX
@@ -83,7 +93,7 @@ def test_filter_free_tenants_bulk_mixed(monkeypatch: pytest.MonkeyPatch) -> None
 
 
 def test_filter_free_tenants_bulk_failure(monkeypatch: pytest.MonkeyPatch) -> None:
-    cleanup = WorkflowRunCleanup(days=30, batch_size=10, repo=FakeRepo([]))
+    cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
     monkeypatch.setattr(
@@ -107,7 +117,7 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
             ]
         ]
     )
-    cleanup = WorkflowRunCleanup(days=30, batch_size=10, repo=repo)
+    cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
     cleanup.billing_cache["t_free"] = cleanup_module.CloudPlan.SANDBOX
@@ -126,7 +136,7 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
 def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     cutoff = datetime.datetime.now()
     repo = FakeRepo(batches=[[FakeRun("run-paid", "t_paid", cutoff)]])
-    cleanup = WorkflowRunCleanup(days=30, batch_size=10, repo=repo)
+    cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
     monkeypatch.setattr(
@@ -140,36 +150,38 @@ def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None
     assert repo.deleted == []
 
 
-def test_run_exits_on_empty_batch() -> None:
-    cleanup = WorkflowRunCleanup(days=30, batch_size=10, repo=FakeRepo([]))
+def test_run_exits_on_empty_batch(monkeypatch: pytest.MonkeyPatch) -> None:
+    cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
     cleanup.run()
 
 
-def test_between_sets_window_bounds() -> None:
+def test_between_sets_window_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
     start_after = datetime.datetime(2024, 5, 1, 0, 0, 0)
     end_before = datetime.datetime(2024, 6, 1, 0, 0, 0)
-    cleanup = WorkflowRunCleanup(
-        days=30, batch_size=10, start_after=start_after, end_before=end_before, repo=FakeRepo([])
+    cleanup = create_cleanup(
+        monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_after=start_after, end_before=end_before
     )
 
     assert cleanup.window_start == start_after
     assert cleanup.window_end == end_before
 
 
-def test_between_requires_both_boundaries() -> None:
+def test_between_requires_both_boundaries(monkeypatch: pytest.MonkeyPatch) -> None:
     with pytest.raises(ValueError):
-        WorkflowRunCleanup(
-            days=30, batch_size=10, start_after=datetime.datetime.now(), end_before=None, repo=FakeRepo([])
+        create_cleanup(
+            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_after=datetime.datetime.now(), end_before=None
         )
     with pytest.raises(ValueError):
-        WorkflowRunCleanup(
-            days=30, batch_size=10, start_after=None, end_before=datetime.datetime.now(), repo=FakeRepo([])
+        create_cleanup(
+            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_after=None, end_before=datetime.datetime.now()
         )
 
 
-def test_between_requires_end_after_start() -> None:
+def test_between_requires_end_after_start(monkeypatch: pytest.MonkeyPatch) -> None:
     start_after = datetime.datetime(2024, 6, 1, 0, 0, 0)
     end_before = datetime.datetime(2024, 5, 1, 0, 0, 0)
     with pytest.raises(ValueError):
-        WorkflowRunCleanup(days=30, batch_size=10, start_after=start_after, end_before=end_before, repo=FakeRepo([]))
+        create_cleanup(
+            monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, start_after=start_after, end_before=end_before
+        )

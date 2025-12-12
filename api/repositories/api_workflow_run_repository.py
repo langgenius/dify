@@ -34,9 +34,11 @@ Example:
     ```
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Protocol
+
+from sqlalchemy.orm import Session
 
 from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -265,7 +267,11 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
-    def delete_runs_with_related(self, run_ids: Sequence[str]) -> dict[str, int]:
+    def delete_runs_with_related(
+        self,
+        run_ids: Sequence[str],
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
         """
         Delete workflow runs and their related records (node executions, offloads, app logs,
         trigger logs, pauses, pause reasons).
