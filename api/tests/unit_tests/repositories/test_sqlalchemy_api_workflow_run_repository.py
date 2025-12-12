@@ -218,6 +218,33 @@ class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
             )
 
 
+class TestDeleteRunsWithRelated(TestDifyAPISQLAlchemyWorkflowRunRepository):
+    def test_uses_trigger_log_repository(
+        self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock
+    ):
+        node_ids_result = Mock()
+        node_ids_result.all.return_value = []
+        pause_ids_result = Mock()
+        pause_ids_result.all.return_value = []
+        mock_session.scalars.side_effect = [node_ids_result, pause_ids_result]
+
+        # app_logs delete, runs delete
+        mock_session.execute.side_effect = [Mock(rowcount=0), Mock(rowcount=1)]
+
+        fake_trigger_repo = Mock()
+        fake_trigger_repo.delete_by_run_ids.return_value = 3
+
+        with patch(
+            "repositories.sqlalchemy_api_workflow_run_repository.SQLAlchemyWorkflowTriggerLogRepository",
+            return_value=fake_trigger_repo,
+        ):
+            counts = repository.delete_runs_with_related(["run-1"])
+
+        fake_trigger_repo.delete_by_run_ids.assert_called_once_with(["run-1"])
+        assert counts["trigger_logs"] == 3
+        assert counts["runs"] == 1
+
+
 class TestResumeWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
     """Test resume_workflow_pause method."""
 

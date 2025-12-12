@@ -40,7 +40,6 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowAppLog,
     WorkflowNodeExecutionModel,
@@ -53,6 +52,7 @@ from models.workflow import (
 )
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_pause import WorkflowPauseEntity
+from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from repositories.types import (
     AverageInteractionStats,
     DailyRunsStats,
@@ -413,10 +413,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 pauses_result = session.execute(delete(WorkflowPauseModel).where(WorkflowPauseModel.id.in_(pause_ids)))
                 pauses_deleted = pauses_result.rowcount or 0
 
-            trigger_logs_result = session.execute(
-                delete(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids))
-            )
-            trigger_logs_deleted = trigger_logs_result.rowcount or 0
+            trigger_logs_deleted = SQLAlchemyWorkflowTriggerLogRepository(session).delete_by_run_ids(run_ids)
 
             runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
             runs_deleted = runs_result.rowcount or 0

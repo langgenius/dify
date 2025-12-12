@@ -5,7 +5,7 @@ SQLAlchemy implementation of WorkflowTriggerLogRepository.
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import and_, select
+from sqlalchemy import and_, delete, select
 from sqlalchemy.orm import Session
 
 from models.enums import WorkflowTriggerStatus
@@ -84,3 +84,21 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         )
 
         return list(self.session.scalars(query).all())
+
+    def delete_by_run_ids(self, run_ids: Sequence[str]) -> int:
+        """
+        Delete trigger logs associated with the given workflow run ids.
+
+        Args:
+            run_ids: Collection of workflow run identifiers.
+
+        Returns:
+            Number of rows deleted.
+        """
+        if not run_ids:
+            return 0
+
+        result = self.session.execute(
+            delete(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids))
+        )
+        return result.rowcount or 0
