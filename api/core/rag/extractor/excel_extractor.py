@@ -1,7 +1,6 @@
 """Abstract interface for document loader implementations."""
 
 import os
-from typing import cast
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -54,7 +53,7 @@ class ExcelExtractor(BaseExtractor):
                                     value = ""
                                 elif not isinstance(value, str):
                                     value = str(value)
-                                value = value.strip()
+                                value = value.strip().replace('"', '\\"')
                                 page_content.append(f'"{col_name}":"{value}"')
                         if page_content:
                             documents.append(
@@ -95,9 +94,9 @@ class ExcelExtractor(BaseExtractor):
         
         # Limit scan to avoid performance issues on huge files
         # We iterate manually to control the read scope
-        current_row_idx = 0
-        for row in sheet.iter_rows(min_row=1, max_row=scan_rows, values_only=True):
-            current_row_idx += 1
+        for current_row_idx, row in enumerate(
+            sheet.iter_rows(min_row=1, max_row=scan_rows, values_only=True), start=1
+        ):
             
             # Filter out empty cells and build a temp map for this row
             # col_idx is 0-based
@@ -111,10 +110,10 @@ class ExcelExtractor(BaseExtractor):
                 
             non_empty_count = len(row_map)
             
-            # Heuristic: 
-            # 1. Prefer rows with multiple columns (unless file is single column)
-            # 2. Prefer rows where values are strings (headers usually are)
-            #    Implicit in str() conversion above, but we could be stricter
+            # Header selection heuristic (implemented):
+            # - Prefer the first row with at least 2 non-empty columns.
+            # - Fallback: choose the row with the most non-empty columns
+            #   (tie-breaker: smaller row index).
             candidates.append({
                 "idx": current_row_idx,
                 "count": non_empty_count,
@@ -124,28 +123,13 @@ class ExcelExtractor(BaseExtractor):
         if not candidates:
             return 0, {}, 0
 
-        # Sort candidates to find the best header
-        # Primary key: non_empty_count (descending)
-        # Secondary key: row index (ascending) - handled by stable sort or manual logic
-        # But we want to prioritize the FIRST row that looks "good enough" (e.g. > 1 column)
-        # rather than just the absolute max, to handle cases where data rows might have extra columns.
+        # Choose the best candidate header row.
         
         best_candidate = None
         
-        # Strategy: Pick the first row that has a "significant" number of columns.
-        # If the max column count across all scanned rows is small (e.g. 1 or 2), just take the max.
-        # If there are rows with many columns, pick the first one that reaches a threshold (e.g. > 50% of max width).
+        # Strategy: prefer the first row with >= 2 non-empty columns; otherwise fallback.
         
         for cand in candidates:
-            # If we find a row that has close to the max columns found (e.g. at least 80% of max),
-            # and it's early in the file, it's likely the header.
-            # Using 0.8 factor allows for some missing header names compared to a fully populated data row,
-            # but usually header row is fully populated for valid columns.
-            # Let's be simple: The first row that has > 1 column is a strong candidate for header 
-            # if we assume headers are at top.
-            
-            # User case: Row 1 has 1 col (Title), Row 2 has N cols (Header).
-            # We want Row 2.
             if cand["count"] >= 2:
                 best_candidate = cand
                 break
@@ -158,9 +142,6 @@ class ExcelExtractor(BaseExtractor):
 
         # Determine max_col_idx (1-based for openpyxl)
         # It is the index of the last valid column in our map + 1
-        if best_candidate["map"]:
-            max_col_idx = max(best_candidate["map"].keys()) + 1
-        else:
-            max_col_idx = 1
+        max_col_idx = max(best_candidate["map"].keys()) + 1
             
         return best_candidate["idx"], best_candidate["map"], max_col_idx
