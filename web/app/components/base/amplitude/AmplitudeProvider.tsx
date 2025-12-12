@@ -4,37 +4,27 @@ import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import { IS_CLOUD_EDITION } from '@/config'
-import { DatasetAttr } from '@/types/feature'
+import { AMPLITUDE_API_KEY, IS_CLOUD_EDITION } from '@/config'
 
 export type IAmplitudeProps = {
-  apiKey?: string
   sessionReplaySampleRate?: number
 }
 
-const getRuntimeAmplitudeApiKey = () => {
-  const envKey = process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY
-  if (envKey) return envKey
-  return globalThis.document?.body?.getAttribute(DatasetAttr.DATA_PUBLIC_AMPLITUDE_API_KEY) || ''
-}
-
 // Check if Amplitude should be enabled
-export const isAmplitudeEnabled = (apiKey?: string) => {
-  const key = apiKey ?? getRuntimeAmplitudeApiKey()
-  return IS_CLOUD_EDITION && !!key
+export const isAmplitudeEnabled = () => {
+  return IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
 }
 
 const AmplitudeProvider: FC<IAmplitudeProps> = ({
-  apiKey = getRuntimeAmplitudeApiKey(),
   sessionReplaySampleRate = 1,
 }) => {
   useEffect(() => {
     // Only enable in Saas edition with valid API key
-    if (!isAmplitudeEnabled(apiKey))
+    if (!isAmplitudeEnabled())
       return
 
     // Initialize Amplitude
-    amplitude.init(apiKey, {
+    amplitude.init(AMPLITUDE_API_KEY, {
       defaultTracking: {
         sessions: true,
         pageViews: true,
