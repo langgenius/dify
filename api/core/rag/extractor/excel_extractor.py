@@ -1,7 +1,6 @@
 """Abstract interface for document loader implementations."""
 
 import os
-from typing import cast
 
 import pandas as pd
 from openpyxl import load_workbook
@@ -81,7 +80,7 @@ class ExcelExtractor(BaseExtractor):
             raise ValueError(f"Unsupported file extension: {file_extension}")
 
         return documents
-    
+
     def _find_header_and_columns(self, sheet, scan_rows=10) -> tuple[int, dict[int, str], int]:
         """
         Scan first N rows to find the most likely header row.
@@ -92,34 +91,30 @@ class ExcelExtractor(BaseExtractor):
         """
         # Store potential candidates: (row_index, non_empty_count, column_map)
         candidates = []
-        
+
         # Limit scan to avoid performance issues on huge files
         # We iterate manually to control the read scope
         current_row_idx = 0
         for row in sheet.iter_rows(min_row=1, max_row=scan_rows, values_only=True):
             current_row_idx += 1
-            
+
             # Filter out empty cells and build a temp map for this row
             # col_idx is 0-based
             row_map = {}
             for col_idx, cell_value in enumerate(row):
                 if cell_value is not None and str(cell_value).strip():
                     row_map[col_idx] = str(cell_value).strip().replace('"', '\\"')
-            
+
             if not row_map:
                 continue
-                
+
             non_empty_count = len(row_map)
-            
-            # Heuristic: 
+
+            # Heuristic:
             # 1. Prefer rows with multiple columns (unless file is single column)
             # 2. Prefer rows where values are strings (headers usually are)
             #    Implicit in str() conversion above, but we could be stricter
-            candidates.append({
-                "idx": current_row_idx,
-                "count": non_empty_count,
-                "map": row_map
-            })
+            candidates.append({"idx": current_row_idx, "count": non_empty_count, "map": row_map})
 
         if not candidates:
             return 0, {}, 0
@@ -129,27 +124,27 @@ class ExcelExtractor(BaseExtractor):
         # Secondary key: row index (ascending) - handled by stable sort or manual logic
         # But we want to prioritize the FIRST row that looks "good enough" (e.g. > 1 column)
         # rather than just the absolute max, to handle cases where data rows might have extra columns.
-        
+
         best_candidate = None
-        
+
         # Strategy: Pick the first row that has a "significant" number of columns.
         # If the max column count across all scanned rows is small (e.g. 1 or 2), just take the max.
         # If there are rows with many columns, pick the first one that reaches a threshold (e.g. > 50% of max width).
-        
+
         for cand in candidates:
             # If we find a row that has close to the max columns found (e.g. at least 80% of max),
             # and it's early in the file, it's likely the header.
             # Using 0.8 factor allows for some missing header names compared to a fully populated data row,
             # but usually header row is fully populated for valid columns.
-            # Let's be simple: The first row that has > 1 column is a strong candidate for header 
+            # Let's be simple: The first row that has > 1 column is a strong candidate for header
             # if we assume headers are at top.
-            
+
             # User case: Row 1 has 1 col (Title), Row 2 has N cols (Header).
             # We want Row 2.
             if cand["count"] >= 2:
                 best_candidate = cand
                 break
-        
+
         # Fallback: if no row has >= 2 columns, or all have 1, just take the one with max columns
         if not best_candidate:
             # Sort by count desc, then index asc
@@ -162,5 +157,5 @@ class ExcelExtractor(BaseExtractor):
             max_col_idx = max(best_candidate["map"].keys()) + 1
         else:
             max_col_idx = 1
-            
+
         return best_candidate["idx"], best_candidate["map"], max_col_idx
