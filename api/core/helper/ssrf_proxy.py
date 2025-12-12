@@ -60,20 +60,11 @@ def is_private_or_local_address(url: str) -> bool:
         try:
             ip = ipaddress.ip_address(hostname)
 
-            # Check if it's a private IP (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 for IPv4)
-            # For IPv6: fc00::/7 (unique local addresses)
-            if ip.is_private:
-                return True
-
-            # Check if it's loopback (127.0.0.0/8 for IPv4, ::1 for IPv6)
-            if ip.is_loopback:
-                return True
-
-            # Check if it's link-local (169.254.0.0/16 for IPv4, fe80::/10 for IPv6)
-            if ip.is_link_local:
-                return True
-
-            return False
+            # Check if it's a private, loopback, or link-local address.
+            # - Private: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7
+            # - Loopback: 127.0.0.0/8, ::1
+            # - Link-local: 169.254.0.0/16, fe80::/10
+            return ip.is_private or ip.is_loopback or ip.is_link_local
         except ValueError:
             # Not a valid IP address, might be a domain name
             # Domain names could resolve to private IPs, but we only check the literal hostname here
