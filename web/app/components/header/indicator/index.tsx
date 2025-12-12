@@ -47,6 +47,7 @@ export default function Indicator({
 }: IndicatorProps) {
   return (
     <div
+      data-testid="status-indicator"
       className={classNames(
         'h-2 w-2 rounded-[3px] border border-solid',
         BACKGROUND_MAP[color],

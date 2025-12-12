@@ -10,7 +10,7 @@ import {
 const ParentChunkCardSkelton = () => {
   const { t } = useTranslation()
   return (
-    <div className='flex flex-col pb-2'>
+    <div data-testid='parent-chunk-card-skeleton' className='flex flex-col pb-2'>
       <SkeletonContainer className='gap-y-0 p-1 pb-0'>
         <SkeletonContainer className='gap-y-0.5 px-2 pt-1.5'>
           <SkeletonRow className='py-0.5'>
