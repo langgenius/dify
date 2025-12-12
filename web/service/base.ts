@@ -150,7 +150,7 @@ function requiredWebSSOLogin(message?: string, code?: number) {
     params.append('message', message)
   if (code)
     params.append('code', String(code))
-  globalThis.location.href = `${globalThis.location.origin}${basePath}/${WBB_APP_LOGIN_PATH}?${params.toString()}`
+  globalThis.location.href = `${globalThis.location.origin}${basePath}${WBB_APP_LOGIN_PATH}?${params.toString()}`
 }
 
 function formatURL(url: string, isPublicAPI: boolean) {

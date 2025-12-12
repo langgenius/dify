@@ -71,7 +71,6 @@ export type ChatProps = {
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
   inputDisabled?: boolean
-  isMobile?: boolean
   sidebarCollapseState?: boolean
   hideAvatar?: boolean
   onHumanInputFormSubmit?: (formID: string, formData: any) => void
@@ -113,7 +112,6 @@ const Chat: FC<ChatProps> = ({
   onFeatureBarClick,
   noSpacing,
   inputDisabled,
-  isMobile,
   sidebarCollapseState,
   hideAvatar,
   onHumanInputFormSubmit,
@@ -331,7 +329,6 @@ const Chat: FC<ChatProps> = ({
                 <TryToAsk
                   suggestedQuestions={suggestedQuestions}
                   onSend={onSend}
-                  isMobile={isMobile}
                 />
               )
             }

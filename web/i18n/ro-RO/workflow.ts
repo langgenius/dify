@@ -543,6 +543,7 @@ const translation = {
         icon: 'Pictogramă segmentată',
         url: 'URL segmentat',
         metadata: 'Alte metadate',
+        files: 'Fișiere recuperate',
       },
       metadata: {
         options: {
@@ -572,6 +573,8 @@ const translation = {
         title: 'Filtrarea metadatelor',
         tip: 'Filtrarea metadatelor este procesul de utilizare a atributelor metadatelor (cum ar fi etichetele, categoriile sau permisiunile de acces) pentru a rafina și controla recuperarea informațiilor relevante într-un sistem.',
       },
+      queryText: 'Text interogare',
+      queryAttachment: 'Imagini interogate',
     },
     http: {
       inputVars: 'Variabile de intrare',

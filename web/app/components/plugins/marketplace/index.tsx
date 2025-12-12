@@ -1,37 +1,32 @@
 import { MarketplaceContextProvider } from './context'
 import Description from './description'
-import IntersectionLine from './intersection-line'
-import SearchBoxWrapper from './search-box/search-box-wrapper'
-import PluginTypeSwitch from './plugin-type-switch'
+import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 import ListWrapper from './list/list-wrapper'
-import type { SearchParams } from './types'
+import type { MarketplaceCollection, SearchParams } from './types'
+import type { Plugin } from '@/app/components/plugins/types'
 import { getMarketplaceCollectionsAndPlugins } from './utils'
 import { TanstackQueryInitializer } from '@/context/query-client'
 
 type MarketplaceProps = {
   locale: string
-  searchBoxAutoAnimate?: boolean
   showInstallButton?: boolean
   shouldExclude?: boolean
   searchParams?: SearchParams
   pluginTypeSwitchClassName?: string
-  intersectionContainerId?: string
   scrollContainerId?: string
   showSearchParams?: boolean
 }
 const Marketplace = async ({
   locale,
-  searchBoxAutoAnimate = true,
   showInstallButton = true,
   shouldExclude,
   searchParams,
   pluginTypeSwitchClassName,
-  intersectionContainerId,
   scrollContainerId,
   showSearchParams = true,
 }: MarketplaceProps) => {
-  let marketplaceCollections: any = []
-  let marketplaceCollectionPluginsMap = {}
+  let marketplaceCollections: MarketplaceCollection[] = []
+  let marketplaceCollectionPluginsMap: Record<string, Plugin[]> = {}
   if (!shouldExclude) {
     const marketplaceCollectionsAndPluginsData = await getMarketplaceCollectionsAndPlugins()
     marketplaceCollections = marketplaceCollectionsAndPluginsData.marketplaceCollections
@@ -47,15 +42,9 @@ const Marketplace = async ({
         showSearchParams={showSearchParams}
       >
         <Description locale={locale} />
-        <IntersectionLine intersectionContainerId={intersectionContainerId} />
-        <SearchBoxWrapper
+        <StickySearchAndSwitchWrapper
           locale={locale}
-          searchBoxAutoAnimate={searchBoxAutoAnimate}
-        />
-        <PluginTypeSwitch
-          locale={locale}
-          className={pluginTypeSwitchClassName}
-          searchBoxAutoAnimate={searchBoxAutoAnimate}
+          pluginTypeSwitchClassName={pluginTypeSwitchClassName}
           showSearchParams={showSearchParams}
         />
         <ListWrapper

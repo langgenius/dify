@@ -123,7 +123,7 @@ export const useInvalidLastRun = (flowType: FlowType, flowId: string, nodeId: st
 
 // Rerun workflow or change the version of workflow
 export const useInvalidAllLastRun = (flowType?: FlowType, flowId?: string) => {
-  return useInvalid([NAME_SPACE, flowType, 'last-run', flowId])
+  return useInvalid([...useLastRunKey, flowType, flowId])
 }
 
 export const useConversationVarValues = (flowType?: FlowType, flowId?: string) => {

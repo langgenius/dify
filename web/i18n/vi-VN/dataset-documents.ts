@@ -400,6 +400,7 @@ const translation = {
     edited: 'EDITED',
     keywordDuplicate: 'Từ khóa đã tồn tại',
     keywordEmpty: 'Từ khóa không được để trống',
+    allFilesUploaded: 'Tất cả các tệp phải được tải lên trước khi lưu',
   },
 }
 

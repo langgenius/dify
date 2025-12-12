@@ -4,9 +4,10 @@ import time
 import click
 from celery import shared_task
 
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import ChildDocument, Document
+from core.rag.models.document import AttachmentDocument, ChildDocument, Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
@@ -67,7 +68,7 @@ def enable_segment_to_index_task(segment_id: str):
             return
 
         index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
-        if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+        if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
             child_chunks = segment.get_child_chunks()
             if child_chunks:
                 child_documents = []
@@ -83,8 +84,24 @@ def enable_segment_to_index_task(segment_id: str):
                     )
                     child_documents.append(child_document)
                 document.children = child_documents
+        multimodel_documents = []
+        if dataset.is_multimodal:
+            for attachment in segment.attachments:
+                multimodel_documents.append(
+                    AttachmentDocument(
+                        page_content=attachment["name"],
+                        metadata={
+                            "doc_id": attachment["id"],
+                            "doc_hash": "",
+                            "document_id": segment.document_id,
+                            "dataset_id": segment.dataset_id,
+                            "doc_type": DocType.IMAGE,
+                        },
+                    )
+                )
+
         # save vector index
-        index_processor.load(dataset, [document])
+        index_processor.load(dataset, [document], multimodal_documents=multimodel_documents)
 
         end_at = time.perf_counter()
         logger.info(click.style(f"Segment enabled to index: {segment.id} latency: {end_at - start_at}", fg="green"))

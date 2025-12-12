@@ -400,6 +400,7 @@ const translation = {
     regenerationSuccessMessage: 'می توانید این پنجره را ببندید.',
     keywordEmpty: 'کلمه کلیدی نمی‌تواند خالی باشد',
     keywordDuplicate: 'این کلیدواژه قبلاً وجود دارد',
+    allFilesUploaded: 'تمام فایل‌ها باید قبل از ذخیره شدن بارگذاری شوند',
   },
 }
 
