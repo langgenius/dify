@@ -1065,6 +1065,10 @@ class CeleryScheduleTasksConfig(BaseSettings):
         description="Enable clean messages task",
         default=False,
     )
+    ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
+        description="Enable scheduled workflow run cleanup task",
+        default=False,
+    )
     ENABLE_MAIL_CLEAN_DOCUMENT_NOTIFY_TASK: bool = Field(
         description="Enable mail clean document notify task",
         default=False,
@@ -1114,11 +1118,6 @@ class CeleryScheduleTasksConfig(BaseSettings):
     TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
         description="Proactive subscription refresh threshold in seconds",
         default=60 * 60,
-    )
-
-    ENABLE_WORKFLOW_RUN_CLEANUP_TASK: bool = Field(
-        description="Enable scheduled workflow run cleanup task",
-        default=False,
     )
 
 
