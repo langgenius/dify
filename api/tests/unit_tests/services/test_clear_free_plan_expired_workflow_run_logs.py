@@ -29,7 +29,7 @@ class FakeRepo:
             "pause_reasons": 0,
         }
 
-    def get_runs_batch_for_cleanup(
+    def get_runs_batch_by_time_range(
         self,
         start_after: datetime.datetime | None,
         end_before: datetime.datetime,

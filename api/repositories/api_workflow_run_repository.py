@@ -253,7 +253,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
-    def get_runs_batch_for_cleanup(
+    def get_runs_batch_by_time_range(
         self,
         start_after: datetime | None,
         end_before: datetime,
@@ -261,7 +261,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         batch_size: int,
     ) -> Sequence[WorkflowRun]:
         """
-        Fetch a batch of workflow runs within a time window using keyset pagination for cleanup.
+        Fetch a batch of workflow runs within a time window using keyset pagination.
         """
         ...
 

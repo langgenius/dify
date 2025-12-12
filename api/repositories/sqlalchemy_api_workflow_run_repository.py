@@ -323,7 +323,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         logger.info("Total deleted %s workflow runs for app %s", total_deleted, app_id)
         return total_deleted
 
-    def get_runs_batch_for_cleanup(
+    def get_runs_batch_by_time_range(
         self,
         start_after: datetime | None,
         end_before: datetime,

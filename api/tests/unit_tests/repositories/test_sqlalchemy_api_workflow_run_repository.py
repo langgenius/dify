@@ -105,15 +105,15 @@ class TestDifyAPISQLAlchemyWorkflowRunRepository:
         return pause
 
 
-class TestGetRunsBatchForCleanup(TestDifyAPISQLAlchemyWorkflowRunRepository):
-    def test_get_runs_batch_for_cleanup_filters_terminal_statuses(
+class TestGetRunsBatchByTimeRange(TestDifyAPISQLAlchemyWorkflowRunRepository):
+    def test_get_runs_batch_by_time_range_filters_terminal_statuses(
         self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock
     ):
         scalar_result = Mock()
         scalar_result.all.return_value = []
         mock_session.scalars.return_value = scalar_result
 
-        repository.get_runs_batch_for_cleanup(
+        repository.get_runs_batch_by_time_range(
             start_after=None,
             end_before=datetime(2024, 1, 1),
             last_seen=None,

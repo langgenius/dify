@@ -60,7 +60,7 @@ class WorkflowRunCleanup:
         last_seen: tuple[datetime.datetime, str] | None = None
 
         while True:
-            run_rows = self.repo.get_runs_batch_for_cleanup(
+            run_rows = self.repo.get_runs_batch_by_time_range(
                 start_after=self.window_start,
                 end_before=self.window_end,
                 last_seen=last_seen,
