@@ -380,25 +380,24 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             offloads_deleted = 0
             if node_execution_ids:
-                offloads_deleted = (
-                    session.query(WorkflowNodeExecutionOffload)
-                    .where(WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids))
-                    .delete(synchronize_session=False)
+                offloads_result = session.execute(
+                    delete(WorkflowNodeExecutionOffload).where(
+                        WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
+                    )
                 )
+                offloads_deleted = offloads_result.rowcount or 0
 
             node_executions_deleted = 0
             if node_execution_ids:
-                node_executions_deleted = (
-                    session.query(WorkflowNodeExecutionModel)
-                    .where(WorkflowNodeExecutionModel.id.in_(node_execution_ids))
-                    .delete(synchronize_session=False)
+                node_executions_result = session.execute(
+                    delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(node_execution_ids))
                 )
+                node_executions_deleted = node_executions_result.rowcount or 0
 
-            app_logs_deleted = (
-                session.query(WorkflowAppLog)
-                .where(WorkflowAppLog.workflow_run_id.in_(run_ids))
-                .delete(synchronize_session=False)
+            app_logs_result = session.execute(
+                delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids))
             )
+            app_logs_deleted = app_logs_result.rowcount or 0
 
             pause_ids = session.scalars(
                 select(WorkflowPauseModel.id).where(WorkflowPauseModel.workflow_run_id.in_(run_ids))
@@ -407,26 +406,20 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pauses_deleted = 0
 
             if pause_ids:
-                pause_reasons_deleted = (
-                    session.query(WorkflowPauseReason)
-                    .where(WorkflowPauseReason.pause_id.in_(pause_ids))
-                    .delete(synchronize_session=False)
+                pause_reasons_result = session.execute(
+                    delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
                 )
-                pauses_deleted = (
-                    session.query(WorkflowPauseModel)
-                    .where(WorkflowPauseModel.id.in_(pause_ids))
-                    .delete(synchronize_session=False)
-                )
+                pause_reasons_deleted = pause_reasons_result.rowcount or 0
+                pauses_result = session.execute(delete(WorkflowPauseModel).where(WorkflowPauseModel.id.in_(pause_ids)))
+                pauses_deleted = pauses_result.rowcount or 0
 
-            trigger_logs_deleted = (
-                session.query(WorkflowTriggerLog)
-                .where(WorkflowTriggerLog.workflow_run_id.in_(run_ids))
-                .delete(synchronize_session=False)
+            trigger_logs_result = session.execute(
+                delete(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids))
             )
+            trigger_logs_deleted = trigger_logs_result.rowcount or 0
 
-            runs_deleted = (
-                session.query(WorkflowRun).where(WorkflowRun.id.in_(run_ids)).delete(synchronize_session=False)
-            )
+            runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
+            runs_deleted = runs_result.rowcount or 0
 
             session.commit()
 
