@@ -9,6 +9,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models import WorkflowType
 from models.dataset import (
     AppDatasetJoin,
     Dataset,
@@ -18,9 +19,11 @@ from models.dataset import (
     DatasetQuery,
     Document,
     DocumentSegment,
+    Pipeline,
     SegmentAttachmentBinding,
 )
 from models.model import UploadFile
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +37,7 @@ def clean_dataset_task(
     index_struct: str,
     collection_binding_id: str,
     doc_form: str,
+    pipeline_id: str | None = None,
 ):
     """
     Clean dataset when dataset deleted.
@@ -135,6 +139,14 @@ def clean_dataset_task(
         # delete dataset metadata
         db.session.query(DatasetMetadata).where(DatasetMetadata.dataset_id == dataset_id).delete()
         db.session.query(DatasetMetadataBinding).where(DatasetMetadataBinding.dataset_id == dataset_id).delete()
+        # delete pipeline and workflow
+        if pipeline_id:
+            db.session.query(Pipeline).where(Pipeline.id == pipeline_id).delete()
+            db.session.query(Workflow).where(
+                Workflow.tenant_id == tenant_id,
+                Workflow.app_id == pipeline_id,
+                Workflow.type == WorkflowType.RAG_PIPELINE,
+            ).delete()
         # delete files
         if documents:
             for document in documents:
