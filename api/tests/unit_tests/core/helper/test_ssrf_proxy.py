@@ -63,7 +63,7 @@ def test_squid_ssrf_rejection_detected(mock_request):
 
     with pytest.raises(ToolSSRFError) as exc_info:
         make_request("GET", "http://192.168.1.1/api")
-    
+
     assert "blocked by SSRF protection" in str(exc_info.value)
     assert "192.168.1.1" in str(exc_info.value)
     assert "squid.conf.template" in str(exc_info.value)
@@ -79,7 +79,7 @@ def test_squid_ssrf_rejection_via_header(mock_request):
 
     with pytest.raises(ToolSSRFError) as exc_info:
         make_request("GET", "http://10.0.0.1/api")
-    
+
     assert "SSRF protection" in str(exc_info.value)
 
 
@@ -93,7 +93,7 @@ def test_squid_401_rejection_detected(mock_request):
 
     with pytest.raises(ToolSSRFError) as exc_info:
         make_request("GET", "http://192.168.1.1/api")
-    
+
     assert "SSRF protection" in str(exc_info.value)
     assert "squid.conf.template" in str(exc_info.value)
 
