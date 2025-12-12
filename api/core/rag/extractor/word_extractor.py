@@ -94,7 +94,7 @@ class WordExtractor(BaseExtractor):
                     try:
                         response = ssrf_proxy.get(url)
                     except Exception as e:
-                        logger.exception("Failed to download image from URL: %s: %s", url, str(e))
+                        logger.warning("Failed to download image from URL: %s: %s", url, str(e))
                         continue
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers.get("Content-Type", ""))
