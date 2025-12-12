@@ -291,7 +291,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             session.commit()
             return result.rowcount
 
-    class _RunContext(TypedDict):
+    class RunContext(TypedDict):
         run_id: str
         tenant_id: str
         app_id: str
@@ -299,7 +299,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         triggered_from: str
 
     @staticmethod
-    def delete_by_runs(session: Session, runs: Sequence[_RunContext]) -> tuple[int, int]:
+    def delete_by_runs(session: Session, runs: Sequence[RunContext]) -> tuple[int, int]:
         """
         Delete node executions (and offloads) for the given workflow runs using indexed columns.
 
