@@ -33,7 +33,10 @@ const PlanUpgradeModal: FC<Props> = ({
 
   const handleUpgrade = useCallback(() => {
     onClose()
-    onUpgrade ? onUpgrade() : setShowPricingModal()
+    if (onUpgrade)
+      onUpgrade()
+    else
+      setShowPricingModal()
   }, [onClose, onUpgrade, setShowPricingModal])
 
   return (
