@@ -36,7 +36,6 @@
     "sendgrid",
     "sendgrid.helpers.mail"
   ],
-  "reportUnknownMemberType": "hint",
   "reportUnknownParameterType": "hint",
   "reportUnknownArgumentType": "hint",
   "reportUnknownVariableType": "hint",
