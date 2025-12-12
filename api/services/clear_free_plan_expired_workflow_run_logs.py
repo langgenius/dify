@@ -40,6 +40,7 @@ class WorkflowRunCleanup:
 
         self.batch_size = batch_size
         self.billing_cache: dict[str, CloudPlan | None] = {}
+        self.workflow_run_repo: APIWorkflowRunRepository
         if workflow_run_repo:
             self.workflow_run_repo = workflow_run_repo
         else:
@@ -47,9 +48,7 @@ class WorkflowRunCleanup:
             from repositories.factory import DifyAPIRepositoryFactory
 
             session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
-            self.workflow_run_repo: APIWorkflowRunRepository = (
-                DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
-            )
+            self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
 
     def run(self) -> None:
         click.echo(
