@@ -53,7 +53,7 @@ const Popup: FC<PopupProps> = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-        <div className='max-w-[360px] rounded-xl bg-background-section-burn shadow-lg'>
+        <div className='max-w-[360px] rounded-xl bg-background-section-burn shadow-lg backdrop-blur-[5px]'>
           <div className='px-4 pb-2 pt-3'>
             <div className='flex h-[18px] items-center'>
               <FileIcon type={fileType} className='mr-1 h-4 w-4 shrink-0' />
