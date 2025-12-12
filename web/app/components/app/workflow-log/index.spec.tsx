@@ -9,6 +9,7 @@ import type { ILogsProps, QueryParam } from './index'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import WorkflowAppLogList from './list'
 import TriggerByDisplay from './trigger-by-display'
+import DetailPanel from './detail'
 
 // Import types from source
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
@@ -37,11 +38,15 @@ jest.mock('@/context/app-context', () => ({
     },
   }),
 }))
+
+// Router mock with trackable push function
+const mockRouterPush = jest.fn()
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: mockRouterPush,
   }),
 }))
+
 jest.mock('@/hooks/use-theme', () => ({
   __esModule: true,
   default: () => ({ theme: Theme.light }),
@@ -49,7 +54,7 @@ jest.mock('@/hooks/use-theme', () => ({
 jest.mock('@/hooks/use-timestamp', () => ({
   __esModule: true,
   default: () => ({
-    formatTime: (timestamp: number, format: string) => new Date(timestamp).toISOString(),
+    formatTime: (timestamp: number, _format: string) => new Date(timestamp).toISOString(),
   }),
 }))
 jest.mock('@/hooks/use-breakpoints', () => ({
@@ -57,18 +62,23 @@ jest.mock('@/hooks/use-breakpoints', () => ({
   default: () => 'pc',
   MediaType: { mobile: 'mobile', pc: 'pc' },
 }))
+
+// Store mock with configurable appDetail
+let mockAppDetail: App | null = null
 jest.mock('@/app/components/app/store', () => ({
-  useStore: () => ({ id: 'test-app-id', name: 'Test App' }),
+  useStore: (selector: (state: { appDetail: App | null }) => App | null) => {
+    return selector({ appDetail: mockAppDetail })
+  },
 }))
 
 // Mock portal-based components (they need DOM portal which is complex in tests)
 let mockPortalOpen = false
 jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange }: { children: React.ReactNode; open: boolean; onOpenChange: (v: boolean) => void }) => {
+  PortalToFollowElem: ({ children, open }: { children: React.ReactNode; open: boolean }) => {
     mockPortalOpen = open
     return <div data-testid="portal-elem" data-open={open}>{children}</div>
   },
-  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
+  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) => (
     <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
   ),
   PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => (
@@ -89,15 +99,29 @@ jest.mock('@/app/components/base/drawer', () => ({
   ),
 }))
 
-// Mock DetailPanel (has complex workflow dependencies)
-jest.mock('./detail', () => ({
+// Mock only the complex workflow Run component - DetailPanel itself is tested with real code
+jest.mock('@/app/components/workflow/run', () => ({
   __esModule: true,
-  default: ({ runID, onClose, canReplay }: { runID: string; onClose: () => void; canReplay?: boolean }) => (
-    <div data-testid="detail-panel">
-      <span data-testid="run-id">{runID}</span>
-      <span data-testid="can-replay">{canReplay ? 'yes' : 'no'}</span>
-      <button data-testid="close-detail" onClick={onClose}>Close</button>
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+    <div data-testid="workflow-run">
+      <span data-testid="run-detail-url">{runDetailUrl}</span>
+      <span data-testid="tracing-list-url">{tracingListUrl}</span>
     </div>
+  ),
+}))
+
+// Mock WorkflowContextProvider - provides context for Run component
+jest.mock('@/app/components/workflow/context', () => ({
+  WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="workflow-context-provider">{children}</div>
+  ),
+}))
+
+// Mock TooltipPlus - simple UI component
+jest.mock('@/app/components/base/tooltip', () => ({
+  __esModule: true,
+  default: ({ children, popupContent }: { children: React.ReactNode; popupContent: string }) => (
+    <div data-testid="tooltip" title={popupContent}>{children}</div>
   ),
 }))
 
@@ -142,9 +166,10 @@ jest.mock('@/app/components/base/loading', () => ({
   ),
 }))
 
-// Mock amplitude tracking
+// Mock amplitude tracking - with trackable function
+const mockTrackEvent = jest.fn()
 jest.mock('@/app/components/base/amplitude/utils', () => ({
-  trackEvent: jest.fn(),
+  trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
 // Mock workflow icons
@@ -270,6 +295,9 @@ describe('Workflow Log Module Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockPortalOpen = false
+    mockAppDetail = createMockApp()
+    mockRouterPush.mockClear()
+    mockTrackEvent.mockClear()
   })
 
   // Tests for Logs container component - orchestrates Filter, List, Pagination, and Loading states
@@ -549,45 +577,107 @@ describe('Workflow Log Module Integration Tests', () => {
 
     beforeEach(() => {
       mockSetQueryParams.mockClear()
+      mockTrackEvent.mockClear()
     })
 
-    it('should render status filter chip with correct value', () => {
-      // Arrange & Act
-      render(<Filter {...defaultFilterProps} />)
+    describe('Rendering', () => {
+      it('should render status filter chip with correct value', () => {
+        // Arrange & Act
+        render(<Filter {...defaultFilterProps} />)
 
-      // Assert - should show "All" as default status
-      expect(screen.getByText('All')).toBeInTheDocument()
+        // Assert - should show "All" as default status
+        expect(screen.getByText('All')).toBeInTheDocument()
+      })
+
+      it('should render time period filter chip', () => {
+        // Arrange & Act
+        render(<Filter {...defaultFilterProps} />)
+
+        // Assert - should have calendar icon (period filter)
+        const calendarIcons = document.querySelectorAll('svg')
+        expect(calendarIcons.length).toBeGreaterThan(0)
+      })
+
+      it('should render keyword search input', () => {
+        // Arrange & Act
+        render(<Filter {...defaultFilterProps} />)
+
+        // Assert
+        const searchInput = screen.getByPlaceholderText('common.operation.search')
+        expect(searchInput).toBeInTheDocument()
+      })
+
+      it('should display different status values', () => {
+        // Arrange
+        const successStatusProps = {
+          queryParams: { status: 'succeeded', period: '2' } as QueryParam,
+          setQueryParams: mockSetQueryParams,
+        }
+
+        // Act
+        render(<Filter {...successStatusProps} />)
+
+        // Assert
+        expect(screen.getByText('Success')).toBeInTheDocument()
+      })
     })
 
-    it('should render keyword search input', () => {
-      // Arrange & Act
-      render(<Filter {...defaultFilterProps} />)
+    describe('Keyword Search', () => {
+      it('should call setQueryParams when keyword changes', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        render(<Filter {...defaultFilterProps} />)
 
-      // Assert
-      const searchInput = screen.getByPlaceholderText('common.operation.search')
-      expect(searchInput).toBeInTheDocument()
+        // Act
+        const searchInput = screen.getByPlaceholderText('common.operation.search')
+        await user.type(searchInput, 'test')
+
+        // Assert
+        expect(mockSetQueryParams).toHaveBeenCalledWith(
+          expect.objectContaining({ keyword: expect.any(String) }),
+        )
+      })
+
+      it('should render input with initial keyword value', () => {
+        // Arrange
+        const propsWithKeyword = {
+          queryParams: { status: 'all', period: '2', keyword: 'test' } as QueryParam,
+          setQueryParams: mockSetQueryParams,
+        }
+
+        // Act
+        render(<Filter {...propsWithKeyword} />)
+
+        // Assert
+        const searchInput = screen.getByPlaceholderText('common.operation.search')
+        expect(searchInput).toHaveValue('test')
+      })
     })
 
-    it('should call setQueryParams when keyword changes', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      render(<Filter {...defaultFilterProps} />)
+    describe('TIME_PERIOD_MAPPING Export', () => {
+      it('should export TIME_PERIOD_MAPPING with correct structure', () => {
+        // Assert
+        expect(TIME_PERIOD_MAPPING).toBeDefined()
+        expect(TIME_PERIOD_MAPPING['1']).toEqual({ value: 0, name: 'today' })
+        expect(TIME_PERIOD_MAPPING['9']).toEqual({ value: -1, name: 'allTime' })
+      })
 
-      // Act
-      const searchInput = screen.getByPlaceholderText('common.operation.search')
-      await user.type(searchInput, 'test')
+      it('should have all required time period options', () => {
+        // Assert - verify all periods are defined
+        expect(Object.keys(TIME_PERIOD_MAPPING)).toHaveLength(9)
+        expect(TIME_PERIOD_MAPPING['2']).toHaveProperty('name', 'last7days')
+        expect(TIME_PERIOD_MAPPING['3']).toHaveProperty('name', 'last4weeks')
+        expect(TIME_PERIOD_MAPPING['4']).toHaveProperty('name', 'last3months')
+        expect(TIME_PERIOD_MAPPING['5']).toHaveProperty('name', 'last12months')
+        expect(TIME_PERIOD_MAPPING['6']).toHaveProperty('name', 'monthToDate')
+        expect(TIME_PERIOD_MAPPING['7']).toHaveProperty('name', 'quarterToDate')
+        expect(TIME_PERIOD_MAPPING['8']).toHaveProperty('name', 'yearToDate')
+      })
 
-      // Assert
-      expect(mockSetQueryParams).toHaveBeenCalledWith(
-        expect.objectContaining({ keyword: expect.any(String) }),
-      )
-    })
-
-    it('should export TIME_PERIOD_MAPPING with correct structure', () => {
-      // Assert
-      expect(TIME_PERIOD_MAPPING).toBeDefined()
-      expect(TIME_PERIOD_MAPPING['1']).toEqual({ value: 0, name: 'today' })
-      expect(TIME_PERIOD_MAPPING['9']).toEqual({ value: -1, name: 'allTime' })
+      it('should have correct value for allTime period', () => {
+        // Assert - allTime should have -1 value (special case)
+        expect(TIME_PERIOD_MAPPING['9'].value).toBe(-1)
+      })
     })
   })
 
@@ -708,6 +798,11 @@ describe('Workflow Log Module Integration Tests', () => {
     })
 
     describe('Row Click and Drawer', () => {
+      beforeEach(() => {
+        // Set app detail for DetailPanel's useStore
+        mockAppDetail = createMockApp({ id: 'test-app-id' })
+      })
+
       it('should open drawer with detail panel when clicking a log row', async () => {
         // Arrange
         const user = userEvent.setup()
@@ -725,12 +820,52 @@ describe('Workflow Log Module Integration Tests', () => {
         // First row is header, second is data row
         await user.click(rows[1])
 
-        // Assert
+        // Assert - drawer opens and DetailPanel renders with real component
         await waitFor(() => {
           expect(screen.getByTestId('drawer')).toBeInTheDocument()
-          expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
-          expect(screen.getByTestId('run-id')).toHaveTextContent('run-123')
-          expect(screen.getByTestId('can-replay')).toHaveTextContent('yes')
+          // Real DetailPanel renders workflow title
+          expect(screen.getByText('appLog.runDetail.workflowTitle')).toBeInTheDocument()
+          // Real DetailPanel renders Run component with correct URL
+          expect(screen.getByTestId('run-detail-url')).toHaveTextContent('run-123')
+        })
+      })
+
+      it('should show replay button for APP_RUN triggered logs', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        const mockLog = createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ id: 'run-abc', triggered_from: WorkflowRunTriggeredFrom.APP_RUN }),
+        })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+        const rows = screen.getAllByRole('row')
+        await user.click(rows[1])
+
+        // Assert - replay button should be visible for APP_RUN
+        await waitFor(() => {
+          expect(screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })).toBeInTheDocument()
+        })
+      })
+
+      it('should not show replay button for WEBHOOK triggered logs', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        const mockLog = createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ id: 'run-xyz', triggered_from: WorkflowRunTriggeredFrom.WEBHOOK }),
+        })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+        const rows = screen.getAllByRole('row')
+        await user.click(rows[1])
+
+        // Assert - replay button should NOT be visible for WEBHOOK
+        await waitFor(() => {
+          expect(screen.getByTestId('drawer')).toBeInTheDocument()
+          expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })).not.toBeInTheDocument()
         })
       })
 
@@ -759,25 +894,6 @@ describe('Workflow Log Module Integration Tests', () => {
         await waitFor(() => {
           expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
           expect(mockOnRefresh).toHaveBeenCalled()
-        })
-      })
-
-      it('should show canReplay as false for non-replayable triggers', async () => {
-        // Arrange
-        const user = userEvent.setup()
-        const mockLog = createMockWorkflowLog({
-          workflow_run: createMockWorkflowRun({ triggered_from: WorkflowRunTriggeredFrom.WEBHOOK }),
-        })
-        const mockLogs = createMockLogsResponse([mockLog], 1)
-
-        // Act
-        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
-        const rows = screen.getAllByRole('row')
-        await user.click(rows[1])
-
-        // Assert
-        await waitFor(() => {
-          expect(screen.getByTestId('can-replay')).toHaveTextContent('no')
         })
       })
     })
@@ -925,6 +1041,151 @@ describe('Workflow Log Module Integration Tests', () => {
 
       // Assert
       expect(screen.getByTestId('block-icon')).toBeInTheDocument()
+    })
+  })
+
+  // ============================================================================
+  // Tests for DetailPanel Component (Real Component Testing)
+  // ============================================================================
+
+  describe('DetailPanel Component', () => {
+    const mockOnClose = jest.fn()
+
+    beforeEach(() => {
+      mockOnClose.mockClear()
+      mockRouterPush.mockClear()
+      // Set default app detail for store
+      mockAppDetail = createMockApp({ id: 'test-app-123', name: 'Test App' })
+    })
+
+    describe('Rendering', () => {
+      it('should render title correctly', () => {
+        // Act
+        render(<DetailPanel runID="run-123" onClose={mockOnClose} />)
+
+        // Assert
+        expect(screen.getByText('appLog.runDetail.workflowTitle')).toBeInTheDocument()
+      })
+
+      it('should render close button', () => {
+        // Act
+        render(<DetailPanel runID="run-123" onClose={mockOnClose} />)
+
+        // Assert - close icon should be present
+        const closeIcon = document.querySelector('.cursor-pointer')
+        expect(closeIcon).toBeInTheDocument()
+      })
+
+      it('should render WorkflowContextProvider with Run component', () => {
+        // Act
+        render(<DetailPanel runID="run-123" onClose={mockOnClose} />)
+
+        // Assert
+        expect(screen.getByTestId('workflow-context-provider')).toBeInTheDocument()
+        expect(screen.getByTestId('workflow-run')).toBeInTheDocument()
+      })
+
+      it('should pass correct URLs to Run component', () => {
+        // Arrange
+        mockAppDetail = createMockApp({ id: 'app-456' })
+
+        // Act
+        render(<DetailPanel runID="run-789" onClose={mockOnClose} />)
+
+        // Assert
+        expect(screen.getByTestId('run-detail-url')).toHaveTextContent('/apps/app-456/workflow-runs/run-789')
+        expect(screen.getByTestId('tracing-list-url')).toHaveTextContent('/apps/app-456/workflow-runs/run-789/node-executions')
+      })
+
+      it('should pass empty URLs when runID is empty', () => {
+        // Act
+        render(<DetailPanel runID="" onClose={mockOnClose} />)
+
+        // Assert
+        expect(screen.getByTestId('run-detail-url')).toHaveTextContent('')
+        expect(screen.getByTestId('tracing-list-url')).toHaveTextContent('')
+      })
+    })
+
+    describe('Close Button Interaction', () => {
+      it('should call onClose when close icon is clicked', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        render(<DetailPanel runID="run-123" onClose={mockOnClose} />)
+
+        // Act - click on the close icon
+        const closeIcon = document.querySelector('.cursor-pointer') as HTMLElement
+        await user.click(closeIcon)
+
+        // Assert
+        expect(mockOnClose).toHaveBeenCalledTimes(1)
+      })
+    })
+
+    describe('Replay Button (canReplay=true)', () => {
+      it('should render replay button when canReplay is true', () => {
+        // Act
+        render(<DetailPanel runID="run-123" onClose={mockOnClose} canReplay={true} />)
+
+        // Assert
+        const replayButton = screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })
+        expect(replayButton).toBeInTheDocument()
+      })
+
+      it('should show tooltip with correct text', () => {
+        // Act
+        render(<DetailPanel runID="run-123" onClose={mockOnClose} canReplay={true} />)
+
+        // Assert
+        const tooltip = screen.getByTestId('tooltip')
+        expect(tooltip).toHaveAttribute('title', 'appLog.runDetail.testWithParams')
+      })
+
+      it('should navigate to workflow page with replayRunId when replay is clicked', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        mockAppDetail = createMockApp({ id: 'app-for-replay' })
+        render(<DetailPanel runID="run-to-replay" onClose={mockOnClose} canReplay={true} />)
+
+        // Act
+        const replayButton = screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })
+        await user.click(replayButton)
+
+        // Assert
+        expect(mockRouterPush).toHaveBeenCalledWith('/app/app-for-replay/workflow?replayRunId=run-to-replay')
+      })
+
+      it('should not navigate when appDetail.id is undefined', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        mockAppDetail = null
+        render(<DetailPanel runID="run-123" onClose={mockOnClose} canReplay={true} />)
+
+        // Act
+        const replayButton = screen.getByRole('button', { name: 'appLog.runDetail.testWithParams' })
+        await user.click(replayButton)
+
+        // Assert
+        expect(mockRouterPush).not.toHaveBeenCalled()
+      })
+    })
+
+    describe('Replay Button (canReplay=false)', () => {
+      it('should not render replay button when canReplay is false', () => {
+        // Act
+        render(<DetailPanel runID="run-123" onClose={mockOnClose} canReplay={false} />)
+
+        // Assert
+        expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })).not.toBeInTheDocument()
+      })
+
+      it('should not render replay button when canReplay is not provided (defaults to false)', () => {
+        // Act
+        render(<DetailPanel runID="run-123" onClose={mockOnClose} />)
+
+        // Assert
+        expect(screen.queryByRole('button', { name: 'appLog.runDetail.testWithParams' })).not.toBeInTheDocument()
+      })
     })
   })
 
