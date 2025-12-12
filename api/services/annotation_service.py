@@ -335,7 +335,7 @@ class AppAnnotationService:
     def batch_import_app_annotations(cls, app_id, file: FileStorage):
         """
         Batch import annotations from CSV file with enhanced security checks.
-        
+
         Security features:
         - File size validation
         - Row count limits (min/max)
@@ -344,7 +344,7 @@ class AppAnnotationService:
         - Concurrency tracking
         """
         from configs import dify_config
-        
+
         # get app info
         current_user, current_tenant_id = current_account_with_tenant()
         app = (
@@ -363,32 +363,30 @@ class AppAnnotationService:
             file.stream.seek(0)
             first_chunk = file.stream.read(8192)  # Read first 8KB
             file.stream.seek(0)
-            
+
             # Estimate row count from first chunk
-            newline_count = first_chunk.count(b'\n')
+            newline_count = first_chunk.count(b"\n")
             if newline_count == 0:
                 raise ValueError("The CSV file appears to be empty or invalid.")
-            
+
             # Parse CSV with row limit to prevent memory exhaustion
             # Use chunksize for memory-efficient processing
             max_records = dify_config.ANNOTATION_IMPORT_MAX_RECORDS
             min_records = dify_config.ANNOTATION_IMPORT_MIN_RECORDS
-            
+
             # Read CSV in chunks to avoid loading entire file into memory
             df = pd.read_csv(
-                file.stream, 
+                file.stream,
                 dtype=str,
                 nrows=max_records + 1,  # Read one extra to detect overflow
-                engine='python',
-                on_bad_lines='skip'  # Skip malformed lines instead of crashing
+                engine="python",
+                on_bad_lines="skip",  # Skip malformed lines instead of crashing
             )
-            
+
             # Validate column count
             if len(df.columns) < 2:
-                raise ValueError(
-                    "Invalid CSV format. The file must contain at least 2 columns (question and answer)."
-                )
-            
+                raise ValueError("Invalid CSV format. The file must contain at least 2 columns (question and answer).")
+
             # Build result list with validation
             result: list[dict] = []
             for idx, row in df.iterrows():
@@ -398,43 +396,39 @@ class AppAnnotationService:
                         f"The CSV file contains too many records. Maximum {max_records} records allowed per import. "
                         f"Please split your file into smaller batches."
                     )
-                
+
                 # Extract and validate question and answer
                 try:
                     question_raw = row.iloc[0]
                     answer_raw = row.iloc[1]
                 except (IndexError, KeyError):
                     continue  # Skip malformed rows
-                
+
                 # Convert to string and strip whitespace
                 question = str(question_raw).strip() if question_raw is not None else ""
                 answer = str(answer_raw).strip() if answer_raw is not None else ""
-                
+
                 # Skip empty entries or NaN values
-                if not question or not answer or question.lower() == 'nan' or answer.lower() == 'nan':
+                if not question or not answer or question.lower() == "nan" or answer.lower() == "nan":
                     continue
-                
+
                 # Validate length constraints (idx is pandas index, convert to int for display)
                 row_num = int(idx) + 2 if isinstance(idx, (int, float)) else len(result) + 2
                 if len(question) > 2000:
-                    raise ValueError(
-                        f"Question at row {row_num} is too long. Maximum 2000 characters allowed."
-                    )
+                    raise ValueError(f"Question at row {row_num} is too long. Maximum 2000 characters allowed.")
                 if len(answer) > 10000:
-                    raise ValueError(
-                        f"Answer at row {row_num} is too long. Maximum 10000 characters allowed."
-                    )
-                
+                    raise ValueError(f"Answer at row {row_num} is too long. Maximum 10000 characters allowed.")
+
                 content = {"question": question, "answer": answer}
                 result.append(content)
-            
+
             # Validate minimum records
             if len(result) < min_records:
                 raise ValueError(
                     f"The CSV file must contain at least {min_records} valid annotation record(s). "
                     f"Found {len(result)} valid record(s)."
                 )
-            
+
             # Check annotation quota limit
             features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
@@ -444,17 +438,17 @@ class AppAnnotationService:
             # async job
             job_id = str(uuid.uuid4())
             indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
-            
+
             # Register job in active tasks list for concurrency tracking
             current_time = int(naive_utc_now().timestamp() * 1000)
             active_jobs_key = f"annotation_import_active:{current_tenant_id}"
             redis_client.zadd(active_jobs_key, {job_id: current_time})
             redis_client.expire(active_jobs_key, 7200)  # 2 hours TTL
-            
+
             # Set job status
             redis_client.setnx(indexing_cache_key, "waiting")
             batch_import_annotations_task.delay(str(job_id), result, app_id, current_tenant_id, current_user.id)
-            
+
         except ValueError as e:
             return {"error_msg": str(e)}
         except Exception as e:
@@ -466,11 +460,11 @@ class AppAnnotationService:
                 except Exception:
                     # Silently ignore cleanup errors - the job will be auto-expired
                     logger.debug("Failed to clean up active job tracking during error handling")
-            
+
             # Check if it's a CSV parsing error
             error_str = str(e)
             return {"error_msg": f"An error occurred while processing the file: {error_str}"}
-        
+
         return {"job_id": job_id, "job_status": "waiting", "record_count": len(result)}
 
     @classmethod

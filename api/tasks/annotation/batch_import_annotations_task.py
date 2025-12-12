@@ -31,7 +31,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
     start_at = time.perf_counter()
     indexing_cache_key = f"app_annotation_batch_import_{str(job_id)}"
     active_jobs_key = f"annotation_import_active:{tenant_id}"
-    
+
     # get app info
     app = db.session.query(App).where(App.id == app_id, App.tenant_id == tenant_id, App.status == "normal").first()
 
@@ -100,6 +100,6 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             except Exception as cleanup_error:
                 # Log but don't fail if cleanup fails - the job will be auto-expired
                 logger.warning("Failed to clean up active job tracking for %s: %s", job_id, cleanup_error)
-            
+
             # Close database session
             db.session.close()
