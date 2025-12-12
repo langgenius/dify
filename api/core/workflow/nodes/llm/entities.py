@@ -3,7 +3,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
+from core.file import File
 from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.tools.entities.tool_entities import ToolProviderType
 from core.workflow.nodes.base import BaseNodeData
@@ -15,6 +17,22 @@ class ModelConfig(BaseModel):
     name: str
     mode: LLMMode
     completion_params: dict[str, Any] = Field(default_factory=dict)
+
+
+class LLMGenerationData(BaseModel):
+    """Generation data from LLM invocation with tools.
+
+    For multi-turn tool calls like: thought1 -> text1 -> tool_call1 -> thought2 -> text2 -> tool_call2
+    - reasoning_contents: [thought1, thought2, ...] - one element per turn
+    - tool_calls: [{id, name, arguments, result}, ...] - all tool calls with results
+    """
+
+    text: str = Field(..., description="Accumulated text content from all turns")
+    reasoning_contents: list[str] = Field(default_factory=list, description="Reasoning content per turn")
+    tool_calls: list[dict[str, Any]] = Field(default_factory=list, description="Tool calls with results")
+    usage: LLMUsage = Field(..., description="LLM usage statistics")
+    finish_reason: str | None = Field(None, description="Finish reason from LLM")
+    files: list[File] = Field(default_factory=list, description="Generated files")
 
 
 class ContextConfig(BaseModel):

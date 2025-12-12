@@ -141,6 +141,9 @@ class StreamEventBuffer:
 
     def record_tool_call(self, tool_call_id: str, tool_name: str, tool_arguments: str) -> None:
         """Record a tool call event."""
+        if not tool_call_id:
+            return
+
         # Flush any pending reasoning first
         if self._last_event_type == "thought":
             self._flush_current_reasoning()
@@ -168,6 +171,8 @@ class StreamEventBuffer:
 
     def record_tool_result(self, tool_call_id: str, result: str) -> None:
         """Record a tool result event (update existing tool call)."""
+        if not tool_call_id:
+            return
         if tool_call_id in self._tool_call_id_map:
             idx = self._tool_call_id_map[tool_call_id]
             self.tool_calls[idx]["result"] = result
