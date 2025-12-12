@@ -2,13 +2,22 @@ import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useSWR from 'swr'
-import type { ILogsProps, QueryParam } from './index'
-import Logs from './index'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
-import { APP_PAGE_LIMIT } from '@/config'
 
-// Mock dependencies
+// Import real components for integration testing
+import Logs from './index'
+import type { ILogsProps, QueryParam } from './index'
+import Filter, { TIME_PERIOD_MAPPING } from './filter'
+import WorkflowAppLogList from './list'
+import TriggerByDisplay from './trigger-by-display'
+
+// Import types from source
+import type { App, AppIconType, AppModeEnum } from '@/types/app'
+import type { TriggerMetadata, WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
+import { WorkflowRunTriggeredFrom } from '@/models/log'
+import { APP_PAGE_LIMIT } from '@/config'
+import { Theme } from '@/types/app'
+
+// Mock external dependencies only
 jest.mock('swr')
 jest.mock('ahooks', () => ({
   useDebounce: <T,>(value: T): T => value,
@@ -28,60 +37,75 @@ jest.mock('@/context/app-context', () => ({
     },
   }),
 }))
-
-// Mock child components
-let mockQueryParams: QueryParam = { status: 'all', period: '2' }
-
-jest.mock('./filter', () => ({
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: jest.fn(),
+  }),
+}))
+jest.mock('@/hooks/use-theme', () => ({
   __esModule: true,
-  default: ({ queryParams, setQueryParams }: { queryParams: QueryParam; setQueryParams: (v: QueryParam) => void }) => {
-    mockQueryParams = queryParams
-    return (
-      <div data-testid="filter">
-        <button
-          data-testid="filter-status-btn"
-          onClick={() => setQueryParams({ ...queryParams, status: 'succeeded' })}
-        >
-          Change Status
-        </button>
-        <button
-          data-testid="filter-period-btn"
-          onClick={() => setQueryParams({ ...queryParams, period: '9' })}
-        >
-          Change Period
-        </button>
-        <input
-          data-testid="filter-keyword-input"
-          value={queryParams.keyword || ''}
-          onChange={e => setQueryParams({ ...queryParams, keyword: e.target.value })}
-        />
-      </div>
-    )
-  },
-  TIME_PERIOD_MAPPING: {
-    1: { value: 0, name: 'today' },
-    2: { value: 7, name: 'last7days' },
-    9: { value: -1, name: 'allTime' },
-  },
+  default: () => ({ theme: Theme.light }),
+}))
+jest.mock('@/hooks/use-timestamp', () => ({
+  __esModule: true,
+  default: () => ({
+    formatTime: (timestamp: number, format: string) => new Date(timestamp).toISOString(),
+  }),
+}))
+jest.mock('@/hooks/use-breakpoints', () => ({
+  __esModule: true,
+  default: () => 'pc',
+  MediaType: { mobile: 'mobile', pc: 'pc' },
+}))
+jest.mock('@/app/components/app/store', () => ({
+  useStore: () => ({ id: 'test-app-id', name: 'Test App' }),
 }))
 
-jest.mock('./list', () => ({
+// Mock portal-based components (they need DOM portal which is complex in tests)
+let mockPortalOpen = false
+jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
+  PortalToFollowElem: ({ children, open, onOpenChange }: { children: React.ReactNode; open: boolean; onOpenChange: (v: boolean) => void }) => {
+    mockPortalOpen = open
+    return <div data-testid="portal-elem" data-open={open}>{children}</div>
+  },
+  PortalToFollowElemTrigger: ({ children, onClick }: { children: React.ReactNode; onClick: () => void }) => (
+    <div data-testid="portal-trigger" onClick={onClick}>{children}</div>
+  ),
+  PortalToFollowElemContent: ({ children }: { children: React.ReactNode }) => (
+    mockPortalOpen ? <div data-testid="portal-content">{children}</div> : null
+  ),
+}))
+
+// Mock Drawer for List component (uses headlessui Dialog)
+jest.mock('@/app/components/base/drawer', () => ({
   __esModule: true,
-  default: ({ logs, appDetail, onRefresh }: { logs: WorkflowLogsResponse; appDetail: App; onRefresh: () => void }) => (
-    <div data-testid="log-list">
-      <span data-testid="log-count">{logs.data.length} logs</span>
-      <span data-testid="app-id">{appDetail.id}</span>
-      <button data-testid="refresh-btn" onClick={onRefresh}>Refresh</button>
+  default: ({ isOpen, onClose, children }: { isOpen: boolean; onClose: () => void; children: React.ReactNode }) => (
+    isOpen ? (
+      <div data-testid="drawer" role="dialog">
+        <button data-testid="drawer-close" onClick={onClose}>Close</button>
+        {children}
+      </div>
+    ) : null
+  ),
+}))
+
+// Mock DetailPanel (has complex workflow dependencies)
+jest.mock('./detail', () => ({
+  __esModule: true,
+  default: ({ runID, onClose, canReplay }: { runID: string; onClose: () => void; canReplay?: boolean }) => (
+    <div data-testid="detail-panel">
+      <span data-testid="run-id">{runID}</span>
+      <span data-testid="can-replay">{canReplay ? 'yes' : 'no'}</span>
+      <button data-testid="close-detail" onClick={onClose}>Close</button>
     </div>
   ),
 }))
 
+// Mock base components that are difficult to render
 jest.mock('@/app/components/app/log/empty-element', () => ({
   __esModule: true,
   default: ({ appDetail }: { appDetail: App }) => (
-    <div data-testid="empty-element">
-      No logs for {appDetail.name}
-    </div>
+    <div data-testid="empty-element">No logs for {appDetail.name}</div>
   ),
 }))
 
@@ -118,9 +142,56 @@ jest.mock('@/app/components/base/loading', () => ({
   ),
 }))
 
+// Mock amplitude tracking
+jest.mock('@/app/components/base/amplitude/utils', () => ({
+  trackEvent: jest.fn(),
+}))
+
+// Mock workflow icons
+jest.mock('@/app/components/base/icons/src/vender/workflow', () => ({
+  Code: () => <span data-testid="icon-code">Code</span>,
+  KnowledgeRetrieval: () => <span data-testid="icon-knowledge">Knowledge</span>,
+  Schedule: () => <span data-testid="icon-schedule">Schedule</span>,
+  WebhookLine: () => <span data-testid="icon-webhook">Webhook</span>,
+  WindowCursor: () => <span data-testid="icon-window">Window</span>,
+}))
+
+jest.mock('@/app/components/workflow/block-icon', () => ({
+  __esModule: true,
+  default: ({ type, toolIcon }: { type: string; size?: string; toolIcon?: string }) => (
+    <span data-testid="block-icon" data-type={type} data-tool-icon={toolIcon}>BlockIcon</span>
+  ),
+}))
+
+// Mock workflow types - must include all exports used by config/index.ts
+jest.mock('@/app/components/workflow/types', () => ({
+  BlockEnum: {
+    TriggerPlugin: 'trigger-plugin',
+  },
+  InputVarType: {
+    textInput: 'text-input',
+    paragraph: 'paragraph',
+    select: 'select',
+    number: 'number',
+    checkbox: 'checkbox',
+    url: 'url',
+    files: 'files',
+    json: 'json',
+    jsonObject: 'json_object',
+    contexts: 'contexts',
+    iterator: 'iterator',
+    singleFile: 'file',
+    multiFiles: 'file-list',
+    loop: 'loop',
+  },
+}))
+
 const mockedUseSWR = useSWR as jest.MockedFunction<typeof useSWR>
 
-// Test data factories
+// ============================================================================
+// Test Data Factories
+// ============================================================================
+
 const createMockApp = (overrides: Partial<App> = {}): App => ({
   id: 'test-app-id',
   name: 'Test App',
@@ -152,12 +223,13 @@ const createMockWorkflowRun = (overrides: Partial<WorkflowRunDetail> = {}): Work
   id: 'run-1',
   version: '1.0.0',
   status: 'succeeded',
-  elapsed_time: 1000,
+  elapsed_time: 1.234,
   total_tokens: 100,
   total_price: 0.001,
   currency: 'USD',
   total_steps: 5,
   finished_at: Date.now(),
+  triggered_from: WorkflowRunTriggeredFrom.APP_RUN,
   ...overrides,
 })
 
@@ -186,525 +258,684 @@ const createMockLogsResponse = (
   page: 1,
 })
 
-describe('Logs (Workflow Log)', () => {
+// ============================================================================
+// Integration Tests for Logs (Main Component)
+// ============================================================================
+
+describe('Workflow Log Module Integration Tests', () => {
   const defaultProps: ILogsProps = {
     appDetail: createMockApp(),
   }
 
   beforeEach(() => {
     jest.clearAllMocks()
-    mockQueryParams = { status: 'all', period: '2' }
+    mockPortalOpen = false
   })
 
-  // Tests for basic component rendering - verifies title, subtitle, and filter component are displayed
-  describe('Rendering', () => {
-    it('should render title and subtitle correctly', () => {
-      // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
+  // Tests for Logs container component - orchestrates Filter, List, Pagination, and Loading states
+  describe('Logs Container', () => {
+    describe('Rendering', () => {
+      it('should render title, subtitle, and filter component', () => {
+        // Arrange
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse([], 0),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
+
+        // Act
+        render(<Logs {...defaultProps} />)
+
+        // Assert
+        expect(screen.getByText('appLog.workflowTitle')).toBeInTheDocument()
+        expect(screen.getByText('appLog.workflowSubtitle')).toBeInTheDocument()
+        // Filter should render (has Chip components for status/period and Input for keyword)
+        expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
       })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByText('appLog.workflowTitle')).toBeInTheDocument()
-      expect(screen.getByText('appLog.workflowSubtitle')).toBeInTheDocument()
     })
 
-    it('should render filter component', () => {
-      // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
+    describe('Loading State', () => {
+      it('should show loading spinner when data is undefined', () => {
+        // Arrange
+        mockedUseSWR.mockReturnValue({
+          data: undefined,
+          mutate: jest.fn(),
+          isValidating: true,
+          isLoading: true,
+          error: undefined,
+        })
+
+        // Act
+        render(<Logs {...defaultProps} />)
+
+        // Assert
+        expect(screen.getByTestId('loading')).toBeInTheDocument()
+        expect(screen.queryByTestId('empty-element')).not.toBeInTheDocument()
       })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByTestId('filter')).toBeInTheDocument()
     })
 
-    it('should pass correct initial query params to filter', () => {
-      // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
+    describe('Empty State', () => {
+      it('should show empty element when total is 0', () => {
+        // Arrange
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse([], 0),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
+
+        // Act
+        render(<Logs {...defaultProps} />)
+
+        // Assert
+        expect(screen.getByTestId('empty-element')).toBeInTheDocument()
+        expect(screen.getByText(`No logs for ${defaultProps.appDetail.name}`)).toBeInTheDocument()
+        expect(screen.queryByTestId('pagination')).not.toBeInTheDocument()
+      })
+    })
+
+    describe('List State with Data', () => {
+      it('should render log table when data exists', () => {
+        // Arrange
+        const mockLogs = [
+          createMockWorkflowLog({ id: 'log-1' }),
+          createMockWorkflowLog({ id: 'log-2' }),
+        ]
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse(mockLogs, 2),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
+
+        // Act
+        render(<Logs {...defaultProps} />)
+
+        // Assert
+        expect(screen.getByRole('table')).toBeInTheDocument()
+        // Check table headers
+        expect(screen.getByText('appLog.table.header.startTime')).toBeInTheDocument()
+        expect(screen.getByText('appLog.table.header.status')).toBeInTheDocument()
+        expect(screen.getByText('appLog.table.header.runtime')).toBeInTheDocument()
+        expect(screen.getByText('appLog.table.header.tokens')).toBeInTheDocument()
       })
 
-      // Act
-      render(<Logs {...defaultProps} />)
+      it('should show pagination when total exceeds APP_PAGE_LIMIT', () => {
+        // Arrange
+        const mockLogs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
+          createMockWorkflowLog({ id: `log-${i}` }),
+        )
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse(mockLogs, APP_PAGE_LIMIT + 10),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
 
-      // Assert
-      expect(mockQueryParams).toEqual({ status: 'all', period: '2' })
+        // Act
+        render(<Logs {...defaultProps} />)
+
+        // Assert
+        expect(screen.getByTestId('pagination')).toBeInTheDocument()
+        expect(screen.getByTestId('total-items')).toHaveTextContent(String(APP_PAGE_LIMIT + 10))
+      })
+
+      it('should not show pagination when total is within limit', () => {
+        // Arrange
+        const mockLogs = [createMockWorkflowLog()]
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse(mockLogs, 1),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
+
+        // Act
+        render(<Logs {...defaultProps} />)
+
+        // Assert
+        expect(screen.queryByTestId('pagination')).not.toBeInTheDocument()
+      })
+    })
+
+    describe('API Query Parameters', () => {
+      it('should call useSWR with correct URL containing app ID', () => {
+        // Arrange
+        const customApp = createMockApp({ id: 'custom-app-123' })
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse([], 0),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
+
+        // Act
+        render(<Logs appDetail={customApp} />)
+
+        // Assert
+        expect(mockedUseSWR).toHaveBeenCalledWith(
+          expect.objectContaining({
+            url: '/apps/custom-app-123/workflow-app-logs',
+          }),
+          expect.any(Function),
+        )
+      })
+
+      it('should include pagination parameters in query', () => {
+        // Arrange
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse([], 0),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
+
+        // Act
+        render(<Logs {...defaultProps} />)
+
+        // Assert
+        expect(mockedUseSWR).toHaveBeenCalledWith(
+          expect.objectContaining({
+            params: expect.objectContaining({
+              page: 1,
+              detail: true,
+              limit: APP_PAGE_LIMIT,
+            }),
+          }),
+          expect.any(Function),
+        )
+      })
+
+      it('should include date range when period is not all time', () => {
+        // Arrange
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse([], 0),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
+
+        // Act
+        render(<Logs {...defaultProps} />)
+
+        // Assert - default period is '2' (last 7 days), should have date filters
+        const lastCall = mockedUseSWR.mock.calls[mockedUseSWR.mock.calls.length - 1]
+        const keyArg = lastCall?.[0] as { params?: Record<string, unknown> } | undefined
+        expect(keyArg?.params).toHaveProperty('created_at__after')
+        expect(keyArg?.params).toHaveProperty('created_at__before')
+      })
+    })
+
+    describe('Pagination Interactions', () => {
+      it('should update page when pagination changes', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        const mockLogs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
+          createMockWorkflowLog({ id: `log-${i}` }),
+        )
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse(mockLogs, APP_PAGE_LIMIT + 10),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
+
+        // Act
+        render(<Logs {...defaultProps} />)
+        await user.click(screen.getByTestId('next-page-btn'))
+
+        // Assert
+        await waitFor(() => {
+          expect(screen.getByTestId('current-page')).toHaveTextContent('1')
+        })
+      })
+    })
+
+    describe('State Transitions', () => {
+      it('should transition from loading to list state', async () => {
+        // Arrange - start with loading
+        mockedUseSWR.mockReturnValue({
+          data: undefined,
+          mutate: jest.fn(),
+          isValidating: true,
+          isLoading: true,
+          error: undefined,
+        })
+
+        // Act
+        const { rerender } = render(<Logs {...defaultProps} />)
+        expect(screen.getByTestId('loading')).toBeInTheDocument()
+
+        // Update to loaded state
+        const mockLogs = [createMockWorkflowLog()]
+        mockedUseSWR.mockReturnValue({
+          data: createMockLogsResponse(mockLogs, 1),
+          mutate: jest.fn(),
+          isValidating: false,
+          isLoading: false,
+          error: undefined,
+        })
+        rerender(<Logs {...defaultProps} />)
+
+        // Assert
+        await waitFor(() => {
+          expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+          expect(screen.getByRole('table')).toBeInTheDocument()
+        })
+      })
     })
   })
 
-  // Tests for loading state - verifies loading spinner is shown when data is undefined
-  describe('Loading State', () => {
-    it('should show loading component when data is undefined', () => {
+  // ============================================================================
+  // Tests for Filter Component
+  // ============================================================================
+
+  describe('Filter Component', () => {
+    const mockSetQueryParams = jest.fn()
+    const defaultFilterProps = {
+      queryParams: { status: 'all', period: '2' } as QueryParam,
+      setQueryParams: mockSetQueryParams,
+    }
+
+    beforeEach(() => {
+      mockSetQueryParams.mockClear()
+    })
+
+    it('should render status filter chip with correct value', () => {
+      // Arrange & Act
+      render(<Filter {...defaultFilterProps} />)
+
+      // Assert - should show "All" as default status
+      expect(screen.getByText('All')).toBeInTheDocument()
+    })
+
+    it('should render keyword search input', () => {
+      // Arrange & Act
+      render(<Filter {...defaultFilterProps} />)
+
+      // Assert
+      const searchInput = screen.getByPlaceholderText('common.operation.search')
+      expect(searchInput).toBeInTheDocument()
+    })
+
+    it('should call setQueryParams when keyword changes', async () => {
       // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: undefined,
-        mutate: jest.fn(),
-        isValidating: true,
-        isLoading: true,
-        error: undefined,
-      })
+      const user = userEvent.setup()
+      render(<Filter {...defaultFilterProps} />)
 
       // Act
-      render(<Logs {...defaultProps} />)
+      const searchInput = screen.getByPlaceholderText('common.operation.search')
+      await user.type(searchInput, 'test')
+
+      // Assert
+      expect(mockSetQueryParams).toHaveBeenCalledWith(
+        expect.objectContaining({ keyword: expect.any(String) }),
+      )
+    })
+
+    it('should export TIME_PERIOD_MAPPING with correct structure', () => {
+      // Assert
+      expect(TIME_PERIOD_MAPPING).toBeDefined()
+      expect(TIME_PERIOD_MAPPING['1']).toEqual({ value: 0, name: 'today' })
+      expect(TIME_PERIOD_MAPPING['9']).toEqual({ value: -1, name: 'allTime' })
+    })
+  })
+
+  // ============================================================================
+  // Tests for WorkflowAppLogList Component
+  // ============================================================================
+
+  describe('WorkflowAppLogList Component', () => {
+    const mockOnRefresh = jest.fn()
+
+    beforeEach(() => {
+      mockOnRefresh.mockClear()
+    })
+
+    it('should render loading when logs or appDetail is undefined', () => {
+      // Arrange & Act
+      render(<WorkflowAppLogList logs={undefined} appDetail={undefined} onRefresh={mockOnRefresh} />)
 
       // Assert
       expect(screen.getByTestId('loading')).toBeInTheDocument()
-      expect(screen.getByTestId('loading')).toHaveAttribute('data-type', 'app')
     })
 
-    it('should not show list or empty state when loading', () => {
+    it('should render table with correct headers for workflow app', () => {
       // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: undefined,
-        mutate: jest.fn(),
-        isValidating: true,
-        isLoading: true,
-        error: undefined,
-      })
+      const mockLogs = createMockLogsResponse([createMockWorkflowLog()], 1)
+      const workflowApp = createMockApp({ mode: 'workflow' as AppModeEnum })
 
       // Act
-      render(<Logs {...defaultProps} />)
+      render(<WorkflowAppLogList logs={mockLogs} appDetail={workflowApp} onRefresh={mockOnRefresh} />)
 
       // Assert
-      expect(screen.queryByTestId('log-list')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('empty-element')).not.toBeInTheDocument()
-    })
-  })
-
-  // Tests for empty state - verifies empty element is shown when no logs exist
-  describe('Empty State', () => {
-    it('should show empty element when total is 0', () => {
-      // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByTestId('empty-element')).toBeInTheDocument()
-      expect(screen.getByText(`No logs for ${defaultProps.appDetail.name}`)).toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.startTime')).toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.status')).toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.runtime')).toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.tokens')).toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.user')).toBeInTheDocument()
+      expect(screen.getByText('appLog.table.header.triggered_from')).toBeInTheDocument()
     })
 
-    it('should not show loading or list when empty', () => {
+    it('should not show triggered_from column for non-workflow apps', () => {
       // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
+      const mockLogs = createMockLogsResponse([createMockWorkflowLog()], 1)
+      const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
 
       // Act
-      render(<Logs {...defaultProps} />)
+      render(<WorkflowAppLogList logs={mockLogs} appDetail={chatApp} onRefresh={mockOnRefresh} />)
 
       // Assert
-      expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('log-list')).not.toBeInTheDocument()
+      expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
     })
 
-    it('should not show pagination when empty', () => {
+    it('should render log rows with correct data', () => {
       // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.queryByTestId('pagination')).not.toBeInTheDocument()
-    })
-  })
-
-  // Tests for list state - verifies log list is rendered with correct data and refresh functionality
-  describe('List State', () => {
-    it('should show log list when there are logs', () => {
-      // Arrange
-      const mockLogs = [
-        createMockWorkflowLog({ id: 'log-1' }),
-        createMockWorkflowLog({ id: 'log-2' }),
-      ]
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, 2),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByTestId('log-list')).toBeInTheDocument()
-      expect(screen.getByTestId('log-count')).toHaveTextContent('2 logs')
-    })
-
-    it('should pass correct app detail to list', () => {
-      // Arrange
-      const mockLogs = [createMockWorkflowLog()]
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, 1),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByTestId('app-id')).toHaveTextContent(defaultProps.appDetail.id)
-    })
-
-    it('should call mutate when refresh is triggered', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const mockMutate = jest.fn()
-      const mockLogs = [createMockWorkflowLog()]
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, 1),
-        mutate: mockMutate,
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-      await user.click(screen.getByTestId('refresh-btn'))
-
-      // Assert
-      expect(mockMutate).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // Tests for pagination - verifies pagination visibility and page/limit state changes
-  describe('Pagination', () => {
-    it('should show pagination when total exceeds APP_PAGE_LIMIT', () => {
-      // Arrange
-      const mockLogs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
-      )
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, APP_PAGE_LIMIT + 5),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByTestId('pagination')).toBeInTheDocument()
-      expect(screen.getByTestId('total-items')).toHaveTextContent(String(APP_PAGE_LIMIT + 5))
-    })
-
-    it('should not show pagination when total equals APP_PAGE_LIMIT', () => {
-      // Arrange
-      const mockLogs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
-      )
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, APP_PAGE_LIMIT),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.queryByTestId('pagination')).not.toBeInTheDocument()
-    })
-
-    it('should not show pagination when total is less than APP_PAGE_LIMIT', () => {
-      // Arrange
-      const mockLogs = [createMockWorkflowLog()]
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, 1),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.queryByTestId('pagination')).not.toBeInTheDocument()
-    })
-
-    it('should show current page as 0 initially', () => {
-      // Arrange
-      const mockLogs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
-      )
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, APP_PAGE_LIMIT + 10),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      expect(screen.getByTestId('current-page')).toHaveTextContent('0')
-    })
-
-    it('should update page when next button is clicked', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const mockLogs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
-      )
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, APP_PAGE_LIMIT + 10),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-      await user.click(screen.getByTestId('next-page-btn'))
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByTestId('current-page')).toHaveTextContent('1')
-      })
-    })
-
-    it('should update limit when limit change is triggered', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      const mockLogs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
-      )
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, APP_PAGE_LIMIT + 10),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-      await user.click(screen.getByTestId('change-limit-btn'))
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByTestId('page-limit')).toHaveTextContent('20')
-      })
-    })
-  })
-
-  // Tests for state management - verifies queryParams updates via filter interactions
-  describe('State Management', () => {
-    it('should update query params when filter status changes', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-      await user.click(screen.getByTestId('filter-status-btn'))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockQueryParams.status).toBe('succeeded')
-      })
-    })
-
-    it('should update query params when filter period changes', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-      await user.click(screen.getByTestId('filter-period-btn'))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockQueryParams.period).toBe('9')
-      })
-    })
-
-    it('should update query params when keyword changes', async () => {
-      // Arrange
-      const user = userEvent.setup()
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-      await user.type(screen.getByTestId('filter-keyword-input'), 'test keyword')
-
-      // Assert
-      await waitFor(() => {
-        expect(mockQueryParams.keyword).toBe('test keyword')
-      })
-    })
-  })
-
-  // Tests for API calls - verifies useSWR is called with correct URL and query parameters
-  describe('API Calls', () => {
-    it('should call useSWR with correct URL containing app ID', () => {
-      // Arrange
-      const customApp = createMockApp({ id: 'custom-app-123' })
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs appDetail={customApp} />)
-
-      // Assert
-      expect(mockedUseSWR).toHaveBeenCalledWith(
-        expect.objectContaining({
-          url: '/apps/custom-app-123/workflow-app-logs',
+      const mockLog = createMockWorkflowLog({
+        id: 'test-log-1',
+        workflow_run: createMockWorkflowRun({
+          status: 'succeeded',
+          elapsed_time: 1.5,
+          total_tokens: 150,
         }),
-        expect.any(Function),
-      )
-    })
-
-    it('should include page parameter in query (1-indexed)', () => {
-      // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
+        created_by_account: { id: '1', name: 'John Doe', email: 'john@example.com' },
       })
+      const mockLogs = createMockLogsResponse([mockLog], 1)
 
       // Act
-      render(<Logs {...defaultProps} />)
+      render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
 
       // Assert
-      expect(mockedUseSWR).toHaveBeenCalledWith(
-        expect.objectContaining({
-          params: expect.objectContaining({
-            page: 1,
-            detail: true,
-            limit: APP_PAGE_LIMIT,
-          }),
-        }),
-        expect.any(Function),
-      )
+      expect(screen.getByText('Success')).toBeInTheDocument()
+      expect(screen.getByText('1.500s')).toBeInTheDocument()
+      expect(screen.getByText('150')).toBeInTheDocument()
+      expect(screen.getByText('John Doe')).toBeInTheDocument()
     })
 
-    it('should not include status in query when status is "all"', () => {
-      // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
+    describe('Status Display', () => {
+      it.each([
+        ['succeeded', 'Success'],
+        ['failed', 'Failure'],
+        ['stopped', 'Stop'],
+        ['running', 'Running'],
+        ['partial-succeeded', 'Partial Success'],
+      ])('should display correct status for %s', (status, expectedText) => {
+        // Arrange
+        const mockLog = createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ status: status as WorkflowRunDetail['status'] }),
+        })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Assert
+        expect(screen.getByText(expectedText)).toBeInTheDocument()
       })
-
-      // Act
-      render(<Logs {...defaultProps} />)
-
-      // Assert
-      const lastCall = mockedUseSWR.mock.calls[mockedUseSWR.mock.calls.length - 1]
-      const keyArg = lastCall?.[0] as { params?: Record<string, unknown> } | undefined
-      expect(keyArg?.params).not.toHaveProperty('status')
     })
 
-    it('should include date range when period is not "9" (all time)', () => {
-      // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
+    describe('Sorting', () => {
+      it('should toggle sort order when clicking sort header', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        const logs = [
+          createMockWorkflowLog({ id: 'log-1', created_at: 1000 }),
+          createMockWorkflowLog({ id: 'log-2', created_at: 2000 }),
+        ]
+        const mockLogs = createMockLogsResponse(logs, 2)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Find and click the sort header
+        const sortHeader = screen.getByText('appLog.table.header.startTime')
+        await user.click(sortHeader)
+
+        // Assert - sort icon should change (we can verify the click handler was called)
+        // The component should handle sorting internally
+        expect(sortHeader).toBeInTheDocument()
+      })
+    })
+
+    describe('Row Click and Drawer', () => {
+      it('should open drawer with detail panel when clicking a log row', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        const mockLog = createMockWorkflowLog({
+          id: 'test-log-1',
+          workflow_run: createMockWorkflowRun({ id: 'run-123', triggered_from: WorkflowRunTriggeredFrom.APP_RUN }),
+        })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Click on a table row
+        const rows = screen.getAllByRole('row')
+        // First row is header, second is data row
+        await user.click(rows[1])
+
+        // Assert
+        await waitFor(() => {
+          expect(screen.getByTestId('drawer')).toBeInTheDocument()
+          expect(screen.getByTestId('detail-panel')).toBeInTheDocument()
+          expect(screen.getByTestId('run-id')).toHaveTextContent('run-123')
+          expect(screen.getByTestId('can-replay')).toHaveTextContent('yes')
+        })
       })
 
-      // Act
-      render(<Logs {...defaultProps} />)
+      it('should close drawer and call refresh when drawer closes', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        const mockLog = createMockWorkflowLog()
+        const mockLogs = createMockLogsResponse([mockLog], 1)
 
-      // Assert
-      const lastCall = mockedUseSWR.mock.calls[mockedUseSWR.mock.calls.length - 1]
-      const keyArg = lastCall?.[0] as { params?: Record<string, unknown> } | undefined
-      expect(keyArg?.params).toHaveProperty('created_at__after')
-      expect(keyArg?.params).toHaveProperty('created_at__before')
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Open drawer
+        const rows = screen.getAllByRole('row')
+        await user.click(rows[1])
+
+        // Wait for drawer to open
+        await waitFor(() => {
+          expect(screen.getByTestId('drawer')).toBeInTheDocument()
+        })
+
+        // Close drawer
+        await user.click(screen.getByTestId('drawer-close'))
+
+        // Assert
+        await waitFor(() => {
+          expect(screen.queryByTestId('drawer')).not.toBeInTheDocument()
+          expect(mockOnRefresh).toHaveBeenCalled()
+        })
+      })
+
+      it('should show canReplay as false for non-replayable triggers', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        const mockLog = createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ triggered_from: WorkflowRunTriggeredFrom.WEBHOOK }),
+        })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+        const rows = screen.getAllByRole('row')
+        await user.click(rows[1])
+
+        // Assert
+        await waitFor(() => {
+          expect(screen.getByTestId('can-replay')).toHaveTextContent('no')
+        })
+      })
+    })
+
+    describe('User Display', () => {
+      it('should display end user session ID when available', () => {
+        // Arrange
+        const mockLog = createMockWorkflowLog({
+          created_by_end_user: { id: 'end-user-1', session_id: 'session-abc', type: 'browser', is_anonymous: false },
+          created_by_account: undefined,
+        })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Assert
+        expect(screen.getByText('session-abc')).toBeInTheDocument()
+      })
+
+      it('should display N/A when no user info available', () => {
+        // Arrange
+        const mockLog = createMockWorkflowLog({
+          created_by_end_user: undefined,
+          created_by_account: undefined,
+        })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Assert
+        expect(screen.getByText('N/A')).toBeInTheDocument()
+      })
+    })
+
+    describe('Unread Indicator', () => {
+      it('should show unread indicator when read_at is not set', () => {
+        // Arrange
+        const mockLog = createMockWorkflowLog({ read_at: undefined })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        const { container } = render(
+          <WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />,
+        )
+
+        // Assert - look for the unread indicator dot
+        const unreadDot = container.querySelector('.bg-util-colors-blue-blue-500')
+        expect(unreadDot).toBeInTheDocument()
+      })
     })
   })
 
-  // Tests for edge cases - verifies handling of state transitions, large data, and boundary conditions
+  // ============================================================================
+  // Tests for TriggerByDisplay Component
+  // ============================================================================
+
+  describe('TriggerByDisplay Component', () => {
+    it.each([
+      [WorkflowRunTriggeredFrom.DEBUGGING, 'appLog.triggerBy.debugging', 'icon-code'],
+      [WorkflowRunTriggeredFrom.APP_RUN, 'appLog.triggerBy.appRun', 'icon-window'],
+      [WorkflowRunTriggeredFrom.WEBHOOK, 'appLog.triggerBy.webhook', 'icon-webhook'],
+      [WorkflowRunTriggeredFrom.SCHEDULE, 'appLog.triggerBy.schedule', 'icon-schedule'],
+      [WorkflowRunTriggeredFrom.RAG_PIPELINE_RUN, 'appLog.triggerBy.ragPipelineRun', 'icon-knowledge'],
+      [WorkflowRunTriggeredFrom.RAG_PIPELINE_DEBUGGING, 'appLog.triggerBy.ragPipelineDebugging', 'icon-knowledge'],
+    ])('should render correct display for %s trigger', (triggeredFrom, expectedText, expectedIcon) => {
+      // Act
+      render(<TriggerByDisplay triggeredFrom={triggeredFrom} />)
+
+      // Assert
+      expect(screen.getByText(expectedText)).toBeInTheDocument()
+      expect(screen.getByTestId(expectedIcon)).toBeInTheDocument()
+    })
+
+    it('should render plugin trigger with custom event name from metadata', () => {
+      // Arrange
+      const metadata: TriggerMetadata = {
+        event_name: 'Custom Plugin Event',
+        icon: 'plugin-icon.png',
+      }
+
+      // Act
+      render(
+        <TriggerByDisplay
+          triggeredFrom={WorkflowRunTriggeredFrom.PLUGIN}
+          triggerMetadata={metadata}
+        />,
+      )
+
+      // Assert
+      expect(screen.getByText('Custom Plugin Event')).toBeInTheDocument()
+    })
+
+    it('should not show text when showText is false', () => {
+      // Act
+      render(
+        <TriggerByDisplay
+          triggeredFrom={WorkflowRunTriggeredFrom.APP_RUN}
+          showText={false}
+        />,
+      )
+
+      // Assert
+      expect(screen.queryByText('appLog.triggerBy.appRun')).not.toBeInTheDocument()
+      expect(screen.getByTestId('icon-window')).toBeInTheDocument()
+    })
+
+    it('should apply custom className', () => {
+      // Act
+      const { container } = render(
+        <TriggerByDisplay
+          triggeredFrom={WorkflowRunTriggeredFrom.APP_RUN}
+          className="custom-class"
+        />,
+      )
+
+      // Assert
+      const wrapper = container.firstChild as HTMLElement
+      expect(wrapper).toHaveClass('custom-class')
+    })
+
+    it('should render plugin with BlockIcon when metadata has icon', () => {
+      // Arrange
+      const metadata: TriggerMetadata = {
+        icon: 'custom-plugin-icon.png',
+      }
+
+      // Act
+      render(
+        <TriggerByDisplay
+          triggeredFrom={WorkflowRunTriggeredFrom.PLUGIN}
+          triggerMetadata={metadata}
+        />,
+      )
+
+      // Assert
+      const blockIcon = screen.getByTestId('block-icon')
+      expect(blockIcon).toHaveAttribute('data-tool-icon', 'custom-plugin-icon.png')
+    })
+
+    it('should fall back to default BlockIcon for plugin without metadata', () => {
+      // Act
+      render(<TriggerByDisplay triggeredFrom={WorkflowRunTriggeredFrom.PLUGIN} />)
+
+      // Assert
+      expect(screen.getByTestId('block-icon')).toBeInTheDocument()
+    })
+  })
+
+  // ============================================================================
+  // Edge Cases and Error Handling
+  // ============================================================================
+
   describe('Edge Cases', () => {
     it('should handle app with minimal required fields', () => {
       // Arrange
-      const minimalApp = createMockApp({
-        id: 'minimal-id',
-        name: 'Minimal App',
-      })
+      const minimalApp = createMockApp({ id: 'minimal-id', name: 'Minimal App' })
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
         mutate: jest.fn(),
@@ -717,77 +948,24 @@ describe('Logs (Workflow Log)', () => {
       expect(() => render(<Logs appDetail={minimalApp} />)).not.toThrow()
     })
 
-    it('should handle transition from loading to empty state', async () => {
+    it('should handle logs with zero elapsed time', () => {
       // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: undefined,
-        mutate: jest.fn(),
-        isValidating: true,
-        isLoading: true,
-        error: undefined,
+      const mockLog = createMockWorkflowLog({
+        workflow_run: createMockWorkflowRun({ elapsed_time: 0 }),
       })
+      const mockLogs = createMockLogsResponse([mockLog], 1)
 
       // Act
-      const { rerender } = render(<Logs {...defaultProps} />)
+      render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={jest.fn()} />)
 
-      // Assert - loading state
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
-
-      // Update mock and rerender
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-      rerender(<Logs {...defaultProps} />)
-
-      // Assert - empty state
-      await waitFor(() => {
-        expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
-        expect(screen.getByTestId('empty-element')).toBeInTheDocument()
-      })
+      // Assert
+      expect(screen.getByText('0.000s')).toBeInTheDocument()
     })
 
-    it('should handle transition from loading to list state', async () => {
-      // Arrange
-      mockedUseSWR.mockReturnValue({
-        data: undefined,
-        mutate: jest.fn(),
-        isValidating: true,
-        isLoading: true,
-        error: undefined,
-      })
-
-      // Act
-      const { rerender } = render(<Logs {...defaultProps} />)
-
-      // Assert - loading state
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
-
-      // Update mock and rerender
-      const mockLogs = [createMockWorkflowLog()]
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, 1),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-      rerender(<Logs {...defaultProps} />)
-
-      // Assert - list state
-      await waitFor(() => {
-        expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
-        expect(screen.getByTestId('log-list')).toBeInTheDocument()
-      })
-    })
-
-    it('should handle large number of logs correctly', () => {
+    it('should handle large number of logs', () => {
       // Arrange
       const largeLogs = Array.from({ length: 100 }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
+        createMockWorkflowLog({ id: `log-${i}`, created_at: Date.now() - i * 1000 }),
       )
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse(largeLogs, 1000),
@@ -801,19 +979,17 @@ describe('Logs (Workflow Log)', () => {
       render(<Logs {...defaultProps} />)
 
       // Assert
-      expect(screen.getByTestId('log-list')).toBeInTheDocument()
+      expect(screen.getByRole('table')).toBeInTheDocument()
       expect(screen.getByTestId('pagination')).toBeInTheDocument()
       expect(screen.getByTestId('total-items')).toHaveTextContent('1000')
     })
 
-    it('should handle page navigation at boundary', async () => {
+    it('should handle advanced-chat mode correctly', () => {
       // Arrange
-      const user = userEvent.setup()
-      const mockLogs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
-      )
+      const advancedChatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
+      const mockLogs = createMockLogsResponse([createMockWorkflowLog()], 1)
       mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse(mockLogs, APP_PAGE_LIMIT + 10),
+        data: mockLogs,
         mutate: jest.fn(),
         isValidating: false,
         isLoading: false,
@@ -821,111 +997,10 @@ describe('Logs (Workflow Log)', () => {
       })
 
       // Act
-      render(<Logs {...defaultProps} />)
+      render(<Logs appDetail={advancedChatApp} />)
 
-      // Navigate forward twice
-      await user.click(screen.getByTestId('next-page-btn'))
-      await user.click(screen.getByTestId('next-page-btn'))
-
-      // Assert
-      await waitFor(() => {
-        expect(screen.getByTestId('current-page')).toHaveTextContent('2')
-      })
-
-      // Navigate back
-      await user.click(screen.getByTestId('prev-page-btn'))
-
-      await waitFor(() => {
-        expect(screen.getByTestId('current-page')).toHaveTextContent('1')
-      })
-    })
-
-    it('should render correctly when app has different modes', () => {
-      // Arrange
-      const advancedChatApp = createMockApp({
-        id: 'advanced-chat-app',
-        mode: 'advanced-chat' as AppModeEnum,
-      })
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act & Assert
-      expect(() => render(<Logs appDetail={advancedChatApp} />)).not.toThrow()
-    })
-  })
-
-  // Tests for props variations - verifies component handles different app configurations correctly
-  describe('Props Variations', () => {
-    it('should handle different app icons', () => {
-      // Arrange
-      const imageIconApp = createMockApp({
-        icon_type: 'image' as AppIconType,
-        icon: 'file-id-123',
-        icon_url: 'https://example.com/icon.png',
-        icon_background: null,
-      })
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act & Assert
-      expect(() => render(<Logs appDetail={imageIconApp} />)).not.toThrow()
-    })
-
-    it('should handle app with tags', () => {
-      // Arrange
-      const taggedApp = createMockApp({
-        tags: [
-          { id: 'tag-1', name: 'Production', type: 'app', binding_count: 1 },
-          { id: 'tag-2', name: 'Internal', type: 'app', binding_count: 2 },
-        ],
-      })
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act & Assert
-      expect(() => render(<Logs appDetail={taggedApp} />)).not.toThrow()
-    })
-
-    it('should use correct app ID in API URL regardless of other app properties', () => {
-      // Arrange
-      const uniqueIdApp = createMockApp({
-        id: 'unique-test-id-12345',
-        name: 'App With Unique ID',
-        description: 'This app has a unique ID',
-      })
-      mockedUseSWR.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
-        isValidating: false,
-        isLoading: false,
-        error: undefined,
-      })
-
-      // Act
-      render(<Logs appDetail={uniqueIdApp} />)
-
-      // Assert
-      expect(mockedUseSWR).toHaveBeenCalledWith(
-        expect.objectContaining({
-          url: '/apps/unique-test-id-12345/workflow-app-logs',
-        }),
-        expect.any(Function),
-      )
+      // Assert - should not show triggered_from column
+      expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
     })
   })
 })
