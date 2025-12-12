@@ -82,9 +82,8 @@ describe('AppCard', () => {
     })
 
     const button = screen.getByText('explore.appCard.addToWorkspace')
-    fireEvent.click(button)
-
     expect(button).toBeInTheDocument()
+    fireEvent.click(button)
     expect(onCreate).toHaveBeenCalledTimes(1)
     expect(screen.getByText('APP.TYPES.WORKFLOW')).toBeInTheDocument()
   })
