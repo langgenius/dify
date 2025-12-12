@@ -30,61 +30,38 @@ class ExcelExtractor(BaseExtractor):
         file_extension = os.path.splitext(self._file_path)[-1].lower()
 
         if file_extension == ".xlsx":
-            # Read only mode is faster and uses less memory
             wb = load_workbook(self._file_path, read_only=True, data_only=True)
-            for sheet_name in wb.sheetnames:
-                sheet = wb[sheet_name]
-                
-                # 1. Find Header Row and determine valid columns
-                header_row_idx, column_map, max_col_idx = self._find_header_and_columns(sheet)
-                
-                if not column_map:
-                    continue
-
-                # 2. Stream rows using the determined boundaries
-                # min_row is 1-based index in openpyxl
-                # We start reading from the next row after header
-                start_row = header_row_idx + 1
-                
-                # iter_rows yields tuples of cells. 
-                # We strictly limit max_col to avoid reading ghost columns (memory leak protection).
-                for row in sheet.iter_rows(min_row=start_row, max_col=max_col_idx, values_only=False):
-                    # Check if row is completely empty
-                    if all(cell.value is None for cell in row):
+            try:
+                for sheet_name in wb.sheetnames:
+                    sheet = wb[sheet_name]
+                    header_row_idx, column_map, max_col_idx = self._find_header_and_columns(sheet)
+                    if not column_map:
                         continue
-                        
-                    page_content = []
-                    for col_idx, cell in enumerate(row):
-                        value = cell.value
-                        # col_idx is 0-based, matches our column_map keys
-                        if col_idx in column_map:
-                            col_name = column_map[col_idx]
-                            
-                            # Handle Hyperlinks
-                            if hasattr(cell, "hyperlink") and cell.hyperlink:
-                                target = getattr(cell.hyperlink, "target", None)
-                                if target:
-                                    value = f"[{value}]({target})"
-
-                            # Handle None and basic types
-                            if value is None:
-                                value = ""
-                            elif not isinstance(value, str):
-                                value = str(value)
-                                
-                            value = value.strip()
-                            # Always append the key-value pair, even if value is empty.
-                            # This ensures that all columns from the header are present in the document content.
-                            page_content.append(f'"{col_name}":"{value}"')
-
-                    
-                    if page_content:
-                        documents.append(
-                            Document(page_content=";".join(page_content), metadata={"source": self._file_path})
-                        )
-            
-            # Close the workbook if opened in read_only mode
-            wb.close()
+                    start_row = header_row_idx + 1
+                    for row in sheet.iter_rows(min_row=start_row, max_col=max_col_idx, values_only=False):
+                        if all(cell.value is None for cell in row):
+                            continue
+                        page_content = []
+                        for col_idx, cell in enumerate(row):
+                            value = cell.value
+                            if col_idx in column_map:
+                                col_name = column_map[col_idx]
+                                if hasattr(cell, "hyperlink") and cell.hyperlink:
+                                    target = getattr(cell.hyperlink, "target", None)
+                                    if target:
+                                        value = f"[{value}]({target})"
+                                if value is None:
+                                    value = ""
+                                elif not isinstance(value, str):
+                                    value = str(value)
+                                value = value.strip()
+                                page_content.append(f'"{col_name}":"{value}"')
+                        if page_content:
+                            documents.append(
+                                Document(page_content=";".join(page_content), metadata={"source": self._file_path})
+                            )
+            finally:
+                wb.close()
 
         elif file_extension == ".xls":
             excel_file = pd.ExcelFile(self._file_path, engine="xlrd")
@@ -127,7 +104,7 @@ class ExcelExtractor(BaseExtractor):
             row_map = {}
             for col_idx, cell_value in enumerate(row):
                 if cell_value is not None and str(cell_value).strip():
-                    row_map[col_idx] = str(cell_value).strip()
+                    row_map[col_idx] = str(cell_value).strip().replace('"', '\\"')
             
             if not row_map:
                 continue
@@ -136,7 +113,8 @@ class ExcelExtractor(BaseExtractor):
             
             # Heuristic: 
             # 1. Prefer rows with multiple columns (unless file is single column)
-            # 2. Prefer rows where values are strings (headers usually are) - implicit in str() conversion above but we could be stricter
+            # 2. Prefer rows where values are strings (headers usually are)
+            #    Implicit in str() conversion above, but we could be stricter
             candidates.append({
                 "idx": current_row_idx,
                 "count": non_empty_count,
@@ -186,4 +164,3 @@ class ExcelExtractor(BaseExtractor):
             max_col_idx = 1
             
         return best_candidate["idx"], best_candidate["map"], max_col_idx
-
