@@ -1,3 +1,4 @@
+import os
 import pathlib
 import random
 import secrets
@@ -32,6 +33,10 @@ def _load_env():
 
 
 _load_env()
+# Override storage root to tmp to avoid polluting repo during local runs
+os.environ["OPENDAL_FS_ROOT"] = "/tmp/dify-storage"
+os.environ.setdefault("STORAGE_TYPE", "opendal")
+os.environ.setdefault("OPENDAL_SCHEME", "fs")
 
 _CACHED_APP = create_app()
 

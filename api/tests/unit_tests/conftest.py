@@ -26,16 +26,29 @@ redis_mock.hgetall = MagicMock(return_value={})
 redis_mock.hdel = MagicMock()
 redis_mock.incr = MagicMock(return_value=1)
 
+# Ensure OpenDAL fs writes to tmp to avoid polluting workspace
+os.environ.setdefault("OPENDAL_SCHEME", "fs")
+os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
+os.environ.setdefault("STORAGE_TYPE", "opendal")
+
 # Add the API directory to Python path to ensure proper imports
 import sys
 
 sys.path.insert(0, PROJECT_DIR)
 
-# apply the mock to the Redis client in the Flask app
 from extensions import ext_redis
 
-redis_patcher = patch.object(ext_redis, "redis_client", redis_mock)
-redis_patcher.start()
+
+def _patch_redis_clients_on_loaded_modules():
+    """Ensure any module-level redis_client references point to the shared redis_mock."""
+
+    import sys
+
+    for module in list(sys.modules.values()):
+        if module is None:
+            continue
+        if hasattr(module, "redis_client"):
+            module.redis_client = redis_mock
 
 
 @pytest.fixture
@@ -46,6 +59,15 @@ def app() -> Flask:
 @pytest.fixture(autouse=True)
 def _provide_app_context(app: Flask):
     with app.app_context():
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _patch_redis_clients():
+    """Patch redis_client to MagicMock only for unit test executions."""
+
+    with patch.object(ext_redis, "redis_client", redis_mock):
+        _patch_redis_clients_on_loaded_modules()
         yield
 
 
@@ -63,3 +85,20 @@ def reset_redis_mock():
     redis_mock.hgetall.return_value = {}
     redis_mock.hdel.return_value = None
     redis_mock.incr.return_value = 1
+
+    # Keep any imported modules pointing at the mock between tests
+    _patch_redis_clients_on_loaded_modules()
+
+
+@pytest.fixture(autouse=True)
+def reset_secret_key():
+    """Ensure SECRET_KEY-dependent logic sees an empty config value by default."""
+
+    from configs import dify_config
+
+    original = dify_config.SECRET_KEY
+    dify_config.SECRET_KEY = ""
+    try:
+        yield
+    finally:
+        dify_config.SECRET_KEY = original

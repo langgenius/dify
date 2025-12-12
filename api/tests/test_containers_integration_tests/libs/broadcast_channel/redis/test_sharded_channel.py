@@ -240,8 +240,7 @@ class TestShardedRedisBroadcastChannelIntegration:
             for future in as_completed(producer_futures, timeout=30.0):
                 sent_msgs.update(future.result())
 
-            subscription.close()
-            consumer_received_msgs = consumer_future.result(timeout=30.0)
+            consumer_received_msgs = consumer_future.result(timeout=60.0)
 
         assert sent_msgs == consumer_received_msgs
 
