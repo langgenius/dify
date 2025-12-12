@@ -30,6 +30,7 @@ const translation = {
     vectorSpace: 'Espacio Vectorial',
     vectorSpaceTooltip: 'El Espacio Vectorial es el sistema de memoria a largo plazo necesario para que los LLMs comprendan tus datos.',
     documentProcessingPriority: 'Prioridad de Procesamiento de Documentos',
+    documentProcessingPriorityTip: 'Para una mayor prioridad en el procesamiento de documentos, actualice su plan.',
     documentProcessingPriorityUpgrade: 'Procesa más datos con mayor precisión y velocidad.',
     priority: {
       'standard': 'Estándar',
@@ -197,6 +198,23 @@ const translation = {
     usageTitle: 'EVENTOS DESENCADENANTES',
     title: 'Actualiza para desbloquear más eventos desencadenantes',
     description: 'Has alcanzado el límite de activadores de eventos de flujo de trabajo para este plan.',
+  },
+  viewBillingTitle: 'Facturación y Suscripciones',
+  viewBillingDescription: 'Gestiona métodos de pago, facturas y cambios de suscripción',
+  viewBillingAction: 'Gestionar',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Actualiza para subir varios documentos a la vez',
+      description: 'Has alcanzado el límite de carga: solo se puede seleccionar y subir un documento a la vez en tu plan actual.',
+    },
+    uploadMultipleFiles: {
+      title: 'Actualiza para desbloquear la carga de documentos en lote',
+      description: 'Carga en lote más documentos a la vez para ahorrar tiempo y mejorar la eficiencia.',
+    },
+    addChunks: {
+      title: 'Actualiza para seguir agregando fragmentos',
+      description: 'Has alcanzado el límite de agregar fragmentos para este plan.',
+    },
   },
 }
 

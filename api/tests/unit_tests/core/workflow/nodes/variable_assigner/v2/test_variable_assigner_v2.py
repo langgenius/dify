@@ -78,7 +78,7 @@ def test_remove_first_from_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "title": "Variable Assigner", "items": []},
+                "data": {"type": "assigner", "version": "2", "title": "Variable Assigner", "items": []},
                 "id": "assigner",
             },
         ],
@@ -162,7 +162,7 @@ def test_remove_last_from_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "title": "Variable Assigner", "items": []},
+                "data": {"type": "assigner", "version": "2", "title": "Variable Assigner", "items": []},
                 "id": "assigner",
             },
         ],
@@ -243,7 +243,7 @@ def test_remove_first_from_empty_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "title": "Variable Assigner", "items": []},
+                "data": {"type": "assigner", "version": "2", "title": "Variable Assigner", "items": []},
                 "id": "assigner",
             },
         ],
@@ -324,7 +324,7 @@ def test_remove_last_from_empty_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "title": "Variable Assigner", "items": []},
+                "data": {"type": "assigner", "version": "2", "title": "Variable Assigner", "items": []},
                 "id": "assigner",
             },
         ],

@@ -110,7 +110,7 @@ const NotionPageSelector = ({
     setCurrentCredential(credential)
     onSelect([]) // Clear selected pages when changing credential
     onSelectCredential?.(credential.credentialId)
-  }, [invalidPreImportNotionPages, onSelect, onSelectCredential])
+  }, [datasetId, invalidPreImportNotionPages, notionCredentials, onSelect, onSelectCredential])
 
   const handleSelectPages = useCallback((newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => pagesMapAndSelectedPagesId[0][pageId])

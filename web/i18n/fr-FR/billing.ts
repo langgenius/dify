@@ -29,6 +29,7 @@ const translation = {
     vectorSpace: 'Espace Vectoriel',
     vectorSpaceTooltip: 'L\'espace vectoriel est le système de mémoire à long terme nécessaire pour que les LLMs comprennent vos données.',
     documentProcessingPriority: 'Priorité de Traitement de Document',
+    documentProcessingPriorityTip: 'Pour une priorité de traitement des documents plus élevée, veuillez mettre à niveau votre plan.',
     documentProcessingPriorityUpgrade: 'Traitez plus de données avec une précision plus élevée à des vitesses plus rapides.',
     priority: {
       'standard': 'Standard',
@@ -136,7 +137,7 @@ const translation = {
       name: 'Entreprise',
       description: 'Obtenez toutes les capacités et le support pour les systèmes à grande échelle et critiques pour la mission.',
       includesTitle: 'Tout ce qui est inclus dans le plan Équipe, plus :',
-      features: ['Solutions de déploiement évolutives de niveau entreprise', 'Autorisation de licence commerciale', 'Fonctionnalités exclusives pour les entreprises', 'Espaces de travail multiples et gestion d\'entreprise', 'SSO', 'Accords sur les SLA négociés par les partenaires Dify', 'Sécurité et Contrôles Avancés', 'Mises à jour et maintenance par Dify Officiellement', 'Assistance technique professionnelle'],
+      features: ['Solutions de déploiement évolutives de niveau entreprise', 'Autorisation de licence commerciale', 'Fonctionnalités exclusives pour les entreprises', 'Espaces de travail multiples et gestion d\'entreprise', 'SSO', 'Accords sur les SLA négociés par les partenaires Dify', 'Sécurité et contrôles avancés', 'Mises à jour et maintenance par Dify Officiellement', 'Assistance technique professionnelle'],
       for: 'Pour les équipes de grande taille',
       btnText: 'Contacter les ventes',
       priceTip: 'Facturation Annuel Seulement',
@@ -152,7 +153,7 @@ const translation = {
       description: 'Pour les utilisateurs individuels, les petites équipes ou les projets non commerciaux',
     },
     premium: {
-      features: ['Fiabilité autonome par divers fournisseurs de cloud', 'Espace de travail unique', 'Personnalisation du logo et de l\'identité visuelle de l\'application web', 'Assistance prioritaire par e-mail et chat'],
+      features: ['Fiabilité autonome par divers fournisseurs de cloud', 'Espace de travail unique', 'Personnalisation du logo et de l\'image de marque de l\'application web', 'Assistance prioritaire par e-mail et chat'],
       for: 'Pour les organisations et les équipes de taille moyenne',
       includesTitle: 'Tout de la communauté, en plus :',
       name: 'Premium',
@@ -197,6 +198,23 @@ const translation = {
     description: 'Vous avez atteint la limite des déclencheurs d\'événements de flux de travail pour ce plan.',
     dismiss: 'Fermer',
     title: 'Mettez à niveau pour débloquer plus d\'événements déclencheurs',
+  },
+  viewBillingTitle: 'Facturation et abonnements',
+  viewBillingDescription: 'Gérer les méthodes de paiement, les factures et les modifications d\'abonnement',
+  viewBillingAction: 'Gérer',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Passez à la version supérieure pour télécharger plusieurs documents à la fois',
+      description: 'Vous avez atteint la limite de téléchargement — un seul document peut être sélectionné et téléchargé à la fois avec votre abonnement actuel.',
+    },
+    uploadMultipleFiles: {
+      title: 'Passez à la version supérieure pour débloquer le téléchargement de documents en lot',
+      description: 'Téléchargez plusieurs documents à la fois pour gagner du temps et améliorer l\'efficacité.',
+    },
+    addChunks: {
+      title: 'Mettez à niveau pour continuer à ajouter des morceaux',
+      description: 'Vous avez atteint la limite d\'ajout de morceaux pour ce plan.',
+    },
   },
 }
 

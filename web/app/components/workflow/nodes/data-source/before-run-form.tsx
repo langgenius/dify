@@ -43,13 +43,13 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
       clearWebsiteCrawlData()
     else if (datasourceType === DatasourceType.onlineDrive)
       clearOnlineDriveData()
-  }, [datasourceType])
+  }, [clearOnlineDocumentData, clearOnlineDriveData, clearWebsiteCrawlData, datasourceType])
 
   const handleCredentialChange = useCallback((credentialId: string) => {
     const { setCurrentCredentialId } = dataSourceStore.getState()
     clearDataSourceData()
     setCurrentCredentialId(credentialId)
-  }, [dataSourceStore])
+  }, [clearDataSourceData, dataSourceStore])
 
   return (
     <PanelWrap
@@ -60,7 +60,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
         {datasourceType === DatasourceType.localFile && (
           <LocalFile
             allowedExtensions={datasourceNodeData.fileExtensions || []}
-            notSupportBatchUpload
+            supportBatchUpload={false}
           />
         )}
         {datasourceType === DatasourceType.onlineDocument && (
@@ -69,6 +69,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             nodeData={datasourceNodeData}
             isInPipeline
             onCredentialChange={handleCredentialChange}
+            supportBatchUpload={false}
           />
         )}
         {datasourceType === DatasourceType.websiteCrawl && (
@@ -77,6 +78,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             nodeData={datasourceNodeData}
             isInPipeline
             onCredentialChange={handleCredentialChange}
+            supportBatchUpload={false}
           />
         )}
         {datasourceType === DatasourceType.onlineDrive && (
@@ -85,6 +87,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             nodeData={datasourceNodeData}
             isInPipeline
             onCredentialChange={handleCredentialChange}
+            supportBatchUpload={false}
           />
         )}
         <div className='flex justify-end gap-x-2'>
