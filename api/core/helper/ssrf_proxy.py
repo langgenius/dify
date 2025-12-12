@@ -2,8 +2,10 @@
 Proxy requests to avoid SSRF
 """
 
+import ipaddress
 import logging
 import time
+from urllib.parse import urlparse
 
 import httpx
 
@@ -11,6 +13,76 @@ from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
 
 logger = logging.getLogger(__name__)
+
+
+def is_private_or_local_address(url: str) -> bool:
+    """
+    Check if URL points to a private/local network address (SSRF protection).
+
+    This function validates URLs to prevent Server-Side Request Forgery (SSRF) attacks
+    by detecting private IP addresses, localhost, and local network domains.
+
+    Args:
+        url: The URL string to check
+
+    Returns:
+        True if the URL points to a private/local address, False otherwise
+
+    Examples:
+        >>> is_private_or_local_address("http://localhost/api")
+        True
+        >>> is_private_or_local_address("http://192.168.1.1/api")
+        True
+        >>> is_private_or_local_address("https://example.com/api")
+        False
+    """
+    if not url:
+        return False
+
+    try:
+        parsed = urlparse(url)
+        hostname = parsed.hostname
+
+        if not hostname:
+            return False
+
+        hostname_lower = hostname.lower()
+
+        # Check for localhost variants
+        if hostname_lower in ("localhost", "127.0.0.1", "::1"):
+            return True
+
+        # Check for .local domains (link-local)
+        if hostname_lower.endswith(".local"):
+            return True
+
+        # Try to parse as IP address
+        try:
+            ip = ipaddress.ip_address(hostname)
+
+            # Check if it's a private IP (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 for IPv4)
+            # For IPv6: fc00::/7 (unique local addresses)
+            if ip.is_private:
+                return True
+
+            # Check if it's loopback (127.0.0.0/8 for IPv4, ::1 for IPv6)
+            if ip.is_loopback:
+                return True
+
+            # Check if it's link-local (169.254.0.0/16 for IPv4, fe80::/10 for IPv6)
+            if ip.is_link_local:
+                return True
+
+            return False
+        except ValueError:
+            # Not a valid IP address, might be a domain name
+            # Domain names could resolve to private IPs, but we only check the literal hostname here
+            # For more thorough checks, DNS resolution would be needed (but adds latency)
+            return False
+
+    except (ValueError, TypeError, AttributeError):
+        return False
+
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
