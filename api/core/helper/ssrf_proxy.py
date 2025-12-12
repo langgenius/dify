@@ -2,78 +2,16 @@
 Proxy requests to avoid SSRF
 """
 
-import ipaddress
 import logging
 import time
-from urllib.parse import urlparse
 
 import httpx
 
 from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
+from core.tools.errors import ToolSSRFError
 
 logger = logging.getLogger(__name__)
-
-
-def is_private_or_local_address(url: str) -> bool:
-    """
-    Check if URL points to a private/local network address (SSRF protection).
-
-    This function validates URLs to prevent Server-Side Request Forgery (SSRF) attacks
-    by detecting private IP addresses, localhost, and local network domains.
-
-    Args:
-        url: The URL string to check
-
-    Returns:
-        True if the URL points to a private/local address, False otherwise
-
-    Examples:
-        >>> is_private_or_local_address("http://localhost/api")
-        True
-        >>> is_private_or_local_address("http://192.168.1.1/api")
-        True
-        >>> is_private_or_local_address("https://example.com/api")
-        False
-    """
-    if not url:
-        return False
-
-    try:
-        parsed = urlparse(url)
-        hostname = parsed.hostname
-
-        if not hostname:
-            return False
-
-        hostname_lower = hostname.lower()
-
-        # Check for localhost variants
-        if hostname_lower in ("localhost", "127.0.0.1", "::1"):
-            return True
-
-        # Check for .local domains (link-local)
-        if hostname_lower.endswith(".local"):
-            return True
-
-        # Try to parse as IP address
-        try:
-            ip = ipaddress.ip_address(hostname)
-
-            # Check if it's a private, loopback, or link-local address.
-            # - Private: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7
-            # - Loopback: 127.0.0.0/8, ::1
-            # - Link-local: 169.254.0.0/16, fe80::/10
-            return ip.is_private or ip.is_loopback or ip.is_link_local
-        except ValueError:
-            # Not a valid IP address, might be a domain name
-            # Domain names could resolve to private IPs, but we only check the literal hostname here
-            # For more thorough checks, DNS resolution would be needed (but adds latency)
-            return False
-
-    except (ValueError, TypeError, AttributeError):
-        return False
-
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
@@ -156,6 +94,18 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     while retries <= max_retries:
         try:
             response = client.request(method=method, url=url, **kwargs)
+            # Check for SSRF protection by Squid proxy
+            if response.status_code in (401, 403):
+                # Check if this is a Squid SSRF rejection
+                server_header = response.headers.get("server", "").lower()
+                via_header = response.headers.get("via", "").lower()
+                
+                # Squid typically identifies itself in Server or Via headers
+                if "squid" in server_header or "squid" in via_header:
+                    raise ToolSSRFError(
+                        f"Access to '{url}' was blocked by SSRF protection. "
+                        f"The URL may point to a private or local network address. "
+                    )
 
             if response.status_code not in STATUS_FORCELIST:
                 return response

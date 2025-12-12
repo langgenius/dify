@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from core.helper.ssrf_proxy import SSRF_DEFAULT_MAX_RETRIES, STATUS_FORCELIST, is_private_or_local_address, make_request
+from core.tools.errors import ToolSSRFError
 
 
 @patch("httpx.Client.request")
@@ -50,6 +51,64 @@ def test_retry_logic_success(mock_request):
     assert response.status_code == 200
     assert mock_request.call_count == SSRF_DEFAULT_MAX_RETRIES + 1
     assert mock_request.call_args_list[0][1].get("method") == "GET"
+
+
+@patch("httpx.Client.request")
+def test_squid_ssrf_rejection_detected(mock_request):
+    """Test that Squid SSRF rejection (403) is converted to ToolSSRFError."""
+    mock_response = MagicMock()
+    mock_response.status_code = 403
+    mock_response.headers = {"server": "squid/5.2", "via": "1.1 squid"}
+    mock_request.return_value = mock_response
+
+    with pytest.raises(ToolSSRFError) as exc_info:
+        make_request("GET", "http://192.168.1.1/api")
+    
+    assert "blocked by SSRF protection" in str(exc_info.value)
+    assert "192.168.1.1" in str(exc_info.value)
+    assert "squid.conf.template" in str(exc_info.value)
+
+
+@patch("httpx.Client.request")
+def test_squid_ssrf_rejection_via_header(mock_request):
+    """Test detection via Via header when Server header is not present."""
+    mock_response = MagicMock()
+    mock_response.status_code = 403
+    mock_response.headers = {"via": "1.1 squid-proxy (squid/5.2)"}
+    mock_request.return_value = mock_response
+
+    with pytest.raises(ToolSSRFError) as exc_info:
+        make_request("GET", "http://10.0.0.1/api")
+    
+    assert "SSRF protection" in str(exc_info.value)
+
+
+@patch("httpx.Client.request")
+def test_squid_401_rejection_detected(mock_request):
+    """Test that Squid SSRF rejection with 401 is also converted to ToolSSRFError."""
+    mock_response = MagicMock()
+    mock_response.status_code = 401
+    mock_response.headers = {"server": "squid/5.2"}
+    mock_request.return_value = mock_response
+
+    with pytest.raises(ToolSSRFError) as exc_info:
+        make_request("GET", "http://192.168.1.1/api")
+    
+    assert "SSRF protection" in str(exc_info.value)
+    assert "squid.conf.template" in str(exc_info.value)
+
+
+@patch("httpx.Client.request")
+def test_regular_403_not_treated_as_ssrf(mock_request):
+    """Test that regular 403 responses (not from Squid) are returned normally."""
+    mock_response = MagicMock()
+    mock_response.status_code = 403
+    mock_response.headers = {"server": "nginx/1.21.0"}  # Not Squid
+    mock_request.return_value = mock_response
+
+    # Should not raise ToolSSRFError
+    response = make_request("GET", "http://example.com/api")
+    assert response.status_code == 403
 
 
 class TestIsPrivateOrLocalAddress:

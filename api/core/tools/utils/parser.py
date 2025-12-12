@@ -8,33 +8,13 @@ import httpx
 from flask import request
 from yaml import YAMLError, safe_load
 
-from core.helper.ssrf_proxy import is_private_or_local_address
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, ToolParameter
-from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolProviderNotFoundError, ToolSSRFError
+from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolProviderNotFoundError
 
 
 class ApiBasedToolSchemaParser:
-    @staticmethod
-    def _validate_server_urls(servers: list[dict]) -> None:
-        """
-        Validate server URLs to prevent SSRF attacks.
-
-        Args:
-            servers: List of server dictionaries containing 'url' keys
-
-        Raises:
-            ToolSSRFError: If any server URL points to a private or local network address
-        """
-        for server in servers:
-            server_url = server.get("url", "")
-            if server_url and is_private_or_local_address(server_url):
-                raise ToolSSRFError(
-                    f"Server URL '{server_url}' points to a private or local network address, "
-                    "which is not allowed for security reasons (SSRF protection)."
-                )
-
     @staticmethod
     def parse_openapi_to_tool_bundle(
         openapi: dict, extra_info: dict | None = None, warning: dict | None = None
@@ -47,9 +27,6 @@ class ApiBasedToolSchemaParser:
 
         if len(openapi["servers"]) == 0:
             raise ToolProviderNotFoundError("No server found in the openapi yaml.")
-
-        # SSRF Protection: Validate all server URLs before processing
-        ApiBasedToolSchemaParser._validate_server_urls(openapi["servers"])
 
         server_url = openapi["servers"][0]["url"]
         request_env = request.headers.get("X-Request-Env")
@@ -310,9 +287,6 @@ class ApiBasedToolSchemaParser:
         if len(servers) == 0:
             raise ToolApiSchemaError("No server found in the swagger yaml.")
 
-        # SSRF Protection: Validate all server URLs before processing
-        ApiBasedToolSchemaParser._validate_server_urls(servers)
-
         converted_openapi: dict[str, Any] = {
             "openapi": "3.0.0",
             "info": {
@@ -386,13 +360,6 @@ class ApiBasedToolSchemaParser:
         if api_type != "openapi":
             raise ToolNotSupportedError("Only openapi is supported now.")
 
-        # SSRF Protection: Validate API URL before making HTTP request
-        if is_private_or_local_address(api_url):
-            raise ToolSSRFError(
-                f"API URL '{api_url}' points to a private or local network address, "
-                "which is not allowed for security reasons (SSRF protection)."
-            )
-
         # get openapi yaml
         response = httpx.get(
             api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5
@@ -457,8 +424,6 @@ class ApiBasedToolSchemaParser:
             return openapi, schema_type
         except ToolApiSchemaError as e:
             openapi_error = e
-        except ToolSSRFError:
-            raise
 
         # openapi parse error, fallback to swagger
         try:
@@ -471,18 +436,12 @@ class ApiBasedToolSchemaParser:
             ), schema_type
         except ToolApiSchemaError as e:
             swagger_error = e
-        except ToolSSRFError:
-            # SSRF protection errors should be raised immediately, don't fallback
-            raise
         # swagger parse error, fallback to openai plugin
         try:
             openapi_plugin = ApiBasedToolSchemaParser.parse_openai_plugin_json_to_tool_bundle(
                 json_dumps(loaded_content), extra_info=extra_info, warning=warning
             )
             return openapi_plugin, ApiProviderSchemaType.OPENAI_PLUGIN
-        except ToolSSRFError:
-            # SSRF protection errors should be raised immediately, don't fallback
-            raise
         except ToolNotSupportedError as e:
             # maybe it's not plugin at all
             openapi_plugin_error = e
