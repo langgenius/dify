@@ -9,6 +9,9 @@ from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.sqlalchemy_api_workflow_node_execution_repository import (
+    DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
+)
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.billing_service import BillingService
 
@@ -70,10 +73,10 @@ class WorkflowRunCleanup:
             last_seen = (run_rows[-1].created_at, run_rows[-1].id)
             tenant_ids = {row.tenant_id for row in run_rows}
             free_tenants = self._filter_free_tenants(tenant_ids)
-            free_run_ids = [row.id for row in run_rows if row.tenant_id in free_tenants]
-            paid_or_skipped = len(run_rows) - len(free_run_ids)
+            free_runs = [row for row in run_rows if row.tenant_id in free_tenants]
+            paid_or_skipped = len(run_rows) - len(free_runs)
 
-            if not free_run_ids:
+            if not free_runs:
                 click.echo(
                     click.style(
                         f"[batch #{batch_index}] skipped (no sandbox runs in batch, {paid_or_skipped} paid/unknown)",
@@ -84,7 +87,8 @@ class WorkflowRunCleanup:
 
             try:
                 counts = self.workflow_run_repo.delete_runs_with_related(
-                    free_run_ids,
+                    free_runs,
+                    delete_node_executions=self._delete_node_executions,
                     delete_trigger_logs=self._delete_trigger_logs,
                 )
             except Exception:
@@ -147,3 +151,16 @@ class WorkflowRunCleanup:
     def _delete_trigger_logs(self, session: Session, run_ids: Sequence[str]) -> int:
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         return trigger_repo.delete_by_run_ids(run_ids)
+
+    def _delete_node_executions(self, session: Session, runs: Sequence[object]) -> tuple[int, int]:
+        run_contexts = [
+            {
+                "run_id": run.id,
+                "tenant_id": run.tenant_id,
+                "app_id": run.app_id,
+                "workflow_id": run.workflow_id,
+                "triggered_from": run.triggered_from,
+            }
+            for run in runs
+        ]
+        return DifyAPISQLAlchemyWorkflowNodeExecutionRepository.delete_by_runs(session, run_contexts)

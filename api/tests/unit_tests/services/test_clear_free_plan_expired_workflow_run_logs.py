@@ -9,9 +9,20 @@ from services.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanu
 
 
 class FakeRun:
-    def __init__(self, run_id: str, tenant_id: str, created_at: datetime.datetime) -> None:
+    def __init__(
+        self,
+        run_id: str,
+        tenant_id: str,
+        created_at: datetime.datetime,
+        app_id: str = "app-1",
+        workflow_id: str = "wf-1",
+        triggered_from: str = "workflow-run",
+    ) -> None:
         self.id = run_id
         self.tenant_id = tenant_id
+        self.app_id = app_id
+        self.workflow_id = workflow_id
+        self.triggered_from = triggered_from
         self.created_at = created_at
 
 
@@ -43,10 +54,12 @@ class FakeRepo:
         self.call_idx += 1
         return batch
 
-    def delete_runs_with_related(self, run_ids: list[str], delete_trigger_logs=None) -> dict[str, int]:
-        self.deleted.append(list(run_ids))
+    def delete_runs_with_related(self, runs: list[FakeRun], 
+                                 delete_node_executions=None, 
+                                 delete_trigger_logs=None) -> dict[str, int]:
+        self.deleted.append([run.id for run in runs])
         result = self.delete_result.copy()
-        result["runs"] = len(run_ids)
+        result["runs"] = len(runs)
         return result
 
 
@@ -56,6 +69,7 @@ def create_cleanup(monkeypatch: pytest.MonkeyPatch, repo: FakeRepo, **kwargs: An
         "create_api_workflow_run_repository",
         classmethod(lambda _cls, session_maker: repo),
     )
+    kwargs.pop("repo", None)
     return WorkflowRunCleanup(**kwargs)
 
 

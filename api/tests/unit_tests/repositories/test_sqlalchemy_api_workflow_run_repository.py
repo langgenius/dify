@@ -232,11 +232,16 @@ class TestDeleteRunsWithRelated(TestDifyAPISQLAlchemyWorkflowRunRepository):
         fake_trigger_repo = Mock()
         fake_trigger_repo.delete_by_run_ids.return_value = 3
 
+        run = Mock(id="run-1", tenant_id="t1", app_id="a1", workflow_id="w1", triggered_from="tf")
         counts = repository.delete_runs_with_related(
-            ["run-1"], delete_trigger_logs=lambda session, run_ids: fake_trigger_repo.delete_by_run_ids(run_ids)
+            [run],
+            delete_node_executions=lambda session, runs: (2, 1),
+            delete_trigger_logs=lambda session, run_ids: fake_trigger_repo.delete_by_run_ids(run_ids),
         )
 
         fake_trigger_repo.delete_by_run_ids.assert_called_once_with(["run-1"])
+        assert counts["node_executions"] == 2
+        assert counts["offloads"] == 1
         assert counts["trigger_logs"] == 3
         assert counts["runs"] == 1
 

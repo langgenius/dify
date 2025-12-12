@@ -269,7 +269,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
 
     def delete_runs_with_related(
         self,
-        run_ids: Sequence[str],
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> dict[str, int]:
         """

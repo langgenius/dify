@@ -42,8 +42,6 @@ from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
 from models.workflow import (
     WorkflowAppLog,
-    WorkflowNodeExecutionModel,
-    WorkflowNodeExecutionOffload,
     WorkflowPauseReason,
     WorkflowRun,
 )
@@ -362,10 +360,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
     def delete_runs_with_related(
         self,
-        run_ids: Sequence[str],
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
         delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
     ) -> dict[str, int]:
-        if not run_ids:
+        if not runs:
             return {
                 "runs": 0,
                 "node_executions": 0,
@@ -377,25 +376,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             }
 
         with self._session_maker() as session:
-            node_execution_ids = session.scalars(
-                select(WorkflowNodeExecutionModel.id).where(WorkflowNodeExecutionModel.workflow_run_id.in_(run_ids))
-            ).all()
-
-            offloads_deleted = 0
-            if node_execution_ids:
-                offloads_result = session.execute(
-                    delete(WorkflowNodeExecutionOffload).where(
-                        WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
-                    )
-                )
-                offloads_deleted = cast(CursorResult, offloads_result).rowcount or 0
-
-            node_executions_deleted = 0
-            if node_execution_ids:
-                node_executions_result = session.execute(
-                    delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(node_execution_ids))
-                )
-                node_executions_deleted = cast(CursorResult, node_executions_result).rowcount or 0
+            run_ids = [run.id for run in runs]
+            if delete_node_executions:
+                node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
+            else:
+                node_executions_deleted, offloads_deleted = 0, 0
 
             app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
             app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
