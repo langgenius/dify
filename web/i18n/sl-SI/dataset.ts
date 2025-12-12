@@ -238,6 +238,16 @@ const translation = {
   docAllEnabled_other: 'Vsi dokumenti {{count}} omogočeni',
   partialEnabled_one: 'Skupno {{count}} dokumentov, na voljo {{num}}',
   partialEnabled_other: 'Skupno {{count}} dokumentov, na voljo {{num}}',
+  cornerLabel: {
+    unavailable: 'Ni na voljo',
+    pipeline: 'Cevovod',
+  },
+  multimodal: 'Multimodalen',
+  imageUploader: {
+    button: 'Povlecite in spustite datoteko ali mapo, ali',
+    browse: 'Brskaj',
+    tip: '{{supportTypes}} (maks. {{batchCount}}, {{size}} MB vsak)',
+  },
 }
 
 export default translation

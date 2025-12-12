@@ -156,7 +156,7 @@ export type CrawlOptions = {
 
 export type CrawlResultItem = {
   title: string
-  content: string
+  markdown: string
   description: string
   source_url: string
 }

@@ -137,9 +137,6 @@ const translation = {
     notConnected: '{{name}} tidak terhubung',
     notConnectedTip: 'Untuk menyinkronkan dengan {{name}}, koneksi ke {{name}} harus dibuat terlebih dahulu.',
   },
-  credentialSelector: {
-    name: '{{credentialName}}\'s {{pluginName}}',
-  },
   conversion: {
     confirm: {
       title: 'Konfirmasi',

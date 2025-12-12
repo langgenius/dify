@@ -70,10 +70,10 @@ export const isSystemVar = (valueSelector: ValueSelector) => {
 }
 
 export const isGlobalVar = (valueSelector: ValueSelector) => {
-  if(!isSystemVar(valueSelector)) return false
+  if (!isSystemVar(valueSelector)) return false
   const second = valueSelector[1]
 
-  if(['query', 'files'].includes(second))
+  if (['query', 'files'].includes(second))
     return false
   return true
 }
@@ -1296,7 +1296,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     case BlockEnum.KnowledgeRetrieval: {
       const {
         query_variable_selector,
-        query_attachment_selector,
+        query_attachment_selector = [],
       } = data as KnowledgeRetrievalNodeType
       res = [query_variable_selector, query_attachment_selector]
       break
@@ -1638,7 +1638,7 @@ export const updateNodeVars = (
         )
           payload.query_variable_selector = newVarSelector
         if (
-          payload.query_attachment_selector.join('.') === oldVarSelector.join('.')
+          payload.query_attachment_selector?.join('.') === oldVarSelector.join('.')
         )
           payload.query_attachment_selector = newVarSelector
         break

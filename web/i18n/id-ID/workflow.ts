@@ -548,6 +548,7 @@ const translation = {
         output: 'Mengambil data tersegmentasi',
         url: 'URL tersegmentasi',
         content: 'Konten tersegmentasi',
+        files: 'File yang diambil',
       },
       metadata: {
         options: {
@@ -579,6 +580,8 @@ const translation = {
       },
       knowledge: 'Pengetahuan',
       queryVariable: 'Variabel Kueri',
+      queryText: 'Teks Query',
+      queryAttachment: 'Cari Gambar',
     },
     http: {
       outputVars: {
