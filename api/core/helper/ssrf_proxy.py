@@ -99,7 +99,7 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
                 # Check if this is a Squid SSRF rejection
                 server_header = response.headers.get("server", "").lower()
                 via_header = response.headers.get("via", "").lower()
-                
+
                 # Squid typically identifies itself in Server or Via headers
                 if "squid" in server_header or "squid" in via_header:
                     raise ToolSSRFError(
