@@ -394,9 +394,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 )
                 node_executions_deleted = node_executions_result.rowcount or 0
 
-            app_logs_result = session.execute(
-                delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids))
-            )
+            app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
             app_logs_deleted = app_logs_result.rowcount or 0
 
             pause_ids = session.scalars(

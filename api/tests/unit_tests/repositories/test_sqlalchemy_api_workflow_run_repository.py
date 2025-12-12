@@ -219,9 +219,7 @@ class TestCreateWorkflowPause(TestDifyAPISQLAlchemyWorkflowRunRepository):
 
 
 class TestDeleteRunsWithRelated(TestDifyAPISQLAlchemyWorkflowRunRepository):
-    def test_uses_trigger_log_repository(
-        self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock
-    ):
+    def test_uses_trigger_log_repository(self, repository: DifyAPISQLAlchemyWorkflowRunRepository, mock_session: Mock):
         node_ids_result = Mock()
         node_ids_result.all.return_value = []
         pause_ids_result = Mock()

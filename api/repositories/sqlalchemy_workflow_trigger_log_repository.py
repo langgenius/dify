@@ -98,7 +98,5 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
         if not run_ids:
             return 0
 
-        result = self.session.execute(
-            delete(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids))
-        )
+        result = self.session.execute(delete(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids)))
         return result.rowcount or 0
