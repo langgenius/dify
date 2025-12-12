@@ -35,7 +35,11 @@ def detect_file_encodings(file_path: str, timeout: int = 5, sample_size: int = 1
         best = rst.best()
         if best is None:
             return []
-        file_encoding = FileEncoding(encoding=best.encoding, confidence=best.coherence, language=best.language)
+        file_encoding = {
+            "encoding": best.encoding,
+            "confidence": best.coherence,
+            "language": best.language,
+        }
         return [file_encoding]
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
