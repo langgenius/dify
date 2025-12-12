@@ -1,12 +1,19 @@
 """Abstract interface for document loader implementations."""
 
 import os
+from typing import TypedDict
 
 import pandas as pd
 from openpyxl import load_workbook
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
+
+
+class Candidate(TypedDict):
+    idx: int
+    count: int
+    map: dict[int, str]
 
 
 class ExcelExtractor(BaseExtractor):
@@ -68,9 +75,9 @@ class ExcelExtractor(BaseExtractor):
                 df = excel_file.parse(sheet_name=excel_sheet_name)
                 df.dropna(how="all", inplace=True)
 
-                for _, row in df.iterrows():
+                for _, series_row in df.iterrows():
                     page_content = []
-                    for k, v in row.items():
+                    for k, v in series_row.items():
                         if pd.notna(v):
                             page_content.append(f'"{k}":"{v}"')
                     documents.append(
@@ -90,7 +97,7 @@ class ExcelExtractor(BaseExtractor):
             max_col_idx: 1-based index of the last valid column (for iter_rows boundary)
         """
         # Store potential candidates: (row_index, non_empty_count, column_map)
-        candidates = []
+        candidates: list[Candidate] = []
         
         # Limit scan to avoid performance issues on huge files
         # We iterate manually to control the read scope
@@ -125,7 +132,7 @@ class ExcelExtractor(BaseExtractor):
 
         # Choose the best candidate header row.
         
-        best_candidate = None
+        best_candidate: Candidate | None = None
         
         # Strategy: prefer the first row with >= 2 non-empty columns; otherwise fallback.
         
@@ -143,5 +150,5 @@ class ExcelExtractor(BaseExtractor):
         # Determine max_col_idx (1-based for openpyxl)
         # It is the index of the last valid column in our map + 1
         max_col_idx = max(best_candidate["map"].keys()) + 1
-            
+        
         return best_candidate["idx"], best_candidate["map"], max_col_idx
