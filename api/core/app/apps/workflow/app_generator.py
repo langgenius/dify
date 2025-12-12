@@ -143,6 +143,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         extras = {
             **extract_external_trace_id_from_args(args),
+            # Add conversation_id and message_id to extras for agent call detection
+            **{k: v for k, v in args.items() if k in ["conversation_id", "message_id"]},
         }
         workflow_run_id = str(uuid.uuid4())
         # FIXME (Yeuoly): we need to remove the SKIP_PREPARE_USER_INPUTS_KEY from the args
@@ -182,7 +184,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
             # Use explicitly provided triggered_from (for async triggers)
             workflow_triggered_from = triggered_from
         elif invoke_from == InvokeFrom.DEBUGGER:
-            workflow_triggered_from = WorkflowRunTriggeredFrom.DEBUGGING
+            # Check if this is called from an agent (which should be treated as app-run, not debugging)
+            is_agent_call = any(key in args for key in ["conversation_id", "message_id"])
+            workflow_triggered_from = (
+                WorkflowRunTriggeredFrom.APP_RUN if is_agent_call else WorkflowRunTriggeredFrom.DEBUGGING
+            )
         else:
             workflow_triggered_from = WorkflowRunTriggeredFrom.APP_RUN
         workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
