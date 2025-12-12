@@ -4,8 +4,10 @@ SQLAlchemy implementation of WorkflowTriggerLogRepository.
 
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
+from typing import cast
 
 from sqlalchemy import and_, delete, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session
 
 from models.enums import WorkflowTriggerStatus
@@ -99,4 +101,4 @@ class SQLAlchemyWorkflowTriggerLogRepository(WorkflowTriggerLogRepository):
             return 0
 
         result = self.session.execute(delete(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id.in_(run_ids)))
-        return result.rowcount or 0
+        return cast(CursorResult, result).rowcount or 0

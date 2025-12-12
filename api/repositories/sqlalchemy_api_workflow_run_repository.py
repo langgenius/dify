@@ -385,17 +385,17 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                         WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
                     )
                 )
-                offloads_deleted = offloads_result.rowcount or 0
+                offloads_deleted = cast(CursorResult, offloads_result).rowcount or 0
 
             node_executions_deleted = 0
             if node_execution_ids:
                 node_executions_result = session.execute(
                     delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(node_execution_ids))
                 )
-                node_executions_deleted = node_executions_result.rowcount or 0
+                node_executions_deleted = cast(CursorResult, node_executions_result).rowcount or 0
 
             app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
-            app_logs_deleted = app_logs_result.rowcount or 0
+            app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
 
             pause_ids = session.scalars(
                 select(WorkflowPauseModel.id).where(WorkflowPauseModel.workflow_run_id.in_(run_ids))
@@ -407,14 +407,14 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 pause_reasons_result = session.execute(
                     delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
                 )
-                pause_reasons_deleted = pause_reasons_result.rowcount or 0
+                pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
                 pauses_result = session.execute(delete(WorkflowPauseModel).where(WorkflowPauseModel.id.in_(pause_ids)))
-                pauses_deleted = pauses_result.rowcount or 0
+                pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
 
             trigger_logs_deleted = SQLAlchemyWorkflowTriggerLogRepository(session).delete_by_run_ids(run_ids)
 
             runs_result = session.execute(delete(WorkflowRun).where(WorkflowRun.id.in_(run_ids)))
-            runs_deleted = runs_result.rowcount or 0
+            runs_deleted = cast(CursorResult, runs_result).rowcount or 0
 
             session.commit()
 
