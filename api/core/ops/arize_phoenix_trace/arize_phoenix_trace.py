@@ -6,7 +6,13 @@ from datetime import datetime, timedelta
 from typing import Any, Union, cast
 from urllib.parse import urlparse
 
-from openinference.semconv.trace import MessageAttributes, OpenInferenceMimeTypeValues, OpenInferenceSpanKindValues, SpanAttributes, ToolCallAttributes
+from openinference.semconv.trace import (
+    MessageAttributes,
+    OpenInferenceMimeTypeValues,
+    OpenInferenceSpanKindValues,
+    SpanAttributes,
+    ToolCallAttributes,
+)
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter as GrpcOTLPSpanExporter
 from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter as HttpOTLPSpanExporter
 from opentelemetry.sdk import trace as trace_sdk
@@ -95,14 +101,14 @@ def setup_tracer(arize_phoenix_config: ArizeConfig | PhoenixConfig) -> tuple[tra
 
 
 def datetime_to_nanos(dt: datetime | None) -> int:
-    """Convert datetime to nanoseconds since epoch. If None, use current time."""
+    """Convert datetime to nanoseconds since epoch for Arize/Phoenix."""
     if dt is None:
         dt = datetime.now()
     return int(dt.timestamp() * 1_000_000_000)
 
 
 def error_to_string(error: Exception | str | None) -> str:
-    """Convert an error to a string with traceback information."""
+    """Convert an error to a string with traceback information for Arize/Phoenix."""
     error_message = "Empty Stack Trace"
     if error:
         if isinstance(error, Exception):
@@ -114,7 +120,7 @@ def error_to_string(error: Exception | str | None) -> str:
 
 
 def set_span_status(current_span: Span, error: Exception | str | None = None):
-    """Set the status of the current span based on the presence of an error."""
+    """Set the status of the current span based on the presence of an error for Arize/Phoenix."""
     if error:
         error_string = error_to_string(error)
         current_span.set_status(Status(StatusCode.ERROR, error_string))
@@ -138,11 +144,11 @@ def set_span_status(current_span: Span, error: Exception | str | None = None):
 
 
 def safe_json_dumps(obj: Any) -> str:
-    """A convenience wrapper around `json.dumps` that ensures that any object can be safely encoded."""
+    """A convenience wrapper to ensure that any object can be safely encoded for Arize/Phoenix."""
     return json.dumps(obj, default=str, ensure_ascii=False)
 
 
-def wrap_metadata(metadata, **kwargs):
+def wrap_span_metadata(metadata, **kwargs):
     """Add common metatada to all trace entity types for Arize/Phoenix."""
     metadata["created_from"] = "Dify"
     metadata.update(kwargs)
@@ -190,9 +196,9 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             raise
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        file_list = cast(list[str], trace_info.file_list) or []
+        file_list = trace_info.file_list if isinstance(trace_info.file_list, list) else []
 
-        metadata = wrap_metadata(
+        metadata = wrap_span_metadata(
             trace_info.metadata,
             trace_id=trace_info.trace_id or "",
             message_id=trace_info.message_id or "",
@@ -363,14 +369,14 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             logger.warning("[Arize/Phoenix] Message data is None, skipping message trace.")
             return
 
-        file_list = cast(list[str], trace_info.file_list) or []
+        file_list = trace_info.file_list if isinstance(trace_info.file_list, list) else []
         message_file_data: MessageFile | None = trace_info.message_file_data
 
         if message_file_data is not None:
             file_url = f"{self.file_base_url}/{message_file_data.url}" if message_file_data else ""
             file_list.append(file_url)
 
-        metadata = wrap_metadata(
+        metadata = wrap_span_metadata(
             trace_info.metadata,
             trace_id=trace_info.trace_id or "",
             message_id=trace_info.message_id or "",
@@ -486,7 +492,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             logger.warning("[Arize/Phoenix] Message data is None, skipping moderation trace.")
             return
 
-        metadata = wrap_metadata(
+        metadata = wrap_span_metadata(
             trace_info.metadata,
             trace_id=trace_info.trace_id or "",
             message_id=trace_info.message_id or "",
@@ -508,7 +514,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                 SpanAttributes.OPENINFERENCE_SPAN_KIND: OpenInferenceSpanKindValues.TOOL.value,
                 SpanAttributes.INPUT_VALUE: safe_json_dumps(trace_info.inputs),
                 SpanAttributes.INPUT_MIME_TYPE: OpenInferenceMimeTypeValues.JSON.value,
-                SpanAttributes.OUTPUT_VALUE: safe_json_dumps({
+                SpanAttributes.OUTPUT_VALUE: safe_json_dumps(
+                    {
                         "flagged": trace_info.flagged,
                         "action": trace_info.action,
                         "preset_response": trace_info.preset_response,
@@ -538,7 +545,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         start_time = trace_info.start_time or trace_info.message_data.created_at
         end_time = trace_info.end_time or trace_info.message_data.updated_at
 
-        metadata = wrap_metadata(
+        metadata = wrap_span_metadata(
             trace_info.metadata,
             trace_id=trace_info.trace_id or "",
             message_id=trace_info.message_id or "",
@@ -589,7 +596,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
         start_time = trace_info.start_time or trace_info.message_data.created_at
         end_time = trace_info.end_time or trace_info.message_data.updated_at
 
-        metadata = wrap_metadata(
+        metadata = wrap_span_metadata(
             trace_info.metadata,
             trace_id=trace_info.trace_id or "",
             message_id=trace_info.message_id or "",
@@ -632,7 +639,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             logger.warning("[Arize/Phoenix] Message data is None, skipping tool trace.")
             return
 
-        metadata = wrap_metadata(
+        metadata = wrap_span_metadata(
             trace_info.metadata,
             trace_id=trace_info.trace_id or "",
             message_id=trace_info.message_id or "",
@@ -678,7 +685,7 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             logger.warning("[Arize/Phoenix] Message data is None, skipping generate name trace.")
             return
 
-        metadata = wrap_metadata(
+        metadata = wrap_span_metadata(
             trace_info.metadata,
             trace_id=trace_info.trace_id or "",
             message_id=trace_info.message_id or "",
@@ -746,14 +753,21 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
             raise ValueError(f"[Arize/Phoenix] API check failed: {str(e)}")
 
     def get_project_url(self):
+        """Build a redirect URL that forwards the user to the correct project for Arize/Phoenix."""
         try:
-            if self.arize_phoenix_config.endpoint == "https://otlp.arize.com":
-                return "https://app.arize.com/"
-            else:
-                return f"{self.arize_phoenix_config.endpoint}/projects/"
+            project_name = self.arize_phoenix_config.project
+            endpoint = self.arize_phoenix_config.endpoint.rstrip("/")
+
+            # Arize
+            if isinstance(self.arize_phoenix_config, ArizeConfig):
+                return f"https://app.arize.com/?redirect_project_name={project_name}"
+
+            # Phoenix
+            return f"{endpoint}/projects/?redirect_project_name={project_name}"
+
         except Exception as e:
-            logger.info("[Arize/Phoenix] Get run url failed: %s", str(e), exc_info=True)
-            raise ValueError(f"[Arize/Phoenix] Get run url failed: {str(e)}")
+            logger.info("[Arize/Phoenix] Failed to construct project URL: %s", str(e), exc_info=True)
+            raise ValueError(f"[Arize/Phoenix] Failed to construct project URL: {str(e)}")
 
     def _construct_llm_attributes(self, prompts: dict | list | str | None) -> dict[str, str]:
         """Construct LLM attributes with passed prompts for Arize/Phoenix."""
@@ -815,13 +829,8 @@ class ArizePhoenixDataTrace(BaseTraceInstance):
                     for tool_index, tool_call in enumerate(tool_calls):
                         set_tool_call_attributes(message_index, tool_index, tool_call)
 
-        # Handle single dict prompt
-        elif isinstance(prompts, dict):
-            set_message_attribute(0, MessageAttributes.MESSAGE_CONTENT, prompts)
-            set_message_attribute(0, MessageAttributes.MESSAGE_ROLE, "user")
-
-        # Handle plain string prompt
-        elif isinstance(prompts, str):
+        # Handle single dict or plain string prompt
+        elif isinstance(prompts, (dict, str)):
             set_message_attribute(0, MessageAttributes.MESSAGE_CONTENT, prompts)
             set_message_attribute(0, MessageAttributes.MESSAGE_ROLE, "user")
 
