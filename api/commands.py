@@ -285,6 +285,7 @@ def migrate_knowledge_vector_database():
     click.echo(click.style("Starting vector database migration.", fg="green"))
     create_count = 0
     skipped_count = 0
+    error_count = 0
     total_count = 0
     vector_type = dify_config.VECTOR_STORE
     upper_collection_vector_types = {
@@ -298,6 +299,7 @@ def migrate_knowledge_vector_database():
         VectorType.OPENGAUSS,
         VectorType.TABLESTORE,
         VectorType.MATRIXONE,
+        VectorType.TIDB_ON_QDRANT
     }
     lower_collection_vector_types = {
         VectorType.ANALYTICDB,
@@ -361,13 +363,6 @@ def migrate_knowledge_vector_database():
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
 
-                index_struct_dict = {
-                    "type": vector_type,
-                    "vector_store": {"class_prefix": collection_name},
-                    "original_type": dataset.index_struct_dict["type"],
-                }
-                dataset.index_struct = json.dumps(index_struct_dict)
-                vector = Vector(dataset)
                 click.echo(f"Migrating dataset {dataset.id}.")
 
                 # try:
@@ -394,13 +389,21 @@ def migrate_knowledge_vector_database():
 
                 documents = []
                 segments_count = 0
+                original_index_vector = Vector(dataset)
                 for dataset_document in dataset_documents:
 
-                    single_documents = vector.search_by_metadata_field("document_id", dataset_document.id)
+                    single_documents = original_index_vector.search_by_metadata_field("document_id", dataset_document.id)
 
                     if single_documents:
                         documents.extend(single_documents)
                         segments_count += len(single_documents)
+                # update dataset index_struct_dict
+                index_struct_dict = {
+                    "type": vector_type,
+                    "vector_store": {"class_prefix": collection_name},
+                    "original_type": dataset.index_struct_dict["type"],
+                }
+                dataset.index_struct = json.dumps(index_struct_dict)
                 if documents:
                     try:
                         click.echo(
@@ -410,7 +413,8 @@ def migrate_knowledge_vector_database():
                                 fg="green",
                             )
                         )
-                        vector.create_with_vectors(documents)
+                        new_vector = Vector(dataset)
+                        new_vector.create_with_vectors(documents)
                         click.echo(click.style(f"Created vector index for dataset {dataset.id}.", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
@@ -422,11 +426,12 @@ def migrate_knowledge_vector_database():
             except Exception as e:
                 db.session.rollback()
                 click.echo(click.style(f"Error creating dataset index: {e.__class__.__name__} {str(e)}", fg="red"))
+                error_count += 1
                 continue
 
     click.echo(
         click.style(
-            f"Migration complete. Created {create_count} dataset indexes. Skipped {skipped_count} datasets.", fg="green"
+            f"Migration complete. Created {create_count} dataset indexes. Skipped {skipped_count} datasets. Errors {error_count} datasets.", fg="green"
         )
     )
 
