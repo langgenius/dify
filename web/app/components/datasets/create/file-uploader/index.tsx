@@ -17,7 +17,6 @@ import { IS_CE_EDITION } from '@/config'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { useFileSupportTypes, useFileUploadConfig } from '@/service/use-common'
 
 type IFileUploaderProps = {
   fileList: FileItem[]
