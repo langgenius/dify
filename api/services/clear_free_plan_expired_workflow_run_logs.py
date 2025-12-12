@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
+from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -25,6 +26,7 @@ class WorkflowRunCleanup:
         batch_size: int,
         start_after: datetime.datetime | None = None,
         end_before: datetime.datetime | None = None,
+        workflow_run_repo: APIWorkflowRunRepository | None = None,
     ):
         if (start_after is None) ^ (end_before is None):
             raise ValueError("start_after and end_before must be both set or both omitted.")
@@ -38,12 +40,16 @@ class WorkflowRunCleanup:
 
         self.batch_size = batch_size
         self.billing_cache: dict[str, CloudPlan | None] = {}
-        # Lazy import to avoid circular dependency during module import
-        from repositories.factory import DifyAPIRepositoryFactory
+        if workflow_run_repo:
+            self.workflow_run_repo = workflow_run_repo
+        else:
+            # Lazy import to avoid circular dependencies during module import
+            from repositories.factory import DifyAPIRepositoryFactory
 
-        self.workflow_run_repo: APIWorkflowRunRepository = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
-            sessionmaker(bind=db.engine, expire_on_commit=False)
-        )
+            session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+            self.workflow_run_repo: APIWorkflowRunRepository = (
+                DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_maker)
+            )
 
     def run(self) -> None:
         click.echo(
@@ -152,8 +158,8 @@ class WorkflowRunCleanup:
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         return trigger_repo.delete_by_run_ids(run_ids)
 
-    def _delete_node_executions(self, session: Session, runs: Sequence[object]) -> tuple[int, int]:
-        run_contexts = [
+    def _delete_node_executions(self, session: Session, runs: Sequence[WorkflowRun]) -> tuple[int, int]:
+        run_contexts: list[DifyAPISQLAlchemyWorkflowNodeExecutionRepository.RunContext] = [
             {
                 "run_id": run.id,
                 "tenant_id": run.tenant_id,

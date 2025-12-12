@@ -3,7 +3,6 @@ from typing import Any
 
 import pytest
 
-import repositories.factory as repo_factory_module
 from services import clear_free_plan_expired_workflow_run_logs as cleanup_module
 from services.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
@@ -64,13 +63,7 @@ class FakeRepo:
 
 
 def create_cleanup(monkeypatch: pytest.MonkeyPatch, repo: FakeRepo, **kwargs: Any) -> WorkflowRunCleanup:
-    monkeypatch.setattr(
-        repo_factory_module.DifyAPIRepositoryFactory,
-        "create_api_workflow_run_repository",
-        classmethod(lambda _cls, session_maker: repo),
-    )
-    kwargs.pop("repo", None)
-    return WorkflowRunCleanup(**kwargs)
+    return WorkflowRunCleanup(workflow_run_repo=repo, **kwargs)
 
 
 def test_filter_free_tenants_billing_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
