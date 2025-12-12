@@ -9,6 +9,9 @@ jest.mock('react-i18next', () => ({
 }))
 
 describe('NoData', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
   it('should render empty state icon and text', () => {
     const { container } = render(<NoData />)
 
