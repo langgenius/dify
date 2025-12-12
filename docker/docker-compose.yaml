@@ -641,6 +641,7 @@ x-shared-env: &shared-api-worker-env
   ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE: ${ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE:-5}
   ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR: ${ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR:-20}
   ANNOTATION_IMPORT_MAX_CONCURRENT: ${ANNOTATION_IMPORT_MAX_CONCURRENT:-5}
+  AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
 
 services:
   # Init container to fix permissions
@@ -664,7 +665,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.11.0
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -705,7 +706,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.11.0
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -744,7 +745,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.11.0
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -774,11 +775,12 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.11.0
+    image: langgenius/dify-web:1.11.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
+      AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
       NEXT_PUBLIC_COOKIE_DOMAIN: ${NEXT_PUBLIC_COOKIE_DOMAIN:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}

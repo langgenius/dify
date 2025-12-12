@@ -77,6 +77,12 @@ const EDITION = getStringConfig(
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 export const IS_CLOUD_EDITION = EDITION === 'CLOUD'
 
+export const AMPLITUDE_API_KEY = getStringConfig(
+  process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
+  DatasetAttr.DATA_PUBLIC_AMPLITUDE_API_KEY,
+  '',
+)
+
 export const IS_DEV = process.env.NODE_ENV === 'development'
 export const IS_PROD = process.env.NODE_ENV === 'production'
 

@@ -9,7 +9,6 @@ export type TriggerEventsLimitModalPayload = {
   usage: number
   total: number
   resetInDays?: number
-  planType: Plan
   storageKey?: string
   persistDismiss?: boolean
 }
@@ -98,7 +97,6 @@ export const useTriggerEventsLimitModal = ({
       payload: {
         usage: usage.triggerEvents,
         total: total.triggerEvents,
-        planType: type,
         resetInDays: triggerResetInDays,
         storageKey,
         persistDismiss,

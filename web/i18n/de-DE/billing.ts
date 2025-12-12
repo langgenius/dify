@@ -202,6 +202,20 @@ const translation = {
   viewBillingTitle: 'Abrechnung und Abonnements',
   viewBillingDescription: 'Zahlungsmethoden, Rechnungen und Abonnementänderungen verwalten',
   viewBillingAction: 'Verwalten',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Upgrade, um mehrere Dokumente gleichzeitig hochzuladen',
+      description: 'Sie haben das Upload-Limit erreicht – in Ihrem aktuellen Tarif kann jeweils nur ein Dokument ausgewählt und hochgeladen werden.',
+    },
+    uploadMultipleFiles: {
+      title: 'Upgrade, um den Massen-Upload von Dokumenten freizuschalten',
+      description: 'Lade mehrere Dokumente gleichzeitig hoch, um Zeit zu sparen und die Effizienz zu steigern.',
+    },
+    addChunks: {
+      title: 'Upgraden, um weiterhin Abschnitte hinzuzufügen',
+      description: 'Sie haben das Limit für das Hinzufügen von Abschnitten in diesem Tarif erreicht.',
+    },
+  },
 }
 
 export default translation
