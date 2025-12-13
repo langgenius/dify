@@ -256,6 +256,9 @@ describe('useAppsQueryState', () => {
 
   describe('Edge cases', () => {
     it('should handle empty tagIDs string in URL', () => {
+      // NOTE: This test documents current behavior where ''.split(';') returns ['']
+      // This could potentially cause filtering issues as it's treated as a tag with empty name
+      // rather than absence of tags. Consider updating parseParams if this is problematic.
       mockSearchParams.set('tagIDs', '')
 
       const { result } = renderHook(() => useAppsQueryState())
@@ -282,11 +285,13 @@ describe('useAppsQueryState', () => {
     })
 
     it('should handle special characters in keywords', () => {
-      mockSearchParams.set('keywords', 'test%20with%20spaces')
+      // Use URLSearchParams constructor to properly simulate URL decoding behavior
+      // URLSearchParams.get() decodes URL-encoded characters
+      mockSearchParams = new URLSearchParams('keywords=test%20with%20spaces')
 
       const { result } = renderHook(() => useAppsQueryState())
 
-      expect(result.current.query.keywords).toBe('test%20with%20spaces')
+      expect(result.current.query.keywords).toBe('test with spaces')
     })
   })
 

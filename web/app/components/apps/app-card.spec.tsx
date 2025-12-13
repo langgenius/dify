@@ -44,10 +44,11 @@ jest.mock('next/navigation', () => ({
   }),
 }))
 
-// Mock use-context-selector
+// Mock use-context-selector with stable mockNotify reference for tracking calls
+const mockNotify = jest.fn()
 jest.mock('use-context-selector', () => ({
   useContext: () => ({
-    notify: jest.fn(),
+    notify: mockNotify,
   }),
 }))
 
@@ -384,6 +385,14 @@ describe('AppCard', () => {
       const card = screen.getByText('Test App').closest('[class*="cursor-pointer"]')
       expect(card).toBeInTheDocument()
     })
+
+    it('should call getRedirection on card click', () => {
+      const { getRedirection } = require('@/utils/app-redirection')
+      render(<AppCard app={mockApp} />)
+      const card = screen.getByText('Test App').closest('[class*="cursor-pointer"]')!
+      fireEvent.click(card)
+      expect(getRedirection).toHaveBeenCalledWith(true, mockApp, mockPush)
+    })
   })
 
   describe('Operations Menu', () => {
@@ -607,6 +616,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(appsService.deleteApp).toHaveBeenCalled()
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Delete failed') })
       })
     })
 
@@ -685,6 +695,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(appsService.copyApp).toHaveBeenCalled()
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('create app') })
       })
     })
 
@@ -713,6 +724,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(appsService.exportAppConfig).toHaveBeenCalled()
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Export failed') })
       })
     })
   })
@@ -930,6 +942,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(appsService.updateAppInfo).toHaveBeenCalled()
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Edit failed') })
       })
     })
 
@@ -982,6 +995,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Export failed') })
       })
     })
   })
