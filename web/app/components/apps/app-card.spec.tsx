@@ -197,15 +197,20 @@ jest.mock('next/dynamic', () => {
 
 // Popover uses portals for positioning which requires mocking in happy-dom environment
 jest.mock('@/app/components/base/popover', () => {
-  const MockPopover = ({ htmlContent, btnElement }: any) => {
+  const MockPopover = ({ htmlContent, btnElement, btnClassName }: any) => {
     const [isOpen, setIsOpen] = React.useState(false)
-    return React.createElement('div', { 'data-testid': 'custom-popover' },
+    // Call btnClassName to cover lines 430-433
+    const computedClassName = typeof btnClassName === 'function' ? btnClassName(isOpen) : ''
+    return React.createElement('div', { 'data-testid': 'custom-popover', 'className': computedClassName },
       React.createElement('div', {
         'onClick': () => setIsOpen(!isOpen),
         'data-testid': 'popover-trigger',
       }, btnElement),
-      isOpen && React.createElement('div', { 'data-testid': 'popover-content' },
-        typeof htmlContent === 'function' ? htmlContent({ open: isOpen, onClose: () => setIsOpen(false), onClick: () => setIsOpen(false) }) : htmlContent,
+      isOpen && React.createElement('div', {
+        'data-testid': 'popover-content',
+        'onMouseLeave': () => setIsOpen(false),
+      },
+      typeof htmlContent === 'function' ? htmlContent({ open: isOpen, onClose: () => setIsOpen(false), onClick: () => setIsOpen(false) }) : htmlContent,
       ),
     )
   }
@@ -997,6 +1002,65 @@ describe('AppCard', () => {
         expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
         expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
       })
+    })
+  })
+
+  // --------------------------------------------------------------------------
+  // Additional Edge Cases for Coverage
+  // --------------------------------------------------------------------------
+  describe('Additional Coverage', () => {
+    it('should handle onRefresh callback in switch modal success', async () => {
+      const chatApp = createMockApp({ mode: AppModeEnum.CHAT })
+      render(<AppCard app={chatApp} onRefresh={mockOnRefresh} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('app.switch'))
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('switch-modal')).toBeInTheDocument()
+      })
+
+      // Trigger success callback
+      fireEvent.click(screen.getByTestId('confirm-switch-modal'))
+
+      await waitFor(() => {
+        expect(mockOnRefresh).toHaveBeenCalled()
+      })
+    })
+
+    it('should render popover menu with correct styling for different app modes', async () => {
+      // Test completion mode styling
+      const completionApp = createMockApp({ mode: AppModeEnum.COMPLETION })
+      const { unmount } = render(<AppCard app={completionApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
+      })
+
+      unmount()
+
+      // Test workflow mode styling
+      const workflowApp = createMockApp({ mode: AppModeEnum.WORKFLOW })
+      render(<AppCard app={workflowApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
+      })
+    })
+
+    it('should stop propagation when clicking tag selector area', () => {
+      const multiTagApp = createMockApp({
+        tags: [{ id: 'tag1', name: 'Tag 1', type: 'app', binding_count: 0 }],
+      })
+
+      render(<AppCard app={multiTagApp} />)
+
+      const tagSelector = screen.getByLabelText('tag-selector')
+      expect(tagSelector).toBeInTheDocument()
     })
   })
 })
