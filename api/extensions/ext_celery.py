@@ -17,7 +17,9 @@ def _get_celery_ssl_options() -> dict[str, Any] | None:
         return None
 
     # Check if Celery is actually using Redis
-    broker_is_redis = dify_config.CELERY_BROKER_URL and (dify_config.CELERY_BROKER_URL.startswith("redis://") or dify_config.CELERY_BROKER_URL.startswith("rediss://"))
+    broker_is_redis = dify_config.CELERY_BROKER_URL and (
+        dify_config.CELERY_BROKER_URL.startswith("redis://") or dify_config.CELERY_BROKER_URL.startswith("rediss://")
+    )
 
     if not broker_is_redis:
         return None
