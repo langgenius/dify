@@ -279,10 +279,12 @@ it('should disable input when isReadOnly is true')
 |---------|-----------|
 | `useState` | Initial state, transitions, cleanup |
 | `useEffect` | Execution, dependencies, cleanup |
-| Event handlers | All onClick, onChange, onSubmit |
+| Event handlers | All onClick, onChange, onSubmit, keyboard |
 | API calls | Loading, success, error states |
 | Routing | Navigation, params, query strings |
 | `useCallback`/`useMemo` | Referential equality |
+| Context | Provider values, consumer behavior |
+| Forms | Validation, submission, error display |
 
 ## Coverage Goals
 
