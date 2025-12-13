@@ -37,7 +37,7 @@ const More: FC<MoreProps> = ({
                 {`${more.tokens_per_second} tokens/s`}
               </div>
             )}
-            <div className='mr-2 shrink-0'>·</div>
+            <div className='mx-2 shrink-0'>·</div>
             <div
               className='max-w-[25%] shrink-0 truncate'
               title={more.time}
