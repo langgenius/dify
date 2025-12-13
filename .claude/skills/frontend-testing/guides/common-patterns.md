@@ -432,6 +432,7 @@ expect(screen.getByRole('alert')).toBeInTheDocument()
 ```
 
 **Why prefer black-box assertions?**
+
 - Text content may change (i18n, copy updates)
 - Role-based queries test accessibility
 - Pattern matching is resilient to minor changes

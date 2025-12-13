@@ -26,7 +26,7 @@ it('should hide loading spinner after load', async () => {
 })
 ```
 
-### 2. findBy* - Async Queries
+### 2. findBy\* - Async Queries
 
 ```typescript
 it('should show user name after fetch', async () => {
