@@ -174,10 +174,11 @@ describe('DataFetcher', () => {
     
     render(<DataFetcher />)
     
-    await waitFor(() => {
-      expect(screen.getByText('Item 1')).toBeInTheDocument()
-      expect(screen.getByText('Item 2')).toBeInTheDocument()
-    })
+    // Use findBy* for multiple async elements (better error messages than waitFor with multiple assertions)
+    const item1 = await screen.findByText('Item 1')
+    const item2 = await screen.findByText('Item 2')
+    expect(item1).toBeInTheDocument()
+    expect(item2).toBeInTheDocument()
     
     expect(screen.queryByTestId('loading-spinner')).not.toBeInTheDocument()
   })
