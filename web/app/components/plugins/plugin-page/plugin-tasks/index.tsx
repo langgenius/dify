@@ -187,7 +187,7 @@ const PluginTasks = () => {
             {/* Running Plugins */}
             {runningPlugins.length > 0 && (
               <>
-                <div className='system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1'>
+                <div className='system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary'>
                   {t('plugin.task.installing')} ({runningPlugins.length})
                 </div>
                 <div className='max-h-[200px] overflow-y-auto'>
@@ -220,7 +220,7 @@ const PluginTasks = () => {
             {/* Success Plugins */}
             {successPlugins.length > 0 && (
               <>
-                <div className='system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1'>
+                <div className='system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary'>
                   {t('plugin.task.installed')} ({successPlugins.length})
                   <Button
                     className='shrink-0'
@@ -261,7 +261,7 @@ const PluginTasks = () => {
             {/* Error Plugins */}
             {errorPlugins.length > 0 && (
               <>
-                <div className='system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1'>
+                <div className='system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary'>
                   {t('plugin.task.installError', { errorLength: errorPlugins.length })}
                   <Button
                     className='shrink-0'
