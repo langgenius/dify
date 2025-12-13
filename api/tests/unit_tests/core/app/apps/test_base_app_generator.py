@@ -287,7 +287,7 @@ def test_validate_inputs_optional_file_with_empty_string():
 
 
 def test_validate_inputs_optional_file_list_with_empty_list():
-    """Test that optional FILE_LIST variable with empty list returns None"""
+    """Test that optional FILE_LIST variable with empty list returns empty list (not None)"""
     base_app_generator = BaseAppGenerator()
 
     var_file_list = VariableEntity(
@@ -302,6 +302,28 @@ def test_validate_inputs_optional_file_list_with_empty_list():
         value=[],
     )
 
+    # Empty list should be preserved, not converted to None
+    # This allows downstream components like document_extractor to handle empty lists properly
+    assert result == []
+
+
+def test_validate_inputs_optional_file_list_with_empty_string():
+    """Test that optional FILE_LIST variable with empty string returns None"""
+    base_app_generator = BaseAppGenerator()
+
+    var_file_list = VariableEntity(
+        variable="test_file_list",
+        label="test_file_list",
+        type=VariableEntityType.FILE_LIST,
+        required=False,
+    )
+
+    result = base_app_generator._validate_inputs(
+        variable_entity=var_file_list,
+        value="",
+    )
+
+    # Empty string should be treated as unset
     assert result is None
 
 
