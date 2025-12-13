@@ -63,7 +63,7 @@ jobs:
 
       - name: mdformat
         run: |
-          uvx mdformat .
+          uvx --python 3.13 mdformat . --exclude ".claude/skills/**"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
