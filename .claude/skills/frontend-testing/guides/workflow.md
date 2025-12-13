@@ -2,9 +2,18 @@
 
 This guide defines the workflow for generating tests, especially for complex components or directories with multiple files.
 
-## ⚠️ Critical Rule: Incremental Approach
+## Scope Clarification
 
-**NEVER generate all test files at once.** Always use an incremental, verify-as-you-go approach.
+This guide addresses **multi-file workflow** (how to process multiple test files). For coverage requirements within a single test file, see `web/testing/testing.md` § Coverage Goals.
+
+| Scope | Rule |
+|-------|------|
+| **Single file** | Complete coverage in one generation (100% function, >95% branch) |
+| **Multi-file directory** | Process one file at a time, verify each before proceeding |
+
+## ⚠️ Critical Rule: Incremental Approach for Multi-File Testing
+
+When testing a **directory with multiple files**, **NEVER generate all test files at once.** Use an incremental, verify-as-you-go approach.
 
 ### Why Incremental?
 

@@ -424,9 +424,9 @@ describe('Component', () => {
 
 ## Coverage Goals
 
-### ⚠️ MANDATORY: Complete Coverage in Single Generation
+### ⚠️ MANDATORY: Complete Coverage Per File
 
-Aim for 100% coverage:
+When generating tests for a **single file**, aim for 100% coverage in that generation:
 
 - ✅ 100% function coverage (every exported function/method tested)
 - ✅ 100% statement coverage (every line executed)

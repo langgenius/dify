@@ -286,12 +286,16 @@ it('should disable input when isReadOnly is true')
 | Context | Provider values, consumer behavior |
 | Forms | Validation, submission, error display |
 
-## Coverage Goals
+## Coverage Goals (Per File)
+
+For each test file generated, aim for:
 
 - ✅ **100%** function coverage
 - ✅ **100%** statement coverage
 - ✅ **>95%** branch coverage
 - ✅ **>95%** line coverage
+
+> **Note**: For multi-file directories, process one file at a time with full coverage each. See `guides/workflow.md`.
 
 ## Detailed Guides
 
