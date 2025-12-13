@@ -2,22 +2,10 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 
-// Mock react-i18next
+// Mock react-i18next - return key as per testing skills
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'app.types.all': 'All',
-        'app.types.workflow': 'Workflow',
-        'app.types.advanced': 'Advanced Chat',
-        'app.types.chatbot': 'Chatbot',
-        'app.types.agent': 'Agent',
-        'app.types.completion': 'Completion',
-        'app.showMyCreatedAppsOnly': 'Show my created apps only',
-        'app.newApp.dropDSLToCreateApp': 'Drop DSL file to create app',
-      }
-      return translations[key] || key
-    },
+    t: (key: string) => key,
   }),
 }))
 
@@ -335,7 +323,7 @@ describe('List', () => {
 
     it('should render drop DSL hint for editors', () => {
       render(<List />)
-      expect(screen.getByText(/drop dsl file to create app/i)).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
   })
 
@@ -400,7 +388,7 @@ describe('List', () => {
   describe('Created By Me Filter', () => {
     it('should render checkbox with correct label', () => {
       render(<List />)
-      expect(screen.getByText(/show my created apps only/i)).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
 
     it('should handle checkbox change', () => {
@@ -480,7 +468,7 @@ describe('List', () => {
   describe('Dragging State', () => {
     it('should show drop hint when DSL feature is enabled for editors', () => {
       render(<List />)
-      expect(screen.getByText(/drop dsl file to create app/i)).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.dropDSLToCreateApp')).toBeInTheDocument()
     })
   })
 
@@ -533,7 +521,7 @@ describe('List', () => {
     it('should display created by me label', () => {
       render(<List />)
 
-      expect(screen.getByText(/show my created apps only/i)).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
   })
 

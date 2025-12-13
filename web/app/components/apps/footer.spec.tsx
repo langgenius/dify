@@ -2,16 +2,10 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import Footer from './footer'
 
-// Mock react-i18next
+// Mock react-i18next - return key as per testing skills
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'app.join': 'Join Our Community',
-        'app.communityIntro': 'Connect with other developers and share your ideas',
-      }
-      return translations[key] || key
-    },
+    t: (key: string) => key,
   }),
 }))
 
@@ -29,12 +23,12 @@ describe('Footer', () => {
     it('should display the community heading', () => {
       render(<Footer />)
       // Use pattern matching for resilient text assertions
-      expect(screen.getByText(/join our community/i)).toBeInTheDocument()
+      expect(screen.getByText('app.join')).toBeInTheDocument()
     })
 
     it('should display the community intro text', () => {
       render(<Footer />)
-      expect(screen.getByText(/connect with other developers/i)).toBeInTheDocument()
+      expect(screen.getByText('app.communityIntro')).toBeInTheDocument()
     })
   })
 
@@ -82,7 +76,7 @@ describe('Footer', () => {
 
     it('should have gradient text styling on heading', () => {
       render(<Footer />)
-      const heading = screen.getByText(/join our community/i)
+      const heading = screen.getByText('app.join')
       expect(heading).toHaveClass('text-gradient')
     })
   })

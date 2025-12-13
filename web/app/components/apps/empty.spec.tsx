@@ -2,15 +2,10 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import Empty from './empty'
 
-// Mock react-i18next
+// Mock react-i18next - return key as per testing skills
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'app.newApp.noAppsFound': 'No apps found',
-      }
-      return translations[key] || key
-    },
+    t: (key: string) => key,
   }),
 }))
 
@@ -22,7 +17,7 @@ describe('Empty', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<Empty />)
-      expect(screen.getByText(/no apps found/i)).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.noAppsFound')).toBeInTheDocument()
     })
 
     it('should render 36 placeholder cards', () => {
@@ -34,7 +29,7 @@ describe('Empty', () => {
     it('should display the no apps found message', () => {
       render(<Empty />)
       // Use pattern matching for resilient text assertions
-      expect(screen.getByText(/no apps found/i)).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.noAppsFound')).toBeInTheDocument()
     })
   })
 
@@ -56,10 +51,10 @@ describe('Empty', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { rerender } = render(<Empty />)
-      expect(screen.getByText(/no apps found/i)).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.noAppsFound')).toBeInTheDocument()
 
       rerender(<Empty />)
-      expect(screen.getByText(/no apps found/i)).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.noAppsFound')).toBeInTheDocument()
     })
   })
 })

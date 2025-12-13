@@ -3,36 +3,10 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import { AccessMode } from '@/models/access-control'
 
-// Mock react-i18next
+// Mock react-i18next - return key as per testing skills
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'app.editApp': 'Edit App',
-        'app.duplicate': 'Duplicate',
-        'app.export': 'Export',
-        'app.switch': 'Switch',
-        'app.openInExplore': 'Open in Explore',
-        'app.accessControl': 'Access Control',
-        'common.operation.delete': 'Delete',
-        'app.deleteAppConfirmTitle': 'Delete App',
-        'app.deleteAppConfirmContent': 'Are you sure you want to delete this app?',
-        'app.appDeleted': 'App deleted',
-        'app.appDeleteFailed': 'Failed to delete app',
-        'app.editDone': 'App edited successfully',
-        'app.editFailed': 'Failed to edit app',
-        'app.newApp.appCreated': 'App created',
-        'app.newApp.appCreateFailed': 'Failed to create app',
-        'app.exportFailed': 'Export failed',
-        'datasetDocuments.segment.dateTimeFormat': 'MMM D, YYYY',
-        'datasetDocuments.segment.editedAt': 'Edited',
-        'app.accessItemsDescription.anyone': 'Anyone can access',
-        'app.accessItemsDescription.specific': 'Specific members',
-        'app.accessItemsDescription.organization': 'Organization members',
-        'app.accessItemsDescription.external': 'External members',
-      }
-      return translations[key] || key
-    },
+    t: (key: string) => key,
   }),
 }))
 
@@ -263,36 +237,45 @@ jest.mock('@/app/components/app/type-selector', () => ({
 // Import component after mocks
 import AppCard from './app-card'
 
-describe('AppCard', () => {
-  const mockApp = {
-    id: 'test-app-id',
-    name: 'Test App',
-    description: 'Test app description',
-    mode: AppModeEnum.CHAT,
-    icon: '🤖',
-    icon_type: 'emoji' as const,
-    icon_background: '#FFEAD5',
-    icon_url: null,
-    author_name: 'Test Author',
-    created_at: 1704067200,
-    updated_at: 1704153600,
-    tags: [],
-    use_icon_as_answer_icon: false,
-    max_active_requests: null,
-    access_mode: AccessMode.PUBLIC,
-    has_draft_trigger: false,
-    // Required App type properties for type checking
-    enable_site: true,
-    enable_api: true,
-    api_rpm: 60,
-    api_rph: 3600,
-    is_demo: false,
-    model_config: {} as any,
-    app_model_config: {} as any,
-    site: {} as any,
-    api_base_url: 'https://api.example.com',
-  }
+// ============================================================================
+// Test Data Factories
+// ============================================================================
 
+const createMockApp = (overrides: Record<string, any> = {}) => ({
+  id: 'test-app-id',
+  name: 'Test App',
+  description: 'Test app description',
+  mode: AppModeEnum.CHAT,
+  icon: '🤖',
+  icon_type: 'emoji' as const,
+  icon_background: '#FFEAD5',
+  icon_url: null,
+  author_name: 'Test Author',
+  created_at: 1704067200,
+  updated_at: 1704153600,
+  tags: [],
+  use_icon_as_answer_icon: false,
+  max_active_requests: null,
+  access_mode: AccessMode.PUBLIC,
+  has_draft_trigger: false,
+  enable_site: true,
+  enable_api: true,
+  api_rpm: 60,
+  api_rph: 3600,
+  is_demo: false,
+  model_config: {} as any,
+  app_model_config: {} as any,
+  site: {} as any,
+  api_base_url: 'https://api.example.com',
+  ...overrides,
+})
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+describe('AppCard', () => {
+  const mockApp = createMockApp()
   const mockOnRefresh = jest.fn()
 
   beforeEach(() => {
@@ -367,28 +350,28 @@ describe('AppCard', () => {
     it('should show public icon for public access mode', () => {
       const publicApp = { ...mockApp, access_mode: AccessMode.PUBLIC }
       const { container } = render(<AppCard app={publicApp} />)
-      const tooltip = container.querySelector('[title="Anyone can access"]')
+      const tooltip = container.querySelector('[title="app.accessItemsDescription.anyone"]')
       expect(tooltip).toBeInTheDocument()
     })
 
     it('should show lock icon for specific groups access mode', () => {
       const specificApp = { ...mockApp, access_mode: AccessMode.SPECIFIC_GROUPS_MEMBERS }
       const { container } = render(<AppCard app={specificApp} />)
-      const tooltip = container.querySelector('[title="Specific members"]')
+      const tooltip = container.querySelector('[title="app.accessItemsDescription.specific"]')
       expect(tooltip).toBeInTheDocument()
     })
 
     it('should show organization icon for organization access mode', () => {
       const orgApp = { ...mockApp, access_mode: AccessMode.ORGANIZATION }
       const { container } = render(<AppCard app={orgApp} />)
-      const tooltip = container.querySelector('[title="Organization members"]')
+      const tooltip = container.querySelector('[title="app.accessItemsDescription.organization"]')
       expect(tooltip).toBeInTheDocument()
     })
 
     it('should show external icon for external access mode', () => {
       const externalApp = { ...mockApp, access_mode: AccessMode.EXTERNAL_MEMBERS }
       const { container } = render(<AppCard app={externalApp} />)
-      const tooltip = container.querySelector('[title="External members"]')
+      const tooltip = container.querySelector('[title="app.accessItemsDescription.external"]')
       expect(tooltip).toBeInTheDocument()
     })
   })
@@ -421,7 +404,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByText(/edit app/i)).toBeInTheDocument()
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
       })
     })
 
@@ -431,7 +414,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByText(/duplicate/i)).toBeInTheDocument()
+        expect(screen.getByText('app.duplicate')).toBeInTheDocument()
       })
     })
 
@@ -441,7 +424,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByText(/export/i)).toBeInTheDocument()
+        expect(screen.getByText('app.export')).toBeInTheDocument()
       })
     })
 
@@ -451,7 +434,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByText(/delete/i)).toBeInTheDocument()
+        expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
       })
     })
 
@@ -496,7 +479,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
 
       await waitFor(() => {
-        const editButton = screen.getByText('Edit App')
+        const editButton = screen.getByText('app.editApp')
         fireEvent.click(editButton)
       })
 
@@ -511,7 +494,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
 
       await waitFor(() => {
-        const duplicateButton = screen.getByText('Duplicate')
+        const duplicateButton = screen.getByText('app.duplicate')
         fireEvent.click(duplicateButton)
       })
 
@@ -526,7 +509,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
 
       await waitFor(() => {
-        const deleteButton = screen.getByText('Delete')
+        const deleteButton = screen.getByText('common.operation.delete')
         fireEvent.click(deleteButton)
       })
 
@@ -541,7 +524,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
 
       await waitFor(() => {
-        const deleteButton = screen.getByText('Delete')
+        const deleteButton = screen.getByText('common.operation.delete')
         fireEvent.click(deleteButton)
       })
 
@@ -578,7 +561,7 @@ describe('AppCard', () => {
       // Open popover and click delete
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Delete'))
+        fireEvent.click(screen.getByText('common.operation.delete'))
       })
 
       // Confirm delete
@@ -598,7 +581,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Delete'))
+        fireEvent.click(screen.getByText('common.operation.delete'))
       })
 
       await waitFor(() => {
@@ -619,7 +602,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Delete'))
+        fireEvent.click(screen.getByText('common.operation.delete'))
       })
 
       await waitFor(() => {
@@ -639,7 +622,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Edit App'))
+        fireEvent.click(screen.getByText('app.editApp'))
       })
 
       await waitFor(() => {
@@ -658,7 +641,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Duplicate'))
+        fireEvent.click(screen.getByText('app.duplicate'))
       })
 
       await waitFor(() => {
@@ -677,7 +660,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Duplicate'))
+        fireEvent.click(screen.getByText('app.duplicate'))
       })
 
       await waitFor(() => {
@@ -698,7 +681,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Duplicate'))
+        fireEvent.click(screen.getByText('app.duplicate'))
       })
 
       await waitFor(() => {
@@ -709,7 +692,7 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(appsService.copyApp).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('create app') })
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.newApp.appCreateFailed' })
       })
     })
 
@@ -718,7 +701,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Export'))
+        fireEvent.click(screen.getByText('app.export'))
       })
 
       await waitFor(() => {
@@ -733,12 +716,12 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Export'))
+        fireEvent.click(screen.getByText('app.export'))
       })
 
       await waitFor(() => {
         expect(appsService.exportAppConfig).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Export failed') })
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
       })
     })
   })
@@ -750,7 +733,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Switch'))
+        fireEvent.click(screen.getByText('app.switch'))
       })
 
       await waitFor(() => {
@@ -764,7 +747,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Switch'))
+        fireEvent.click(screen.getByText('app.switch'))
       })
 
       await waitFor(() => {
@@ -784,7 +767,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Switch'))
+        fireEvent.click(screen.getByText('app.switch'))
       })
 
       await waitFor(() => {
@@ -804,7 +787,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Switch'))
+        fireEvent.click(screen.getByText('app.switch'))
       })
 
       await waitFor(() => {
@@ -820,7 +803,7 @@ describe('AppCard', () => {
       fireEvent.click(screen.getByTestId('popover-trigger'))
 
       await waitFor(() => {
-        expect(screen.getByText(/open in explore/i)).toBeInTheDocument()
+        expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
       })
     })
   })
@@ -832,7 +815,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Export'))
+        fireEvent.click(screen.getByText('app.export'))
       })
 
       await waitFor(() => {
@@ -850,7 +833,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Export'))
+        fireEvent.click(screen.getByText('app.export'))
       })
 
       await waitFor(() => {
@@ -864,7 +847,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Export'))
+        fireEvent.click(screen.getByText('app.export'))
       })
 
       await waitFor(() => {
@@ -948,7 +931,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Edit App'))
+        fireEvent.click(screen.getByText('app.editApp'))
       })
 
       await waitFor(() => {
@@ -968,7 +951,7 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Edit App'))
+        fireEvent.click(screen.getByText('app.editApp'))
       })
 
       await waitFor(() => {
@@ -1007,12 +990,12 @@ describe('AppCard', () => {
 
       fireEvent.click(screen.getByTestId('popover-trigger'))
       await waitFor(() => {
-        fireEvent.click(screen.getByText('Export'))
+        fireEvent.click(screen.getByText('app.export'))
       })
 
       await waitFor(() => {
         expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
-        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: expect.stringContaining('Export failed') })
+        expect(mockNotify).toHaveBeenCalledWith({ type: 'error', message: 'app.exportFailed' })
       })
     })
   })

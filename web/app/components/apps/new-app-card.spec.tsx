@@ -1,18 +1,10 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 
-// Mock react-i18next
+// Mock react-i18next - return key as per testing skills
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'app.createApp': 'Create App',
-        'app.newApp.startFromBlank': 'Start from Blank',
-        'app.newApp.startFromTemplate': 'Start from Template',
-        'app.importDSL': 'Import DSL',
-      }
-      return translations[key] || key
-    },
+    t: (key: string) => key,
   }),
 }))
 
@@ -93,15 +85,15 @@ describe('CreateAppCard', () => {
     it('should render without crashing', () => {
       render(<CreateAppCard ref={defaultRef} />)
       // Use pattern matching for resilient text assertions
-      expect(screen.getByText(/create app/i)).toBeInTheDocument()
+      expect(screen.getByText('app.createApp')).toBeInTheDocument()
     })
 
     it('should render three create buttons', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      expect(screen.getByText(/start from blank/i)).toBeInTheDocument()
-      expect(screen.getByText(/start from template/i)).toBeInTheDocument()
-      expect(screen.getByText(/import dsl/i)).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromBlank')).toBeInTheDocument()
+      expect(screen.getByText('app.newApp.startFromTemplate')).toBeInTheDocument()
+      expect(screen.getByText('app.importDSL')).toBeInTheDocument()
     })
 
     it('should render all buttons as clickable', () => {
@@ -126,7 +118,7 @@ describe('CreateAppCard', () => {
 
     it('should render with selectedAppType prop', () => {
       render(<CreateAppCard ref={defaultRef} selectedAppType="chat" />)
-      expect(screen.getByText(/create app/i)).toBeInTheDocument()
+      expect(screen.getByText('app.createApp')).toBeInTheDocument()
     })
   })
 
@@ -134,7 +126,7 @@ describe('CreateAppCard', () => {
     it('should open create app modal when clicking Start from Blank', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('Start from Blank'))
+      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
 
       expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
     })
@@ -142,7 +134,7 @@ describe('CreateAppCard', () => {
     it('should close create app modal when clicking close button', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('Start from Blank'))
+      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
       expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('close-create-modal'))
@@ -153,7 +145,7 @@ describe('CreateAppCard', () => {
       const mockOnSuccess = jest.fn()
       render(<CreateAppCard ref={defaultRef} onSuccess={mockOnSuccess} />)
 
-      fireEvent.click(screen.getByText('Start from Blank'))
+      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
       fireEvent.click(screen.getByTestId('success-create-modal'))
 
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
@@ -163,7 +155,7 @@ describe('CreateAppCard', () => {
     it('should switch from create modal to template dialog', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('Start from Blank'))
+      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
       expect(screen.getByTestId('create-app-modal')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('to-template-modal'))
@@ -177,7 +169,7 @@ describe('CreateAppCard', () => {
     it('should open template dialog when clicking Start from Template', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('Start from Template'))
+      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
 
       expect(screen.getByTestId('create-template-dialog')).toBeInTheDocument()
     })
@@ -185,7 +177,7 @@ describe('CreateAppCard', () => {
     it('should close template dialog when clicking close button', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('Start from Template'))
+      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
       expect(screen.getByTestId('create-template-dialog')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('close-template-dialog'))
@@ -196,7 +188,7 @@ describe('CreateAppCard', () => {
       const mockOnSuccess = jest.fn()
       render(<CreateAppCard ref={defaultRef} onSuccess={mockOnSuccess} />)
 
-      fireEvent.click(screen.getByText('Start from Template'))
+      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
       fireEvent.click(screen.getByTestId('success-template-dialog'))
 
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
@@ -206,7 +198,7 @@ describe('CreateAppCard', () => {
     it('should switch from template dialog to create modal', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('Start from Template'))
+      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
       expect(screen.getByTestId('create-template-dialog')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('to-blank-modal'))
@@ -220,7 +212,7 @@ describe('CreateAppCard', () => {
     it('should open DSL modal when clicking Import DSL', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('Import DSL'))
+      fireEvent.click(screen.getByText('app.importDSL'))
 
       expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
     })
@@ -228,7 +220,7 @@ describe('CreateAppCard', () => {
     it('should close DSL modal when clicking close button', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('Import DSL'))
+      fireEvent.click(screen.getByText('app.importDSL'))
       expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
@@ -239,7 +231,7 @@ describe('CreateAppCard', () => {
       const mockOnSuccess = jest.fn()
       render(<CreateAppCard ref={defaultRef} onSuccess={mockOnSuccess} />)
 
-      fireEvent.click(screen.getByText('Import DSL'))
+      fireEvent.click(screen.getByText('app.importDSL'))
       fireEvent.click(screen.getByTestId('success-dsl-modal'))
 
       expect(mockOnPlanInfoChanged).toHaveBeenCalled()
@@ -270,15 +262,15 @@ describe('CreateAppCard', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
       // Open and close create modal
-      fireEvent.click(screen.getByText('Start from Blank'))
+      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
       fireEvent.click(screen.getByTestId('close-create-modal'))
 
       // Open and close template dialog
-      fireEvent.click(screen.getByText('Start from Template'))
+      fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
       fireEvent.click(screen.getByTestId('close-template-dialog'))
 
       // Open and close DSL modal
-      fireEvent.click(screen.getByText('Import DSL'))
+      fireEvent.click(screen.getByText('app.importDSL'))
       fireEvent.click(screen.getByTestId('close-dsl-modal'))
 
       // No modals should be visible
@@ -290,7 +282,7 @@ describe('CreateAppCard', () => {
     it('should handle onSuccess not being provided', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      fireEvent.click(screen.getByText('Start from Blank'))
+      fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
       // This should not throw an error
       expect(() => {
         fireEvent.click(screen.getByTestId('success-create-modal'))

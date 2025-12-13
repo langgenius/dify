@@ -1,15 +1,10 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 
-// Mock react-i18next
+// Mock react-i18next - return key as per testing skills
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'common.menus.apps': 'Apps',
-      }
-      return translations[key] || key
-    },
+    t: (key: string) => key,
   }),
 }))
 
@@ -72,7 +67,7 @@ describe('Apps', () => {
   describe('Hooks', () => {
     it('should call useDocumentTitle with correct title', () => {
       render(<Apps />)
-      expect(documentTitleCalls).toContain('Apps')
+      expect(documentTitleCalls).toContain('common.menus.apps')
     })
 
     it('should call useEducationInit', () => {
