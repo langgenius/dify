@@ -1,7 +1,8 @@
 import urllib.parse
 
 import httpx
-from flask_restx import marshal_with, reqparse
+from flask_restx import marshal_with
+from pydantic import BaseModel, Field, HttpUrl
 
 import services
 from controllers.common import helpers
@@ -10,13 +11,22 @@ from controllers.common.errors import (
     RemoteFileUploadError,
     UnsupportedFileTypeError,
 )
-from controllers.web import web_ns
-from controllers.web.wraps import WebApiResource
 from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from fields.file_fields import build_file_with_signed_url_model, build_remote_file_info_model
 from services.file_service import FileService
+
+from ..common.schema import register_schema_models
+from . import web_ns
+from .wraps import WebApiResource
+
+
+class RemoteFileUploadPayload(BaseModel):
+    url: HttpUrl = Field(description="Remote file URL")
+
+
+register_schema_models(web_ns, RemoteFileUploadPayload)
 
 
 @web_ns.route("/remote-files/<path:url>")
@@ -97,10 +107,8 @@ class RemoteFileUploadApi(WebApiResource):
             FileTooLargeError: File exceeds size limit
             UnsupportedFileTypeError: File type not supported
         """
-        parser = reqparse.RequestParser().add_argument("url", type=str, required=True, help="URL is required")
-        args = parser.parse_args()
-
-        url = args["url"]
+        payload = RemoteFileUploadPayload.model_validate(web_ns.payload or {})
+        url = str(payload.url)
 
         try:
             resp = ssrf_proxy.head(url=url)

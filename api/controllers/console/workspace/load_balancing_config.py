@@ -1,4 +1,5 @@
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
@@ -8,6 +9,20 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from libs.login import current_account_with_tenant, login_required
 from models import TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class LoadBalancingCredentialPayload(BaseModel):
+    model: str
+    model_type: ModelType
+    credentials: dict
+
+
+console_ns.schema_model(
+    LoadBalancingCredentialPayload.__name__,
+    LoadBalancingCredentialPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route(
@@ -24,20 +39,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
 
         tenant_id = current_tenant_id
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("model", type=str, required=True, nullable=False, location="json")
-            .add_argument(
-                "model_type",
-                type=str,
-                required=True,
-                nullable=False,
-                choices=[mt.value for mt in ModelType],
-                location="json",
-            )
-            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = LoadBalancingCredentialPayload.model_validate(console_ns.payload or {})
 
         # validate model load balancing credentials
         model_load_balancing_service = ModelLoadBalancingService()
@@ -49,9 +51,9 @@ class LoadBalancingCredentialsValidateApi(Resource):
             model_load_balancing_service.validate_load_balancing_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=args["model"],
-                model_type=args["model_type"],
-                credentials=args["credentials"],
+                model=payload.model,
+                model_type=payload.model_type,
+                credentials=payload.credentials,
             )
         except CredentialsValidateFailedError as ex:
             result = False
@@ -79,20 +81,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
 
         tenant_id = current_tenant_id
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("model", type=str, required=True, nullable=False, location="json")
-            .add_argument(
-                "model_type",
-                type=str,
-                required=True,
-                nullable=False,
-                choices=[mt.value for mt in ModelType],
-                location="json",
-            )
-            .add_argument("credentials", type=dict, required=True, nullable=False, location="json")
-        )
-        args = parser.parse_args()
+        payload = LoadBalancingCredentialPayload.model_validate(console_ns.payload or {})
 
         # validate model load balancing config credentials
         model_load_balancing_service = ModelLoadBalancingService()
@@ -104,9 +93,9 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
             model_load_balancing_service.validate_load_balancing_credentials(
                 tenant_id=tenant_id,
                 provider=provider,
-                model=args["model"],
-                model_type=args["model_type"],
-                credentials=args["credentials"],
+                model=payload.model,
+                model_type=payload.model_type,
+                credentials=payload.credentials,
                 config_id=config_id,
             )
         except CredentialsValidateFailedError as ex:
