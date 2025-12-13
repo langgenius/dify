@@ -202,6 +202,20 @@ const translation = {
   viewBillingTitle: 'الفوترة والاشتراكات',
   viewBillingDescription: 'إدارة طرق الدفع والفواتير وتغييرات الاشتراك',
   viewBillingAction: 'يدير',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'قم بالترقية لتحميل عدة مستندات دفعة واحدة',
+      description: 'لقد وصلت إلى حد التحميل — يمكن اختيار ورفع مستند واحد فقط في كل مرة على الخطة الحالية الخاصة بك.',
+    },
+    uploadMultipleFiles: {
+      title: 'قم بالترقية لفتح ميزة تحميل المستندات دفعة واحدة',
+      description: 'قم بتحميل المزيد من المستندات دفعة واحدة لتوفير الوقت وتحسين الكفاءة.',
+    },
+    addChunks: {
+      title: 'قم بالترقية لمواصلة إضافة المقاطع',
+      description: 'لقد وصلت إلى الحد الأقصى لإضافة الأجزاء لهذا الخطة.',
+    },
+  },
 }
 
 export default translation
