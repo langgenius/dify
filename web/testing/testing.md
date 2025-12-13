@@ -132,19 +132,12 @@ Choose based on directory complexity:
 
 When using a single spec file:
 
-```typescript
-// ✅ Import real project components
-import Loading from '@/app/components/base/loading'
-import { ChildComponent } from './child-component'
+- ✅ **Import real project components** directly (including base components and siblings)
+- ✅ **Only mock**: API services (`@/service/*`), `next/navigation`, complex context providers
+- ❌ **DO NOT mock** base components (`@/app/components/base/*`)
+- ❌ **DO NOT mock** sibling/child components in the same directory
 
-// ✅ Only mock external dependencies
-jest.mock('@/service/api')
-jest.mock('next/navigation')
-
-// ❌ Don't mock base components or sibling components
-// jest.mock('@/app/components/base/loading')  // Wrong!
-// jest.mock('./child-component')  // Wrong!
-```
+> See [Example Structure](#example-structure) for correct import/mock patterns.
 
 ## Testing Components with Dedicated Dependencies
 
@@ -276,8 +269,16 @@ const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs =
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import Component from './index'
 
-// Mock dependencies
+// ✅ Import real project components (DO NOT mock these)
+// import Loading from '@/app/components/base/loading'
+// import { ChildComponent } from './child-component'
+
+// ✅ Mock external dependencies only
 jest.mock('@/service/api')
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/test',
+}))
 
 // Shared state for mocks (if needed)
 let mockSharedState = false
