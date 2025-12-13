@@ -42,7 +42,7 @@ pnpm test -- path/to/file.spec.tsx
 ## Test Authoring Principles
 
 - **Single behavior per test**: Each test verifies one user-observable behavior.
-- **Black-box first**: Assert external behavior and observable outputs, avoid internal implementation details.
+- **Black-box first**: Assert external behavior and observable outputs, avoid internal implementation details. Prefer role-based queries (`getByRole`) and pattern matching (`/text/i`) over hardcoded string assertions.
 - **Semantic naming**: Use `should <behavior> when <condition>` and group related cases with `describe(<subject or scenario>)`.
 - **AAA / Given–When–Then**: Separate Arrange, Act, and Assert clearly with code blocks or comments.
 - **Minimal but sufficient assertions**: Keep only the expectations that express the essence of the behavior.
@@ -93,6 +93,7 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
    - Testing time-based behavior (delays, animations)
    - If you mock all time-dependent functions, fake timers are unnecessary
 1. **Prefer importing over mocking project components**: When tests need other components from the project, import them directly instead of mocking them. Only mock external dependencies, APIs, or complex context providers that are difficult to set up.
+1. **DO NOT mock base components**: Never mock components from `@/app/components/base/` (e.g., `Loading`, `Button`, `Tooltip`, `Modal`). Base components will have their own dedicated tests. Use real components to test actual integration behavior.
 
 **Why this matters**: Mocks that don't match actual behavior can lead to:
 
@@ -100,6 +101,48 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 - **Missed bugs**: Tests don't catch real conditional rendering issues
 - **Maintenance burden**: Tests become misleading documentation
 - **State leakage**: Tests interfere with each other when shared state isn't reset
+
+## Path-Level Testing Strategy
+
+When assigned to test a **directory/path** (not just a single file), follow these guidelines:
+
+### Coverage Scope
+
+- Test **ALL files** in the assigned directory, not just the entry `index` file
+- Include all components, hooks, utilities within the path
+- Goal: 100% coverage of the entire directory contents
+
+### Test Organization
+
+Choose based on directory complexity:
+
+1. **Single spec file (Integration approach)** - Preferred for related components
+   - Minimize mocking - use real project components
+   - Test actual integration between components
+   - Only mock: API calls, complex context providers, third-party libs
+
+2. **Multiple spec files (Unit approach)** - For complex directories
+   - One spec file per component/hook/utility
+   - More isolated testing
+   - Useful when components are independent
+
+### Integration Testing First
+
+When using a single spec file:
+
+```typescript
+// ✅ Import real project components
+import Loading from '@/app/components/base/loading'
+import { ChildComponent } from './child-component'
+
+// ✅ Only mock external dependencies
+jest.mock('@/service/api')
+jest.mock('next/navigation')
+
+// ❌ Don't mock base components or sibling components
+// jest.mock('@/app/components/base/loading')  // Wrong!
+// jest.mock('./child-component')  // Wrong!
+```
 
 ## Testing Components with Dedicated Dependencies
 
