@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 @shared_task(queue="dataset")
 def delete_account_task(account_id):
     account = db.session.query(Account).where(Account.id == account_id).first()
+    if not account:
+        logger.error("Account %s not found.", account_id)
+        return
+
     if dify_config.BILLING_ENABLED:
         try:
             BillingService.delete_account(account_id)
@@ -21,8 +25,5 @@ def delete_account_task(account_id):
             logger.exception("Failed to delete account %s from billing service.", account_id)
             raise
 
-    if not account:
-        logger.error("Account %s not found.", account_id)
-        return
     # send success email
     send_deletion_success_task.delay(account.email)
