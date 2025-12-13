@@ -13,13 +13,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # Setup Python first to avoid uv downloading python-build-standalone (may 504)
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      # Use uv to ensure we have the same ruff version in CI and locally.
       - uses: astral-sh/setup-uv@v6
 
       - run: |
