@@ -30,7 +30,7 @@ const OnlineDocuments = ({
   nodeId,
   nodeData,
   isInPipeline = false,
-  supportBatchUpload = false,
+  supportBatchUpload = true,
   onCredentialChange,
 }: OnlineDocumentsProps) => {
   const docLink = useDocLink()
