@@ -189,6 +189,7 @@ docker/volumes/matrixone/*
 docker/volumes/mysql/*
 docker/volumes/seekdb/*
 !docker/volumes/oceanbase/init.d
+docker/volumes/iris/*
 
 docker/nginx/conf.d/default.conf
 docker/nginx/ssl/*
