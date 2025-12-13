@@ -5,12 +5,14 @@
 ### DO NOT Mock Base Components
 
 **Never mock components from `@/app/components/base/`** such as:
+
 - `Loading`, `Spinner`
 - `Button`, `Input`, `Select`
 - `Tooltip`, `Modal`, `Dropdown`
 - `Icon`, `Badge`, `Tag`
 
 **Why?**
+
 - Base components will have their own dedicated tests
 - Mocking them creates false positives (tests pass but real integration fails)
 - Using real components tests actual integration behavior
@@ -29,10 +31,11 @@ import Button from '@/app/components/base/button'
 ### What TO Mock
 
 Only mock these categories:
+
 1. **API services** (`@/service/*`) - Network calls
-2. **Complex context providers** - When setup is too difficult
-3. **Third-party libraries with side effects** - `next/navigation`, external SDKs
-4. **i18n** - Always mock to return keys
+1. **Complex context providers** - When setup is too difficult
+1. **Third-party libraries with side effects** - `next/navigation`, external SDKs
+1. **i18n** - Always mock to return keys
 
 ## Mock Placement
 
@@ -276,20 +279,20 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
 ### ✅ DO
 
 1. **Use real base components** - Import from `@/app/components/base/` directly
-2. **Use real project components** - Prefer importing over mocking
-3. **Reset mocks in `beforeEach`**, not `afterEach`
-4. **Match actual component behavior** in mocks (when mocking is necessary)
-5. **Use factory functions** for complex mock data
-6. **Import actual types** for type safety
-7. **Reset shared mock state** in `beforeEach`
+1. **Use real project components** - Prefer importing over mocking
+1. **Reset mocks in `beforeEach`**, not `afterEach`
+1. **Match actual component behavior** in mocks (when mocking is necessary)
+1. **Use factory functions** for complex mock data
+1. **Import actual types** for type safety
+1. **Reset shared mock state** in `beforeEach`
 
 ### ❌ DON'T
 
 1. **Don't mock base components** (`Loading`, `Button`, `Tooltip`, etc.)
-2. Don't mock components you can import directly
-3. Don't create overly simplified mocks that miss conditional logic
-4. Don't forget to clean up nock after each test
-5. Don't use `any` types in mocks without necessity
+1. Don't mock components you can import directly
+1. Don't create overly simplified mocks that miss conditional logic
+1. Don't forget to clean up nock after each test
+1. Don't use `any` types in mocks without necessity
 
 ### Mock Decision Tree
 

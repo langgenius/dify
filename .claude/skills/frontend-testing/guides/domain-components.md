@@ -9,10 +9,10 @@ Workflow components handle node configuration, data flow, and graph operations.
 ### Key Test Areas
 
 1. **Node Configuration**
-2. **Data Validation**
-3. **Variable Passing**
-4. **Edge Connections**
-5. **Error Handling**
+1. **Data Validation**
+1. **Variable Passing**
+1. **Edge Connections**
+1. **Error Handling**
 
 ### Example: Node Configuration Panel
 
@@ -149,10 +149,10 @@ Dataset components handle file uploads, data display, and search/filter operatio
 ### Key Test Areas
 
 1. **File Upload**
-2. **File Type Validation**
-3. **Pagination**
-4. **Search & Filtering**
-5. **Data Format Handling**
+1. **File Type Validation**
+1. **Pagination**
+1. **Search & Filtering**
+1. **Data Format Handling**
 
 ### Example: Document Uploader
 
@@ -355,10 +355,10 @@ Configuration components handle forms, validation, and data persistence.
 ### Key Test Areas
 
 1. **Form Validation**
-2. **Save/Reset**
-3. **Required vs Optional Fields**
-4. **Configuration Persistence**
-5. **Error Feedback**
+1. **Save/Reset**
+1. **Required vs Optional Fields**
+1. **Configuration Persistence**
+1. **Error Feedback**
 
 ### Example: App Configuration Form
 

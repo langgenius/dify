@@ -1,7 +1,6 @@
----
-name: Dify Frontend Testing
-description: Generate Jest + RTL tests for Dify frontend. Triggers on testing, spec files, coverage, Jest, RTL keywords, or write/review test requests.
----
+______________________________________________________________________
+
+## name: Dify Frontend Testing description: Generate Jest + RTL tests for Dify frontend. Triggers on testing, spec files, coverage, Jest, RTL keywords, or write/review test requests.
 
 # Dify Frontend Testing Skill
 
@@ -12,6 +11,7 @@ This skill enables Claude to generate high-quality, comprehensive frontend tests
 ## When to Apply This Skill
 
 Apply this skill when the user:
+
 - Asks to **write tests** for a component, hook, or utility
 - Asks to **review existing tests** for completeness
 - Mentions **Jest**, **React Testing Library**, **RTL**, or **spec files**
@@ -21,6 +21,7 @@ Apply this skill when the user:
 - Wants to understand **testing patterns** in the Dify codebase
 
 **Do NOT apply** when:
+
 - User is asking about backend/API tests (Python/pytest)
 - User is asking about E2E tests (Playwright/Cypress)
 - User is only asking conceptual questions without code context
@@ -138,8 +139,8 @@ describe('ComponentName', () => {
 **NEVER generate all test files at once.** For complex components or multi-file directories:
 
 1. **Analyze & Plan**: List all files, order by complexity (simple → complex)
-2. **Process ONE at a time**: Write test → Run test → Fix if needed → Next
-3. **Verify before proceeding**: Do NOT continue to next file until current passes
+1. **Process ONE at a time**: Write test → Run test → Fix if needed → Next
+1. **Verify before proceeding**: Do NOT continue to next file until current passes
 
 ```
 For each file:
@@ -154,12 +155,13 @@ For each file:
 ### Complexity-Based Order
 
 Process in this order for multi-file testing:
+
 1. 🟢 Utility functions (simplest)
-2. 🟢 Custom hooks
-3. 🟡 Simple components (presentational)
-4. 🟡 Medium components (state, effects)
-5. 🔴 Complex components (API, routing)
-6. 🔴 Integration tests (index files - last)
+1. 🟢 Custom hooks
+1. 🟡 Simple components (presentational)
+1. 🟡 Medium components (state, effects)
+1. 🔴 Complex components (API, routing)
+1. 🔴 Integration tests (index files - last)
 
 ### When to Refactor First
 
@@ -184,15 +186,17 @@ When assigned to test a directory/path, test **ALL content** within that path:
 **Prefer integration testing** when writing tests for a directory:
 
 1. **DO NOT mock base components** (`Loading`, `Button`, `Tooltip`, etc. from `@/app/components/base/`)
+
    - Base components will have their own dedicated tests
    - Use real components to test actual integration behavior
 
-2. **Minimize mocking** - Only mock:
+1. **Minimize mocking** - Only mock:
+
    - External API calls (`@/service/*`)
    - Complex context providers that are difficult to set up
    - Third-party libraries with side effects (e.g., `next/navigation`)
 
-3. **Import real project components** instead of mocking them
+1. **Import real project components** instead of mocking them
 
 ```typescript
 // ❌ Don't mock base components
@@ -208,6 +212,7 @@ import Loading from '@/app/components/base/loading'
 ### 1. AAA Pattern (Arrange-Act-Assert)
 
 Every test should clearly separate:
+
 - **Arrange**: Setup test data and render component
 - **Act**: Perform user actions
 - **Assert**: Verify expected outcomes
@@ -233,6 +238,7 @@ expect(screen.getByText(/loading/i)).toBeInTheDocument()
 ### 3. Single Behavior Per Test
 
 Each test verifies ONE user-observable behavior:
+
 ```typescript
 // ✅ Good: One behavior
 it('should disable button when loading', () => {
@@ -252,6 +258,7 @@ it('should handle loading state', () => {
 ### 4. Semantic Naming
 
 Use `should <behavior> when <condition>`:
+
 ```typescript
 it('should show error message when validation fails')
 it('should call onSubmit when form is valid')
@@ -263,8 +270,8 @@ it('should disable input when isReadOnly is true')
 ### Always Required (All Components)
 
 1. **Rendering**: Component renders without crashing
-2. **Props**: Required props, optional props, default values
-3. **Edge Cases**: null, undefined, empty values, boundary conditions
+1. **Props**: Required props, optional props, default values
+1. **Edge Cases**: null, undefined, empty values, boundary conditions
 
 ### Conditional (When Present)
 
@@ -287,6 +294,7 @@ it('should disable input when isReadOnly is true')
 ## Detailed Guides
 
 For more detailed information, refer to:
+
 - `guides/workflow.md` - **Incremental testing workflow** (MUST READ for multi-file testing)
 - `guides/mocking.md` - Mock patterns and best practices
 - `guides/async-testing.md` - Async operations and API calls

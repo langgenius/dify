@@ -38,12 +38,12 @@ When testing a **directory or multiple files**, follow this strict workflow:
 ### Step 1: Analyze and Plan
 
 1. **List all files** that need tests in the directory
-2. **Categorize by complexity**:
+1. **Categorize by complexity**:
    - 🟢 **Simple**: Utility functions, simple hooks, presentational components
    - 🟡 **Medium**: Components with state, effects, or event handlers
    - 🔴 **Complex**: Components with API calls, routing, or many dependencies
-3. **Order by dependency**: Test dependencies before dependents
-4. **Create a todo list** to track progress
+1. **Order by dependency**: Test dependencies before dependents
+1. **Create a todo list** to track progress
 
 ### Step 2: Determine Processing Order
 
@@ -58,7 +58,8 @@ Process files in this recommended order:
 6. Container/index components (integration tests - last)
 ```
 
-**Rationale**: 
+**Rationale**:
+
 - Simpler files help establish mock patterns
 - Hooks used by components should be tested first
 - Integration tests (index files) depend on child components working
@@ -98,11 +99,13 @@ Use `pnpm analyze-component <path>` to assess complexity before testing.
 ### 🔴 Very Complex Components (Complexity > 50)
 
 **Consider refactoring BEFORE testing:**
+
 - Break component into smaller, testable pieces
 - Extract complex logic into custom hooks
 - Separate container and presentational layers
 
 **If testing as-is:**
+
 - Use integration tests for complex workflows
 - Use `test.each()` for data-driven testing
 - Multiple `describe` blocks for organization
@@ -124,6 +127,7 @@ Use `pnpm analyze-component <path>` to assess complexity before testing.
 ### 📏 Large Files (500+ lines)
 
 Regardless of complexity score:
+
 - **Strongly consider refactoring** before testing
 - If testing as-is, test major sections separately
 - Create helper functions for test setup
@@ -149,6 +153,7 @@ Progress: 0/6 complete
 ```
 
 Update status as you complete each:
+
 - ☐ → ⏳ (in progress)
 - ⏳ → ✅ (complete and verified)
 - ⏳ → ❌ (blocked, needs attention)
@@ -156,12 +161,14 @@ Update status as you complete each:
 ## When to Stop and Verify
 
 **Always run tests after:**
+
 - Completing a test file
 - Making changes to fix a failure
 - Modifying shared mocks
 - Updating test utilities or helpers
 
 **Signs you should pause:**
+
 - More than 2 consecutive test failures
 - Mock-related errors appearing
 - Unclear why a test is failing
@@ -194,6 +201,7 @@ Run pnpm test -- component-b.spec.tsx ✅
 ### ❌ Don't: Skip Verification for "Simple" Components
 
 Even simple components can have:
+
 - Import errors
 - Missing mock setup
 - Incorrect assumptions about props
@@ -203,6 +211,7 @@ Even simple components can have:
 ### ❌ Don't: Continue When Tests Fail
 
 Failing tests compound:
+
 - A mock issue in file A affects files B, C, D
 - Fixing A later requires revisiting all dependent tests
 - Time wasted on debugging cascading failures
@@ -214,11 +223,12 @@ Failing tests compound:
 When using Claude for multi-file testing:
 
 1. **Ask Claude to create a todo list** before starting
-2. **Request one file at a time** or ensure Claude processes incrementally
-3. **Verify each test passes** before asking for the next
-4. **Mark todos complete** as you progress
+1. **Request one file at a time** or ensure Claude processes incrementally
+1. **Verify each test passes** before asking for the next
+1. **Mark todos complete** as you progress
 
 Example prompt:
+
 ```
 Test all components in `path/to/directory/`.
 First, analyze the directory and create a todo list ordered by complexity.
@@ -229,18 +239,21 @@ before proceeding to the next.
 ## Summary Checklist
 
 Before starting multi-file testing:
+
 - [ ] Listed all files needing tests
 - [ ] Ordered by complexity (simple → complex)
 - [ ] Created todo list for tracking
 - [ ] Understand dependencies between files
 
 During testing:
+
 - [ ] Processing ONE file at a time
 - [ ] Running tests after EACH file
 - [ ] Fixing failures BEFORE proceeding
 - [ ] Updating todo list progress
 
 After completion:
+
 - [ ] All individual tests pass
 - [ ] Full directory test run passes
 - [ ] Coverage goals met

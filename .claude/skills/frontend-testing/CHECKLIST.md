@@ -172,6 +172,7 @@ it('loads data', async () => {
 ### Missing Edge Cases
 
 Always test these scenarios:
+
 - `null` / `undefined` inputs
 - Empty strings / arrays / objects
 - Boundary values (0, -1, MAX_INT)

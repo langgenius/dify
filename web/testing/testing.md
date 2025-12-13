@@ -117,11 +117,13 @@ When assigned to test a **directory/path** (not just a single file), follow thes
 Choose based on directory complexity:
 
 1. **Single spec file (Integration approach)** - Preferred for related components
+
    - Minimize mocking - use real project components
    - Test actual integration between components
    - Only mock: API calls, complex context providers, third-party libs
 
-2. **Multiple spec files (Unit approach)** - For complex directories
+1. **Multiple spec files (Unit approach)** - For complex directories
+
    - One spec file per component/hook/utility
    - More isolated testing
    - Useful when components are independent
