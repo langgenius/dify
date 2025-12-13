@@ -2819,8 +2819,10 @@ class SegmentService:
 
             # save vector index
             try:
+                keywords = args.get("keywords")
+                keywords_list = [keywords] if keywords is not None else None
                 VectorService.create_segments_vector(
-                    [args["keywords"]] if "keywords" in args else None, [segment_document], dataset, document.doc_form
+                    keywords_list, [segment_document], dataset, document.doc_form
                 )
             except Exception as e:
                 logger.exception("create segment index failed")
