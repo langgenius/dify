@@ -1,4 +1,5 @@
 import base64
+import datetime
 import json
 import logging
 import secrets
@@ -41,6 +42,7 @@ from models.provider_ids import DatasourceProviderID, ToolProviderID
 from models.source import DataSourceApiKeyAuthBinding, DataSourceOauthBinding
 from models.tools import ToolOAuthSystemClient
 from services.account_service import AccountService, RegisterService, TenantService
+from services.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 from services.clear_free_plan_tenant_expired_logs import ClearFreePlanTenantExpiredLogs
 from services.plugin.data_migration import PluginDataMigration
 from services.plugin.plugin_migration import PluginMigration
@@ -850,6 +852,45 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     ClearFreePlanTenantExpiredLogs.process(days, batch, tenant_ids)
 
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
+
+
+@click.command("clean-workflow-runs", help="Clean expired workflow runs and related data for free tenants.")
+@click.option("--days", default=30, show_default=True, help="Delete workflow runs created before N days ago.")
+@click.option("--batch-size", default=200, show_default=True, help="Batch size for selecting workflow runs.")
+@click.option(
+    "--start-after",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-after.",
+)
+def clean_workflow_runs(
+    days: int,
+    batch_size: int,
+    start_after: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+):
+    """
+    Clean workflow runs and related workflow data for free tenants.
+    """
+    if (start_after is None) ^ (end_before is None):
+        raise click.UsageError("--start-after and --end-before must be provided together.")
+
+    click.echo(click.style("Starting workflow run cleanup.", fg="white"))
+
+    WorkflowRunCleanup(
+        days=days,
+        batch_size=batch_size,
+        start_after=start_after,
+        end_before=end_before,
+    ).run()
+
+    click.echo(click.style("Workflow run cleanup completed.", fg="green"))
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")

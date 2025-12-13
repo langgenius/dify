@@ -34,9 +34,11 @@ Example:
     ```
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Protocol
+
+from sqlalchemy.orm import Session
 
 from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
@@ -250,6 +252,30 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         Note:
             This method performs hard deletion without backup. Use with caution
             and ensure proper data retention policies are followed.
+        """
+        ...
+
+    def get_runs_batch_by_time_range(
+        self,
+        start_after: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Fetch a batch of workflow runs within a time window using keyset pagination.
+        """
+        ...
+
+    def delete_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        """
+        Delete workflow runs and their related records (node executions, offloads, app logs,
+        trigger logs, pauses, pause reasons).
         """
         ...
 
