@@ -5,6 +5,7 @@ According to ClickZetta's permission model, different Volume types have differen
 """
 
 import logging
+import re
 from enum import StrEnum
 
 logger = logging.getLogger(__name__)
@@ -263,13 +264,10 @@ class VolumePermissionManager:
                                 else:
                                     permissions.add(privilege)
 
-                # If no explicit permissions found, try executing a simple query to verify permissions
+                # If no explicit permissions found, don't attempt verification query
+                # rely on the explicit SHOW GRANTS check above to determine permissions
                 if not permissions:
-                    try:
-                        cursor.execute(f"SELECT COUNT(*) FROM {table_name} LIMIT 1")
-                        permissions.add("SELECT")
-                    except Exception:
-                        logger.debug("Cannot query table %s, no SELECT permission", table_name)
+                    logger.debug("No explicit permissions found for table %s in SHOW GRANTS", table_name)
 
         except Exception as e:
             logger.warning("Could not check table permissions for %s: %s", table_name, e)
@@ -354,6 +352,10 @@ class VolumePermissionManager:
             with self._connection.cursor() as cursor:
                 # Use correct ClickZetta syntax to check Volume permissions
                 logger.info("Checking permissions for volume: %s", volume_name)
+                # Validate volume_name to prevent SQL injection
+                if not self._is_valid_identifier(volume_name):
+                    logger.warning("Invalid volume name format: %s", volume_name)
+                    return permissions
                 cursor.execute(f"SHOW GRANTS ON VOLUME {volume_name}")
                 grants = cursor.fetchall()
 
@@ -585,6 +587,27 @@ class VolumePermissionManager:
         file_path_lower = file_path.lower()
 
         return any(pattern in file_path_lower for pattern in sensitive_patterns)
+
+    def _is_valid_identifier(self, identifier: str) -> bool:
+        """Validate if identifier is a valid SQL identifier to prevent SQL injection.
+        
+        Valid identifiers should only contain alphanumeric characters, underscores, and dots.
+        Must start with a letter or underscore.
+        
+        Args:
+            identifier: Identifier to validate
+            
+        Returns:
+            True if identifier is valid, False otherwise
+        """
+        if not identifier:
+            return False
+        
+        # Valid SQL identifier pattern: starts with letter or underscore, contains alphanumeric, underscores, and dots
+        # Pattern allows for schema.table format (e.g., schema_name.table_name)
+        pattern = r'^[a-zA-Z_][a-zA-Z0-9_]*(\.[a-zA-Z_][a-zA-Z0-9_]*)*$'
+        
+        return bool(re.match(pattern, identifier))
 
     def validate_operation(self, operation: str, dataset_id: str | None = None) -> bool:
         """Validate operation permission
