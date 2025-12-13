@@ -92,15 +92,16 @@ describe('CreateAppCard', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<CreateAppCard ref={defaultRef} />)
-      expect(screen.getByText('Create App')).toBeInTheDocument()
+      // Use pattern matching for resilient text assertions
+      expect(screen.getByText(/create app/i)).toBeInTheDocument()
     })
 
     it('should render three create buttons', () => {
       render(<CreateAppCard ref={defaultRef} />)
 
-      expect(screen.getByText('Start from Blank')).toBeInTheDocument()
-      expect(screen.getByText('Start from Template')).toBeInTheDocument()
-      expect(screen.getByText('Import DSL')).toBeInTheDocument()
+      expect(screen.getByText(/start from blank/i)).toBeInTheDocument()
+      expect(screen.getByText(/start from template/i)).toBeInTheDocument()
+      expect(screen.getByText(/import dsl/i)).toBeInTheDocument()
     })
 
     it('should render all buttons as clickable', () => {
@@ -125,7 +126,7 @@ describe('CreateAppCard', () => {
 
     it('should render with selectedAppType prop', () => {
       render(<CreateAppCard ref={defaultRef} selectedAppType="chat" />)
-      expect(screen.getByText('Create App')).toBeInTheDocument()
+      expect(screen.getByText(/create app/i)).toBeInTheDocument()
     })
   })
 

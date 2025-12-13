@@ -28,7 +28,8 @@ describe('Footer', () => {
 
     it('should display the community heading', () => {
       render(<Footer />)
-      expect(screen.getByText('Join Our Community')).toBeInTheDocument()
+      // Use pattern matching for resilient text assertions
+      expect(screen.getByText(/join our community/i)).toBeInTheDocument()
     })
 
     it('should display the community intro text', () => {
@@ -81,7 +82,7 @@ describe('Footer', () => {
 
     it('should have gradient text styling on heading', () => {
       render(<Footer />)
-      const heading = screen.getByText('Join Our Community')
+      const heading = screen.getByText(/join our community/i)
       expect(heading).toHaveClass('text-gradient')
     })
   })

@@ -157,19 +157,23 @@ jest.mock('next/dynamic', () => {
   }
 })
 
-// Mock child components
+/**
+ * Mock child components for focused List component testing.
+ * These mocks isolate the List component's behavior from its children.
+ * Each child component (AppCard, NewAppCard, Empty, Footer) has its own dedicated tests.
+ */
 jest.mock('./app-card', () => ({
   __esModule: true,
   default: ({ app }: any) => {
     const React = require('react')
-    return React.createElement('div', { 'data-testid': `app-card-${app.id}` }, app.name)
+    return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
   },
 }))
 
 jest.mock('./new-app-card', () => {
   const React = require('react')
   return React.forwardRef((_props: any, _ref: any) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card' }, 'New App Card')
+    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
   })
 })
 
@@ -177,7 +181,7 @@ jest.mock('./empty', () => ({
   __esModule: true,
   default: () => {
     const React = require('react')
-    return React.createElement('div', { 'data-testid': 'empty-state' }, 'No apps found')
+    return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
   },
 }))
 
@@ -185,22 +189,33 @@ jest.mock('./footer', () => ({
   __esModule: true,
   default: () => {
     const React = require('react')
-    return React.createElement('footer', { 'data-testid': 'footer' }, 'Footer')
+    return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
   },
 }))
 
-// Mock base components
+/**
+ * Mock base components that have deep dependency chains or require controlled test behavior.
+ *
+ * Per frontend testing skills (mocking.md), we generally should NOT mock base components.
+ * However, the following require mocking due to:
+ * - Deep dependency chains importing ES modules (like ky) incompatible with Jest
+ * - Need for controlled interaction behavior in tests (onChange, onClear handlers)
+ * - Complex internal state that would make tests flaky
+ *
+ * These mocks preserve the component's props interface to test List's integration correctly.
+ */
 jest.mock('@/app/components/base/tab-slider-new', () => ({
   __esModule: true,
   default: ({ value, onChange, options }: any) => {
     const React = require('react')
-    return React.createElement('div', { 'data-testid': 'tab-slider' },
+    return React.createElement('div', { 'data-testid': 'tab-slider', 'role': 'tablist' },
       options.map((opt: any) =>
         React.createElement('button', {
           'key': opt.value,
           'data-testid': `tab-${opt.value}`,
+          'role': 'tab',
+          'aria-selected': value === opt.value,
           'onClick': () => onChange(opt.value),
-          'className': value === opt.value ? 'active' : '',
         }, opt.text),
       ),
     )
@@ -214,11 +229,13 @@ jest.mock('@/app/components/base/input', () => ({
     return React.createElement('div', { 'data-testid': 'search-input' },
       React.createElement('input', {
         'data-testid': 'search-input-field',
+        'role': 'searchbox',
         'value': value || '',
         onChange,
       }),
       React.createElement('button', {
         'data-testid': 'clear-search',
+        'aria-label': 'Clear search',
         'onClick': onClear,
       }, 'Clear'),
     )
@@ -229,7 +246,7 @@ jest.mock('@/app/components/base/tag-management/filter', () => ({
   __esModule: true,
   default: ({ value, onChange }: any) => {
     const React = require('react')
-    return React.createElement('div', { 'data-testid': 'tag-filter' },
+    return React.createElement('div', { 'data-testid': 'tag-filter', 'role': 'listbox' },
       React.createElement('button', {
         'data-testid': 'add-tag-filter',
         'onClick': () => onChange([...value, 'new-tag']),
@@ -245,7 +262,9 @@ jest.mock('@/app/components/datasets/create/website/base/checkbox-with-label', (
     return React.createElement('label', { 'data-testid': 'created-by-me-checkbox' },
       React.createElement('input', {
         'type': 'checkbox',
+        'role': 'checkbox',
         'checked': isChecked,
+        'aria-checked': isChecked,
         onChange,
         'data-testid': 'created-by-me-input',
       }),

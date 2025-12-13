@@ -33,7 +33,8 @@ describe('Empty', () => {
 
     it('should display the no apps found message', () => {
       render(<Empty />)
-      expect(screen.getByText('No apps found')).toBeInTheDocument()
+      // Use pattern matching for resilient text assertions
+      expect(screen.getByText(/no apps found/i)).toBeInTheDocument()
     })
   })
 
