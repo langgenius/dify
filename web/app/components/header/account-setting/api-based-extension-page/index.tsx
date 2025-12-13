@@ -1,5 +1,4 @@
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import {
   RiAddLine,
 } from '@remixicon/react'
@@ -7,15 +6,12 @@ import Item from './item'
 import Empty from './empty'
 import Button from '@/app/components/base/button'
 import { useModalContext } from '@/context/modal-context'
-import { fetchApiBasedExtensionList } from '@/service/common'
+import { useApiBasedExtensions } from '@/service/use-common'
 
 const ApiBasedExtensionPage = () => {
   const { t } = useTranslation()
   const { setShowApiBasedExtensionModal } = useModalContext()
-  const { data, mutate, isLoading } = useSWR(
-    '/api-based-extension',
-    fetchApiBasedExtensionList,
-  )
+  const { data, refetch: mutate, isPending: isLoading } = useApiBasedExtensions()
 
   const handleOpenApiBasedExtensionModal = () => {
     setShowApiBasedExtensionModal({

@@ -1,16 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
-import useSWR from 'swr'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
 import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
-import { fetchNotionConnection } from '@/service/common'
 import NotionIcon from '@/app/components/base/notion-icon'
 import { noop } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
+import { useNotionConnection } from '@/service/use-common'
 
 const Icon: FC<{
   src: string
@@ -34,7 +33,7 @@ const DataSourceNotion: FC<Props> = ({
 }) => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const [canConnectNotion, setCanConnectNotion] = useState(false)
-  const { data } = useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
+  const { data } = useNotionConnection(canConnectNotion)
   const { t } = useTranslation()
 
   const connected = !!workspaces.length

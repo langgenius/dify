@@ -3,15 +3,21 @@ import { useLanguage } from './hooks'
 import { useContext } from 'use-context-selector'
 import { after } from 'node:test'
 
-jest.mock('swr', () => ({
-  __esModule: true,
-  default: jest.fn(), // mock useSWR
-  useSWRConfig: jest.fn(),
+jest.mock('@tanstack/react-query', () => ({
+  useQuery: jest.fn(),
+  useQueryClient: jest.fn(() => ({
+    invalidateQueries: jest.fn(),
+  })),
 }))
 
 // mock use-context-selector
 jest.mock('use-context-selector', () => ({
   useContext: jest.fn(),
+  createContext: () => ({
+    Provider: ({ children }: any) => children,
+    Consumer: ({ children }: any) => children(null),
+  }),
+  useContextSelector: jest.fn(),
 }))
 
 // mock service/common functions
@@ -19,8 +25,13 @@ jest.mock('@/service/common', () => ({
   fetchDefaultModal: jest.fn(),
   fetchModelList: jest.fn(),
   fetchModelProviderCredentials: jest.fn(),
-  fetchModelProviders: jest.fn(),
   getPayUrl: jest.fn(),
+}))
+
+jest.mock('@/service/use-common', () => ({
+  commonQueryKeys: {
+    modelProviders: ['common', 'model-providers'],
+  },
 }))
 
 // mock context hooks

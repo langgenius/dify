@@ -5,10 +5,10 @@ import { useRouter } from 'next/navigation'
 import ExploreContext from '@/context/explore-context'
 import Sidebar from '@/app/components/explore/sidebar'
 import { useAppContext } from '@/context/app-context'
-import { fetchMembers } from '@/service/common'
 import type { InstalledApp } from '@/models/explore'
 import { useTranslation } from 'react-i18next'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useMembers } from '@/service/use-common'
 
 export type IExploreProps = {
   children: React.ReactNode
@@ -24,18 +24,16 @@ const Explore: FC<IExploreProps> = ({
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
   const [isFetchingInstalledApps, setIsFetchingInstalledApps] = useState(false)
   const { t } = useTranslation()
+  const { data: membersData } = useMembers()
 
   useDocumentTitle(t('common.menus.explore'))
 
   useEffect(() => {
-    (async () => {
-      const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-      if (!accounts)
-        return
-      const currUser = accounts.find(account => account.id === userProfile.id)
-      setHasEditPermission(currUser?.role !== 'normal')
-    })()
-  }, [])
+    if (!membersData?.accounts)
+      return
+    const currUser = membersData.accounts.find(account => account.id === userProfile.id)
+    setHasEditPermission(currUser?.role !== 'normal')
+  }, [membersData, userProfile.id])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)

@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import useSWR from 'swr'
 import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { UploadFileSetting } from '../../../types'
@@ -11,9 +10,9 @@ import FileTypeItem from './file-type-item'
 import InputNumberWithSlider from './input-number-with-slider'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import { TransferMethod } from '@/types/app'
-import { fetchFileUploadConfig } from '@/service/common'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { formatFileSize } from '@/utils/format'
+import { useFileUploadConfig } from '@/service/use-common'
 
 type Props = {
   payload: UploadFileSetting
@@ -38,7 +37,7 @@ const FileUploadSetting: FC<Props> = ({
     allowed_file_types,
     allowed_file_extensions,
   } = payload
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const {
     imgSizeLimit,
     docSizeLimit,
