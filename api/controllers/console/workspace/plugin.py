@@ -46,7 +46,7 @@ class PluginDebuggingKeyApi(Resource):
 
 
 class ParserList(BaseModel):
-    page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
+    page: int = Field(default=1, ge=1, description="Page number")
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
 
 
@@ -106,7 +106,7 @@ class ParserPluginIdentifierQuery(BaseModel):
 
 
 class ParserTasks(BaseModel):
-    page: int = Field(default=1, ge=1, le=99999, description="Page number (1-99999)")
+    page: int = Field(default=1, ge=1, description="Page number")
     page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
 
 
