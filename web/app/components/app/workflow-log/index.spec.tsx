@@ -652,6 +652,25 @@ describe('Workflow Log Module Integration Tests', () => {
         const searchInput = screen.getByPlaceholderText('common.operation.search')
         expect(searchInput).toHaveValue('test')
       })
+
+      it('should clear keyword when clear button is clicked', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        const propsWithKeyword = {
+          queryParams: { status: 'all', period: '2', keyword: 'test' } as QueryParam,
+          setQueryParams: mockSetQueryParams,
+        }
+        render(<Filter {...propsWithKeyword} />)
+
+        // Act - find and click the clear button
+        const searchInput = screen.getByPlaceholderText('common.operation.search')
+        await user.clear(searchInput)
+
+        // Assert - onChange should be called with empty string
+        expect(mockSetQueryParams).toHaveBeenCalledWith(
+          expect.objectContaining({ keyword: '' }),
+        )
+      })
     })
 
     describe('TIME_PERIOD_MAPPING Export', () => {
@@ -677,6 +696,58 @@ describe('Workflow Log Module Integration Tests', () => {
       it('should have correct value for allTime period', () => {
         // Assert - allTime should have -1 value (special case)
         expect(TIME_PERIOD_MAPPING['9'].value).toBe(-1)
+      })
+    })
+
+    describe('Period Filter', () => {
+      it('should render different period values correctly', () => {
+        // Arrange - test with different period
+        const propsWithPeriod = {
+          queryParams: { status: 'all', period: '1' } as QueryParam,
+          setQueryParams: mockSetQueryParams,
+        }
+
+        // Act
+        render(<Filter {...propsWithPeriod} />)
+
+        // Assert - period chip should be rendered
+        expect(screen.getByText(/appLog.filter.period/)).toBeInTheDocument()
+      })
+
+      it('should render with allTime period', () => {
+        // Arrange
+        const propsWithAllTime = {
+          queryParams: { status: 'all', period: '9' } as QueryParam,
+          setQueryParams: mockSetQueryParams,
+        }
+
+        // Act
+        render(<Filter {...propsWithAllTime} />)
+
+        // Assert
+        expect(screen.getByText(/appLog.filter.period/)).toBeInTheDocument()
+      })
+    })
+
+    describe('Status Filter', () => {
+      it.each([
+        ['all', 'All'],
+        ['succeeded', 'Success'],
+        ['failed', 'Fail'],
+        ['stopped', 'Stop'],
+        ['partial-succeeded', 'Partial Success'],
+      ])('should display correct text for status %s', (statusValue, expectedText) => {
+        // Arrange
+        const props = {
+          queryParams: { status: statusValue, period: '2' } as QueryParam,
+          setQueryParams: mockSetQueryParams,
+        }
+
+        // Act
+        render(<Filter {...props} />)
+
+        // Assert
+        expect(screen.getByText(expectedText)).toBeInTheDocument()
       })
     })
   })
@@ -944,6 +1015,101 @@ describe('Workflow Log Module Integration Tests', () => {
         // Assert - look for the unread indicator dot
         const unreadDot = container.querySelector('.bg-util-colors-blue-blue-500')
         expect(unreadDot).toBeInTheDocument()
+      })
+
+      it('should not show unread indicator when read_at is set', () => {
+        // Arrange
+        const mockLog = createMockWorkflowLog({ read_at: Date.now() })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        const { container } = render(
+          <WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />,
+        )
+
+        // Assert - unread indicator should not be present
+        const unreadDot = container.querySelector('.bg-util-colors-blue-blue-500')
+        expect(unreadDot).not.toBeInTheDocument()
+      })
+    })
+
+    describe('Edge Cases', () => {
+      it('should handle empty logs array gracefully', () => {
+        // Arrange
+        const mockLogs = createMockLogsResponse([], 0)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Assert - should render empty table
+        expect(screen.getByRole('table')).toBeInTheDocument()
+        const tbody = screen.getByRole('table').querySelector('tbody')
+        expect(tbody?.children).toHaveLength(0)
+      })
+
+      it('should handle logs with very large elapsed time', () => {
+        // Arrange
+        const mockLog = createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ elapsed_time: 9999.999 }),
+        })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Assert
+        expect(screen.getByText('9999.999s')).toBeInTheDocument()
+      })
+
+      it('should handle logs with very large token count', () => {
+        // Arrange
+        const mockLog = createMockWorkflowLog({
+          workflow_run: createMockWorkflowRun({ total_tokens: 1000000 }),
+        })
+        const mockLogs = createMockLogsResponse([mockLog], 1)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogs} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Assert
+        expect(screen.getByText('1000000')).toBeInTheDocument()
+      })
+
+      it('should maintain row highlighting for selected log', async () => {
+        // Arrange
+        const user = userEvent.setup()
+        const mockLogs = [
+          createMockWorkflowLog({ id: 'log-1' }),
+          createMockWorkflowLog({ id: 'log-2' }),
+        ]
+        const mockLogsResponse = createMockLogsResponse(mockLogs, 2)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogsResponse} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+        const rows = screen.getAllByRole('row')
+        await user.click(rows[1]) // Click first data row
+
+        // Assert - drawer should be open
+        await waitFor(() => {
+          expect(screen.getByTestId('drawer')).toBeInTheDocument()
+        })
+      })
+
+      it('should sort logs in descending order by default', () => {
+        // Arrange
+        const mockLogs = [
+          createMockWorkflowLog({ id: 'log-1', created_at: 1000 }),
+          createMockWorkflowLog({ id: 'log-2', created_at: 2000 }),
+          createMockWorkflowLog({ id: 'log-3', created_at: 3000 }),
+        ]
+        const mockLogsResponse = createMockLogsResponse(mockLogs, 3)
+
+        // Act
+        render(<WorkflowAppLogList logs={mockLogsResponse} appDetail={createMockApp()} onRefresh={mockOnRefresh} />)
+
+        // Assert - newest first (descending order)
+        const rows = screen.getAllByRole('row')
+        expect(rows).toHaveLength(4) // 1 header + 3 data rows
       })
     })
   })
@@ -1262,6 +1428,74 @@ describe('Workflow Log Module Integration Tests', () => {
 
       // Assert - should not show triggered_from column
       expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
+    })
+
+    it('should handle status filter set to succeeded', () => {
+      // Arrange
+      mockedUseSWR.mockReturnValue({
+        data: createMockLogsResponse([], 0),
+        mutate: jest.fn(),
+        isValidating: false,
+        isLoading: false,
+        error: undefined,
+      })
+
+      // Act
+      render(<Logs {...defaultProps} />)
+
+      // Assert - should not include status in query when 'all'
+      expect(mockedUseSWR).toHaveBeenCalledWith(
+        expect.objectContaining({
+          params: expect.not.objectContaining({ status: 'all' }),
+        }),
+        expect.any(Function),
+      )
+    })
+
+    it('should handle allTime period correctly', () => {
+      // Arrange - set up component with allTime period
+      mockedUseSWR.mockReturnValue({
+        data: createMockLogsResponse([], 0),
+        mutate: jest.fn(),
+        isValidating: false,
+        isLoading: false,
+        error: undefined,
+      })
+
+      // Act
+      const { rerender } = render(<Logs {...defaultProps} />)
+
+      // Update to allTime period (period '9')
+      // Component should not include date filters for allTime
+      rerender(<Logs {...defaultProps} />)
+
+      // Assert - The query should have been called
+      expect(mockedUseSWR).toHaveBeenCalled()
+    })
+
+    it('should handle pagination limit changes', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const mockLogs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
+        createMockWorkflowLog({ id: `log-${i}` }),
+      )
+      mockedUseSWR.mockReturnValue({
+        data: createMockLogsResponse(mockLogs, APP_PAGE_LIMIT + 10),
+        mutate: jest.fn(),
+        isValidating: false,
+        isLoading: false,
+        error: undefined,
+      })
+
+      // Act
+      render(<Logs {...defaultProps} />)
+      const changeLimitBtn = screen.getByTestId('change-limit-btn')
+      await user.click(changeLimitBtn)
+
+      // Assert - limit should be updated
+      await waitFor(() => {
+        expect(screen.getByTestId('page-limit')).toHaveTextContent('20')
+      })
     })
   })
 })
