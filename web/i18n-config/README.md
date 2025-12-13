@@ -70,6 +70,8 @@ export type I18nText = {
   'uk-UA': string
   'id-ID': string
   'tr-TR': string
+  'fa-IR': string
+  'ar-TN': string
   'YOUR_LANGUAGE_CODE': string
 }
 ```
@@ -155,6 +157,18 @@ export const languages = [
     value: 'uk-UA',
     name: 'Українська(Україна)',
     example: 'Привет, Dify!',
+    supported: true,
+  },
+  {
+    value: 'fa-IR',
+    name: 'Farsi (Iran)',
+    example: 'سلام, دیفای!',
+    supported: true,
+  },
+  {
+    value: 'ar-TN',
+    name: 'العربية (تونس)',
+    example: 'مرحبا، Dify!',
     supported: true,
   },
   // Add your language here 👇
