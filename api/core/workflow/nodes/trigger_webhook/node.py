@@ -1,13 +1,20 @@
+import logging
 from collections.abc import Mapping
 from typing import Any
 
+from core.variables.types import SegmentType
+from core.variables.variables import FileVariable
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionStatus
 from core.workflow.enums import NodeExecutionType, NodeType
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
+from factories import file_factory
+from factories.variable_factory import build_segment_with_type
 
 from .entities import ContentType, WebhookData
+
+logger = logging.getLogger(__name__)
 
 
 class TriggerWebhookNode(Node[WebhookData]):
@@ -112,13 +119,30 @@ class TriggerWebhookNode(Node[WebhookData]):
 
             if param_type == "file":
                 # Get File object (already processed by webhook controller)
-                file_obj = webhook_data.get("files", {}).get(param_name)
-                outputs[param_name] = file_obj
+                files = webhook_data.get("files", {})
+                if files and isinstance(files, dict):
+                    file = files["file"]
+                    if file and isinstance(file, dict):
+                        try:
+                            file_obj = file_factory.build_from_mapping(
+                                mapping=file,
+                                tenant_id=self.tenant_id,
+                            )
+                            file_segment = build_segment_with_type(SegmentType.FILE, file_obj)
+                            outputs[param_name] = FileVariable(
+                                name=param_name, value=file_segment.value, selector=[self.id, param_name]
+                            )
+                        except ValueError:
+                            logger.error(
+                                "Failed to build FileVariable for webhook file parameter %s", param_name, exc_info=True
+                            )
+                            outputs[param_name] = files
+                else:
+                    outputs[param_name] = files
             else:
                 # Get regular body parameter
                 outputs[param_name] = webhook_data.get("body", {}).get(param_name)
 
         # Include raw webhook data for debugging/advanced use
         outputs["_webhook_raw"] = webhook_data
-
         return outputs
