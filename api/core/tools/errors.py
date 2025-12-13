@@ -29,6 +29,10 @@ class ToolApiSchemaError(ValueError):
     pass
 
 
+class ToolSSRFError(ValueError):
+    pass
+
+
 class ToolCredentialPolicyViolationError(ValueError):
     pass
 
