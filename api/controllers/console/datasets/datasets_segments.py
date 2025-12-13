@@ -3,7 +3,7 @@ import uuid
 from flask import request
 from flask_restx import Resource, marshal
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import String, cast, or_, select
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -143,7 +143,12 @@ class DatasetDocumentSegmentListApi(Resource):
             query = query.where(DocumentSegment.hit_count >= hit_count_gte)
 
         if keyword:
-            query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
+            query = query.where(
+                or_(
+                    DocumentSegment.content.ilike(f"%{keyword}%"),
+                    cast(DocumentSegment.keywords, String).ilike(f"%{keyword}%"),
+                )
+            )
 
         if args.enabled.lower() != "all":
             if args.enabled.lower() == "true":
