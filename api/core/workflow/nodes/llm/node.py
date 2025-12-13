@@ -252,6 +252,7 @@ class LLMNode(Node[LLMNodeData]):
 
             structured_output: LLMStructuredOutput | None = None
 
+            provider_response_id = None
             for event in generator:
                 if isinstance(event, StreamChunkEvent):
                     yield event
@@ -261,6 +262,7 @@ class LLMNode(Node[LLMNodeData]):
                     usage = event.usage
                     finish_reason = event.finish_reason
                     reasoning_content = event.reasoning_content or ""
+                    provider_response_id = event.provider_response_id
 
                     # For downstream nodes, determine clean text based on reasoning_format
                     if self.node_data.reasoning_format == "tagged":
@@ -312,17 +314,22 @@ class LLMNode(Node[LLMNodeData]):
                 is_final=True,
             )
 
+            # Include provider response ID in metadata if available
+            node_run_result_metadata = {
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+            }
+            if provider_response_id:
+                node_run_result_metadata[WorkflowNodeExecutionMetadataKey.PROVIDER_RESPONSE_ID] = provider_response_id
+
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=node_inputs,
                     process_data=process_data,
                     outputs=outputs,
-                    metadata={
-                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
-                        WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
-                    },
+                    metadata=node_run_result_metadata,
                     llm_usage=usage,
                 )
             )
@@ -451,6 +458,7 @@ class LLMNode(Node[LLMNodeData]):
         has_content = False
 
         collected_structured_output = None  # Collect structured_output from streaming chunks
+        provider_response_id = None  # Track provider response ID from streaming chunks
         # Consume the invoke result and handle generator exception
         try:
             for result in invoke_result:
@@ -458,9 +466,15 @@ class LLMNode(Node[LLMNodeData]):
                     # Collect structured_output from the chunk
                     if result.structured_output is not None:
                         collected_structured_output = dict(result.structured_output)
+                    # Extract provider response ID from streaming chunk
+                    if result.id and not provider_response_id:
+                        provider_response_id = result.id
                     yield result
                 if isinstance(result, LLMResultChunk):
                     contents = result.delta.message.content
+                    if result.id and not provider_response_id:
+                        provider_response_id = result.id
+
                     for text_part in LLMNode._save_multimodal_output_and_convert_result_to_markdown(
                         contents=contents,
                         file_saver=file_saver,
@@ -522,6 +536,7 @@ class LLMNode(Node[LLMNodeData]):
             reasoning_content=reasoning_content,
             # Pass structured output if collected from streaming chunks
             structured_output=collected_structured_output,
+            provider_response_id=provider_response_id,
         )
 
     @staticmethod
@@ -1169,6 +1184,8 @@ class LLMNode(Node[LLMNodeData]):
             reasoning_content=reasoning_content,
             # Pass structured output if enabled
             structured_output=getattr(invoke_result, "structured_output", None),
+            # Pass provider response ID if available
+            provider_response_id=invoke_result.id,
         )
         if request_latency is not None:
             event.usage.latency = round(request_latency, 3)

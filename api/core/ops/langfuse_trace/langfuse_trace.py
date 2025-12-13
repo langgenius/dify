@@ -28,7 +28,7 @@ from core.ops.langfuse_trace.entities.langfuse_trace_entity import (
 )
 from core.ops.utils import filter_none_values
 from core.repositories import DifyCoreRepositoryFactory
-from core.workflow.enums import NodeType
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey
 from extensions.ext_database import db
 from models import EndUser, WorkflowNodeExecutionTriggeredFrom
 from models.enums import MessageStatus
@@ -194,6 +194,16 @@ class LangFuseDataTrace(BaseTraceInstance):
                     unit=UnitEnum.TOKENS,
                 )
 
+                # Include provider response ID in generation metadata if available
+                generation_metadata = metadata.copy()
+                if (
+                    node_execution.metadata
+                    and WorkflowNodeExecutionMetadataKey.PROVIDER_RESPONSE_ID in node_execution.metadata
+                ):
+                    generation_metadata[WorkflowNodeExecutionMetadataKey.PROVIDER_RESPONSE_ID] = (
+                        node_execution.metadata[WorkflowNodeExecutionMetadataKey.PROVIDER_RESPONSE_ID]
+                    )
+
                 node_generation_data = LangfuseGeneration(
                     id=node_execution_id,
                     name=node_name,
@@ -203,7 +213,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     end_time=finished_at,
                     input=inputs,
                     output=outputs,
-                    metadata=metadata,
+                    metadata=generation_metadata,
                     level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
                     status_message=trace_info.error or "",
                     parent_observation_id=trace_info.workflow_run_id if trace_info.message_id else None,
@@ -283,6 +293,11 @@ class LangFuseDataTrace(BaseTraceInstance):
             totalCost=message_data.total_price,
         )
 
+        # Include provider response ID in generation metadata if available
+        generation_metadata = metadata.copy()
+        if trace_info.provider_response_id:
+            generation_metadata[WorkflowNodeExecutionMetadataKey.PROVIDER_RESPONSE_ID] = trace_info.provider_response_id
+
         langfuse_generation_data = LangfuseGeneration(
             name="llm",
             trace_id=trace_id,
@@ -291,7 +306,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             model=message_data.model_id,
             input=trace_info.inputs,
             output=message_data.answer,
-            metadata=metadata,
+            metadata=generation_metadata,
             level=(LevelEnum.DEFAULT if message_data.status != MessageStatus.ERROR else LevelEnum.ERROR),
             status_message=message_data.error or "",
             usage=generation_usage,

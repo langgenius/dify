@@ -65,6 +65,7 @@ class MessageTraceInfo(BaseTraceInfo):
     gen_ai_server_time_to_first_token: float | None = None
     llm_streaming_time_to_generate: float | None = None
     is_streaming_request: bool = False
+    provider_response_id: str | None = None
 
 
 class ModerationTraceInfo(BaseTraceInfo):

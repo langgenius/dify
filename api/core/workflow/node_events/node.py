@@ -24,6 +24,7 @@ class ModelInvokeCompletedEvent(NodeEventBase):
     finish_reason: str | None = None
     reasoning_content: str | None = None
     structured_output: dict | None = None
+    provider_response_id: str | None = None
 
 
 class RunRetryEvent(NodeEventBase):
