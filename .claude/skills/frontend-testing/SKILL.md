@@ -131,6 +131,44 @@ describe('ComponentName', () => {
 })
 ```
 
+## Testing Workflow (CRITICAL)
+
+### ⚠️ Incremental Approach Required
+
+**NEVER generate all test files at once.** For complex components or multi-file directories:
+
+1. **Analyze & Plan**: List all files, order by complexity (simple → complex)
+2. **Process ONE at a time**: Write test → Run test → Fix if needed → Next
+3. **Verify before proceeding**: Do NOT continue to next file until current passes
+
+```
+For each file:
+  ┌────────────────────────────────────────┐
+  │ 1. Write test                          │
+  │ 2. Run: pnpm test -- <file>.spec.tsx   │
+  │ 3. PASS? → Mark complete, next file    │
+  │    FAIL? → Fix first, then continue    │
+  └────────────────────────────────────────┘
+```
+
+### Complexity-Based Order
+
+Process in this order for multi-file testing:
+1. 🟢 Utility functions (simplest)
+2. 🟢 Custom hooks
+3. 🟡 Simple components (presentational)
+4. 🟡 Medium components (state, effects)
+5. 🔴 Complex components (API, routing)
+6. 🔴 Integration tests (index files - last)
+
+### When to Refactor First
+
+- **Complexity > 50**: Break into smaller pieces before testing
+- **500+ lines**: Consider splitting before testing
+- **Many dependencies**: Extract logic into hooks first
+
+> 📖 See `guides/workflow.md` for complete workflow details and todo list format.
+
 ## Testing Strategy
 
 ### Path-Level Testing (Directory Testing)
@@ -138,7 +176,7 @@ describe('ComponentName', () => {
 When assigned to test a directory/path, test **ALL content** within that path:
 
 - Test all components, hooks, utilities in the directory (not just `index` file)
-- Can use a single `.spec.tsx` file or split into multiple files
+- Use incremental approach: one file at a time, verify each before proceeding
 - Goal: 100% coverage of ALL files in the directory
 
 ### Integration Testing First
@@ -249,6 +287,7 @@ it('should disable input when isReadOnly is true')
 ## Detailed Guides
 
 For more detailed information, refer to:
+- `guides/workflow.md` - **Incremental testing workflow** (MUST READ for multi-file testing)
 - `guides/mocking.md` - Mock patterns and best practices
 - `guides/async-testing.md` - Async operations and API calls
 - `guides/domain-components.md` - Workflow, Dataset, Configuration testing

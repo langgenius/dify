@@ -13,11 +13,26 @@ Use this checklist when generating or reviewing tests for Dify frontend componen
 
 ## Testing Strategy
 
+### ⚠️ Incremental Workflow (CRITICAL for Multi-File)
+
+- [ ] **NEVER generate all tests at once** - process one file at a time
+- [ ] Order files by complexity: utilities → hooks → simple → complex → integration
+- [ ] Create a todo list to track progress before starting
+- [ ] For EACH file: write → run test → verify pass → then next
+- [ ] **DO NOT proceed** to next file until current one passes
+
 ### Path-Level Coverage
 
 - [ ] **Test ALL files** in the assigned directory/path
 - [ ] List all components, hooks, utilities that need coverage
 - [ ] Decide: single spec file (integration) or multiple spec files (unit)
+
+### Complexity Assessment
+
+- [ ] Run `pnpm analyze-component <path>` for complexity score
+- [ ] **Complexity > 50**: Consider refactoring before testing
+- [ ] **500+ lines**: Consider splitting before testing
+- [ ] **30-50 complexity**: Use multiple describe blocks, organized structure
 
 ### Integration vs Mocking
 
@@ -93,11 +108,20 @@ Use this checklist when generating or reviewing tests for Dify frontend componen
 - [ ] >95% branch coverage
 - [ ] >95% line coverage
 
-## Post-Generation
+## Post-Generation (Per File)
 
-- [ ] Run `pnpm test -- path/to/file.spec.tsx`
-- [ ] Check coverage report
-- [ ] Run `pnpm lint:fix` on test file
+**Run these checks after EACH test file, not just at the end:**
+
+- [ ] Run `pnpm test -- path/to/file.spec.tsx` - **MUST PASS before next file**
+- [ ] Fix any failures immediately
+- [ ] Mark file as complete in todo list
+- [ ] Only then proceed to next file
+
+### After All Files Complete
+
+- [ ] Run full directory test: `pnpm test -- path/to/directory/`
+- [ ] Check coverage report: `pnpm test -- --coverage`
+- [ ] Run `pnpm lint:fix` on all test files
 - [ ] Run `pnpm type-check:tsgo`
 
 ## Common Issues to Watch
