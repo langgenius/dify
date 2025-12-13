@@ -101,7 +101,9 @@ Use this checklist when generating or reviewing tests for Dify frontend componen
 - [ ] Mock data uses actual types from source
 - [ ] Factory functions have proper return types
 
-## Coverage Goals
+## Coverage Goals (Per File)
+
+For the current file being tested:
 
 - [ ] 100% function coverage
 - [ ] 100% statement coverage

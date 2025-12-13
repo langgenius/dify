@@ -1,6 +1,7 @@
-______________________________________________________________________
-
-## name: Dify Frontend Testing description: Generate Jest + RTL tests for Dify frontend. Triggers on testing, spec files, coverage, Jest, RTL keywords, or write/review test requests.
+---
+name: Dify Frontend Testing
+description: Generate Jest + React Testing Library tests for Dify frontend components, hooks, and utilities. Triggers on testing, spec files, coverage, Jest, RTL, unit tests, integration tests, or write/review test requests.
+---
 
 # Dify Frontend Testing Skill
 
@@ -71,8 +72,16 @@ pnpm analyze-component <path> --review
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import Component from './index'
 
-// Mock dependencies
+// ✅ Import real project components (DO NOT mock these)
+// import Loading from '@/app/components/base/loading'
+// import { ChildComponent } from './child-component'
+
+// ✅ Mock external dependencies only
 jest.mock('@/service/api')
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/test',
+}))
 
 // Shared state for mocks (if needed)
 let mockSharedState = false
@@ -185,27 +194,12 @@ When assigned to test a directory/path, test **ALL content** within that path:
 
 **Prefer integration testing** when writing tests for a directory:
 
-1. **DO NOT mock base components** (`Loading`, `Button`, `Tooltip`, etc. from `@/app/components/base/`)
+- ✅ **Import real project components** directly (including base components and siblings)
+- ✅ **Only mock**: API services (`@/service/*`), `next/navigation`, complex context providers
+- ❌ **DO NOT mock** base components (`@/app/components/base/*`)
+- ❌ **DO NOT mock** sibling/child components in the same directory
 
-   - Base components will have their own dedicated tests
-   - Use real components to test actual integration behavior
-
-1. **Minimize mocking** - Only mock:
-
-   - External API calls (`@/service/*`)
-   - Complex context providers that are difficult to set up
-   - Third-party libraries with side effects (e.g., `next/navigation`)
-
-1. **Import real project components** instead of mocking them
-
-```typescript
-// ❌ Don't mock base components
-jest.mock('@/app/components/base/loading', () => () => <div>Loading</div>)
-
-// ✅ Import and use real base components
-import Loading from '@/app/components/base/loading'
-// The real Loading component will render in tests
-```
+> See [Test Structure Template](#test-structure-template) for correct import/mock patterns.
 
 ## Core Principles
 
@@ -286,12 +280,16 @@ it('should disable input when isReadOnly is true')
 | Context | Provider values, consumer behavior |
 | Forms | Validation, submission, error display |
 
-## Coverage Goals
+## Coverage Goals (Per File)
+
+For each test file generated, aim for:
 
 - ✅ **100%** function coverage
 - ✅ **100%** statement coverage
 - ✅ **>95%** branch coverage
 - ✅ **>95%** line coverage
+
+> **Note**: For multi-file directories, process one file at a time with full coverage each. See `guides/workflow.md`.
 
 ## Detailed Guides
 
