@@ -1,7 +1,6 @@
----
-name: Dify Frontend Testing
-description: Generate Jest + React Testing Library tests for Dify frontend components, hooks, and utilities. Triggers on testing, spec files, coverage, Jest, RTL, unit tests, integration tests, or write/review test requests.
----
+______________________________________________________________________
+
+## name: Dify Frontend Testing description: Generate Jest + React Testing Library tests for Dify frontend components, hooks, and utilities. Triggers on testing, spec files, coverage, Jest, RTL, unit tests, integration tests, or write/review test requests.
 
 # Dify Frontend Testing Skill
 
