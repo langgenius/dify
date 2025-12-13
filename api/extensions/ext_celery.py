@@ -12,15 +12,12 @@ from dify_app import DifyApp
 
 def _get_celery_ssl_options() -> dict[str, Any] | None:
     """Get SSL configuration for Celery broker/backend connections."""
-    # Use REDIS_USE_SSL for consistency with the main Redis client
     # Only apply SSL if we're using Redis as broker/backend
-    if not dify_config.REDIS_USE_SSL:
+    if not bool(dify_config.BROKER_USE_SSL):
         return None
 
     # Check if Celery is actually using Redis
-    broker_is_redis = dify_config.CELERY_BROKER_URL and (
-        dify_config.CELERY_BROKER_URL.startswith("redis://") or dify_config.CELERY_BROKER_URL.startswith("rediss://")
-    )
+    broker_is_redis = dify_config.CELERY_BACKEND == "redis"
 
     if not broker_is_redis:
         return None

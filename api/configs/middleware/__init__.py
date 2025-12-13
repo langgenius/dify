@@ -239,8 +239,13 @@ class CeleryConfig(DatabaseConfig):
     )
 
     CELERY_BROKER_URL: str | None = Field(
-        description="URL of the message broker for Celery tasks.",
+        description="URL of the message broker for Celery tasks. It starts with redis:// or rediss://.",
         default=None,
+    )
+
+    BROKER_USE_SSL: bool = Field(
+        description="Whether to use SSL for the message broker connection.",
+        default=False,
     )
 
     CELERY_USE_SENTINEL: bool | None = Field(
@@ -270,10 +275,6 @@ class CeleryConfig(DatabaseConfig):
             return self.CELERY_BROKER_URL
         else:
             return None
-
-    @property
-    def BROKER_USE_SSL(self) -> bool:
-        return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
 
 
 class InternalTestConfig(BaseSettings):

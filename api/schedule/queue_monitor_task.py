@@ -16,6 +16,8 @@ celery_redis = Redis(
     port=redis_config.get("port") or 6379,
     password=redis_config.get("password") or None,
     db=int(redis_config.get("virtual_host")) if redis_config.get("virtual_host") else 1,
+    ssl=bool(dify_config.BROKER_USE_SSL),
+    ssl_ca_certs=dify_config.REDIS_SSL_CA_CERTS if dify_config.BROKER_USE_SSL else None,
 )
 
 logger = logging.getLogger(__name__)
