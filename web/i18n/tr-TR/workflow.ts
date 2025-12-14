@@ -437,6 +437,7 @@ const translation = {
         input: 'Girdi değeri',
       },
       inputVars: 'Giriş Değişkenleri',
+      pluginNotInstalled: 'Eklenti yüklü değil',
     },
     start: {
       required: 'gerekli',
