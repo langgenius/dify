@@ -76,7 +76,7 @@ describe('ConfirmModal', () => {
       renderComponent()
 
       // Assert
-      const iconContainer = screen.getByTestId('modal-wrapper')?.querySelector('.rounded-xl')
+      const iconContainer = screen.getByTestId('modal-wrapper').querySelector('.rounded-xl')
       expect(iconContainer).toBeInTheDocument()
       expect(iconContainer).toHaveClass('border-[0.5px]')
       expect(iconContainer).toHaveClass('bg-background-section')
@@ -114,7 +114,7 @@ describe('ConfirmModal', () => {
       expect(screen.getByText('common.operation.confirm')).toBeInTheDocument()
     })
 
-    it('should apply custom className to modal wrapper', () => {
+    it('should apply default styling and width constraints', () => {
       // Arrange & Act
       renderComponent()
 
@@ -123,16 +123,6 @@ describe('ConfirmModal', () => {
       expect(modalWrapper).toHaveClass('w-[600px]')
       expect(modalWrapper).toHaveClass('max-w-[600px]')
       expect(modalWrapper).toHaveClass('p-8')
-    })
-
-    it('should display modal with correct width constraints', () => {
-      // Arrange & Act
-      renderComponent()
-
-      // Assert
-      const modalWrapper = screen.getByTestId('modal-wrapper')
-      expect(modalWrapper).toHaveClass('w-[600px]')
-      expect(modalWrapper).toHaveClass('max-w-[600px]')
     })
   })
 
@@ -144,12 +134,11 @@ describe('ConfirmModal', () => {
       const onClose = jest.fn()
       renderComponent({ onClose })
 
-      // Act - Find the close button by its cursor-pointer class and click it
+      // Act - Find the close button and click it
       const modalWrapper = screen.getByTestId('modal-wrapper')
       const closeButton = modalWrapper.querySelector('.cursor-pointer')
-
-      if (closeButton)
-        await user.click(closeButton)
+      expect(closeButton).toBeInTheDocument() // Ensure the button is found before clicking
+      await user.click(closeButton!)
 
       // Assert
       expect(onClose).toHaveBeenCalledTimes(1)
@@ -186,13 +175,11 @@ describe('ConfirmModal', () => {
     it('should not throw error when confirm button is clicked without onConfirm', async () => {
       // Arrange
       const user = userEvent.setup()
+      renderComponent({ onConfirm: undefined })
+      const confirmButton = screen.getByText('common.operation.confirm')
 
-      // Act & Assert - Should not throw
-      expect(async () => {
-        renderComponent({ onConfirm: undefined })
-        const confirmButton = screen.getByText('common.operation.confirm')
-        await user.click(confirmButton)
-      }).not.toThrow()
+      // Act & Assert - This will fail the test if user.click throws an unhandled error
+      await user.click(confirmButton)
     })
 
     it('should have correct button variants', () => {
@@ -200,34 +187,13 @@ describe('ConfirmModal', () => {
       renderComponent()
 
       // Assert
-      const buttons = screen.getAllByRole('button')
-      expect(buttons).toHaveLength(2) // Cancel and Confirm buttons
-
-      // The confirm button should have warning variant
       const confirmButton = screen.getByText('common.operation.confirm')
-      expect(confirmButton).toBeInTheDocument()
+      expect(confirmButton).toHaveClass('btn-warning')
     })
   })
 
   // Edge Cases (REQUIRED)
   describe('Edge Cases', () => {
-    it('should handle all props being provided correctly', () => {
-      // Arrange
-      const props = {
-        show: true,
-        onClose: jest.fn(),
-        onConfirm: jest.fn(),
-      }
-
-      // Act
-      render(<ConfirmModal {...props} />)
-
-      // Assert
-      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
-      expect(screen.getByText('tools.createTool.confirmTitle')).toBeInTheDocument()
-      expect(screen.getByText('tools.createTool.confirmTip')).toBeInTheDocument()
-    })
-
     it('should handle rapid show/hide toggling', () => {
       // Arrange
       const { rerender } = renderComponent({ show: false })
@@ -256,20 +222,15 @@ describe('ConfirmModal', () => {
 
       const modalWrapper = screen.getByTestId('modal-wrapper')
       const closeButton = modalWrapper.querySelector('.cursor-pointer')
+      expect(closeButton).toBeInTheDocument() // Ensure the button is found before clicking
 
       // Act
-      if (closeButton) {
-        await user.click(closeButton)
-        await user.click(closeButton)
-        await user.click(closeButton)
+      await user.click(closeButton!)
+      await user.click(closeButton!)
+      await user.click(closeButton!)
 
-        // Assert
-        expect(onClose).toHaveBeenCalledTimes(3)
-      }
-      else {
-        // Fallback if close button not found
-        expect(onClose).toHaveBeenCalledTimes(0)
-      }
+      // Assert
+      expect(onClose).toHaveBeenCalledTimes(3)
     })
 
     it('should handle multiple quick clicks on confirm button', async () => {
@@ -288,7 +249,7 @@ describe('ConfirmModal', () => {
       expect(onConfirm).toHaveBeenCalledTimes(3)
     })
 
-    it('should handle onClose being called multiple times', async () => {
+    it('should handle multiple quick clicks on cancel button', async () => {
       // Arrange
       const user = userEvent.setup()
       const onClose = jest.fn()
