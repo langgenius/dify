@@ -451,12 +451,21 @@ class RetrievalService:
                                     "position": child_chunk.position,
                                     "score": document.metadata.get("score", 0.0),
                                 }
-                                segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
-                                segment_child_map[segment.id]["max_score"] = max(
-                                    segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
-                                )
+                                if segment.id in segment_child_map:
+                                    segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
+                                    segment_child_map[segment.id]["max_score"] = max(
+                                        segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
+                                    )
+                                else:
+                                    segment_child_map[segment.id] = {
+                                        "max_score": document.metadata.get("score", 0.0),
+                                        "child_chunks": [child_chunk_detail],
+                                    }
                             if attachment_info:
-                                segment_file_map[segment.id].append(attachment_info)
+                                if segment.id in segment_file_map:
+                                    segment_file_map[segment.id].append(attachment_info)
+                                else:
+                                    segment_file_map[segment.id] = [attachment_info]
                     else:
                         # Handle normal documents
                         segment = None

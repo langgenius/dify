@@ -19,7 +19,6 @@
   background:
     linear-gradient(180deg, var(--color-components-avatar-bg-mask-stop-0, rgba(255, 255, 255, 0.12)) 0%, var(--color-components-avatar-bg-mask-stop-100, rgba(255, 255, 255, 0.08)) 100%),
     var(--color-util-colors-blue-brand-blue-brand-500, #296dff);
-  box-shadow: 0 10px 20px color-mix(in srgb, var(--color-util-colors-blue-brand-blue-brand-500, #296dff) 35%, transparent);
 }
 
 .highlight {

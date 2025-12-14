@@ -137,14 +137,14 @@ const translation = {
       name: 'Podjetje',
       description: 'Pridobite vse zmogljivosti in podporo za velike sisteme kritične za misijo.',
       includesTitle: 'Vse v načrtu Ekipa, plus:',
-      features: ['Razširljive rešitve za uvajanje na ravni podjetja', 'Pooblastilo za komercialno licenco', 'Ekskluzivne funkcije za podjetja', 'Več delovnih prostorov in upravljanje podjetja', 'SSO', 'Pogajani SLA-ji s strani partnerjev Dify', 'Napredna varnost in nadzor', 'Posodobitve in vzdrževanje uradno s strani Dify', 'Strokovna tehnična podpora'],
+      features: ['Razširljive rešitve za uvajanje na ravni podjetja', 'Pooblastilo za komercialno licenco', 'Ekskluzivne funkcije za podjetja', 'Več delovnih prostorov in upravljanje podjetja', 'SSO', 'Pogajani SLA-ji s strani partnerjev Dify', 'Napredna varnost in nadzor', 'Posodobitve in vzdrževanje s strani Dify uradno', 'Strokovna tehnična podpora'],
       priceTip: 'Letno zaračunavanje samo',
       price: 'Po meri',
       btnText: 'Kontaktirajte prodajo',
       for: 'Za velike ekipe',
     },
     community: {
-      features: ['Vse osnovne funkcije so izdane v javnem repozitoriju', 'Enotno delovno okolje', 'V skladu z Dify licenco odprte kode'],
+      features: ['Vse osnovne funkcije so izdane v javni repozitorij', 'Enotno delovno okolje', 'V skladu z Dify licenco odprte kode'],
       includesTitle: 'Brezplačne funkcije:',
       price: 'Brezplačno',
       name: 'Skupnost',
@@ -202,6 +202,20 @@ const translation = {
   viewBillingTitle: 'Fakturiranje in naročnine',
   viewBillingDescription: 'Upravljajte načine plačila, račune in spremembe naročnin',
   viewBillingAction: 'Upravljaj',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Nadgradite za nalaganje več dokumentov hkrati',
+      description: 'Dosegli ste omejitev nalaganja — na vašem trenutnem načrtu je mogoče izbrati in naložiti le en dokument naenkrat.',
+    },
+    uploadMultipleFiles: {
+      title: 'Nadgradite za odklep nalaganja dokumentov v skupkih',
+      description: 'Naložite več dokumentov hkrati, da prihranite čas in izboljšate učinkovitost.',
+    },
+    addChunks: {
+      title: 'Nadgradite, da nadaljujete z dodajanjem delov',
+      description: 'Dosegli ste omejitev dodajanja delov za ta načrt.',
+    },
+  },
 }
 
 export default translation

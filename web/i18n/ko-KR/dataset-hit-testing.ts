@@ -5,7 +5,6 @@ const translation = {
   table: {
     header: {
       source: '소스',
-      text: '텍스트',
       time: '시간',
       queryContent: '질의 내용',
     },

@@ -178,8 +178,8 @@ class HitTestingService:
 
     @classmethod
     def hit_testing_args_check(cls, args):
-        query = args["query"]
-        attachment_ids = args["attachment_ids"]
+        query = args.get("query")
+        attachment_ids = args.get("attachment_ids")
 
         if not attachment_ids and not query:
             raise ValueError("Query or attachment_ids is required")
