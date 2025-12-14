@@ -13,6 +13,7 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
+from dotenv import load_dotenv
 from flask import Flask
 from flask.testing import FlaskClient
 from sqlalchemy import Engine, text
@@ -22,6 +23,11 @@ from testcontainers.core.network import Network
 from testcontainers.core.waiting_utils import wait_for_logs
 from testcontainers.postgres import PostgresContainer
 from testcontainers.redis import RedisContainer
+
+# Getting the absolute path of the current file's directory
+ABS_PATH = os.path.dirname(os.path.abspath(__file__))
+
+load_dotenv(os.path.normpath(os.path.join(ABS_PATH, ".env")), override=True)
 
 from app_factory import create_app
 from extensions.ext_database import db
