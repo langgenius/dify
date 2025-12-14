@@ -16,18 +16,21 @@ import Title from './title'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
 import Loading from '@/app/components/base/loading'
 import { useDocLink } from '@/context/i18n'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 type OnlineDocumentsProps = {
-  isInPipeline?: boolean
   nodeId: string
   nodeData: DataSourceNodeType
   onCredentialChange: (credentialId: string) => void
+  isInPipeline?: boolean
+  supportBatchUpload?: boolean
 }
 
 const OnlineDocuments = ({
   nodeId,
   nodeData,
   isInPipeline = false,
+  supportBatchUpload = true,
   onCredentialChange,
 }: OnlineDocumentsProps) => {
   const docLink = useDocLink()
@@ -120,7 +123,7 @@ const OnlineDocuments = ({
 
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
-      payload: 'data-source',
+      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
   }, [setShowAccountSettingModal])
 
@@ -156,7 +159,7 @@ const OnlineDocuments = ({
               onSelect={handleSelectPages}
               canPreview={!isInPipeline}
               onPreview={handlePreviewPage}
-              isMultipleChoice={!isInPipeline}
+              isMultipleChoice={supportBatchUpload}
               currentCredentialId={currentCredentialId}
             />
           ) : (

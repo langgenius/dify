@@ -7,8 +7,8 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import Float, and_, or_, select, text
-from sqlalchemy import cast as sqlalchemy_cast
+from sqlalchemy import and_, or_, select
+from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
     DatasetEntity,
@@ -20,6 +20,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCre
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
+from core.file import File, FileTransferMethod, FileType
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -38,7 +39,9 @@ from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.rag.entities.context_entities import DocumentContext
 from core.rag.entities.metadata_entities import Condition, MetadataCondition
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.doc_type import DocType
+from core.rag.index_processor.constant.index_type import IndexStructureType, IndexTechniqueType
+from core.rag.index_processor.constant.query_type import QueryType
 from core.rag.models.document import Document
 from core.rag.rerank.rerank_type import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -53,10 +56,12 @@ from core.rag.retrieval.template_prompts import (
     METADATA_FILTER_USER_PROMPT_2,
     METADATA_FILTER_USER_PROMPT_3,
 )
+from core.tools.signature import sign_upload_file
 from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from libs.json_in_md_parser import parse_and_check_json_markdown
-from models.dataset import ChildChunk, Dataset, DatasetMetadata, DatasetQuery, DocumentSegment
+from models import UploadFile
+from models.dataset import ChildChunk, Dataset, DatasetMetadata, DatasetQuery, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
@@ -100,7 +105,8 @@ class DatasetRetrieval:
         message_id: str,
         memory: TokenBufferMemory | None = None,
         inputs: Mapping[str, Any] | None = None,
-    ) -> str | None:
+        vision_enabled: bool = False,
+    ) -> tuple[str | None, list[File] | None]:
         """
         Retrieve dataset.
         :param app_id: app_id
@@ -119,7 +125,7 @@ class DatasetRetrieval:
         """
         dataset_ids = config.dataset_ids
         if len(dataset_ids) == 0:
-            return None
+            return None, []
         retrieve_config = config.retrieve_config
 
         # check model is support tool calling
@@ -137,7 +143,7 @@ class DatasetRetrieval:
         )
 
         if not model_schema:
-            return None
+            return None, []
 
         planning_strategy = PlanningStrategy.REACT_ROUTER
         features = model_schema.features
@@ -183,8 +189,8 @@ class DatasetRetrieval:
                 tenant_id,
                 user_id,
                 user_from,
-                available_datasets,
                 query,
+                available_datasets,
                 model_instance,
                 model_config,
                 planning_strategy,
@@ -214,6 +220,7 @@ class DatasetRetrieval:
         dify_documents = [item for item in all_documents if item.provider == "dify"]
         external_documents = [item for item in all_documents if item.provider == "external"]
         document_context_list: list[DocumentContext] = []
+        context_files: list[File] = []
         retrieval_resource_list: list[RetrievalSourceMetadata] = []
         # deal with external documents
         for item in external_documents:
@@ -249,6 +256,31 @@ class DatasetRetrieval:
                                 score=record.score,
                             )
                         )
+                    if vision_enabled:
+                        attachments_with_bindings = db.session.execute(
+                            select(SegmentAttachmentBinding, UploadFile)
+                            .join(UploadFile, UploadFile.id == SegmentAttachmentBinding.attachment_id)
+                            .where(
+                                SegmentAttachmentBinding.segment_id == segment.id,
+                            )
+                        ).all()
+                        if attachments_with_bindings:
+                            for _, upload_file in attachments_with_bindings:
+                                attachment_info = File(
+                                    id=upload_file.id,
+                                    filename=upload_file.name,
+                                    extension="." + upload_file.extension,
+                                    mime_type=upload_file.mime_type,
+                                    tenant_id=segment.tenant_id,
+                                    type=FileType.IMAGE,
+                                    transfer_method=FileTransferMethod.LOCAL_FILE,
+                                    remote_url=upload_file.source_url,
+                                    related_id=upload_file.id,
+                                    size=upload_file.size,
+                                    storage_key=upload_file.key,
+                                    url=sign_upload_file(upload_file.id, upload_file.extension),
+                                )
+                                context_files.append(attachment_info)
                 if show_retrieve_source:
                     for record in records:
                         segment = record.segment
@@ -289,8 +321,10 @@ class DatasetRetrieval:
             hit_callback.return_retriever_resource_info(retrieval_resource_list)
         if document_context_list:
             document_context_list = sorted(document_context_list, key=lambda x: x.score or 0.0, reverse=True)
-            return str("\n".join([document_context.content for document_context in document_context_list]))
-        return ""
+            return str(
+                "\n".join([document_context.content for document_context in document_context_list])
+            ), context_files
+        return "", context_files
 
     def single_retrieve(
         self,
@@ -298,8 +332,8 @@ class DatasetRetrieval:
         tenant_id: str,
         user_id: str,
         user_from: str,
-        available_datasets: list,
         query: str,
+        available_datasets: list,
         model_instance: ModelInstance,
         model_config: ModelConfigWithCredentialsEntity,
         planning_strategy: PlanningStrategy,
@@ -337,7 +371,7 @@ class DatasetRetrieval:
             dataset_id, router_usage = function_call_router.invoke(query, tools, model_config, model_instance)
 
         self._record_usage(router_usage)
-
+        timer = None
         if dataset_id:
             # get retrieval model config
             dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
@@ -407,10 +441,19 @@ class DatasetRetrieval:
                             weights=retrieval_model_config.get("weights", None),
                             document_ids_filter=document_ids_filter,
                         )
-                self._on_query(query, [dataset_id], app_id, user_from, user_id)
+                self._on_query(query, None, [dataset_id], app_id, user_from, user_id)
 
                 if results:
-                    self._on_retrieval_end(results, message_id, timer)
+                    thread = threading.Thread(
+                        target=self._on_retrieval_end,
+                        kwargs={
+                            "flask_app": current_app._get_current_object(),  # type: ignore
+                            "documents": results,
+                            "message_id": message_id,
+                            "timer": timer,
+                        },
+                    )
+                    thread.start()
 
                 return results
         return []
@@ -422,7 +465,7 @@ class DatasetRetrieval:
         user_id: str,
         user_from: str,
         available_datasets: list,
-        query: str,
+        query: str | None,
         top_k: int,
         score_threshold: float,
         reranking_mode: str,
@@ -432,10 +475,11 @@ class DatasetRetrieval:
         message_id: str | None = None,
         metadata_filter_document_ids: dict[str, list[str]] | None = None,
         metadata_condition: MetadataCondition | None = None,
+        attachment_ids: list[str] | None = None,
     ):
         if not available_datasets:
             return []
-        threads = []
+        all_threads = []
         all_documents: list[Document] = []
         dataset_ids = [dataset.id for dataset in available_datasets]
         index_type_check = all(
@@ -468,102 +512,187 @@ class DatasetRetrieval:
                         0
                     ].embedding_model_provider
                     weights["vector_setting"]["embedding_model_name"] = available_datasets[0].embedding_model
-
-        for dataset in available_datasets:
-            index_type = dataset.indexing_technique
-            document_ids_filter = None
-            if dataset.provider != "external":
-                if metadata_condition and not metadata_filter_document_ids:
-                    continue
-                if metadata_filter_document_ids:
-                    document_ids = metadata_filter_document_ids.get(dataset.id, [])
-                    if document_ids:
-                        document_ids_filter = document_ids
-                    else:
-                        continue
-            retrieval_thread = threading.Thread(
-                target=self._retriever,
-                kwargs={
-                    "flask_app": current_app._get_current_object(),  # type: ignore
-                    "dataset_id": dataset.id,
-                    "query": query,
-                    "top_k": top_k,
-                    "all_documents": all_documents,
-                    "document_ids_filter": document_ids_filter,
-                    "metadata_condition": metadata_condition,
-                },
-            )
-            threads.append(retrieval_thread)
-            retrieval_thread.start()
-        for thread in threads:
-            thread.join()
-
         with measure_time() as timer:
-            if reranking_enable:
-                # do rerank for searched documents
-                data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
-
-                all_documents = data_post_processor.invoke(
-                    query=query, documents=all_documents, score_threshold=score_threshold, top_n=top_k
+            if query:
+                query_thread = threading.Thread(
+                    target=self._multiple_retrieve_thread,
+                    kwargs={
+                        "flask_app": current_app._get_current_object(),  # type: ignore
+                        "available_datasets": available_datasets,
+                        "metadata_condition": metadata_condition,
+                        "metadata_filter_document_ids": metadata_filter_document_ids,
+                        "all_documents": all_documents,
+                        "tenant_id": tenant_id,
+                        "reranking_enable": reranking_enable,
+                        "reranking_mode": reranking_mode,
+                        "reranking_model": reranking_model,
+                        "weights": weights,
+                        "top_k": top_k,
+                        "score_threshold": score_threshold,
+                        "query": query,
+                        "attachment_id": None,
+                    },
                 )
-            else:
-                if index_type == "economy":
-                    all_documents = self.calculate_keyword_score(query, all_documents, top_k)
-                elif index_type == "high_quality":
-                    all_documents = self.calculate_vector_score(all_documents, top_k, score_threshold)
-                else:
-                    all_documents = all_documents[:top_k] if top_k else all_documents
-
-        self._on_query(query, dataset_ids, app_id, user_from, user_id)
+                all_threads.append(query_thread)
+                query_thread.start()
+            if attachment_ids:
+                for attachment_id in attachment_ids:
+                    attachment_thread = threading.Thread(
+                        target=self._multiple_retrieve_thread,
+                        kwargs={
+                            "flask_app": current_app._get_current_object(),  # type: ignore
+                            "available_datasets": available_datasets,
+                            "metadata_condition": metadata_condition,
+                            "metadata_filter_document_ids": metadata_filter_document_ids,
+                            "all_documents": all_documents,
+                            "tenant_id": tenant_id,
+                            "reranking_enable": reranking_enable,
+                            "reranking_mode": reranking_mode,
+                            "reranking_model": reranking_model,
+                            "weights": weights,
+                            "top_k": top_k,
+                            "score_threshold": score_threshold,
+                            "query": None,
+                            "attachment_id": attachment_id,
+                        },
+                    )
+                    all_threads.append(attachment_thread)
+                    attachment_thread.start()
+            for thread in all_threads:
+                thread.join()
+        self._on_query(query, attachment_ids, dataset_ids, app_id, user_from, user_id)
 
         if all_documents:
-            self._on_retrieval_end(all_documents, message_id, timer)
+            # add thread to call _on_retrieval_end
+            retrieval_end_thread = threading.Thread(
+                target=self._on_retrieval_end,
+                kwargs={
+                    "flask_app": current_app._get_current_object(),  # type: ignore
+                    "documents": all_documents,
+                    "message_id": message_id,
+                    "timer": timer,
+                },
+            )
+            retrieval_end_thread.start()
+        retrieval_resource_list = []
+        doc_ids_filter = []
+        for document in all_documents:
+            if document.provider == "dify":
+                doc_id = document.metadata.get("doc_id")
+                if doc_id and doc_id not in doc_ids_filter:
+                    doc_ids_filter.append(doc_id)
+                    retrieval_resource_list.append(document)
+            elif document.provider == "external":
+                retrieval_resource_list.append(document)
+        return retrieval_resource_list
 
-        return all_documents
-
-    def _on_retrieval_end(self, documents: list[Document], message_id: str | None = None, timer: dict | None = None):
+    def _on_retrieval_end(
+        self, flask_app: Flask, documents: list[Document], message_id: str | None = None, timer: dict | None = None
+    ):
         """Handle retrieval end."""
-        dify_documents = [document for document in documents if document.provider == "dify"]
-        for document in dify_documents:
-            if document.metadata is not None:
-                dataset_document_stmt = select(DatasetDocument).where(
-                    DatasetDocument.id == document.metadata["document_id"]
-                )
-                dataset_document = db.session.scalar(dataset_document_stmt)
-                if dataset_document:
-                    if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                        child_chunk_stmt = select(ChildChunk).where(
-                            ChildChunk.index_node_id == document.metadata["doc_id"],
-                            ChildChunk.dataset_id == dataset_document.dataset_id,
-                            ChildChunk.document_id == dataset_document.id,
-                        )
-                        child_chunk = db.session.scalar(child_chunk_stmt)
-                        if child_chunk:
-                            _ = (
-                                db.session.query(DocumentSegment)
-                                .where(DocumentSegment.id == child_chunk.segment_id)
-                                .update(
-                                    {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
-                                    synchronize_session=False,
-                                )
-                            )
+        with flask_app.app_context():
+            dify_documents = [document for document in documents if document.provider == "dify"]
+            if not dify_documents:
+                self._send_trace_task(message_id, documents, timer)
+                return
+
+            with Session(db.engine) as session:
+                # Collect all document_ids and batch fetch DatasetDocuments
+                document_ids = {
+                    doc.metadata["document_id"]
+                    for doc in dify_documents
+                    if doc.metadata and "document_id" in doc.metadata
+                }
+                if not document_ids:
+                    self._send_trace_task(message_id, documents, timer)
+                    return
+
+                dataset_docs_stmt = select(DatasetDocument).where(DatasetDocument.id.in_(document_ids))
+                dataset_docs = session.scalars(dataset_docs_stmt).all()
+                dataset_doc_map = {str(doc.id): doc for doc in dataset_docs}
+
+                # Categorize documents by type and collect necessary IDs
+                parent_child_text_docs: list[tuple[Document, DatasetDocument]] = []
+                parent_child_image_docs: list[tuple[Document, DatasetDocument]] = []
+                normal_text_docs: list[tuple[Document, DatasetDocument]] = []
+                normal_image_docs: list[tuple[Document, DatasetDocument]] = []
+
+                for doc in dify_documents:
+                    if not doc.metadata or "document_id" not in doc.metadata:
+                        continue
+                    dataset_doc = dataset_doc_map.get(doc.metadata["document_id"])
+                    if not dataset_doc:
+                        continue
+
+                    is_image = doc.metadata.get("doc_type") == DocType.IMAGE
+                    is_parent_child = dataset_doc.doc_form == IndexStructureType.PARENT_CHILD_INDEX
+
+                    if is_parent_child:
+                        if is_image:
+                            parent_child_image_docs.append((doc, dataset_doc))
+                        else:
+                            parent_child_text_docs.append((doc, dataset_doc))
                     else:
-                        query = db.session.query(DocumentSegment).where(
-                            DocumentSegment.index_node_id == document.metadata["doc_id"]
+                        if is_image:
+                            normal_image_docs.append((doc, dataset_doc))
+                        else:
+                            normal_text_docs.append((doc, dataset_doc))
+
+                segment_ids_to_update: set[str] = set()
+
+                # Process PARENT_CHILD_INDEX text documents - batch fetch ChildChunks
+                if parent_child_text_docs:
+                    index_node_ids = [doc.metadata["doc_id"] for doc, _ in parent_child_text_docs if doc.metadata]
+                    if index_node_ids:
+                        child_chunks_stmt = select(ChildChunk).where(ChildChunk.index_node_id.in_(index_node_ids))
+                        child_chunks = session.scalars(child_chunks_stmt).all()
+                        child_chunk_map = {chunk.index_node_id: chunk.segment_id for chunk in child_chunks}
+                        for doc, _ in parent_child_text_docs:
+                            if doc.metadata:
+                                segment_id = child_chunk_map.get(doc.metadata["doc_id"])
+                                if segment_id:
+                                    segment_ids_to_update.add(str(segment_id))
+
+                # Process non-PARENT_CHILD_INDEX text documents - batch fetch DocumentSegments
+                if normal_text_docs:
+                    index_node_ids = [doc.metadata["doc_id"] for doc, _ in normal_text_docs if doc.metadata]
+                    if index_node_ids:
+                        segments_stmt = select(DocumentSegment).where(DocumentSegment.index_node_id.in_(index_node_ids))
+                        segments = session.scalars(segments_stmt).all()
+                        segment_map = {seg.index_node_id: seg.id for seg in segments}
+                        for doc, _ in normal_text_docs:
+                            if doc.metadata:
+                                segment_id = segment_map.get(doc.metadata["doc_id"])
+                                if segment_id:
+                                    segment_ids_to_update.add(str(segment_id))
+
+                # Process IMAGE documents - batch fetch SegmentAttachmentBindings
+                all_image_docs = parent_child_image_docs + normal_image_docs
+                if all_image_docs:
+                    attachment_ids = [
+                        doc.metadata["doc_id"]
+                        for doc, _ in all_image_docs
+                        if doc.metadata and doc.metadata.get("doc_id")
+                    ]
+                    if attachment_ids:
+                        bindings_stmt = select(SegmentAttachmentBinding).where(
+                            SegmentAttachmentBinding.attachment_id.in_(attachment_ids)
                         )
+                        bindings = session.scalars(bindings_stmt).all()
+                        segment_ids_to_update.update(str(binding.segment_id) for binding in bindings)
 
-                        # if 'dataset_id' in document.metadata:
-                        if "dataset_id" in document.metadata:
-                            query = query.where(DocumentSegment.dataset_id == document.metadata["dataset_id"])
+                # Batch update hit_count for all segments
+                if segment_ids_to_update:
+                    session.query(DocumentSegment).where(DocumentSegment.id.in_(segment_ids_to_update)).update(
+                        {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
+                        synchronize_session=False,
+                    )
+                    session.commit()
 
-                        # add hit count to document segment
-                        query.update(
-                            {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
-                        )
+            self._send_trace_task(message_id, documents, timer)
 
-                    db.session.commit()
-
-        # get tracing instance
+    def _send_trace_task(self, message_id: str | None, documents: list[Document], timer: dict | None):
+        """Send trace task if trace manager is available."""
         trace_manager: TraceQueueManager | None = (
             self.application_generate_entity.trace_manager if self.application_generate_entity else None
         )
@@ -574,25 +703,40 @@ class DatasetRetrieval:
                 )
             )
 
-    def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str):
+    def _on_query(
+        self,
+        query: str | None,
+        attachment_ids: list[str] | None,
+        dataset_ids: list[str],
+        app_id: str,
+        user_from: str,
+        user_id: str,
+    ):
         """
         Handle query.
         """
-        if not query:
+        if not query and not attachment_ids:
             return
         dataset_queries = []
         for dataset_id in dataset_ids:
-            dataset_query = DatasetQuery(
-                dataset_id=dataset_id,
-                content=query,
-                source="app",
-                source_app_id=app_id,
-                created_by_role=user_from,
-                created_by=user_id,
-            )
-            dataset_queries.append(dataset_query)
-        if dataset_queries:
-            db.session.add_all(dataset_queries)
+            contents = []
+            if query:
+                contents.append({"content_type": QueryType.TEXT_QUERY, "content": query})
+            if attachment_ids:
+                for attachment_id in attachment_ids:
+                    contents.append({"content_type": QueryType.IMAGE_QUERY, "content": attachment_id})
+            if contents:
+                dataset_query = DatasetQuery(
+                    dataset_id=dataset_id,
+                    content=json.dumps(contents),
+                    source="app",
+                    source_app_id=app_id,
+                    created_by_role=user_from,
+                    created_by=user_id,
+                )
+                dataset_queries.append(dataset_query)
+            if dataset_queries:
+                db.session.add_all(dataset_queries)
         db.session.commit()
 
     def _retriever(
@@ -604,6 +748,7 @@ class DatasetRetrieval:
         all_documents: list,
         document_ids_filter: list[str] | None = None,
         metadata_condition: MetadataCondition | None = None,
+        attachment_ids: list[str] | None = None,
     ):
         with flask_app.app_context():
             dataset_stmt = select(Dataset).where(Dataset.id == dataset_id)
@@ -612,7 +757,7 @@ class DatasetRetrieval:
             if not dataset:
                 return []
 
-            if dataset.provider == "external":
+            if dataset.provider == "external" and query:
                 external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
                     tenant_id=dataset.tenant_id,
                     dataset_id=dataset_id,
@@ -664,6 +809,7 @@ class DatasetRetrieval:
                             reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
                             weights=retrieval_model.get("weights", None),
                             document_ids_filter=document_ids_filter,
+                            attachment_ids=attachment_ids,
                         )
 
                         all_documents.extend(documents)
@@ -1023,60 +1169,55 @@ class DatasetRetrieval:
         self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
     ):
         if value is None and condition not in ("empty", "not empty"):
-            return
+            return filters
 
-        key = f"{metadata_name}_{sequence}"
-        key_value = f"{metadata_name}_{sequence}_value"
+        json_field = DatasetDocument.doc_metadata[metadata_name].as_string()
+
         match condition:
             case "contains":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"%{value}%"}
-                    )
-                )
+                filters.append(json_field.like(f"%{value}%"))
+
             case "not contains":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} NOT LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"%{value}%"}
-                    )
-                )
+                filters.append(json_field.notlike(f"%{value}%"))
+
             case "start with":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"{value}%"}
-                    )
-                )
+                filters.append(json_field.like(f"{value}%"))
 
             case "end with":
-                filters.append(
-                    (text(f"documents.doc_metadata ->> :{key} LIKE :{key_value}")).params(
-                        **{key: metadata_name, key_value: f"%{value}"}
-                    )
-                )
+                filters.append(json_field.like(f"%{value}"))
+
             case "is" | "=":
                 if isinstance(value, str):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name] == f'"{value}"')
-                else:
-                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) == value)
+                    filters.append(json_field == value)
+                elif isinstance(value, (int, float)):
+                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() == value)
+
             case "is not" | "≠":
                 if isinstance(value, str):
-                    filters.append(DatasetDocument.doc_metadata[metadata_name] != f'"{value}"')
-                else:
-                    filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) != value)
+                    filters.append(json_field != value)
+                elif isinstance(value, (int, float)):
+                    filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() != value)
+
             case "empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].is_(None))
+
             case "not empty":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].isnot(None))
+
             case "before" | "<":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) < value)
+                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() < value)
+
             case "after" | ">":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) > value)
+                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() > value)
+
             case "≤" | "<=":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) <= value)
+                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() <= value)
+
             case "≥" | ">=":
-                filters.append(sqlalchemy_cast(DatasetDocument.doc_metadata[metadata_name].astext, Float) >= value)
+                filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
             case _:
                 pass
+
         return filters
 
     def _fetch_model_config(
@@ -1228,3 +1369,86 @@ class DatasetRetrieval:
             usage = LLMUsage.empty_usage()
 
         return full_text, usage
+
+    def _multiple_retrieve_thread(
+        self,
+        flask_app: Flask,
+        available_datasets: list,
+        metadata_condition: MetadataCondition | None,
+        metadata_filter_document_ids: dict[str, list[str]] | None,
+        all_documents: list[Document],
+        tenant_id: str,
+        reranking_enable: bool,
+        reranking_mode: str,
+        reranking_model: dict | None,
+        weights: dict[str, Any] | None,
+        top_k: int,
+        score_threshold: float,
+        query: str | None,
+        attachment_id: str | None,
+    ):
+        with flask_app.app_context():
+            threads = []
+            all_documents_item: list[Document] = []
+            index_type = None
+            for dataset in available_datasets:
+                index_type = dataset.indexing_technique
+                document_ids_filter = None
+                if dataset.provider != "external":
+                    if metadata_condition and not metadata_filter_document_ids:
+                        continue
+                    if metadata_filter_document_ids:
+                        document_ids = metadata_filter_document_ids.get(dataset.id, [])
+                        if document_ids:
+                            document_ids_filter = document_ids
+                        else:
+                            continue
+                retrieval_thread = threading.Thread(
+                    target=self._retriever,
+                    kwargs={
+                        "flask_app": flask_app,
+                        "dataset_id": dataset.id,
+                        "query": query,
+                        "top_k": top_k,
+                        "all_documents": all_documents_item,
+                        "document_ids_filter": document_ids_filter,
+                        "metadata_condition": metadata_condition,
+                        "attachment_ids": [attachment_id] if attachment_id else None,
+                    },
+                )
+                threads.append(retrieval_thread)
+                retrieval_thread.start()
+            for thread in threads:
+                thread.join()
+
+            if reranking_enable:
+                # do rerank for searched documents
+                data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
+                if query:
+                    all_documents_item = data_post_processor.invoke(
+                        query=query,
+                        documents=all_documents_item,
+                        score_threshold=score_threshold,
+                        top_n=top_k,
+                        query_type=QueryType.TEXT_QUERY,
+                    )
+                if attachment_id:
+                    all_documents_item = data_post_processor.invoke(
+                        documents=all_documents_item,
+                        score_threshold=score_threshold,
+                        top_n=top_k,
+                        query_type=QueryType.IMAGE_QUERY,
+                        query=attachment_id,
+                    )
+            else:
+                if index_type == IndexTechniqueType.ECONOMY:
+                    if not query:
+                        all_documents_item = []
+                    else:
+                        all_documents_item = self.calculate_keyword_score(query, all_documents_item, top_k)
+                elif index_type == IndexTechniqueType.HIGH_QUALITY:
+                    all_documents_item = self.calculate_vector_score(all_documents_item, top_k, score_threshold)
+                else:
+                    all_documents_item = all_documents_item[:top_k] if top_k else all_documents_item
+            if all_documents_item:
+                all_documents.extend(all_documents_item)

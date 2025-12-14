@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Create Custom Tool',
   customToolTip: 'Learn more about Dify custom tools',
   type: {
-    all: 'All',
     builtIn: 'Tools',
     custom: 'Custom',
     workflow: 'Workflow',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'After configuring credentials, all members within the workspace can use this tool when orchestrating applications.',
   },
   includeToolNum: '{{num}} {{action}} included',
-  addTool: 'Add Tool',
   addToolModal: {
     type: 'type',
     category: 'category',
-    add: 'add',
     added: 'added',
-    manageInTools: 'Manage in Tools',
     custom: {
       title: 'No custom tool available',
       tip: 'Create a custom tool',
@@ -117,6 +113,13 @@ const translation = {
       description: 'Description',
       descriptionPlaceholder: 'Description of the parameter\'s meaning',
     },
+    toolOutput: {
+      title: 'Tool Output',
+      name: 'Name',
+      reserved: 'Reserved',
+      reservedParameterDuplicateTip: 'text, json, and files are reserved variables. Variables with these names cannot appear in the output schema.',
+      description: 'Description',
+    },
     customDisclaimer: 'Custom disclaimer',
     customDisclaimerPlaceholder: 'Please enter custom disclaimer',
     confirmTitle: 'Confirm to save ?',
@@ -205,6 +208,7 @@ const translation = {
       timeoutPlaceholder: '30',
       authentication: 'Authentication',
       useDynamicClientRegistration: 'Use Dynamic Client Registration',
+      redirectUrlWarning: 'Please configure your OAuth redirect URL to:',
       clientID: 'Client ID',
       clientSecret: 'Client Secret',
       clientSecretPlaceholder: 'Client Secret',

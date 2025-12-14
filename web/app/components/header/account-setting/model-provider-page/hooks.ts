@@ -33,10 +33,9 @@ import {
 import { useProviderContext } from '@/context/provider-context'
 import {
   useMarketplacePlugins,
+  useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
-import type { Plugin } from '@/app/components/plugins/types'
-import { PluginType } from '@/app/components/plugins/types'
-import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
@@ -255,30 +254,22 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
   const exclude = useMemo(() => {
     return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
   }, [providers])
-  const [collectionPlugins, setCollectionPlugins] = useState<Plugin[]>([])
-
+  const {
+    plugins: collectionPlugins = [],
+    isLoading: isCollectionLoading,
+  } = useMarketplacePluginsByCollectionId('__model-settings-pinned-models')
   const {
     plugins,
     queryPlugins,
     queryPluginsWithDebounced,
-    isLoading,
+    isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
-
-  const getCollectionPlugins = useCallback(async () => {
-    const collectionPlugins = await getMarketplacePluginsByCollectionId('__model-settings-pinned-models')
-
-    setCollectionPlugins(collectionPlugins)
-  }, [])
-
-  useEffect(() => {
-    getCollectionPlugins()
-  }, [getCollectionPlugins])
 
   useEffect(() => {
     if (searchText) {
       queryPluginsWithDebounced({
         query: searchText,
-        category: PluginType.model,
+        category: PluginCategoryEnum.model,
         exclude,
         type: 'plugin',
         sortBy: 'install_count',
@@ -288,7 +279,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
     else {
       queryPlugins({
         query: '',
-        category: PluginType.model,
+        category: PluginCategoryEnum.model,
         type: 'plugin',
         pageSize: 1000,
         exclude,
@@ -315,7 +306,7 @@ export const useMarketplaceAllPlugins = (providers: ModelProvider[], searchText:
 
   return {
     plugins: allPlugins,
-    isLoading,
+    isLoading: isCollectionLoading || isPluginsLoading,
   }
 }
 

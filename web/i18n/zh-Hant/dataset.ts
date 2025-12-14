@@ -19,7 +19,6 @@ const translation = {
   intro5: '建立',
   intro6: '為獨立的 ChatGPT 外掛釋出使用',
   unavailable: '不可用',
-  unavailableTip: '由於 embedding 模型不可用，需要配置預設 embedding 模型',
   datasets: '知識庫',
   datasetsApi: 'API',
   retrieval: {
@@ -37,8 +36,6 @@ const translation = {
       recommend: '推薦',
     },
     invertedIndex: {
-      title: '倒排索引',
-      description: '倒排索引是一種用於高效檢索的結構。按術語組織，每個術語指向包含它的文件或網頁',
     },
     change: '更改',
     changeRetrievalMethod: '更改檢索方法',
@@ -236,6 +233,20 @@ const translation = {
     enabled: '使用中',
     title: '服務 API',
     disabled: '已停用',
+  },
+  docAllEnabled_one: '{{count}} 文件已啟用',
+  docAllEnabled_other: '所有 {{count}} 文件已啟用',
+  partialEnabled_one: '共 {{count}} 份文件，{{num}} 份可用',
+  partialEnabled_other: '共 {{count}} 份文件，{{num}} 份可用',
+  cornerLabel: {
+    unavailable: '無法使用',
+    pipeline: '管道',
+  },
+  multimodal: '多模態',
+  imageUploader: {
+    button: '拖放檔案或資料夾，或',
+    browse: '瀏覽',
+    tip: '{{supportTypes}}（最多 {{batchCount}}，每個 {{size}}MB）',
   },
 }
 

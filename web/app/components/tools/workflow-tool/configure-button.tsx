@@ -11,8 +11,8 @@ import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { createWorkflowToolProvider, fetchWorkflowToolDetailByAppID, saveWorkflowToolProvider } from '@/service/tools'
-import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
-import type { InputVar } from '@/app/components/workflow/types'
+import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { useAppContext } from '@/context/app-context'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
@@ -26,8 +26,10 @@ type Props = {
   name: string
   description: string
   inputs?: InputVar[]
+  outputs?: Variable[]
   handlePublish: (params?: PublishWorkflowParams) => Promise<void>
   onRefreshData?: () => void
+  disabledReason?: string
 }
 
 const WorkflowToolConfigureButton = ({
@@ -39,8 +41,10 @@ const WorkflowToolConfigureButton = ({
   name,
   description,
   inputs,
+  outputs,
   handlePublish,
   onRefreshData,
+  disabledReason,
 }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -78,6 +82,8 @@ const WorkflowToolConfigureButton = ({
 
   const payload = useMemo(() => {
     let parameters: WorkflowToolProviderParameter[] = []
+    let outputParameters: WorkflowToolProviderOutputParameter[] = []
+
     if (!published) {
       parameters = (inputs || []).map((item) => {
         return {
@@ -86,6 +92,13 @@ const WorkflowToolConfigureButton = ({
           form: 'llm',
           required: item.required,
           type: item.type,
+        }
+      })
+      outputParameters = (outputs || []).map((item) => {
+        return {
+          name: item.variable,
+          description: '',
+          type: item.value_type,
         }
       })
     }
@@ -99,6 +112,14 @@ const WorkflowToolConfigureButton = ({
           form: detail.tool.parameters.find(param => param.name === item.variable)?.form || 'llm',
         }
       })
+      outputParameters = (outputs || []).map((item) => {
+        const found = detail.tool.output_schema?.properties?.[item.variable]
+        return {
+          name: item.variable,
+          description: found ? found.description : '',
+          type: item.value_type,
+        }
+      })
     }
     return {
       icon: detail?.icon || icon,
@@ -106,6 +127,7 @@ const WorkflowToolConfigureButton = ({
       name: detail?.name || '',
       description: detail?.description || description,
       parameters,
+      outputParameters,
       labels: detail?.tool?.labels || [],
       privacy_policy: detail?.privacy_policy || '',
       ...(published
@@ -200,7 +222,8 @@ const WorkflowToolConfigureButton = ({
                     {t('workflow.common.configureRequired')}
                   </span>
                 )}
-              </div>)
+              </div>
+            )
             : (
               <div
                 className='flex items-center justify-start gap-2 p-2 pl-2.5'
@@ -214,6 +237,11 @@ const WorkflowToolConfigureButton = ({
                 </div>
               </div>
             )}
+          {disabledReason && (
+            <div className='mt-1 px-2.5 pb-2 text-xs leading-[18px] text-text-tertiary'>
+              {disabledReason}
+            </div>
+          )}
           {published && (
             <div className='border-t-[0.5px] border-divider-regular px-2.5 py-2'>
               <div className='flex justify-between gap-x-2'>
@@ -221,7 +249,7 @@ const WorkflowToolConfigureButton = ({
                   size='small'
                   className='w-[140px]'
                   onClick={() => setShowModal(true)}
-                  disabled={!isCurrentWorkspaceManager}
+                  disabled={!isCurrentWorkspaceManager || disabled}
                 >
                   {t('workflow.common.configure')}
                   {outdated && <Indicator className='ml-1' color={'yellow'} />}
@@ -230,14 +258,17 @@ const WorkflowToolConfigureButton = ({
                   size='small'
                   className='w-[140px]'
                   onClick={() => router.push('/tools?category=workflow')}
+                  disabled={disabled}
                 >
                   {t('workflow.common.manageInTools')}
                   <RiArrowRightUpLine className='ml-1 h-4 w-4' />
                 </Button>
               </div>
-              {outdated && <div className='mt-1 text-xs leading-[18px] text-text-warning'>
-                {t('workflow.common.workflowAsToolTip')}
-              </div>}
+              {outdated && (
+                <div className='mt-1 text-xs leading-[18px] text-text-warning'>
+                  {t('workflow.common.workflowAsToolTip')}
+                </div>
+              )}
             </div>
           )}
         </div>

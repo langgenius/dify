@@ -81,6 +81,10 @@ const translation = {
       error: 'インポートエラー',
       ok: 'OK',
     },
+    sort: {
+      uploadTime: 'アップロード時間',
+      hitCount: '取得回数',
+    },
   },
   metadata: {
     title: 'メタデータ',
@@ -397,6 +401,7 @@ const translation = {
     collapseChunks: 'チャンクを折りたたむ',
     keywordDuplicate: 'そのキーワードは既に存在しています',
     keywordEmpty: 'キーワードは空であってはいけません',
+    allFilesUploaded: '保存する前にすべてのファイルをアップロードする必要があります',
   },
 }
 

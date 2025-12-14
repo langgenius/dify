@@ -81,6 +81,10 @@ const translation = {
     },
     addUrl: 'URL 추가',
     learnMore: '더 알아보세요',
+    sort: {
+      uploadTime: '업로드 시간',
+      hitCount: '검색 횟수',
+    },
   },
   metadata: {
     title: '메타데이터',
@@ -396,6 +400,7 @@ const translation = {
     regeneratingMessage: '시간이 걸릴 수 있으니 잠시만 기다려 주십시오...',
     keywordDuplicate: '키워드가 이미 존재합니다.',
     keywordEmpty: '키워드는 비워둘 수 없습니다.',
+    allFilesUploaded: '저장하기 전에 모든 파일을 업로드해야 합니다',
   },
 }
 

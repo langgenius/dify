@@ -3,6 +3,7 @@ from typing import Literal
 
 import httpx
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+from werkzeug.exceptions import InternalServerError
 
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
@@ -23,6 +24,13 @@ class BillingService:
 
         billing_info = cls._send_request("GET", "/subscription/info", params=params)
         return billing_info
+
+    @classmethod
+    def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
+        params = {"tenant_id": tenant_id}
+
+        usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
+        return usage_info
 
     @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
@@ -56,19 +64,66 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
+    def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, delta: int) -> dict:
+        """
+        Update tenant feature plan usage.
+
+        Args:
+            tenant_id: Tenant identifier
+            feature_key: Feature key (e.g., 'trigger', 'workflow')
+            delta: Usage delta (positive to add, negative to consume)
+
+        Returns:
+            Response dict with 'result' and 'history_id'
+            Example: {"result": "success", "history_id": "uuid"}
+        """
+        return cls._send_request(
+            "POST",
+            "/tenant-feature-usage/usage",
+            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": delta},
+        )
+
+    @classmethod
+    def refund_tenant_feature_plan_usage(cls, history_id: str) -> dict:
+        """
+        Refund a previous usage charge.
+
+        Args:
+            history_id: The history_id returned from update_tenant_feature_plan_usage
+
+        Returns:
+            Response dict with 'result' and 'history_id'
+        """
+        return cls._send_request("POST", "/tenant-feature-usage/refund", params={"quota_usage_history_id": history_id})
+
+    @classmethod
+    def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
+        params = {"tenant_id": tenant_id, "feature_key": feature_key}
+        return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
+
+    @classmethod
     @retry(
         wait=wait_fixed(2),
         stop=stop_before_delay(10),
         retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
-    def _send_request(cls, method: Literal["GET", "POST", "DELETE"], endpoint: str, json=None, params=None):
+    def _send_request(cls, method: Literal["GET", "POST", "DELETE", "PUT"], endpoint: str, json=None, params=None):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
         response = httpx.request(method, url, json=json, params=params, headers=headers)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
+        if method == "PUT":
+            if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
+                raise InternalServerError(
+                    "Unable to process billing request. Please try again later or contact support."
+                )
+            if response.status_code != httpx.codes.OK:
+                raise ValueError("Invalid arguments.")
+        if method == "POST" and response.status_code != httpx.codes.OK:
+            raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
         return response.json()
 
     @staticmethod
@@ -179,3 +234,8 @@ class BillingService:
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str):
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
+
+    @classmethod
+    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str):
+        payload = {"account_id": account_id, "click_id": click_id}
+        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)

@@ -5,8 +5,8 @@ const translation = {
   table: {
     header: {
       source: 'Kaynak',
-      text: 'Metin',
       time: 'Zaman',
+      queryContent: 'Sorgu İçeriği',
     },
   },
   input: {
@@ -29,6 +29,12 @@ const translation = {
   keyword: 'Anahtar kelime -ler',
   hitChunks: '{{num}} alt parçalarına basın',
   records: 'Kayıt',
+  imageUploader: {
+    tip: 'Resimleri yükleyin veya bırakın (Her biri maksimum {{batchCount}}, {{size}}MB)',
+    tooltip: 'Görselleri yükleyin (Maks. {{batchCount}}, her biri {{size}}MB)',
+    dropZoneTip: 'Yüklemek için dosyayı buraya sürükleyin',
+    singleChunkAttachmentLimitTooltip: 'Tek parça eklerin sayısı {{limit}} değerini aşamaz',
+  },
 }
 
 export default translation

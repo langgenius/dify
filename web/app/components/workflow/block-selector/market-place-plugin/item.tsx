@@ -52,8 +52,13 @@ const Item: FC<Props> = ({
           </div>
         </div>
         {/* Action */}
-        <div className={cn(!open ? 'hidden' : 'flex', 'system-xs-medium  h-4 items-center space-x-1 text-components-button-secondary-accent-text group-hover/plugin:flex')}>
-          <div className='cursor-pointer px-1.5' onClick={showInstallModal}>{t('plugin.installAction')}</div>
+        <div className={cn(!open ? 'hidden' : 'flex', 'system-xs-medium h-4 items-center space-x-1 text-components-button-secondary-accent-text group-hover/plugin:flex')}>
+          <div
+            className='cursor-pointer rounded-md px-1.5 py-0.5 hover:bg-state-base-hover'
+            onClick={showInstallModal}
+          >
+            {t('plugin.installAction')}
+          </div>
           <Action
             open={open}
             onOpenChange={setOpen}

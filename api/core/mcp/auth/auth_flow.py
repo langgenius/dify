@@ -6,7 +6,8 @@ import secrets
 import urllib.parse
 from urllib.parse import urljoin, urlparse
 
-from httpx import ConnectError, HTTPStatusError, RequestError
+import httpx
+from httpx import RequestError
 from pydantic import ValidationError
 
 from core.entities.mcp_provider import MCPProviderEntity, MCPSupportGrantType
@@ -20,6 +21,7 @@ from core.mcp.types import (
     OAuthClientMetadata,
     OAuthMetadata,
     OAuthTokens,
+    ProtectedResourceMetadata,
 )
 from extensions.ext_redis import redis_client
 
@@ -37,6 +39,131 @@ def generate_pkce_challenge() -> tuple[str, str]:
     code_challenge = code_challenge.replace("=", "").replace("+", "-").replace("/", "_")
 
     return code_verifier, code_challenge
+
+
+def build_protected_resource_metadata_discovery_urls(
+    www_auth_resource_metadata_url: str | None, server_url: str
+) -> list[str]:
+    """
+    Build a list of URLs to try for Protected Resource Metadata discovery.
+
+    Per SEP-985, supports fallback when discovery fails at one URL.
+    """
+    urls = []
+
+    # First priority: URL from WWW-Authenticate header
+    if www_auth_resource_metadata_url:
+        urls.append(www_auth_resource_metadata_url)
+
+    # Fallback: construct from server URL
+    parsed = urlparse(server_url)
+    base_url = f"{parsed.scheme}://{parsed.netloc}"
+    fallback_url = urljoin(base_url, "/.well-known/oauth-protected-resource")
+    if fallback_url not in urls:
+        urls.append(fallback_url)
+
+    return urls
+
+
+def build_oauth_authorization_server_metadata_discovery_urls(auth_server_url: str | None, server_url: str) -> list[str]:
+    """
+    Build a list of URLs to try for OAuth Authorization Server Metadata discovery.
+
+    Supports both OAuth 2.0 (RFC 8414) and OpenID Connect discovery.
+
+    Per RFC 8414 section 3:
+    - If issuer has no path: https://example.com/.well-known/oauth-authorization-server
+    - If issuer has path: https://example.com/.well-known/oauth-authorization-server{path}
+
+    Example:
+    - issuer: https://example.com/oauth
+    - metadata: https://example.com/.well-known/oauth-authorization-server/oauth
+    """
+    urls = []
+    base_url = auth_server_url or server_url
+
+    parsed = urlparse(base_url)
+    base = f"{parsed.scheme}://{parsed.netloc}"
+    path = parsed.path.rstrip("/")  # Remove trailing slash
+
+    # Try OpenID Connect discovery first (more common)
+    urls.append(urljoin(base + "/", ".well-known/openid-configuration"))
+
+    # OAuth 2.0 Authorization Server Metadata (RFC 8414)
+    # Include the path component if present in the issuer URL
+    if path:
+        urls.append(urljoin(base, f".well-known/oauth-authorization-server{path}"))
+    else:
+        urls.append(urljoin(base, ".well-known/oauth-authorization-server"))
+
+    return urls
+
+
+def discover_protected_resource_metadata(
+    prm_url: str | None, server_url: str, protocol_version: str | None = None
+) -> ProtectedResourceMetadata | None:
+    """Discover OAuth 2.0 Protected Resource Metadata (RFC 9470)."""
+    urls = build_protected_resource_metadata_discovery_urls(prm_url, server_url)
+    headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION, "User-Agent": "Dify"}
+
+    for url in urls:
+        try:
+            response = ssrf_proxy.get(url, headers=headers)
+            if response.status_code == 200:
+                return ProtectedResourceMetadata.model_validate(response.json())
+            elif response.status_code == 404:
+                continue  # Try next URL
+        except (RequestError, ValidationError):
+            continue  # Try next URL
+
+    return None
+
+
+def discover_oauth_authorization_server_metadata(
+    auth_server_url: str | None, server_url: str, protocol_version: str | None = None
+) -> OAuthMetadata | None:
+    """Discover OAuth 2.0 Authorization Server Metadata (RFC 8414)."""
+    urls = build_oauth_authorization_server_metadata_discovery_urls(auth_server_url, server_url)
+    headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION, "User-Agent": "Dify"}
+
+    for url in urls:
+        try:
+            response = ssrf_proxy.get(url, headers=headers)
+            if response.status_code == 200:
+                return OAuthMetadata.model_validate(response.json())
+            elif response.status_code == 404:
+                continue  # Try next URL
+        except (RequestError, ValidationError):
+            continue  # Try next URL
+
+    return None
+
+
+def get_effective_scope(
+    scope_from_www_auth: str | None,
+    prm: ProtectedResourceMetadata | None,
+    asm: OAuthMetadata | None,
+    client_scope: str | None,
+) -> str | None:
+    """
+    Determine effective scope using priority-based selection strategy.
+
+    Priority order:
+    1. WWW-Authenticate header scope (server explicit requirement)
+    2. Protected Resource Metadata scopes
+    3. OAuth Authorization Server Metadata scopes
+    4. Client configured scope
+    """
+    if scope_from_www_auth:
+        return scope_from_www_auth
+
+    if prm and prm.scopes_supported:
+        return " ".join(prm.scopes_supported)
+
+    if asm and asm.scopes_supported:
+        return " ".join(asm.scopes_supported)
+
+    return client_scope
 
 
 def _create_secure_redis_state(state_data: OAuthCallbackState) -> str:
@@ -121,42 +248,36 @@ def check_support_resource_discovery(server_url: str) -> tuple[bool, str]:
         return False, ""
 
 
-def discover_oauth_metadata(server_url: str, protocol_version: str | None = None) -> OAuthMetadata | None:
-    """Looks up RFC 8414 OAuth 2.0 Authorization Server Metadata."""
-    # First check if the server supports OAuth 2.0 Resource Discovery
-    support_resource_discovery, oauth_discovery_url = check_support_resource_discovery(server_url)
-    if support_resource_discovery:
-        # The oauth_discovery_url is the authorization server base URL
-        # Try OpenID Connect discovery first (more common), then OAuth 2.0
-        urls_to_try = [
-            urljoin(oauth_discovery_url + "/", ".well-known/oauth-authorization-server"),
-            urljoin(oauth_discovery_url + "/", ".well-known/openid-configuration"),
-        ]
-    else:
-        urls_to_try = [urljoin(server_url, "/.well-known/oauth-authorization-server")]
+def discover_oauth_metadata(
+    server_url: str,
+    resource_metadata_url: str | None = None,
+    scope_hint: str | None = None,
+    protocol_version: str | None = None,
+) -> tuple[OAuthMetadata | None, ProtectedResourceMetadata | None, str | None]:
+    """
+    Discover OAuth metadata using RFC 8414/9470 standards.
 
-    headers = {"MCP-Protocol-Version": protocol_version or LATEST_PROTOCOL_VERSION}
+    Args:
+        server_url: The MCP server URL
+        resource_metadata_url: Protected Resource Metadata URL from WWW-Authenticate header
+        scope_hint: Scope hint from WWW-Authenticate header
+        protocol_version: MCP protocol version
 
-    for url in urls_to_try:
-        try:
-            response = ssrf_proxy.get(url, headers=headers)
-            if response.status_code == 404:
-                continue
-            if not response.is_success:
-                response.raise_for_status()
-            return OAuthMetadata.model_validate(response.json())
-        except (RequestError, HTTPStatusError) as e:
-            if isinstance(e, ConnectError):
-                response = ssrf_proxy.get(url)
-                if response.status_code == 404:
-                    continue  # Try next URL
-                if not response.is_success:
-                    raise ValueError(f"HTTP {response.status_code} trying to load well-known OAuth metadata")
-                return OAuthMetadata.model_validate(response.json())
-            # For other errors, try next URL
-            continue
+    Returns:
+        (oauth_metadata, protected_resource_metadata, scope_hint)
+    """
+    # Discover Protected Resource Metadata
+    prm = discover_protected_resource_metadata(resource_metadata_url, server_url, protocol_version)
 
-    return None  # No metadata found
+    # Get authorization server URL from PRM or use server URL
+    auth_server_url = None
+    if prm and prm.authorization_servers:
+        auth_server_url = prm.authorization_servers[0]
+
+    # Discover OAuth Authorization Server Metadata
+    asm = discover_oauth_authorization_server_metadata(auth_server_url, server_url, protocol_version)
+
+    return asm, prm, scope_hint
 
 
 def start_authorization(
@@ -166,6 +287,7 @@ def start_authorization(
     redirect_url: str,
     provider_id: str,
     tenant_id: str,
+    scope: str | None = None,
 ) -> tuple[str, str]:
     """Begins the authorization flow with secure Redis state storage."""
     response_type = "code"
@@ -175,13 +297,6 @@ def start_authorization(
         authorization_url = metadata.authorization_endpoint
         if response_type not in metadata.response_types_supported:
             raise ValueError(f"Incompatible auth server: does not support response type {response_type}")
-        if (
-            not metadata.code_challenge_methods_supported
-            or code_challenge_method not in metadata.code_challenge_methods_supported
-        ):
-            raise ValueError(
-                f"Incompatible auth server: does not support code challenge method {code_challenge_method}"
-            )
     else:
         authorization_url = urljoin(server_url, "/authorize")
 
@@ -210,8 +325,47 @@ def start_authorization(
         "state": state_key,
     }
 
+    # Add scope if provided
+    if scope:
+        params["scope"] = scope
+
     authorization_url = f"{authorization_url}?{urllib.parse.urlencode(params)}"
     return authorization_url, code_verifier
+
+
+def _parse_token_response(response: httpx.Response) -> OAuthTokens:
+    """
+    Parse OAuth token response supporting both JSON and form-urlencoded formats.
+
+    Per RFC 6749 Section 5.1, the standard format is JSON.
+    However, some legacy OAuth providers (e.g., early GitHub OAuth Apps) return
+    application/x-www-form-urlencoded format for backwards compatibility.
+
+    Args:
+        response: The HTTP response from token endpoint
+
+    Returns:
+        Parsed OAuth tokens
+
+    Raises:
+        ValueError: If response cannot be parsed
+    """
+    content_type = response.headers.get("content-type", "").lower()
+
+    if "application/json" in content_type:
+        # Standard OAuth 2.0 JSON response (RFC 6749)
+        return OAuthTokens.model_validate(response.json())
+    elif "application/x-www-form-urlencoded" in content_type:
+        # Legacy form-urlencoded response (non-standard but used by some providers)
+        token_data = dict(urllib.parse.parse_qsl(response.text))
+        return OAuthTokens.model_validate(token_data)
+    else:
+        # No content-type or unknown - try JSON first, fallback to form-urlencoded
+        try:
+            return OAuthTokens.model_validate(response.json())
+        except (ValidationError, json.JSONDecodeError):
+            token_data = dict(urllib.parse.parse_qsl(response.text))
+            return OAuthTokens.model_validate(token_data)
 
 
 def exchange_authorization(
@@ -246,7 +400,7 @@ def exchange_authorization(
     response = ssrf_proxy.post(token_url, data=params)
     if not response.is_success:
         raise ValueError(f"Token exchange failed: HTTP {response.status_code}")
-    return OAuthTokens.model_validate(response.json())
+    return _parse_token_response(response)
 
 
 def refresh_authorization(
@@ -279,7 +433,7 @@ def refresh_authorization(
         raise MCPRefreshTokenError(e) from e
     if not response.is_success:
         raise MCPRefreshTokenError(response.text)
-    return OAuthTokens.model_validate(response.json())
+    return _parse_token_response(response)
 
 
 def client_credentials_flow(
@@ -322,7 +476,7 @@ def client_credentials_flow(
             f"Client credentials token request failed: HTTP {response.status_code}, Response: {response.text}"
         )
 
-    return OAuthTokens.model_validate(response.json())
+    return _parse_token_response(response)
 
 
 def register_client(
@@ -352,6 +506,8 @@ def auth(
     provider: MCPProviderEntity,
     authorization_code: str | None = None,
     state_param: str | None = None,
+    resource_metadata_url: str | None = None,
+    scope_hint: str | None = None,
 ) -> AuthResult:
     """
     Orchestrates the full auth flow with a server using secure Redis state storage.
@@ -363,18 +519,26 @@ def auth(
         provider: The MCP provider entity
         authorization_code: Optional authorization code from OAuth callback
         state_param: Optional state parameter from OAuth callback
+        resource_metadata_url: Optional Protected Resource Metadata URL from WWW-Authenticate
+        scope_hint: Optional scope hint from WWW-Authenticate header
 
     Returns:
         AuthResult containing actions to be performed and response data
     """
     actions: list[AuthAction] = []
     server_url = provider.decrypt_server_url()
-    server_metadata = discover_oauth_metadata(server_url)
+
+    # Discover OAuth metadata using RFC 8414/9470 standards
+    server_metadata, prm, scope_from_www_auth = discover_oauth_metadata(
+        server_url, resource_metadata_url, scope_hint, LATEST_PROTOCOL_VERSION
+    )
+
     client_metadata = provider.client_metadata
     provider_id = provider.id
     tenant_id = provider.tenant_id
     client_information = provider.retrieve_client_information()
     redirect_url = provider.redirect_url
+    credentials = provider.decrypt_credentials()
 
     # Determine grant type based on server metadata
     if not server_metadata:
@@ -392,8 +556,8 @@ def auth(
     else:
         effective_grant_type = MCPSupportGrantType.CLIENT_CREDENTIALS.value
 
-    # Get stored credentials
-    credentials = provider.decrypt_credentials()
+    # Determine effective scope using priority-based strategy
+    effective_scope = get_effective_scope(scope_from_www_auth, prm, server_metadata, credentials.get("scope"))
 
     if not client_information:
         if authorization_code is not None:
@@ -425,12 +589,11 @@ def auth(
     if effective_grant_type == MCPSupportGrantType.CLIENT_CREDENTIALS.value:
         # Direct token request without user interaction
         try:
-            scope = credentials.get("scope")
             tokens = client_credentials_flow(
                 server_url,
                 server_metadata,
                 client_information,
-                scope,
+                effective_scope,
             )
 
             # Return action to save tokens and grant type
@@ -526,6 +689,7 @@ def auth(
         redirect_url,
         provider_id,
         tenant_id,
+        effective_scope,
     )
 
     # Return action to save code verifier

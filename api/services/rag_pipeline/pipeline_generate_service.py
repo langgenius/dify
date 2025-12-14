@@ -53,10 +53,11 @@ class PipelineGenerateService:
 
     @staticmethod
     def _get_max_active_requests(app_model: App) -> int:
-        max_active_requests = app_model.max_active_requests
-        if max_active_requests is None:
-            max_active_requests = int(dify_config.APP_MAX_ACTIVE_REQUESTS)
-        return max_active_requests
+        app_limit = app_model.max_active_requests or dify_config.APP_DEFAULT_ACTIVE_REQUESTS
+        config_limit = dify_config.APP_MAX_ACTIVE_REQUESTS
+        # Filter out infinite (0) values and return the minimum, or 0 if both are infinite
+        limits = [limit for limit in [app_limit, config_limit] if limit > 0]
+        return min(limits) if limits else 0
 
     @classmethod
     def generate_single_iteration(

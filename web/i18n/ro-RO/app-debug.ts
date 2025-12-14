@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Context',
       noData: 'Puteți importa Cunoștințe ca context',
-      words: 'Cuvinte',
-      textBlocks: 'Blocuri de text',
       selectTitle: 'Selectați Cunoștințe de referință',
       selected: 'Cunoștințe selectate',
       noDataSet: 'Nu s-au găsit Cunoștințe',
@@ -334,6 +332,7 @@ const translation = {
     'uploadFileTypes': 'Încărcați tipuri de fișiere',
     'localUpload': 'Încărcare locală',
     'maxNumberOfUploads': 'Numărul maxim de încărcări',
+    'maxNumberTip': 'Document < {{docLimit}}, imagine < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'both': 'Ambii',
     'optional': 'opțional',
     'jsonSchema': 'Schema JSON',
@@ -394,6 +393,7 @@ const translation = {
     writeOpener: 'Scrieți deschizătorul',
     placeholder: 'Scrieți aici mesajul de deschidere, puteți utiliza variabile, încercați să tastați {{variable}}.',
     openingQuestion: 'Întrebări de deschidere',
+    openingQuestionPlaceholder: 'Puteți utiliza variabile, încercați să tastați {{variable}}.',
     noDataPlaceHolder:
       'Începerea conversației cu utilizatorul poate ajuta AI să stabilească o conexiune mai strânsă cu ei în aplicațiile conversaționale.',
     varTip: 'Puteți utiliza variabile, încercați să tastați {{variable}}',

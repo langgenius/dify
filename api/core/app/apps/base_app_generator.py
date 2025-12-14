@@ -93,7 +93,20 @@ class BaseAppGenerator:
         if value is None:
             if variable_entity.required:
                 raise ValueError(f"{variable_entity.variable} is required in input form")
-            return value
+            # Use default value and continue validation to ensure type conversion
+            value = variable_entity.default
+            # If default is also None, return None directly
+            if value is None:
+                return None
+
+        # Treat empty placeholders for optional file inputs as unset
+        if (
+            variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
+            and not variable_entity.required
+        ):
+            # Treat empty string (frontend default) or empty list as unset
+            if not value and isinstance(value, (str, list)):
+                return None
 
         if variable_entity.type in {
             VariableEntityType.TEXT_INPUT,
@@ -151,8 +164,17 @@ class BaseAppGenerator:
                         f"{variable_entity.variable} in input form must be less than {variable_entity.max_length} files"
                     )
             case VariableEntityType.CHECKBOX:
-                if not isinstance(value, bool):
-                    raise ValueError(f"{variable_entity.variable} in input form must be a valid boolean value")
+                if isinstance(value, str):
+                    normalized_value = value.strip().lower()
+                    if normalized_value in {"true", "1", "yes", "on"}:
+                        value = True
+                    elif normalized_value in {"false", "0", "no", "off"}:
+                        value = False
+                elif isinstance(value, (int, float)):
+                    if value == 1:
+                        value = True
+                    elif value == 0:
+                        value = False
             case _:
                 raise AssertionError("this statement should be unreachable.")
 

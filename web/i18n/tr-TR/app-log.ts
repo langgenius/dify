@@ -19,6 +19,7 @@ const translation = {
       tokens: 'TOKENLAR',
       user: 'SON KULLANICI VEYA HESAP',
       version: 'VERSİYON',
+      triggered_from: 'TETİKLEYEN TARAF',
     },
     pagination: {
       previous: 'Önceki',
@@ -65,6 +66,8 @@ const translation = {
       quarterToDate: 'Çeyrek Başlangıcından İtibaren',
       yearToDate: 'Yıl Başlangıcından İtibaren',
       allTime: 'Tüm Zamanlar',
+      custom: 'Özel',
+      last30days: 'Son 30 Gün',
     },
     annotation: {
       all: 'Hepsi',
@@ -95,6 +98,15 @@ const translation = {
     finalProcessing: 'Son İşleme',
   },
   dateFormat: 'GG/AA/YYYY',
+  triggerBy: {
+    debugging: 'Hata ayıklama',
+    appRun: 'WebUygulama',
+    webhook: 'Webhook',
+    schedule: 'Program',
+    plugin: 'Eklenti',
+    ragPipelineRun: 'RAG Boru Hattı',
+    ragPipelineDebugging: 'RAG Hata Ayıklama',
+  },
 }
 
 export default translation

@@ -1,7 +1,7 @@
 import sys
 
 
-def is_db_command():
+def is_db_command() -> bool:
     if len(sys.argv) > 1 and sys.argv[0].endswith("flask") and sys.argv[1] == "db":
         return True
     return False

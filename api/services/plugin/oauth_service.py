@@ -16,6 +16,7 @@ class OAuthProxyService(BasePluginClient):
         tenant_id: str,
         plugin_id: str,
         provider: str,
+        extra_data: dict = {},
         credential_id: str | None = None,
     ):
         """
@@ -32,6 +33,7 @@ class OAuthProxyService(BasePluginClient):
         """
         context_id = str(uuid.uuid4())
         data = {
+            **extra_data,
             "user_id": user_id,
             "plugin_id": plugin_id,
             "tenant_id": tenant_id,

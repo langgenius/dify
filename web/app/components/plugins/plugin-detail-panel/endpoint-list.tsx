@@ -102,14 +102,16 @@ const EndpointList = ({ detail }: Props) => {
             key={index}
             data={item}
             handleChange={() => invalidateEndpointList(detail.plugin_id)}
+            pluginDetail={detail}
           />
         ))}
       </div>
       {isShowEndpointModal && (
         <EndpointModal
-          formSchemas={formSchemas}
+          formSchemas={formSchemas as any}
           onCancel={hideEndpointModal}
           onSaved={handleCreate}
+          pluginDetail={detail}
         />
       )}
     </div>

@@ -70,6 +70,8 @@ export type I18nText = {
   'uk-UA': string
   'id-ID': string
   'tr-TR': string
+  'fa-IR': string
+  'ar-TN': string
   'YOUR_LANGUAGE_CODE': string
 }
 ```
@@ -157,6 +159,18 @@ export const languages = [
     example: 'Привет, Dify!',
     supported: true,
   },
+  {
+    value: 'fa-IR',
+    name: 'Farsi (Iran)',
+    example: 'سلام, دیفای!',
+    supported: true,
+  },
+  {
+    value: 'ar-TN',
+    name: 'العربية (تونس)',
+    example: 'مرحبا، Dify!',
+    supported: true,
+  },
   // Add your language here 👇
   ...
   // Add your language here 👆
@@ -173,3 +187,14 @@ export const languages = [
 That's it! You have successfully added a new language to the project. If you want to remove a language, you can simply delete the folder and remove the language from the `language.ts` file.
 
 We have a list of languages that we support in the `language.ts` file. But some of them are not supported yet. So, they are marked as `false`. If you want to support a language, you can follow the steps above and mark the supported field as `true`.
+
+## Utility scripts
+
+- Auto-fill translations: `pnpm run auto-gen-i18n -- --file app common --lang zh-Hans ja-JP [--dry-run]`
+  - Use space-separated values; repeat `--file` / `--lang` as needed. Defaults to all en-US files and all supported locales except en-US.
+  - Protects placeholders (`{{var}}`, `${var}`, `<tag>`) before translation and restores them after.
+- Check missing/extra keys: `pnpm run check-i18n -- --file app billing --lang zh-Hans [--auto-remove]`
+  - Use space-separated values; repeat `--file` / `--lang` as needed. Returns non-zero on missing/extra keys (CI will fail); `--auto-remove` deletes extra keys automatically.
+- Generate types: `pnpm run gen:i18n-types`; verify sync: `pnpm run check:i18n-types`.
+
+Workflows: `.github/workflows/translate-i18n-base-on-english.yml` auto-runs the translation generator on en-US changes to main; `.github/workflows/web-tests.yml` checks i18n keys and type sync on web changes.

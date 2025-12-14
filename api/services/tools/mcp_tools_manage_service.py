@@ -1,6 +1,7 @@
 import hashlib
 import json
 import logging
+from collections.abc import Mapping
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration, MCPProviderEntity
 from core.helper import encrypter
 from core.helper.provider_cache import NoOpProviderCredentialCache
+from core.helper.tool_provider_cache import ToolProviderListCache
 from core.mcp.auth.auth_flow import auth
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPAuthError, MCPError
@@ -163,6 +165,10 @@ class MCPToolManageService:
 
         self._session.add(mcp_tool)
         self._session.flush()
+
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
+
         mcp_providers = ToolTransformService.mcp_provider_to_user_provider(mcp_tool, for_list=True)
         return mcp_providers
 
@@ -244,6 +250,9 @@ class MCPToolManageService:
 
             # Flush changes to database
             self._session.flush()
+
+            # Invalidate tool providers cache
+            ToolProviderListCache.invalidate_cache(tenant_id)
         except IntegrityError as e:
             self._handle_integrity_error(e, name, server_url, server_identifier)
 
@@ -251,6 +260,9 @@ class MCPToolManageService:
         """Delete an MCP provider."""
         mcp_tool = self.get_provider(provider_id=provider_id, tenant_id=tenant_id)
         self._session.delete(mcp_tool)
+
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
 
     def list_providers(
         self, *, tenant_id: str, for_list: bool = False, include_sensitive: bool = True
@@ -420,7 +432,7 @@ class MCPToolManageService:
             return json.dumps({"content": icon, "background": icon_background})
         return icon
 
-    def _encrypt_dict_fields(self, data: dict[str, Any], secret_fields: list[str], tenant_id: str) -> dict[str, str]:
+    def _encrypt_dict_fields(self, data: dict[str, Any], secret_fields: list[str], tenant_id: str) -> Mapping[str, str]:
         """Encrypt specified fields in a dictionary.
 
         Args:
@@ -506,7 +518,11 @@ class MCPToolManageService:
         return auth_result.response
 
     def auth_with_actions(
-        self, provider_entity: MCPProviderEntity, authorization_code: str | None = None
+        self,
+        provider_entity: MCPProviderEntity,
+        authorization_code: str | None = None,
+        resource_metadata_url: str | None = None,
+        scope_hint: str | None = None,
     ) -> dict[str, str]:
         """
         Perform authentication and execute all resulting actions.
@@ -516,11 +532,18 @@ class MCPToolManageService:
         Args:
             provider_entity: The MCP provider entity
             authorization_code: Optional authorization code
+            resource_metadata_url: Optional Protected Resource Metadata URL from WWW-Authenticate
+            scope_hint: Optional scope hint from WWW-Authenticate header
 
         Returns:
             Response dictionary from auth result
         """
-        auth_result = auth(provider_entity, authorization_code)
+        auth_result = auth(
+            provider_entity,
+            authorization_code,
+            resource_metadata_url=resource_metadata_url,
+            scope_hint=scope_hint,
+        )
         return self.execute_auth_actions(auth_result)
 
     def _reconnect_provider(self, *, server_url: str, provider: MCPToolProvider) -> ReconnectResult:

@@ -7,6 +7,7 @@ from httpx import get
 from sqlalchemy import select
 
 from core.entities.provider_entities import ProviderConfig
+from core.helper.tool_provider_cache import ToolProviderListCache
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
@@ -177,6 +178,9 @@ class ApiToolManageService:
         # update labels
         ToolLabelManager.update_tool_labels(provider_controller, labels)
 
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
+
         return {"result": "success"}
 
     @staticmethod
@@ -300,13 +304,13 @@ class ApiToolManageService:
         )
 
         original_credentials = encrypter.decrypt(provider.credentials)
-        masked_credentials = encrypter.mask_tool_credentials(original_credentials)
+        masked_credentials = encrypter.mask_plugin_credentials(original_credentials)
         # check if the credential has changed, save the original credential
         for name, value in credentials.items():
             if name in masked_credentials and value == masked_credentials[name]:
                 credentials[name] = original_credentials[name]
 
-        credentials = encrypter.encrypt(credentials)
+        credentials = dict(encrypter.encrypt(credentials))
         provider.credentials_str = json.dumps(credentials)
 
         db.session.add(provider)
@@ -317,6 +321,9 @@ class ApiToolManageService:
 
         # update labels
         ToolLabelManager.update_tool_labels(provider_controller, labels)
+
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
 
         return {"result": "success"}
 
@@ -339,6 +346,9 @@ class ApiToolManageService:
 
         db.session.delete(provider)
         db.session.commit()
+
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
 
         return {"result": "success"}
 
@@ -417,7 +427,7 @@ class ApiToolManageService:
             )
             decrypted_credentials = encrypter.decrypt(credentials)
             # check if the credential has changed, save the original credential
-            masked_credentials = encrypter.mask_tool_credentials(decrypted_credentials)
+            masked_credentials = encrypter.mask_plugin_credentials(decrypted_credentials)
             for name, value in credentials.items():
                 if name in masked_credentials and value == masked_credentials[name]:
                     credentials[name] = decrypted_credentials[name]

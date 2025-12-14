@@ -18,6 +18,7 @@ type Props = {
   currentProvider?: ToolWithProvider
   showManageInputField?: boolean
   onManageInputField?: () => void
+  extraParams?: Record<string, any>
 }
 
 const ToolForm: FC<Props> = ({
@@ -31,6 +32,7 @@ const ToolForm: FC<Props> = ({
   currentProvider,
   showManageInputField,
   onManageInputField,
+  extraParams,
 }) => {
   return (
     <div className='space-y-1'>
@@ -48,6 +50,8 @@ const ToolForm: FC<Props> = ({
             currentProvider={currentProvider}
             showManageInputField={showManageInputField}
             onManageInputField={onManageInputField}
+            extraParams={extraParams}
+            providerType='tool'
           />
         ))
       }

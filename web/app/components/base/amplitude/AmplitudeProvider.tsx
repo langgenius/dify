@@ -1,0 +1,49 @@
+'use client'
+
+import type { FC } from 'react'
+import React, { useEffect } from 'react'
+import * as amplitude from '@amplitude/analytics-browser'
+import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
+import { AMPLITUDE_API_KEY, IS_CLOUD_EDITION } from '@/config'
+
+export type IAmplitudeProps = {
+  sessionReplaySampleRate?: number
+}
+
+// Check if Amplitude should be enabled
+export const isAmplitudeEnabled = () => {
+  return IS_CLOUD_EDITION && !!AMPLITUDE_API_KEY
+}
+
+const AmplitudeProvider: FC<IAmplitudeProps> = ({
+  sessionReplaySampleRate = 1,
+}) => {
+  useEffect(() => {
+    // Only enable in Saas edition with valid API key
+    if (!isAmplitudeEnabled())
+      return
+
+    // Initialize Amplitude
+    amplitude.init(AMPLITUDE_API_KEY, {
+      defaultTracking: {
+        sessions: true,
+        pageViews: true,
+        formInteractions: true,
+        fileDownloads: true,
+      },
+      // Enable debug logs in development environment
+      logLevel: amplitude.Types.LogLevel.Warn,
+    })
+
+    // Add Session Replay plugin
+    const sessionReplay = sessionReplayPlugin({
+      sampleRate: sessionReplaySampleRate,
+    })
+    amplitude.add(sessionReplay)
+  }, [])
+
+  // This is a client component that renders nothing
+  return null
+}
+
+export default React.memo(AmplitudeProvider)

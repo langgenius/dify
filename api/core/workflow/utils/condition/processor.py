@@ -265,6 +265,45 @@ def _assert_not_empty(*, value: object) -> bool:
     return False
 
 
+def _normalize_numeric_values(value: int | float, expected: object) -> tuple[int | float, int | float]:
+    """
+    Normalize value and expected to compatible numeric types for comparison.
+
+    Args:
+        value: The actual numeric value (int or float)
+        expected: The expected value (int, float, or str)
+
+    Returns:
+        A tuple of (normalized_value, normalized_expected) with compatible types
+
+    Raises:
+        ValueError: If expected cannot be converted to a number
+    """
+    if not isinstance(expected, (int, float, str)):
+        raise ValueError(f"Cannot convert {type(expected)} to number")
+
+    # Convert expected to appropriate numeric type
+    if isinstance(expected, str):
+        # Try to convert to float first to handle decimal strings
+        try:
+            expected_float = float(expected)
+        except ValueError as e:
+            raise ValueError(f"Cannot convert '{expected}' to number") from e
+
+        # If value is int and expected is a whole number, keep as int comparison
+        if isinstance(value, int) and expected_float.is_integer():
+            return value, int(expected_float)
+        else:
+            # Otherwise convert value to float for comparison
+            return float(value) if isinstance(value, int) else value, expected_float
+    elif isinstance(expected, float):
+        # If expected is already float, convert int value to float
+        return float(value) if isinstance(value, int) else value, expected
+    else:
+        # expected is int
+        return value, expected
+
+
 def _assert_equal(*, value: object, expected: object) -> bool:
     if value is None:
         return False
@@ -324,18 +363,8 @@ def _assert_greater_than(*, value: object, expected: object) -> bool:
     if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
-    if isinstance(value, int):
-        if not isinstance(expected, (int, float, str)):
-            raise ValueError(f"Cannot convert {type(expected)} to int")
-        expected = int(expected)
-    else:
-        if not isinstance(expected, (int, float, str)):
-            raise ValueError(f"Cannot convert {type(expected)} to float")
-        expected = float(expected)
-
-    if value <= expected:
-        return False
-    return True
+    value, expected = _normalize_numeric_values(value, expected)
+    return value > expected
 
 
 def _assert_less_than(*, value: object, expected: object) -> bool:
@@ -345,18 +374,8 @@ def _assert_less_than(*, value: object, expected: object) -> bool:
     if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
-    if isinstance(value, int):
-        if not isinstance(expected, (int, float, str)):
-            raise ValueError(f"Cannot convert {type(expected)} to int")
-        expected = int(expected)
-    else:
-        if not isinstance(expected, (int, float, str)):
-            raise ValueError(f"Cannot convert {type(expected)} to float")
-        expected = float(expected)
-
-    if value >= expected:
-        return False
-    return True
+    value, expected = _normalize_numeric_values(value, expected)
+    return value < expected
 
 
 def _assert_greater_than_or_equal(*, value: object, expected: object) -> bool:
@@ -366,18 +385,8 @@ def _assert_greater_than_or_equal(*, value: object, expected: object) -> bool:
     if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
-    if isinstance(value, int):
-        if not isinstance(expected, (int, float, str)):
-            raise ValueError(f"Cannot convert {type(expected)} to int")
-        expected = int(expected)
-    else:
-        if not isinstance(expected, (int, float, str)):
-            raise ValueError(f"Cannot convert {type(expected)} to float")
-        expected = float(expected)
-
-    if value < expected:
-        return False
-    return True
+    value, expected = _normalize_numeric_values(value, expected)
+    return value >= expected
 
 
 def _assert_less_than_or_equal(*, value: object, expected: object) -> bool:
@@ -387,18 +396,8 @@ def _assert_less_than_or_equal(*, value: object, expected: object) -> bool:
     if not isinstance(value, (int, float)):
         raise ValueError("Invalid actual value type: number")
 
-    if isinstance(value, int):
-        if not isinstance(expected, (int, float, str)):
-            raise ValueError(f"Cannot convert {type(expected)} to int")
-        expected = int(expected)
-    else:
-        if not isinstance(expected, (int, float, str)):
-            raise ValueError(f"Cannot convert {type(expected)} to float")
-        expected = float(expected)
-
-    if value > expected:
-        return False
-    return True
+    value, expected = _normalize_numeric_values(value, expected)
+    return value <= expected
 
 
 def _assert_null(*, value: object) -> bool:

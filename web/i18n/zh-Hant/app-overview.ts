@@ -114,6 +114,11 @@ const translation = {
         },
       },
       launch: '發射',
+      enableTooltip: {
+        description: '要啟用此功能，請在畫布上添加一個使用者輸入節點。（可能草稿中已存在，發布後生效）',
+        learnMore: '了解更多',
+      },
+      title: '網頁應用程式',
     },
     apiInfo: {
       title: '後端服務 API',
@@ -124,6 +129,17 @@ const translation = {
     status: {
       running: '執行中',
       disable: '已停用',
+    },
+    triggerInfo: {
+      title: '觸發因素',
+      explanation: '工作流程觸發管理',
+      triggersAdded: '{{count}} 已新增觸發器',
+      noTriggerAdded: '未添加觸發器',
+      triggerStatusDescription: '觸發節點狀態將顯示於此。（可能已存在於草稿中，發布後生效）',
+      learnAboutTriggers: '了解觸發因素',
+    },
+    disableTooltip: {
+      triggerMode: '觸發節點模式不支援 {{feature}} 功能。',
     },
   },
   analysis: {

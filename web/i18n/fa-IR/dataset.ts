@@ -19,7 +19,6 @@ const translation = {
   intro5: 'به عنوان یک افزونه مستقل ChatGPT برای انتشار',
   intro6: 'ایجاد شود',
   unavailable: 'در دسترس نیست',
-  unavailableTip: 'مدل جاسازی در دسترس نیست، نیاز است مدل جاسازی پیش‌فرض پیکربندی شود',
   datasets: 'دانش',
   datasetsApi: 'دسترسی API',
   retrieval: {
@@ -37,8 +36,6 @@ const translation = {
       recommend: 'توصیه',
     },
     invertedIndex: {
-      title: 'فهرست معکوس',
-      description: 'فهرست معکوس یک ساختار برای بازیابی کارآمد است. توسط اصطلاحات سازماندهی شده، هر اصطلاح به اسناد یا صفحات وب حاوی آن اشاره می‌کند.',
     },
     change: 'تغییر',
     changeRetrievalMethod: 'تغییر روش بازیابی',
@@ -236,6 +233,20 @@ const translation = {
     disabled: 'معلول',
     enabled: 'در حال خدمت',
     title: 'رابط برنامه‌نویسی سرویس',
+  },
+  docAllEnabled_one: 'سند {{count}} فعال شد',
+  docAllEnabled_other: 'تمام اسناد {{count}} فعال شدند',
+  partialEnabled_one: 'مجموعاً {{count}} سند، {{num}} موجود',
+  partialEnabled_other: 'مجموع {{count}} سند، {{num}} موجود',
+  cornerLabel: {
+    unavailable: 'غیر قابل دسترسی',
+    pipeline: 'خط لوله',
+  },
+  multimodal: 'چندوجهی',
+  imageUploader: {
+    button: 'کشیدن و رها کردن فایل یا پوشه، یا',
+    browse: 'مرور کردن',
+    tip: '{{supportTypes}} (حداکثر {{batchCount}}، هر کدام {{size}} مگابایت)',
   },
 }
 

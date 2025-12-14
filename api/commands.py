@@ -15,12 +15,12 @@ from sqlalchemy.orm import sessionmaker
 from configs import dify_config
 from constants.languages import languages
 from core.helper import encrypter
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.plugin import PluginInstaller
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
-from core.tools.entities.tool_entities import CredentialType
 from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
 from events.app_event import app_was_created
 from extensions.ext_database import db
@@ -1139,6 +1139,7 @@ def remove_orphaned_files_on_storage(force: bool):
         click.echo(click.style(f"Found {len(all_files_in_tables)} files in tables.", fg="white"))
     except Exception as e:
         click.echo(click.style(f"Error fetching keys: {str(e)}", fg="red"))
+        return
 
     all_files_on_storage = []
     for storage_path in storage_paths:
@@ -1220,6 +1221,55 @@ def setup_system_tool_oauth_client(provider, client_params):
         click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
 
     oauth_client = ToolOAuthSystemClient(
+        provider=provider_name,
+        plugin_id=plugin_id,
+        encrypted_oauth_params=oauth_client_params,
+    )
+    db.session.add(oauth_client)
+    db.session.commit()
+    click.echo(click.style(f"OAuth client params setup successfully. id: {oauth_client.id}", fg="green"))
+
+
+@click.command("setup-system-trigger-oauth-client", help="Setup system trigger oauth client.")
+@click.option("--provider", prompt=True, help="Provider name")
+@click.option("--client-params", prompt=True, help="Client Params")
+def setup_system_trigger_oauth_client(provider, client_params):
+    """
+    Setup system trigger oauth client
+    """
+    from models.provider_ids import TriggerProviderID
+    from models.trigger import TriggerOAuthSystemClient
+
+    provider_id = TriggerProviderID(provider)
+    provider_name = provider_id.provider_name
+    plugin_id = provider_id.plugin_id
+
+    try:
+        # json validate
+        click.echo(click.style(f"Validating client params: {client_params}", fg="yellow"))
+        client_params_dict = TypeAdapter(dict[str, Any]).validate_json(client_params)
+        click.echo(click.style("Client params validated successfully.", fg="green"))
+
+        click.echo(click.style(f"Encrypting client params: {client_params}", fg="yellow"))
+        click.echo(click.style(f"Using SECRET_KEY: `{dify_config.SECRET_KEY}`", fg="yellow"))
+        oauth_client_params = encrypt_system_oauth_params(client_params_dict)
+        click.echo(click.style("Client params encrypted successfully.", fg="green"))
+    except Exception as e:
+        click.echo(click.style(f"Error parsing client params: {str(e)}", fg="red"))
+        return
+
+    deleted_count = (
+        db.session.query(TriggerOAuthSystemClient)
+        .filter_by(
+            provider=provider_name,
+            plugin_id=plugin_id,
+        )
+        .delete()
+    )
+    if deleted_count > 0:
+        click.echo(click.style(f"Deleted {deleted_count} existing oauth client params.", fg="yellow"))
+
+    oauth_client = TriggerOAuthSystemClient(
         provider=provider_name,
         plugin_id=plugin_id,
         encrypted_oauth_params=oauth_client_params,
@@ -1422,7 +1472,10 @@ def setup_datasource_oauth_client(provider, client_params):
 
 
 @click.command("transform-datasource-credentials", help="Transform datasource credentials.")
-def transform_datasource_credentials():
+@click.option(
+    "--environment", prompt=True, help="the environment to transform datasource credentials", default="online"
+)
+def transform_datasource_credentials(environment: str):
     """
     Transform datasource credentials
     """
@@ -1433,9 +1486,14 @@ def transform_datasource_credentials():
         notion_plugin_id = "langgenius/notion_datasource"
         firecrawl_plugin_id = "langgenius/firecrawl_datasource"
         jina_plugin_id = "langgenius/jina_datasource"
-        notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)  # pyright: ignore[reportPrivateUsage]
-        firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)  # pyright: ignore[reportPrivateUsage]
-        jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)  # pyright: ignore[reportPrivateUsage]
+        if environment == "online":
+            notion_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(notion_plugin_id)  # pyright: ignore[reportPrivateUsage]
+            firecrawl_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(firecrawl_plugin_id)  # pyright: ignore[reportPrivateUsage]
+            jina_plugin_unique_identifier = plugin_migration._fetch_plugin_unique_identifier(jina_plugin_id)  # pyright: ignore[reportPrivateUsage]
+        else:
+            notion_plugin_unique_identifier = None
+            firecrawl_plugin_unique_identifier = None
+            jina_plugin_unique_identifier = None
         oauth_credential_type = CredentialType.OAUTH2
         api_key_credential_type = CredentialType.API_KEY
 

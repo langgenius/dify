@@ -149,6 +149,14 @@ const translation = {
       viewDocsLink: 'Voir la documentation de {{key}}',
       removeConfirmTitle: 'Supprimer la configuration de {{key}} ?',
       removeConfirmContent: 'La configuration actuelle est en cours d\'utilisation, sa suppression désactivera la fonction de Traçage.',
+      password: 'Mot de passe',
+      trackingUri: 'URI de suivi',
+      clientId: 'ID client OAuth',
+      clientSecret: 'Secret client OAuth',
+      username: 'Nom d\'utilisateur',
+      experimentId: 'ID de l\'expérience',
+      personalAccessToken: 'Jeton d\'accès personnel (ancien)',
+      databricksHost: 'URL de l\'espace de travail Databricks',
     },
     view: 'Vue',
     opik: {
@@ -162,6 +170,14 @@ const translation = {
     aliyun: {
       title: 'Surveillance Cloud',
       description: 'La plateforme d\'observabilité entièrement gérée et sans maintenance fournie par Alibaba Cloud permet une surveillance, un traçage et une évaluation prêts à l\'emploi des applications Dify.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'Plateforme LLMOps open source pour le suivi d\'expériences, l\'observabilité et l\'évaluation, pour créer des applications IA/LLM en toute confiance.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks propose MLflow entièrement géré avec une gouvernance et une sécurité robustes pour stocker les données de traçabilité.',
     },
     tencent: {
       title: 'Tencent APM',
@@ -286,6 +302,8 @@ const translation = {
       docDesc: 'Ouvrir la documentation d\'aide',
       accountDesc: 'Accédez à la page de compte',
       feedbackDesc: 'Discussions de rétroaction de la communauté ouverte',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noKnowledgeBasesFound: 'Aucune base de connaissances trouvée',
@@ -326,6 +344,8 @@ const translation = {
     startTyping: 'Commencez à taper pour rechercher',
     selectToNavigate: 'Sélectionnez pour naviguer',
   },
+  noUserInputNode: 'Nœud d\'entrée utilisateur manquant',
+  notPublishedYet: 'L\'application n\'est pas encore publiée',
 }
 
 export default translation

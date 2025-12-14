@@ -9,7 +9,7 @@ from yarl import URL
 from configs import dify_config
 from core.helper.provider_cache import ToolProviderCredentialsCache
 from core.mcp.types import Tool as MCPTool
-from core.plugin.entities.plugin_daemon import PluginDatasourceProviderEntity
+from core.plugin.entities.plugin_daemon import CredentialType, PluginDatasourceProviderEntity
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
@@ -19,7 +19,6 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    CredentialType,
     ToolParameter,
     ToolProviderType,
 )
@@ -28,18 +27,12 @@ from core.tools.utils.encryption import create_provider_encrypter, create_tool_p
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
 from models.tools import ApiToolProvider, BuiltinToolProvider, MCPToolProvider, WorkflowToolProvider
+from services.plugin.plugin_service import PluginService
 
 logger = logging.getLogger(__name__)
 
 
 class ToolTransformService:
-    @classmethod
-    def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:
-        url_prefix = (
-            URL(dify_config.CONSOLE_API_URL or "/") / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
-        )
-        return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
-
     @classmethod
     def get_tool_provider_icon_url(
         cls, provider_type: str, provider_name: str, icon: str | Mapping[str, str]
@@ -79,11 +72,9 @@ class ToolTransformService:
         elif isinstance(provider, ToolProviderApiEntity):
             if provider.plugin_id:
                 if isinstance(provider.icon, str):
-                    provider.icon = ToolTransformService.get_plugin_icon_url(
-                        tenant_id=tenant_id, filename=provider.icon
-                    )
+                    provider.icon = PluginService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
                 if isinstance(provider.icon_dark, str) and provider.icon_dark:
-                    provider.icon_dark = ToolTransformService.get_plugin_icon_url(
+                    provider.icon_dark = PluginService.get_plugin_icon_url(
                         tenant_id=tenant_id, filename=provider.icon_dark
                     )
             else:
@@ -97,7 +88,7 @@ class ToolTransformService:
         elif isinstance(provider, PluginDatasourceProviderEntity):
             if provider.plugin_id:
                 if isinstance(provider.declaration.identity.icon, str):
-                    provider.declaration.identity.icon = ToolTransformService.get_plugin_icon_url(
+                    provider.declaration.identity.icon = PluginService.get_plugin_icon_url(
                         tenant_id=tenant_id, filename=provider.declaration.identity.icon
                     )
 
@@ -172,7 +163,7 @@ class ToolTransformService:
                 )
                 # decrypt the credentials and mask the credentials
                 decrypted_credentials = encrypter.decrypt(data=credentials)
-                masked_credentials = encrypter.mask_tool_credentials(data=decrypted_credentials)
+                masked_credentials = encrypter.mask_plugin_credentials(data=decrypted_credentials)
 
                 result.masked_credentials = masked_credentials
                 result.original_credentials = decrypted_credentials
@@ -210,7 +201,9 @@ class ToolTransformService:
 
     @staticmethod
     def workflow_provider_to_user_provider(
-        provider_controller: WorkflowToolProviderController, labels: list[str] | None = None
+        provider_controller: WorkflowToolProviderController,
+        labels: list[str] | None = None,
+        workflow_app_id: str | None = None,
     ):
         """
         convert provider controller to user provider
@@ -230,6 +223,7 @@ class ToolTransformService:
             plugin_unique_identifier=None,
             tools=[],
             labels=labels or [],
+            workflow_app_id=workflow_app_id,
         )
 
     @staticmethod
@@ -345,7 +339,7 @@ class ToolTransformService:
 
             # decrypt the credentials and mask the credentials
             decrypted_credentials = encrypter.decrypt(data=credentials)
-            masked_credentials = encrypter.mask_tool_credentials(data=decrypted_credentials)
+            masked_credentials = encrypter.mask_plugin_credentials(data=decrypted_credentials)
 
             result.masked_credentials = masked_credentials
 
@@ -414,6 +408,7 @@ class ToolTransformService:
                 name=tool.operation_id or "",
                 label=I18nObject(en_US=tool.operation_id, zh_Hans=tool.operation_id),
                 description=I18nObject(en_US=tool.summary or "", zh_Hans=tool.summary or ""),
+                output_schema=tool.output_schema,
                 parameters=tool.parameters,
                 labels=labels or [],
             )

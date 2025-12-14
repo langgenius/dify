@@ -1,21 +1,23 @@
 'use client'
-import React from 'react'
-import type { Plugin } from '../types'
-import Icon from '../card/base/card-icon'
-import CornerMark from './base/corner-mark'
-import Title from './base/title'
-import OrgInfo from './base/org-info'
-import Description from './base/description'
-import Placeholder from './base/placeholder'
-import cn from '@/utils/classnames'
-import { useGetLanguage } from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
-import { useSingleCategories } from '../hooks'
-import { renderI18nObject } from '@/i18n-config'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
+import { useGetLanguage } from '@/context/i18n'
+import { renderI18nObject } from '@/i18n-config'
+import { getLanguage } from '@/i18n-config/language'
+import cn from '@/utils/classnames'
+import { RiAlertFill } from '@remixicon/react'
+import React from 'react'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
 import Partner from '../base/badges/partner'
 import Verified from '../base/badges/verified'
-import { RiAlertFill } from '@remixicon/react'
+import Icon from '../card/base/card-icon'
+import { useCategories } from '../hooks'
+import type { Plugin } from '../types'
+import CornerMark from './base/corner-mark'
+import Description from './base/description'
+import OrgInfo from './base/org-info'
+import Placeholder from './base/placeholder'
+import Title from './base/title'
 
 export type Props = {
   className?: string
@@ -49,10 +51,10 @@ const Card = ({
   const defaultLocale = useGetLanguage()
   const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
   const { t } = useMixedTranslation(localeFromProps)
-  const { categoriesMap } = useSingleCategories(t)
-  const { category, type, name, org, label, brief, icon, verified, badges = [] } = payload
-  const isBundle = !['plugin', 'model', 'tool', 'datasource', 'extension', 'agent-strategy'].includes(type)
-  const cornerMark = isBundle ? categoriesMap.bundle?.label : categoriesMap[category]?.label
+  const { categoriesMap } = useCategories(t, true)
+  const { category, type, name, org, label, brief, icon, icon_dark, verified, badges = [] } = payload
+  const { theme } = useTheme()
+  const iconSrc = theme === Theme.dark && icon_dark ? icon_dark : icon
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj ? renderI18nObject(obj, locale) : ''
   const isPartner = badges.includes('partner')
@@ -70,10 +72,10 @@ const Card = ({
   return (
     <div className={wrapClassName}>
       <div className={cn('p-4 pb-3', limitedInstall && 'pb-1')}>
-        {!hideCornerMark && <CornerMark text={cornerMark} />}
+        {!hideCornerMark && <CornerMark text={categoriesMap[type === 'bundle' ? type : category]?.label} />}
         {/* Header */}
         <div className="flex">
-          <Icon src={icon} installed={installed} installFailed={installFailed} />
+          <Icon src={iconSrc} installed={installed} installFailed={installFailed} />
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={getLocalizedText(label)} />
