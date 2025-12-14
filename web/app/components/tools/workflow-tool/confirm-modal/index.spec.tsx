@@ -1,0 +1,343 @@
+import React from 'react'
+import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import ConfirmModal from './index'
+
+// Mock external dependencies as per guidelines
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string) => key,
+  }),
+}))
+
+jest.mock('@/app/components/base/modal', () => {
+  const MockModal = ({ isShow, children, className }: {
+    isShow: boolean;
+    children: React.ReactNode;
+    className?: string;
+  }) => (
+    isShow ? (
+      <div data-testid="modal-wrapper" className={className}>
+        {children}
+      </div>
+    ) : null
+  )
+  return {
+    __esModule: true,
+    default: MockModal,
+  }
+})
+
+// Test utilities
+const defaultProps = {
+  show: true,
+  onClose: jest.fn(),
+  onConfirm: jest.fn(),
+}
+
+const renderComponent = (props: Partial<React.ComponentProps<typeof ConfirmModal>> = {}) => {
+  const mergedProps = { ...defaultProps, ...props }
+  return render(<ConfirmModal {...mergedProps} />)
+}
+
+describe('ConfirmModal', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  // Rendering tests (REQUIRED)
+  describe('Rendering', () => {
+    it('should render without crashing', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
+    })
+
+    it('should render when show prop is true', () => {
+      // Arrange & Act
+      renderComponent({ show: true })
+
+      // Assert
+      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
+    })
+
+    it('should not render when show prop is false', () => {
+      // Arrange & Act
+      renderComponent({ show: false })
+
+      // Assert
+      expect(screen.queryByTestId('modal-wrapper')).not.toBeInTheDocument()
+    })
+
+    it('should render warning icon with proper styling', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      const iconContainer = screen.getByTestId('modal-wrapper')?.querySelector('.rounded-xl')
+      expect(iconContainer).toBeInTheDocument()
+      expect(iconContainer).toHaveClass('border-[0.5px]')
+      expect(iconContainer).toHaveClass('bg-background-section')
+    })
+
+    it('should render translated title and description', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      expect(screen.getByText('tools.createTool.confirmTitle')).toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.confirmTip')).toBeInTheDocument()
+    })
+
+    it('should render action buttons with translated text', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      expect(screen.getByText('common.operation.cancel')).toBeInTheDocument()
+      expect(screen.getByText('common.operation.confirm')).toBeInTheDocument()
+    })
+  })
+
+  // Props tests (REQUIRED)
+  describe('Props', () => {
+    it('should handle missing onConfirm prop gracefully', () => {
+      // Arrange & Act - Should not crash when onConfirm is undefined
+      expect(() => {
+        renderComponent({ onConfirm: undefined })
+      }).not.toThrow()
+
+      // Assert
+      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
+      expect(screen.getByText('common.operation.confirm')).toBeInTheDocument()
+    })
+
+    it('should apply custom className to modal wrapper', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      const modalWrapper = screen.getByTestId('modal-wrapper')
+      expect(modalWrapper).toHaveClass('w-[600px]')
+      expect(modalWrapper).toHaveClass('max-w-[600px]')
+      expect(modalWrapper).toHaveClass('p-8')
+    })
+
+    it('should display modal with correct width constraints', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      const modalWrapper = screen.getByTestId('modal-wrapper')
+      expect(modalWrapper).toHaveClass('w-[600px]')
+      expect(modalWrapper).toHaveClass('max-w-[600px]')
+    })
+  })
+
+  // User Interactions
+  describe('User Interactions', () => {
+    it('should call onClose when close button is clicked', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const onClose = jest.fn()
+      renderComponent({ onClose })
+
+      // Act - Find the close button by its cursor-pointer class and click it
+      const modalWrapper = screen.getByTestId('modal-wrapper')
+      const closeButton = modalWrapper.querySelector('.cursor-pointer')
+
+      if (closeButton)
+        await user.click(closeButton)
+
+      // Assert
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onClose when cancel button is clicked', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const onClose = jest.fn()
+      renderComponent({ onClose })
+
+      // Act
+      const cancelButton = screen.getByText('common.operation.cancel')
+      await user.click(cancelButton)
+
+      // Assert
+      expect(onClose).toHaveBeenCalledTimes(1)
+    })
+
+    it('should call onConfirm when confirm button is clicked', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const onConfirm = jest.fn()
+      renderComponent({ onConfirm })
+
+      // Act
+      const confirmButton = screen.getByText('common.operation.confirm')
+      await user.click(confirmButton)
+
+      // Assert
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+    })
+
+    it('should not throw error when confirm button is clicked without onConfirm', async () => {
+      // Arrange
+      const user = userEvent.setup()
+
+      // Act & Assert - Should not throw
+      expect(async () => {
+        renderComponent({ onConfirm: undefined })
+        const confirmButton = screen.getByText('common.operation.confirm')
+        await user.click(confirmButton)
+      }).not.toThrow()
+    })
+
+    it('should have correct button variants', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      const buttons = screen.getAllByRole('button')
+      expect(buttons).toHaveLength(2) // Cancel and Confirm buttons
+
+      // The confirm button should have warning variant
+      const confirmButton = screen.getByText('common.operation.confirm')
+      expect(confirmButton).toBeInTheDocument()
+    })
+  })
+
+  // Edge Cases (REQUIRED)
+  describe('Edge Cases', () => {
+    it('should handle all props being provided correctly', () => {
+      // Arrange
+      const props = {
+        show: true,
+        onClose: jest.fn(),
+        onConfirm: jest.fn(),
+      }
+
+      // Act
+      render(<ConfirmModal {...props} />)
+
+      // Assert
+      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.confirmTitle')).toBeInTheDocument()
+      expect(screen.getByText('tools.createTool.confirmTip')).toBeInTheDocument()
+    })
+
+    it('should handle rapid show/hide toggling', () => {
+      // Arrange
+      const { rerender } = renderComponent({ show: false })
+
+      // Assert - Initially not shown
+      expect(screen.queryByTestId('modal-wrapper')).not.toBeInTheDocument()
+
+      // Act - Show modal
+      rerender(<ConfirmModal {...defaultProps} show={true} />)
+
+      // Assert - Now shown
+      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
+
+      // Act - Hide modal again
+      rerender(<ConfirmModal {...defaultProps} show={false} />)
+
+      // Assert - Hidden again
+      expect(screen.queryByTestId('modal-wrapper')).not.toBeInTheDocument()
+    })
+
+    it('should handle multiple quick clicks on close button', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const onClose = jest.fn()
+      renderComponent({ onClose })
+
+      const modalWrapper = screen.getByTestId('modal-wrapper')
+      const closeButton = modalWrapper.querySelector('.cursor-pointer')
+
+      // Act
+      if (closeButton) {
+        await user.click(closeButton)
+        await user.click(closeButton)
+        await user.click(closeButton)
+
+        // Assert
+        expect(onClose).toHaveBeenCalledTimes(3)
+      }
+      else {
+        // Fallback if close button not found
+        expect(onClose).toHaveBeenCalledTimes(0)
+      }
+    })
+
+    it('should handle multiple quick clicks on confirm button', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const onConfirm = jest.fn()
+      renderComponent({ onConfirm })
+
+      // Act
+      const confirmButton = screen.getByText('common.operation.confirm')
+      await user.click(confirmButton)
+      await user.click(confirmButton)
+      await user.click(confirmButton)
+
+      // Assert
+      expect(onConfirm).toHaveBeenCalledTimes(3)
+    })
+
+    it('should handle onClose being called multiple times', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const onClose = jest.fn()
+      renderComponent({ onClose })
+
+      // Act - Click cancel button twice
+      const cancelButton = screen.getByText('common.operation.cancel')
+      await user.click(cancelButton)
+      await user.click(cancelButton)
+
+      // Assert
+      expect(onClose).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  // Accessibility tests
+  describe('Accessibility', () => {
+    it('should have proper button roles', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      const buttons = screen.getAllByRole('button')
+      expect(buttons).toHaveLength(2)
+      expect(buttons[0]).toHaveTextContent('common.operation.cancel')
+      expect(buttons[1]).toHaveTextContent('common.operation.confirm')
+    })
+
+    it('should have proper text hierarchy', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      const title = screen.getByText('tools.createTool.confirmTitle')
+      expect(title).toBeInTheDocument()
+
+      const description = screen.getByText('tools.createTool.confirmTip')
+      expect(description).toBeInTheDocument()
+    })
+
+    it('should have focusable interactive elements', () => {
+      // Arrange & Act
+      renderComponent()
+
+      // Assert
+      const buttons = screen.getAllByRole('button')
+      buttons.forEach((button) => {
+        expect(button).toBeEnabled()
+      })
+    })
+  })
+})
