@@ -1,0 +1,30 @@
+id: rewrite-sqlalchemy-string-not-nullable
+language: python
+rule:
+  pattern: $X = mapped_column($$$ARGS)
+  any:
+    - pattern: $X = mapped_column($$$BEFORE, sa.String($LENGTH), $$$MID, nullable=False, $$$AFTER)
+    - pattern: $X = mapped_column($$$BEFORE, sa.String($LENGTH), $$$MID, nullable=False)
+    - pattern: $X = mapped_column($$$BEFORE, String($LENGTH), $$$MID, nullable=False, $$$AFTER)
+    - pattern: $X = mapped_column($$$BEFORE, String($LENGTH), $$$MID, nullable=False)
+rewriters:
+- id: filter-nullable-false-arg
+  rule:
+    pattern: $ARG
+    inside:
+      kind: argument_list
+    all:
+    - not:
+        pattern:
+          context: a(nullable=False)
+          selector: keyword_argument
+  fix: $ARG
+
+transform:
+  NEWARGS:
+    rewrite:
+      rewriters: [filter-nullable-false-arg]
+      source: $$$ARGS
+      joinBy: ', '
+fix: |-
+  $X: Mapped[str] = mapped_column($NEWARGS)
