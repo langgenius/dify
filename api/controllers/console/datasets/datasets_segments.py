@@ -3,7 +3,8 @@ import uuid
 from flask import request
 from flask_restx import Resource, marshal
 from pydantic import BaseModel, Field
-from sqlalchemy import String, cast, or_, select
+from sqlalchemy import cast, func, or_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
@@ -144,11 +145,18 @@ class DatasetDocumentSegmentListApi(Resource):
 
         if keyword:
             # Search in both content and keywords fields
-            # Cast JSON to string for pattern matching (simpler and faster than jsonb_array_elements_text)
+            # Use jsonb_array_elements_text to properly handle Unicode/Chinese text in JSON array
             query = query.where(
                 or_(
                     DocumentSegment.content.ilike(f"%{keyword}%"),
-                    cast(DocumentSegment.keywords, String).ilike(f"%{keyword}%"),
+                    func.array_to_string(
+                        func.array(
+                            select(
+                                func.jsonb_array_elements_text(cast(DocumentSegment.keywords, JSONB))
+                            ).correlate(DocumentSegment).scalar_subquery()
+                        ),
+                        ","
+                    ).ilike(f"%{keyword}%"),
                 )
             )
 
