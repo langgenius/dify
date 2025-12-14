@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ConfirmModal from './index'
 
@@ -9,24 +9,6 @@ jest.mock('react-i18next', () => ({
     t: (key: string) => key,
   }),
 }))
-
-jest.mock('@/app/components/base/modal', () => {
-  const MockModal = ({ isShow, children, className }: {
-    isShow: boolean;
-    children: React.ReactNode;
-    className?: string;
-  }) => (
-    isShow ? (
-      <div data-testid="modal-wrapper" className={className}>
-        {children}
-      </div>
-    ) : null
-  )
-  return {
-    __esModule: true,
-    default: MockModal,
-  }
-})
 
 // Test utilities
 const defaultProps = {
@@ -52,7 +34,7 @@ describe('ConfirmModal', () => {
       renderComponent()
 
       // Assert
-      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should render when show prop is true', () => {
@@ -60,7 +42,7 @@ describe('ConfirmModal', () => {
       renderComponent({ show: true })
 
       // Assert
-      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
     })
 
     it('should not render when show prop is false', () => {
@@ -68,7 +50,7 @@ describe('ConfirmModal', () => {
       renderComponent({ show: false })
 
       // Assert
-      expect(screen.queryByTestId('modal-wrapper')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
     })
 
     it('should render warning icon with proper styling', () => {
@@ -76,7 +58,7 @@ describe('ConfirmModal', () => {
       renderComponent()
 
       // Assert
-      const iconContainer = screen.getByTestId('modal-wrapper').querySelector('.rounded-xl')
+      const iconContainer = document.querySelector('.rounded-xl')
       expect(iconContainer).toBeInTheDocument()
       expect(iconContainer).toHaveClass('border-[0.5px]')
       expect(iconContainer).toHaveClass('bg-background-section')
@@ -110,7 +92,7 @@ describe('ConfirmModal', () => {
       }).not.toThrow()
 
       // Assert
-      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
       expect(screen.getByText('common.operation.confirm')).toBeInTheDocument()
     })
 
@@ -118,11 +100,13 @@ describe('ConfirmModal', () => {
       // Arrange & Act
       renderComponent()
 
-      // Assert
-      const modalWrapper = screen.getByTestId('modal-wrapper')
-      expect(modalWrapper).toHaveClass('w-[600px]')
-      expect(modalWrapper).toHaveClass('max-w-[600px]')
-      expect(modalWrapper).toHaveClass('p-8')
+      // Assert - Check for the dialog panel with modal content
+      // The real modal structure has nested divs, we need to find the one with our classes
+      const dialogContent = document.querySelector('.relative.rounded-2xl')
+      expect(dialogContent).toBeInTheDocument()
+      expect(dialogContent).toHaveClass('w-[600px]')
+      expect(dialogContent).toHaveClass('max-w-[600px]')
+      expect(dialogContent).toHaveClass('p-8')
     })
   })
 
@@ -135,8 +119,7 @@ describe('ConfirmModal', () => {
       renderComponent({ onClose })
 
       // Act - Find the close button and click it
-      const modalWrapper = screen.getByTestId('modal-wrapper')
-      const closeButton = modalWrapper.querySelector('.cursor-pointer')
+      const closeButton = document.querySelector('.cursor-pointer')
       expect(closeButton).toBeInTheDocument() // Ensure the button is found before clicking
       await user.click(closeButton!)
 
@@ -194,24 +177,30 @@ describe('ConfirmModal', () => {
 
   // Edge Cases (REQUIRED)
   describe('Edge Cases', () => {
-    it('should handle rapid show/hide toggling', () => {
+    it('should handle rapid show/hide toggling', async () => {
       // Arrange
       const { rerender } = renderComponent({ show: false })
 
       // Assert - Initially not shown
-      expect(screen.queryByTestId('modal-wrapper')).not.toBeInTheDocument()
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 
       // Act - Show modal
-      rerender(<ConfirmModal {...defaultProps} show={true} />)
+      await act(async () => {
+        rerender(<ConfirmModal {...defaultProps} show={true} />)
+      })
 
       // Assert - Now shown
-      expect(screen.getByTestId('modal-wrapper')).toBeInTheDocument()
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
 
       // Act - Hide modal again
-      rerender(<ConfirmModal {...defaultProps} show={false} />)
+      await act(async () => {
+        rerender(<ConfirmModal {...defaultProps} show={false} />)
+      })
 
-      // Assert - Hidden again
-      expect(screen.queryByTestId('modal-wrapper')).not.toBeInTheDocument()
+      // Assert - Hidden again (wait for transition to complete)
+      await waitFor(() => {
+        expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+      })
     })
 
     it('should handle multiple quick clicks on close button', async () => {
@@ -220,8 +209,7 @@ describe('ConfirmModal', () => {
       const onClose = jest.fn()
       renderComponent({ onClose })
 
-      const modalWrapper = screen.getByTestId('modal-wrapper')
-      const closeButton = modalWrapper.querySelector('.cursor-pointer')
+      const closeButton = document.querySelector('.cursor-pointer')
       expect(closeButton).toBeInTheDocument() // Ensure the button is found before clicking
 
       // Act
