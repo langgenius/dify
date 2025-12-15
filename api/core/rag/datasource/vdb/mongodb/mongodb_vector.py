@@ -152,6 +152,13 @@ class MongoDBVector(BaseVector):
         # Delete documents for this group_id
         self._collection.delete_many({"group_id": self._group_id})
 
+    def close(self):
+        if self._client:
+            self._client.close()
+
+    def __del__(self):
+        self.close()
+
     def _results_to_documents(self, results) -> list[Document]:
         documents = []
         for res in results:

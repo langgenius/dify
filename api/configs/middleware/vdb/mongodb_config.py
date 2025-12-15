@@ -1,6 +1,6 @@
 from urllib.parse import quote_plus
 
-from pydantic import Field, computed_field
+from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -59,3 +59,17 @@ class MongoDBConfig(BaseSettings):
             auth = f"{quote_plus(self.MONGODB_USERNAME)}:{password}@"
         
         return f"mongodb://{auth}{self.MONGODB_HOST}:{self.MONGODB_PORT}"
+
+    @model_validator(mode="after")
+    def validate_mongodb_config(self):
+        if not self.MONGODB_URI and self.MONGODB_HOST and not (self.MONGODB_USERNAME and self.MONGODB_PASSWORD):
+            # Warn or raise error? For local dev defaults might be loose, but for production it's risky.
+            # Given the review, strict validation is preferred. 
+            # However, standard mongo often runs without auth in local/test. 
+            # I'll allow it if explicitly set to empty strings, but checks are good.
+            # Let's just validate that if USERNAME is set, PASSWORD should be too, or vice versa if needed?
+            # Actually, standard mongo auth requires both.
+            if self.MONGODB_USERNAME and not self.MONGODB_PASSWORD:
+                 raise ValueError("MONGODB_PASSWORD is required when MONGODB_USERNAME is set.")
+            
+        return self
