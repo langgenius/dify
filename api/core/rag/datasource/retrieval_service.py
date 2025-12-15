@@ -371,7 +371,7 @@ class RetrievalService:
             include_segment_ids = set()
             segment_child_map = {}
             segment_file_map = {}
-            with Session(db.engine) as session:
+            with Session(bind=db.engine, expire_on_commit=False) as session:
                 # Process documents
                 for document in documents:
                     segment_id = None
@@ -395,7 +395,7 @@ class RetrievalService:
                                 session,
                             )
                             if attachment_info_dict:
-                                attachment_info = attachment_info_dict["attchment_info"]
+                                attachment_info = attachment_info_dict["attachment_info"]
                                 segment_id = attachment_info_dict["segment_id"]
                         else:
                             child_index_node_id = document.metadata.get("doc_id")
@@ -416,13 +416,6 @@ class RetrievalService:
                                 DocumentSegment.enabled == True,
                                 DocumentSegment.status == "completed",
                                 DocumentSegment.id == segment_id,
-                            )
-                            .options(
-                                load_only(
-                                    DocumentSegment.id,
-                                    DocumentSegment.content,
-                                    DocumentSegment.answer,
-                                )
                             )
                             .first()
                         )
@@ -458,12 +451,21 @@ class RetrievalService:
                                     "position": child_chunk.position,
                                     "score": document.metadata.get("score", 0.0),
                                 }
-                                segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
-                                segment_child_map[segment.id]["max_score"] = max(
-                                    segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
-                                )
+                                if segment.id in segment_child_map:
+                                    segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
+                                    segment_child_map[segment.id]["max_score"] = max(
+                                        segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
+                                    )
+                                else:
+                                    segment_child_map[segment.id] = {
+                                        "max_score": document.metadata.get("score", 0.0),
+                                        "child_chunks": [child_chunk_detail],
+                                    }
                             if attachment_info:
-                                segment_file_map[segment.id].append(attachment_info)
+                                if segment.id in segment_file_map:
+                                    segment_file_map[segment.id].append(attachment_info)
+                                else:
+                                    segment_file_map[segment.id] = [attachment_info]
                     else:
                         # Handle normal documents
                         segment = None
@@ -475,7 +477,7 @@ class RetrievalService:
                                 session,
                             )
                             if attachment_info_dict:
-                                attachment_info = attachment_info_dict["attchment_info"]
+                                attachment_info = attachment_info_dict["attachment_info"]
                                 segment_id = attachment_info_dict["segment_id"]
                                 document_segment_stmt = select(DocumentSegment).where(
                                     DocumentSegment.dataset_id == dataset_document.dataset_id,
@@ -483,7 +485,7 @@ class RetrievalService:
                                     DocumentSegment.status == "completed",
                                     DocumentSegment.id == segment_id,
                                 )
-                                segment = db.session.scalar(document_segment_stmt)
+                                segment = session.scalar(document_segment_stmt)
                                 if segment:
                                     segment_file_map[segment.id] = [attachment_info]
                         else:
@@ -496,7 +498,7 @@ class RetrievalService:
                                 DocumentSegment.status == "completed",
                                 DocumentSegment.index_node_id == index_node_id,
                             )
-                            segment = db.session.scalar(document_segment_stmt)
+                            segment = session.scalar(document_segment_stmt)
 
                         if not segment:
                             continue
@@ -684,7 +686,7 @@ class RetrievalService:
                 .first()
             )
             if attachment_binding:
-                attchment_info = {
+                attachment_info = {
                     "id": upload_file.id,
                     "name": upload_file.name,
                     "extension": "." + upload_file.extension,
@@ -692,5 +694,5 @@ class RetrievalService:
                     "source_url": sign_upload_file(upload_file.id, upload_file.extension),
                     "size": upload_file.size,
                 }
-                return {"attchment_info": attchment_info, "segment_id": attachment_binding.segment_id}
+                return {"attachment_info": attachment_info, "segment_id": attachment_binding.segment_id}
         return None

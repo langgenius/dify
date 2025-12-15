@@ -634,7 +634,8 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
 export const useMutationClearTaskPlugin = () => {
   return useMutation({
     mutationFn: ({ taskId, pluginId }: { taskId: string; pluginId: string }) => {
-      return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${pluginId}`)
+      const encodedPluginId = encodeURIComponent(pluginId)
+      return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${encodedPluginId}`)
     },
   })
 }

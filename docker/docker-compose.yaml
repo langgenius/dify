@@ -361,6 +361,19 @@ x-shared-env: &shared-api-worker-env
   CLICKZETTA_ANALYZER_TYPE: ${CLICKZETTA_ANALYZER_TYPE:-chinese}
   CLICKZETTA_ANALYZER_MODE: ${CLICKZETTA_ANALYZER_MODE:-smart}
   CLICKZETTA_VECTOR_DISTANCE_FUNCTION: ${CLICKZETTA_VECTOR_DISTANCE_FUNCTION:-cosine_distance}
+  IRIS_HOST: ${IRIS_HOST:-iris}
+  IRIS_SUPER_SERVER_PORT: ${IRIS_SUPER_SERVER_PORT:-1972}
+  IRIS_WEB_SERVER_PORT: ${IRIS_WEB_SERVER_PORT:-52773}
+  IRIS_USER: ${IRIS_USER:-_SYSTEM}
+  IRIS_PASSWORD: ${IRIS_PASSWORD:-Dify@1234}
+  IRIS_DATABASE: ${IRIS_DATABASE:-USER}
+  IRIS_SCHEMA: ${IRIS_SCHEMA:-dify}
+  IRIS_CONNECTION_URL: ${IRIS_CONNECTION_URL:-}
+  IRIS_MIN_CONNECTION: ${IRIS_MIN_CONNECTION:-1}
+  IRIS_MAX_CONNECTION: ${IRIS_MAX_CONNECTION:-3}
+  IRIS_TEXT_INDEX: ${IRIS_TEXT_INDEX:-true}
+  IRIS_TEXT_INDEX_LANGUAGE: ${IRIS_TEXT_INDEX_LANGUAGE:-en}
+  IRIS_TIMEZONE: ${IRIS_TIMEZONE:-UTC}
   UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
   UPLOAD_FILE_EXTENSION_BLACKLIST: ${UPLOAD_FILE_EXTENSION_BLACKLIST:-}
@@ -479,6 +492,9 @@ x-shared-env: &shared-api-worker-env
   WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
   WEAVIATE_AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
   WEAVIATE_DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-false}
+  WEAVIATE_ENABLE_TOKENIZER_GSE: ${WEAVIATE_ENABLE_TOKENIZER_GSE:-false}
+  WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA:-false}
+  WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR:-false}
   CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
   CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
   CHROMA_IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
@@ -632,6 +648,7 @@ x-shared-env: &shared-api-worker-env
   WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE: ${WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE:-100}
   WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: ${WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK:-0}
   TENANT_ISOLATED_TASK_CONCURRENCY: ${TENANT_ISOLATED_TASK_CONCURRENCY:-1}
+  AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
 
 services:
   # Init container to fix permissions
@@ -655,7 +672,7 @@ services:
 
   # API service
   api:
-    image: langgenius/dify-api:1.10.1-fix.1
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -696,7 +713,7 @@ services:
   # worker service
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
-    image: langgenius/dify-api:1.10.1-fix.1
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -735,7 +752,7 @@ services:
   # worker_beat service
   # Celery beat for scheduling periodic tasks.
   worker_beat:
-    image: langgenius/dify-api:1.10.1-fix.1
+    image: langgenius/dify-api:1.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -765,11 +782,12 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:1.10.1-fix.1
+    image: langgenius/dify-web:1.11.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
+      AMPLITUDE_API_KEY: ${AMPLITUDE_API_KEY:-}
       NEXT_PUBLIC_COOKIE_DOMAIN: ${NEXT_PUBLIC_COOKIE_DOMAIN:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
@@ -902,7 +920,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.4.1-local
+    image: langgenius/dify-plugin-daemon:0.5.1-local
     restart: always
     environment:
       # Use the shared environment variables.
@@ -1085,6 +1103,9 @@ services:
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
       DISABLE_TELEMETRY: ${WEAVIATE_DISABLE_TELEMETRY:-false}
+      ENABLE_TOKENIZER_GSE: ${WEAVIATE_ENABLE_TOKENIZER_GSE:-false}
+      ENABLE_TOKENIZER_KAGOME_JA: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_JA:-false}
+      ENABLE_TOKENIZER_KAGOME_KR: ${WEAVIATE_ENABLE_TOKENIZER_KAGOME_KR:-false}
 
   # OceanBase vector database
   oceanbase:
@@ -1277,6 +1298,26 @@ services:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
+
+  # InterSystems IRIS vector database
+  iris:
+    image: containers.intersystems.com/intersystems/iris-community:2025.3
+    profiles:
+      - iris
+    container_name: iris
+    restart: always
+    init: true
+    ports:
+      - "${IRIS_SUPER_SERVER_PORT:-1972}:1972"
+      - "${IRIS_WEB_SERVER_PORT:-52773}:52773"
+    volumes:
+      - ./volumes/iris:/opt/iris
+      - ./iris/iris-init.script:/iris-init.script
+      - ./iris/docker-entrypoint.sh:/custom-entrypoint.sh
+    entrypoint: ["/custom-entrypoint.sh"]
+    tty: true
+    environment:
+      TZ: ${IRIS_TIMEZONE:-UTC}
 
   # Oracle vector database
   oracle:

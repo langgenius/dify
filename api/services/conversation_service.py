@@ -118,7 +118,7 @@ class ConversationService:
         app_model: App,
         conversation_id: str,
         user: Union[Account, EndUser] | None,
-        name: str,
+        name: str | None,
         auto_generate: bool,
     ):
         conversation = cls.get_conversation(app_model, conversation_id, user)

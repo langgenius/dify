@@ -734,6 +734,7 @@ const translation = {
     pasteFileLinkInvalid: 'Geçersiz dosya bağlantısı',
     fileExtensionNotSupport: 'Dosya uzantısı desteklenmiyor',
     fileExtensionBlocked: 'Bu dosya türü güvenlik nedenleriyle engellenmiştir',
+    uploadDisabled: 'Dosya yükleme devre dışı',
   },
   license: {
     expiring_plural: '{{count}} gün içinde sona eriyor',

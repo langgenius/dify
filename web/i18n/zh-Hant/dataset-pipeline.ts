@@ -137,9 +137,6 @@ const translation = {
     notConnected: '{{name}} 未連接',
     notConnectedTip: '要與 {{name}} 同步，必須先建立與 {{name}} 的連線。',
   },
-  credentialSelector: {
-    name: '{{credentialName}}的{{pluginName}}',
-  },
   conversion: {
     confirm: {
       title: '證實',

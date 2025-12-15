@@ -437,6 +437,7 @@ const translation = {
         input: 'Valoare de intrare',
       },
       inputVars: 'Variabile de intrare',
+      pluginNotInstalled: 'Pluginul nu este instalat',
     },
     start: {
       required: 'necesar',

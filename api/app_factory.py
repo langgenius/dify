@@ -83,6 +83,7 @@ def initialize_extensions(app: DifyApp):
         ext_redis,
         ext_request_logging,
         ext_sentry,
+        ext_session_factory,
         ext_set_secretkey,
         ext_storage,
         ext_timezone,
@@ -114,6 +115,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_otel,
         ext_request_logging,
+        ext_session_factory,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]

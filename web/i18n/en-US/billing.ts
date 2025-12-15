@@ -25,6 +25,9 @@ const translation = {
     encourageShort: 'Upgrade',
   },
   viewBilling: 'Manage billing and subscriptions',
+  viewBillingTitle: 'Billing and Subscriptions',
+  viewBillingDescription: 'Manage payment methods, invoices, and subscription changes',
+  viewBillingAction: 'Manage',
   buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe',
   plansCommon: {
     title: {
@@ -217,6 +220,20 @@ const translation = {
     fullTipLine1: 'Upgrade your plan to',
     fullTipLine2: 'annotate more conversations.',
     quotaTitle: 'Annotation Reply Quota',
+  },
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Upgrade to upload multiple documents at once',
+      description: 'You’ve reached the upload limit — only one document can be selected and uploaded at a time on your current plan.',
+    },
+    uploadMultipleFiles: {
+      title: 'Upgrade to unlock batch document upload',
+      description: 'Batch-upload more documents at once to save time and improve efficiency.',
+    },
+    addChunks: {
+      title: 'Upgrade to continue adding chunks',
+      description: 'You’ve reached the limit of adding chunks for this plan.',
+    },
   },
 }
 
