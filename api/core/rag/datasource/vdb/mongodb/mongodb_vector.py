@@ -1,6 +1,6 @@
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pymongo import MongoClient
 from pymongo.errors import OperationFailure
@@ -10,9 +10,11 @@ from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
-from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from models.dataset import Dataset
+
+if TYPE_CHECKING:
+    from core.rag.embedding.embedding_base import Embeddings
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ logger = logging.getLogger(__name__)
 class MongoDBVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config):
         super().__init__(collection_name)
-        self._client = MongoClient(config.MONGODB_URI)
+        self._client = MongoClient(config.MONGODB_CONNECT_URI)
         self._db = self._client[config.MONGODB_DATABASE]
         self._collection = self._db[collection_name]
         self._index_name = config.MONGODB_VECTOR_INDEX_NAME
@@ -104,14 +106,16 @@ class MongoDBVector(BaseVector):
         self._collection.delete_many({f"metadata.{key}": value, "group_id": self._group_id})
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
+        pipeline = self._get_search_pipeline(query_vector, **kwargs)
+        results = self._collection.aggregate(pipeline)
+        return self._results_to_documents(results)
+
+    def _get_search_pipeline(self, query_vector: list[float], **kwargs: Any) -> list[dict]:
         filter_dict = {"group_id": self._group_id}
         
         # Merge additional filters if provided
-        # This assumes kwargs['filter'] is a compatible dictionary or needs conversion
-        # For simplicity, we just look for doc_id filter which is common
         if kwargs.get("filter"):
             # This is naive merging, real implementation might need to handle complex filters
-            # But Dify often just passes key-value pairs in filter or handling in caller
             pass
             
         # Support common document_ids_filter from Dify
@@ -132,14 +136,16 @@ class MongoDBVector(BaseVector):
             },
             {"$project": {"text": 1, "metadata": 1, "score": {"$meta": "vectorSearchScore"}}},
         ]
-
-        results = self._collection.aggregate(pipeline)
-        return self._results_to_documents(results)
+        return pipeline
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # Basic implementation using regex if no text index (inefficient but functional for small scale)
-        # OR just return empty if strictly strictly vector db
-        # For full correctness we should probably not implement or use Atlas Search 'text' operator if index exists
+        """
+        Search by full text.
+        
+        This method is currently a placeholder and not implemented for MongoDB vector store.
+        Future implementations might leverage Atlas Search or text indexes.
+        """
+        logger.warning("search_by_full_text is not implemented for MongoDBVector. Returning empty results.")
         return []
 
     def delete(self):
@@ -161,7 +167,7 @@ class MongoDBVector(BaseVector):
 
 
 class MongoDBVectorFactory(AbstractVectorFactory):
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> MongoDBVector:
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: "Embeddings") -> MongoDBVector:
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix
@@ -174,4 +180,3 @@ class MongoDBVectorFactory(AbstractVectorFactory):
             group_id=dataset.id,
             config=dify_config
         )
-
