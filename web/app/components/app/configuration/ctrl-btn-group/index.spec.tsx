@@ -37,8 +37,8 @@ describe('ContrlBtnGroup', () => {
       render(<ContrlBtnGroup onSave={onSave} onReset={onReset} />)
 
       // Act
-      fireEvent.click(screen.getByText('appDebug.operation.applyConfig'))
-      fireEvent.click(screen.getByText('appDebug.operation.resetConfig'))
+      fireEvent.click(screen.getByTestId('apply-btn'))
+      fireEvent.click(screen.getByTestId('reset-btn'))
 
       // Assert
       expect(onSave).toHaveBeenCalledTimes(1)
