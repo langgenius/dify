@@ -463,3 +463,19 @@ export const PARTNER_STACK_CONFIG = {
   cookieName: 'partner_stack_info',
   saveCookieDays: 90,
 }
+
+/**
+ * Field Encryption Configuration
+ * Enable encryption for sensitive fields (password, verification code) during transmission
+ */
+export const ENABLE_FIELD_ENCRYPTION = getBooleanConfig(
+  process.env.NEXT_PUBLIC_ENABLE_FIELD_ENCRYPTION,
+  DatasetAttr.DATA_PUBLIC_ENABLE_FIELD_ENCRYPTION,
+  false,
+)
+
+export const ENCRYPTION_KEY = getStringConfig(
+  process.env.NEXT_PUBLIC_ENCRYPTION_KEY,
+  DatasetAttr.DATA_PUBLIC_ENCRYPTION_KEY,
+  '',
+)

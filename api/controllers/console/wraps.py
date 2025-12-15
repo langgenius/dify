@@ -9,10 +9,12 @@ from typing import ParamSpec, TypeVar
 from flask import abort, request
 
 from configs import dify_config
+from controllers.console.auth.error import AuthenticationFailedError, EmailCodeError
 from controllers.console.workspace.error import AccountNotInitializedError
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.encryption import FieldEncryption
 from libs.login import current_account_with_tenant
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
@@ -416,6 +418,76 @@ def annotation_import_concurrency_limit(view: Callable[P, R]):
 
         # Allow the request to proceed
         # The actual job registration will happen in the service layer
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def _decrypt_field(field_name: str, error_class: type[Exception], error_message: str) -> None:
+    """
+    Helper to decrypt a field in the request payload.
+
+    Args:
+        field_name: Name of the field to decrypt
+        error_class: Exception class to raise on decryption failure
+        error_message: Error message to include in the exception
+    """
+    if request and request.is_json:
+        payload = request.get_json()
+        if payload and field_name in payload:
+            encrypted_value = payload[field_name]
+            decrypted_value = FieldEncryption.decrypt_field(encrypted_value)
+
+            # Only raise error if encryption is enabled and decryption failed
+            if decrypted_value is None and FieldEncryption.is_enabled():
+                raise error_class(error_message)
+
+            # Update payload with decrypted value (or original if encryption disabled)
+            if decrypted_value is not None:
+                payload[field_name] = decrypted_value
+                # Update the cached JSON data
+                request._cached_json = (payload, payload)
+
+
+def decrypt_password_field(view: Callable[P, R]):
+    """
+    Decorator to decrypt password field in request payload.
+
+    Automatically decrypts the 'password' field if encryption is enabled.
+    If decryption fails, raises AuthenticationFailedError.
+
+    Usage:
+        @decrypt_password_field
+        def post(self):
+            args = LoginPayload.model_validate(console_ns.payload)
+            # args.password is now decrypted
+    """
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        _decrypt_field("password", AuthenticationFailedError, "Invalid encrypted data")
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def decrypt_code_field(view: Callable[P, R]):
+    """
+    Decorator to decrypt verification code field in request payload.
+
+    Automatically decrypts the 'code' field if encryption is enabled.
+    If decryption fails, raises EmailCodeError.
+
+    Usage:
+        @decrypt_code_field
+        def post(self):
+            args = EmailCodeLoginPayload.model_validate(console_ns.payload)
+            # args.code is now decrypted
+    """
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        _decrypt_field("code", EmailCodeError, "Invalid encrypted code")
         return view(*args, **kwargs)
 
     return decorated

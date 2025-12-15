@@ -63,6 +63,25 @@ class SecurityConfig(BaseSettings):
         default=None,
     )
 
+    # Field Encryption Configuration
+    ENABLE_FIELD_ENCRYPTION: bool = Field(
+        description="Enable encryption for sensitive fields (password, verification code) during transmission. "
+        "When enabled, the frontend encrypts sensitive fields using AES-256-CBC before sending to backend.",
+        default=False,
+    )
+
+    ENCRYPTION_KEY: str = Field(
+        description="AES encryption key for sensitive field encryption. "
+        "Must be a 32-byte key encoded in base64. Generate using: "
+        "`python3 -c \"import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())\"`",
+        default="",
+    )
+
+    EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which an email code login token remains valid",
+        default=5,
+    )
+
 
 class AppExecutionConfig(BaseSettings):
     """

@@ -131,4 +131,6 @@ export enum DatasetAttr {
   NEXT_PUBLIC_ZENDESK_FIELD_ID_EMAIL = 'next-public-zendesk-field-id-email',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_WORKSPACE_ID = 'next-public-zendesk-field-id-workspace-id',
   NEXT_PUBLIC_ZENDESK_FIELD_ID_PLAN = 'next-public-zendesk-field-id-plan',
+  DATA_PUBLIC_ENABLE_FIELD_ENCRYPTION = 'data-public-enable-field-encryption',
+  DATA_PUBLIC_ENCRYPTION_KEY = 'data-public-encryption-key',
 }
