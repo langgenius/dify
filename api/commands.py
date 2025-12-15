@@ -869,11 +869,17 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     default=None,
     help="Optional upper bound (exclusive) for created_at; must be paired with --start-after.",
 )
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview cleanup results without deleting any workflow run data.",
+)
 def clean_workflow_runs(
     days: int,
     batch_size: int,
     start_after: datetime.datetime | None,
     end_before: datetime.datetime | None,
+    dry_run: bool,
 ):
     """
     Clean workflow runs and related workflow data for free tenants.
@@ -888,6 +894,7 @@ def clean_workflow_runs(
         batch_size=batch_size,
         start_after=start_after,
         end_before=end_before,
+        dry_run=dry_run,
     ).run()
 
     click.echo(click.style("Workflow run cleanup completed.", fg="green"))

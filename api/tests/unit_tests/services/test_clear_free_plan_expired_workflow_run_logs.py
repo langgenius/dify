@@ -163,6 +163,21 @@ def test_run_exits_on_empty_batch(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup.run()
 
 
+def test_run_dry_run_skips_deletions(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    cutoff = datetime.datetime.now()
+    repo = FakeRepo(batches=[[FakeRun("run-free", "t_free", cutoff)]])
+    cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10, dry_run=True)
+
+    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
+
+    cleanup.run()
+
+    assert repo.deleted == []
+    captured = capsys.readouterr().out
+    assert "Dry run mode enabled" in captured
+    assert "would delete 1 runs" in captured
+
+
 def test_between_sets_window_bounds(monkeypatch: pytest.MonkeyPatch) -> None:
     start_after = datetime.datetime(2024, 5, 1, 0, 0, 0)
     end_before = datetime.datetime(2024, 6, 1, 0, 0, 0)

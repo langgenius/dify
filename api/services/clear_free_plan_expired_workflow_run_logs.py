@@ -27,6 +27,7 @@ class WorkflowRunCleanup:
         start_after: datetime.datetime | None = None,
         end_before: datetime.datetime | None = None,
         workflow_run_repo: APIWorkflowRunRepository | None = None,
+        dry_run: bool = False,
     ):
         if (start_after is None) ^ (end_before is None):
             raise ValueError("start_after and end_before must be both set or both omitted.")
@@ -40,6 +41,7 @@ class WorkflowRunCleanup:
 
         self.batch_size = batch_size
         self.billing_cache: dict[str, CloudPlan | None] = {}
+        self.dry_run = dry_run
         self.workflow_run_repo: APIWorkflowRunRepository
         if workflow_run_repo:
             self.workflow_run_repo = workflow_run_repo
@@ -53,14 +55,17 @@ class WorkflowRunCleanup:
     def run(self) -> None:
         click.echo(
             click.style(
-                f"Cleaning workflow runs "
+                f"{'Inspecting' if self.dry_run else 'Cleaning'} workflow runs "
                 f"{'between ' + self.window_start.isoformat() + ' and ' if self.window_start else 'before '}"
                 f"{self.window_end.isoformat()} (batch={self.batch_size})",
                 fg="white",
             )
         )
+        if self.dry_run:
+            click.echo(click.style("Dry run mode enabled. No data will be deleted.", fg="yellow"))
 
         total_runs_deleted = 0
+        total_runs_targeted = 0
         batch_index = 0
         last_seen: tuple[datetime.datetime, str] | None = None
 
@@ -90,6 +95,19 @@ class WorkflowRunCleanup:
                 )
                 continue
 
+            total_runs_targeted += len(free_runs)
+
+            if self.dry_run:
+                sample_ids = ", ".join(run.id for run in free_runs[:5])
+                click.echo(
+                    click.style(
+                        f"[batch #{batch_index}] would delete {len(free_runs)} runs "
+                        f"(sample ids: {sample_ids}) and skip {paid_or_skipped} paid/unknown",
+                        fg="yellow",
+                    )
+                )
+                continue
+
             try:
                 counts = self.workflow_run_repo.delete_runs_with_related(
                     free_runs,
@@ -112,17 +130,32 @@ class WorkflowRunCleanup:
                 )
             )
 
-        if self.window_start:
-            summary_message = (
-                f"Cleanup complete. Deleted {total_runs_deleted} workflow runs "
-                f"between {self.window_start.isoformat()} and {self.window_end.isoformat()}"
-            )
+        if self.dry_run:
+            if self.window_start:
+                summary_message = (
+                    f"Dry run complete. Would delete {total_runs_targeted} workflow runs "
+                    f"between {self.window_start.isoformat()} and {self.window_end.isoformat()}"
+                )
+            else:
+                summary_message = (
+                    f"Dry run complete. Would delete {total_runs_targeted} workflow runs "
+                    f"before {self.window_end.isoformat()}"
+                )
+            summary_color = "yellow"
         else:
-            summary_message = (
-                f"Cleanup complete. Deleted {total_runs_deleted} workflow runs before {self.window_end.isoformat()}"
-            )
+            if self.window_start:
+                summary_message = (
+                    f"Cleanup complete. Deleted {total_runs_deleted} workflow runs "
+                    f"between {self.window_start.isoformat()} and {self.window_end.isoformat()}"
+                )
+            else:
+                summary_message = (
+                    f"Cleanup complete. Deleted {total_runs_deleted} workflow runs "
+                    f"before {self.window_end.isoformat()}"
+                )
+            summary_color = "white"
 
-        click.echo(click.style(summary_message, fg="white"))
+        click.echo(click.style(summary_message, fg=summary_color))
 
     def _filter_free_tenants(self, tenant_ids: Iterable[str]) -> set[str]:
         if not dify_config.BILLING_ENABLED:
