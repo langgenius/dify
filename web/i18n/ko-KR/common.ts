@@ -730,6 +730,7 @@ const translation = {
     uploadFromComputerLimit: '업로드 파일은 {{size}}를 초과할 수 없습니다.',
     uploadFromComputerUploadError: '파일 업로드에 실패했습니다. 다시 업로드하십시오.',
     fileExtensionBlocked: '보안상의 이유로 이 파일 형식은 차단되었습니다',
+    uploadDisabled: '파일 업로드가 비활성화되었습니다',
   },
   license: {
     expiring_plural: '{{count}}일 후에 만료',

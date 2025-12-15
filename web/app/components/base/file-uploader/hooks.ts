@@ -47,7 +47,7 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
   }
 }
 
-export const useFile = (fileConfig: FileUpload) => {
+export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const fileStore = useFileStore()
@@ -246,6 +246,11 @@ export const useFile = (fileConfig: FileUpload) => {
   }, [fileStore])
 
   const handleLocalFileUpload = useCallback((file: File) => {
+    // Check file upload enabled
+    if (!noNeedToCheckEnable && !fileConfig.enabled) {
+      notify({ type: 'error', message: t('common.fileUploader.uploadDisabled') })
+      return
+    }
     if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
       notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${file.type}` })
       return
@@ -298,30 +303,16 @@ export const useFile = (fileConfig: FileUpload) => {
       false,
     )
     reader.readAsDataURL(file)
-  }, [checkSizeLimit, notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions])
+  }, [noNeedToCheckEnable, checkSizeLimit, notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]
     const text = e.clipboardData?.getData('text/plain')
     if (file && !text) {
       e.preventDefault()
-
-      const allowedFileTypes = fileConfig.allowed_file_types || []
-      const fileType = getSupportFileType(file.name, file.type, allowedFileTypes?.includes(SupportUploadFileTypes.custom))
-      const isFileTypeAllowed = allowedFileTypes.includes(fileType)
-
-      // Check if file type is in allowed list
-      if (!isFileTypeAllowed || !fileConfig.enabled) {
-        notify({
-          type: 'error',
-          message: t('common.fileUploader.fileExtensionNotSupport'),
-        })
-        return
-      }
-
       handleLocalFileUpload(file)
     }
-  }, [handleLocalFileUpload, fileConfig, notify, t])
+  }, [handleLocalFileUpload])
 
   const [isDragActive, setIsDragActive] = useState(false)
   const handleDragFileEnter = useCallback((e: React.DragEvent<HTMLElement>) => {
