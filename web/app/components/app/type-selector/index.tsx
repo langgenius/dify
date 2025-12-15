@@ -77,27 +77,27 @@ export const AppTypeIcon = React.memo(({ type, className, wrapperClassName, styl
   const wrapperClassNames = cn('inline-flex h-5 w-5 items-center justify-center rounded-md border border-divider-regular', wrapperClassName)
   const iconClassNames = cn('h-3.5 w-3.5 text-components-avatar-shape-fill-stop-100', className)
   if (type === AppModeEnum.CHAT) {
-    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-solid')}>
+    return <div data-testid="app-type-icon" data-type={type} style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-solid')}>
       <ChatBot className={iconClassNames} />
     </div>
   }
   if (type === AppModeEnum.AGENT_CHAT) {
-    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-violet-solid')}>
+    return <div data-testid="app-type-icon" data-type={type} style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-violet-solid')}>
       <Logic className={iconClassNames} />
     </div>
   }
   if (type === AppModeEnum.ADVANCED_CHAT) {
-    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-light-solid')}>
+    return <div data-testid="app-type-icon" data-type={type} style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-light-solid')}>
       <BubbleTextMod className={iconClassNames} />
     </div>
   }
   if (type === AppModeEnum.WORKFLOW) {
-    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-indigo-solid')}>
+    return <div data-testid="app-type-icon" data-type={type} style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-indigo-solid')}>
       <RiExchange2Fill className={iconClassNames} />
     </div>
   }
   if (type === AppModeEnum.COMPLETION) {
-    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-teal-solid')}>
+    return <div data-testid="app-type-icon" data-type={type} style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-teal-solid')}>
       <ListSparkle className={iconClassNames} />
     </div>
   }
@@ -165,5 +165,5 @@ export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
   if (type === AppModeEnum.WORKFLOW)
     label = t('app.typeSelector.workflow')
 
-  return <span className={className}>{label}</span>
+  return <span data-testid="app-type-label" data-type={type} className={className}>{label}</span>
 }
