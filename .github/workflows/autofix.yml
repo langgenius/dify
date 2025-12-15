@@ -53,9 +53,9 @@ jobs:
                   pattern: Optional
               - has:
                   kind: type_parameter
-            has:
-              kind: type
-              pattern: $T
+                  has:
+                    kind: type
+                    pattern: $T
           fix: $T | None
           EOF
           uvx --from ast-grep-cli ast-grep scan . --inline-rules "$(cat /tmp/optional-rule.yml)" --update-all
