@@ -250,8 +250,8 @@ class TestAnnotationImportServiceValidation:
         """Test that invalid CSV format is handled gracefully."""
         from services.annotation_service import AppAnnotationService
 
-        # Create invalid CSV content
-        csv_content = 'invalid,csv,format\nwith,unbalanced,quotes,and"stuff'
+        # Create CSV with only one column (should require at least 2 columns for question and answer)
+        csv_content = 'single_column_header\nonly_one_value'
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
@@ -262,8 +262,9 @@ class TestAnnotationImportServiceValidation:
 
             result = AppAnnotationService.batch_import_app_annotations("app_id", file)
 
-            # Should return error message
+            # Should return error message about invalid format (less than 2 columns)
             assert "error_msg" in result
+            assert "at least 2 columns" in result["error_msg"].lower()
 
     def test_valid_import_succeeds(self, mock_app, mock_db_session):
         """Test that valid import request succeeds."""
