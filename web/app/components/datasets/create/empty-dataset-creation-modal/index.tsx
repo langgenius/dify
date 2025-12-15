@@ -12,6 +12,7 @@ import Button from '@/app/components/base/button'
 import { ToastContext } from '@/app/components/base/toast'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type IProps = {
   show: boolean
@@ -40,6 +41,10 @@ const EmptyDatasetCreationModal = ({
     try {
       const dataset = await createEmptyDataset({ name: inputValue })
       invalidDatasetList()
+      trackEvent('create_empty_datasets', {
+        name: inputValue,
+        dataset_id: dataset.id,
+      })
       onHide()
       router.push(`/datasets/${dataset.id}/documents`)
     }

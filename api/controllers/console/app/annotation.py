@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from flask import request
+from flask import abort, request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
 
@@ -8,6 +8,8 @@ from controllers.common.errors import NoFileUploadedError, TooManyFilesError
 from controllers.console import console_ns
 from controllers.console.wraps import (
     account_initialization_required,
+    annotation_import_concurrency_limit,
+    annotation_import_rate_limit,
     cloud_edition_billing_resource_check,
     edit_permission_required,
     setup_required,
@@ -314,18 +316,25 @@ class AnnotationUpdateDeleteApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/annotations/batch-import")
 class AnnotationBatchImportApi(Resource):
     @console_ns.doc("batch_import_annotations")
-    @console_ns.doc(description="Batch import annotations from CSV file")
+    @console_ns.doc(description="Batch import annotations from CSV file with rate limiting and security checks")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(200, "Batch import started successfully")
     @console_ns.response(403, "Insufficient permissions")
     @console_ns.response(400, "No file uploaded or too many files")
+    @console_ns.response(413, "File too large")
+    @console_ns.response(429, "Too many requests or concurrent imports")
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("annotation")
+    @annotation_import_rate_limit
+    @annotation_import_concurrency_limit
     @edit_permission_required
     def post(self, app_id):
+        from configs import dify_config
+
         app_id = str(app_id)
+
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -335,9 +344,27 @@ class AnnotationBatchImportApi(Resource):
 
         # get file from request
         file = request.files["file"]
+
         # check file type
         if not file.filename or not file.filename.lower().endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
+
+        # Check file size before processing
+        file.seek(0, 2)  # Seek to end of file
+        file_size = file.tell()
+        file.seek(0)  # Reset to beginning
+
+        max_size_bytes = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
+        if file_size > max_size_bytes:
+            abort(
+                413,
+                f"File size exceeds maximum limit of {dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT}MB. "
+                f"Please reduce the file size and try again.",
+            )
+
+        if file_size == 0:
+            raise ValueError("The uploaded file is empty")
+
         return AppAnnotationService.batch_import_app_annotations(app_id, file)
 
 
