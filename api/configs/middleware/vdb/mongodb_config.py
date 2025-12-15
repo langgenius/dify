@@ -92,9 +92,6 @@ class MongoDBConfig(BaseSettings):
         """
         Build MongoDB connection URI from individual components.
         
-        This is a sensitive operation as it constructs connection strings with credentials.
-        All URI construction is logged (with sanitization) for security auditing.
-        
         Returns:
             MongoDB connection URI string
             
@@ -109,14 +106,12 @@ class MongoDBConfig(BaseSettings):
                 logger.debug("Building MongoDB URI with default localhost connection")
                 return "mongodb://localhost:27017"
             
-            # Validate host is a string
             if not isinstance(self.MONGODB_HOST, str) or not self.MONGODB_HOST.strip():
                 raise ValueError(
                     "MONGODB_HOST must be a non-empty string. "
                     f"Received: {type(self.MONGODB_HOST).__name__}"
                 )
             
-            # Validate port is within valid range
             if not isinstance(self.MONGODB_PORT, int) or not (1 <= self.MONGODB_PORT <= 65535):
                 raise ValueError(
                     f"MONGODB_PORT must be an integer between 1 and 65535. "
@@ -125,15 +120,12 @@ class MongoDBConfig(BaseSettings):
             
             auth = ""
             if self.MONGODB_USERNAME:
-                # Validate username is a string
                 if not isinstance(self.MONGODB_USERNAME, str):
                     raise ValueError(
                         f"MONGODB_USERNAME must be a string. "
                         f"Received: {type(self.MONGODB_USERNAME).__name__}"
                     )
                 
-                # Use quote_plus for username (handles spaces as +)
-                # Use quote for password to handle special characters including colons
                 try:
                     username = quote_plus(self.MONGODB_USERNAME)
                     password = quote(self.MONGODB_PASSWORD or "", safe="") if self.MONGODB_PASSWORD else ""
@@ -158,7 +150,6 @@ class MongoDBConfig(BaseSettings):
             )
             return uri
         except ValueError:
-            # Re-raise ValueError as-is (already has clear message)
             raise
         except (TypeError, AttributeError) as e:
             logger.error(
@@ -194,13 +185,10 @@ class MongoDBConfig(BaseSettings):
 
     @model_validator(mode="after")
     def validate_mongodb_config(self):
-        # Allow configuration if URI is explicitly provided, regardless of other fields.
         if self.MONGODB_URI:
             return self
             
-        # If hosting details are provided but incomplete auth
         if self.MONGODB_HOST:
-            # Enforce that if one auth field is present, both must be present.
             has_username = bool(self.MONGODB_USERNAME)
             has_password = bool(self.MONGODB_PASSWORD)
             

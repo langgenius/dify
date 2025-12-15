@@ -43,19 +43,15 @@ def _sanitize_uri_for_logging(uri: str) -> str:
     if not uri or not isinstance(uri, str):
         return "***"
     
-    # Remove any potential password leakage by checking for common patterns
-    # This is a safety check before parsing
     if "://" not in uri:
         return "***"
     
     try:
         parsed = urlparse(uri)
         if parsed.username:
-            # Mask password completely - never log it
             masked_netloc = f"{parsed.username}:***@{parsed.hostname or '***'}"
             if parsed.port:
                 masked_netloc += f":{parsed.port}"
-            # Reconstruct URI without password
             sanitized = f"{parsed.scheme}://{masked_netloc}"
             if parsed.path:
                 sanitized += parsed.path
@@ -65,16 +61,13 @@ def _sanitize_uri_for_logging(uri: str) -> str:
                 sanitized += f"#{parsed.fragment}"
             return sanitized
         else:
-            # No username, but still sanitize to be safe
             masked_netloc = parsed.hostname or "***"
             if parsed.port:
                 masked_netloc += f":{parsed.port}"
             return f"{parsed.scheme}://{masked_netloc}{parsed.path or ''}"
     except (ValueError, AttributeError, TypeError) as e:
-        # If parsing fails, use aggressive masking
         logger.debug(f"URI parsing failed, using aggressive sanitization: {type(e).__name__}")
         if "@" in uri:
-            # Split at @ and mask everything before it that might contain credentials
             parts = uri.split("@", 1)
             if len(parts) == 2:
                 auth_part = parts[0]
@@ -82,23 +75,17 @@ def _sanitize_uri_for_logging(uri: str) -> str:
                     scheme = auth_part.split("://")[0]
                     credentials = auth_part.split("://")[1]
                     if ":" in credentials:
-                        # Extract username only, mask password
                         username = credentials.split(":")[0]
                         return f"{scheme}://{username}:***@{parts[1]}"
                     else:
-                        # No colon, but might still have credentials
                         return f"{scheme}://***@{parts[1]}"
                 else:
-                    # No scheme, mask everything before @
                     return f"***@{parts[1]}"
-        # If no @ found, check if it looks like it might have credentials
         if ":" in uri and "://" in uri:
-            # Might have credentials, mask after scheme
             scheme_part = uri.split("://", 1)
             if len(scheme_part) == 2:
                 return f"{scheme_part[0]}://***"
     
-    # Final fallback - mask everything
     return "***"
 
 
@@ -112,7 +99,6 @@ class MongoDBVector(BaseVector):
             logger.error(f"Failed to get MongoDB connection URI: {e}")
             raise ValueError(f"Invalid MongoDB configuration: {e}") from e
         
-        # Always sanitize URI before logging - never log credentials
         sanitized_uri = _sanitize_uri_for_logging(uri)
         logger.info(
             f"Initializing MongoDBVector: collection='{collection_name}', "
@@ -120,16 +106,13 @@ class MongoDBVector(BaseVector):
             f"uri='{sanitized_uri}'"
         )
         
-        # Verify URI doesn't contain obvious password leakage (safety check)
         if uri and "@" in uri and "://" in uri:
             auth_part = uri.split("@")[0].split("://")[-1]
             if ":" in auth_part:
                 parts = auth_part.split(":", 1)
                 if len(parts) == 2 and parts[1] and parts[1] != "***":
-                    # Password detected in URI - this should never happen in logs
                     logger.warning("Potential credential detected in URI - ensuring sanitization")
         
-        # Use configurable server selection timeout, or pymongo default if set to 0
         client_kwargs = {}
         if config.MONGODB_SERVER_SELECTION_TIMEOUT_MS > 0:
             client_kwargs["serverSelectionTimeoutMS"] = config.MONGODB_SERVER_SELECTION_TIMEOUT_MS
@@ -161,7 +144,6 @@ class MongoDBVector(BaseVector):
         """
         max_retries = self._config.MONGODB_CONNECTION_RETRY_ATTEMPTS
         
-        # If retries are disabled (0), attempt once and fail immediately on error
         if max_retries == 0:
             try:
                 self._client.admin.command('ping')
@@ -170,7 +152,6 @@ class MongoDBVector(BaseVector):
                 logger.error(f"MongoDB connection failed (retries disabled): {e}")
                 raise
         
-        # For retries enabled (>= 1), use exponential backoff
         backoff_base = self._config.MONGODB_CONNECTION_RETRY_BACKOFF_BASE
         max_wait = self._config.MONGODB_CONNECTION_RETRY_MAX_WAIT
         
@@ -184,8 +165,6 @@ class MongoDBVector(BaseVector):
             except (ConnectionFailure, ServerSelectionTimeoutError) as e:
                 last_exception = e
                 if attempt < max_retries - 1:
-                    # Exponential backoff: base * 2^attempt (e.g., 1s, 2s, 4s with base=1.0)
-                    # Capped at max_wait to prevent excessive wait times
                     wait_time = min(backoff_base * (2 ** attempt), max_wait)
                     logger.warning(
                         f"MongoDB connection attempt {attempt + 1}/{max_retries} failed: {e}. "
@@ -219,7 +198,6 @@ class MongoDBVector(BaseVector):
                 logger.debug(f"Collection '{self._collection.name}' created successfully")
         except OperationFailure as e:
             error_code = getattr(e, "code", None)
-            # Code 48 (NamespaceExists) is acceptable - collection already exists
             if error_code != MongoDBErrorCode.NAMESPACE_EXISTS:
                 logger.error(f"Failed to create collection '{self._collection.name}': {e} (error_code: {error_code})")
                 raise
@@ -253,10 +231,8 @@ class MongoDBVector(BaseVector):
             logger.debug(f"Vector search index '{self._index_name}' creation initiated")
         except OperationFailure as e:
             error_code = getattr(e, "code", None)
-            # Code 68 (IndexAlreadyExists) is acceptable - index already exists
             if error_code == MongoDBErrorCode.INDEX_ALREADY_EXISTS or "IndexAlreadyExists" in str(e) or "DuplicateIndexName" in str(e):
                 logger.info(f"Index '{self._index_name}' already exists. Skipping creation.")
-                # Still wait for index to be ready in case it's still building
                 self._wait_for_index_ready()
                 return
             else:
@@ -311,7 +287,6 @@ class MongoDBVector(BaseVector):
                             logger.error(f"Index '{self._index_name}' build failed: {error_msg}")
                             raise OperationFailure(f"Index '{self._index_name}' build failed: {error_msg}")
                         
-                        # Log status periodically (every 10 checks) to avoid log spam
                         if check_count % 10 == 0 and check_count > 0:
                             logger.debug(
                                 f"Index '{self._index_name}' status: {status}, "
@@ -320,23 +295,19 @@ class MongoDBVector(BaseVector):
                 
             except OperationFailure as e:
                 error_code = getattr(e, "code", None)
-                # Don't retry on permission errors (code 13) - these won't resolve
                 if error_code == MongoDBErrorCode.PERMISSION_DENIED:
                     logger.error(f"Permission denied when checking index status: {e}")
                     raise
-                # Don't retry on other non-transient operation failures
                 if error_code and error_code not in (None, 0):
                     logger.warning(f"Operation error when checking index status: {e} (error_code: {error_code}). Retrying in {delay:.1f}s...")
                 else:
                     logger.warning(f"Error checking index status: {e}. Retrying in {delay:.1f}s...")
             except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-                # Connection errors are transient - retry
                 logger.warning(
                     f"Connection error when checking index status: {e}. "
                     f"Retrying in {delay:.1f}s..."
                 )
             except Exception as e:
-                # Catch any other unexpected errors and log them
                 logger.error(
                     f"Unexpected error when checking index status: {e} (type: {type(e).__name__}). "
                     f"Retrying in {delay:.1f}s...",
@@ -345,7 +316,6 @@ class MongoDBVector(BaseVector):
             
             check_count += 1
             time.sleep(delay)
-            # Exponential backoff: delay increases by 1.5x each iteration, capped at max_delay
             delay = min(delay * 1.5, max_delay)
         
         elapsed = time.time() - start_time
@@ -419,12 +389,9 @@ class MongoDBVector(BaseVector):
     def _get_search_pipeline(self, query_vector: list[float], **kwargs: Any) -> list[dict]:
         filter_dict = {"group_id": self._group_id}
         
-        # Merge additional filters if provided
         if kwargs.get("filter"):
-            # This is naive merging, real implementation might need to handle complex filters
             pass
             
-        # Support common document_ids_filter from Dify
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
              filter_dict["metadata.document_id"] = {"$in": document_ids_filter}
@@ -455,7 +422,6 @@ class MongoDBVector(BaseVector):
         return []
 
     def delete(self):
-        # Delete documents for this group_id
         self._collection.delete_many({"group_id": self._group_id})
 
     def close(self):
