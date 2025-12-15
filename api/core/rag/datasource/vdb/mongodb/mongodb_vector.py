@@ -23,6 +23,11 @@ class MongoDBVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config):
         super().__init__(collection_name)
         self._client = MongoClient(config.MONGODB_CONNECT_URI)
+        try:
+            self._client.admin.command('ping')
+        except Exception as e:
+            logger.error(f"Failed to connect to MongoDB: {e}")
+            raise e
         self._db = self._client[config.MONGODB_DATABASE]
         self._collection = self._db[collection_name]
         self._index_name = config.MONGODB_VECTOR_INDEX_NAME
@@ -78,6 +83,8 @@ class MongoDBVector(BaseVector):
             for index in cursor:
                 if index.get("queryable") is True and index.get("status") == "READY":
                     return
+                if index.get("status") == "FAILED":
+                    raise OperationFailure(f"Index {self._index_name} build failed.")
             time.sleep(2)
         
         raise TimeoutError(f"Index {self._index_name} not ready within {timeout} seconds.")
@@ -162,7 +169,9 @@ class MongoDBVector(BaseVector):
     def _results_to_documents(self, results) -> list[Document]:
         documents = []
         for res in results:
-            metadata = res.get("metadata", {})
+            metadata = res.get("metadata")
+            if not metadata or not isinstance(metadata, dict):
+                metadata = {}
             metadata["score"] = res.get("score", 0.0)
             documents.append(
                 Document(
