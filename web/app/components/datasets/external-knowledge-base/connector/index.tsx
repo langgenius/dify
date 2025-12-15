@@ -6,6 +6,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
 import { createExternalKnowledgeBase } from '@/service/datasets'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const ExternalKnowledgeBaseConnector = () => {
   const { notify } = useToastContext()
@@ -18,6 +19,9 @@ const ExternalKnowledgeBaseConnector = () => {
       const result = await createExternalKnowledgeBase({ body: formValue })
       if (result && result.id) {
         notify({ type: 'success', message: 'External Knowledge Base Connected Successfully' })
+        trackEvent('create_external_knowledge_base', {
+          external_knowledge_base_value: JSON.stringify(formValue),
+        })
         router.back()
       }
       else { throw new Error('Failed to create external knowledge base') }

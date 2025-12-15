@@ -21,6 +21,7 @@ import { useDataSourceStore, useDataSourceStoreWithSelector } from '@/app/compon
 import { useShallow } from 'zustand/react/shallow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import StepIndicator from './step-indicator'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const Preparation = () => {
   const {
@@ -121,6 +122,7 @@ const Preparation = () => {
       datasource_type: datasourceType,
       datasource_info_list: datasourceInfoList,
     })
+    trackEvent('pipeline_start_action_time', { action_type: 'document_processing' })
     setIsPreparingDataSource?.(false)
   }, [dataSourceStore, datasource, datasourceType, handleRun, workflowStore])
 
