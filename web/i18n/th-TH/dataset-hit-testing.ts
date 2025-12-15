@@ -6,7 +6,6 @@ const translation = {
   table: {
     header: {
       source: 'ที่มา',
-      text: 'ข้อความ',
       time: 'เวลา',
       queryContent: 'เนื้อหาคำถาม',
     },

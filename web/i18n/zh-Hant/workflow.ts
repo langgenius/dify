@@ -442,6 +442,7 @@ const translation = {
         variable: '使用變數',
       },
       inputVars: '輸入變數',
+      pluginNotInstalled: '插件未安裝',
     },
     start: {
       required: '必填',

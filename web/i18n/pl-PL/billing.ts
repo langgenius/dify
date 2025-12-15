@@ -147,7 +147,7 @@ const translation = {
       description:
         'Uzyskaj pełne możliwości i wsparcie dla systemów o kluczowym znaczeniu dla misji.',
       includesTitle: 'Wszystko w planie Zespołowym, plus:',
-      features: ['Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej', 'Autoryzacja licencji komercyjnej', 'Ekskluzywne funkcje dla przedsiębiorstw', 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem', 'SSO', 'Negocjowane umowy SLA przez partnerów Dify', 'Zaawansowane zabezpieczenia i kontrola', 'Aktualizacje i konserwacja przez Dify oficjalnie', 'Profesjonalne wsparcie techniczne'],
+      features: ['Rozwiązania wdrożeniowe klasy korporacyjnej, skalowalne', 'Autoryzacja licencji komercyjnej', 'Ekskluzywne funkcje dla przedsiębiorstw', 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem', 'SSO', 'Negocjowane umowy SLA przez partnerów Dify', 'Zaawansowane zabezpieczenia i kontrola', 'Aktualizacje i konserwacja przez Dify oficjalnie', 'Profesjonalne wsparcie techniczne'],
       priceTip: 'Tylko roczne fakturowanie',
       btnText: 'Skontaktuj się z działem sprzedaży',
       for: 'Dla dużych zespołów',
@@ -163,7 +163,7 @@ const translation = {
       for: 'Dla użytkowników indywidualnych, małych zespołów lub projektów niekomercyjnych',
     },
     premium: {
-      features: ['Niezawodność zarządzana samodzielnie przez różnych dostawców chmury', 'Pojedyncza przestrzeń robocza', 'Dostosowywanie logo i identyfikacji wizualnej aplikacji webowej', 'Priorytetowe wsparcie e-mail i czat'],
+      features: ['Niezawodność zarządzana samodzielnie przez różnych dostawców chmury', 'Pojedyncza przestrzeń robocza', 'Dostosowywanie logo i marki aplikacji webowej', 'Priorytetowe wsparcie e-mail i czat'],
       description: 'Dla średnich organizacji i zespołów',
       for: 'Dla średnich organizacji i zespołów',
       name: 'Premium',
@@ -212,6 +212,20 @@ const translation = {
   viewBillingTitle: 'Rozliczenia i subskrypcje',
   viewBillingDescription: 'Zarządzaj metodami płatności, fakturami i zmianami subskrypcji',
   viewBillingAction: 'Zarządzać',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Przejdź na wyższą wersję, aby przesyłać wiele dokumentów jednocześnie',
+      description: 'Osiągnąłeś limit przesyłania — w ramach obecnego planu można wybrać i przesłać tylko jeden dokument naraz.',
+    },
+    uploadMultipleFiles: {
+      title: 'Uaktualnij, aby odblokować przesyłanie dokumentów wsadowych',
+      description: 'Przesyłaj wiele dokumentów jednocześnie, aby zaoszczędzić czas i zwiększyć wydajność.',
+    },
+    addChunks: {
+      title: 'Uaktualnij, aby kontynuować dodawanie fragmentów',
+      description: 'Osiągnąłeś limit dodawania fragmentów w tym planie.',
+    },
+  },
 }
 
 export default translation

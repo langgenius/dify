@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -52,10 +52,25 @@ class ChatRequestPayload(BaseModel):
     query: str
     files: list[dict[str, Any]] | None = None
     response_mode: Literal["blocking", "streaming"] | None = None
-    conversation_id: UUID | None = None
+    conversation_id: str | None = Field(default=None, description="Conversation UUID")
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+
+    @field_validator("conversation_id", mode="before")
+    @classmethod
+    def normalize_conversation_id(cls, value: str | UUID | None) -> str | None:
+        """Allow missing or blank conversation IDs; enforce UUID format when provided."""
+        if isinstance(value, str):
+            value = value.strip()
+
+        if not value:
+            return None
+
+        try:
+            return helper.uuid_value(value)
+        except ValueError as exc:
+            raise ValueError("conversation_id must be a valid UUID") from exc
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)

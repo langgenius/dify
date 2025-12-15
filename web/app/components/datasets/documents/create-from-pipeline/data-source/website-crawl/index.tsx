@@ -42,7 +42,7 @@ const WebsiteCrawl = ({
   nodeId,
   nodeData,
   isInPipeline = false,
-  supportBatchUpload = false,
+  supportBatchUpload = true,
   onCredentialChange,
 }: WebsiteCrawlProps) => {
   const { t } = useTranslation()
