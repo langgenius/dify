@@ -150,8 +150,7 @@ class WorkflowRunCleanup:
                 )
             else:
                 summary_message = (
-                    f"Cleanup complete. Deleted {total_runs_deleted} workflow runs "
-                    f"before {self.window_end.isoformat()}"
+                    f"Cleanup complete. Deleted {total_runs_deleted} workflow runs before {self.window_end.isoformat()}"
                 )
             summary_color = "white"
 
