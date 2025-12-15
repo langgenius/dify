@@ -1,6 +1,6 @@
 [project]
 name = "dify-api"
-version = "1.10.1"
+version = "1.11.1"
 requires-python = ">=3.11,<3.13"
 
 dependencies = [
@@ -133,7 +133,7 @@ dev = [
     "types-jsonschema~=4.23.0",
     "types-flask-cors~=5.0.0",
     "types-flask-migrate~=4.1.0",
-    "types-gevent~=24.11.0",
+    "types-gevent~=25.9.0",
     "types-greenlet~=3.1.0",
     "types-html5lib~=1.1.11",
     "types-markdown~=3.7.0",
@@ -151,7 +151,7 @@ dev = [
     "types-pywin32~=310.0.0",
     "types-pyyaml~=6.0.12",
     "types-regex~=2024.11.6",
-    "types-shapely~=2.0.0",
+    "types-shapely~=2.1.0",
     "types-simplejson>=3.20.0",
     "types-six>=1.17.0",
     "types-tensorflow>=2.18.0",

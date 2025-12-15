@@ -1337,7 +1337,7 @@ wheels = [
 
 [[package]]
 name = "dify-api"
-version = "1.10.1"
+version = "1.11.1"
 source = { virtual = "." }
 dependencies = [
     { name = "apscheduler" },
@@ -1657,7 +1657,7 @@ dev = [
     { name = "types-docutils", specifier = "~=0.21.0" },
     { name = "types-flask-cors", specifier = "~=5.0.0" },
     { name = "types-flask-migrate", specifier = "~=4.1.0" },
-    { name = "types-gevent", specifier = "~=24.11.0" },
+    { name = "types-gevent", specifier = "~=25.9.0" },
     { name = "types-greenlet", specifier = "~=3.1.0" },
     { name = "types-html5lib", specifier = "~=1.1.11" },
     { name = "types-jmespath", specifier = ">=1.0.2.20240106" },
@@ -1681,7 +1681,7 @@ dev = [
     { name = "types-redis", specifier = ">=4.6.0.20241004" },
     { name = "types-regex", specifier = "~=2024.11.6" },
     { name = "types-setuptools", specifier = ">=80.9.0" },
-    { name = "types-shapely", specifier = "~=2.0.0" },
+    { name = "types-shapely", specifier = "~=2.1.0" },
     { name = "types-simplejson", specifier = ">=3.20.0" },
     { name = "types-six", specifier = ">=1.17.0" },
     { name = "types-tensorflow", specifier = ">=2.18.0" },
@@ -6282,15 +6282,15 @@ wheels = [
 
 [[package]]
 name = "types-gevent"
-version = "24.11.0.20250401"
+version = "25.9.0.20251102"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "types-greenlet" },
     { name = "types-psutil" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f8/db/bdade74c3ba3a266eafd625377eb7b9b37c9c724c7472192100baf0fe507/types_gevent-24.11.0.20250401.tar.gz", hash = "sha256:1443f796a442062698e67d818fca50aa88067dee4021d457a7c0c6bedd6f46ca", size = 36980 }
+sdist = { url = "https://files.pythonhosted.org/packages/4c/21/552d818a475e1a31780fb7ae50308feb64211a05eb403491d1a34df95e5f/types_gevent-25.9.0.20251102.tar.gz", hash = "sha256:76f93513af63f4577bb4178c143676dd6c4780abc305f405a4e8ff8f1fa177f8", size = 38096 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/25/3d/c8b12d048565ef12ae65d71a0e566f36c6e076b158d3f94d87edddbeea6b/types_gevent-24.11.0.20250401-py3-none-any.whl", hash = "sha256:6764faf861ea99250c38179c58076392c44019ac3393029f71b06c4a15e8c1d1", size = 54863 },
+    { url = "https://files.pythonhosted.org/packages/60/a1/776d2de31a02123f225aaa790641113ae47f738f6e8e3091d3012240a88e/types_gevent-25.9.0.20251102-py3-none-any.whl", hash = "sha256:0f14b9977cb04bf3d94444b5ae6ec5d78ac30f74c4df83483e0facec86f19d8b", size = 55592 },
 ]
 
 [[package]]
@@ -6549,14 +6549,14 @@ wheels = [
 
 [[package]]
 name = "types-shapely"
-version = "2.0.0.20250404"
+version = "2.1.0.20250917"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/4e/55/c71a25fd3fc9200df4d0b5fd2f6d74712a82f9a8bbdd90cefb9e6aee39dd/types_shapely-2.0.0.20250404.tar.gz", hash = "sha256:863f540b47fa626c33ae64eae06df171f9ab0347025d4458d2df496537296b4f", size = 25066 }
+sdist = { url = "https://files.pythonhosted.org/packages/fa/19/7f28b10994433d43b9caa66f3b9bd6a0a9192b7ce8b5a7fc41534e54b821/types_shapely-2.1.0.20250917.tar.gz", hash = "sha256:5c56670742105aebe40c16414390d35fcaa55d6f774d328c1a18273ab0e2134a", size = 26363 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ce/ff/7f4d414eb81534ba2476f3d54f06f1463c2ebf5d663fd10cff16ba607dd6/types_shapely-2.0.0.20250404-py3-none-any.whl", hash = "sha256:170fb92f5c168a120db39b3287697fdec5c93ef3e1ad15e52552c36b25318821", size = 36350 },
+    { url = "https://files.pythonhosted.org/packages/e5/a9/554ac40810e530263b6163b30a2b623bc16aae3fb64416f5d2b3657d0729/types_shapely-2.1.0.20250917-py3-none-any.whl", hash = "sha256:9334a79339504d39b040426be4938d422cec419168414dc74972aa746a8bf3a1", size = 37813 },
 ]
 
 [[package]]
@@ -6794,11 +6794,11 @@ wheels = [
 
 [[package]]
 name = "urllib3"
-version = "2.5.0"
+version = "2.6.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/15/22/9ee70a2574a4f4599c47dd506532914ce044817c7752a79b6a51286319bc/urllib3-2.5.0.tar.gz", hash = "sha256:3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760", size = 393185 }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/43/554c2569b62f49350597348fc3ac70f786e3c32e7f19d266e19817812dd3/urllib3-2.6.0.tar.gz", hash = "sha256:cb9bcef5a4b345d5da5d145dc3e30834f58e8018828cbc724d30b4cb7d4d49f1", size = 432585 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a7/c2/fe1e52489ae3122415c51f387e221dd0773709bad6c6cdaa599e8a2c5185/urllib3-2.5.0-py3-none-any.whl", hash = "sha256:e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc", size = 129795 },
+    { url = "https://files.pythonhosted.org/packages/56/1a/9ffe814d317c5224166b23e7c47f606d6e473712a2fad0f704ea9b99f246/urllib3-2.6.0-py3-none-any.whl", hash = "sha256:c90f7a39f716c572c4e3e58509581ebd83f9b59cced005b7db7ad2d22b0db99f", size = 131083 },
 ]
 
 [[package]]
@@ -6892,7 +6892,7 @@ wheels = [
 
 [[package]]
 name = "wandb"
-version = "0.23.0"
+version = "0.23.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -6906,17 +6906,17 @@ dependencies = [
     { name = "sentry-sdk" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/ef/8b/db2d44395c967cd452517311fd6ede5d1e07310769f448358d4874248512/wandb-0.23.0.tar.gz", hash = "sha256:e5f98c61a8acc3ee84583ca78057f64344162ce026b9f71cb06eea44aec27c93", size = 44413921 }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/cc/770ae3aa7ae44f6792f7ecb81c14c0e38b672deb35235719bb1006519487/wandb-0.23.1.tar.gz", hash = "sha256:f6fb1e3717949b29675a69359de0eeb01e67d3360d581947d5b3f98c273567d6", size = 44298053 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/41/61/a3220c7fa4cadfb2b2a5c09e3fa401787326584ade86d7c1f58bf1cd43bd/wandb-0.23.0-py3-none-macosx_12_0_arm64.whl", hash = "sha256:b682ec5e38fc97bd2e868ac7615a0ab4fc6a15220ee1159e87270a5ebb7a816d", size = 18992250 },
-    { url = "https://files.pythonhosted.org/packages/90/16/e69333cf3d11e7847f424afc6c8ae325e1f6061b2e5118d7a17f41b6525d/wandb-0.23.0-py3-none-macosx_12_0_x86_64.whl", hash = "sha256:ec094eb71b778e77db8c188da19e52c4f96cb9d5b4421d7dc05028afc66fd7e7", size = 20045616 },
-    { url = "https://files.pythonhosted.org/packages/62/79/42dc6c7bb0b425775fe77f1a3f1a22d75d392841a06b43e150a3a7f2553a/wandb-0.23.0-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4e43f1f04b98c34f407dcd2744cec0a590abce39bed14a61358287f817514a7b", size = 18758848 },
-    { url = "https://files.pythonhosted.org/packages/b8/94/d6ddb78334996ccfc1179444bfcfc0f37ffd07ee79bb98940466da6f68f8/wandb-0.23.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6e5847f98cbb3175caf5291932374410141f5bb3b7c25f9c5e562c1988ce0bf5", size = 20231493 },
-    { url = "https://files.pythonhosted.org/packages/52/4d/0ad6df0e750c19dabd24d2cecad0938964f69a072f05fbdab7281bec2b64/wandb-0.23.0-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:6151355fd922539926e870be811474238c9614b96541773b990f1ce53368aef6", size = 18793473 },
-    { url = "https://files.pythonhosted.org/packages/f8/da/c2ba49c5573dff93dafc0acce691bb1c3d57361bf834b2f2c58e6193439b/wandb-0.23.0-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:df62e426e448ebc44269140deb7240df474e743b12d4b1f53b753afde4aa06d4", size = 20332882 },
-    { url = "https://files.pythonhosted.org/packages/40/65/21bfb10ee5cd93fbcaf794958863c7e05bac4bbeb1cc1b652094aa3743a5/wandb-0.23.0-py3-none-win32.whl", hash = "sha256:6c21d3eadda17aef7df6febdffdddfb0b4835c7754435fc4fe27631724269f5c", size = 19433198 },
-    { url = "https://files.pythonhosted.org/packages/f1/33/cbe79e66c171204e32cf940c7fdfb8b5f7d2af7a00f301c632f3a38aa84b/wandb-0.23.0-py3-none-win_amd64.whl", hash = "sha256:b50635fa0e16e528bde25715bf446e9153368428634ca7a5dbd7a22c8ae4e915", size = 19433201 },
-    { url = "https://files.pythonhosted.org/packages/1c/a0/5ecfae12d78ea036a746c071e4c13b54b28d641efbba61d2947c73b3e6f9/wandb-0.23.0-py3-none-win_arm64.whl", hash = "sha256:fa0181b02ce4d1993588f4a728d8b73ae487eb3cb341e6ce01c156be7a98ec72", size = 17678649 },
+    { url = "https://files.pythonhosted.org/packages/12/0b/c3d7053dfd93fd259a63c7818d9c4ac2ba0642ff8dc8db98662ea0cf9cc0/wandb-0.23.1-py3-none-macosx_12_0_arm64.whl", hash = "sha256:358e15471d19b7d73fc464e37371c19d44d39e433252ac24df107aff993a286b", size = 21527293 },
+    { url = "https://files.pythonhosted.org/packages/ee/9f/059420fa0cb6c511dc5c5a50184122b6aca7b178cb2aa210139e354020da/wandb-0.23.1-py3-none-macosx_12_0_x86_64.whl", hash = "sha256:110304407f4b38f163bdd50ed5c5225365e4df3092f13089c30171a75257b575", size = 22745926 },
+    { url = "https://files.pythonhosted.org/packages/96/b6/fd465827c14c64d056d30b4c9fcf4dac889a6969dba64489a88fc4ffa333/wandb-0.23.1-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:6cc984cf85feb2f8ee0451d76bc9fb7f39da94956bb8183e30d26284cf203b65", size = 21212973 },
+    { url = "https://files.pythonhosted.org/packages/5c/ee/9a8bb9a39cc1f09c3060456cc79565110226dc4099a719af5c63432da21d/wandb-0.23.1-py3-none-manylinux_2_28_x86_64.whl", hash = "sha256:67431cd3168d79fdb803e503bd669c577872ffd5dadfa86de733b3274b93088e", size = 22887885 },
+    { url = "https://files.pythonhosted.org/packages/6d/4d/8d9e75add529142e037b05819cb3ab1005679272950128d69d218b7e5b2e/wandb-0.23.1-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:07be70c0baa97ea25fadc4a9d0097f7371eef6dcacc5ceb525c82491a31e9244", size = 21250967 },
+    { url = "https://files.pythonhosted.org/packages/97/72/0b35cddc4e4168f03c759b96d9f671ad18aec8bdfdd84adfea7ecb3f5701/wandb-0.23.1-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:216c95b08e0a2ec6a6008373b056d597573d565e30b43a7a93c35a171485ee26", size = 22988382 },
+    { url = "https://files.pythonhosted.org/packages/c0/6d/e78093d49d68afb26f5261a70fc7877c34c114af5c2ee0ab3b1af85f5e76/wandb-0.23.1-py3-none-win32.whl", hash = "sha256:fb5cf0f85692f758a5c36ab65fea96a1284126de64e836610f92ddbb26df5ded", size = 22150756 },
+    { url = "https://files.pythonhosted.org/packages/05/27/4f13454b44c9eceaac3d6e4e4efa2230b6712d613ff9bf7df010eef4fd18/wandb-0.23.1-py3-none-win_amd64.whl", hash = "sha256:21c8c56e436eb707b7d54f705652e030d48e5cfcba24cf953823eb652e30e714", size = 22150760 },
+    { url = "https://files.pythonhosted.org/packages/30/20/6c091d451e2a07689bfbfaeb7592d488011420e721de170884fedd68c644/wandb-0.23.1-py3-none-win_arm64.whl", hash = "sha256:8aee7f3bb573f2c0acf860f497ca9c684f9b35f2ca51011ba65af3d4592b77c1", size = 20137463 },
 ]
 
 [[package]]

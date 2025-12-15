@@ -137,9 +137,6 @@ const translation = {
     notConnected: '{{name}} ไม่ได้เชื่อมต่อ',
     notConnectedTip: 'เพื่อซิงค์กับ {{name}} ต้องสร้างการเชื่อมต่อกับ {{name}} ก่อน',
   },
-  credentialSelector: {
-    name: '{{credentialName}}\'s {{pluginName}}',
-  },
   conversion: {
     confirm: {
       title: 'การยืนยัน',
