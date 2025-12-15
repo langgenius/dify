@@ -8,7 +8,6 @@ received from the frontend. The frontend uses crypto-js for encryption.
 import base64
 import hashlib
 import logging
-from typing import Optional
 
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
