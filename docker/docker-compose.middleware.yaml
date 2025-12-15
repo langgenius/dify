@@ -217,6 +217,7 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.27.0
     profiles:
+      - ""
       - weaviate
     restart: always
     volumes:

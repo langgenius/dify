@@ -51,7 +51,7 @@ services:
         condition: service_healthy
         required: false
       redis:
-        condition: service_healthy
+        condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -90,7 +90,7 @@ services:
         condition: service_healthy
         required: false
       redis:
-        condition: service_healthy
+        condition: service_started
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -124,7 +124,7 @@ services:
         condition: service_healthy
         required: false
       redis:
-        condition: service_healthy
+        condition: service_started
     networks:
       - ssrf_proxy_network
       - default
