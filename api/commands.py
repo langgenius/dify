@@ -24,6 +24,7 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.index_processor.constant.built_in_field import BuiltInField
 from core.rag.models.document import Document
 from core.tools.utils.system_oauth_encryption import encrypt_system_oauth_params
+from core.workflow.entities.pause_reason import PauseReasonType
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -37,6 +38,7 @@ from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DatasetMetadata, DatasetMetadataBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
+from models.enums import CreatorUserRole, ExecutionOffLoadType
 from models.oauth import DatasourceOauthParamConfig, DatasourceProvider
 from models.provider import Provider, ProviderModel
 from models.provider_ids import DatasourceProviderID, ToolProviderID
@@ -46,8 +48,10 @@ from models.trigger import AppTriggerType, WorkflowTriggerLog, WorkflowTriggerSt
 from models.workflow import (
     WorkflowAppLog,
     WorkflowNodeExecutionModel,
+    WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowPause,
+    WorkflowPauseReason,
     WorkflowRun,
 )
 from services.account_service import AccountService, RegisterService, TenantService
@@ -931,7 +935,7 @@ def seed_expired_workflow_runs(days_ago: int, limit: int, tenant_id: str | None)
                 app_id=app_id,
                 workflow_id=workflow_id,
                 type="workflow",
-                triggered_from="app-run",
+                triggered_from="workflow-run",
                 version="v1",
                 graph="{}",
                 inputs="{}",
@@ -974,6 +978,39 @@ def seed_expired_workflow_runs(days_ago: int, limit: int, tenant_id: str | None)
                 finished_at=created_at + datetime.timedelta(seconds=1),
             )
 
+            offload_files: list[UploadFile] = []
+            node_execution_offloads: list[WorkflowNodeExecutionOffload] = []
+            for offload_type in (
+                ExecutionOffLoadType.INPUTS,
+                ExecutionOffLoadType.OUTPUTS,
+                ExecutionOffLoadType.PROCESS_DATA,
+            ):
+                upload_file = UploadFile(
+                    tenant_id=tenant,
+                    storage_type=StorageType.LOCAL.value,
+                    key=f"seeded/workflow-node-offload/{run_id}-{offload_type.value}.json",
+                    name=f"{run_id}-{offload_type.value}.json",
+                    size=256,
+                    extension="json",
+                    mime_type="application/json",
+                    created_by_role=CreatorUserRole.ACCOUNT,
+                    created_by=creator_id,
+                    created_at=created_at,
+                    used=True,
+                    used_by=creator_id,
+                    used_at=created_at,
+                )
+                offload_files.append(upload_file)
+                node_execution_offloads.append(
+                    WorkflowNodeExecutionOffload(
+                        tenant_id=tenant,
+                        app_id=app_id,
+                        node_execution_id=node_execution.id,
+                        type_=offload_type,
+                        file_id=upload_file.id,
+                    )
+                )
+
             app_log = WorkflowAppLog(
                 tenant_id=tenant,
                 app_id=app_id,
@@ -1008,7 +1045,9 @@ def seed_expired_workflow_runs(days_ago: int, limit: int, tenant_id: str | None)
                 finished_at=created_at + datetime.timedelta(seconds=1),
             )
 
+            pause_id = str(uuid4())
             pause = WorkflowPause(
+                id=pause_id,
                 workflow_id=workflow_id,
                 workflow_run_id=run_id,
                 resumed_at=None,
@@ -1017,7 +1056,20 @@ def seed_expired_workflow_runs(days_ago: int, limit: int, tenant_id: str | None)
                 updated_at=created_at,
             )
 
-            session.add_all([run, node_execution, app_log, trigger_log, pause])
+            pause_reason = WorkflowPauseReason(
+                pause_id=pause_id,
+                type_=PauseReasonType.HUMAN_INPUT_REQUIRED,
+                form_id=str(uuid4()),
+                message="Seeded human input required.",
+                node_id="seeded-human-input",
+                created_at=created_at,
+                updated_at=created_at,
+            )
+
+            records = [run, node_execution, app_log, trigger_log, pause, pause_reason]
+            records.extend(offload_files)
+            records.extend(node_execution_offloads)
+            session.add_all(records)
 
         click.echo(
             click.style(
