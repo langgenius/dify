@@ -313,7 +313,7 @@ class Vector:
             }
         )
         return self._vector_processor.search_by_vector(multimodal_vector, **kwargs)
-    
+
     def search_by_metadata_field(self, key: str, value: str, **kwargs: Any) -> list[Document]:
         return self._vector_processor.search_by_metadata_field(key, value, **kwargs)
 
@@ -327,7 +327,7 @@ class Vector:
             collection_exist_cache_key = f"vector_indexing_{self._vector_processor.collection_name}"
             redis_client.delete(collection_exist_cache_key)
 
-    def _get_embeddings(self) -> Embeddings | None:
+    def _get_embeddings(self) -> Embeddings:
         model_manager = ModelManager()
         try:
             embedding_model = model_manager.get_model_instance(
@@ -339,21 +339,16 @@ class Vector:
             return CacheEmbedding(embedding_model)
         except Exception as e:
             logger.exception("Error getting embeddings: %s", e)
-            # return a fake embeddings
-            return CacheEmbedding(model_instance=ModelInstance(
-                provider_model_bundle=ProviderModelBundle(
-                    configuration=ProviderConfiguration(
-                        provider=ProviderEntity(
-                        provider="openai", 
-                        label=I18nObject(en_US="OpenAI", zh_Hans="OpenAI"),
-                        description=I18nObject(en_US="OpenAI provider", zh_Hans="OpenAI 提供商"),
-                        icon_small=I18nObject(en_US="icon.png", zh_Hans="icon.png"),
-                        icon_large=I18nObject(en_US="icon.png", zh_Hans="icon.png"),
-                        background="background.png",
-                        help=None,
-                        supported_model_types=[ModelType.TEXT_EMBEDDING],
-                        configurate_methods=[ConfigurateMethod.PREDEFINED_MODEL],
-                        provider_credential_schema=None, model_credential_schema=None)), model="text-embedding-ada-002")))
+            # return default embeddings
+            try:
+                default_embeddings = model_manager.get_default_model_instance(
+                    tenant_id=self._dataset.tenant_id,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                )
+                return CacheEmbedding(default_embeddings)
+            except Exception as e:
+                logger.exception("Error getting default embeddings: %s", e)
+                raise e
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
         for text in texts.copy():
