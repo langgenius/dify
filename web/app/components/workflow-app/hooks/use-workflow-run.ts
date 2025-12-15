@@ -360,7 +360,7 @@ export const useWorkflowRun = () => {
 
       if (onError)
         onError(params)
-      trackEvent('workflow_run_failed', { workflow_id: flowId, reason: params.error, data: params.data })
+      trackEvent('workflow_run_failed', { workflow_id: flowId, reason: params.error, node_type: params.node_type })
     }
 
     const wrappedOnCompleted: IOtherOptions['onCompleted'] = async (hasError?: boolean, errorMessage?: string) => {

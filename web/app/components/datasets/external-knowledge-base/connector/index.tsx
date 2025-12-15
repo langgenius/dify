@@ -20,7 +20,8 @@ const ExternalKnowledgeBaseConnector = () => {
       if (result && result.id) {
         notify({ type: 'success', message: 'External Knowledge Base Connected Successfully' })
         trackEvent('create_external_knowledge_base', {
-          external_knowledge_base_value: JSON.stringify(formValue),
+          provider: formValue.provider,
+          name: formValue.name,
         })
         router.back()
       }

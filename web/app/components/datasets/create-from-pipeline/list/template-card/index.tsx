@@ -67,6 +67,11 @@ const TemplateCard = ({
         invalidDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+        trackEvent('create_datasets_with_pipeline', {
+          template_name: pipeline.name,
+          template_id: pipeline.id,
+          template_type: type,
+        })
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
@@ -75,11 +80,6 @@ const TemplateCard = ({
           message: t('datasetPipeline.creation.errorTip'),
         })
       },
-    })
-    trackEvent('create_datasets_with_pipeline', {
-      template_name: pipeline.name,
-      template_id: pipeline.id,
-      template_type: type,
     })
   }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList, pipeline.name, pipeline.id, type])
 

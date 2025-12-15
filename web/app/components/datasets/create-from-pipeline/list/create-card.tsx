@@ -25,6 +25,7 @@ const CreateCard = () => {
           })
           invalidDatasetList()
           trackEvent('create_datasets_from_scratch', {
+            dataset_id: id,
           })
           push(`/datasets/${id}/pipeline`)
         }

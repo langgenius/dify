@@ -43,6 +43,7 @@ const EmptyDatasetCreationModal = ({
       invalidDatasetList()
       trackEvent('create_empty_datasets', {
         name: inputValue,
+        dataset_id: dataset.id,
       })
       onHide()
       router.push(`/datasets/${dataset.id}/documents`)

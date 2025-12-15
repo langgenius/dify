@@ -105,7 +105,6 @@ const ToolItem: FC<Props> = ({
           })
           trackEvent('tool_selected', {
             tool_name: payload.name,
-            tool_params: JSON.stringify(params),
             plugin_id: provider.plugin_id,
           })
         }}
