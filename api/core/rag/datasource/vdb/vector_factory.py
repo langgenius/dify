@@ -196,7 +196,11 @@ class Vector:
 
                 return IrisVectorFactory
             case _:
-                raise ValueError(f"Vector store {vector_type} is not supported.")
+                supported_types = ", ".join(sorted([vt.value for vt in VectorType]))
+                raise ValueError(
+                    f"Vector store '{vector_type}' is not supported. "
+                    f"Supported types: {supported_types}"
+                )
 
     def create(self, texts: list | None = None, **kwargs):
         if texts:
