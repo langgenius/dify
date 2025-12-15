@@ -202,6 +202,20 @@ const translation = {
     quotaTitle: '标注的配额',
   },
   teamMembers: '团队成员',
+  upgrade: {
+    uploadMultiplePages: {
+      title: '升级以一次性上传多个文档',
+      description: '您已达到当前套餐的上传限制 —— 该套餐每次只能选择并上传 1 个文档。',
+    },
+    uploadMultipleFiles: {
+      title: '升级以解锁批量文档上传功能',
+      description: '一次性批量上传更多文档，以节省时间并提升效率。',
+    },
+    addChunks: {
+      title: '升级以继续添加分段',
+      description: '您已达到此计划的添加分段上限。',
+    },
+  },
 }
 
 export default translation

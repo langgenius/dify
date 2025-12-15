@@ -213,12 +213,23 @@ class MCPProviderEntity(BaseModel):
         return None
 
     def retrieve_tokens(self) -> OAuthTokens | None:
-        """OAuth tokens if available"""
+        """Retrieve OAuth tokens if authentication is complete.
+
+        Returns:
+            OAuthTokens if the provider has been authenticated, None otherwise.
+        """
         if not self.credentials:
             return None
         credentials = self.decrypt_credentials()
+        access_token = credentials.get("access_token", "")
+        # Return None if access_token is empty to avoid generating invalid "Authorization: Bearer " header.
+        # Note: We don't check for whitespace-only strings here because:
+        # 1. OAuth servers don't return whitespace-only access tokens in practice
+        # 2. Even if they did, the server would return 401, triggering the OAuth flow correctly
+        if not access_token:
+            return None
         return OAuthTokens(
-            access_token=credentials.get("access_token", ""),
+            access_token=access_token,
             token_type=credentials.get("token_type", DEFAULT_TOKEN_TYPE),
             expires_in=int(credentials.get("expires_in", str(DEFAULT_EXPIRES_IN)) or DEFAULT_EXPIRES_IN),
             refresh_token=credentials.get("refresh_token", ""),

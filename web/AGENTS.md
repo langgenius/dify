@@ -1,0 +1,4 @@
+## Automated Test Generation
+
+- Use `web/testing/testing.md` as the canonical instruction set for generating frontend automated tests.
+- When proposing or saving tests, re-read that document and follow every requirement.

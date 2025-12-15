@@ -5,7 +5,6 @@ const translation = {
   table: {
     header: {
       source: '資料來源',
-      text: '文字',
       time: '時間',
       queryContent: '查詢內容',
     },

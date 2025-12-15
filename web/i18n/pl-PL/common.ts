@@ -752,6 +752,7 @@ const translation = {
     fileExtensionNotSupport: 'Rozszerzenie pliku nie jest obsługiwane',
     uploadFromComputer: 'Przesyłanie lokalne',
     fileExtensionBlocked: 'Ten typ pliku jest zablokowany ze względów bezpieczeństwa',
+    uploadDisabled: 'Przesyłanie plików jest wyłączone',
   },
   license: {
     expiring_plural: 'Wygasa za {{count}} dni',
