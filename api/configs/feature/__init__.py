@@ -10,6 +10,7 @@ from pydantic import (
     PositiveFloat,
     PositiveInt,
     computed_field,
+    model_validator,
 )
 from pydantic_settings import BaseSettings
 
@@ -77,10 +78,16 @@ class SecurityConfig(BaseSettings):
         default="",
     )
 
-    EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
-        description="Duration in minutes for which an email code login token remains valid",
-        default=5,
-    )
+    @model_validator(mode="after")
+    def check_encryption_key(self):
+        """Validate that ENCRYPTION_KEY is set when ENABLE_FIELD_ENCRYPTION is enabled."""
+        if self.ENABLE_FIELD_ENCRYPTION and not self.ENCRYPTION_KEY:
+            raise ValueError(
+                "ENCRYPTION_KEY must be set when ENABLE_FIELD_ENCRYPTION is True. "
+                "Generate a key using: "
+                "`python3 -c \"import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())\"`"
+            )
+        return self
 
 
 class AppExecutionConfig(BaseSettings):
