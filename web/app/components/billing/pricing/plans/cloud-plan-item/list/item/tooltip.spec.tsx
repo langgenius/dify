@@ -1,0 +1,47 @@
+import { render, screen } from '@testing-library/react'
+import Tooltip from './tooltip'
+
+describe('Tooltip', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  // Rendering the info tooltip container
+  describe('Rendering', () => {
+    it('should render the content panel when provide with text', () => {
+      // Arrange
+      const content = 'Usage resets on the first day of every month.'
+
+      // Act
+      render(<Tooltip content={content} />)
+
+      // Assert
+      const panel = screen.getByText(content)
+      expect(panel).not.toBeNull()
+    })
+  })
+
+  describe('Icon rendering', () => {
+    it('should render the icon when provided with content', () => {
+      // Arrange
+      const content = 'Tooltips explain each plan detail.'
+
+      // Act
+      const { container } = render(<Tooltip content={content} />)
+
+      // Assert
+      expect(container.querySelector('[data-testid="tooltip-icon"]')).not.toBeNull()
+    })
+  })
+
+  // Handling empty strings while keeping structure consistent
+  describe('Edge cases', () => {
+    it('should render without crashing when pass an empty tooltip', () => {
+      // Arrange
+      const content = ''
+
+      // Act and Assert
+      expect(() => render(<Tooltip content={content} />)).not.toThrow()
+    })
+  })
+})
