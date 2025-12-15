@@ -41,7 +41,7 @@ type ModalSnapshot = {
 let mockModalProps: ModalSnapshot | null = null
 jest.mock('../../base/modal', () => ({
   __esModule: true,
-  default: ({ isShow, children, onClose, closable, className }: any) => {
+  default: ({ isShow, children, onClose, closable, className }: { isShow: boolean; children: React.ReactNode; onClose: () => void; closable?: boolean; className?: string }) => {
     mockModalProps = {
       isShow,
       closable,
