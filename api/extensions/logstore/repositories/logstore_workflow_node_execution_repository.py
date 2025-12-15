@@ -187,24 +187,30 @@ class LogstoreWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository):
             ("title", domain_model.title),
             (
                 "inputs",
-                json.dumps(json_converter.to_json_encodable(domain_model.inputs)) if domain_model.inputs else "{}",
+                json.dumps(json_converter.to_json_encodable(domain_model.inputs), ensure_ascii=False)
+                if domain_model.inputs
+                else "{}",
             ),
             (
                 "process_data",
-                json.dumps(json_converter.to_json_encodable(domain_model.process_data))
+                json.dumps(json_converter.to_json_encodable(domain_model.process_data), ensure_ascii=False)
                 if domain_model.process_data
                 else "{}",
             ),
             (
                 "outputs",
-                json.dumps(json_converter.to_json_encodable(domain_model.outputs)) if domain_model.outputs else "{}",
+                json.dumps(json_converter.to_json_encodable(domain_model.outputs), ensure_ascii=False)
+                if domain_model.outputs
+                else "{}",
             ),
             ("status", domain_model.status.value),
             ("error", domain_model.error or ""),
             ("elapsed_time", str(domain_model.elapsed_time)),
             (
                 "execution_metadata",
-                json.dumps(jsonable_encoder(domain_model.metadata)) if domain_model.metadata else "{}",
+                json.dumps(jsonable_encoder(domain_model.metadata), ensure_ascii=False)
+                if domain_model.metadata
+                else "{}",
             ),
             ("created_at", domain_model.created_at.isoformat() if domain_model.created_at else ""),
             ("created_by_role", self._creator_user_role.value),

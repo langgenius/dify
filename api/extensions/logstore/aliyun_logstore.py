@@ -35,6 +35,11 @@ class AliyunLogStore:
     _instance: "AliyunLogStore | None" = None
     _initialized: bool = False
 
+    # Default tokenizer for text/json fields and full-text index
+    # Common delimiters: comma, space, quotes, punctuation, operators, brackets, special chars
+    DEFAULT_TOKEN_LIST = [",", " ", "\"", "\"", ";", "=",  "(", ")", "[", "]",
+        "{", "}", "?", "@", "&", "<", ">", "/", ":", "\n", "\t"]
+
     def __new__(cls) -> "AliyunLogStore":
         """Implement singleton pattern."""
         if cls._instance is None:
@@ -115,11 +120,15 @@ class AliyunLogStore:
                 logstore_type = AliyunLogStore._sqlalchemy_type_to_logstore_type(column_property)
 
                 # Create index configuration
-                # - text fields: case_insensitive for better search
+                # - text fields: case_insensitive for better search, with tokenizer and Chinese support
                 # - all fields: doc_value=True for analytics
                 if logstore_type == "text":
                     index_keys[column_name] = IndexKeyConfig(
-                        index_type=logstore_type, case_sensitive=False, doc_value=True
+                        index_type="text",
+                        case_sensitive=False,
+                        doc_value=True,
+                        token_list=AliyunLogStore.DEFAULT_TOKEN_LIST,
+                        chinese=True,
                     )
                 else:
                     index_keys[column_name] = IndexKeyConfig(index_type=logstore_type, doc_value=True)
@@ -316,10 +325,18 @@ class AliyunLogStore:
         # Add custom fields that are in logstore but not in PG model
         # These fields are added by the repository layer
         index_keys["error_message"] = IndexKeyConfig(
-            index_type="text", case_sensitive=False, doc_value=True
+            index_type="text",
+            case_sensitive=False,
+            doc_value=True,
+            token_list=self.DEFAULT_TOKEN_LIST,
+            chinese=True,
         )  # Maps to 'error' in PG
         index_keys["started_at"] = IndexKeyConfig(
-            index_type="text", case_sensitive=False, doc_value=True
+            index_type="text",
+            case_sensitive=False,
+            doc_value=True,
+            token_list=self.DEFAULT_TOKEN_LIST,
+            chinese=True,
         )  # Maps to 'created_at' in PG
 
         logger.info("Generated %d index keys for workflow_execution from WorkflowRun model", len(index_keys))
@@ -352,8 +369,8 @@ class AliyunLogStore:
         Returns:
             IndexConfig object with line and field indexes
         """
-        # Create full-text index (line config)
-        line_config = IndexLineConfig()
+        # Create full-text index (line config) with tokenizer
+        line_config = IndexLineConfig(token_list=self.DEFAULT_TOKEN_LIST, case_sensitive=False, chinese=True)
 
         # Get field index configuration based on logstore name
         field_keys = {}
@@ -399,8 +416,12 @@ class AliyunLogStore:
         This method:
         1. Preserves all existing field indexes in logstore (including custom fields)
         2. Adds missing Dify-required fields
-        3. Updates fields where type doesn't match
+        3. Updates fields where type doesn't match (with json/text compatibility)
         4. Corrects case mismatches (e.g., if Dify needs 'status' but logstore has 'Status')
+
+        Type compatibility rules:
+        - json and text types are considered compatible (users can manually choose either)
+        - All other type mismatches will be corrected to match Dify requirements
 
         Note: Logstore is case-sensitive and doesn't allow duplicate fields with different cases.
         Case mismatch means: existing field name differs from required name only in case.
@@ -450,12 +471,18 @@ class AliyunLogStore:
                 required_type = required_config.index_type
 
                 # Check if type matches
-                if existing_type != required_type:
+                # Special case: json and text are interchangeable for JSON content fields
+                # Allow users to manually configure text instead of json (or vice versa) without forcing updates
+                is_compatible = existing_type == required_type or (
+                    {existing_type, required_type} == {"json", "text"}
+                )
+
+                if not is_compatible:
                     type_mismatches.append((required_name, existing_type, required_type))
                     # Update with correct type
                     existing_keys[required_name] = required_config
                     needs_update = True
-                # else: field exists with correct type, no action needed
+                # else: field exists with compatible type, no action needed
             else:
                 # Field doesn't exist (may have been removed in first pass due to case conflict)
                 missing_fields.append(required_name)
@@ -493,7 +520,8 @@ class AliyunLogStore:
         # key_config_list should be a dict, not a list
         # Preserve the original scan_index value - don't force it to True
         merged_config = IndexConfig(
-            line_config=existing_config.line_config or IndexLineConfig(),
+            line_config=existing_config.line_config
+            or IndexLineConfig(token_list=self.DEFAULT_TOKEN_LIST, case_sensitive=False, chinese=True),
             key_config_list=existing_keys,
             scan_index=existing_config.scan_index,
         )
@@ -533,7 +561,6 @@ class AliyunLogStore:
             )
             self.create_index(logstore_name)
         else:
-            # Index exists, merge intelligently
             merged_config, needs_update = self._merge_index_configs(existing_config, required_keys, logstore_name)
 
             if needs_update:
