@@ -167,4 +167,3 @@ class TestResponseCoordinatorObjectStreaming:
         assert ("node1", "generation", "content") in children
         assert ("node1", "generation", "tool_calls") in children
         assert ("node1", "generation", "thought") in children
-
