@@ -101,6 +101,7 @@ class MetadataService:
             return metadata
         except Exception:
             logger.exception("Update metadata name failed")
+            raise
         finally:
             redis_client.delete(lock_key)
 
