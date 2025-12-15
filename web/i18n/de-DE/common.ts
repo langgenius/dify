@@ -734,6 +734,7 @@ const translation = {
     uploadFromComputerReadError: 'Lesen der Datei fehlgeschlagen, bitte versuchen Sie es erneut.',
     fileExtensionNotSupport: 'Dateiendung nicht bedient',
     fileExtensionBlocked: 'Dieser Dateityp ist aus Sicherheitsgründen gesperrt',
+    uploadDisabled: 'Datei-Upload ist deaktiviert',
   },
   license: {
     expiring: 'Läuft an einem Tag ab',
