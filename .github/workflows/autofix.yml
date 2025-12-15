@@ -13,11 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # Use uv to ensure we have the same ruff version in CI and locally.
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - uses: astral-sh/setup-uv@v6
+
       - run: |
           cd api
           uv sync --dev
@@ -85,7 +86,6 @@ jobs:
 
       - name: oxlint
         working-directory: ./web
-        run: |
-          pnpx oxlint --fix
+        run: pnpm exec oxlint --config .oxlintrc.json --fix .
 
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27
