@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AppCard from './index'
 import type { AppIconType } from '@/types/app'
@@ -55,21 +55,18 @@ describe('AppCard', () => {
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<AppCard {...defaultProps} />)
+      const { container } = render(<AppCard {...defaultProps} />)
 
-      // Check for app icon using its actual implementation
-      const appIcon = screen.getByTestId('app-icon')
-      expect(appIcon).toBeInTheDocument()
+      expect(container.querySelector('em-emoji')).toBeInTheDocument()
       expect(screen.getByText('Test Chat App')).toBeInTheDocument()
       expect(screen.getByText(mockApp.description)).toBeInTheDocument()
     })
 
     it('should render app type icon and label', () => {
-      render(<AppCard {...defaultProps} />)
+      const { container } = render(<AppCard {...defaultProps} />)
 
-      expect(screen.getByTestId('app-type-icon')).toBeInTheDocument()
-      expect(screen.getByTestId('app-type-label')).toBeInTheDocument()
-      expect(screen.getByTestId('app-type-label')).toHaveTextContent('app.typeSelector.chatbot')
+      expect(container.querySelector('svg')).toBeInTheDocument()
+      expect(screen.getByText('app.typeSelector.chatbot')).toBeInTheDocument()
     })
   })
 
@@ -168,9 +165,7 @@ describe('AppCard', () => {
         }
         render(<AppCard {...defaultProps} app={appWithMode} />)
 
-        const typeLabel = screen.getByTestId('app-type-label')
-        expect(typeLabel).toBeInTheDocument()
-        expect(typeLabel).toHaveTextContent(expectedLabel)
+        expect(screen.getByText(expectedLabel)).toBeInTheDocument()
       })
     })
   })
@@ -185,11 +180,11 @@ describe('AppCard', () => {
           icon: '🤖',
         },
       }
-      render(<AppCard {...defaultProps} app={appWithIcon} />)
+      const { container } = render(<AppCard {...defaultProps} app={appWithIcon} />)
 
-      const appIcon = screen.getByTestId('app-icon')
-      expect(appIcon.querySelector('img')).not.toBeInTheDocument()
-      expect(appIcon.querySelector('em-emoji')).toBeInTheDocument()
+      const card = container.firstElementChild as HTMLElement
+      expect(within(card).queryByRole('img', { name: 'app icon' })).not.toBeInTheDocument()
+      expect(card.querySelector('em-emoji')).toBeInTheDocument()
     })
 
     it('should prioritize icon_url when both icon and icon_url are provided', () => {
@@ -220,9 +215,9 @@ describe('AppCard', () => {
 
     it('should handle click on card itself', async () => {
       const mockOnCreate = jest.fn()
-      render(<AppCard {...defaultProps} onCreate={mockOnCreate} />)
+      const { container } = render(<AppCard {...defaultProps} onCreate={mockOnCreate} />)
 
-      const card = screen.getByTestId('app-card')
+      const card = container.firstElementChild as HTMLElement
       await userEvent.click(card)
       // Note: Card click doesn't trigger onCreate, only the button does
       expect(mockOnCreate).not.toHaveBeenCalled()
@@ -255,9 +250,9 @@ describe('AppCard', () => {
           icon_type: null,
         },
       }
-      render(<AppCard {...defaultProps} app={appWithNullIcon} />)
+      const { container } = render(<AppCard {...defaultProps} app={appWithNullIcon} />)
 
-      const appIcon = screen.getByTestId('app-icon')
+      const appIcon = container.querySelector('em-emoji')
       expect(appIcon).toBeInTheDocument()
       // AppIcon component should handle null icon_type gracefully
     })
@@ -267,9 +262,9 @@ describe('AppCard', () => {
         ...mockApp,
         description: '',
       }
-      render(<AppCard {...defaultProps} app={appWithEmptyDesc} />)
+      const { container } = render(<AppCard {...defaultProps} app={appWithEmptyDesc} />)
 
-      const descriptionContainer = screen.getByTestId('app-description')
+      const descriptionContainer = container.querySelector('.line-clamp-3')
       expect(descriptionContainer).toBeInTheDocument()
       expect(descriptionContainer).toHaveTextContent('')
     })
@@ -282,9 +277,7 @@ describe('AppCard', () => {
       }
       render(<AppCard {...defaultProps} app={appWithLongDesc} />)
 
-      const descriptionContainer = screen.getByTestId('app-description')
-      expect(descriptionContainer).toBeInTheDocument()
-      expect(descriptionContainer).toHaveTextContent(/This is a very long description/)
+      expect(screen.getByText(/This is a very long description/)).toBeInTheDocument()
     })
 
     it('should handle app with special characters in name', () => {
@@ -329,10 +322,10 @@ describe('AppCard', () => {
 
   describe('Accessibility', () => {
     it('should have proper elements for accessibility', () => {
-      render(<AppCard {...defaultProps} />)
+      const { container } = render(<AppCard {...defaultProps} />)
 
-      expect(screen.getByTestId('app-icon')).toBeInTheDocument()
-      expect(screen.getByTestId('app-type-icon')).toBeInTheDocument()
+      expect(container.querySelector('em-emoji')).toBeInTheDocument()
+      expect(container.querySelector('svg')).toBeInTheDocument()
     })
 
     it('should have title attribute for app name when truncated', () => {

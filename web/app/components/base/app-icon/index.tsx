@@ -110,10 +110,6 @@ const AppIcon: FC<AppIconProps> = ({
       className={classNames(appIconVariants({ size, rounded }), className)}
       style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
       onClick={onClick}
-      data-testid="app-icon"
-      data-icon-type={iconType}
-      data-icon={icon}
-      data-image-url={imageUrl}
     >
       {
         isValidImageIcon
