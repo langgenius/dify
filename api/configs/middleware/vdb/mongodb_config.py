@@ -77,25 +77,53 @@ class MongoDBConfig(BaseSettings):
         default=10.0,
     )
 
+    MONGODB_CONNECTION_RETRY_MAX_WAIT: float = Field(
+        description="Maximum wait time in seconds for connection retry backoff (default: 30.0)",
+        default=30.0,
+    )
+
     def _build_connection_uri(self) -> str:
         """
         Build MongoDB connection URI from individual components.
         
+        This is a sensitive operation as it constructs connection strings with credentials.
+        All URI construction is logged (with sanitization) for security auditing.
+        
         Returns:
             MongoDB connection URI string
+            
+        Raises:
+            ValueError: If URI construction fails due to invalid components
         """
-        if not self.MONGODB_HOST:
-            return "mongodb://localhost:27017"
+        import logging
+        logger = logging.getLogger(__name__)
         
-        auth = ""
-        if self.MONGODB_USERNAME:
-            # Use quote_plus for username (handles spaces as +)
-            # Use quote for password to handle special characters including colons
-            username = quote_plus(self.MONGODB_USERNAME)
-            password = quote(self.MONGODB_PASSWORD or "", safe="") if self.MONGODB_PASSWORD else ""
-            auth = f"{username}:{password}@"
-        
-        return f"mongodb://{auth}{self.MONGODB_HOST}:{self.MONGODB_PORT}"
+        try:
+            if not self.MONGODB_HOST:
+                logger.debug("Building MongoDB URI with default localhost connection")
+                return "mongodb://localhost:27017"
+            
+            auth = ""
+            if self.MONGODB_USERNAME:
+                # Use quote_plus for username (handles spaces as +)
+                # Use quote for password to handle special characters including colons
+                username = quote_plus(self.MONGODB_USERNAME)
+                password = quote(self.MONGODB_PASSWORD or "", safe="") if self.MONGODB_PASSWORD else ""
+                auth = f"{username}:{password}@"
+                logger.debug(
+                    f"Building MongoDB URI with authentication for host '{self.MONGODB_HOST}'"
+                )
+            else:
+                logger.debug(
+                    f"Building MongoDB URI without authentication for host '{self.MONGODB_HOST}'"
+                )
+            
+            uri = f"mongodb://{auth}{self.MONGODB_HOST}:{self.MONGODB_PORT}"
+            logger.debug(f"MongoDB URI constructed successfully (host: {self.MONGODB_HOST}, port: {self.MONGODB_PORT})")
+            return uri
+        except (ValueError, TypeError) as e:
+            logger.error(f"Failed to build MongoDB URI: {e}")
+            raise ValueError(f"Invalid MongoDB configuration for URI construction: {e}") from e
 
     @computed_field
     @property

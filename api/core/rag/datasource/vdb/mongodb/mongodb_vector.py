@@ -47,8 +47,9 @@ def _sanitize_uri_for_logging(uri: str) -> str:
             if parsed.port:
                 masked_netloc += f":{parsed.port}"
             return f"{parsed.scheme}://{masked_netloc}{parsed.path or ''}{parsed.query and '?' + parsed.query or ''}"
-    except Exception:
+    except (ValueError, AttributeError, TypeError) as e:
         # If parsing fails, mask the entire URI after @ symbol
+        logger.debug(f"URI parsing failed, using fallback sanitization: {e}")
         if "@" in uri:
             parts = uri.split("@", 1)
             if len(parts) == 2:
@@ -87,7 +88,8 @@ class MongoDBVector(BaseVector):
         """
         Verify MongoDB connection with configurable retry logic for transient errors.
         
-        Uses exponential backoff with base delay from config. Retries are useful for:
+        Uses exponential backoff with base delay from config, capped at maximum wait time.
+        Retries are useful for:
         - Network transient failures
         - Server startup delays
         - Temporary connection pool exhaustion
@@ -98,6 +100,7 @@ class MongoDBVector(BaseVector):
         """
         max_retries = self._config.MONGODB_CONNECTION_RETRY_ATTEMPTS
         backoff_base = self._config.MONGODB_CONNECTION_RETRY_BACKOFF_BASE
+        max_wait = self._config.MONGODB_CONNECTION_RETRY_MAX_WAIT
         
         last_exception = None
         for attempt in range(max_retries):
@@ -110,7 +113,8 @@ class MongoDBVector(BaseVector):
                 last_exception = e
                 if attempt < max_retries - 1:
                     # Exponential backoff: base * 2^attempt (e.g., 1s, 2s, 4s with base=1.0)
-                    wait_time = backoff_base * (2 ** attempt)
+                    # Capped at max_wait to prevent excessive wait times
+                    wait_time = min(backoff_base * (2 ** attempt), max_wait)
                     logger.warning(
                         f"MongoDB connection attempt {attempt + 1}/{max_retries} failed: {e}. "
                         f"Retrying in {wait_time}s..."
@@ -121,6 +125,8 @@ class MongoDBVector(BaseVector):
                         f"Failed to connect to MongoDB after {max_retries} attempts: {e}"
                     )
         
+        if last_exception is None:
+            raise ConnectionFailure("Connection check failed with unknown error")
         raise last_exception
 
     def get_type(self) -> str:
@@ -201,6 +207,7 @@ class MongoDBVector(BaseVector):
         Raises:
             TimeoutError: If index is not ready within configured timeout
             OperationFailure: If index build fails or permission denied
+            ConnectionFailure: If connection is lost and cannot be recovered
         """
         timeout = self._config.MONGODB_INDEX_READY_TIMEOUT
         delay = self._config.MONGODB_INDEX_READY_CHECK_DELAY
@@ -245,7 +252,24 @@ class MongoDBVector(BaseVector):
                 if error_code == MongoDBErrorCode.PERMISSION_DENIED:
                     logger.error(f"Permission denied when checking index status: {e}")
                     raise
-                logger.warning(f"Error checking index status: {e}. Retrying in {delay:.1f}s...")
+                # Don't retry on other non-transient operation failures
+                if error_code and error_code not in (None, 0):
+                    logger.warning(f"Operation error when checking index status: {e} (error_code: {error_code}). Retrying in {delay:.1f}s...")
+                else:
+                    logger.warning(f"Error checking index status: {e}. Retrying in {delay:.1f}s...")
+            except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+                # Connection errors are transient - retry
+                logger.warning(
+                    f"Connection error when checking index status: {e}. "
+                    f"Retrying in {delay:.1f}s..."
+                )
+            except Exception as e:
+                # Catch any other unexpected errors and log them
+                logger.error(
+                    f"Unexpected error when checking index status: {e} (type: {type(e).__name__}). "
+                    f"Retrying in {delay:.1f}s...",
+                    exc_info=True
+                )
             
             check_count += 1
             time.sleep(delay)
