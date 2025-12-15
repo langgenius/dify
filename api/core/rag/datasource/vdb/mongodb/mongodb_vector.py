@@ -33,7 +33,6 @@ def _sanitize_uri_for_logging(uri: str) -> str:
     
     This function ensures no passwords or sensitive information are logged.
     It handles various URI formats including mongodb:// and mongodb+srv://.
-    Uses multiple fallback strategies to handle edge cases and malformed URIs.
     
     Args:
         uri: MongoDB connection URI
@@ -42,28 +41,11 @@ def _sanitize_uri_for_logging(uri: str) -> str:
         URI with all credentials masked (e.g., mongodb://user:***@host:port)
         Returns "***" if URI cannot be safely sanitized
     """
-    if not uri:
-        return "***"
-    
-    if not isinstance(uri, str):
-        return "***"
-    
-    # Empty or whitespace-only strings
-    if not uri.strip():
-        return "***"
-    
-    # Must contain scheme separator
-    if "://" not in uri:
+    if not uri or not isinstance(uri, str) or not uri.strip() or "://" not in uri:
         return "***"
     
     try:
-        # Primary method: use urlparse for proper URI parsing
         parsed = urlparse(uri)
-        
-        # Validate scheme
-        if not parsed.scheme or parsed.scheme not in ("mongodb", "mongodb+srv"):
-            # If scheme is invalid, still try to sanitize but be cautious
-            logger.debug(f"Unusual URI scheme detected: {parsed.scheme}")
         
         # Build sanitized URI
         if parsed.username:
@@ -71,8 +53,6 @@ def _sanitize_uri_for_logging(uri: str) -> str:
             masked_netloc = f"{parsed.username}:***@"
             if parsed.hostname:
                 masked_netloc += parsed.hostname
-            else:
-                masked_netloc += "***"
             if parsed.port:
                 masked_netloc += f":{parsed.port}"
             
@@ -86,7 +66,7 @@ def _sanitize_uri_for_logging(uri: str) -> str:
             return sanitized
         else:
             # No authentication
-            masked_netloc = parsed.hostname or "***"
+            masked_netloc = parsed.hostname or ""
             if parsed.port:
                 masked_netloc += f":{parsed.port}"
             sanitized = f"{parsed.scheme}://{masked_netloc}"
@@ -98,50 +78,9 @@ def _sanitize_uri_for_logging(uri: str) -> str:
                 sanitized += f"#{parsed.fragment}"
             return sanitized
             
-    except (ValueError, AttributeError, TypeError) as e:
-        # Fallback: manual parsing for edge cases
-        logger.debug(f"URI parsing failed, using fallback sanitization: {type(e).__name__}")
-        
-        # Check for @ symbol indicating credentials
-        if "@" in uri:
-            try:
-                parts = uri.split("@", 1)
-                if len(parts) == 2:
-                    auth_part = parts[0]
-                    rest_part = parts[1]
-                    
-                    # Extract scheme
-                    if "://" in auth_part:
-                        scheme_end = auth_part.find("://")
-                        scheme = auth_part[:scheme_end]
-                        credentials = auth_part[scheme_end + 3:]
-                        
-                        # Extract username if present
-                        if ":" in credentials:
-                            username = credentials.split(":", 1)[0]
-                            return f"{scheme}://{username}:***@{rest_part}"
-                        else:
-                            return f"{scheme}://***@{rest_part}"
-                    else:
-                        # No scheme found, be very cautious
-                        return "***"
-            except (ValueError, IndexError, AttributeError):
-                # If fallback parsing fails, return safe default
-                pass
-        
-        # Last resort: if we can identify scheme, mask everything after it
-        if "://" in uri:
-            try:
-                scheme_part = uri.split("://", 1)
-                if len(scheme_part) == 2:
-                    scheme = scheme_part[0]
-                    # Mask everything after scheme to be safe
-                    return f"{scheme}://***"
-            except (ValueError, IndexError):
-                pass
-    
-    # Ultimate fallback: return safe default
-    return "***"
+    except (ValueError, AttributeError, TypeError):
+        # If parsing fails, return safe default
+        return "***"
 
 
 class MongoDBVector(BaseVector):
