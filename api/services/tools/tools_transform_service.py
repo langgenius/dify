@@ -427,6 +427,27 @@ class ToolTransformService:
         )
 
     @staticmethod
+    def convert_enduser_provider_to_credential_entity(
+        provider, credentials: dict
+    ) -> ToolProviderCredentialApiEntity:
+        """
+        Convert EndUserAuthenticationProvider to ToolProviderCredentialApiEntity.
+
+        :param provider: EndUserAuthenticationProvider instance
+        :param credentials: Decrypted/masked credentials dict
+        :return: ToolProviderCredentialApiEntity
+        """
+        return ToolProviderCredentialApiEntity(
+            id=provider.id,
+            name=provider.name,
+            provider=provider.provider,
+            credential_type=CredentialType.of(provider.credential_type),
+            is_default=False,  # End-user credentials don't have default flag (use oldest)
+            credentials=credentials,
+            expires_at=provider.expires_at,
+        )
+
+    @staticmethod
     def convert_mcp_schema_to_parameter(schema: dict[str, Any]) -> list["ToolParameter"]:
         """
         Convert MCP JSON schema to tool parameters

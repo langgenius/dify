@@ -214,6 +214,7 @@ const ToolSelector: FC<Props> = ({
     onSelect({
       ...value,
       use_end_user_credentials: enabled,
+      auth_type: enabled ? 'end_user' : 'workspace',
     } as any)
   }
   const handleEndUserCredentialTypeChange = (type: string) => {

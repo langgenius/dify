@@ -124,6 +124,7 @@ class ToolProviderCredentialApiEntity(BaseModel):
         default=False, description="Whether the credential is the default credential for the provider in the workspace"
     )
     credentials: Mapping[str, object] = Field(description="The credentials of the provider", default_factory=dict)
+    expires_at: int = Field(default=-1, description="Unix timestamp when credential expires (-1 for no expiry)")
 
 
 class ToolProviderCredentialInfoApiEntity(BaseModel):

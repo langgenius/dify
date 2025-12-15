@@ -24,4 +24,5 @@ export type ToolNodeType = CommonNodeType & {
   provider_icon?: Collection['icon']
   provider_icon_dark?: Collection['icon_dark']
   plugin_unique_identifier?: string
+  auth_type?: 'workspace' | 'end_user'
 }

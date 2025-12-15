@@ -49,6 +49,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ToolAuthType,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
@@ -58,7 +59,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, EndUserAuthenticationProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
@@ -165,6 +166,8 @@ class ToolManager:
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
         credential_id: str | None = None,
+        auth_type: ToolAuthType = ToolAuthType.WORKSPACE,
+        end_user_id: str | None = None,
     ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
         get the tool runtime
@@ -176,6 +179,8 @@ class ToolManager:
         :param invoke_from: invoke from
         :param tool_invoke_from: the tool invoke from
         :param credential_id: the credential id
+        :param auth_type: the authentication type (workspace or end_user)
+        :param end_user_id: the end user id (required when auth_type is END_USER)
 
         :return: the tool
         """
@@ -200,6 +205,90 @@ class ToolManager:
                         )
                     ),
                 )
+
+            # Handle end-user authentication
+            if auth_type == ToolAuthType.END_USER:
+                if not end_user_id:
+                    raise ToolProviderNotFoundError("end_user_id is required for END_USER auth_type")
+
+                # Query end-user credentials
+                enduser_provider = (
+                    db.session.query(EndUserAuthenticationProvider)
+                    .where(
+                        EndUserAuthenticationProvider.tenant_id == tenant_id,
+                        EndUserAuthenticationProvider.end_user_id == end_user_id,
+                        EndUserAuthenticationProvider.provider == provider_id,
+                    )
+                    .order_by(EndUserAuthenticationProvider.created_at.asc())
+                    .first()
+                )
+
+                if enduser_provider is None:
+                    raise ToolProviderNotFoundError(
+                        f"No end-user credentials found for provider {provider_id}"
+                    )
+
+                # Decrypt end-user credentials
+                encrypter, cache = create_provider_encrypter(
+                    tenant_id=tenant_id,
+                    config=[
+                        x.to_basic_provider_config()
+                        for x in provider_controller.get_credentials_schema_by_type(enduser_provider.credential_type)
+                    ],
+                    cache=ToolProviderCredentialsCache(
+                        tenant_id=tenant_id, provider=provider_id, credential_id=enduser_provider.id
+                    ),
+                )
+
+                decrypted_credentials: Mapping[str, Any] = encrypter.decrypt(enduser_provider.credentials)
+
+                # Handle OAuth token refresh for end-users if expired
+                if enduser_provider.expires_at != -1 and (enduser_provider.expires_at - 60) < int(time.time()):
+                    from core.plugin.impl.oauth import OAuthHandler
+                    from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+
+                    # refresh the credentials
+                    tool_provider = ToolProviderID(provider_id)
+                    provider_name = tool_provider.provider_name
+                    # Use the same redirect URI as workspace OAuth to reuse the same OAuth client
+                    redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
+                    system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
+
+                    oauth_handler = OAuthHandler()
+                    # refresh the credentials
+                    refreshed_credentials = oauth_handler.refresh_credentials(
+                        tenant_id=tenant_id,
+                        user_id=end_user_id,
+                        plugin_id=tool_provider.plugin_id,
+                        provider=provider_name,
+                        redirect_uri=redirect_uri,
+                        system_credentials=system_credentials or {},
+                        credentials=decrypted_credentials,
+                    )
+                    # update the credentials
+                    enduser_provider.encrypted_credentials = json.dumps(
+                        encrypter.encrypt(refreshed_credentials.credentials)
+                    )
+                    enduser_provider.expires_at = refreshed_credentials.expires_at
+                    db.session.commit()
+                    decrypted_credentials = refreshed_credentials.credentials
+                    cache.delete()
+
+                return cast(
+                    BuiltinTool,
+                    builtin_tool.fork_tool_runtime(
+                        runtime=ToolRuntime(
+                            tenant_id=tenant_id,
+                            credentials=dict(decrypted_credentials),
+                            credential_type=CredentialType.of(enduser_provider.credential_type),
+                            runtime_parameters={},
+                            invoke_from=invoke_from,
+                            tool_invoke_from=tool_invoke_from,
+                        )
+                    ),
+                )
+
+            # Handle workspace authentication (existing logic)
             builtin_provider = None
             if isinstance(provider_controller, PluginToolProviderController):
                 provider_id_entity = ToolProviderID(provider_id)
@@ -368,6 +457,7 @@ class ToolManager:
         agent_tool: AgentToolEntity,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Optional["VariablePool"] = None,
+        end_user_id: str | None = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -380,6 +470,8 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.AGENT,
             credential_id=agent_tool.credential_id,
+            auth_type=agent_tool.auth_type,
+            end_user_id=end_user_id,
         )
         runtime_parameters = {}
         parameters = tool_entity.get_merged_runtime_parameters()
@@ -410,6 +502,7 @@ class ToolManager:
         workflow_tool: "ToolEntity",
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Optional["VariablePool"] = None,
+        end_user_id: str | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -423,6 +516,8 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
             credential_id=workflow_tool.credential_id,
+            auth_type=workflow_tool.auth_type,
+            end_user_id=end_user_id,
         )
 
         parameters = tool_runtime.get_merged_runtime_parameters()
