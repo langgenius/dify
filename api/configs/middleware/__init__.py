@@ -77,7 +77,6 @@ class StorageConfig(BaseSettings):
         description="Path for local storage when STORAGE_TYPE is set to 'local'. "
         "Deprecated: Use 'opendal' storage type with filesystem backend configuration instead.",
         default="storage",
-        deprecated=True,
     )
 
 
