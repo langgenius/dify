@@ -157,6 +157,14 @@ const translation = {
       viewDocsLink: 'مشاهده مستندات {{key}}',
       removeConfirmTitle: 'حذف پیکربندی {{key}}؟',
       removeConfirmContent: 'پیکربندی فعلی در حال استفاده است، حذف آن ویژگی ردیابی را غیرفعال خواهد کرد.',
+      clientId: 'شناسه مشتری OAuth',
+      username: 'نام کاربری',
+      password: 'رمز عبور',
+      experimentId: 'شناسه آزمایش',
+      personalAccessToken: 'نشانه دسترسی شخصی (قدیمی)',
+      databricksHost: 'نشانی اینترنتی محیط کاری دیتابریکس',
+      trackingUri: 'آدرس URI ردیابی',
+      clientSecret: 'رمز مخفی مشتری OAuth',
     },
     view: 'مشاهده',
     opik: {
@@ -170,6 +178,14 @@ const translation = {
     aliyun: {
       title: 'نظارت بر ابر',
       description: 'پلتفرم مشاهده‌پذیری کاملاً مدیریت‌شده و بدون نیاز به نگهداری که توسط Alibaba Cloud ارائه شده، امکان نظارت، ردیابی و ارزیابی برنامه‌های Dify را به‌صورت آماده و با تنظیمات اولیه فراهم می‌کند.',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'پلتفرم LLMOps متن‌باز برای ردیابی آزمایش‌ها، مشاهده‌پذیری و ارزیابی، برای ساخت برنامه‌های AI/LLM با اطمینان.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks MLflow کاملاً مدیریت‌شده با حکمرانی و امنیت قوی برای ذخیره‌سازی داده‌های ردیابی ارائه می‌دهد.',
     },
     tencent: {
       title: 'تنست ای‌پی‌ام',
@@ -286,6 +302,8 @@ const translation = {
       accountDesc: 'به صفحه حساب کاربری بروید',
       communityDesc: 'جامعه دیسکورد باز',
       docDesc: 'مستندات کمک را باز کنید',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noKnowledgeBasesFound: 'هیچ پایگاه دانش یافت نشد',
@@ -326,6 +344,8 @@ const translation = {
     pressEscToClose: 'برای بستن ESC را فشار دهید',
     tips: 'برای حرکت به بالا و پایین کلیدهای ↑ و ↓ را فشار دهید',
   },
+  noUserInputNode: 'ورودی کاربر پیدا نشد',
+  notPublishedYet: 'اپ هنوز منتشر نشده است',
 }
 
 export default translation

@@ -74,8 +74,9 @@ const translation = {
         'रॉ {{rowIndex}}: {{varName}} मान {{maxLength}} वर्णों से अधिक नहीं हो सकता',
       atLeastOne: 'कृपया अपलोड की गई फ़ाइल में कम से कम एक पंक्ति भरें।',
     },
-    execution: 'अनु执行',
-    executions: '{{num}} फाँसी',
+    execution: 'चलाएं',
+    executions: '{{num}} बार चलाएं',
+    stopRun: 'निष्पादन रोकें',
   },
   login: {
     backToHome: 'होम पर वापस',

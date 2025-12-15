@@ -34,6 +34,7 @@ const translation = {
   publishPipeline: {
     success: {
       message: 'ज्ञान पाइपलाइन प्रकाशित',
+      tip: '<CustomLink>दस्तावेज़ जोड़ने या प्रबंधित करने के लिए </CustomLink>दस्तावेज़ पर जाएँ।',
     },
     error: {
       message: 'ज्ञान पाइपलाइन प्रकाशित करने में विफल रहा',
@@ -56,6 +57,7 @@ const translation = {
   details: {
     structure: 'संरचना',
     structureTooltip: 'चंक संरचना यह निर्धारित करती है कि दस्तावेज कैसे विभाजित और अनुक्रमित होते हैं—सामान्य, माता-पिता- बच्चे, और प्रश्नोत्तर मोड प्रदान करते हुए—और यह प्रत्येक ज्ञान आधार के लिए अद्वितीय होती है।',
+    createdBy: '{{author}} द्वारा',
   },
   testRun: {
     steps: {
@@ -112,23 +114,32 @@ const translation = {
     backToDataSource: 'डेटा स्रोत',
     characters: 'पात्र',
     title: 'दस्तावेज़ जोड़ें',
+    selectOnlineDocumentTip: '{{count}} पृष्ठों तक प्रक्रिया करें',
+    selectOnlineDriveTip: '{{count}} फ़ाइलों तक संसाधित करें, प्रत्येक अधिकतम {{fileSize}} MB',
   },
   documentSettings: {
     title: 'डॉक्यूमेंट सेटिंग्स',
   },
-  onlineDocument: {},
+  onlineDocument: {
+    pageSelectorTitle: '{{name}} पृष्ठ',
+  },
   onlineDrive: {
     breadcrumbs: {
       allFiles: 'सभी फ़ाइलें',
       searchPlaceholder: 'फाइलें खोजें...',
       allBuckets: 'सभी क्लाउड स्टोरेज बकेट्स',
+      searchResult: '{{folderName}} फ़ोल्डर में {{searchResultsLength}} आइटम खोजें',
     },
     resetKeywords: 'कीवर्ड रीसेट करें',
     emptyFolder: 'यह फ़ोल्डर खाली है',
     notSupportedFileType: 'यह फ़ाइल प्रकार समर्थित नहीं है',
     emptySearchResult: 'कोई सामान नहीं मिला',
+    notConnected: '{{name}} कनेक्ट नहीं है',
+    notConnectedTip: '{{name}} के साथ सिंक करने के लिए, पहले {{name}} से कनेक्शन स्थापित करना आवश्यक है।',
   },
-  credentialSelector: {},
+  credentialSelector: {
+    name: '{{credentialName}} का {{pluginName}}',
+  },
   conversion: {
     confirm: {
       title: 'पुष्टि',
@@ -149,6 +160,7 @@ const translation = {
   inputField: 'इनपुट फ़ील्ड',
   editPipelineInfo: 'पाइपलाइन जानकारी संपादित करें',
   knowledgeDescriptionPlaceholder: 'इस ज्ञान आधार में क्या है इसका वर्णन करें। एक विस्तृत विवरण एआई को डेटा सेट की सामग्री को अधिक सटीकता से एक्सेस करने की अनुमति देता है। यदि खाली है, तो डिफी डिफ़ॉल्ट हिट रणनीति का उपयोग करेगा। (वैकल्पिक)',
+  configurationTip: '{{pluginName}} कॉन्फ़िगर करें',
 }
 
 export default translation

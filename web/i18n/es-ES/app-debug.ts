@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Contexto',
       noData: 'Puedes importar Conocimiento como contexto',
-      words: 'Palabras',
-      textBlocks: 'Bloques de Texto',
       selectTitle: 'Seleccionar Conocimiento de referencia',
       selected: 'Conocimiento seleccionado',
       noDataSet: 'No se encontró Conocimiento',
@@ -328,6 +326,7 @@ const translation = {
     'both': 'ambos',
     'single-file': 'En fila india',
     'maxNumberOfUploads': 'Número máximo de cargas',
+    'maxNumberTip': 'Documento < {{docLimit}}, imagen < {{imgLimit}}, audio < {{audioLimit}}, vídeo < {{videoLimit}}',
     'multi-files': 'Lista de archivos',
     'jsonSchema': 'Esquema JSON',
     'json': 'Código JSON',

@@ -1,8 +1,8 @@
 from flask_restx import Resource, reqparse
-from werkzeug.exceptions import Forbidden
 
 from controllers.console import console_ns
 from controllers.console.auth.error import ApiKeyAuthFailedError
+from controllers.console.wraps import is_admin_or_owner_required
 from libs.login import current_account_with_tenant, login_required
 from services.auth.api_key_auth_service import ApiKeyAuthService
 
@@ -39,12 +39,10 @@ class ApiKeyAuthDataSourceBinding(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @is_admin_or_owner_required
     def post(self):
         # The role of the current user in the table must be admin or owner
-        current_user, current_tenant_id = current_account_with_tenant()
-
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
         parser = (
             reqparse.RequestParser()
             .add_argument("category", type=str, required=True, nullable=False, location="json")
@@ -65,12 +63,10 @@ class ApiKeyAuthDataSourceBindingDelete(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @is_admin_or_owner_required
     def delete(self, binding_id):
         # The role of the current user in the table must be admin or owner
-        current_user, current_tenant_id = current_account_with_tenant()
-
-        if not current_user.is_admin_or_owner:
-            raise Forbidden()
+        _, current_tenant_id = current_account_with_tenant()
 
         ApiKeyAuthService.delete_provider_auth(current_tenant_id, binding_id)
 

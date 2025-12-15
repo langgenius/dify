@@ -18,6 +18,7 @@ def create_flask_app_with_configs() -> DifyApp:
     """
     dify_app = DifyApp(__name__)
     dify_app.config.from_mapping(dify_config.model_dump())
+    dify_app.config["RESTX_INCLUDE_ALL_MODELS"] = True
 
     # add before request hook
     @dify_app.before_request
@@ -50,6 +51,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_compress,
         ext_database,
+        ext_forward_refs,
         ext_hosting_provider,
         ext_import_modules,
         ext_logging,
@@ -74,6 +76,7 @@ def initialize_extensions(app: DifyApp):
         ext_warnings,
         ext_import_modules,
         ext_orjson,
+        ext_forward_refs,
         ext_set_secretkey,
         ext_compress,
         ext_code_based_extension,

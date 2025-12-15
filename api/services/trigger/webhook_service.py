@@ -5,6 +5,7 @@ import secrets
 from collections.abc import Mapping
 from typing import Any
 
+import orjson
 from flask import request
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -169,7 +170,7 @@ class WebhookService:
                 - method: HTTP method
                 - headers: Request headers
                 - query_params: Query parameters as strings
-                - body: Request body (varies by content type)
+                - body: Request body (varies by content type; JSON parsing errors raise ValueError)
                 - files: Uploaded files (if any)
         """
         cls._validate_content_length()
@@ -255,14 +256,21 @@ class WebhookService:
 
         Returns:
             tuple: (body_data, files_data) where:
-                - body_data: Parsed JSON content or empty dict if parsing fails
+                - body_data: Parsed JSON content
                 - files_data: Empty dict (JSON requests don't contain files)
+
+        Raises:
+            ValueError: If JSON parsing fails
         """
+        raw_body = request.get_data(cache=True)
+        if not raw_body or raw_body.strip() == b"":
+            return {}, {}
+
         try:
-            body = request.get_json() or {}
-        except Exception:
-            logger.warning("Failed to parse JSON body")
-            body = {}
+            body = orjson.loads(raw_body)
+        except orjson.JSONDecodeError as exc:
+            logger.warning("Failed to parse JSON body: %s", exc)
+            raise ValueError(f"Invalid JSON body: {exc}") from exc
         return body, {}
 
     @classmethod
@@ -833,7 +841,7 @@ class WebhookService:
         not_found_in_cache: list[str] = []
         for node_id in nodes_id_in_graph:
             # firstly check if the node exists in cache
-            if not redis_client.get(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}"):
+            if not redis_client.get(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}"):
                 not_found_in_cache.append(node_id)
                 continue
 
@@ -866,14 +874,16 @@ class WebhookService:
                     session.add(webhook_record)
                     session.flush()
                     cache = Cache(record_id=webhook_record.id, node_id=node_id, webhook_id=webhook_record.webhook_id)
-                    redis_client.set(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}", cache.model_dump_json(), ex=60 * 60)
+                    redis_client.set(
+                        f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}", cache.model_dump_json(), ex=60 * 60
+                    )
                 session.commit()
 
                 # delete the nodes not found in the graph
                 for node_id in nodes_id_in_db:
                     if node_id not in nodes_id_in_graph:
                         session.delete(nodes_id_in_db[node_id])
-                        redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{node_id}")
+                        redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
                 session.commit()
             except Exception:
                 logger.exception("Failed to sync webhook relationships for app %s", app.id)

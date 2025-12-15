@@ -119,7 +119,7 @@ const EditMetadataBatchModal: FC<Props> = ({
       className='!max-w-[640px]'
     >
       <div className='system-xs-medium mt-1 text-text-accent'>{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
-      <div className='ml-[-16px] max-h-[305px] overflow-y-auto'>
+      <div className='max-h-[305px] overflow-y-auto overflow-x-hidden'>
         <div className='mt-4 space-y-2'>
           {templeList.map(item => (
             <EditMetadataBatchItem

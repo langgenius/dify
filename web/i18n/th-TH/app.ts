@@ -159,6 +159,14 @@ const translation = {
       viewDocsLink: 'ดูเอกสาร {{key}}',
       removeConfirmTitle: 'ลบการกําหนดค่า {{key}} หรือไม่?',
       removeConfirmContent: 'การกําหนดค่าปัจจุบันกําลังใช้งาน การลบออกจะเป็นการปิดคุณสมบัติการติดตาม',
+      clientId: 'รหัสลูกค้า OAuth',
+      trackingUri: 'ติดตาม URI',
+      databricksHost: 'URL ของ Workspace ใน Databricks',
+      username: 'ชื่อผู้ใช้',
+      clientSecret: 'รหัสลับของลูกค้า OAuth',
+      experimentId: 'รหัสการทดลอง',
+      password: 'รหัสผ่าน',
+      personalAccessToken: 'โทเค็นการเข้าถึงส่วนตัว (รุ่นเก่า)',
     },
     opik: {
       title: 'โอปิก',
@@ -171,6 +179,14 @@ const translation = {
     aliyun: {
       title: 'การตรวจสอบคลาวด์',
       description: 'แพลตฟอร์มการสังเกตการณ์ที่จัดการโดย Alibaba Cloud ซึ่งไม่ต้องดูแลและบำรุงรักษา ช่วยให้สามารถติดตาม ตรวจสอบ และประเมินแอปพลิเคชัน Dify ได้ทันที',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: 'แพลตฟอร์ม LLMOps โอเพนซอร์สสำหรับการติดตามการทดลอง การสังเกตการณ์ และการประเมินผล เพื่อสร้างแอป AI/LLM ด้วยความมั่นใจ',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks ให้บริการ MLflow ที่จัดการแบบเต็มรูปแบบพร้อมการกำกับดูแลและความปลอดภัยที่แข็งแกร่งสำหรับการจัดเก็บข้อมูลการติดตาม',
     },
     tencent: {
       title: 'Tencent APM',
@@ -282,6 +298,8 @@ const translation = {
       accountDesc: 'ไปที่หน้าบัญชี',
       docDesc: 'เปิดเอกสารช่วยเหลือ',
       communityDesc: 'เปิดชุมชน Discord',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'ไม่พบปลั๊กอิน',
@@ -322,6 +340,8 @@ const translation = {
     startTyping: 'เริ่มพิมพ์เพื่อค้นหา',
     tips: 'กด ↑↓ เพื่อเลื่อนดู',
   },
+  noUserInputNode: 'ไม่มีโหนดป้อนข้อมูลผู้ใช้',
+  notPublishedYet: 'แอปยังไม่ได้เผยแพร่',
 }
 
 export default translation

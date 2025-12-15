@@ -27,10 +27,9 @@ from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, Comp
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.variables.types import ArrayValidation, SegmentType
-from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
+from core.workflow.enums import NodeType, WorkflowNodeExecutionMetadataKey, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base import variable_template_parser
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.llm import ModelConfig, llm_utils
 from core.workflow.runtime import VariablePool
@@ -84,35 +83,12 @@ def extract_json(text):
     return None
 
 
-class ParameterExtractorNode(Node):
+class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
     """
     Parameter Extractor Node.
     """
 
     node_type = NodeType.PARAMETER_EXTRACTOR
-
-    _node_data: ParameterExtractorNodeData
-
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = ParameterExtractorNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     _model_instance: ModelInstance | None = None
     _model_config: ModelConfigWithCredentialsEntity | None = None
@@ -138,7 +114,7 @@ class ParameterExtractorNode(Node):
         """
         Run the node.
         """
-        node_data = self._node_data
+        node_data = self.node_data
         variable = self.graph_runtime_state.variable_pool.get(node_data.query)
         query = variable.text if variable else ""
 
