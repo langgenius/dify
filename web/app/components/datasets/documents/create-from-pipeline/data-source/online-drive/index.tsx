@@ -20,14 +20,16 @@ import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/con
 type OnlineDriveProps = {
   nodeId: string
   nodeData: DataSourceNodeType
-  isInPipeline?: boolean
   onCredentialChange: (credentialId: string) => void
+  isInPipeline?: boolean
+  supportBatchUpload?: boolean
 }
 
 const OnlineDrive = ({
   nodeId,
   nodeData,
   isInPipeline = false,
+  supportBatchUpload = true,
   onCredentialChange,
 }: OnlineDriveProps) => {
   const docLink = useDocLink()
@@ -111,7 +113,7 @@ const OnlineDrive = ({
         },
       },
     )
-  }, [datasourceNodeRunURL, dataSourceStore])
+  }, [dataSourceStore, datasourceNodeRunURL, breadcrumbs])
 
   useEffect(() => {
     if (!currentCredentialId) return
@@ -152,12 +154,12 @@ const OnlineDrive = ({
         draft.splice(index, 1)
       }
       else {
-        if (isInPipeline && draft.length >= 1) return
+        if (!supportBatchUpload && draft.length >= 1) return
         draft.push(file.id)
       }
     })
     setSelectedFileIds(newSelectedFileList)
-  }, [dataSourceStore, isInPipeline])
+  }, [dataSourceStore, supportBatchUpload])
 
   const handleOpenFolder = useCallback((file: OnlineDriveFile) => {
     const { breadcrumbs, prefix, setBreadcrumbs, setPrefix, setBucket, setOnlineDriveFileList, setSelectedFileIds } = dataSourceStore.getState()
@@ -177,7 +179,7 @@ const OnlineDrive = ({
       setBreadcrumbs(newBreadcrumbs)
       setPrefix(newPrefix)
     }
-  }, [dataSourceStore, getOnlineDriveFiles])
+  }, [dataSourceStore])
 
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
@@ -209,6 +211,7 @@ const OnlineDrive = ({
         handleOpenFolder={handleOpenFolder}
         isInPipeline={isInPipeline}
         isLoading={isLoading}
+        supportBatchUpload={supportBatchUpload}
       />
     </div>
   )

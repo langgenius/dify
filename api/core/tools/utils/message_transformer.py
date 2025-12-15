@@ -101,6 +101,8 @@ class ToolFileMessageTransformer:
                 meta = message.meta or {}
 
                 mimetype = meta.get("mime_type", "application/octet-stream")
+                if not mimetype:
+                    mimetype = "application/octet-stream"
                 # get filename from meta
                 filename = meta.get("filename", None)
                 # if message is str, encode it to bytes
