@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from core.file.enums import FileType
@@ -10,6 +12,36 @@ from core.workflow.constants import (
 from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
+
+
+@pytest.fixture(autouse=True)
+def _mock_ssrf_head(monkeypatch):
+    """Avoid any real network requests during tests.
+
+    file_factory._get_remote_file_info() uses ssrf_proxy.head to inspect
+    remote files. We stub it to return a minimal response object with
+    headers so filename/mime/size can be derived deterministically.
+    """
+
+    def fake_head(url, *args, **kwargs):
+        # choose a content-type by file suffix for determinism
+        if url.endswith(".pdf"):
+            ctype = "application/pdf"
+        elif url.endswith(".jpg") or url.endswith(".jpeg"):
+            ctype = "image/jpeg"
+        elif url.endswith(".png"):
+            ctype = "image/png"
+        else:
+            ctype = "application/octet-stream"
+        filename = url.split("/")[-1] or "file.bin"
+        headers = {
+            "Content-Type": ctype,
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": "12345",
+        }
+        return SimpleNamespace(status_code=200, headers=headers)
+
+    monkeypatch.setattr("core.helper.ssrf_proxy.head", fake_head)
 
 
 class TestWorkflowEntry:

@@ -1,3 +1,4 @@
+import logging
 import mimetypes
 import os
 import re
@@ -16,6 +17,8 @@ from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUpl
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
+
+logger = logging.getLogger(__name__)
 
 
 def build_from_message_files(
@@ -356,15 +359,20 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
+    # Backward/interop compatibility: allow tool_file_id to come from related_id or URL
+    tool_file_id = mapping.get("tool_file_id")
+
+    if not tool_file_id:
+        raise ValueError(f"ToolFile {tool_file_id} not found")
     tool_file = db.session.scalar(
         select(ToolFile).where(
-            ToolFile.id == mapping.get("tool_file_id"),
+            ToolFile.id == tool_file_id,
             ToolFile.tenant_id == tenant_id,
         )
     )
 
     if tool_file is None:
-        raise ValueError(f"ToolFile {mapping.get('tool_file_id')} not found")
+        raise ValueError(f"ToolFile {tool_file_id} not found")
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
@@ -402,10 +410,13 @@ def _build_from_datasource_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
+    datasource_file_id = mapping.get("datasource_file_id")
+    if not datasource_file_id:
+        raise ValueError(f"DatasourceFile {datasource_file_id} not found")
     datasource_file = (
         db.session.query(UploadFile)
         .where(
-            UploadFile.id == mapping.get("datasource_file_id"),
+            UploadFile.id == datasource_file_id,
             UploadFile.tenant_id == tenant_id,
         )
         .first()

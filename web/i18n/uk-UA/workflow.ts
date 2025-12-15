@@ -437,6 +437,7 @@ const translation = {
         variable: 'Використовуйте змінну',
       },
       inputVars: 'Вхідні змінні',
+      pluginNotInstalled: 'Плагін не встановлений',
     },
     start: {
       required: 'обов\'язковий',

@@ -437,6 +437,7 @@ const translation = {
         variable: 'از متغیر استفاده کن',
       },
       inputVars: 'متغیرهای ورودی',
+      pluginNotInstalled: 'افزونه نصب نشده است',
     },
     start: {
       required: 'الزامی',
