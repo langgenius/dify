@@ -251,7 +251,7 @@ class TestAnnotationImportServiceValidation:
         from services.annotation_service import AppAnnotationService
 
         # Create CSV with only one column (should require at least 2 columns for question and answer)
-        csv_content = 'single_column_header\nonly_one_value'
+        csv_content = "single_column_header\nonly_one_value"
 
         file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
