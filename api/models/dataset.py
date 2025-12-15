@@ -1458,6 +1458,7 @@ class PipelineRecommendedPlugin(TypeBase):
     )
     plugin_id: Mapped[str] = mapped_column(LongText, nullable=False)
     provider_name: Mapped[str] = mapped_column(LongText, nullable=False)
+    type: Mapped[str] = mapped_column(sa.String(50), nullable=True)
     position: Mapped[int] = mapped_column(sa.Integer, nullable=False, default=0)
     active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
