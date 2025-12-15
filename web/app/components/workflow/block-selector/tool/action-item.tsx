@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { basePath } from '@/utils/var'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   if (!icon)
@@ -101,6 +102,10 @@ const ToolItem: FC<Props> = ({
             paramSchemas: payload.parameters,
             params,
             meta: provider.meta,
+          })
+          trackEvent('tool_selected', {
+            tool_name: payload.name,
+            plugin_id: provider.plugin_id,
           })
         }}
       >
