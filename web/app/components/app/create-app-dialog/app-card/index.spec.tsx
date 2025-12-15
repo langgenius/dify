@@ -127,26 +127,28 @@ describe('AppCard', () => {
         render(<AppCard {...defaultProps} canCreate={true} />)
 
         const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
-        if (card) {
-          fireEvent.mouseEnter(card)
-          const button = card.querySelector('button')
-          expect(button).toBeInTheDocument()
-        }
+        expect(card).toBeInTheDocument()
+        fireEvent.mouseEnter(card!)
+        const button = card!.querySelector('button')
+        expect(button).toBeInTheDocument()
       })
 
-      // Note: canCreate prop is accepted but not currently implemented in the component
-      // This test documents current behavior for future implementation
-      it('should still show create button when canCreate is false (not implemented)', () => {
+      // TODO: Update this test once canCreate prop is properly implemented
+      // The component currently doesn't respect the canCreate prop - this is a bug
+      // When fixed, this test should expect the button to NOT be present
+      it('should hide create button when canCreate is false (not implemented)', () => {
         render(<AppCard {...defaultProps} canCreate={false} />)
 
         const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
-        if (card) {
-          fireEvent.mouseEnter(card)
-          // Currently, canCreate prop is not used in the component
-          // This test documents the current behavior
-          const button = card.querySelector('button')
-          expect(button).toBeInTheDocument()
-        }
+        expect(card).toBeInTheDocument()
+        fireEvent.mouseEnter(card!)
+
+        // Current behavior: button still shows (bug)
+        const button = card!.querySelector('button')
+        expect(button).toBeInTheDocument()
+
+        // TODO: Uncomment when canCreate is properly implemented
+        // expect(button).not.toBeInTheDocument()
       })
     })
 
@@ -300,14 +302,12 @@ describe('AppCard', () => {
       render(<AppCard {...defaultProps} onCreate={mockOnCreate} />)
 
       const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
-      if (card) {
-        fireEvent.mouseEnter(card)
-        const button = card.querySelector('button')
-        if (button) {
-          fireEvent.click(button)
-          expect(mockOnCreate).toHaveBeenCalledTimes(1)
-        }
-      }
+      expect(card).toBeInTheDocument()
+      fireEvent.mouseEnter(card!)
+      const button = card!.querySelector('button')
+      expect(button).toBeInTheDocument()
+      fireEvent.click(button!)
+      expect(mockOnCreate).toHaveBeenCalledTimes(1)
     })
 
     it('should handle click on card itself', () => {
@@ -316,12 +316,9 @@ describe('AppCard', () => {
 
       const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
       expect(card).toBeInTheDocument()
-
-      if (card) {
-        fireEvent.click(card)
-        // Note: Card click doesn't trigger onCreate, only the button does
-        expect(mockOnCreate).not.toHaveBeenCalled()
-      }
+      fireEvent.click(card!)
+      // Note: Card click doesn't trigger onCreate, only the button does
+      expect(mockOnCreate).not.toHaveBeenCalled()
     })
 
     it('should show create button on hover', () => {
@@ -329,50 +326,31 @@ describe('AppCard', () => {
 
       const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
       expect(card).toBeInTheDocument()
-
-      if (card) {
-        fireEvent.mouseEnter(card)
-        const button = card.querySelector('button')
-        expect(button).toBeInTheDocument()
-        expect(button).toHaveTextContent('app.newApp.useTemplate')
-      }
+      fireEvent.mouseEnter(card!)
+      const button = card!.querySelector('button')
+      expect(button).toBeInTheDocument()
+      expect(button).toHaveTextContent('app.newApp.useTemplate')
     })
   })
 
   describe('Keyboard Accessibility', () => {
-    it('should be focusable via Tab key', () => {
-      render(<AppCard {...defaultProps} />)
-
-      const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
-      if (card) {
-        fireEvent.mouseEnter(card)
-        const button = card.querySelector('button') as HTMLButtonElement
-        if (button) {
-          // Simulate tab navigation
-          button.focus()
-          expect(button).toHaveFocus()
-        }
-      }
-    })
-
-    it('should have keyboard accessible button', () => {
+    it('should allow the create button to be focused', () => {
       const mockOnCreate = jest.fn()
       render(<AppCard {...defaultProps} onCreate={mockOnCreate} />)
 
       const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
-      if (card) {
-        fireEvent.mouseEnter(card)
-        const button = card.querySelector('button') as HTMLButtonElement
-        if (button) {
-          // Test that button can be focused
-          button.focus()
-          expect(button).toHaveFocus()
+      expect(card).toBeInTheDocument()
+      fireEvent.mouseEnter(card!)
+      const button = card!.querySelector('button') as HTMLButtonElement
+      expect(button).toBeInTheDocument()
 
-          // Test click event works (keyboard events on buttons typically trigger click)
-          fireEvent.click(button)
-          expect(mockOnCreate).toHaveBeenCalledTimes(1)
-        }
-      }
+      // Test that button can be focused
+      button.focus()
+      expect(button).toHaveFocus()
+
+      // Test click event works (keyboard events on buttons typically trigger click)
+      fireEvent.click(button)
+      expect(mockOnCreate).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -444,18 +422,17 @@ describe('AppCard', () => {
       render(<AppCard {...defaultProps} onCreate={errorOnCreate} />)
 
       const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
-      if (card) {
-        fireEvent.mouseEnter(card)
-        const button = card.querySelector('button')
-        if (button) {
-          // The component catches errors from click handlers, so we just verify the function is called
-          expect(() => {
-            fireEvent.click(button)
-          }).not.toThrow()
+      expect(card).toBeInTheDocument()
+      fireEvent.mouseEnter(card!)
+      const button = card!.querySelector('button')
+      expect(button).toBeInTheDocument()
 
-          expect(errorOnCreate).toHaveBeenCalledTimes(1)
-        }
-      }
+      // The component catches errors from click handlers, so we just verify the function is called
+      expect(() => {
+        fireEvent.click(button!)
+      }).not.toThrow()
+
+      expect(errorOnCreate).toHaveBeenCalledTimes(1)
 
       consoleSpy.mockRestore()
     })
@@ -480,14 +457,13 @@ describe('AppCard', () => {
       render(<AppCard {...defaultProps} />)
 
       const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
-      if (card) {
-        fireEvent.mouseEnter(card)
-        // Use query selector since the button is in a hidden element that becomes visible on hover
-        const button = card.querySelector('button')
-        expect(button).toBeInTheDocument()
-        expect(button).toBeEnabled()
-        expect(button).toHaveTextContent('app.newApp.useTemplate')
-      }
+      expect(card).toBeInTheDocument()
+      fireEvent.mouseEnter(card!)
+      // Use query selector since the button is in a hidden element that becomes visible on hover
+      const button = card!.querySelector('button')
+      expect(button).toBeInTheDocument()
+      expect(button).toBeEnabled()
+      expect(button).toHaveTextContent('app.newApp.useTemplate')
     })
   })
 
@@ -496,17 +472,6 @@ describe('AppCard', () => {
       render(<AppCard {...defaultProps} />)
 
       expect(screen.getByLabelText('Add icon')).toBeInTheDocument()
-    })
-
-    it('should display create button text when hovering', () => {
-      render(<AppCard {...defaultProps} />)
-
-      const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
-      if (card) {
-        fireEvent.mouseEnter(card)
-        const button = card.querySelector('button')
-        expect(button).toHaveTextContent('app.newApp.useTemplate')
-      }
     })
   })
 })
