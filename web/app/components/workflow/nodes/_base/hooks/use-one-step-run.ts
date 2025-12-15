@@ -68,6 +68,7 @@ import {
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 // eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Partial<Record<BlockEnum, Function>> = {
@@ -973,6 +974,7 @@ const useOneStepRun = <T>({
                   _singleRunningStatus: NodeRunningStatus.Failed,
                 },
               })
+              trackEvent('workflow_run_failed', { workflow_id: flowId, node_id: id, reason: res.error, node_type: data?.type })
             },
           },
         )
