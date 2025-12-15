@@ -1,7 +1,15 @@
-from urllib.parse import quote, quote_plus
+from urllib.parse import quote, quote_plus, urlparse
 
-from pydantic import Field, computed_field, model_validator
+from pydantic import Field, NonNegativeInt, computed_field, model_validator
 from pydantic_settings import BaseSettings
+
+
+# MongoDB error codes
+class MongoDBErrorCode:
+    """MongoDB operation error codes for error handling."""
+    PERMISSION_DENIED = 13
+    NAMESPACE_EXISTS = 48
+    INDEX_ALREADY_EXISTS = 68
 
 
 class MongoDBConfig(BaseSettings):
@@ -44,14 +52,40 @@ class MongoDBConfig(BaseSettings):
         default="vector_index",
     )
 
-    @computed_field
-    @property
-    def MONGODB_CONNECT_URI(self) -> str:
-        if self.MONGODB_URI:
-            return self.MONGODB_URI
+    MONGODB_CONNECTION_RETRY_ATTEMPTS: NonNegativeInt = Field(
+        description="Maximum number of connection retry attempts (default: 3)",
+        default=3,
+    )
+
+    MONGODB_CONNECTION_RETRY_BACKOFF_BASE: float = Field(
+        description="Base delay in seconds for exponential backoff on connection retries (default: 1.0)",
+        default=1.0,
+    )
+
+    MONGODB_INDEX_READY_TIMEOUT: NonNegativeInt = Field(
+        description="Maximum time in seconds to wait for index to become ready (default: 300)",
+        default=300,
+    )
+
+    MONGODB_INDEX_READY_CHECK_DELAY: float = Field(
+        description="Initial delay in seconds between index ready checks (default: 1.0)",
+        default=1.0,
+    )
+
+    MONGODB_INDEX_READY_MAX_DELAY: float = Field(
+        description="Maximum delay in seconds between index ready checks (default: 10.0)",
+        default=10.0,
+    )
+
+    def _build_connection_uri(self) -> str:
+        """
+        Build MongoDB connection URI from individual components.
         
+        Returns:
+            MongoDB connection URI string
+        """
         if not self.MONGODB_HOST:
-             return "mongodb://localhost:27017"
+            return "mongodb://localhost:27017"
         
         auth = ""
         if self.MONGODB_USERNAME:
@@ -62,6 +96,19 @@ class MongoDBConfig(BaseSettings):
             auth = f"{username}:{password}@"
         
         return f"mongodb://{auth}{self.MONGODB_HOST}:{self.MONGODB_PORT}"
+
+    @computed_field
+    @property
+    def MONGODB_CONNECT_URI(self) -> str:
+        """
+        Get MongoDB connection URI.
+        
+        If MONGODB_URI is provided, it takes precedence.
+        Otherwise, builds URI from individual components (host, port, username, password).
+        """
+        if self.MONGODB_URI:
+            return self.MONGODB_URI
+        return self._build_connection_uri()
 
     @model_validator(mode="after")
     def validate_mongodb_config(self):

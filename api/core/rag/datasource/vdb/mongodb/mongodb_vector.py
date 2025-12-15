@@ -1,6 +1,7 @@
 import logging
 import time
 from typing import TYPE_CHECKING, Any
+from urllib.parse import urlparse
 
 from pymongo import MongoClient
 from pymongo.errors import (
@@ -11,6 +12,7 @@ from pymongo.errors import (
 )
 from pymongo.operations import SearchIndexModel
 
+from configs.middleware.vdb.mongodb_config import MongoDBErrorCode
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -24,13 +26,54 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _sanitize_uri_for_logging(uri: str) -> str:
+    """
+    Sanitize MongoDB URI for safe logging by masking credentials.
+    
+    Args:
+        uri: MongoDB connection URI
+        
+    Returns:
+        URI with credentials masked (e.g., mongodb://user:***@host:port)
+    """
+    if not uri:
+        return "***"
+    
+    try:
+        parsed = urlparse(uri)
+        if parsed.username:
+            # Mask password, keep username visible for debugging
+            masked_netloc = f"{parsed.username}:***@{parsed.hostname}"
+            if parsed.port:
+                masked_netloc += f":{parsed.port}"
+            return f"{parsed.scheme}://{masked_netloc}{parsed.path or ''}{parsed.query and '?' + parsed.query or ''}"
+    except Exception:
+        # If parsing fails, mask the entire URI after @ symbol
+        if "@" in uri:
+            parts = uri.split("@", 1)
+            if len(parts) == 2:
+                # Mask credentials part
+                auth_part = parts[0]
+                if "://" in auth_part:
+                    scheme = auth_part.split("://")[0]
+                    credentials = auth_part.split("://")[1]
+                    if ":" in credentials:
+                        username = credentials.split(":")[0]
+                        return f"{scheme}://{username}:***@{parts[1]}"
+    
+    return "***"
+
+
 class MongoDBVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config):
         super().__init__(collection_name)
+        self._config = config
         uri = config.MONGODB_CONNECT_URI
+        sanitized_uri = _sanitize_uri_for_logging(uri)
         logger.info(
             f"Initializing MongoDBVector: collection='{collection_name}', "
-            f"database='{config.MONGODB_DATABASE}', index='{config.MONGODB_VECTOR_INDEX_NAME}'"
+            f"database='{config.MONGODB_DATABASE}', index='{config.MONGODB_VECTOR_INDEX_NAME}', "
+            f"uri='{sanitized_uri}'"
         )
         self._client = MongoClient(uri, serverSelectionTimeoutMS=5000)
         self._check_connection()
@@ -40,17 +83,22 @@ class MongoDBVector(BaseVector):
         self._group_id = group_id
         logger.debug(f"MongoDBVector initialized successfully for collection '{collection_name}'")
 
-    def _check_connection(self, max_retries: int = 3):
+    def _check_connection(self):
         """
-        Verify MongoDB connection with retry logic for transient errors.
+        Verify MongoDB connection with configurable retry logic for transient errors.
         
-        Args:
-            max_retries: Maximum number of retry attempts (default: 3)
-            
+        Uses exponential backoff with base delay from config. Retries are useful for:
+        - Network transient failures
+        - Server startup delays
+        - Temporary connection pool exhaustion
+        
         Raises:
-            ConnectionFailure: If connection fails after retries
-            ServerSelectionTimeoutError: If server selection times out after retries
+            ConnectionFailure: If connection fails after all retries
+            ServerSelectionTimeoutError: If server selection times out after all retries
         """
+        max_retries = self._config.MONGODB_CONNECTION_RETRY_ATTEMPTS
+        backoff_base = self._config.MONGODB_CONNECTION_RETRY_BACKOFF_BASE
+        
         last_exception = None
         for attempt in range(max_retries):
             try:
@@ -61,7 +109,8 @@ class MongoDBVector(BaseVector):
             except (ConnectionFailure, ServerSelectionTimeoutError) as e:
                 last_exception = e
                 if attempt < max_retries - 1:
-                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    # Exponential backoff: base * 2^attempt (e.g., 1s, 2s, 4s with base=1.0)
+                    wait_time = backoff_base * (2 ** attempt)
                     logger.warning(
                         f"MongoDB connection attempt {attempt + 1}/{max_retries} failed: {e}. "
                         f"Retrying in {wait_time}s..."
@@ -84,6 +133,7 @@ class MongoDBVector(BaseVector):
             self.add_texts(texts, embeddings, **kwargs)
 
     def _create_collection(self):
+        """Create MongoDB collection if it doesn't exist."""
         try:
             if self._collection.name not in self._db.list_collection_names():
                 logger.debug(f"Creating collection '{self._collection.name}'")
@@ -91,9 +141,9 @@ class MongoDBVector(BaseVector):
                 logger.debug(f"Collection '{self._collection.name}' created successfully")
         except OperationFailure as e:
             error_code = getattr(e, "code", None)
-            # Code 48 is NamespaceExists, which is fine
-            if error_code != 48:
-                logger.error(f"Failed to create collection '{self._collection.name}': {e}")
+            # Code 48 (NamespaceExists) is acceptable - collection already exists
+            if error_code != MongoDBErrorCode.NAMESPACE_EXISTS:
+                logger.error(f"Failed to create collection '{self._collection.name}': {e} (error_code: {error_code})")
                 raise
 
     def _create_vector_index(self, vector_size: int):
@@ -125,8 +175,8 @@ class MongoDBVector(BaseVector):
             logger.debug(f"Vector search index '{self._index_name}' creation initiated")
         except OperationFailure as e:
             error_code = getattr(e, "code", None)
-            # Code 68 is IndexAlreadyExists
-            if error_code == 68 or "IndexAlreadyExists" in str(e) or "DuplicateIndexName" in str(e):
+            # Code 68 (IndexAlreadyExists) is acceptable - index already exists
+            if error_code == MongoDBErrorCode.INDEX_ALREADY_EXISTS or "IndexAlreadyExists" in str(e) or "DuplicateIndexName" in str(e):
                 logger.info(f"Index '{self._index_name}' already exists. Skipping creation.")
                 # Still wait for index to be ready in case it's still building
                 self._wait_for_index_ready()
@@ -140,22 +190,24 @@ class MongoDBVector(BaseVector):
 
         self._wait_for_index_ready()
 
-    def _wait_for_index_ready(self, timeout: int = 300):
+    def _wait_for_index_ready(self):
         """
-        Wait for vector search index to become ready with exponential backoff.
+        Wait for vector search index to become ready with configurable exponential backoff.
         
-        Args:
-            timeout: Maximum time to wait in seconds (default: 300)
-            
+        Uses exponential backoff with configurable delays. This is necessary because
+        MongoDB vector search indexes are built asynchronously and may take time to
+        become queryable, especially for large collections.
+        
         Raises:
-            TimeoutError: If index is not ready within timeout
-            OperationFailure: If index build fails
+            TimeoutError: If index is not ready within configured timeout
+            OperationFailure: If index build fails or permission denied
         """
-        start_time = time.time()
-        delay = 1.0
-        max_delay = 10.0
+        timeout = self._config.MONGODB_INDEX_READY_TIMEOUT
+        delay = self._config.MONGODB_INDEX_READY_CHECK_DELAY
+        max_delay = self._config.MONGODB_INDEX_READY_MAX_DELAY
         check_count = 0
         
+        start_time = time.time()
         logger.debug(f"Waiting for index '{self._index_name}' to become ready (timeout: {timeout}s)")
         
         while time.time() - start_time < timeout:
@@ -180,7 +232,7 @@ class MongoDBVector(BaseVector):
                             logger.error(f"Index '{self._index_name}' build failed: {error_msg}")
                             raise OperationFailure(f"Index '{self._index_name}' build failed: {error_msg}")
                         
-                        # Log status periodically (every 10 checks)
+                        # Log status periodically (every 10 checks) to avoid log spam
                         if check_count % 10 == 0 and check_count > 0:
                             logger.debug(
                                 f"Index '{self._index_name}' status: {status}, "
@@ -189,8 +241,8 @@ class MongoDBVector(BaseVector):
                 
             except OperationFailure as e:
                 error_code = getattr(e, "code", None)
-                # Don't retry on permission errors (code 13)
-                if error_code == 13:
+                # Don't retry on permission errors (code 13) - these won't resolve
+                if error_code == MongoDBErrorCode.PERMISSION_DENIED:
                     logger.error(f"Permission denied when checking index status: {e}")
                     raise
                 logger.warning(f"Error checking index status: {e}. Retrying in {delay:.1f}s...")
