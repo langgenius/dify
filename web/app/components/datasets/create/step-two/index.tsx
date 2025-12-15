@@ -64,6 +64,7 @@ import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { checkShowMultiModalTip } from '../../settings/utils'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -568,6 +569,10 @@ const StepTwo = ({
     if (mutateDatasetRes)
       mutateDatasetRes()
     invalidDatasetList()
+    trackEvent('create_datasets', {
+      data_source_type: dataSourceType,
+      indexing_technique: getIndexing_technique(),
+    })
     onStepChange?.(+1)
     if (isSetting)
       onSave?.()

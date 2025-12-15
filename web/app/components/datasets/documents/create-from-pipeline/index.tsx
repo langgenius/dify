@@ -40,6 +40,7 @@ import UpgradeCard from '../../create/step-one/upgrade-card'
 import Divider from '@/app/components/base/divider'
 import { useBoolean } from 'ahooks'
 import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
@@ -343,6 +344,10 @@ const CreateFormPipeline = () => {
         setBatchId((res as PublishedPipelineRunResponse).batch || '')
         setDocuments((res as PublishedPipelineRunResponse).documents || [])
         handleNextStep()
+        trackEvent('dataset_document_added', {
+          data_source_type: datasourceType,
+          indexing_technique: 'pipeline',
+        })
       },
     })
   }, [dataSourceStore, datasource, datasourceType, handleNextStep, pipelineId, runPublishedPipeline])
