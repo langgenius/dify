@@ -538,7 +538,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         usage = LLMUsage.empty_usage()
         # get all metadata field
         stmt = select(DatasetMetadata).where(DatasetMetadata.dataset_id.in_(dataset_ids))
-        metadata_fields = db.session.scalars(stmt).all()
+        metadata_fields = list(db.session.scalars(stmt).all())
         all_metadata_fields = [metadata_field.name for metadata_field in metadata_fields]
         if node_data.metadata_model_config is None:
             raise ValueError("metadata_model_config is required")
@@ -547,7 +547,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         # fetch prompt messages
         prompt_template = self._get_prompt_template(
             node_data=node_data,
-            metadata_fields=all_metadata_fields,
+            metadata_fields=metadata_fields,
             query=query or "",
         )
         prompt_messages, stop = LLMNode.fetch_prompt_messages(
@@ -761,9 +761,16 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             stop=stop,
         )
 
-    def _get_prompt_template(self, node_data: KnowledgeRetrievalNodeData, metadata_fields: list, query: str):
+    def _get_prompt_template(
+        self, node_data: KnowledgeRetrievalNodeData, metadata_fields: list[DatasetMetadata], query: str
+    ):
         model_mode = ModelMode(node_data.metadata_model_config.mode)  # type: ignore
         input_text = query
+
+        metadata_field_names = [metadata_field.name for metadata_field in metadata_fields]
+        metadata_field_description_dict = {
+            metadata_field.name: metadata_field.description or metadata_field.name for metadata_field in metadata_fields
+        }
 
         prompt_messages: list[LLMNodeChatModelMessage] = []
         if model_mode == ModelMode.CHAT:
@@ -791,7 +798,8 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 role=PromptMessageRole.USER,
                 text=METADATA_FILTER_USER_PROMPT_3.format(
                     input_text=input_text,
-                    metadata_fields=json.dumps(metadata_fields, ensure_ascii=False),
+                    metadata_fields=json.dumps(metadata_field_names, ensure_ascii=False),
+                    metadata_descriptions=json.dumps(metadata_field_description_dict, ensure_ascii=False),
                 ),
             )
             prompt_messages.append(user_prompt_message_3)
@@ -800,7 +808,8 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             return LLMNodeCompletionModelPromptTemplate(
                 text=METADATA_FILTER_COMPLETION_PROMPT.format(
                     input_text=input_text,
-                    metadata_fields=json.dumps(metadata_fields, ensure_ascii=False),
+                    metadata_fields=json.dumps(metadata_field_names, ensure_ascii=False),
+                    metadata_descriptions=json.dumps(metadata_field_description_dict, ensure_ascii=False),
                 )
             )
 

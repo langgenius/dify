@@ -178,6 +178,9 @@ const translation = {
       type: 'Loại',
       title: 'Siêu dữ liệu mới',
       back: 'Quay lại',
+      description: 'Mô tả',
+      descriptionPlaceholder: 'Thêm mô tả siêu dữ liệu (tùy chọn)',
+      descriptionTooltip: 'Giúp mô hình trích xuất thông tin siêu dữ liệu tốt hơn từ đầu vào của người dùng khi sử dụng bộ lọc siêu dữ liệu tự động.',
     },
     checkName: {
       invalid: 'Tên siêu dữ liệu chỉ có thể chứa chữ cái thường, số và dấu gạch dưới, và phải bắt đầu bằng một chữ cái thường.',

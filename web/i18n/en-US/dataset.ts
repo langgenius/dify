@@ -187,6 +187,9 @@ const translation = {
       type: 'Type',
       name: 'Name',
       namePlaceholder: 'Add metadata name',
+      description: 'Description',
+      descriptionPlaceholder: 'Add metadata description (optional)',
+      descriptionTooltip: 'Help the model better extract metadata information from user input when using automatic metadata filtering.',
     },
     checkName: {
       empty: 'Metadata name cannot be empty',

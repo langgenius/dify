@@ -608,6 +608,7 @@ def old_metadata_migration():
                                 tenant_id=document.tenant_id,
                                 dataset_id=document.dataset_id,
                                 name=key,
+                                description="",
                                 type="string",
                                 created_by=document.created_by,
                             )

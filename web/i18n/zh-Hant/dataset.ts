@@ -178,6 +178,9 @@ const translation = {
       back: '返回',
       namePlaceholder: '新增元數據名稱',
       name: '名字',
+      description: '描述',
+      descriptionPlaceholder: '新增元數據描述（可選）',
+      descriptionTooltip: '幫助模型在使用自動元數據過濾時更好的提取用戶輸入中的元數據信息。',
     },
     checkName: {
       empty: '元數據名稱不能為空',

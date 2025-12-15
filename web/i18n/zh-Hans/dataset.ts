@@ -187,6 +187,9 @@ const translation = {
       type: '类型',
       name: '名称',
       namePlaceholder: '添加元数据名称',
+      description: '描述',
+      descriptionPlaceholder: '添加元数据描述（可选）',
+      descriptionTooltip: '帮助模型在使用自动元数据过滤时更好的提取用户输入中的元数据信息。',
     },
     checkName: {
       empty: '元数据名称不能为空',

@@ -178,6 +178,9 @@ const translation = {
       namePlaceholder: 'Dodajte ime metapodatkov',
       back: 'Nazaj',
       title: 'Nova metapodatki',
+      description: 'Opis',
+      descriptionPlaceholder: 'Dodajte opis metapodatkov (izbirno)',
+      descriptionTooltip: 'Pomaga modelu bolje izluščiti informacije o metapodatkih iz vnosa uporabnika pri uporabi samodejnega filtriranja metapodatkov.',
     },
     checkName: {
       empty: 'Ime metapodatkov ne more biti prazno',

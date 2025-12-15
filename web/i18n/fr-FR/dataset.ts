@@ -178,6 +178,9 @@ const translation = {
       namePlaceholder: 'Ajouter le nom des métadonnées',
       type: 'Type',
       back: 'Retour',
+      description: 'Description',
+      descriptionPlaceholder: 'Ajouter une description des métadonnées (facultatif)',
+      descriptionTooltip: 'Aide le modèle à mieux extraire les informations de métadonnées de la saisie de l\'utilisateur lors de l\'utilisation du filtrage automatique des métadonnées.',
     },
     checkName: {
       empty: 'Le nom des métadonnées ne peut pas être vide',

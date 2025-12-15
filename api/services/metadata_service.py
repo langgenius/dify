@@ -22,6 +22,8 @@ class MetadataService:
         # check if metadata name is too long
         if len(metadata_args.name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
+        if metadata_args.description and len(metadata_args.description) > 255:
+            raise ValueError("Metadata description cannot exceed 255 characters.")
         current_user, current_tenant_id = current_account_with_tenant()
         # check if metadata name already exists
         if (
@@ -38,6 +40,7 @@ class MetadataService:
             dataset_id=dataset_id,
             type=metadata_args.type,
             name=metadata_args.name,
+            description=metadata_args.description,
             created_by=current_user.id,
         )
         db.session.add(metadata)
@@ -45,19 +48,24 @@ class MetadataService:
         return metadata
 
     @staticmethod
-    def update_metadata_name(dataset_id: str, metadata_id: str, name: str) -> DatasetMetadata:  # type: ignore
+    def update_metadata_name_and_description(
+        dataset_id: str, metadata_id: str, name: str, description: str | None = None
+    ) -> DatasetMetadata:  # type: ignore
         # check if metadata name is too long
         if len(name) > 255:
             raise ValueError("Metadata name cannot exceed 255 characters.")
+        if description and len(description) > 255:
+            raise ValueError("Metadata description cannot exceed 255 characters.")
 
         lock_key = f"dataset_metadata_lock_{dataset_id}"
         # check if metadata name already exists
         current_user, current_tenant_id = current_account_with_tenant()
-        if (
+        exists = (
             db.session.query(DatasetMetadata)
             .filter_by(tenant_id=current_tenant_id, dataset_id=dataset_id, name=name)
             .first()
-        ):
+        )
+        if exists and metadata_id != exists.id:
             raise ValueError("Metadata name already exists.")
         for field in BuiltInField:
             if field.value == name:
@@ -69,6 +77,7 @@ class MetadataService:
                 raise ValueError("Metadata not found.")
             old_name = metadata.name
             metadata.name = name
+            metadata.description = description
             metadata.updated_by = current_user.id
             metadata.updated_at = naive_utc_now()
 
@@ -271,6 +280,7 @@ class MetadataService:
                 {
                     "id": item.get("id"),
                     "name": item.get("name"),
+                    "description": item.get("description"),
                     "type": item.get("type"),
                     "count": db.session.query(DatasetMetadataBinding)
                     .filter_by(metadata_id=item.get("id"), dataset_id=dataset.id)

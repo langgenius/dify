@@ -178,6 +178,9 @@ const translation = {
       back: 'Înapoi',
       namePlaceholder: 'Adăugați numele de metadate',
       title: 'Metadate noi',
+      description: 'Descriere',
+      descriptionPlaceholder: 'Adăugați descrierea metadatelor (opțional)',
+      descriptionTooltip: 'Ajută modelul să extragă mai bine informațiile despre metadate din intrarea utilizatorului atunci când se utilizează filtrarea automată a metadatelor.',
     },
     checkName: {
       invalid: 'Numele metadatelor poate conține doar litere mici, cifre și underscore și trebuie să înceapă cu o literă mică.',

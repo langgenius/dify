@@ -178,6 +178,9 @@ const translation = {
       type: 'Escribe',
       namePlaceholder: 'Agregar nombre de metadatos',
       name: 'Nombre',
+      description: 'Descripción',
+      descriptionPlaceholder: 'Agregar descripción de metadatos (opcional)',
+      descriptionTooltip: 'Ayuda al modelo a extraer mejor la información de metadatos de la entrada del usuario cuando se utiliza el filtrado automático de metadatos.',
     },
     checkName: {
       empty: 'El nombre de metadatos no puede estar vacío',

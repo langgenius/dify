@@ -19,6 +19,7 @@ from services.metadata_service import MetadataService
 
 class MetadataUpdatePayload(BaseModel):
     name: str
+    description: str | None = None
 
 
 register_schema_model(service_api_ns, MetadataUpdatePayload)
@@ -96,7 +97,9 @@ class DatasetMetadataServiceApi(DatasetApiResource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, payload.name)
+        metadata = MetadataService.update_metadata_name_and_description(
+            dataset_id_str, metadata_id_str, payload.name, payload.description
+        )
         return marshal(metadata, dataset_metadata_fields), 200
 
     @service_api_ns.doc("delete_dataset_metadata")

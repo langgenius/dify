@@ -151,6 +151,7 @@ class ChildChunkUpdateArgs(BaseModel):
 class MetadataArgs(BaseModel):
     type: Literal["string", "number", "time"]
     name: str
+    description: str | None = None
 
 
 class MetadataUpdateArgs(BaseModel):

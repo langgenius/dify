@@ -139,6 +139,7 @@ class MetadataTestDataFactory:
         dataset_id: str = "dataset-123",
         tenant_id: str = "tenant-123",
         name: str = "category",
+        description: str = "description",
         metadata_type: str = "string",
         created_by: str = "user-123",
         **kwargs,
@@ -163,6 +164,7 @@ class MetadataTestDataFactory:
         metadata.dataset_id = dataset_id
         metadata.tenant_id = tenant_id
         metadata.name = name
+        metadata.description = description
         metadata.type = metadata_type
         metadata.created_by = created_by
         metadata.updated_by = None
@@ -284,6 +286,7 @@ class MetadataTestDataFactory:
     @staticmethod
     def create_metadata_args_mock(
         name: str = "category",
+        description: str = "description",
         metadata_type: str = "string",
     ) -> Mock:
         """
@@ -298,6 +301,7 @@ class MetadataTestDataFactory:
         """
         metadata_args = Mock(spec=MetadataArgs)
         metadata_args.name = name
+        metadata_args.description = description
         metadata_args.type = metadata_type
         return metadata_args
 
@@ -594,8 +598,11 @@ class TestMetadataServiceUpdateMetadataName:
         dataset_id = "dataset-123"
         metadata_id = "metadata-123"
         new_name = "updated_category"
+        new_description = "updated_description"
 
-        existing_metadata = MetadataTestDataFactory.create_metadata_mock(metadata_id=metadata_id, name="category")
+        existing_metadata = MetadataTestDataFactory.create_metadata_mock(
+            metadata_id=metadata_id, name="category", description="description"
+        )
 
         # Mock query for duplicate check (no duplicate)
         mock_query = Mock()
@@ -624,11 +631,14 @@ class TestMetadataServiceUpdateMetadataName:
             mock_builtin.__iter__ = Mock(return_value=iter([]))
 
             # Act
-            result = MetadataService.update_metadata_name(dataset_id, metadata_id, new_name)
+            result = MetadataService.update_metadata_name_and_description(
+                dataset_id, metadata_id, new_name, new_description
+            )
 
         # Assert
         assert result is not None
         assert result.name == new_name
+        assert result.description == new_description
 
         # Verify lock was acquired and released
         mock_redis_client.get.assert_called()
@@ -678,7 +688,7 @@ class TestMetadataServiceUpdateMetadataName:
 
             # Act & Assert
             with pytest.raises(ValueError, match="Metadata not found"):
-                MetadataService.update_metadata_name(dataset_id, metadata_id, new_name)
+                MetadataService.update_metadata_name_and_description(dataset_id, metadata_id, new_name)
 
         # Verify lock was released
         mock_redis_client.delete.assert_called()

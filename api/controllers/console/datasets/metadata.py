@@ -19,6 +19,7 @@ from services.metadata_service import MetadataService
 
 class MetadataUpdatePayload(BaseModel):
     name: str
+    description: str | None = None
 
 
 register_schema_models(console_ns, MetadataArgs, MetadataOperationData)
@@ -70,6 +71,7 @@ class DatasetMetadataApi(Resource):
         current_user, _ = current_account_with_tenant()
         payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
         name = payload.name
+        description = payload.description
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -78,7 +80,9 @@ class DatasetMetadataApi(Resource):
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        metadata = MetadataService.update_metadata_name(dataset_id_str, metadata_id_str, name)
+        metadata = MetadataService.update_metadata_name_and_description(
+            dataset_id_str, metadata_id_str, name, description
+        )
         return metadata, 200
 
     @setup_required

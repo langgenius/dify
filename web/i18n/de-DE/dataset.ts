@@ -178,6 +178,9 @@ const translation = {
       title: 'Neue Metadaten',
       name: 'Name',
       type: 'Art',
+      description: 'Beschreibung',
+      descriptionPlaceholder: 'Metadatenbeschreibung hinzufügen (optional)',
+      descriptionTooltip: 'Hilft dem Modell, Metadateninformationen besser aus Benutzereingaben zu extrahieren, wenn automatische Metadatenfilterung verwendet wird.',
     },
     checkName: {
       empty: 'Der Metadatenname darf nicht leer sein.',
