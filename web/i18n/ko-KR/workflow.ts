@@ -461,6 +461,7 @@ const translation = {
         variable: '변수를 사용하세요',
       },
       inputVars: '입력 변수',
+      pluginNotInstalled: '플러그인이 설치되지 않았습니다',
     },
     start: {
       required: '필수',

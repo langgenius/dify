@@ -444,6 +444,7 @@ const translation = {
       insertVarTip: 'Sisipkan Variabel',
       outputVars: 'Variabel Keluaran',
       inputVars: 'Variabel Masukan',
+      pluginNotInstalled: 'Plugin tidak terpasang',
     },
     start: {
       outputVars: {
