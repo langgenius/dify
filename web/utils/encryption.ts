@@ -27,14 +27,15 @@ export function encryptField(plaintext: string): string {
 
   try {
         // Use CryptoJS.AES.encrypt which implements AES-256-CBC
-        // The encryption key is automatically hashed to create a proper key
+        // The encryption key is automatically used to derive a key and IV.
     const encrypted = CryptoJS.AES.encrypt(plaintext, ENCRYPTION_KEY)
     return encrypted.toString()
   }
   catch (error) {
-        // If encryption fails, log error and return plaintext as fallback
+    // If encryption fails, we must not send the plaintext password.
+    // Throw an error to abort the operation.
     console.error('Field encryption failed:', error)
-    return plaintext
+    throw new Error('Encryption failed. Please check your configuration.');
   }
 }
 
