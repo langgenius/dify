@@ -97,11 +97,12 @@ class MongoDBVector(BaseVector):
             raise
         except (AttributeError, RuntimeError) as e:
             # AttributeError: property access issue, RuntimeError: unexpected runtime issue
-            logger.error(
-                f"Unexpected error getting MongoDB connection URI: {e} (type: {type(e).__name__})",
-                exc_info=True
+            error_msg = (
+                f"Failed to get MongoDB connection URI: {e} (type: {type(e).__name__}). "
+                f"Please check your MongoDB configuration settings."
             )
-            raise ValueError(f"Failed to get MongoDB connection URI: {e}") from e
+            logger.error(error_msg, exc_info=True)
+            raise ValueError(error_msg) from e
         
         # Always sanitize URI before logging
         sanitized_uri = _sanitize_uri_for_logging(uri)
@@ -121,11 +122,13 @@ class MongoDBVector(BaseVector):
             # ConfigurationError: invalid MongoDB configuration
             # ValueError: invalid URI format
             # TypeError: invalid parameter types
-            logger.error(
+            error_msg = (
                 f"Failed to create MongoDB client: {e} (type: {type(e).__name__}). "
-                f"URI: {sanitized_uri}"
+                f"URI: {sanitized_uri}. "
+                f"Please verify your MongoDB connection settings."
             )
-            raise ValueError(f"Failed to create MongoDB client: {e}") from e
+            logger.error(error_msg, exc_info=True)
+            raise ValueError(error_msg) from e
         
         # Check connection with transparent retry logic
         self._check_connection()
@@ -186,12 +189,12 @@ class MongoDBVector(BaseVector):
                 # RuntimeError: unexpected runtime issues (e.g., client already closed)
                 # OSError: system-level errors (e.g., network issues not caught by pymongo)
                 elapsed = time.time() - start_time
-                logger.error(
-                    f"Unexpected error during MongoDB connection check (elapsed: {elapsed:.2f}s): "
-                    f"{e} (type: {type(e).__name__}). URI: {sanitized_uri}",
-                    exc_info=True
+                error_msg = (
+                    f"Connection check failed: {e} (type: {type(e).__name__}). "
+                    f"Elapsed: {elapsed:.2f}s. URI: {sanitized_uri}"
                 )
-                raise ConnectionFailure(f"Connection check failed: {e}") from e
+                logger.error(error_msg, exc_info=True)
+                raise ConnectionFailure(error_msg) from e
         
         # Retry logic with exponential backoff
         backoff_base = self._config.MONGODB_CONNECTION_RETRY_BACKOFF_BASE
@@ -250,13 +253,13 @@ class MongoDBVector(BaseVector):
                 # OSError: system-level errors (e.g., network issues not caught by pymongo)
                 # These should not be retried as they indicate non-transient issues
                 elapsed = time.time() - start_time
-                logger.error(
-                    f"Unexpected error during MongoDB connection check "
-                    f"(attempt {attempt + 1}/{max_retries}, elapsed: {elapsed:.2f}s): "
-                    f"{e} (type: {type(e).__name__}). URI: {sanitized_uri}",
-                    exc_info=True
+                error_msg = (
+                    f"Connection check failed with unexpected error: {e} (type: {type(e).__name__}). "
+                    f"Attempt {attempt + 1}/{max_retries}, elapsed: {elapsed:.2f}s, "
+                    f"total wait: {total_wait_time:.2f}s. URI: {sanitized_uri}"
                 )
-                raise ConnectionFailure(f"Connection check failed with unexpected error: {e}") from e
+                logger.error(error_msg, exc_info=True)
+                raise ConnectionFailure(error_msg) from e
         
         # All retries exhausted
         if last_exception is None:
@@ -381,8 +384,10 @@ class MongoDBVector(BaseVector):
                         
                         if status == "FAILED":
                             error_msg = index.get("error", "Unknown error")
-                            logger.error(f"Index '{self._index_name}' build failed: {error_msg}")
-                            raise OperationFailure(f"Index '{self._index_name}' build failed: {error_msg}")
+                            full_error_msg = f"Index '{self._index_name}' build failed: {error_msg}"
+                            logger.error(full_error_msg)
+                            # Create OperationFailure with full diagnostic context
+                            raise OperationFailure(full_error_msg)
                         
                         if check_count % 10 == 0 and check_count > 0:
                             logger.debug(
@@ -393,7 +398,9 @@ class MongoDBVector(BaseVector):
             except OperationFailure as e:
                 error_code = getattr(e, "code", None)
                 if error_code == MongoDBErrorCode.PERMISSION_DENIED:
-                    logger.error(f"Permission denied when checking index status: {e}")
+                    error_msg = f"Permission denied when checking index status: {e} (error_code: {error_code})"
+                    logger.error(error_msg, exc_info=True)
+                    # Preserve original exception with all diagnostic data
                     raise
                 if error_code and error_code not in (None, 0):
                     logger.warning(f"Operation error when checking index status: {e} (error_code: {error_code}). Retrying in {delay:.1f}s...")
@@ -450,15 +457,15 @@ class MongoDBVector(BaseVector):
                 self._collection.insert_many(docs)
         except WriteError as e:
             error_code = getattr(e, "code", None)
-            logger.error(
-                f"Write error when inserting documents: {e} (error_code: {error_code})"
-            )
+            error_msg = f"Write error when inserting documents: {e} (error_code: {error_code})"
+            logger.error(error_msg, exc_info=True)
+            # Preserve original exception with all diagnostic data (error_code, details, etc.)
             raise
         except OperationFailure as e:
             error_code = getattr(e, "code", None)
-            logger.error(
-                f"Operation failed when inserting documents: {e} (error_code: {error_code})"
-            )
+            error_msg = f"Operation failed when inserting documents: {e} (error_code: {error_code})"
+            logger.error(error_msg, exc_info=True)
+            # Preserve original exception with all diagnostic data (error_code, details, etc.)
             raise
 
     def text_exists(self, id: str) -> bool:
@@ -481,9 +488,9 @@ class MongoDBVector(BaseVector):
             return self._results_to_documents(results)
         except OperationFailure as e:
             error_code = getattr(e, "code", None)
-            logger.error(
-                f"Search operation failed: {e} (error_code: {error_code})"
-            )
+            error_msg = f"Search operation failed: {e} (error_code: {error_code})"
+            logger.error(error_msg, exc_info=True)
+            # Preserve original exception with all diagnostic data (error_code, details, etc.)
             raise
 
     def _get_search_pipeline(self, query_vector: list[float], **kwargs: Any) -> list[dict]:

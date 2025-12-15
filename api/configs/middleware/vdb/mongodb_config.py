@@ -152,23 +152,20 @@ class MongoDBConfig(BaseSettings):
         except ValueError:
             raise
         except (TypeError, AttributeError) as e:
-            logger.error(
-                f"Type error during MongoDB URI construction: {e}. "
-                "Please check that all configuration values are of the correct type."
-            )
-            raise ValueError(
-                f"Invalid MongoDB configuration type for URI construction: {e}. "
+            error_msg = (
+                f"Invalid MongoDB configuration type for URI construction: {e} (type: {type(e).__name__}). "
                 "Please verify MONGODB_HOST (str), MONGODB_PORT (int), "
                 "MONGODB_USERNAME (str), and MONGODB_PASSWORD (str) are correct types."
-            ) from e
-        except (UnicodeEncodeError, RuntimeError) as e:
-            logger.error(
-                f"Encoding or runtime error during MongoDB URI construction: {e} (type: {type(e).__name__})"
             )
-            raise ValueError(
-                f"Failed to build MongoDB connection URI due to encoding or runtime error: {e}. "
-                "Please check your MongoDB configuration settings."
-            ) from e
+            logger.error(error_msg, exc_info=True)
+            raise ValueError(error_msg) from e
+        except (UnicodeEncodeError, RuntimeError) as e:
+            error_msg = (
+                f"Failed to build MongoDB connection URI due to encoding or runtime error: {e} "
+                f"(type: {type(e).__name__}). Please check your MongoDB configuration settings."
+            )
+            logger.error(error_msg, exc_info=True)
+            raise ValueError(error_msg) from e
 
     @computed_field
     @property
@@ -205,13 +202,12 @@ class MongoDBConfig(BaseSettings):
             # Re-raise ValueError as-is (already has clear error message)
             raise
         except (AttributeError, RuntimeError) as e:
-            logger.error(
-                f"Unexpected error getting MongoDB connection URI: {e} (type: {type(e).__name__})"
-            )
-            raise ValueError(
-                f"Failed to get MongoDB connection URI: {e}. "
+            error_msg = (
+                f"Failed to get MongoDB connection URI: {e} (type: {type(e).__name__}). "
                 "Please check your MongoDB configuration settings."
-            ) from e
+            )
+            logger.error(error_msg, exc_info=True)
+            raise ValueError(error_msg) from e
 
     @model_validator(mode="after")
     def validate_mongodb_config(self):
