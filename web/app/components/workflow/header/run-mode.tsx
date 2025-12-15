@@ -12,6 +12,7 @@ import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAnd
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
 import TestRunMenu, { type TestRunMenuRef, type TriggerOption, TriggerType } from './test-run-menu'
 import { useToastContext } from '@/app/components/base/toast'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type RunModeProps = {
   text?: string
@@ -69,22 +70,27 @@ const RunMode = ({
 
     if (option.type === TriggerType.UserInput) {
       handleWorkflowStartRunInWorkflow()
+      trackEvent('app_start_action_time', { action_type: 'user_input' })
     }
     else if (option.type === TriggerType.Schedule) {
       handleWorkflowTriggerScheduleRunInWorkflow(option.nodeId)
+      trackEvent('app_start_action_time', { action_type: 'schedule' })
     }
     else if (option.type === TriggerType.Webhook) {
       if (option.nodeId)
         handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: option.nodeId })
+      trackEvent('app_start_action_time', { action_type: 'webhook' })
     }
     else if (option.type === TriggerType.Plugin) {
       if (option.nodeId)
         handleWorkflowTriggerPluginRunInWorkflow(option.nodeId)
+      trackEvent('app_start_action_time', { action_type: 'plugin' })
     }
     else if (option.type === TriggerType.All) {
       const targetNodeIds = option.relatedNodeIds?.filter(Boolean)
       if (targetNodeIds && targetNodeIds.length > 0)
         handleWorkflowRunAllTriggersInWorkflow(targetNodeIds)
+      trackEvent('app_start_action_time', { action_type: 'all' })
     }
     else {
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types

@@ -737,6 +737,7 @@ const translation = {
     pasteFileLinkInvalid: '文件链接无效',
     fileExtensionNotSupport: '文件类型不支持',
     fileExtensionBlocked: '出于安全考虑，该文件类型已被禁止上传',
+    uploadDisabled: '文件上传已被禁用',
   },
   tag: {
     placeholder: '全部标签',
