@@ -437,6 +437,7 @@ const translation = {
         variable: 'ใช้ตัวแปร',
       },
       inputVars: 'ตัวแปรอินพุต',
+      pluginNotInstalled: 'ปลั๊กอินไม่ได้ติดตั้ง',
     },
     start: {
       required: 'ต้องระบุ',

@@ -13,11 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      # Use uv to ensure we have the same ruff version in CI and locally.
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - uses: astral-sh/setup-uv@v6
+
       - run: |
           cd api
           uv sync --dev
@@ -61,9 +62,10 @@ jobs:
           find . -name "*.py" -type f -exec sed -i.bak -E 's/"([^"]+)" \| None/Optional["\1"]/g; s/'"'"'([^'"'"']+)'"'"' \| None/Optional['"'"'\1'"'"']/g' {} \;
           find . -name "*.py.bak" -type f -delete
 
+      # mdformat breaks YAML front matter in markdown files. Add --exclude for directories containing YAML front matter.
       - name: mdformat
         run: |
-          uvx mdformat .
+          uvx --python 3.13 mdformat . --exclude ".claude/skills/**"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -84,7 +86,6 @@ jobs:
 
       - name: oxlint
         working-directory: ./web
-        run: |
-          pnpx oxlint --fix
+        run: pnpm exec oxlint --config .oxlintrc.json --fix .
 
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27

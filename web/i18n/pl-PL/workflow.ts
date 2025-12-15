@@ -437,6 +437,7 @@ const translation = {
         input: 'Wartość wejściowa',
       },
       inputVars: 'Zmienne wejściowe',
+      pluginNotInstalled: 'Wtyczka nie jest zainstalowana',
     },
     start: {
       required: 'wymagane',

@@ -437,6 +437,7 @@ const translation = {
         variable: 'Используйте переменную',
       },
       inputVars: 'Входные переменные',
+      pluginNotInstalled: 'Плагин не установлен',
     },
     start: {
       required: 'обязательно',
