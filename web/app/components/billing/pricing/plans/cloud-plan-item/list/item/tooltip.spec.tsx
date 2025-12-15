@@ -27,10 +27,10 @@ describe('Tooltip', () => {
       const content = 'Tooltips explain each plan detail.'
 
       // Act
-      const { container } = render(<Tooltip content={content} />)
+      render(<Tooltip content={content} />)
 
       // Assert
-      expect(container.querySelector('[data-testid="tooltip-icon"]')).not.toBeNull()
+      expect(screen.getByTestId('tooltip-icon')).not.toBeNull()
     })
   })
 
