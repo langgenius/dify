@@ -16,8 +16,7 @@ describe('Tooltip', () => {
       render(<Tooltip content={content} />)
 
       // Assert
-      const panel = screen.getByText(content)
-      expect(panel).toBeInTheDocument()
+      expect(() => screen.getByText(content)).not.toThrow()
     })
   })
 
