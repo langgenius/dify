@@ -62,14 +62,18 @@ class MongoDBConfig(BaseSettings):
 
     @model_validator(mode="after")
     def validate_mongodb_config(self):
-        if not self.MONGODB_URI and self.MONGODB_HOST and not (self.MONGODB_USERNAME and self.MONGODB_PASSWORD):
-            # Warn or raise error? For local dev defaults might be loose, but for production it's risky.
-            # Given the review, strict validation is preferred. 
-            # However, standard mongo often runs without auth in local/test. 
-            # I'll allow it if explicitly set to empty strings, but checks are good.
-            # Let's just validate that if USERNAME is set, PASSWORD should be too, or vice versa if needed?
-            # Actually, standard mongo auth requires both.
-            if self.MONGODB_USERNAME and not self.MONGODB_PASSWORD:
-                 raise ValueError("MONGODB_PASSWORD is required when MONGODB_USERNAME is set.")
+        # Allow configuration if URI is explicitly provided, regardless of other fields.
+        if self.MONGODB_URI:
+            return self
+            
+        # If hosting details are provided but incomplete auth
+        if self.MONGODB_HOST:
+            # Enforce that if one auth field is present, both must be present.
+            # This prevents accidental misconfigurations where a password might be missing.
+            has_username = bool(self.MONGODB_USERNAME)
+            has_password = bool(self.MONGODB_PASSWORD)
+            
+            if has_username != has_password:
+                 raise ValueError("Both MONGODB_USERNAME and MONGODB_PASSWORD must be provided, or neither.")
             
         return self

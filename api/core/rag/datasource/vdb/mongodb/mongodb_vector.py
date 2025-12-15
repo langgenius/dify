@@ -3,7 +3,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from pymongo import MongoClient
-from pymongo.errors import OperationFailure
+from pymongo.errors import OperationFailure, ConnectionFailure, ServerSelectionTimeoutError
 from pymongo.operations import SearchIndexModel
 
 from configs import dify_config
@@ -22,16 +22,23 @@ logger = logging.getLogger(__name__)
 class MongoDBVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config):
         super().__init__(collection_name)
-        self._client = MongoClient(config.MONGODB_CONNECT_URI)
-        try:
-            self._client.admin.command('ping')
-        except Exception as e:
-            logger.error(f"Failed to connect to MongoDB: {e}")
-            raise e
+        self._client = MongoClient(config.MONGODB_CONNECT_URI, serverSelectionTimeoutMS=5000)
+        self._check_connection()
         self._db = self._client[config.MONGODB_DATABASE]
         self._collection = self._db[collection_name]
         self._index_name = config.MONGODB_VECTOR_INDEX_NAME
         self._group_id = group_id
+
+    def _check_connection(self):
+        try:
+            # Simple ping command to verify connection
+            self._client.admin.command('ping')
+        except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+            logger.error(f"Failed to connect to MongoDB at initialization: {e}")
+            raise e
+        except Exception as e:
+            logger.error(f"Unexpected error when connecting to MongoDB: {e}")
+            raise e
 
     def get_type(self) -> str:
         return VectorType.MONGODB
@@ -68,8 +75,9 @@ class MongoDBVector(BaseVector):
         try:
             self._collection.create_search_index(model=model)
         except OperationFailure as e:
-            if "IndexAlreadyExists" in str(e) or "DuplicateIndexName" in str(e):
-                logger.info(f"Index {self._index_name} already exists.")
+            # Code 68 is IndexAlreadyExists
+            if "IndexAlreadyExists" in str(e) or "DuplicateIndexName" in str(e) or e.code == 68:
+                logger.info(f"Index {self._index_name} already exists. Skipping creation.")
             else:
                 logger.error(f"Failed to create index {self._index_name}: {e}")
                 raise e
@@ -77,14 +85,18 @@ class MongoDBVector(BaseVector):
         self._wait_for_index_ready()
 
     def _wait_for_index_ready(self, timeout: int = 300):
-        start = time.time()
-        while time.time() - start < timeout:
-            cursor = self._collection.aggregate([{"$listSearchIndexes": {"name": self._index_name}}])
-            for index in cursor:
-                if index.get("queryable") is True and index.get("status") == "READY":
-                    return
-                if index.get("status") == "FAILED":
-                    raise OperationFailure(f"Index {self._index_name} build failed.")
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            try:
+                cursor = self._collection.aggregate([{"$listSearchIndexes": {"name": self._index_name}}])
+                for index in cursor:
+                    if index.get("queryable") is True and index.get("status") == "READY":
+                        return
+                    if index.get("status") == "FAILED":
+                        raise OperationFailure(f"Index {self._index_name} build failed.")
+            except OperationFailure as e:
+                logger.warning(f"Error checking index status: {e}. Retrying...")
+            
             time.sleep(2)
         
         raise TimeoutError(f"Index {self._index_name} not ready within {timeout} seconds.")
