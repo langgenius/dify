@@ -91,7 +91,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             nodeId={nodeId}
             isSupportPromptGenerator={!!def.auto_generate?.type}
             titleTooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
-            editorContainerClassName='px-0'
+            editorContainerClassName='px-0 bg-components-input-bg-normal focus-within:bg-components-input-bg-active rounded-lg'
             availableNodes={availableNodes}
             nodesOutputVars={nodeOutputVars}
             isSupportJinja={def.template?.enabled}
@@ -108,7 +108,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             }
             placeholderClassName='px-2 py-1'
             titleClassName='system-sm-semibold-uppercase text-text-secondary text-[13px]'
-            inputClassName='px-2 py-1 bg-components-input-bg-normal focus:bg-components-input-bg-active focus:border-components-input-border-active focus:border rounded-lg'
+            inputClassName='px-2 py-1'
           />
         }
         case FormTypeEnum.textNumber: {

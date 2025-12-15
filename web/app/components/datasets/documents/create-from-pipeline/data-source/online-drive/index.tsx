@@ -29,7 +29,7 @@ const OnlineDrive = ({
   nodeId,
   nodeData,
   isInPipeline = false,
-  supportBatchUpload = false,
+  supportBatchUpload = true,
   onCredentialChange,
 }: OnlineDriveProps) => {
   const docLink = useDocLink()

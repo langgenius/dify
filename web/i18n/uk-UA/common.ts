@@ -735,6 +735,7 @@ const translation = {
     uploadFromComputerReadError: 'Не вдалося прочитати файл, будь ласка, спробуйте ще раз.',
     uploadFromComputerUploadError: 'Не вдалося завантажити файл, будь ласка, завантажте ще раз.',
     fileExtensionBlocked: 'Цей тип файлу заблоковано з міркувань безпеки',
+    uploadDisabled: 'Завантаження файлів вимкнено',
   },
   license: {
     expiring: 'Термін дії закінчується за один день',

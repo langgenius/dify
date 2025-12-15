@@ -144,7 +144,7 @@ const translation = {
       price: 'Özel',
     },
     community: {
-      features: ['Tüm Temel Özellikler Açık Kaynak Depoda Yayınlandı', 'Tek Çalışma Alanı', 'Dify Açık Kaynak Lisansına uygundur'],
+      features: ['Tüm Temel Özellikler Açık Depoda Yayınlandı', 'Tek Çalışma Alanı', 'Dify Açık Kaynak Lisansına uygundur'],
       price: 'Ücretsiz',
       includesTitle: 'Ücretsiz Özellikler:',
       name: 'Topluluk',
@@ -153,7 +153,7 @@ const translation = {
       description: 'Bireysel Kullanıcılar, Küçük Ekipler veya Ticari Olmayan Projeler İçin',
     },
     premium: {
-      features: ['Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendine Yönetilen Güvenilirlik', 'Tek Çalışma Alanı', 'Web Uygulaması Logo ve Marka Özelleştirme', 'Öncelikli E-posta ve Sohbet Desteği'],
+      features: ['Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendine Yönetilen Güvenilirlik', 'Tek Çalışma Alanı', 'Web Uygulama Logo ve Marka Özelleştirme', 'Öncelikli E-posta ve Sohbet Desteği'],
       name: 'Premium',
       includesTitle: 'Topluluktan her şey, artı:',
       for: 'Orta Büyüklükteki Organizasyonlar ve Ekipler için',
@@ -202,6 +202,20 @@ const translation = {
   viewBillingTitle: 'Faturalama ve Abonelikler',
   viewBillingDescription: 'Ödeme yöntemlerini, faturaları ve abonelik değişikliklerini yönetin',
   viewBillingAction: 'Yönet',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Aynı anda birden fazla belge yüklemek için yükseltin',
+      description: 'Yükleme sınırına ulaştınız — mevcut planınızda aynı anda yalnızca bir belge seçip yükleyebilirsiniz.',
+    },
+    uploadMultipleFiles: {
+      title: 'Toplu belge yüklemeyi açmak için yükseltin',
+      description: 'Zaman kazanmak ve verimliliği artırmak için bir kerede daha fazla belgeyi toplu olarak yükleyin.',
+    },
+    addChunks: {
+      title: 'Parçalar eklemeye devam etmek için yükseltin',
+      description: 'Bu plan için parça ekleme sınırına ulaştınız.',
+    },
+  },
 }
 
 export default translation
