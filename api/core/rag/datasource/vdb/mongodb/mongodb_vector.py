@@ -497,7 +497,7 @@ class MongoDBVector(BaseVector):
         filter_dict = {"group_id": self._group_id}
         
         if kwargs.get("filter"):
-            pass
+            # TODO: Implement additional filter logic here using kwargs['filter'] if needed.
             
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
