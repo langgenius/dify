@@ -734,6 +734,7 @@ const translation = {
     uploadFromComputerLimit: 'Carregar arquivo não pode exceder {{size}}',
     uploadFromComputerUploadError: 'Falha no upload do arquivo, faça o upload novamente.',
     fileExtensionBlocked: 'Este tipo de arquivo está bloqueado por razões de segurança',
+    uploadDisabled: 'Envio de arquivo desativado',
   },
   license: {
     expiring: 'Expirando em um dia',

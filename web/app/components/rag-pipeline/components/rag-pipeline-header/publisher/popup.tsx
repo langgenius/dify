@@ -47,6 +47,7 @@ import { useModalContextSelector } from '@/context/modal-context'
 import Link from 'next/link'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
@@ -109,6 +110,7 @@ const Popup = () => {
           releaseNotes: params?.releaseNotes || '',
         })
         setPublished(true)
+        trackEvent('app_published_time', { action_mode: 'pipeline', app_id: datasetId, app_name: params?.title || '' })
         if (res) {
           notify({
             type: 'success',

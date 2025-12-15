@@ -82,19 +82,19 @@ class TestWebhookServiceUnit:
             "/webhook",
             method="POST",
             headers={"Content-Type": "multipart/form-data"},
-            data={"message": "test", "upload": file_storage},
+            data={"message": "test", "file": file_storage},
         ):
             webhook_trigger = MagicMock()
             webhook_trigger.tenant_id = "test_tenant"
 
             with patch.object(WebhookService, "_process_file_uploads") as mock_process_files:
-                mock_process_files.return_value = {"upload": "mocked_file_obj"}
+                mock_process_files.return_value = {"file": "mocked_file_obj"}
 
                 webhook_data = WebhookService.extract_webhook_data(webhook_trigger)
 
                 assert webhook_data["method"] == "POST"
                 assert webhook_data["body"]["message"] == "test"
-                assert webhook_data["files"]["upload"] == "mocked_file_obj"
+                assert webhook_data["files"]["file"] == "mocked_file_obj"
                 mock_process_files.assert_called_once()
 
     def test_extract_webhook_data_raw_text(self):

@@ -734,6 +734,7 @@ const translation = {
     uploadFromComputerReadError: 'Pembacaan file gagal, silakan coba lagi.',
     fileExtensionBlocked: 'Tipe file ini diblokir karena alasan keamanan',
     uploadFromComputerLimit: 'Unggahan {{type}} tidak boleh melebihi {{size}}',
+    uploadDisabled: 'Unggah file dinonaktifkan',
   },
   tag: {
     noTag: 'Tidak ada tag',
