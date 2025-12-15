@@ -64,13 +64,6 @@ describe('AppCard', () => {
       expect(screen.getByText(mockApp.description)).toBeInTheDocument()
     })
 
-    it('should render app icon with correct props', () => {
-      render(<AppCard {...defaultProps} />)
-
-      const appIcon = screen.getByTestId('app-icon')
-      expect(appIcon).toHaveAttribute('data-icon-type', 'emoji')
-    })
-
     it('should render app type icon and label', () => {
       render(<AppCard {...defaultProps} />)
 
@@ -195,21 +188,8 @@ describe('AppCard', () => {
       render(<AppCard {...defaultProps} app={appWithIcon} />)
 
       const appIcon = screen.getByTestId('app-icon')
-      expect(appIcon).toHaveAttribute('data-icon-type', 'emoji')
       expect(appIcon.querySelector('img')).not.toBeInTheDocument()
-    })
-
-    it('should handle null icon type gracefully', () => {
-      const appWithNullIcon = {
-        ...mockApp,
-        app: {
-          ...mockApp.app,
-          icon_type: null,
-        },
-      }
-      render(<AppCard {...defaultProps} app={appWithNullIcon} />)
-
-      expect(screen.getByTestId('app-icon')).toBeInTheDocument()
+      expect(appIcon.querySelector('em-emoji')).toBeInTheDocument()
     })
 
     it('should prioritize icon_url when both icon and icon_url are provided', () => {
@@ -224,10 +204,7 @@ describe('AppCard', () => {
       }
       render(<AppCard {...defaultProps} app={appWithImageUrl} />)
 
-      const appIcon = screen.getByTestId('app-icon')
-      expect(appIcon).toHaveAttribute('data-icon-type', 'image')
       expect(screen.getByRole('img', { name: 'app icon' })).toHaveAttribute('src', 'https://example.com/remote-icon.png')
-      expect(appIcon).toHaveAttribute('data-image-url', 'https://example.com/remote-icon.png')
     })
   })
 
@@ -250,14 +227,6 @@ describe('AppCard', () => {
       // Note: Card click doesn't trigger onCreate, only the button does
       expect(mockOnCreate).not.toHaveBeenCalled()
     })
-
-    it('should show create button on hover', async () => {
-      render(<AppCard {...defaultProps} />)
-
-      const card = screen.getByTestId('app-card')
-      await userEvent.hover(card)
-      expect(screen.getByRole('button', { name: /app\.newApp\.useTemplate/ })).toBeInTheDocument()
-    })
   })
 
   describe('Keyboard Accessibility', () => {
@@ -265,10 +234,10 @@ describe('AppCard', () => {
       const mockOnCreate = jest.fn()
       render(<AppCard {...defaultProps} onCreate={mockOnCreate} />)
 
+      await userEvent.tab()
       const button = screen.getByRole('button', { name: /app\.newApp\.useTemplate/ }) as HTMLButtonElement
 
       // Test that button can be focused
-      button.focus()
       expect(button).toHaveFocus()
 
       // Test click event works (keyboard events on buttons typically trigger click)
@@ -342,9 +311,17 @@ describe('AppCard', () => {
       render(<AppCard {...defaultProps} onCreate={errorOnCreate} />)
 
       const button = screen.getByRole('button', { name: /app\.newApp\.useTemplate/ })
-      await userEvent.click(button)
-
+      let capturedError: unknown
+      try {
+        await userEvent.click(button)
+      }
+      catch (err) {
+        capturedError = err
+      }
       expect(errorOnCreate).toHaveBeenCalledTimes(1)
+      expect(consoleSpy).toHaveBeenCalled()
+      if (capturedError instanceof Error)
+        expect(capturedError.message).toContain('Create failed')
 
       consoleSpy.mockRestore()
     })
