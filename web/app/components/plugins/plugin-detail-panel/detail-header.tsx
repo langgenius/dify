@@ -44,6 +44,7 @@ import { AUTO_UPDATE_MODE } from '../reference-setting-modal/auto-update-setting
 import { convertUTCDaySecondsToLocalSeconds, timeOfDayToDayjs } from '../reference-setting-modal/auto-update-setting/utils'
 import type { PluginDetail } from '../types'
 import { PluginCategoryEnum, PluginSource } from '../types'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const i18nPrefix = 'plugin.action'
 
@@ -212,8 +213,9 @@ const DetailHeader = ({
         refreshModelProviders()
       if (PluginCategoryEnum.tool.includes(category))
         invalidateAllToolProviders()
+      trackEvent('plugin_uninstalled', { plugin_id, plugin_name: name })
     }
-  }, [showDeleting, id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
+  }, [showDeleting, id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders, plugin_id, name])
 
   return (
     <div className={cn('shrink-0 border-b border-divider-subtle bg-components-panel-bg p-4 pb-3', isReadmeView && 'border-b-0 bg-transparent p-0')}>
