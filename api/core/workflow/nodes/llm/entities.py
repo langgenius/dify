@@ -23,22 +23,19 @@ class LLMTraceSegment(BaseModel):
     """
     Streaming trace segment for LLM tool-enabled runs.
 
-    We keep order as-is to allow direct replay: thought/content/tool_call/tool_result appear
-    exactly in the sequence they were emitted.
+    Order is preserved for replay. Tool calls are single entries containing both
+    arguments and results.
     """
 
-    type: Literal["thought", "content", "tool_call", "tool_result"]
-    turn: int = Field(0, description="0-based turn index, increments after each tool_result")
+    type: Literal["thought", "content", "tool_call"]
 
     # Common optional fields
     text: str | None = Field(None, description="Text chunk for thought/content")
 
-    # Tool call fields
+    # Tool call fields (combined start + result)
     tool_call_id: str | None = None
     tool_name: str | None = None
     tool_arguments: str | None = None
-
-    # Tool result fields
     tool_output: str | None = None
     tool_error: str | None = None
     files: list[str] = Field(default_factory=list, description="File IDs from tool result if any")

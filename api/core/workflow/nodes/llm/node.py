@@ -1544,7 +1544,22 @@ class LLMNode(Node[LLMNodeData]):
         reasoning_per_turn: list[str] = []  # Final list: one element per turn
         tool_call_index_map: dict[str, int] = {}  # tool_call_id -> index
         trace_segments: list[LLMTraceSegment] = []  # Ordered trace for replay
+        tool_trace_map: dict[str, LLMTraceSegment] = {}
         current_turn = 0
+        pending_thought: list[str] = []
+        pending_content: list[str] = []
+
+        def _flush_thought() -> None:
+            if not pending_thought:
+                return
+            trace_segments.append(LLMTraceSegment(type="thought", text="".join(pending_thought)))
+            pending_thought.clear()
+
+        def _flush_content() -> None:
+            if not pending_content:
+                return
+            trace_segments.append(LLMTraceSegment(type="content", text="".join(pending_content)))
+            pending_content.clear()
 
         # Process each output from strategy
         try:
@@ -1584,16 +1599,19 @@ class LLMNode(Node[LLMNodeData]):
                         if tool_call_id and tool_call_id not in tool_call_index_map:
                             tool_call_index_map[tool_call_id] = len(tool_call_index_map)
 
-                        trace_segments.append(
-                            LLMTraceSegment(
-                                type="tool_call",
-                                turn=current_turn,
-                                tool_call_id=tool_call_id,
-                                tool_name=tool_name,
-                                tool_arguments=tool_arguments,
-                                text=None,
-                            )
+                        _flush_thought()
+                        _flush_content()
+
+                        tool_call_segment = LLMTraceSegment(
+                            type="tool_call",
+                            text=None,
+                            tool_call_id=tool_call_id,
+                            tool_name=tool_name,
+                            tool_arguments=tool_arguments,
                         )
+                        trace_segments.append(tool_call_segment)
+                        if tool_call_id:
+                            tool_trace_map[tool_call_id] = tool_call_segment
 
                         yield ToolCallChunkEvent(
                             selector=[self._node_id, "generation", "tool_calls"],
@@ -1615,6 +1633,9 @@ class LLMNode(Node[LLMNodeData]):
                         if tool_call_id and tool_call_id not in tool_call_index_map:
                             tool_call_index_map[tool_call_id] = len(tool_call_index_map)
 
+                        _flush_thought()
+                        _flush_content()
+
                         # Extract file IDs if present (only for success case)
                         files_data = output.data.get("files")
                         if files_data and isinstance(files_data, list):
@@ -1633,18 +1654,22 @@ class LLMNode(Node[LLMNodeData]):
                             if meta and isinstance(meta, dict) and meta.get("error"):
                                 tool_error = meta.get("error")
 
-                        trace_segments.append(
-                            LLMTraceSegment(
-                                type="tool_result",
-                                turn=current_turn,
+                        tool_call_segment = tool_trace_map.get(tool_call_id)
+                        if tool_call_segment is None:
+                            tool_call_segment = LLMTraceSegment(
+                                type="tool_call",
+                                text=None,
                                 tool_call_id=tool_call_id,
                                 tool_name=tool_name,
-                                tool_output=str(tool_output) if tool_output is not None else None,
-                                tool_error=str(tool_error) if tool_error is not None else None,
-                                files=[str(f) for f in tool_files] if tool_files else [],
-                                text=None,
+                                tool_arguments=None,
                             )
-                        )
+                            trace_segments.append(tool_call_segment)
+                            if tool_call_id:
+                                tool_trace_map[tool_call_id] = tool_call_segment
+
+                        tool_call_segment.tool_output = str(tool_output) if tool_output is not None else None
+                        tool_call_segment.tool_error = str(tool_error) if tool_error is not None else None
+                        tool_call_segment.files = [str(f) for f in tool_files] if tool_files else []
                         current_turn += 1
 
                         yield ToolResultChunkEvent(
@@ -1679,16 +1704,18 @@ class LLMNode(Node[LLMNodeData]):
                                 continue
 
                             if kind == "thought":
+                                _flush_content()
                                 current_turn_reasoning.append(segment)
-                                trace_segments.append(LLMTraceSegment(type="thought", turn=current_turn, text=segment))
+                                pending_thought.append(segment)
                                 yield ThoughtChunkEvent(
                                     selector=[self._node_id, "generation", "thought"],
                                     chunk=segment,
                                     is_final=False,
                                 )
                             else:
+                                _flush_thought()
                                 text += segment
-                                trace_segments.append(LLMTraceSegment(type="content", turn=current_turn, text=segment))
+                                pending_content.append(segment)
                                 yield StreamChunkEvent(
                                     selector=[self._node_id, "text"],
                                     chunk=segment,
@@ -1726,16 +1753,18 @@ class LLMNode(Node[LLMNodeData]):
             if not segment:
                 continue
             if kind == "thought":
+                _flush_content()
                 current_turn_reasoning.append(segment)
-                trace_segments.append(LLMTraceSegment(type="thought", turn=current_turn, text=segment))
+                pending_thought.append(segment)
                 yield ThoughtChunkEvent(
                     selector=[self._node_id, "generation", "thought"],
                     chunk=segment,
                     is_final=False,
                 )
             else:
+                _flush_thought()
                 text += segment
-                trace_segments.append(LLMTraceSegment(type="content", turn=current_turn, text=segment))
+                pending_content.append(segment)
                 yield StreamChunkEvent(
                     selector=[self._node_id, "text"],
                     chunk=segment,
@@ -1750,6 +1779,9 @@ class LLMNode(Node[LLMNodeData]):
         # Save the last turn's thought if any
         if current_turn_reasoning:
             reasoning_per_turn.append("".join(current_turn_reasoning))
+
+        _flush_thought()
+        _flush_content()
 
         # Send final events for all streams
         yield StreamChunkEvent(
@@ -1816,7 +1848,7 @@ class LLMNode(Node[LLMNodeData]):
         # Return generation data for caller
         return LLMGenerationData(
             text=text,
-            reasoning_contents=reasoning_per_turn,  # Multi-turn: [thought1, thought2, ...]
+            reasoning_contents=reasoning_per_turn,
             tool_calls=tool_calls_for_generation,
             usage=usage,
             finish_reason=finish_reason,
