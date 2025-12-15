@@ -3,7 +3,12 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure, OperationFailure, ServerSelectionTimeoutError
+from pymongo.errors import (
+    ConnectionFailure,
+    OperationFailure,
+    ServerSelectionTimeoutError,
+    WriteError,
+)
 from pymongo.operations import SearchIndexModel
 
 from configs import dify_config
@@ -22,19 +27,52 @@ logger = logging.getLogger(__name__)
 class MongoDBVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config):
         super().__init__(collection_name)
-        self._client = MongoClient(config.MONGODB_CONNECT_URI, serverSelectionTimeoutMS=5000)
+        uri = config.MONGODB_CONNECT_URI
+        logger.info(
+            f"Initializing MongoDBVector: collection='{collection_name}', "
+            f"database='{config.MONGODB_DATABASE}', index='{config.MONGODB_VECTOR_INDEX_NAME}'"
+        )
+        self._client = MongoClient(uri, serverSelectionTimeoutMS=5000)
         self._check_connection()
         self._db = self._client[config.MONGODB_DATABASE]
         self._collection = self._db[collection_name]
         self._index_name = config.MONGODB_VECTOR_INDEX_NAME
         self._group_id = group_id
+        logger.debug(f"MongoDBVector initialized successfully for collection '{collection_name}'")
 
-    def _check_connection(self):
-        try:
-            self._client.admin.command('ping')
-        except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-            logger.error(f"Failed to connect to MongoDB: {e}")
-            raise
+    def _check_connection(self, max_retries: int = 3):
+        """
+        Verify MongoDB connection with retry logic for transient errors.
+        
+        Args:
+            max_retries: Maximum number of retry attempts (default: 3)
+            
+        Raises:
+            ConnectionFailure: If connection fails after retries
+            ServerSelectionTimeoutError: If server selection times out after retries
+        """
+        last_exception = None
+        for attempt in range(max_retries):
+            try:
+                self._client.admin.command('ping')
+                if attempt > 0:
+                    logger.info(f"MongoDB connection successful after {attempt + 1} attempts")
+                return
+            except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+                last_exception = e
+                if attempt < max_retries - 1:
+                    wait_time = 2 ** attempt  # Exponential backoff: 1s, 2s, 4s
+                    logger.warning(
+                        f"MongoDB connection attempt {attempt + 1}/{max_retries} failed: {e}. "
+                        f"Retrying in {wait_time}s..."
+                    )
+                    time.sleep(wait_time)
+                else:
+                    logger.error(
+                        f"Failed to connect to MongoDB after {max_retries} attempts: {e}"
+                    )
+        
+        raise last_exception
 
     def get_type(self) -> str:
         return VectorType.MONGODB
@@ -46,10 +84,24 @@ class MongoDBVector(BaseVector):
             self.add_texts(texts, embeddings, **kwargs)
 
     def _create_collection(self):
-        if self._collection.name not in self._db.list_collection_names():
-            self._db.create_collection(self._collection.name)
+        try:
+            if self._collection.name not in self._db.list_collection_names():
+                logger.debug(f"Creating collection '{self._collection.name}'")
+                self._db.create_collection(self._collection.name)
+                logger.debug(f"Collection '{self._collection.name}' created successfully")
+        except OperationFailure as e:
+            error_code = getattr(e, "code", None)
+            # Code 48 is NamespaceExists, which is fine
+            if error_code != 48:
+                logger.error(f"Failed to create collection '{self._collection.name}': {e}")
+                raise
 
     def _create_vector_index(self, vector_size: int):
+        if vector_size <= 0:
+            raise ValueError(f"Invalid vector_size: {vector_size}. Must be greater than 0.")
+        
+        logger.debug(f"Creating vector search index '{self._index_name}' with {vector_size} dimensions")
+        
         model = SearchIndexModel(
             definition={
                 "fields": [
@@ -70,38 +122,100 @@ class MongoDBVector(BaseVector):
 
         try:
             self._collection.create_search_index(model=model)
+            logger.debug(f"Vector search index '{self._index_name}' creation initiated")
         except OperationFailure as e:
+            error_code = getattr(e, "code", None)
             # Code 68 is IndexAlreadyExists
-            if "IndexAlreadyExists" in str(e) or "DuplicateIndexName" in str(e) or e.code == 68:
-                logger.info(f"Index {self._index_name} already exists. Skipping creation.")
+            if error_code == 68 or "IndexAlreadyExists" in str(e) or "DuplicateIndexName" in str(e):
+                logger.info(f"Index '{self._index_name}' already exists. Skipping creation.")
+                # Still wait for index to be ready in case it's still building
+                self._wait_for_index_ready()
+                return
             else:
-                logger.error(f"Failed to create index {self._index_name}: {e}")
+                logger.error(
+                    f"Failed to create index '{self._index_name}': {e} "
+                    f"(error_code: {error_code})"
+                )
                 raise
 
         self._wait_for_index_ready()
 
     def _wait_for_index_ready(self, timeout: int = 300):
+        """
+        Wait for vector search index to become ready with exponential backoff.
+        
+        Args:
+            timeout: Maximum time to wait in seconds (default: 300)
+            
+        Raises:
+            TimeoutError: If index is not ready within timeout
+            OperationFailure: If index build fails
+        """
         start_time = time.time()
         delay = 1.0
         max_delay = 10.0
+        check_count = 0
+        
+        logger.debug(f"Waiting for index '{self._index_name}' to become ready (timeout: {timeout}s)")
         
         while time.time() - start_time < timeout:
             try:
                 cursor = self._collection.aggregate([{"$listSearchIndexes": {"name": self._index_name}}])
-                for index in cursor:
-                    if index.get("queryable") is True and index.get("status") == "READY":
-                        return
-                    if index.get("status") == "FAILED":
-                        raise OperationFailure(f"Index {self._index_name} build failed.")
+                indexes = list(cursor)
+                
+                if not indexes:
+                    logger.debug(f"Index '{self._index_name}' not found yet, retrying in {delay:.1f}s...")
+                else:
+                    for index in indexes:
+                        status = index.get("status")
+                        queryable = index.get("queryable")
+                        
+                        if queryable is True and status == "READY":
+                            elapsed = time.time() - start_time
+                            logger.debug(f"Index '{self._index_name}' is ready after {elapsed:.1f}s")
+                            return
+                        
+                        if status == "FAILED":
+                            error_msg = index.get("error", "Unknown error")
+                            logger.error(f"Index '{self._index_name}' build failed: {error_msg}")
+                            raise OperationFailure(f"Index '{self._index_name}' build failed: {error_msg}")
+                        
+                        # Log status periodically (every 10 checks)
+                        if check_count % 10 == 0 and check_count > 0:
+                            logger.debug(
+                                f"Index '{self._index_name}' status: {status}, "
+                                f"queryable: {queryable}, elapsed: {time.time() - start_time:.1f}s"
+                            )
+                
             except OperationFailure as e:
-                logger.warning(f"Error checking index status: {e}. Retrying...")
+                error_code = getattr(e, "code", None)
+                # Don't retry on permission errors (code 13)
+                if error_code == 13:
+                    logger.error(f"Permission denied when checking index status: {e}")
+                    raise
+                logger.warning(f"Error checking index status: {e}. Retrying in {delay:.1f}s...")
             
+            check_count += 1
             time.sleep(delay)
+            # Exponential backoff: delay increases by 1.5x each iteration, capped at max_delay
             delay = min(delay * 1.5, max_delay)
         
-        raise TimeoutError(f"Index {self._index_name} not ready within {timeout} seconds.")
+        elapsed = time.time() - start_time
+        logger.error(
+            f"Index '{self._index_name}' not ready within {timeout}s (elapsed: {elapsed:.1f}s)"
+        )
+        raise TimeoutError(f"Index '{self._index_name}' not ready within {timeout} seconds.")
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+        if not documents or not embeddings:
+            return
+        
+        if len(documents) != len(embeddings):
+            raise ValueError(
+                f"Mismatch between documents ({len(documents)}) and "
+                f"embeddings ({len(embeddings)}) count"
+            )
+        
         docs = []
         for i, doc in enumerate(documents):
             docs.append(
@@ -112,8 +226,22 @@ class MongoDBVector(BaseVector):
                     "group_id": self._group_id,
                 }
             )
-        if docs:
-            self._collection.insert_many(docs)
+        
+        try:
+            if docs:
+                self._collection.insert_many(docs)
+        except WriteError as e:
+            error_code = getattr(e, "code", None)
+            logger.error(
+                f"Write error when inserting documents: {e} (error_code: {error_code})"
+            )
+            raise
+        except OperationFailure as e:
+            error_code = getattr(e, "code", None)
+            logger.error(
+                f"Operation failed when inserting documents: {e} (error_code: {error_code})"
+            )
+            raise
 
     def text_exists(self, id: str) -> bool:
         return self._collection.find_one({"metadata.doc_id": id, "group_id": self._group_id}) is not None
@@ -125,9 +253,20 @@ class MongoDBVector(BaseVector):
         self._collection.delete_many({f"metadata.{key}": value, "group_id": self._group_id})
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        pipeline = self._get_search_pipeline(query_vector, **kwargs)
-        results = self._collection.aggregate(pipeline)
-        return self._results_to_documents(results)
+        if not query_vector:
+            logger.warning("Empty query vector provided to search_by_vector")
+            return []
+        
+        try:
+            pipeline = self._get_search_pipeline(query_vector, **kwargs)
+            results = self._collection.aggregate(pipeline)
+            return self._results_to_documents(results)
+        except OperationFailure as e:
+            error_code = getattr(e, "code", None)
+            logger.error(
+                f"Search operation failed: {e} (error_code: {error_code})"
+            )
+            raise
 
     def _get_search_pipeline(self, query_vector: list[float], **kwargs: Any) -> list[dict]:
         filter_dict = {"group_id": self._group_id}

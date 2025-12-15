@@ -1,4 +1,4 @@
-from urllib.parse import quote_plus
+from urllib.parse import quote, quote_plus
 
 from pydantic import Field, computed_field, model_validator
 from pydantic_settings import BaseSettings
@@ -55,8 +55,11 @@ class MongoDBConfig(BaseSettings):
         
         auth = ""
         if self.MONGODB_USERNAME:
-            password = quote_plus(self.MONGODB_PASSWORD) if self.MONGODB_PASSWORD else ""
-            auth = f"{quote_plus(self.MONGODB_USERNAME)}:{password}@"
+            # Use quote_plus for username (handles spaces as +)
+            # Use quote for password to handle special characters including colons
+            username = quote_plus(self.MONGODB_USERNAME)
+            password = quote(self.MONGODB_PASSWORD or "", safe="") if self.MONGODB_PASSWORD else ""
+            auth = f"{username}:{password}@"
         
         return f"mongodb://{auth}{self.MONGODB_HOST}:{self.MONGODB_PORT}"
 
