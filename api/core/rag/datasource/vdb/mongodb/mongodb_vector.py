@@ -3,10 +3,9 @@ import time
 from typing import TYPE_CHECKING, Any
 
 from pymongo import MongoClient
-from pymongo.errors import OperationFailure, ConnectionFailure, ServerSelectionTimeoutError
+from pymongo.errors import ConnectionFailure, OperationFailure, ServerSelectionTimeoutError
 from pymongo.operations import SearchIndexModel
 
-from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
@@ -86,6 +85,10 @@ class MongoDBVector(BaseVector):
 
     def _wait_for_index_ready(self, timeout: int = 300):
         start_time = time.time()
+        # Exponential backoff parameters
+        delay = 1.0
+        max_delay = 10.0
+        
         while time.time() - start_time < timeout:
             try:
                 cursor = self._collection.aggregate([{"$listSearchIndexes": {"name": self._index_name}}])
@@ -97,7 +100,9 @@ class MongoDBVector(BaseVector):
             except OperationFailure as e:
                 logger.warning(f"Error checking index status: {e}. Retrying...")
             
-            time.sleep(2)
+            time.sleep(delay)
+            # Increase delay with jitter or simple exponential, capped at max_delay
+            delay = min(delay * 1.5, max_delay)
         
         raise TimeoutError(f"Index {self._index_name} not ready within {timeout} seconds.")
 
