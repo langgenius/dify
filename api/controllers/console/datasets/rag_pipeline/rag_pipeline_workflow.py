@@ -975,6 +975,11 @@ class RagPipelineRecommendedPluginApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('type', type=str, location='args', required=False, default='all')
+        args = parser.parse_args()
+        type = args["type"]
+
         rag_pipeline_service = RagPipelineService()
-        recommended_plugins = rag_pipeline_service.get_recommended_plugins()
+        recommended_plugins = rag_pipeline_service.get_recommended_plugins(type)
         return recommended_plugins
