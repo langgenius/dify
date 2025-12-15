@@ -31,18 +31,18 @@ class FieldEncryption:
         """
         Derive key and IV from passphrase using OpenSSL's EVP_BytesToKey algorithm
         This matches crypto-js's key derivation which uses MD5
-        
+
         Args:
             passphrase: The encryption passphrase
             salt: 8-byte salt
-            
+
         Returns:
             Tuple of (key, iv) each 32 bytes and 16 bytes respectively
         """
         # crypto-js uses EVP_BytesToKey with MD5, 1 iteration
         key_size = 32  # 256 bits
         iv_size = 16  # 128 bits
-        
+
         m = []
         i = 0
         while len(b"".join(m)) < (key_size + iv_size):
@@ -54,21 +54,21 @@ class FieldEncryption:
             md.update(salt)
             m.append(md.digest())
             i += 1
-        
+
         ms = b"".join(m)
         key = ms[:key_size]
         iv = ms[key_size : key_size + iv_size]
         return key, iv
 
     @classmethod
-    def decrypt_field(cls, ciphertext: str) -> Optional[str]:
+    def decrypt_field(cls, ciphertext: str) -> str | None:
         """
         Decrypt field using AES-256-CBC
         Compatible with crypto-js AES.encrypt() format
-        
+
         Args:
             ciphertext: Base64 encoded encrypted text from frontend
-            
+
         Returns:
             Decrypted plaintext, or None if decryption fails
         """
@@ -107,28 +107,27 @@ class FieldEncryption:
             return None
 
     @classmethod
-    def decrypt_password(cls, encrypted_password: str) -> Optional[str]:
+    def decrypt_password(cls, encrypted_password: str) -> str | None:
         """
         Decrypt password field
-        
+
         Args:
             encrypted_password: Encrypted password from frontend
-            
+
         Returns:
             Decrypted password or None if decryption fails
         """
         return cls.decrypt_field(encrypted_password)
 
     @classmethod
-    def decrypt_verification_code(cls, encrypted_code: str) -> Optional[str]:
+    def decrypt_verification_code(cls, encrypted_code: str) -> str | None:
         """
         Decrypt verification code field
-        
+
         Args:
             encrypted_code: Encrypted code from frontend
-            
+
         Returns:
             Decrypted code or None if decryption fails
         """
         return cls.decrypt_field(encrypted_code)
-
