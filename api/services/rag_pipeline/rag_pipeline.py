@@ -1248,7 +1248,7 @@ class RagPipelineService:
             session.commit()
         return workflow_node_execution_db_model
 
-    def get_recommended_plugins(self, type) -> dict:
+    def get_recommended_plugins(self, type: str) -> dict:
         # Query active recommended plugins
         query = db.session.query(PipelineRecommendedPlugin).where(PipelineRecommendedPlugin.active == True)
         if type and type != "all":

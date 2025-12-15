@@ -1007,8 +1007,8 @@ class RagPipelineRecommendedPluginApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('type', type=str, location='args', required=False, default='all')
         args = parser.parse_args()
-        plugin_type = args["type"]
+        type = args["type"]
 
         rag_pipeline_service = RagPipelineService()
-        recommended_plugins = rag_pipeline_service.get_recommended_plugins(plugin_type)
+        recommended_plugins = rag_pipeline_service.get_recommended_plugins(type)
         return recommended_plugins
