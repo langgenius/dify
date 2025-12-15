@@ -42,7 +42,7 @@ pnpm test -- path/to/file.spec.tsx
 ## Test Authoring Principles
 
 - **Single behavior per test**: Each test verifies one user-observable behavior.
-- **Black-box first**: Assert external behavior and observable outputs, avoid internal implementation details.
+- **Black-box first**: Assert external behavior and observable outputs, avoid internal implementation details. Prefer role-based queries (`getByRole`) and pattern matching (`/text/i`) over hardcoded string assertions.
 - **Semantic naming**: Use `should <behavior> when <condition>` and group related cases with `describe(<subject or scenario>)`.
 - **AAA / Given–When–Then**: Separate Arrange, Act, and Assert clearly with code blocks or comments.
 - **Minimal but sufficient assertions**: Keep only the expectations that express the essence of the behavior.
@@ -93,6 +93,7 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
    - Testing time-based behavior (delays, animations)
    - If you mock all time-dependent functions, fake timers are unnecessary
 1. **Prefer importing over mocking project components**: When tests need other components from the project, import them directly instead of mocking them. Only mock external dependencies, APIs, or complex context providers that are difficult to set up.
+1. **DO NOT mock base components**: Never mock components from `@/app/components/base/` (e.g., `Loading`, `Button`, `Tooltip`, `Modal`). Base components will have their own dedicated tests. Use real components to test actual integration behavior.
 
 **Why this matters**: Mocks that don't match actual behavior can lead to:
 
@@ -100,6 +101,43 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 - **Missed bugs**: Tests don't catch real conditional rendering issues
 - **Maintenance burden**: Tests become misleading documentation
 - **State leakage**: Tests interfere with each other when shared state isn't reset
+
+## Path-Level Testing Strategy
+
+When assigned to test a **directory/path** (not just a single file), follow these guidelines:
+
+### Coverage Scope
+
+- Test **ALL files** in the assigned directory, not just the entry `index` file
+- Include all components, hooks, utilities within the path
+- Goal: 100% coverage of the entire directory contents
+
+### Test Organization
+
+Choose based on directory complexity:
+
+1. **Single spec file (Integration approach)** - Preferred for related components
+
+   - Minimize mocking - use real project components
+   - Test actual integration between components
+   - Only mock: API calls, complex context providers, third-party libs
+
+1. **Multiple spec files (Unit approach)** - For complex directories
+
+   - One spec file per component/hook/utility
+   - More isolated testing
+   - Useful when components are independent
+
+### Integration Testing First
+
+When using a single spec file:
+
+- ✅ **Import real project components** directly (including base components and siblings)
+- ✅ **Only mock**: API services (`@/service/*`), `next/navigation`, complex context providers
+- ❌ **DO NOT mock** base components (`@/app/components/base/*`)
+- ❌ **DO NOT mock** sibling/child components in the same directory
+
+> See [Example Structure](#example-structure) for correct import/mock patterns.
 
 ## Testing Components with Dedicated Dependencies
 
@@ -145,6 +183,17 @@ Treat component state as part of the public behavior: confirm the initial render
 - ✅ When creating lightweight provider stubs, mirror the real default values and surface helper builders (for example `createMockWorkflowContext`).
 - ✅ Reset shared stores (React context, Zustand, TanStack Query cache) between tests to avoid leaking state. Prefer helper factory functions over module-level singletons in specs.
 - ✅ For hooks that read from context, use `renderHook` with a custom wrapper that supplies required providers.
+- ✅ **Use factory functions for mock data**: Import actual types and create factory functions with complete defaults (see [Test Data Builders](#9-test-data-builders-anti-hardcoding) section).
+- ✅ If it's need to mock some common context provider used across many components (for example, `ProviderContext`), put it in __mocks__/context(for example, `__mocks__/context/provider-context`). To dynamically control the mock behavior (for example, toggling plan type), use module-level variables to track state and change them(for example, `context/provider-context-mock.spec.tsx`).
+- ✅ Use factory functions to create mock data with TypeScript types. This ensures type safety and makes tests more maintainable.
+
+**Rules**:
+
+1. **Import actual types**: Always import types from the source (`@/models/`, `@/types/`, etc.) instead of defining inline types.
+1. **Provide complete defaults**: Factory functions should return complete objects with all required fields filled with sensible defaults.
+1. **Allow partial overrides**: Accept `Partial<T>` to enable flexible customization for specific test cases.
+1. **Create list factories**: For array data, create a separate factory function that composes item factories.
+1. **Reference**: See `__mocks__/provider-context.ts` for reusable context mock factories used across multiple test files.
 
 ### 4. Performance Optimization
 
@@ -220,8 +269,16 @@ const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs =
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import Component from './index'
 
-// Mock dependencies
+// ✅ Import real project components (DO NOT mock these)
+// import Loading from '@/app/components/base/loading'
+// import { ChildComponent } from './child-component'
+
+// ✅ Mock external dependencies only
 jest.mock('@/service/api')
+jest.mock('next/navigation', () => ({
+  useRouter: () => ({ push: jest.fn() }),
+  usePathname: () => '/test',
+}))
 
 // Shared state for mocks (if needed)
 let mockSharedState = false
@@ -368,9 +425,9 @@ describe('Component', () => {
 
 ## Coverage Goals
 
-### ⚠️ MANDATORY: Complete Coverage in Single Generation
+### ⚠️ MANDATORY: Complete Coverage Per File
 
-Aim for 100% coverage:
+When generating tests for a **single file**, aim for 100% coverage in that generation:
 
 - ✅ 100% function coverage (every exported function/method tested)
 - ✅ 100% statement coverage (every line executed)

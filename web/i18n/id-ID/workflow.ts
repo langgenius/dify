@@ -444,6 +444,7 @@ const translation = {
       insertVarTip: 'Sisipkan Variabel',
       outputVars: 'Variabel Keluaran',
       inputVars: 'Variabel Masukan',
+      pluginNotInstalled: 'Plugin tidak terpasang',
     },
     start: {
       outputVars: {
@@ -548,6 +549,7 @@ const translation = {
         output: 'Mengambil data tersegmentasi',
         url: 'URL tersegmentasi',
         content: 'Konten tersegmentasi',
+        files: 'File yang diambil',
       },
       metadata: {
         options: {
@@ -579,6 +581,8 @@ const translation = {
       },
       knowledge: 'Pengetahuan',
       queryVariable: 'Variabel Kueri',
+      queryText: 'Teks Query',
+      queryAttachment: 'Cari Gambar',
     },
     http: {
       outputVars: {

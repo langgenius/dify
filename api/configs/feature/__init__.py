@@ -360,6 +360,57 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
+    IMAGE_FILE_BATCH_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a image batch upload operation",
+        default=10,
+    )
+
+    SINGLE_CHUNK_ATTACHMENT_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a single chunk attachment",
+        default=10,
+    )
+
+    ATTACHMENT_IMAGE_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed image file size for attachments in megabytes",
+        default=2,
+    )
+
+    ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT: NonNegativeInt = Field(
+        description="Timeout for downloading image attachments in seconds",
+        default=60,
+    )
+
+    # Annotation Import Security Configurations
+    ANNOTATION_IMPORT_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed CSV file size for annotation import in megabytes",
+        default=2,
+    )
+
+    ANNOTATION_IMPORT_MAX_RECORDS: PositiveInt = Field(
+        description="Maximum number of annotation records allowed in a single import",
+        default=10000,
+    )
+
+    ANNOTATION_IMPORT_MIN_RECORDS: PositiveInt = Field(
+        description="Minimum number of annotation records required in a single import",
+        default=1,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE: PositiveInt = Field(
+        description="Maximum number of annotation import requests per minute per tenant",
+        default=5,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
+        description="Maximum number of annotation import requests per hour per tenant",
+        default=20,
+    )
+
+    ANNOTATION_IMPORT_MAX_CONCURRENT: PositiveInt = Field(
+        description="Maximum number of concurrent annotation import tasks per tenant",
+        default=2,
+    )
+
     inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
         description=(
             "Comma-separated list of file extensions that are blocked from upload. "
@@ -1201,15 +1252,42 @@ class WorkflowLogConfig(BaseSettings):
 
 
 class SwaggerUIConfig(BaseSettings):
-    SWAGGER_UI_ENABLED: bool = Field(
-        description="Whether to enable Swagger UI in api module",
-        default=True,
+    """
+    Configuration for Swagger UI documentation.
+
+    Security Note: Swagger UI is automatically disabled in PRODUCTION environment
+    to prevent API information disclosure. Set SWAGGER_UI_ENABLED=true explicitly
+    to enable in production if needed.
+    """
+
+    SWAGGER_UI_ENABLED: bool | None = Field(
+        description="Whether to enable Swagger UI in api module. "
+        "Automatically disabled in PRODUCTION environment for security. "
+        "Set to true explicitly to enable in production.",
+        default=None,
     )
 
     SWAGGER_UI_PATH: str = Field(
         description="Swagger UI page path in api module",
         default="/swagger-ui.html",
     )
+
+    @property
+    def swagger_ui_enabled(self) -> bool:
+        """
+        Compute whether Swagger UI should be enabled.
+
+        If SWAGGER_UI_ENABLED is explicitly set, use that value.
+        Otherwise, disable in PRODUCTION environment for security.
+        """
+        if self.SWAGGER_UI_ENABLED is not None:
+            return self.SWAGGER_UI_ENABLED
+
+        # Auto-disable in production environment
+        import os
+
+        deploy_env = os.environ.get("DEPLOY_ENV", "PRODUCTION")
+        return deploy_env.upper() != "PRODUCTION"
 
 
 class TenantIsolatedTaskQueueConfig(BaseSettings):

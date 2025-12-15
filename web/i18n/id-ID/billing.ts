@@ -199,6 +199,23 @@ const translation = {
     title: 'Tingkatkan untuk membuka lebih banyak peristiwa pemicu',
     description: 'Anda telah mencapai batas pemicu acara alur kerja untuk paket ini.',
   },
+  viewBillingTitle: 'Penagihan dan Langganan',
+  viewBillingDescription: 'Kelola metode pembayaran, faktur, dan perubahan langganan',
+  viewBillingAction: 'Kelola',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Tingkatkan untuk mengunggah beberapa dokumen sekaligus',
+      description: 'Anda telah mencapai batas unggah — hanya satu dokumen yang dapat dipilih dan diunggah sekaligus dengan paket Anda saat ini.',
+    },
+    uploadMultipleFiles: {
+      title: 'Tingkatkan untuk membuka unggahan dokumen batch',
+      description: 'Unggah lebih banyak dokumen sekaligus untuk menghemat waktu dan meningkatkan efisiensi.',
+    },
+    addChunks: {
+      title: 'Tingkatkan untuk terus menambahkan potongan',
+      description: 'Anda telah mencapai batas penambahan potongan untuk paket ini.',
+    },
+  },
 }
 
 export default translation
