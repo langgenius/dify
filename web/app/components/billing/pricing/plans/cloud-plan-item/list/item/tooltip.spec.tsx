@@ -17,7 +17,7 @@ describe('Tooltip', () => {
 
       // Assert
       const panel = screen.getByText(content)
-      expect(panel).not.toBeNull()
+      expect(panel).toBeInTheDocument()
     })
   })
 
@@ -30,13 +30,13 @@ describe('Tooltip', () => {
       render(<Tooltip content={content} />)
 
       // Assert
-      expect(screen.getByTestId('tooltip-icon')).not.toBeNull()
+      expect(screen.getByTestId('tooltip-icon')).toBeInTheDocument()
     })
   })
 
   // Handling empty strings while keeping structure consistent
   describe('Edge cases', () => {
-    it('should render without crashing when pass an empty tooltip', () => {
+    it('should render without crashing when passing an empty content', () => {
       // Arrange
       const content = ''
 

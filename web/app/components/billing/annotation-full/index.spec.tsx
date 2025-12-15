@@ -51,7 +51,7 @@ describe('AnnotationFull', () => {
       expect(screen.getByText('billing.annotatedResponse.fullTipLine2')).toBeInTheDocument()
     })
 
-    it('should should render upgrade button when rendered', () => {
+    it('should render upgrade button when rendered', () => {
       // Act
       render(<AnnotationFull />)
 

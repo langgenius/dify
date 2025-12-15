@@ -37,7 +37,7 @@ describe('Item', () => {
       expect(container.querySelector('.group')).not.toBeNull()
     })
 
-    it('should treat an empty tooltip string as absent when tooltip is an empty string', () => {
+    it('should treat an empty tooltip string as absent', () => {
       // Arrange
       const label = 'Vector storage'
 
