@@ -1,11 +1,9 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import SegmentCard from './index'
-import { type Attachment, type ChildChunkDetail, ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
-
-// ============================================================================
-// External Dependencies Mocks
-// ============================================================================
+import { type Attachment, type ChildChunkDetail, ChunkingMode, type ParentMode, type SegmentDetailModel } from '@/models/datasets'
+import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
+import type { SegmentListContextValue } from '@/app/components/datasets/documents/detail/completed'
 
 // Mock react-i18next - external dependency
 jest.mock('react-i18next', () => ({
@@ -25,11 +23,11 @@ jest.mock('react-i18next', () => ({
 // ============================================================================
 
 const mockDocForm = { current: ChunkingMode.text }
-const mockParentMode = { current: 'paragraph' as 'paragraph' | 'full-doc' }
+const mockParentMode = { current: 'paragraph' as ParentMode }
 
 jest.mock('../../context', () => ({
-  useDocumentContext: (selector: (value: any) => any) => {
-    const value = {
+  useDocumentContext: (selector: (value: DocumentContextValue) => unknown) => {
+    const value: DocumentContextValue = {
       datasetId: 'test-dataset-id',
       documentId: 'test-document-id',
       docForm: mockDocForm.current,
@@ -41,8 +39,8 @@ jest.mock('../../context', () => ({
 
 const mockIsCollapsed = { current: true }
 jest.mock('../index', () => ({
-  useSegmentListContext: (selector: (value: any) => any) => {
-    const value = {
+  useSegmentListContext: (selector: (value: SegmentListContextValue) => unknown) => {
+    const value: SegmentListContextValue = {
       isCollapsed: mockIsCollapsed.current,
       fullScreen: false,
       toggleFullScreen: jest.fn(),
@@ -54,63 +52,37 @@ jest.mock('../index', () => ({
 }))
 
 // ============================================================================
-// Components with API dependencies - need mock to avoid ESM import issues
+// Component Mocks - components with complex ESM dependencies (ky, react-pdf-highlighter, etc.)
+// These are mocked to avoid Jest ESM parsing issues, not because they're external
 // ============================================================================
 
-// StatusItem depends on useDocumentEnable/Disable/Delete hooks which use ky (ESM module)
+// StatusItem has deep dependency: use-document hooks → service/base → ky (ESM)
 jest.mock('../../../status-item', () => ({
   __esModule: true,
-  default: ({ status, reverse, textCls }: any) => (
+  default: ({ status, reverse, textCls }: { status: string; reverse?: boolean; textCls?: string }) => (
     <div data-testid="status-item" data-status={status} data-reverse={reverse} className={textCls}>
       Status: {status}
     </div>
   ),
 }))
 
-// ImageList depends on FileThumb -> file-uploader/utils -> ky (ESM module)
+// ImageList has deep dependency: FileThumb → file-uploader → ky, react-pdf-highlighter (ESM)
 jest.mock('@/app/components/datasets/common/image-list', () => ({
   __esModule: true,
-  default: ({ images, size, className }: any) => (
+  default: ({ images, size, className }: { images: Array<{ sourceUrl: string; name: string }>; size?: string; className?: string }) => (
     <div data-testid="image-list" data-image-count={images.length} data-size={size} className={className}>
-      {images.map((img: any, idx: number) => (
+      {images.map((img, idx: number) => (
         <img key={idx} src={img.sourceUrl} alt={img.name} />
       ))}
     </div>
   ),
 }))
 
-// Markdown uses next/dynamic which causes async rendering issues in tests
+// Markdown uses next/dynamic and react-syntax-highlighter (ESM)
 jest.mock('@/app/components/base/markdown', () => ({
   __esModule: true,
-  Markdown: ({ content, className }: any) => (
-    <div data-testid="markdown" className={className}>{content}</div>
-  ),
-}))
-
-// ============================================================================
-// Portal Component Mocks - render to document.body, problematic in test env
-// ============================================================================
-
-jest.mock('@/app/components/base/confirm', () => ({
-  __esModule: true,
-  default: ({ isShow, title, confirmText, onConfirm, onCancel }: any) =>
-    isShow
-      ? (
-        <div data-testid="confirm-modal">
-          <div data-testid="confirm-title">{title}</div>
-          <button onClick={onConfirm} data-testid="confirm-btn">{confirmText}</button>
-          <button onClick={onCancel} data-testid="cancel-btn">Cancel</button>
-        </div>
-      )
-      : null,
-}))
-
-jest.mock('@/app/components/base/tooltip', () => ({
-  __esModule: true,
-  default: ({ children, popupContent }: any) => (
-    <div data-testid="tooltip" data-popup-content={popupContent}>
-      {children}
-    </div>
+  Markdown: ({ content, className }: { content: string; className?: string }) => (
+    <div data-testid="markdown" className={`markdown-body ${className || ''}`}>{content}</div>
   ),
 }))
 
@@ -278,8 +250,9 @@ describe('SegmentCard', () => {
         />,
       )
 
-      const tooltips = screen.getAllByTestId('tooltip')
-      expect(tooltips.length).toBeGreaterThanOrEqual(1)
+      expect(screen.getByTestId('segment-edit-button')).toBeInTheDocument()
+      expect(screen.getByTestId('segment-delete-button')).toBeInTheDocument()
+      expect(screen.getByRole('switch')).toBeInTheDocument()
     })
 
     it('should not show action buttons when embeddingAvailable is false', () => {
@@ -333,7 +306,7 @@ describe('SegmentCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
+        expect(screen.getByText('datasetDocuments.segment.delete')).toBeInTheDocument()
       })
     })
 
@@ -353,13 +326,13 @@ describe('SegmentCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
+        expect(screen.getByText('datasetDocuments.segment.delete')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('cancel-btn'))
+      fireEvent.click(screen.getByText('common.operation.cancel'))
 
       await waitFor(() => {
-        expect(screen.queryByTestId('confirm-modal')).not.toBeInTheDocument()
+        expect(screen.queryByText('datasetDocuments.segment.delete')).not.toBeInTheDocument()
       })
     })
   })
@@ -451,10 +424,10 @@ describe('SegmentCard', () => {
       fireEvent.click(deleteButton)
 
       await waitFor(() => {
-        expect(screen.getByTestId('confirm-modal')).toBeInTheDocument()
+        expect(screen.getByText('datasetDocuments.segment.delete')).toBeInTheDocument()
       })
 
-      fireEvent.click(screen.getByTestId('confirm-btn'))
+      fireEvent.click(screen.getByText('common.operation.sure'))
 
       await waitFor(() => {
         expect(onDelete).toHaveBeenCalledWith('test-segment-id')
@@ -830,7 +803,7 @@ describe('SegmentCard', () => {
     })
 
     it('should handle empty detail object gracefully', () => {
-      render(<SegmentCard loading={false} detail={{} as any} focused={defaultFocused} />)
+      render(<SegmentCard loading={false} detail={{} as SegmentDetailModel} focused={defaultFocused} />)
 
       expect(screen.getByText(/Chunk/i)).toBeInTheDocument()
     })
