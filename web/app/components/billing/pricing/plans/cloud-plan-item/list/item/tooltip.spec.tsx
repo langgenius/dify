@@ -36,7 +36,7 @@ describe('Tooltip', () => {
 
   // Handling empty strings while keeping structure consistent
   describe('Edge cases', () => {
-    it('should render without crashing when passing an empty content', () => {
+    it('should render without crashing when passed empty content', () => {
       // Arrange
       const content = ''
 
