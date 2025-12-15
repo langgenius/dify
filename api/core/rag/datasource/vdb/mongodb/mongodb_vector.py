@@ -28,40 +28,77 @@ logger = logging.getLogger(__name__)
 
 def _sanitize_uri_for_logging(uri: str) -> str:
     """
-    Sanitize MongoDB URI for safe logging by masking credentials.
+    Sanitize MongoDB URI for safe logging by masking all credentials.
+    
+    This function ensures no passwords or sensitive information are logged.
+    It handles various URI formats including mongodb:// and mongodb+srv://.
     
     Args:
         uri: MongoDB connection URI
         
     Returns:
-        URI with credentials masked (e.g., mongodb://user:***@host:port)
+        URI with all credentials masked (e.g., mongodb://user:***@host:port)
+        Returns "***" if URI cannot be safely sanitized
     """
-    if not uri:
+    if not uri or not isinstance(uri, str):
+        return "***"
+    
+    # Remove any potential password leakage by checking for common patterns
+    # This is a safety check before parsing
+    if "://" not in uri:
         return "***"
     
     try:
         parsed = urlparse(uri)
         if parsed.username:
-            # Mask password, keep username visible for debugging
-            masked_netloc = f"{parsed.username}:***@{parsed.hostname}"
+            # Mask password completely - never log it
+            masked_netloc = f"{parsed.username}:***@{parsed.hostname or '***'}"
             if parsed.port:
                 masked_netloc += f":{parsed.port}"
-            return f"{parsed.scheme}://{masked_netloc}{parsed.path or ''}{parsed.query and '?' + parsed.query or ''}"
+            # Reconstruct URI without password
+            sanitized = f"{parsed.scheme}://{masked_netloc}"
+            if parsed.path:
+                sanitized += parsed.path
+            if parsed.query:
+                sanitized += f"?{parsed.query}"
+            if parsed.fragment:
+                sanitized += f"#{parsed.fragment}"
+            return sanitized
+        else:
+            # No username, but still sanitize to be safe
+            masked_netloc = parsed.hostname or "***"
+            if parsed.port:
+                masked_netloc += f":{parsed.port}"
+            return f"{parsed.scheme}://{masked_netloc}{parsed.path or ''}"
     except (ValueError, AttributeError, TypeError) as e:
-        # If parsing fails, mask the entire URI after @ symbol
-        logger.debug(f"URI parsing failed, using fallback sanitization: {e}")
+        # If parsing fails, use aggressive masking
+        logger.debug(f"URI parsing failed, using aggressive sanitization: {type(e).__name__}")
         if "@" in uri:
+            # Split at @ and mask everything before it that might contain credentials
             parts = uri.split("@", 1)
             if len(parts) == 2:
-                # Mask credentials part
                 auth_part = parts[0]
                 if "://" in auth_part:
                     scheme = auth_part.split("://")[0]
                     credentials = auth_part.split("://")[1]
                     if ":" in credentials:
+                        # Extract username only, mask password
                         username = credentials.split(":")[0]
                         return f"{scheme}://{username}:***@{parts[1]}"
+                    else:
+                        # No colon, but might still have credentials
+                        return f"{scheme}://***@{parts[1]}"
+                else:
+                    # No scheme, mask everything before @
+                    return f"***@{parts[1]}"
+        # If no @ found, check if it looks like it might have credentials
+        if ":" in uri and "://" in uri:
+            # Might have credentials, mask after scheme
+            scheme_part = uri.split("://", 1)
+            if len(scheme_part) == 2:
+                return f"{scheme_part[0]}://***"
     
+    # Final fallback - mask everything
     return "***"
 
 
@@ -69,13 +106,29 @@ class MongoDBVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config):
         super().__init__(collection_name)
         self._config = config
-        uri = config.MONGODB_CONNECT_URI
+        try:
+            uri = config.MONGODB_CONNECT_URI
+        except Exception as e:
+            logger.error(f"Failed to get MongoDB connection URI: {e}")
+            raise ValueError(f"Invalid MongoDB configuration: {e}") from e
+        
+        # Always sanitize URI before logging - never log credentials
         sanitized_uri = _sanitize_uri_for_logging(uri)
         logger.info(
             f"Initializing MongoDBVector: collection='{collection_name}', "
             f"database='{config.MONGODB_DATABASE}', index='{config.MONGODB_VECTOR_INDEX_NAME}', "
             f"uri='{sanitized_uri}'"
         )
+        
+        # Verify URI doesn't contain obvious password leakage (safety check)
+        if uri and "@" in uri and "://" in uri:
+            auth_part = uri.split("@")[0].split("://")[-1]
+            if ":" in auth_part:
+                parts = auth_part.split(":", 1)
+                if len(parts) == 2 and parts[1] and parts[1] != "***":
+                    # Password detected in URI - this should never happen in logs
+                    logger.warning("Potential credential detected in URI - ensuring sanitization")
+        
         self._client = MongoClient(uri, serverSelectionTimeoutMS=5000)
         self._check_connection()
         self._db = self._client[config.MONGODB_DATABASE]

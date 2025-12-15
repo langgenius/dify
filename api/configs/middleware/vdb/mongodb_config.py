@@ -93,7 +93,7 @@ class MongoDBConfig(BaseSettings):
             MongoDB connection URI string
             
         Raises:
-            ValueError: If URI construction fails due to invalid components
+            ValueError: If URI construction fails due to invalid components with clear error messages
         """
         import logging
         logger = logging.getLogger(__name__)
@@ -103,12 +103,40 @@ class MongoDBConfig(BaseSettings):
                 logger.debug("Building MongoDB URI with default localhost connection")
                 return "mongodb://localhost:27017"
             
+            # Validate host is a string
+            if not isinstance(self.MONGODB_HOST, str) or not self.MONGODB_HOST.strip():
+                raise ValueError(
+                    "MONGODB_HOST must be a non-empty string. "
+                    f"Received: {type(self.MONGODB_HOST).__name__}"
+                )
+            
+            # Validate port is within valid range
+            if not isinstance(self.MONGODB_PORT, int) or not (1 <= self.MONGODB_PORT <= 65535):
+                raise ValueError(
+                    f"MONGODB_PORT must be an integer between 1 and 65535. "
+                    f"Received: {self.MONGODB_PORT} (type: {type(self.MONGODB_PORT).__name__})"
+                )
+            
             auth = ""
             if self.MONGODB_USERNAME:
+                # Validate username is a string
+                if not isinstance(self.MONGODB_USERNAME, str):
+                    raise ValueError(
+                        f"MONGODB_USERNAME must be a string. "
+                        f"Received: {type(self.MONGODB_USERNAME).__name__}"
+                    )
+                
                 # Use quote_plus for username (handles spaces as +)
                 # Use quote for password to handle special characters including colons
-                username = quote_plus(self.MONGODB_USERNAME)
-                password = quote(self.MONGODB_PASSWORD or "", safe="") if self.MONGODB_PASSWORD else ""
+                try:
+                    username = quote_plus(self.MONGODB_USERNAME)
+                    password = quote(self.MONGODB_PASSWORD or "", safe="") if self.MONGODB_PASSWORD else ""
+                except (TypeError, AttributeError) as e:
+                    raise ValueError(
+                        f"Failed to encode MongoDB credentials: {e}. "
+                        "Please ensure MONGODB_USERNAME and MONGODB_PASSWORD are valid strings."
+                    ) from e
+                
                 auth = f"{username}:{password}@"
                 logger.debug(
                     f"Building MongoDB URI with authentication for host '{self.MONGODB_HOST}'"
@@ -119,11 +147,31 @@ class MongoDBConfig(BaseSettings):
                 )
             
             uri = f"mongodb://{auth}{self.MONGODB_HOST}:{self.MONGODB_PORT}"
-            logger.debug(f"MongoDB URI constructed successfully (host: {self.MONGODB_HOST}, port: {self.MONGODB_PORT})")
+            logger.debug(
+                f"MongoDB URI constructed successfully (host: {self.MONGODB_HOST}, port: {self.MONGODB_PORT})"
+            )
             return uri
-        except (ValueError, TypeError) as e:
-            logger.error(f"Failed to build MongoDB URI: {e}")
-            raise ValueError(f"Invalid MongoDB configuration for URI construction: {e}") from e
+        except ValueError:
+            # Re-raise ValueError as-is (already has clear message)
+            raise
+        except (TypeError, AttributeError) as e:
+            logger.error(
+                f"Type error during MongoDB URI construction: {e}. "
+                "Please check that all configuration values are of the correct type."
+            )
+            raise ValueError(
+                f"Invalid MongoDB configuration type for URI construction: {e}. "
+                "Please verify MONGODB_HOST (str), MONGODB_PORT (int), "
+                "MONGODB_USERNAME (str), and MONGODB_PASSWORD (str) are correct types."
+            ) from e
+        except Exception as e:
+            logger.error(
+                f"Unexpected error during MongoDB URI construction: {e} (type: {type(e).__name__})"
+            )
+            raise ValueError(
+                f"Unexpected error building MongoDB connection URI: {e}. "
+                "Please check your MongoDB configuration settings."
+            ) from e
 
     @computed_field
     @property
