@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from pymongo import MongoClient
 from pymongo.errors import (
+    ConfigurationError,
     ConnectionFailure,
     OperationFailure,
     ServerSelectionTimeoutError,
@@ -32,6 +33,7 @@ def _sanitize_uri_for_logging(uri: str) -> str:
     
     This function ensures no passwords or sensitive information are logged.
     It handles various URI formats including mongodb:// and mongodb+srv://.
+    Uses multiple fallback strategies to handle edge cases and malformed URIs.
     
     Args:
         uri: MongoDB connection URI
@@ -40,16 +42,51 @@ def _sanitize_uri_for_logging(uri: str) -> str:
         URI with all credentials masked (e.g., mongodb://user:***@host:port)
         Returns "***" if URI cannot be safely sanitized
     """
-    if not uri or not isinstance(uri, str):
+    if not uri:
         return "***"
     
+    if not isinstance(uri, str):
+        return "***"
+    
+    # Empty or whitespace-only strings
+    if not uri.strip():
+        return "***"
+    
+    # Must contain scheme separator
     if "://" not in uri:
         return "***"
     
     try:
+        # Primary method: use urlparse for proper URI parsing
         parsed = urlparse(uri)
+        
+        # Validate scheme
+        if not parsed.scheme or parsed.scheme not in ("mongodb", "mongodb+srv"):
+            # If scheme is invalid, still try to sanitize but be cautious
+            logger.debug(f"Unusual URI scheme detected: {parsed.scheme}")
+        
+        # Build sanitized URI
         if parsed.username:
-            masked_netloc = f"{parsed.username}:***@{parsed.hostname or '***'}"
+            # Has authentication - mask password
+            masked_netloc = f"{parsed.username}:***@"
+            if parsed.hostname:
+                masked_netloc += parsed.hostname
+            else:
+                masked_netloc += "***"
+            if parsed.port:
+                masked_netloc += f":{parsed.port}"
+            
+            sanitized = f"{parsed.scheme}://{masked_netloc}"
+            if parsed.path:
+                sanitized += parsed.path
+            if parsed.query:
+                sanitized += f"?{parsed.query}"
+            if parsed.fragment:
+                sanitized += f"#{parsed.fragment}"
+            return sanitized
+        else:
+            # No authentication
+            masked_netloc = parsed.hostname or "***"
             if parsed.port:
                 masked_netloc += f":{parsed.port}"
             sanitized = f"{parsed.scheme}://{masked_netloc}"
@@ -60,32 +97,50 @@ def _sanitize_uri_for_logging(uri: str) -> str:
             if parsed.fragment:
                 sanitized += f"#{parsed.fragment}"
             return sanitized
-        else:
-            masked_netloc = parsed.hostname or "***"
-            if parsed.port:
-                masked_netloc += f":{parsed.port}"
-            return f"{parsed.scheme}://{masked_netloc}{parsed.path or ''}"
+            
     except (ValueError, AttributeError, TypeError) as e:
-        logger.debug(f"URI parsing failed, using aggressive sanitization: {type(e).__name__}")
+        # Fallback: manual parsing for edge cases
+        logger.debug(f"URI parsing failed, using fallback sanitization: {type(e).__name__}")
+        
+        # Check for @ symbol indicating credentials
         if "@" in uri:
-            parts = uri.split("@", 1)
-            if len(parts) == 2:
-                auth_part = parts[0]
-                if "://" in auth_part:
-                    scheme = auth_part.split("://")[0]
-                    credentials = auth_part.split("://")[1]
-                    if ":" in credentials:
-                        username = credentials.split(":")[0]
-                        return f"{scheme}://{username}:***@{parts[1]}"
+            try:
+                parts = uri.split("@", 1)
+                if len(parts) == 2:
+                    auth_part = parts[0]
+                    rest_part = parts[1]
+                    
+                    # Extract scheme
+                    if "://" in auth_part:
+                        scheme_end = auth_part.find("://")
+                        scheme = auth_part[:scheme_end]
+                        credentials = auth_part[scheme_end + 3:]
+                        
+                        # Extract username if present
+                        if ":" in credentials:
+                            username = credentials.split(":", 1)[0]
+                            return f"{scheme}://{username}:***@{rest_part}"
+                        else:
+                            return f"{scheme}://***@{rest_part}"
                     else:
-                        return f"{scheme}://***@{parts[1]}"
-                else:
-                    return f"***@{parts[1]}"
-        if ":" in uri and "://" in uri:
-            scheme_part = uri.split("://", 1)
-            if len(scheme_part) == 2:
-                return f"{scheme_part[0]}://***"
+                        # No scheme found, be very cautious
+                        return "***"
+            except (ValueError, IndexError, AttributeError):
+                # If fallback parsing fails, return safe default
+                pass
+        
+        # Last resort: if we can identify scheme, mask everything after it
+        if "://" in uri:
+            try:
+                scheme_part = uri.split("://", 1)
+                if len(scheme_part) == 2:
+                    scheme = scheme_part[0]
+                    # Mask everything after scheme to be safe
+                    return f"{scheme}://***"
+            except (ValueError, IndexError):
+                pass
     
+    # Ultimate fallback: return safe default
     return "***"
 
 
@@ -93,12 +148,23 @@ class MongoDBVector(BaseVector):
     def __init__(self, collection_name: str, group_id: str, config):
         super().__init__(collection_name)
         self._config = config
+        
+        # Get URI with consistent exception handling
         try:
             uri = config.MONGODB_CONNECT_URI
-        except Exception as e:
-            logger.error(f"Failed to get MongoDB connection URI: {e}")
-            raise ValueError(f"Invalid MongoDB configuration: {e}") from e
+        except ValueError as e:
+            # ValueError from config indicates configuration issue
+            logger.error(f"Invalid MongoDB configuration: {e}")
+            raise
+        except (AttributeError, RuntimeError) as e:
+            # AttributeError: property access issue, RuntimeError: unexpected runtime issue
+            logger.error(
+                f"Unexpected error getting MongoDB connection URI: {e} (type: {type(e).__name__})",
+                exc_info=True
+            )
+            raise ValueError(f"Failed to get MongoDB connection URI: {e}") from e
         
+        # Always sanitize URI before logging
         sanitized_uri = _sanitize_uri_for_logging(uri)
         logger.info(
             f"Initializing MongoDBVector: collection='{collection_name}', "
@@ -106,18 +172,23 @@ class MongoDBVector(BaseVector):
             f"uri='{sanitized_uri}'"
         )
         
-        if uri and "@" in uri and "://" in uri:
-            auth_part = uri.split("@")[0].split("://")[-1]
-            if ":" in auth_part:
-                parts = auth_part.split(":", 1)
-                if len(parts) == 2 and parts[1] and parts[1] != "***":
-                    logger.warning("Potential credential detected in URI - ensuring sanitization")
-        
         client_kwargs = {}
         if config.MONGODB_SERVER_SELECTION_TIMEOUT_MS > 0:
             client_kwargs["serverSelectionTimeoutMS"] = config.MONGODB_SERVER_SELECTION_TIMEOUT_MS
         
-        self._client = MongoClient(uri, **client_kwargs)
+        try:
+            self._client = MongoClient(uri, **client_kwargs)
+        except (ConfigurationError, ValueError, TypeError) as e:
+            # ConfigurationError: invalid MongoDB configuration
+            # ValueError: invalid URI format
+            # TypeError: invalid parameter types
+            logger.error(
+                f"Failed to create MongoDB client: {e} (type: {type(e).__name__}). "
+                f"URI: {sanitized_uri}"
+            )
+            raise ValueError(f"Failed to create MongoDB client: {e}") from e
+        
+        # Check connection with transparent retry logic
         self._check_connection()
         self._db = self._client[config.MONGODB_DATABASE]
         self._collection = self._db[collection_name]
@@ -138,46 +209,133 @@ class MongoDBVector(BaseVector):
         Set MONGODB_CONNECTION_RETRY_ATTEMPTS to 0 to disable retries (fail immediately).
         Set to 1 for a single attempt with no retries.
         
+        All connection attempts and failures are logged for transparency.
+        Total retry time is tracked and reported on failure to help diagnose performance issues.
+        
         Raises:
             ConnectionFailure: If connection fails after all retries
             ServerSelectionTimeoutError: If server selection times out after all retries
+            ValueError: If retry configuration is invalid
         """
         max_retries = self._config.MONGODB_CONNECTION_RETRY_ATTEMPTS
         
+        if not isinstance(max_retries, int) or max_retries < 0:
+            raise ValueError(
+                f"MONGODB_CONNECTION_RETRY_ATTEMPTS must be a non-negative integer. "
+                f"Received: {max_retries} (type: {type(max_retries).__name__})"
+            )
+        
+        # Track timing for performance transparency
+        start_time = time.time()
+        sanitized_uri = _sanitize_uri_for_logging(self._config.MONGODB_CONNECT_URI)
+        
         if max_retries == 0:
+            # No retries - fail immediately
             try:
                 self._client.admin.command('ping')
+                elapsed = time.time() - start_time
+                logger.debug(f"MongoDB connection successful (no retries, elapsed: {elapsed:.2f}s)")
                 return
             except (ConnectionFailure, ServerSelectionTimeoutError) as e:
-                logger.error(f"MongoDB connection failed (retries disabled): {e}")
+                elapsed = time.time() - start_time
+                logger.error(
+                    f"MongoDB connection failed (retries disabled, elapsed: {elapsed:.2f}s): {e}. "
+                    f"URI: {sanitized_uri}"
+                )
                 raise
+            except (RuntimeError, OSError) as e:
+                # RuntimeError: unexpected runtime issues (e.g., client already closed)
+                # OSError: system-level errors (e.g., network issues not caught by pymongo)
+                elapsed = time.time() - start_time
+                logger.error(
+                    f"Unexpected error during MongoDB connection check (elapsed: {elapsed:.2f}s): "
+                    f"{e} (type: {type(e).__name__}). URI: {sanitized_uri}",
+                    exc_info=True
+                )
+                raise ConnectionFailure(f"Connection check failed: {e}") from e
         
+        # Retry logic with exponential backoff
         backoff_base = self._config.MONGODB_CONNECTION_RETRY_BACKOFF_BASE
         max_wait = self._config.MONGODB_CONNECTION_RETRY_MAX_WAIT
         
+        if not isinstance(backoff_base, (int, float)) or backoff_base <= 0:
+            raise ValueError(
+                f"MONGODB_CONNECTION_RETRY_BACKOFF_BASE must be a positive number. "
+                f"Received: {backoff_base} (type: {type(backoff_base).__name__})"
+            )
+        
+        if not isinstance(max_wait, (int, float)) or max_wait <= 0:
+            raise ValueError(
+                f"MONGODB_CONNECTION_RETRY_MAX_WAIT must be a positive number. "
+                f"Received: {max_wait} (type: {type(max_wait).__name__})"
+            )
+        
         last_exception = None
+        total_wait_time = 0.0
+        
         for attempt in range(max_retries):
             try:
                 self._client.admin.command('ping')
+                elapsed = time.time() - start_time
                 if attempt > 0:
-                    logger.info(f"MongoDB connection successful after {attempt + 1} attempts")
+                    logger.info(
+                        f"MongoDB connection successful after {attempt + 1} attempts "
+                        f"(total elapsed: {elapsed:.2f}s, wait time: {total_wait_time:.2f}s). "
+                        f"URI: {sanitized_uri}"
+                    )
+                else:
+                    logger.debug(f"MongoDB connection successful (elapsed: {elapsed:.2f}s)")
                 return
             except (ConnectionFailure, ServerSelectionTimeoutError) as e:
                 last_exception = e
                 if attempt < max_retries - 1:
                     wait_time = min(backoff_base * (2 ** attempt), max_wait)
+                    total_wait_time += wait_time
+                    elapsed = time.time() - start_time
                     logger.warning(
                         f"MongoDB connection attempt {attempt + 1}/{max_retries} failed: {e}. "
-                        f"Retrying in {wait_time}s..."
+                        f"Retrying in {wait_time:.2f}s... "
+                        f"(elapsed: {elapsed:.2f}s, total wait: {total_wait_time:.2f}s). "
+                        f"URI: {sanitized_uri}"
                     )
                     time.sleep(wait_time)
                 else:
+                    elapsed = time.time() - start_time
                     logger.error(
-                        f"Failed to connect to MongoDB after {max_retries} attempts: {e}"
+                        f"Failed to connect to MongoDB after {max_retries} attempts "
+                        f"(total elapsed: {elapsed:.2f}s, total wait: {total_wait_time:.2f}s): {e}. "
+                        f"URI: {sanitized_uri}"
                     )
+            except (RuntimeError, OSError) as e:
+                # RuntimeError: unexpected runtime issues (e.g., client already closed)
+                # OSError: system-level errors (e.g., network issues not caught by pymongo)
+                # These should not be retried as they indicate non-transient issues
+                elapsed = time.time() - start_time
+                logger.error(
+                    f"Unexpected error during MongoDB connection check "
+                    f"(attempt {attempt + 1}/{max_retries}, elapsed: {elapsed:.2f}s): "
+                    f"{e} (type: {type(e).__name__}). URI: {sanitized_uri}",
+                    exc_info=True
+                )
+                raise ConnectionFailure(f"Connection check failed with unexpected error: {e}") from e
         
+        # All retries exhausted
         if last_exception is None:
-            raise ConnectionFailure("Connection check failed with unknown error")
+            elapsed = time.time() - start_time
+            error_msg = (
+                f"Connection check failed with unknown error after {max_retries} attempts "
+                f"(elapsed: {elapsed:.2f}s). URI: {sanitized_uri}"
+            )
+            logger.error(error_msg)
+            raise ConnectionFailure(error_msg)
+        
+        elapsed = time.time() - start_time
+        error_msg = (
+            f"Failed to connect to MongoDB after {max_retries} attempts "
+            f"(total elapsed: {elapsed:.2f}s, total wait: {total_wait_time:.2f}s). "
+            f"Last error: {last_exception}. URI: {sanitized_uri}"
+        )
+        logger.error(error_msg)
         raise last_exception
 
     def get_type(self) -> str:
@@ -307,7 +465,10 @@ class MongoDBVector(BaseVector):
                     f"Connection error when checking index status: {e}. "
                     f"Retrying in {delay:.1f}s..."
                 )
-            except Exception as e:
+            except (RuntimeError, OSError, ValueError) as e:
+                # RuntimeError: unexpected runtime issues
+                # OSError: system-level errors
+                # ValueError: invalid parameters or data
                 logger.error(
                     f"Unexpected error when checking index status: {e} (type: {type(e).__name__}). "
                     f"Retrying in {delay:.1f}s...",

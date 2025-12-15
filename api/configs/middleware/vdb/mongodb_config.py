@@ -161,12 +161,12 @@ class MongoDBConfig(BaseSettings):
                 "Please verify MONGODB_HOST (str), MONGODB_PORT (int), "
                 "MONGODB_USERNAME (str), and MONGODB_PASSWORD (str) are correct types."
             ) from e
-        except Exception as e:
+        except (UnicodeEncodeError, RuntimeError) as e:
             logger.error(
-                f"Unexpected error during MongoDB URI construction: {e} (type: {type(e).__name__})"
+                f"Encoding or runtime error during MongoDB URI construction: {e} (type: {type(e).__name__})"
             )
             raise ValueError(
-                f"Unexpected error building MongoDB connection URI: {e}. "
+                f"Failed to build MongoDB connection URI due to encoding or runtime error: {e}. "
                 "Please check your MongoDB configuration settings."
             ) from e
 
@@ -178,10 +178,40 @@ class MongoDBConfig(BaseSettings):
         
         If MONGODB_URI is provided, it takes precedence.
         Otherwise, builds URI from individual components (host, port, username, password).
+        
+        Raises:
+            ValueError: If URI construction fails or MONGODB_URI is invalid
         """
+        import logging
+        logger = logging.getLogger(__name__)
+        
         if self.MONGODB_URI:
+            if not isinstance(self.MONGODB_URI, str) or not self.MONGODB_URI.strip():
+                raise ValueError(
+                    "MONGODB_URI must be a non-empty string. "
+                    f"Received: {type(self.MONGODB_URI).__name__}"
+                )
+            # Validate URI format
+            if "://" not in self.MONGODB_URI:
+                raise ValueError(
+                    f"Invalid MONGODB_URI format: missing scheme (mongodb:// or mongodb+srv://). "
+                    f"URI must start with 'mongodb://' or 'mongodb+srv://'"
+                )
             return self.MONGODB_URI
-        return self._build_connection_uri()
+        
+        try:
+            return self._build_connection_uri()
+        except ValueError:
+            # Re-raise ValueError as-is (already has clear error message)
+            raise
+        except (AttributeError, RuntimeError) as e:
+            logger.error(
+                f"Unexpected error getting MongoDB connection URI: {e} (type: {type(e).__name__})"
+            )
+            raise ValueError(
+                f"Failed to get MongoDB connection URI: {e}. "
+                "Please check your MongoDB configuration settings."
+            ) from e
 
     @model_validator(mode="after")
     def validate_mongodb_config(self):
