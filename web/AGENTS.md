@@ -1,5 +1,3 @@
-# Cursor Rules for Dify Project
-
 ## Automated Test Generation
 
 - Use `web/testing/testing.md` as the canonical instruction set for generating frontend automated tests.

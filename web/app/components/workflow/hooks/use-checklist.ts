@@ -66,12 +66,20 @@ export type ChecklistItem = {
   unConnected?: boolean
   errorMessage?: string
   canNavigate: boolean
+  disableGoTo?: boolean
 }
 
 const START_NODE_TYPES: BlockEnum[] = [
   BlockEnum.Start,
   BlockEnum.TriggerSchedule,
   BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+]
+
+// Node types that depend on plugins
+const PLUGIN_DEPENDENT_TYPES: BlockEnum[] = [
+  BlockEnum.Tool,
+  BlockEnum.DataSource,
   BlockEnum.TriggerPlugin,
 ]
 
@@ -157,7 +165,14 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
       if (node.type === CUSTOM_NODE) {
         const checkData = getCheckData(node.data)
         const validator = nodesExtraData?.[node.data.type as BlockEnum]?.checkValid
-        let errorMessage = validator ? validator(checkData, t, moreDataForCheckValid).errorMessage : undefined
+        const isPluginMissing = PLUGIN_DEPENDENT_TYPES.includes(node.data.type as BlockEnum) && node.data._pluginInstallLocked
+
+        // Check if plugin is installed for plugin-dependent nodes first
+        let errorMessage: string | undefined
+        if (isPluginMissing)
+          errorMessage = t('workflow.nodes.common.pluginNotInstalled')
+        else if (validator)
+          errorMessage = validator(checkData, t, moreDataForCheckValid).errorMessage
 
         if (!errorMessage) {
           const availableVars = map[node.id].availableVars
@@ -194,7 +209,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
             toolIcon,
             unConnected: isUnconnected && !canSkipConnectionCheck,
             errorMessage,
-            canNavigate: true,
+            canNavigate: !isPluginMissing,
+            disableGoTo: isPluginMissing,
           })
         }
       }
