@@ -248,6 +248,8 @@ services:
     profiles:
       - mongodb
     restart: always
+    env_file:
+      - ./middleware.env
     environment:
       - MONGODB_INITDB_ROOT_USERNAME=${MONGODB_USERNAME:-root}
       - MONGODB_INITDB_ROOT_PASSWORD=${MONGODB_PASSWORD:-difyai123456}

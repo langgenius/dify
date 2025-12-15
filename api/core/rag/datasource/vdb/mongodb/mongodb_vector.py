@@ -129,7 +129,12 @@ class MongoDBVector(BaseVector):
                     # Password detected in URI - this should never happen in logs
                     logger.warning("Potential credential detected in URI - ensuring sanitization")
         
-        self._client = MongoClient(uri, serverSelectionTimeoutMS=5000)
+        # Use configurable server selection timeout, or pymongo default if set to 0
+        client_kwargs = {}
+        if config.MONGODB_SERVER_SELECTION_TIMEOUT_MS > 0:
+            client_kwargs["serverSelectionTimeoutMS"] = config.MONGODB_SERVER_SELECTION_TIMEOUT_MS
+        
+        self._client = MongoClient(uri, **client_kwargs)
         self._check_connection()
         self._db = self._client[config.MONGODB_DATABASE]
         self._collection = self._db[collection_name]
@@ -147,11 +152,25 @@ class MongoDBVector(BaseVector):
         - Server startup delays
         - Temporary connection pool exhaustion
         
+        Set MONGODB_CONNECTION_RETRY_ATTEMPTS to 0 to disable retries (fail immediately).
+        Set to 1 for a single attempt with no retries.
+        
         Raises:
             ConnectionFailure: If connection fails after all retries
             ServerSelectionTimeoutError: If server selection times out after all retries
         """
         max_retries = self._config.MONGODB_CONNECTION_RETRY_ATTEMPTS
+        
+        # If retries are disabled (0), attempt once and fail immediately on error
+        if max_retries == 0:
+            try:
+                self._client.admin.command('ping')
+                return
+            except (ConnectionFailure, ServerSelectionTimeoutError) as e:
+                logger.error(f"MongoDB connection failed (retries disabled): {e}")
+                raise
+        
+        # For retries enabled (>= 1), use exponential backoff
         backoff_base = self._config.MONGODB_CONNECTION_RETRY_BACKOFF_BASE
         max_wait = self._config.MONGODB_CONNECTION_RETRY_MAX_WAIT
         

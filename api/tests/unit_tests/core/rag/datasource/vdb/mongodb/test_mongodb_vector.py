@@ -14,6 +14,10 @@ class TestMongoDBVector(unittest.TestCase):
         self.mock_config.MONGODB_CONNECT_URI = "mongodb://localhost:27017"
         self.mock_config.MONGODB_DATABASE = "test_db"
         self.mock_config.MONGODB_VECTOR_INDEX_NAME = "test_index"
+        self.mock_config.MONGODB_SERVER_SELECTION_TIMEOUT_MS = 5000
+        self.mock_config.MONGODB_CONNECTION_RETRY_ATTEMPTS = 3
+        self.mock_config.MONGODB_CONNECTION_RETRY_BACKOFF_BASE = 1.0
+        self.mock_config.MONGODB_CONNECTION_RETRY_MAX_WAIT = 30.0
         self.collection_name = "test_collection"
         self.group_id = "test_group"
 
@@ -41,6 +45,24 @@ class TestMongoDBVector(unittest.TestCase):
         # Act & Assert
         with self.assertRaises(ConnectionFailure):
             MongoDBVector(self.collection_name, self.group_id, self.mock_config)
+
+    @patch("core.rag.datasource.vdb.mongodb.mongodb_vector.MongoClient")
+    def test_initialization_with_retries_disabled(self, mock_mongo_client):
+        """Test initialization when retries are disabled (0 attempts)."""
+        # Setup mock
+        mock_client_instance = MagicMock()
+        mock_mongo_client.return_value = mock_client_instance
+        mock_client_instance.admin.command.side_effect = ConnectionFailure("Connection failed")
+        
+        # Configure to disable retries
+        self.mock_config.MONGODB_CONNECTION_RETRY_ATTEMPTS = 0
+        
+        # Act & Assert - should fail immediately without retries
+        with self.assertRaises(ConnectionFailure):
+            MongoDBVector(self.collection_name, self.group_id, self.mock_config)
+        
+        # Verify ping was only called once (no retries)
+        self.assertEqual(mock_client_instance.admin.command.call_count, 1)
 
     @patch("core.rag.datasource.vdb.mongodb.mongodb_vector.MongoClient")
     def test_create_collection_and_index(self, mock_mongo_client):

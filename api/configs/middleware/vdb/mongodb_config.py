@@ -82,6 +82,12 @@ class MongoDBConfig(BaseSettings):
         default=30.0,
     )
 
+    MONGODB_SERVER_SELECTION_TIMEOUT_MS: NonNegativeInt = Field(
+        description="Server selection timeout in milliseconds for MongoDB client (default: 5000). "
+        "Set to 0 to use pymongo default timeout.",
+        default=5000,
+    )
+
     def _build_connection_uri(self) -> str:
         """
         Build MongoDB connection URI from individual components.
