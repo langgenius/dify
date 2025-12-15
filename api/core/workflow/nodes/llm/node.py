@@ -392,6 +392,7 @@ class LLMNode(Node[LLMNodeData]):
                     "content": generation_data.text,
                     "reasoning_content": generation_data.reasoning_contents,  # [thought1, thought2, ...]
                     "tool_calls": generation_data.tool_calls,
+                    "sequence": generation_data.sequence,
                 }
                 files_to_output = generation_data.files
             else:
@@ -400,6 +401,7 @@ class LLMNode(Node[LLMNodeData]):
                     "content": clean_text,
                     "reasoning_content": [reasoning_content] if reasoning_content else [],
                     "tool_calls": [],
+                    "sequence": [],
                 }
                 files_to_output = self._file_outputs
 
@@ -428,22 +430,24 @@ class LLMNode(Node[LLMNodeData]):
                     is_final=True,
                 )
 
+            metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+            }
+
+            if generation_data and generation_data.trace:
+                metadata[WorkflowNodeExecutionMetadataKey.LLM_TRACE] = [
+                    segment.model_dump() for segment in generation_data.trace
+                ]
+
             yield StreamCompletedEvent(
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     inputs=node_inputs,
                     process_data=process_data,
                     outputs=outputs,
-                    metadata={
-                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
-                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
-                        WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
-                        WorkflowNodeExecutionMetadataKey.LLM_TRACE: [
-                            segment.model_dump() for segment in generation_data.trace
-                        ]
-                        if generation_data
-                        else [],
-                    },
+                    metadata=metadata,
                     llm_usage=usage,
                 )
             )
@@ -1783,6 +1787,27 @@ class LLMNode(Node[LLMNodeData]):
         _flush_thought()
         _flush_content()
 
+        # Build sequence from trace_segments for rendering
+        sequence: list[dict[str, Any]] = []
+        reasoning_index = 0
+        content_position = 0
+        tool_call_seen_index: dict[str, int] = {}
+        for segment in trace_segments:
+            if segment.type == "thought":
+                sequence.append({"type": "reasoning", "index": reasoning_index})
+                reasoning_index += 1
+            elif segment.type == "content":
+                segment_text = segment.text or ""
+                start = content_position
+                end = start + len(segment_text)
+                sequence.append({"type": "content", "start": start, "end": end})
+                content_position = end
+            elif segment.type == "tool_call":
+                tool_id = segment.tool_call_id or ""
+                if tool_id not in tool_call_seen_index:
+                    tool_call_seen_index[tool_id] = len(tool_call_seen_index)
+                sequence.append({"type": "tool_call", "index": tool_call_seen_index[tool_id]})
+
         # Send final events for all streams
         yield StreamChunkEvent(
             selector=[self._node_id, "text"],
@@ -1850,6 +1875,7 @@ class LLMNode(Node[LLMNodeData]):
             text=text,
             reasoning_contents=reasoning_per_turn,
             tool_calls=tool_calls_for_generation,
+            sequence=sequence,
             usage=usage,
             finish_reason=finish_reason,
             files=files,

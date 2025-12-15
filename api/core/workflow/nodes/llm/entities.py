@@ -52,6 +52,7 @@ class LLMGenerationData(BaseModel):
     text: str = Field(..., description="Accumulated text content from all turns")
     reasoning_contents: list[str] = Field(default_factory=list, description="Reasoning content per turn")
     tool_calls: list[dict[str, Any]] = Field(default_factory=list, description="Tool calls with results")
+    sequence: list[dict[str, Any]] = Field(default_factory=list, description="Ordered segments for rendering")
     usage: LLMUsage = Field(..., description="LLM usage statistics")
     finish_reason: str | None = Field(None, description="Finish reason from LLM")
     files: list[File] = Field(default_factory=list, description="Generated files")

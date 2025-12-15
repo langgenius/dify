@@ -1,5 +1,6 @@
 import threading
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any
 
 from sqlalchemy import Engine
 from sqlalchemy.orm import sessionmaker
@@ -102,11 +103,16 @@ class WorkflowRunService:
         :param app_model: app model
         :param run_id: workflow run id
         """
-        return self._workflow_run_repo.get_workflow_run_by_id(
+        workflow_run = self._workflow_run_repo.get_workflow_run_by_id(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             run_id=run_id,
         )
+
+        if workflow_run:
+            workflow_run.outputs_as_generation = self._are_all_generation_outputs(workflow_run.outputs_dict)
+
+        return workflow_run
 
     def get_workflow_runs_count(
         self,
@@ -159,3 +165,32 @@ class WorkflowRunService:
             app_id=app_model.id,
             workflow_run_id=run_id,
         )
+
+    @staticmethod
+    def _are_all_generation_outputs(outputs: Mapping[str, Any]) -> bool:
+        if not outputs:
+            return False
+
+        allowed_sequence_types = {"reasoning", "content", "tool_call"}
+
+        for value in outputs.values():
+            if not isinstance(value, Mapping):
+                return False
+
+            content = value.get("content")
+            reasoning_content = value.get("reasoning_content")
+            tool_calls = value.get("tool_calls")
+            sequence = value.get("sequence")
+
+            if not isinstance(content, str):
+                return False
+            if not isinstance(reasoning_content, list) or any(not isinstance(item, str) for item in reasoning_content):
+                return False
+            if not isinstance(tool_calls, list) or any(not isinstance(item, Mapping) for item in tool_calls):
+                return False
+            if not isinstance(sequence, list) or any(
+                not isinstance(item, Mapping) or item.get("type") not in allowed_sequence_types for item in sequence
+            ):
+                return False
+
+        return True

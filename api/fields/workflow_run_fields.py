@@ -81,6 +81,7 @@ workflow_run_detail_fields = {
     "inputs": fields.Raw(attribute="inputs_dict"),
     "status": fields.String,
     "outputs": fields.Raw(attribute="outputs_dict"),
+    "outputs_as_generation": fields.Boolean,
     "error": fields.String,
     "elapsed_time": fields.Float,
     "total_tokens": fields.Integer,
