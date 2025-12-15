@@ -133,22 +133,16 @@ describe('AppCard', () => {
         expect(button).toBeInTheDocument()
       })
 
-      // TODO: Update this test once canCreate prop is properly implemented
-      // The component currently doesn't respect the canCreate prop - this is a bug
-      // When fixed, this test should expect the button to NOT be present
-      it('should hide create button when canCreate is false (not implemented)', () => {
+      it('should hide create button when canCreate is false', () => {
         render(<AppCard {...defaultProps} canCreate={false} />)
 
         const card = screen.getByRole('img', { name: /app icon/i }).closest('.group')
         expect(card).toBeInTheDocument()
         fireEvent.mouseEnter(card!)
 
-        // Current behavior: button still shows (bug)
+        // Button should be hidden when canCreate is false
         const button = card!.querySelector('button')
-        expect(button).toBeInTheDocument()
-
-        // TODO: Uncomment when canCreate is properly implemented
-        // expect(button).not.toBeInTheDocument()
+        expect(button).not.toBeInTheDocument()
       })
     })
 
