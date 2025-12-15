@@ -46,6 +46,7 @@ const CrawledResultItem = ({
           />
         ) : (
           <Radio
+            className='shrink-0'
             isChecked={isChecked}
             onCheck={handleCheckChange}
           />

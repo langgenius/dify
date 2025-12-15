@@ -437,6 +437,7 @@ const translation = {
         variable: 'Verwende die Variable',
       },
       inputVars: 'Eingabevariablen',
+      pluginNotInstalled: 'Plugin ist nicht installiert',
     },
     start: {
       required: 'erforderlich',

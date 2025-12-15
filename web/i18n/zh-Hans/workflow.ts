@@ -464,6 +464,7 @@ const translation = {
         variable: '使用变量',
       },
       inputVars: '输入变量',
+      pluginNotInstalled: '插件未安装',
     },
     start: {
       required: '必填',

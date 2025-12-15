@@ -111,7 +111,11 @@ class App(Base):
         else:
             app_model_config = self.app_model_config
             if app_model_config:
-                return app_model_config.pre_prompt
+                pre_prompt = app_model_config.pre_prompt or ""
+                # Truncate to 200 characters with ellipsis if using prompt as description
+                if len(pre_prompt) > 200:
+                    return pre_prompt[:200] + "..."
+                return pre_prompt
             else:
                 return ""
 
@@ -259,7 +263,7 @@ class App(Base):
                 provider_id = tool.get("provider_id", "")
 
                 if provider_type == ToolProviderType.API:
-                    if uuid.UUID(provider_id) not in existing_api_providers:
+                    if provider_id not in existing_api_providers:
                         deleted_tools.append(
                             {
                                 "type": ToolProviderType.API,
@@ -835,7 +839,29 @@ class Conversation(Base):
 
     @property
     def status_count(self):
-        messages = db.session.scalars(select(Message).where(Message.conversation_id == self.id)).all()
+        from models.workflow import WorkflowRun
+
+        # Get all messages with workflow_run_id for this conversation
+        messages = db.session.scalars(
+            select(Message).where(Message.conversation_id == self.id, Message.workflow_run_id.isnot(None))
+        ).all()
+
+        if not messages:
+            return None
+
+        # Batch load all workflow runs in a single query, filtered by this conversation's app_id
+        workflow_run_ids = [msg.workflow_run_id for msg in messages if msg.workflow_run_id]
+        workflow_runs = {}
+
+        if workflow_run_ids:
+            workflow_runs_query = db.session.scalars(
+                select(WorkflowRun).where(
+                    WorkflowRun.id.in_(workflow_run_ids),
+                    WorkflowRun.app_id == self.app_id,  # Filter by this conversation's app_id
+                )
+            ).all()
+            workflow_runs = {run.id: run for run in workflow_runs_query}
+
         status_counts = {
             WorkflowExecutionStatus.RUNNING: 0,
             WorkflowExecutionStatus.SUCCEEDED: 0,
@@ -845,18 +871,24 @@ class Conversation(Base):
         }
 
         for message in messages:
-            if message.workflow_run:
-                status_counts[WorkflowExecutionStatus(message.workflow_run.status)] += 1
+            # Guard against None to satisfy type checker and avoid invalid dict lookups
+            if message.workflow_run_id is None:
+                continue
+            workflow_run = workflow_runs.get(message.workflow_run_id)
+            if not workflow_run:
+                continue
 
-        return (
-            {
-                "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
-                "failed": status_counts[WorkflowExecutionStatus.FAILED],
-                "partial_success": status_counts[WorkflowExecutionStatus.PARTIAL_SUCCEEDED],
-            }
-            if messages
-            else None
-        )
+            try:
+                status_counts[WorkflowExecutionStatus(workflow_run.status)] += 1
+            except (ValueError, KeyError):
+                # Handle invalid status values gracefully
+                pass
+
+        return {
+            "success": status_counts[WorkflowExecutionStatus.SUCCEEDED],
+            "failed": status_counts[WorkflowExecutionStatus.FAILED],
+            "partial_success": status_counts[WorkflowExecutionStatus.PARTIAL_SUCCEEDED],
+        }
 
     @property
     def first_message(self):
@@ -1255,13 +1287,9 @@ class Message(Base):
             "id": self.id,
             "app_id": self.app_id,
             "conversation_id": self.conversation_id,
-            "model_provider": self.model_provider,
             "model_id": self.model_id,
             "inputs": self.inputs,
             "query": self.query,
-            "message_tokens": self.message_tokens,
-            "answer_tokens": self.answer_tokens,
-            "provider_response_latency": self.provider_response_latency,
             "total_price": self.total_price,
             "message": self.message,
             "answer": self.answer,
@@ -1283,12 +1311,8 @@ class Message(Base):
             id=data["id"],
             app_id=data["app_id"],
             conversation_id=data["conversation_id"],
-            model_provider=data.get("model_provider"),
             model_id=data["model_id"],
             inputs=data["inputs"],
-            message_tokens=data.get("message_tokens", 0),
-            answer_tokens=data.get("answer_tokens", 0),
-            provider_response_latency=data.get("provider_response_latency", 0.0),
             total_price=data["total_price"],
             query=data["query"],
             message=data["message"],
