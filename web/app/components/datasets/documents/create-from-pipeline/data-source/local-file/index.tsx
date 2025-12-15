@@ -28,7 +28,7 @@ export type LocalFileProps = {
 
 const LocalFile = ({
   allowedExtensions,
-  supportBatchUpload = false,
+  supportBatchUpload = true,
 }: LocalFileProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)

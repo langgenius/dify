@@ -719,6 +719,7 @@ const translation = {
     uploadFromComputerLimit: 'Nalaganje {{type}} ne sme presegati {{size}}',
     uploadFromComputerReadError: 'Branje datoteke ni uspelo, poskusite znova.',
     fileExtensionBlocked: 'Ta vrsta datoteke je zaradi varnostnih razlogov blokirana',
+    uploadDisabled: 'Nalaganje datotek je onemogočeno',
   },
   tag: {
     addTag: 'Dodajanje oznak',
