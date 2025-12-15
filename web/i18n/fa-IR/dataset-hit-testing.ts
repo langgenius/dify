@@ -5,7 +5,6 @@ const translation = {
   table: {
     header: {
       source: 'منبع',
-      text: 'متن',
       time: 'زمان',
       queryContent: 'محتوای پرس‌وجو',
     },

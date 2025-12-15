@@ -32,3 +32,4 @@ class VectorType(StrEnum):
     HUAWEI_CLOUD = "huawei_cloud"
     MATRIXONE = "matrixone"
     CLICKZETTA = "clickzetta"
+    IRIS = "iris"
