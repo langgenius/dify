@@ -449,6 +449,7 @@ const translation = {
         variable: 'चर का प्रयोग करें',
       },
       inputVars: 'इनपुट चर',
+      pluginNotInstalled: 'प्लगइन इंस्टॉल नहीं है',
     },
     start: {
       required: 'आवश्यक',
