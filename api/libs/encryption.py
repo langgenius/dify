@@ -30,23 +30,23 @@ class FieldEncryption:
         """
         Derive key and IV from passphrase using OpenSSL's EVP_BytesToKey algorithm.
         This matches crypto-js's default key derivation which uses MD5.
-        
+
         NOTE: MD5 is a weak hashing algorithm and not recommended for new applications.
         This implementation is required for compatibility with crypto-js default behavior.
         For better security, consider configuring crypto-js to use a stronger KDF like
         PBKDF2 with SHA-256, and update this function accordingly.
-        
+
         Args:
             passphrase: The encryption passphrase
             salt: 8-byte salt
-            
+
         Returns:
             Tuple of (key, iv) each 32 bytes and 16 bytes respectively
         """
         # crypto-js uses EVP_BytesToKey with MD5, 1 iteration
         key_size = 32  # 256 bits
         iv_size = 16  # 128 bits
-        
+
         m = []
         i = 0
         # Encode passphrase once before the loop for better performance
@@ -59,7 +59,7 @@ class FieldEncryption:
             md.update(salt)
             m.append(md.digest())
             i += 1
-        
+
         ms = b"".join(m)
         key = ms[:key_size]
         iv = ms[key_size : key_size + iv_size]
