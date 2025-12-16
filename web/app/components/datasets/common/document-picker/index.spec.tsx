@@ -5,13 +5,6 @@ import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import DocumentPicker from './index'
 
-// Mock react-i18next
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock portal-to-follow-elem - always render content for testing
 jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open }: {
