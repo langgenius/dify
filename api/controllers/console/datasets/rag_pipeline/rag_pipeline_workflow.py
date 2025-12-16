@@ -4,8 +4,7 @@ from typing import Any, Literal, cast
 from uuid import UUID
 
 from flask import abort, request
-from flask_restx import Resource, marshal_with  # type: ignore
-from flask_restx import reqparse
+from flask_restx import Resource, marshal_with, reqparse  # type: ignore
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
@@ -968,6 +967,7 @@ class RagPipelineDatasourceVariableApi(Resource):
             current_user=current_user,
         )
         return workflow_node_execution
+
 
 @console_ns.route("/rag/pipelines/recommended-plugins")
 class RagPipelineRecommendedPluginApi(Resource):
