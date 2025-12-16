@@ -122,7 +122,7 @@ export const EditModal = ({ onClose, subscription, pluginDetail }: Props) => {
       ...schema,
       type: normalizeFormType(schema.type as string),
       tooltip: schema.description,
-      default: (subscription.properties as Record<string, any>)?.[schema.name] ?? schema.default,
+      default: subscription.properties?.[schema.name] || schema.default,
     })),
   ], [t, subscription.name, subscription.endpoint, subscription.properties, propertiesSchema])
 

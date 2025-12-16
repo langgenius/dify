@@ -237,31 +237,14 @@ type TriggerSubscriptionStructure = {
   name: string
   provider: string
   credential_type: TriggerCredentialTypeEnum
-  credentials: TriggerSubCredentials
+  credentials: Record<string, any>
   endpoint: string
-  parameters: TriggerSubParameters
-  properties: TriggerSubProperties
+  parameters: Record<string, any>
+  properties: Record<string, any>
   workflows_in_use: number
 }
 
 export type TriggerSubscription = TriggerSubscriptionStructure
-
-export type TriggerSubCredentials = {
-  access_tokens: string
-}
-
-export type TriggerSubParameters = {
-  repository: string
-  webhook_secret?: string
-}
-
-export type TriggerSubProperties = {
-  active: boolean
-  events: string[]
-  external_id: string
-  repository: string
-  webhook_secret?: string
-}
 
 export type TriggerSubscriptionBuilder = TriggerSubscriptionStructure
 
