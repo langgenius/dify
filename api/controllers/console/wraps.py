@@ -433,6 +433,7 @@ def _decrypt_field(field_name: str, error_class: type[Exception], error_message:
         error_message: Error message to include in the exception
     """
     if request and request.is_json:
+        # Get the payload dict - it's cached and mutable
         payload = request.get_json()
         if payload and field_name in payload:
             encrypted_value = payload[field_name]
@@ -442,11 +443,11 @@ def _decrypt_field(field_name: str, error_class: type[Exception], error_message:
             if decrypted_value is None and FieldEncryption.is_enabled():
                 raise error_class(error_message)
 
-            # Update payload with decrypted value (or original if encryption disabled)
+            # Update payload dict in-place
+            # Since payload is a mutable dict and get_json() returns the cached reference,
+            # modifying it will affect all subsequent accesses including console_ns.payload
             if decrypted_value is not None:
                 payload[field_name] = decrypted_value
-                # Update the cached JSON data
-                request._cached_json = (payload, payload)
 
 
 def decrypt_password_field(view: Callable[P, R]):
