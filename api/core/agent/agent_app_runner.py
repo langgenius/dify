@@ -108,7 +108,7 @@ class AgentAppRunner(BaseAgentRunner):
         current_agent_thought_id = None
         has_published_thought = False
         current_tool_name: str | None = None
-        self._current_message_file_ids = []
+        self._current_message_file_ids: list[str] = []
 
         # organize prompt messages
         prompt_messages = self._organize_prompt_messages()

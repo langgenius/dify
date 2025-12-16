@@ -1720,15 +1720,15 @@ class LLMNode(Node[LLMNodeData]):
                             if meta and isinstance(meta, dict) and meta.get("error"):
                                 tool_error = meta.get("error")
 
-                        tool_call_segment = tool_trace_map.get(tool_call_id)
-                        if tool_call_segment is None:
-                            tool_call_segment = LLMTraceSegment(
-                                type="tool_call",
-                                text=None,
-                                tool_call_id=tool_call_id,
-                                tool_name=tool_name,
-                                tool_arguments=None,
-                            )
+                        existing_tool_segment = tool_trace_map.get(tool_call_id)
+                        tool_call_segment = existing_tool_segment or LLMTraceSegment(
+                            type="tool_call",
+                            text=None,
+                            tool_call_id=tool_call_id,
+                            tool_name=tool_name,
+                            tool_arguments=None,
+                        )
+                        if existing_tool_segment is None:
                             trace_segments.append(tool_call_segment)
                             if tool_call_id:
                                 tool_trace_map[tool_call_id] = tool_call_segment
@@ -1854,18 +1854,18 @@ class LLMNode(Node[LLMNodeData]):
         reasoning_index = 0
         content_position = 0
         tool_call_seen_index: dict[str, int] = {}
-        for segment in trace_segments:
-            if segment.type == "thought":
+        for trace_segment in trace_segments:
+            if trace_segment.type == "thought":
                 sequence.append({"type": "reasoning", "index": reasoning_index})
                 reasoning_index += 1
-            elif segment.type == "content":
-                segment_text = segment.text or ""
+            elif trace_segment.type == "content":
+                segment_text = trace_segment.text or ""
                 start = content_position
                 end = start + len(segment_text)
                 sequence.append({"type": "content", "start": start, "end": end})
                 content_position = end
-            elif segment.type == "tool_call":
-                tool_id = segment.tool_call_id or ""
+            elif trace_segment.type == "tool_call":
+                tool_id = trace_segment.tool_call_id or ""
                 if tool_id not in tool_call_seen_index:
                     tool_call_seen_index[tool_id] = len(tool_call_seen_index)
                 sequence.append({"type": "tool_call", "index": tool_call_seen_index[tool_id]})
