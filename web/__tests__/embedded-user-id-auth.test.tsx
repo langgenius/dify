@@ -4,12 +4,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import MailAndPasswordAuth from '@/app/(shareLayout)/webapp-signin/components/mail-and-password-auth'
 import CheckCode from '@/app/(shareLayout)/webapp-signin/check-code/page'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 const replaceMock = jest.fn()
 const backMock = jest.fn()
 

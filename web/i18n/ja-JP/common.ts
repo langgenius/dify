@@ -747,6 +747,7 @@ const translation = {
     uploadFromComputerReadError: 'ファイルの読み取りに失敗しました。もう一度やり直してください。',
     fileExtensionNotSupport: 'ファイル拡張子はサポートされていません',
     pasteFileLinkInvalid: '無効なファイルリンク',
+    uploadDisabled: 'ファイルアップロードは無効です',
     fileExtensionBlocked: 'このファイルタイプは、セキュリティ上の理由でブロックされています',
   },
   license: {

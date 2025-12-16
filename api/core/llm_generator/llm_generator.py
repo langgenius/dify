@@ -72,15 +72,22 @@ class LLMGenerator:
                 prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
             )
         answer = cast(str, response.message.content)
-        cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
-        if cleaned_answer is None:
+        if answer is None:
             return ""
         try:
-            result_dict = json.loads(cleaned_answer)
-            answer = result_dict["Your Output"]
+            result_dict = json.loads(answer)
         except json.JSONDecodeError:
-            logger.exception("Failed to generate name after answer, use query instead")
+            result_dict = json_repair.loads(answer)
+
+        if not isinstance(result_dict, dict):
             answer = query
+        else:
+            output = result_dict.get("Your Output")
+            if isinstance(output, str) and output.strip():
+                answer = output.strip()
+            else:
+                answer = query
+
         name = answer.strip()
 
         if len(name) > 75:

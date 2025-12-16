@@ -9,6 +9,7 @@ import httpx
 
 from configs import dify_config
 from core.helper.http_client_pooling import get_pooled_http_client
+from core.tools.errors import ToolSSRFError
 
 logger = logging.getLogger(__name__)
 
@@ -93,6 +94,18 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     while retries <= max_retries:
         try:
             response = client.request(method=method, url=url, **kwargs)
+            # Check for SSRF protection by Squid proxy
+            if response.status_code in (401, 403):
+                # Check if this is a Squid SSRF rejection
+                server_header = response.headers.get("server", "").lower()
+                via_header = response.headers.get("via", "").lower()
+
+                # Squid typically identifies itself in Server or Via headers
+                if "squid" in server_header or "squid" in via_header:
+                    raise ToolSSRFError(
+                        f"Access to '{url}' was blocked by SSRF protection. "
+                        f"The URL may point to a private or local network address. "
+                    )
 
             if response.status_code not in STATUS_FORCELIST:
                 return response

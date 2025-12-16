@@ -2,12 +2,6 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import ConfirmAddVar from './index'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('../../base/var-highlight', () => ({
   __esModule: true,
   default: ({ name }: { name: string }) => <span data-testid="var-highlight">{name}</span>,
