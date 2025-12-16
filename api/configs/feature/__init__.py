@@ -647,6 +647,13 @@ class BillingConfig(BaseSettings):
         default=False,
     )
 
+    BILLING_FREE_PLAN_GRACE_PERIOD_DAYS: NonNegativeInt = Field(
+        description=(
+            "Extra grace period in days applied after a tenant leaves a paid plan before being treated as free."
+        ),
+        default=21,
+    )
+
 
 class UpdateConfig(BaseSettings):
     """

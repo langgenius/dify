@@ -14,7 +14,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.billing_service import BillingService
+from services.billing_service import BillingService, TenantPlanInfo
 
 logger = logging.getLogger(__name__)
 
@@ -40,8 +40,9 @@ class WorkflowRunCleanup:
             raise ValueError("end_before must be greater than start_after.")
 
         self.batch_size = batch_size
-        self.billing_cache: dict[str, CloudPlan | None] = {}
+        self.billing_cache: dict[str, TenantPlanInfo | None] = {}
         self.dry_run = dry_run
+        self.free_plan_grace_period_days = dify_config.BILLING_FREE_PLAN_GRACE_PERIOD_DAYS
         self.workflow_run_repo: APIWorkflowRunRepository
         if workflow_run_repo:
             self.workflow_run_repo = workflow_run_repo
@@ -157,10 +158,14 @@ class WorkflowRunCleanup:
         click.echo(click.style(summary_message, fg=summary_color))
 
     def _filter_free_tenants(self, tenant_ids: Iterable[str]) -> set[str]:
-        if not dify_config.BILLING_ENABLED:
-            return set(tenant_ids)
-
         tenant_id_list = list(tenant_ids)
+
+        if not dify_config.BILLING_ENABLED:
+            return set(tenant_id_list)
+
+        if not tenant_id_list:
+            return set()
+
         uncached_tenants = [tenant_id for tenant_id in tenant_id_list if tenant_id not in self.billing_cache]
 
         if uncached_tenants:
@@ -171,19 +176,47 @@ class WorkflowRunCleanup:
                 logger.exception("Failed to fetch billing plans in bulk for tenants: %s", uncached_tenants)
 
             for tenant_id in uncached_tenants:
-                plan: CloudPlan | None = None
                 info = bulk_info.get(tenant_id)
-                if info:
-                    try:
-                        plan = CloudPlan(info)
-                    except Exception:
-                        logger.exception("Failed to parse billing plan for tenant %s", tenant_id)
-                else:
+                if info is None:
                     logger.warning("Missing billing info for tenant %s in bulk resp; treating as non-free", tenant_id)
+                self.billing_cache[tenant_id] = info
 
-                self.billing_cache[tenant_id] = plan
+        eligible_free_tenants: set[str] = set()
+        for tenant_id in tenant_id_list:
+            info = self.billing_cache.get(tenant_id)
+            if not info:
+                continue
 
-        return {tenant_id for tenant_id in tenant_id_list if self.billing_cache.get(tenant_id) == CloudPlan.SANDBOX}
+            if info.plan != CloudPlan.SANDBOX:
+                continue
+
+            if self._is_within_grace_period(tenant_id, info):
+                continue
+
+            eligible_free_tenants.add(tenant_id)
+
+        return eligible_free_tenants
+
+    def _expiration_datetime(self, tenant_id: str, expiration_value: int) -> datetime.datetime | None:
+        if expiration_value < 0:
+            return None
+
+        try:
+            return datetime.datetime.fromtimestamp(expiration_value, datetime.UTC)
+        except (OverflowError, OSError, ValueError):
+            logger.exception("Failed to parse expiration timestamp for tenant %s", tenant_id)
+            return None
+
+    def _is_within_grace_period(self, tenant_id: str, info: TenantPlanInfo) -> bool:
+        if self.free_plan_grace_period_days <= 0:
+            return False
+
+        expiration_at = self._expiration_datetime(tenant_id, info.expiration_date)
+        if expiration_at is None:
+            return False
+
+        grace_deadline = expiration_at + datetime.timedelta(days=self.free_plan_grace_period_days)
+        return datetime.datetime.now(datetime.UTC) < grace_deadline
 
     def _delete_trigger_logs(self, session: Session, run_ids: Sequence[str]) -> int:
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)

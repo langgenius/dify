@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import Literal
 
 import httpx
+from pydantic import BaseModel, ValidationError
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from werkzeug.exceptions import InternalServerError
 
@@ -14,6 +15,11 @@ from libs.helper import RateLimiter
 from models import Account, TenantAccountJoin, TenantAccountRole
 
 logger = logging.getLogger(__name__)
+
+
+class TenantPlanInfo(BaseModel):
+    plan: CloudPlan
+    expiration_date: int
 
 
 class BillingService:
@@ -30,31 +36,45 @@ class BillingService:
         return billing_info
 
     @classmethod
-    def get_info_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, str]:
+    def get_info_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, TenantPlanInfo]:
         """
         Bulk billing info fetch via billing API.
 
         Payload: {"tenant_ids": ["t1", "t2", ...]} (max 200 per request)
 
         Returns:
-            Mapping of tenant_id -> plan
+            Mapping of tenant_id -> TenantPlanInfo(plan + expiration timestamp)
         """
-        results: dict[str, str] = {}
+        results: dict[str, TenantPlanInfo] = {}
 
         chunk_size = 200
         for i in range(0, len(tenant_ids), chunk_size):
             chunk = tenant_ids[i : i + chunk_size]
             try:
                 resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
-                data = resp.get("data", {})
-                for tenant_id, plan in data.items():
-                    if isinstance(plan, str):
-                        results[tenant_id] = plan
+                results.update(cls._parse_bulk_response(chunk, resp))
             except Exception:
                 logger.exception("Failed to fetch billing info batch for tenants: %s", chunk)
-                continue
+                raise
 
         return results
+
+    @classmethod
+    def _parse_bulk_response(cls, expected_ids: Sequence[str], response: dict) -> dict[str, TenantPlanInfo]:
+        data = response.get("data")
+        if not isinstance(data, dict):
+            raise ValueError("Billing API response missing 'data' object.")
+
+        parsed: dict[str, TenantPlanInfo] = {}
+        for tenant_id in expected_ids:
+            payload = data.get(tenant_id)
+
+            try:
+                parsed[tenant_id] = TenantPlanInfo.model_validate(payload)
+            except ValidationError as exc:
+                raise ValueError(f"Invalid billing info for tenant {tenant_id}") from exc
+
+        return parsed
 
     @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):

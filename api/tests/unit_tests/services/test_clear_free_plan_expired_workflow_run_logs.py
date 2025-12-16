@@ -4,6 +4,7 @@ from typing import Any
 import pytest
 
 from services import clear_free_plan_expired_workflow_run_logs as cleanup_module
+from services.billing_service import TenantPlanInfo
 from services.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
 
@@ -62,7 +63,18 @@ class FakeRepo:
         return result
 
 
-def create_cleanup(monkeypatch: pytest.MonkeyPatch, repo: FakeRepo, **kwargs: Any) -> WorkflowRunCleanup:
+def plan_info(plan: str, expiration: int) -> TenantPlanInfo:
+    return TenantPlanInfo(plan=plan, expiration_date=expiration)
+
+
+def create_cleanup(
+    monkeypatch: pytest.MonkeyPatch,
+    repo: FakeRepo,
+    *,
+    grace_period_days: int = 0,
+    **kwargs: Any,
+) -> WorkflowRunCleanup:
+    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_FREE_PLAN_GRACE_PERIOD_DAYS", grace_period_days)
     return WorkflowRunCleanup(workflow_run_repo=repo, **kwargs)
 
 
@@ -71,7 +83,7 @@ def test_filter_free_tenants_billing_disabled(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
 
-    def fail_bulk(_: list[str]) -> dict[str, dict[str, Any]]:
+    def fail_bulk(_: list[str]) -> dict[str, TenantPlanInfo]:
         raise RuntimeError("should not call")
 
     monkeypatch.setattr(cleanup_module.BillingService, "get_info_bulk", staticmethod(fail_bulk))
@@ -86,17 +98,38 @@ def test_filter_free_tenants_bulk_mixed(monkeypatch: pytest.MonkeyPatch) -> None
     cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
-    cleanup.billing_cache["t_free"] = cleanup_module.CloudPlan.SANDBOX
-    cleanup.billing_cache["t_paid"] = cleanup_module.CloudPlan.TEAM
+    cleanup.billing_cache["t_free"] = plan_info("sandbox", -1)
+    cleanup.billing_cache["t_paid"] = plan_info("team", -1)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_info_bulk",
-        staticmethod(lambda tenant_ids: dict.fromkeys(tenant_ids, "sandbox")),
+        staticmethod(lambda tenant_ids: {tenant_id: plan_info("sandbox", -1) for tenant_id in tenant_ids}),
     )
 
     free = cleanup._filter_free_tenants({"t_free", "t_paid", "t_missing"})
 
     assert free == {"t_free", "t_missing"}
+
+
+def test_filter_free_tenants_respects_grace_period(monkeypatch: pytest.MonkeyPatch) -> None:
+    cleanup = create_cleanup(monkeypatch, repo=FakeRepo([]), days=30, batch_size=10, grace_period_days=45)
+
+    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    now = datetime.datetime.now(datetime.UTC)
+    within_grace_ts = int((now - datetime.timedelta(days=10)).timestamp())
+    outside_grace_ts = int((now - datetime.timedelta(days=90)).timestamp())
+
+    def fake_bulk(_: list[str]) -> dict[str, TenantPlanInfo]:
+        return {
+            "recently_downgraded": plan_info("sandbox", within_grace_ts),
+            "long_sandbox": plan_info("sandbox", outside_grace_ts),
+        }
+
+    monkeypatch.setattr(cleanup_module.BillingService, "get_info_bulk", staticmethod(fake_bulk))
+
+    free = cleanup._filter_free_tenants({"recently_downgraded", "long_sandbox"})
+
+    assert free == {"long_sandbox"}
 
 
 def test_filter_free_tenants_bulk_failure(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -127,12 +160,12 @@ def test_run_deletes_only_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None:
     cleanup = create_cleanup(monkeypatch, repo=repo, days=30, batch_size=10)
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
-    cleanup.billing_cache["t_free"] = cleanup_module.CloudPlan.SANDBOX
-    cleanup.billing_cache["t_paid"] = cleanup_module.CloudPlan.TEAM
+    cleanup.billing_cache["t_free"] = plan_info("sandbox", -1)
+    cleanup.billing_cache["t_paid"] = plan_info("team", -1)
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_info_bulk",
-        staticmethod(lambda tenant_ids: dict.fromkeys(tenant_ids, "sandbox")),
+        staticmethod(lambda tenant_ids: {tenant_id: plan_info("sandbox", -1) for tenant_id in tenant_ids}),
     )
 
     cleanup.run()
@@ -149,7 +182,7 @@ def test_run_skips_when_no_free_tenants(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(
         cleanup_module.BillingService,
         "get_info_bulk",
-        staticmethod(lambda tenant_ids: dict.fromkeys(tenant_ids, "team")),
+        staticmethod(lambda tenant_ids: {tenant_id: plan_info("team", 1893456000) for tenant_id in tenant_ids}),
     )
 
     cleanup.run()
