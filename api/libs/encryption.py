@@ -28,30 +28,41 @@ class FieldEncryption:
     @staticmethod
     def _derive_key_and_iv(passphrase: str, salt: bytes) -> tuple[bytes, bytes]:
         """
-        Derive key and IV from passphrase using PBKDF2-HMAC-SHA256.
-        NOTE: This requires the frontend (crypto-js or equivalent) to also use PBKDF2 with matching parameters.
-
+        Derive key and IV from passphrase using OpenSSL's EVP_BytesToKey algorithm.
+        This matches crypto-js's default key derivation which uses MD5.
+        
+        NOTE: MD5 is a weak hashing algorithm and not recommended for new applications.
+        This implementation is required for compatibility with crypto-js default behavior.
+        For better security, consider configuring crypto-js to use a stronger KDF like
+        PBKDF2 with SHA-256, and update this function accordingly.
+        
         Args:
             passphrase: The encryption passphrase
             salt: 8-byte salt
-
+            
         Returns:
             Tuple of (key, iv) each 32 bytes and 16 bytes respectively
         """
-        # Use PBKDF2-HMAC-SHA256 for key derivation with sufficient iterations.
+        # crypto-js uses EVP_BytesToKey with MD5, 1 iteration
         key_size = 32  # 256 bits
         iv_size = 16  # 128 bits
-        iterations = 100_000  # Choose an appropriate number of iterations.
-        dk_len = key_size + iv_size
-        derived = hashlib.pbkdf2_hmac(
-            'sha256',
-            passphrase.encode('utf-8'),
-            salt,
-            iterations,
-            dk_len
-        )
-        key = derived[:key_size]
-        iv = derived[key_size : key_size + iv_size]
+        
+        m = []
+        i = 0
+        # Encode passphrase once before the loop for better performance
+        data = passphrase.encode("utf-8")
+        while len(b"".join(m)) < (key_size + iv_size):
+            md = hashlib.md5()
+            if i > 0:
+                md.update(m[i - 1])
+            md.update(data)
+            md.update(salt)
+            m.append(md.digest())
+            i += 1
+        
+        ms = b"".join(m)
+        key = ms[:key_size]
+        iv = ms[key_size : key_size + iv_size]
         return key, iv
 
     @classmethod
@@ -68,21 +79,29 @@ class FieldEncryption:
         """
         # If encryption is disabled, return ciphertext as-is (treat as plaintext)
         if not cls.is_enabled():
+            logger.debug("Field encryption is disabled, returning ciphertext as plaintext")
             return ciphertext
 
         try:
             # Decode the base64 ciphertext
-            encrypted_bytes = base64.b64decode(ciphertext)
+            try:
+                encrypted_bytes = base64.b64decode(ciphertext)
+            except Exception as e:
+                # If base64 decode fails, might be plaintext (encryption disabled on frontend)
+                logger.warning("Failed to decode base64, treating as plaintext: %s", e)
+                return ciphertext
 
             # crypto-js format: "Salted__" + 8 bytes salt + actual ciphertext
             if not encrypted_bytes.startswith(b"Salted__"):
                 # Not in crypto-js format, might be plaintext or wrong format
-                logger.warning("Encrypted data does not start with 'Salted__' prefix")
-                return None
+                logger.warning("Encrypted data does not start with 'Salted__' prefix, treating as plaintext")
+                return ciphertext
 
             # Extract salt and ciphertext
             salt = encrypted_bytes[8:16]  # 8 bytes after "Salted__"
             ct = encrypted_bytes[16:]  # Rest is ciphertext
+
+            logger.debug("Decrypting field with salt length: %d, ciphertext length: %d", len(salt), len(ct))
 
             # Derive key and IV using the same method as crypto-js
             key, iv = cls._derive_key_and_iv(dify_config.ENCRYPTION_KEY, salt)
@@ -94,7 +113,9 @@ class FieldEncryption:
             # Remove PKCS7 padding
             decrypted = unpad(decrypted_padded, AES.block_size)
 
-            return decrypted.decode("utf-8")
+            decrypted_text = decrypted.decode("utf-8")
+            logger.debug("Field decryption successful")
+            return decrypted_text
 
         except Exception as e:
             logger.error("Field decryption failed: %s", e, exc_info=True)
