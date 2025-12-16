@@ -18,6 +18,7 @@ const translation = {
     cancel: 'Cancel',
     clear: 'Clear',
     save: 'Save',
+    saving: 'Saving...',
     yes: 'Yes',
     no: 'No',
     deleteConfirmTitle: 'Delete?',

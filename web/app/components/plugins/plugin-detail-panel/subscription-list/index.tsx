@@ -1,5 +1,6 @@
 import { withErrorBoundary } from '@/app/components/base/error-boundary'
 import Loading from '@/app/components/base/loading'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import { SubscriptionListView } from './list-view'
 import { SubscriptionSelectorView } from './selector-view'
 import { useSubscriptionList } from './use-subscription-list'
@@ -18,6 +19,7 @@ type SubscriptionListProps = {
   mode?: SubscriptionListMode
   selectedId?: string
   onSelect?: (v: SimpleSubscription, callback?: () => void) => void
+  pluginDetail?: PluginDetail
 }
 
 export { SubscriptionSelectorEntry } from './selector-entry'
@@ -26,6 +28,7 @@ export const SubscriptionList = withErrorBoundary(({
   mode = SubscriptionListMode.PANEL,
   selectedId,
   onSelect,
+  pluginDetail,
 }: SubscriptionListProps) => {
   const { isLoading, refetch } = useSubscriptionList()
   if (isLoading) {
@@ -47,5 +50,5 @@ export const SubscriptionList = withErrorBoundary(({
     )
   }
 
-  return <SubscriptionListView />
+  return <SubscriptionListView pluginDetail={pluginDetail} />
 })

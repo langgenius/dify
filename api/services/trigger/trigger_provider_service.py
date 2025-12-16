@@ -210,6 +210,77 @@ class TriggerProviderService:
             raise ValueError(str(e))
 
     @classmethod
+    def update_trigger_subscription(
+        cls,
+        tenant_id: str,
+        subscription_id: str,
+        name: str | None = None,
+        properties: Mapping[str, Any] | None = None,
+    ) -> Mapping[str, Any]:
+        """
+        Update an existing trigger subscription.
+
+        :param tenant_id: Tenant ID
+        :param subscription_id: Subscription instance ID
+        :param name: Optional new name for this subscription
+        :param properties: Optional new properties
+        :return: Success response with updated subscription info
+        """
+        with Session(db.engine, expire_on_commit=False) as session:
+            # Use distributed lock to prevent race conditions on the same subscription
+            lock_key = f"trigger_subscription_update_lock:{tenant_id}_{subscription_id}"
+            with redis_client.lock(lock_key, timeout=20):
+                subscription: TriggerSubscription | None = (
+                    session.query(TriggerSubscription).filter_by(tenant_id=tenant_id, id=subscription_id).first()
+                )
+                if not subscription:
+                    raise ValueError(f"Trigger subscription {subscription_id} not found")
+
+                provider_id = TriggerProviderID(subscription.provider_id)
+                provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+
+                # Check for name uniqueness if name is being updated
+                if name is not None and name != subscription.name:
+                    existing = (
+                        session.query(TriggerSubscription)
+                        .filter_by(tenant_id=tenant_id, provider_id=str(provider_id), name=name)
+                        .first()
+                    )
+                    if existing:
+                        raise ValueError(f"Subscription name '{name}' already exists for this provider")
+                    subscription.name = name
+
+                # Update properties if provided
+                if properties is not None:
+                    properties_encrypter, properties_cache = create_provider_encrypter(
+                        tenant_id=tenant_id,
+                        config=provider_controller.get_properties_schema(),
+                        cache=NoOpProviderCredentialCache(),
+                    )
+                    # Handle hidden values - preserve original encrypted values
+                    original_properties = properties_encrypter.decrypt(subscription.properties)
+                    new_properties: dict[str, Any] = {
+                        key: value if value != HIDDEN_VALUE else original_properties.get(key, UNKNOWN_VALUE)
+                        for key, value in properties.items()
+                    }
+                    subscription.properties = dict(properties_encrypter.encrypt(new_properties))
+                    properties_cache.delete()
+
+                session.commit()
+
+                # Clear subscription cache
+                delete_cache_for_subscription(
+                    tenant_id=tenant_id,
+                    provider_id=subscription.provider_id,
+                    subscription_id=subscription.id,
+                )
+
+                return {
+                    "result": "success",
+                    "id": str(subscription.id),
+                }
+
+    @classmethod
     def get_subscription_by_id(cls, tenant_id: str, subscription_id: str | None = None) -> TriggerSubscription | None:
         """
         Get a trigger subscription by the ID.

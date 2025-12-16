@@ -66,7 +66,7 @@ const PluginDetailPanel: FC<Props> = ({
               <div className='flex-1'>
                 {detail.declaration.category === PluginCategoryEnum.trigger && (
                   <>
-                    <SubscriptionList />
+                    <SubscriptionList pluginDetail={detail} />
                     <TriggerEventsList />
                   </>
                 )}

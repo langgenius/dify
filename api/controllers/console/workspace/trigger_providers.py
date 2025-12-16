@@ -1,7 +1,9 @@
 import logging
+from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource, reqparse
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -30,6 +32,19 @@ from ..wraps import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class TriggerSubscriptionUpdateRequest(BaseModel):
+    """Request payload for updating a trigger subscription"""
+
+    name: str | None = Field(default=None, description="Subscription instance name")
+    properties: dict[str, Any] | None = Field(default=None, description="Subscription properties")
+
+
+console_ns.schema_model(
+    TriggerSubscriptionUpdateRequest.__name__,
+    TriggerSubscriptionUpdateRequest.model_json_schema(ref_template="#/definitions/{model}"),
+)
 
 
 @console_ns.route("/workspaces/current/trigger-provider/<path:provider>/icon")
@@ -287,6 +302,38 @@ class TriggerSubscriptionBuilderBuildApi(Resource):
         except Exception as e:
             logger.exception("Error building provider credential", exc_info=e)
             raise ValueError(str(e)) from e
+
+
+@console_ns.route(
+    "/workspaces/current/trigger-provider/<path:subscription_id>/subscriptions/update",
+)
+class TriggerSubscriptionUpdateApi(Resource):
+    @console_ns.expect(console_ns.models[TriggerSubscriptionUpdateRequest.__name__])
+    @setup_required
+    @login_required
+    @edit_permission_required
+    @account_initialization_required
+    def post(self, subscription_id: str):
+        """Update a subscription instance"""
+        user = current_user
+        assert user.current_tenant_id is not None
+
+        args = TriggerSubscriptionUpdateRequest.model_validate(console_ns.payload)
+
+        try:
+            return jsonable_encoder(
+                TriggerProviderService.update_trigger_subscription(
+                    tenant_id=user.current_tenant_id,
+                    subscription_id=subscription_id,
+                    name=args.name,
+                    properties=args.properties,
+                )
+            )
+        except ValueError as e:
+            raise BadRequest(str(e))
+        except Exception as e:
+            logger.exception("Error updating subscription", exc_info=e)
+            raise
 
 
 @console_ns.route(

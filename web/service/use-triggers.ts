@@ -211,6 +211,25 @@ export const useDeleteTriggerSubscription = () => {
   })
 }
 
+export type UpdateTriggerSubscriptionPayload = {
+  subscriptionId: string
+  name?: string
+  properties?: Record<string, any>
+}
+
+export const useUpdateTriggerSubscription = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-subscription'],
+    mutationFn: (payload: UpdateTriggerSubscriptionPayload) => {
+      const { subscriptionId, ...body } = payload
+      return post<{ result: string; id: string }>(
+        `/workspaces/current/trigger-provider/${subscriptionId}/subscriptions/update`,
+        { body },
+      )
+    },
+  })
+}
+
 export const useTriggerSubscriptionBuilderLogs = (
   provider: string,
   subscriptionBuilderId: string,
