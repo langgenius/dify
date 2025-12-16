@@ -7,6 +7,7 @@ import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
 import Toast from '../../../../base/toast'
+import { ALL_PLANS } from '../../../config'
 
 jest.mock('../../../../base/toast', () => ({
   __esModule: true,
@@ -102,9 +103,10 @@ describe('CloudPlanItem', () => {
         />,
       )
 
-      expect(screen.getByText('$708')).toBeInTheDocument()
-      expect(screen.getByText('$590')).toBeInTheDocument()
-      expect(screen.getByText('billing.plansCommon.priceTipbilling.plansCommon.year')).toBeInTheDocument()
+      const professionalPlan = ALL_PLANS[Plan.professional]
+      expect(screen.getByText(`$${professionalPlan.price * 12}`)).toBeInTheDocument()
+      expect(screen.getByText(`$${professionalPlan.price * 10}`)).toBeInTheDocument()
+      expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.year/)).toBeInTheDocument()
     })
 
     test('should disable CTA when workspace already on higher tier', () => {
