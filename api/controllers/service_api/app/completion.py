@@ -56,7 +56,7 @@ class ChatRequestPayload(BaseModel):
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
-    
+
     @field_validator("conversation_id", mode="before")
     @classmethod
     def normalize_conversation_id(cls, value: str | UUID | None) -> str | None:
