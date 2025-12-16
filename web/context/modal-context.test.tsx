@@ -31,7 +31,7 @@ const triggerEventsLimitModalMock = jest.fn((props: any) => {
   latestTriggerEventsModalProps = props
   return (
     <div data-testid="trigger-limit-modal">
-      <button type="button" onClick={props.onDismiss}>dismiss</button>
+      <button type="button" onClick={props.onClose}>dismiss</button>
       <button type="button" onClick={props.onUpgrade}>upgrade</button>
     </div>
   )
@@ -115,11 +115,10 @@ describe('ModalContextProvider trigger events limit modal', () => {
       usage: 3000,
       total: 3000,
       resetInDays: 5,
-      planType: Plan.professional,
     })
 
     act(() => {
-      latestTriggerEventsModalProps.onDismiss()
+      latestTriggerEventsModalProps.onClose()
     })
 
     await waitFor(() => expect(screen.queryByTestId('trigger-limit-modal')).not.toBeInTheDocument())
@@ -149,7 +148,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
     await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
 
     act(() => {
-      latestTriggerEventsModalProps.onDismiss()
+      latestTriggerEventsModalProps.onClose()
     })
 
     await waitFor(() => expect(screen.queryByTestId('trigger-limit-modal')).not.toBeInTheDocument())
@@ -177,7 +176,7 @@ describe('ModalContextProvider trigger events limit modal', () => {
     await waitFor(() => expect(screen.getByTestId('trigger-limit-modal')).toBeInTheDocument())
 
     act(() => {
-      latestTriggerEventsModalProps.onDismiss()
+      latestTriggerEventsModalProps.onClose()
     })
 
     await waitFor(() => expect(screen.queryByTestId('trigger-limit-modal')).not.toBeInTheDocument())
