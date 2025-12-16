@@ -1,74 +1,19 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, screen } from '@testing-library/react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import APIKeyInfoPanel from './index'
+import {
+  assertions,
+  clearAllMocks,
+  defaultModalContext,
+  interactions,
+  mockUseModalContext,
+  scenarios,
+  textKeys,
+} from './apikey-info-panel.test-utils'
 
-jest.mock('@/context/provider-context', () => ({
-  useProviderContext: jest.fn(),
-}))
-
-jest.mock('@/context/modal-context', () => ({
-  useModalContext: jest.fn(),
-}))
-
+// Mock config for Cloud edition
 jest.mock('@/config', () => ({
   IS_CE_EDITION: false, // Test Cloud edition
 }))
-
-import { useProviderContext } from '@/context/provider-context'
-import { useModalContext } from '@/context/modal-context'
-import { defaultPlan } from '@/app/components/billing/config'
-import { noop } from 'lodash-es'
-
-const mockUseProviderContext = useProviderContext as jest.MockedFunction<typeof useProviderContext>
-const mockUseModalContext = useModalContext as jest.MockedFunction<typeof useModalContext>
-
-const defaultProviderContext = {
-  modelProviders: [],
-  refreshModelProviders: noop,
-  textGenerationModelList: [],
-  supportRetrievalMethods: [],
-  isAPIKeySet: false,
-  plan: defaultPlan,
-  isFetchedPlan: false,
-  enableBilling: false,
-  onPlanInfoChanged: noop,
-  enableReplaceWebAppLogo: false,
-  modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
-  enableEducationPlan: false,
-  isEducationWorkspace: false,
-  isEducationAccount: false,
-  allowRefreshEducationVerify: false,
-  educationAccountExpireAt: null,
-  isLoadingEducationAccountInfo: false,
-  isFetchingEducationAccountInfo: false,
-  webappCopyrightEnabled: false,
-  licenseLimit: {
-    workspace_members: {
-      size: 0,
-      limit: 0,
-    },
-  },
-  refreshLicenseLimit: noop,
-  isAllowTransferWorkspace: false,
-  isAllowPublishAsCustomKnowledgePipelineTemplate: false,
-}
-
-const defaultModalContext = {
-  setShowAccountSettingModal: noop,
-  setShowApiBasedExtensionModal: noop,
-  setShowModerationSettingModal: noop,
-  setShowExternalDataToolModal: noop,
-  setShowPricingModal: noop,
-  setShowAnnotationFullModal: noop,
-  setShowModelModal: noop,
-  setShowExternalKnowledgeAPIModal: noop,
-  setShowModelLoadBalancingModal: noop,
-  setShowOpeningModal: noop,
-  setShowUpdatePluginModal: noop,
-  setShowEducationExpireNoticeModal: noop,
-  setShowTriggerEventsLimitModal: noop,
-}
 
 afterEach(cleanup)
 
@@ -76,13 +21,7 @@ describe('APIKeyInfoPanel - Cloud Edition', () => {
   const mockSetShowAccountSettingModal = jest.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
-
-    mockUseProviderContext.mockReturnValue({
-      ...defaultProviderContext,
-      isAPIKeySet: false,
-    })
-
+    clearAllMocks()
     mockUseModalContext.mockReturnValue({
       ...defaultModalContext,
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -91,70 +30,55 @@ describe('APIKeyInfoPanel - Cloud Edition', () => {
 
   describe('Rendering', () => {
     it('should render without crashing when API key is not set', () => {
-      render(<APIKeyInfoPanel />)
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      scenarios.withAPIKeyNotSet()
+      assertions.shouldRenderMainButton()
     })
 
     it('should not render when API key is already set', () => {
-      mockUseProviderContext.mockReturnValue({
-        ...defaultProviderContext,
-        isAPIKeySet: true,
-      })
-
-      const { container } = render(<APIKeyInfoPanel />)
-
-      expect(container.firstChild).toBeNull()
+      const { container } = scenarios.withAPIKeySet()
+      assertions.shouldNotRender(container)
     })
 
     it('should not render when panel is hidden by user', () => {
-      const { container } = render(<APIKeyInfoPanel />)
-
-      const closeButton = container.querySelector('.cursor-pointer')
-      fireEvent.click(closeButton!)
-
-      expect(container.firstChild).toBeNull()
+      const { container } = scenarios.withAPIKeyNotSet()
+      interactions.clickCloseButton(container)
+      assertions.shouldNotRender(container)
     })
   })
 
   describe('Cloud Edition Content', () => {
     it('should display cloud version title', () => {
-      render(<APIKeyInfoPanel />)
-
-      expect(screen.getByText('appOverview.apiKeyInfo.cloud.trial.title')).toBeInTheDocument()
+      scenarios.withAPIKeyNotSet()
+      expect(screen.getByText(textKeys.cloud.trialTitle)).toBeInTheDocument()
     })
 
     it('should display emoji for cloud version', () => {
-      const { container } = render(<APIKeyInfoPanel />)
-
+      const { container } = scenarios.withAPIKeyNotSet()
       expect(container.querySelector('em-emoji')).toBeInTheDocument()
       expect(container.querySelector('em-emoji')).toHaveAttribute('id', '😀')
     })
 
     it('should display cloud version description', () => {
-      render(<APIKeyInfoPanel />)
-
-      expect(screen.getByText(/appOverview\.apiKeyInfo\.cloud\.trial\.description/)).toBeInTheDocument()
+      scenarios.withAPIKeyNotSet()
+      expect(screen.getByText(textKeys.cloud.trialDescription)).toBeInTheDocument()
     })
 
     it('should not render external link for cloud version', () => {
-      const { container } = render(<APIKeyInfoPanel />)
-
+      const { container } = scenarios.withAPIKeyNotSet()
       expect(container.querySelector('a[href="https://cloud.dify.ai/apps"]')).not.toBeInTheDocument()
     })
 
     it('should display set API button text', () => {
-      render(<APIKeyInfoPanel />)
-
-      expect(screen.getByText('appOverview.apiKeyInfo.setAPIBtn')).toBeInTheDocument()
+      scenarios.withAPIKeyNotSet()
+      expect(screen.getByText(textKeys.cloud.setAPIBtn)).toBeInTheDocument()
     })
   })
 
   describe('User Interactions', () => {
     it('should call setShowAccountSettingModal when set API button is clicked', () => {
-      render(<APIKeyInfoPanel />)
+      scenarios.withMockModal(mockSetShowAccountSettingModal)
 
-      fireEvent.click(screen.getByRole('button'))
+      interactions.clickMainButton()
 
       expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({
         payload: ACCOUNT_SETTING_TAB.PROVIDER,
@@ -162,52 +86,37 @@ describe('APIKeyInfoPanel - Cloud Edition', () => {
     })
 
     it('should hide panel when close button is clicked', () => {
-      const { container } = render(<APIKeyInfoPanel />)
+      const { container } = scenarios.withAPIKeyNotSet()
       expect(container.firstChild).toBeInTheDocument()
 
-      const closeButton = container.querySelector('.cursor-pointer')
-      fireEvent.click(closeButton!)
-
-      expect(container.firstChild).toBeNull()
+      interactions.clickCloseButton(container)
+      assertions.shouldNotRender(container)
     })
   })
 
   describe('Props and Styling', () => {
     it('should render button with primary variant', () => {
-      render(<APIKeyInfoPanel />)
-
+      scenarios.withAPIKeyNotSet()
       const button = screen.getByRole('button')
       expect(button).toHaveClass('btn-primary')
     })
 
     it('should render panel container with correct classes', () => {
-      const { container } = render(<APIKeyInfoPanel />)
-
+      const { container } = scenarios.withAPIKeyNotSet()
       const panel = container.firstChild as HTMLElement
-      expect(panel).toHaveClass(
-        'border-components-panel-border',
-        'bg-components-panel-bg',
-        'relative',
-        'mb-6',
-        'rounded-2xl',
-        'border',
-        'p-8',
-        'shadow-md',
-      )
+      assertions.shouldHavePanelStyling(panel)
     })
   })
 
   describe('Accessibility', () => {
     it('should have button with proper role', () => {
-      render(<APIKeyInfoPanel />)
-
+      scenarios.withAPIKeyNotSet()
       expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should have clickable close button', () => {
-      const { container } = render(<APIKeyInfoPanel />)
-      const closeButton = container.querySelector('.cursor-pointer')
-      expect(closeButton).toHaveClass('cursor-pointer')
+      const { container } = scenarios.withAPIKeyNotSet()
+      assertions.shouldHaveCloseButton(container)
     })
   })
 })
