@@ -157,6 +157,22 @@ class TestWebhookServiceUnit:
 
         assert result == "application/octet-stream"
 
+    def test_detect_binary_mimetype_handles_magic_exception(self, monkeypatch):
+        """Fallback MIME type should be used when python-magic raises an exception."""
+        try:
+            import magic as real_magic
+        except ImportError:
+            pytest.skip("python-magic is not installed")
+
+        fake_magic = MagicMock()
+        fake_magic.from_buffer.side_effect = real_magic.MagicException("magic error")
+        monkeypatch.setattr("services.trigger.webhook_service.magic", fake_magic)
+
+        with patch("services.trigger.webhook_service.logger") as mock_logger:
+            result = WebhookService._detect_binary_mimetype(b"binary data")
+
+            assert result == "application/octet-stream"
+            mock_logger.debug.assert_called_once()
     def test_extract_webhook_data_invalid_json(self):
         """Test webhook data extraction with invalid JSON."""
         app = Flask(__name__)
