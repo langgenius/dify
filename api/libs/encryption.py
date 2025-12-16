@@ -43,13 +43,7 @@ class FieldEncryption:
         iv_size = 16  # 128 bits
         iterations = 100_000  # Choose an appropriate number of iterations.
         dk_len = key_size + iv_size
-        derived = hashlib.pbkdf2_hmac(
-            'sha256',
-            passphrase.encode('utf-8'),
-            salt,
-            iterations,
-            dk_len
-        )
+        derived = hashlib.pbkdf2_hmac("sha256", passphrase.encode("utf-8"), salt, iterations, dk_len)
         key = derived[:key_size]
         iv = derived[key_size : key_size + iv_size]
         return key, iv
