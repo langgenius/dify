@@ -149,11 +149,34 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         return isinstance(variable, NoneSegment) or len(variable.value) == 0
 
     def _handle_empty_iteration(self, variable: ArraySegment | NoneSegment) -> Generator[NodeEventBase, None, None]:
+        started_at = naive_utc_now()
+        inputs = {"iterator_selector": []}
+        usage = LLMUsage.empty_usage()
+
+        yield IterationStartedEvent(
+            start_at=started_at,
+            inputs=inputs,
+            metadata={"iteration_length": 0},
+        )
+
         # Try our best to preserve the type information.
         if isinstance(variable, ArraySegment):
             output = variable.model_copy(update={"value": []})
         else:
             output = ArrayAnySegment(value=[])
+
+        yield IterationSucceededEvent(
+            start_at=started_at,
+            inputs=inputs,
+            outputs={"output": []},
+            steps=0,
+            metadata={
+                WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+                WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: {},
+            },
+        )
 
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
@@ -161,6 +184,14 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                 # TODO(QuantumGhost): is it possible to compute the type of `output`
                 # from graph definition?
                 outputs={"output": output},
+                inputs=inputs,
+                metadata={
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: usage.currency,
+                    WorkflowNodeExecutionMetadataKey.ITERATION_DURATION_MAP: {},
+                },
+                llm_usage=usage,
             )
         )
 

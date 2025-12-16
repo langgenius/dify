@@ -92,6 +92,22 @@ class PipelineRunner(WorkflowBasedAppRunner):
 
         db.session.close()
 
+        files = self.application_generate_entity.files
+        system_inputs = SystemVariable(
+            files=files,
+            user_id=user_id,
+            app_id=app_config.app_id,
+            workflow_id=app_config.workflow_id,
+            workflow_execution_id=self.application_generate_entity.workflow_execution_id,
+            document_id=self.application_generate_entity.document_id,
+            original_document_id=self.application_generate_entity.original_document_id,
+            batch=self.application_generate_entity.batch,
+            dataset_id=self.application_generate_entity.dataset_id,
+            datasource_type=self.application_generate_entity.datasource_type,
+            datasource_info=self.application_generate_entity.datasource_info,
+            invoke_from=self.application_generate_entity.invoke_from.value,
+        )
+
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run or self.application_generate_entity.single_loop_run:
             # Handle single iteration or single loop run
@@ -99,27 +115,12 @@ class PipelineRunner(WorkflowBasedAppRunner):
                 workflow=workflow,
                 single_iteration_run=self.application_generate_entity.single_iteration_run,
                 single_loop_run=self.application_generate_entity.single_loop_run,
+                system_variables=system_inputs,
             )
         else:
             inputs = self.application_generate_entity.inputs
-            files = self.application_generate_entity.files
 
             # Create a variable pool.
-            system_inputs = SystemVariable(
-                files=files,
-                user_id=user_id,
-                app_id=app_config.app_id,
-                workflow_id=app_config.workflow_id,
-                workflow_execution_id=self.application_generate_entity.workflow_execution_id,
-                document_id=self.application_generate_entity.document_id,
-                original_document_id=self.application_generate_entity.original_document_id,
-                batch=self.application_generate_entity.batch,
-                dataset_id=self.application_generate_entity.dataset_id,
-                datasource_type=self.application_generate_entity.datasource_type,
-                datasource_info=self.application_generate_entity.datasource_info,
-                invoke_from=self.application_generate_entity.invoke_from.value,
-            )
-
             rag_pipeline_variables = []
             if workflow.rag_pipeline_variables:
                 for v in workflow.rag_pipeline_variables:
