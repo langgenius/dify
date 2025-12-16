@@ -88,12 +88,6 @@ class AudioApi(WebApiResource):
 
 @web_ns.route("/text-to-audio")
 class TextApi(WebApiResource):
-    text_to_audio_response_fields = {
-        "audio_url": fields.String,
-        "duration": fields.Float,
-    }
-
-    @marshal_with(text_to_audio_response_fields)
     @web_ns.doc("Text to Audio")
     @web_ns.doc(description="Convert text to audio using text-to-speech service.")
     @web_ns.doc(
@@ -108,11 +102,13 @@ class TextApi(WebApiResource):
     def post(self, app_model: App, end_user):
         """Convert text to audio"""
         try:
-            parser = reqparse.RequestParser()
-            parser.add_argument("message_id", type=str, required=False, location="json")
-            parser.add_argument("voice", type=str, location="json")
-            parser.add_argument("text", type=str, location="json")
-            parser.add_argument("streaming", type=bool, location="json")
+            parser = (
+                reqparse.RequestParser()
+                .add_argument("message_id", type=str, required=False, location="json")
+                .add_argument("voice", type=str, location="json")
+                .add_argument("text", type=str, location="json")
+                .add_argument("streaming", type=bool, location="json")
+            )
             args = parser.parse_args()
 
             message_id = args.get("message_id", None)

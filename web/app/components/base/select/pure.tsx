@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -22,10 +23,8 @@ export type Option = {
   value: string
 }
 
-export type PureSelectProps = {
+type SharedPureSelectProps = {
   options: Option[]
-  value?: string
-  onChange?: (value: string) => void
   containerProps?: PortalToFollowElemOptions & {
     open?: boolean
     onOpenChange?: (open: boolean) => void
@@ -38,22 +37,39 @@ export type PureSelectProps = {
     className?: string
     itemClassName?: string
     title?: string
+    titleClassName?: string
   },
   placeholder?: string
   disabled?: boolean
   triggerPopupSameWidth?: boolean
 }
-const PureSelect = ({
-  options,
-  value,
-  onChange,
-  containerProps,
-  triggerProps,
-  popupProps,
-  placeholder,
-  disabled,
-  triggerPopupSameWidth,
-}: PureSelectProps) => {
+
+type SingleSelectProps = {
+  multiple?: false
+  value?: string
+  onChange?: (value: string) => void
+}
+
+type MultiSelectProps = {
+  multiple: true
+  value?: string[]
+  onChange?: (value: string[]) => void
+}
+
+export type PureSelectProps = SharedPureSelectProps & (SingleSelectProps | MultiSelectProps)
+const PureSelect = (props: PureSelectProps) => {
+  const {
+    options,
+    containerProps,
+    triggerProps,
+    popupProps,
+    placeholder,
+    disabled,
+    triggerPopupSameWidth,
+    multiple,
+    value,
+    onChange,
+  } = props
   const { t } = useTranslation()
   const {
     open,
@@ -69,6 +85,7 @@ const PureSelect = ({
     className: popupClassName,
     itemClassName: popupItemClassName,
     title: popupTitle,
+    titleClassName: popupTitleClassName,
   } = popupProps || {}
 
   const [localOpen, setLocalOpen] = useState(false)
@@ -79,8 +96,13 @@ const PureSelect = ({
     setLocalOpen(openValue)
   }, [onOpenChange])
 
-  const selectedOption = options.find(option => option.value === value)
-  const triggerText = selectedOption?.label || placeholder || t('common.placeholder.select')
+  const triggerText = useMemo(() => {
+    const placeholderText = placeholder || t('common.placeholder.select')
+    if (multiple)
+      return value?.length ? t('common.dynamicSelect.selected', { count: value.length }) : placeholderText
+
+    return options.find(option => option.value === value)?.label || placeholderText
+  }, [multiple, value, options, placeholder])
 
   return (
     <PortalToFollowElem
@@ -122,13 +144,16 @@ const PureSelect = ({
       )}>
         <div
           className={cn(
-            'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg',
+            'max-h-80 overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg',
             popupClassName,
           )}
         >
           {
             popupTitle && (
-              <div className='system-xs-medium-uppercase flex h-[22px] items-center px-3 text-text-tertiary'>
+              <div className={cn(
+                'system-xs-medium-uppercase flex h-[22px] items-center px-3 text-text-tertiary',
+                popupTitleClassName,
+              )}>
                 {popupTitle}
               </div>
             )
@@ -144,6 +169,14 @@ const PureSelect = ({
                 title={option.label}
                 onClick={() => {
                   if (disabled) return
+                  if (multiple) {
+                    const currentValues = value ?? []
+                    const nextValues = currentValues.includes(option.value)
+                      ? currentValues.filter(valueItem => valueItem !== option.value)
+                      : [...currentValues, option.value]
+                    onChange?.(nextValues)
+                    return
+                  }
                   onChange?.(option.value)
                   handleOpenChange(false)
                 }}
@@ -152,7 +185,11 @@ const PureSelect = ({
                   {option.label}
                 </div>
                 {
-                  value === option.value && <RiCheckLine className='h-4 w-4 shrink-0 text-text-accent' />
+                  (
+                    multiple
+                      ? (value ?? []).includes(option.value)
+                      : value === option.value
+                  ) && <RiCheckLine className='h-4 w-4 shrink-0 text-text-accent' />
                 }
               </div>
             ))

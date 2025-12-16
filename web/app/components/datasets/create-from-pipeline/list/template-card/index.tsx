@@ -19,6 +19,7 @@ import Content from './content'
 import Actions from './actions'
 import { useCreatePipelineDatasetFromCustomized } from '@/service/knowledge/use-create-dataset'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type TemplateCardProps = {
   pipeline: PipelineTemplate
@@ -66,6 +67,11 @@ const TemplateCard = ({
         invalidDatasetList()
         if (newDataset.pipeline_id)
           await handleCheckPluginDependencies(newDataset.pipeline_id, true)
+        trackEvent('create_datasets_with_pipeline', {
+          template_name: pipeline.name,
+          template_id: pipeline.id,
+          template_type: type,
+        })
         push(`/datasets/${newDataset.dataset_id}/pipeline`)
       },
       onError: () => {
@@ -75,7 +81,7 @@ const TemplateCard = ({
         })
       },
     })
-  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList])
+  }, [getPipelineTemplateInfo, createDataset, t, handleCheckPluginDependencies, push, invalidDatasetList, pipeline.name, pipeline.id, type])
 
   const handleShowTemplateDetails = useCallback(() => {
     setShowDetailModal(true)

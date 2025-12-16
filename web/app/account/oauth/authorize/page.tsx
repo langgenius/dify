@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/app/components/base/button'
@@ -18,11 +18,12 @@ import {
   RiTranslate2,
 } from '@remixicon/react'
 import dayjs from 'dayjs'
-
-export const OAUTH_AUTHORIZE_PENDING_KEY = 'oauth_authorize_pending'
-export const REDIRECT_URL_KEY = 'oauth_redirect_url'
-
-const OAUTH_AUTHORIZE_PENDING_TTL = 60 * 3
+import { useIsLogin } from '@/service/use-common'
+import {
+  OAUTH_AUTHORIZE_PENDING_KEY,
+  OAUTH_AUTHORIZE_PENDING_TTL,
+  REDIRECT_URL_KEY,
+} from './constants'
 
 function setItemWithExpiry(key: string, value: string, ttl: number) {
   const item = {
@@ -74,17 +75,13 @@ export default function OAuthAuthorize() {
   const client_id = decodeURIComponent(searchParams.get('client_id') || '')
   const redirect_uri = decodeURIComponent(searchParams.get('redirect_uri') || '')
   const { userProfile } = useAppContext()
-  const { data: authAppInfo, isLoading, isError } = useOAuthAppInfo(client_id, redirect_uri)
+  const { data: authAppInfo, isLoading: isOAuthLoading, isError } = useOAuthAppInfo(client_id, redirect_uri)
   const { mutateAsync: authorize, isPending: authorizing } = useAuthorizeOAuthApp()
   const hasNotifiedRef = useRef(false)
 
-  const isLoggedIn = useMemo(() => {
-    try {
-      return Boolean(localStorage.getItem('console_token') && localStorage.getItem('refresh_token'))
-    }
-    catch { return false }
-  }, [])
-
+  const { isLoading: isIsLoginLoading, data: loginData } = useIsLogin()
+  const isLoggedIn = loginData?.logged_in
+  const isLoading = isOAuthLoading || isIsLoginLoading
   const onLoginSwitchClick = () => {
     try {
       const returnUrl = buildReturnUrl('/account/oauth/authorize', `?client_id=${encodeURIComponent(client_id)}&redirect_uri=${encodeURIComponent(redirect_uri)}`)

@@ -19,6 +19,7 @@ const translation = {
       tokens: 'JETONS',
       user: 'UTILISATEUR FINAL OU COMPTE',
       version: 'VERSION',
+      triggered_from: 'DÉCLENCHÉ PAR',
     },
     pagination: {
       previous: 'Précédent',
@@ -65,6 +66,8 @@ const translation = {
       quarterToDate: 'Trimestre à ce jour',
       yearToDate: 'Année à ce jour',
       allTime: 'Tout le temps',
+      custom: 'Personnalisé',
+      last30days: 'Derniers 30 jours',
     },
     annotation: {
       all: 'Tous',
@@ -82,6 +85,7 @@ const translation = {
     workflowTitle: 'Détail du journal',
     fileListDetail: 'Détail',
     fileListLabel: 'Détails du fichier',
+    testWithParams: 'Test avec paramètres',
   },
   promptLog: 'Journal de consigne',
   agentLog: 'Journal des agents',
@@ -94,6 +98,15 @@ const translation = {
     finalProcessing: 'Traitement final',
   },
   dateFormat: 'JJ/MM/YYYY',
+  triggerBy: {
+    debugging: 'Débogage',
+    appRun: 'Application Web',
+    webhook: 'Webhook',
+    schedule: 'Programme',
+    plugin: 'Plugin',
+    ragPipelineRun: 'Pipeline RAG',
+    ragPipelineDebugging: 'Débogage RAG',
+  },
 }
 
 export default translation

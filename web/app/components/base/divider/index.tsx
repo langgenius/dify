@@ -29,7 +29,7 @@ export type DividerProps = {
 
 const Divider: FC<DividerProps> = ({ type, bgStyle, className = '', style }) => {
   return (
-    <div className={classNames(dividerVariants({ type, bgStyle }), className)} style={style}></div>
+    <div className={classNames(dividerVariants({ type, bgStyle }), 'shrink-0', className)} style={style}></div>
   )
 }
 

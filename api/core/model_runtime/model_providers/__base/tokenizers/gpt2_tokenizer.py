@@ -15,7 +15,7 @@ class GPT2Tokenizer:
         use gpt2 tokenizer to get num tokens
         """
         _tokenizer = GPT2Tokenizer.get_encoder()
-        tokens = _tokenizer.encode(text)
+        tokens = _tokenizer.encode(text)  # type: ignore
         return len(tokens)
 
     @staticmethod

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import RemoveButton from '../../../_base/components/remove-button'
 import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'

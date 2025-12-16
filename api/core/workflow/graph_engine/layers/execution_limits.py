@@ -10,7 +10,7 @@ When limits are exceeded, the layer automatically aborts execution.
 
 import logging
 import time
-from enum import Enum
+from enum import StrEnum
 from typing import final
 
 from typing_extensions import override
@@ -24,7 +24,7 @@ from core.workflow.graph_events import (
 from core.workflow.graph_events.node import NodeRunFailedEvent, NodeRunSucceededEvent
 
 
-class LimitType(Enum):
+class LimitType(StrEnum):
     """Types of execution limits that can be exceeded."""
 
     STEP_LIMIT = "step_limit"

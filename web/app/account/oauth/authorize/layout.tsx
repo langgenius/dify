@@ -5,17 +5,22 @@ import cn from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { AppContextProvider } from '@/context/app-context'
-import { useMemo } from 'react'
+import { useIsLogin } from '@/service/use-common'
+import Loading from '@/app/components/base/loading'
 
 export default function SignInLayout({ children }: any) {
   const { systemFeatures } = useGlobalPublicStore()
   useDocumentTitle('')
-  const isLoggedIn = useMemo(() => {
-    try {
-      return Boolean(localStorage.getItem('console_token') && localStorage.getItem('refresh_token'))
-    }
-    catch { return false }
-  }, [])
+  const { isLoading, data: loginData } = useIsLogin()
+  const isLoggedIn = loginData?.logged_in
+
+  if(isLoading) {
+    return (
+      <div className='flex min-h-screen w-full justify-center bg-background-default-burn'>
+        <Loading />
+      </div>
+    )
+  }
   return <>
     <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
       <div className={cn('flex w-full shrink-0 flex-col items-center rounded-2xl border border-effects-highlight bg-background-default-subtle')}>

@@ -49,7 +49,7 @@ const ModelLoadBalancingConfigs = ({
   provider,
   model,
   configurationMethod,
-  currentCustomConfigurationModelFixedFields,
+  currentCustomConfigurationModelFixedFields: _currentCustomConfigurationModelFixedFields,
   withSwitch = false,
   className,
   modelCredential,

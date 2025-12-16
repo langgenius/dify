@@ -309,11 +309,12 @@ class ProviderManager:
                     (model for model in available_models if model.model == "gpt-4"), available_models[0]
                 )
 
-                default_model = TenantDefaultModel()
-                default_model.tenant_id = tenant_id
-                default_model.model_type = model_type.to_origin_model_type()
-                default_model.provider_name = available_model.provider.provider
-                default_model.model_name = available_model.model
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type.to_origin_model_type(),
+                    provider_name=available_model.provider.provider,
+                    model_name=available_model.model,
+                )
                 db.session.add(default_model)
                 db.session.commit()
 
@@ -610,7 +611,7 @@ class ProviderManager:
 
             provider_quota_to_provider_record_dict = {}
             for provider_record in provider_records:
-                if provider_record.provider_type != ProviderType.SYSTEM.value:
+                if provider_record.provider_type != ProviderType.SYSTEM:
                     continue
 
                 provider_quota_to_provider_record_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
@@ -627,8 +628,8 @@ class ProviderManager:
                                 tenant_id=tenant_id,
                                 # TODO: Use provider name with prefix after the data migration.
                                 provider_name=ModelProviderID(provider_name).provider_name,
-                                provider_type=ProviderType.SYSTEM.value,
-                                quota_type=ProviderQuotaType.TRIAL.value,
+                                provider_type=ProviderType.SYSTEM,
+                                quota_type=ProviderQuotaType.TRIAL,
                                 quota_limit=quota.quota_limit,  # type: ignore
                                 quota_used=0,
                                 is_valid=True,
@@ -641,8 +642,8 @@ class ProviderManager:
                             stmt = select(Provider).where(
                                 Provider.tenant_id == tenant_id,
                                 Provider.provider_name == ModelProviderID(provider_name).provider_name,
-                                Provider.provider_type == ProviderType.SYSTEM.value,
-                                Provider.quota_type == ProviderQuotaType.TRIAL.value,
+                                Provider.provider_type == ProviderType.SYSTEM,
+                                Provider.quota_type == ProviderQuotaType.TRIAL,
                             )
                             existed_provider_record = db.session.scalar(stmt)
                             if not existed_provider_record:
@@ -702,7 +703,7 @@ class ProviderManager:
         """Get custom provider configuration."""
         # Find custom provider record (non-system)
         custom_provider_record = next(
-            (record for record in provider_records if record.provider_type != ProviderType.SYSTEM.value), None
+            (record for record in provider_records if record.provider_type != ProviderType.SYSTEM), None
         )
 
         if not custom_provider_record:
@@ -905,7 +906,7 @@ class ProviderManager:
         # Convert provider_records to dict
         quota_type_to_provider_records_dict: dict[ProviderQuotaType, Provider] = {}
         for provider_record in provider_records:
-            if provider_record.provider_type != ProviderType.SYSTEM.value:
+            if provider_record.provider_type != ProviderType.SYSTEM:
                 continue
 
             quota_type_to_provider_records_dict[ProviderQuotaType.value_of(provider_record.quota_type)] = (
@@ -1046,7 +1047,7 @@ class ProviderManager:
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type.value == FormType.SECRET_INPUT.value:
+            if credential_form_schema.type == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables

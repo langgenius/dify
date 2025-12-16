@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any, Literal
+from typing import Any
 from uuid import uuid4
 
 from opensearchpy import OpenSearch, Urllib3AWSV4SignerAuth, Urllib3HttpConnection, helpers
@@ -8,6 +8,7 @@ from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
+from configs.middleware.vdb.opensearch_config import AuthMethod
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -25,7 +26,7 @@ class OpenSearchConfig(BaseModel):
     port: int
     secure: bool = False  # use_ssl
     verify_certs: bool = True
-    auth_method: Literal["basic", "aws_managed_iam"] = "basic"
+    auth_method: AuthMethod = AuthMethod.BASIC
     user: str | None = None
     password: str | None = None
     aws_region: str | None = None
@@ -98,9 +99,9 @@ class OpenSearchVector(BaseVector):
                 "_op_type": "index",
                 "_index": self._collection_name.lower(),
                 "_source": {
-                    Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i],  # Make sure you pass an array here
-                    Field.METADATA_KEY.value: documents[i].metadata,
+                    Field.CONTENT_KEY: documents[i].page_content,
+                    Field.VECTOR: embeddings[i],  # Make sure you pass an array here
+                    Field.METADATA_KEY: documents[i].metadata,
                 },
             }
             # See https://github.com/langchain-ai/langchainjs/issues/4346#issuecomment-1935123377
@@ -116,7 +117,7 @@ class OpenSearchVector(BaseVector):
         )
 
     def get_ids_by_metadata_field(self, key: str, value: str):
-        query = {"query": {"term": {f"{Field.METADATA_KEY.value}.{key}": value}}}
+        query = {"query": {"term": {f"{Field.METADATA_KEY}.{key}": value}}}
         response = self._client.search(index=self._collection_name.lower(), body=query)
         if response["hits"]["hits"]:
             return [hit["_id"] for hit in response["hits"]["hits"]]
@@ -160,7 +161,7 @@ class OpenSearchVector(BaseVector):
                         logger.exception("Error deleting document: %s", error)
 
     def delete(self):
-        self._client.indices.delete(index=self._collection_name.lower())
+        self._client.indices.delete(index=self._collection_name.lower(), ignore_unavailable=True)
 
     def text_exists(self, id: str) -> bool:
         try:
@@ -180,17 +181,17 @@ class OpenSearchVector(BaseVector):
 
         query = {
             "size": kwargs.get("top_k", 4),
-            "query": {"knn": {Field.VECTOR.value: {Field.VECTOR.value: query_vector, "k": kwargs.get("top_k", 4)}}},
+            "query": {"knn": {Field.VECTOR: {Field.VECTOR: query_vector, "k": kwargs.get("top_k", 4)}}},
         }
         document_ids_filter = kwargs.get("document_ids_filter")
         if document_ids_filter:
             query["query"] = {
                 "script_score": {
-                    "query": {"bool": {"filter": [{"terms": {Field.DOCUMENT_ID.value: document_ids_filter}}]}},
+                    "query": {"bool": {"filter": [{"terms": {Field.DOCUMENT_ID: document_ids_filter}}]}},
                     "script": {
                         "source": "knn_score",
                         "lang": "knn",
-                        "params": {"field": Field.VECTOR.value, "query_value": query_vector, "space_type": "l2"},
+                        "params": {"field": Field.VECTOR, "query_value": query_vector, "space_type": "l2"},
                     },
                 }
             }
@@ -203,7 +204,7 @@ class OpenSearchVector(BaseVector):
 
         docs = []
         for hit in response["hits"]["hits"]:
-            metadata = hit["_source"].get(Field.METADATA_KEY.value, {})
+            metadata = hit["_source"].get(Field.METADATA_KEY, {})
 
             # Make sure metadata is a dictionary
             if metadata is None:
@@ -212,7 +213,7 @@ class OpenSearchVector(BaseVector):
             metadata["score"] = hit["_score"]
             score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if hit["_score"] >= score_threshold:
-                doc = Document(page_content=hit["_source"].get(Field.CONTENT_KEY.value), metadata=metadata)
+                doc = Document(page_content=hit["_source"].get(Field.CONTENT_KEY), metadata=metadata)
                 docs.append(doc)
 
         return docs
@@ -227,9 +228,9 @@ class OpenSearchVector(BaseVector):
 
         docs = []
         for hit in response["hits"]["hits"]:
-            metadata = hit["_source"].get(Field.METADATA_KEY.value)
-            vector = hit["_source"].get(Field.VECTOR.value)
-            page_content = hit["_source"].get(Field.CONTENT_KEY.value)
+            metadata = hit["_source"].get(Field.METADATA_KEY)
+            vector = hit["_source"].get(Field.VECTOR)
+            page_content = hit["_source"].get(Field.CONTENT_KEY)
             doc = Document(page_content=page_content, vector=vector, metadata=metadata)
             docs.append(doc)
 
@@ -250,8 +251,8 @@ class OpenSearchVector(BaseVector):
                     "settings": {"index": {"knn": True}},
                     "mappings": {
                         "properties": {
-                            Field.CONTENT_KEY.value: {"type": "text"},
-                            Field.VECTOR.value: {
+                            Field.CONTENT_KEY: {"type": "text"},
+                            Field.VECTOR: {
                                 "type": "knn_vector",
                                 "dimension": len(embeddings[0]),  # Make sure the dimension is correct here
                                 "method": {
@@ -261,7 +262,7 @@ class OpenSearchVector(BaseVector):
                                     "parameters": {"ef_construction": 64, "m": 8},
                                 },
                             },
-                            Field.METADATA_KEY.value: {
+                            Field.METADATA_KEY: {
                                 "type": "object",
                                 "properties": {
                                     "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
@@ -293,7 +294,7 @@ class OpenSearchVectorFactory(AbstractVectorFactory):
             port=dify_config.OPENSEARCH_PORT,
             secure=dify_config.OPENSEARCH_SECURE,
             verify_certs=dify_config.OPENSEARCH_VERIFY_CERTS,
-            auth_method=dify_config.OPENSEARCH_AUTH_METHOD.value,
+            auth_method=dify_config.OPENSEARCH_AUTH_METHOD,
             user=dify_config.OPENSEARCH_USER,
             password=dify_config.OPENSEARCH_PASSWORD,
             aws_region=dify_config.OPENSEARCH_AWS_REGION,

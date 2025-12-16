@@ -4,6 +4,7 @@ import CreateCard from './create-card'
 import { useI18N } from '@/context/i18n'
 import { useMemo } from 'react'
 import { LanguagesSupported } from '@/i18n-config/language'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const BuiltInPipelineList = () => {
   const { locale } = useI18N()
@@ -12,7 +13,8 @@ const BuiltInPipelineList = () => {
       return locale
     return LanguagesSupported[0]
   }, [locale])
-  const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'built-in', language })
+  const enableMarketplace = useGlobalPublicStore(s => s.systemFeatures.enable_marketplace)
+  const { data: pipelineList, isLoading } = usePipelineTemplateList({ type: 'built-in', language }, enableMarketplace)
   const list = pipelineList?.pipeline_templates || []
 
   return (

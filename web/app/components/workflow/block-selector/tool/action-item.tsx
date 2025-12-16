@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import type { ToolWithProvider } from '../../types'
 import { BlockEnum } from '../../types'
 import type { ToolDefaultValue } from '../types'
@@ -10,13 +10,25 @@ import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 import cn from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
+import { basePath } from '@/utils/var'
+import { trackEvent } from '@/app/components/base/amplitude'
+
+const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
+  if (!icon)
+    return icon
+  if (typeof icon === 'string' && basePath && icon.startsWith('/') && !icon.startsWith(`${basePath}/`))
+    return `${basePath}${icon}`
+  return icon
+}
 
 type Props = {
   provider: ToolWithProvider
   payload: Tool
   disabled?: boolean
   isAdded?: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
 }
 
 const ToolItem: FC<Props> = ({
@@ -29,6 +41,20 @@ const ToolItem: FC<Props> = ({
   const { t } = useTranslation()
 
   const language = useGetLanguage()
+  const { theme } = useTheme()
+  const normalizedIcon = useMemo<ToolWithProvider['icon']>(() => {
+    return normalizeProviderIcon(provider.icon) ?? provider.icon
+  }, [provider.icon])
+  const normalizedIconDark = useMemo(() => {
+    if (!provider.icon_dark)
+      return undefined
+    return normalizeProviderIcon(provider.icon_dark) ?? provider.icon_dark
+  }, [provider.icon_dark])
+  const providerIcon = useMemo(() => {
+    if (theme === Theme.dark && normalizedIconDark)
+      return normalizedIconDark
+    return normalizedIcon
+  }, [theme, normalizedIcon, normalizedIconDark])
 
   return (
     <Tooltip
@@ -42,7 +68,7 @@ const ToolItem: FC<Props> = ({
             size='md'
             className='mb-2'
             type={BlockEnum.Tool}
-            toolIcon={provider.icon}
+            toolIcon={providerIcon}
           />
           <div className='mb-1 text-sm leading-5 text-text-primary'>{payload.label[language]}</div>
           <div className='text-xs leading-[18px] text-text-secondary'>{payload.description[language]}</div>
@@ -64,6 +90,10 @@ const ToolItem: FC<Props> = ({
             provider_id: provider.id,
             provider_type: provider.type,
             provider_name: provider.name,
+            plugin_id: provider.plugin_id,
+            plugin_unique_identifier: provider.plugin_unique_identifier,
+            provider_icon: normalizedIcon,
+            provider_icon_dark: normalizedIconDark,
             tool_name: payload.name,
             tool_label: payload.label[language],
             tool_description: payload.description[language],
@@ -72,6 +102,10 @@ const ToolItem: FC<Props> = ({
             paramSchemas: payload.parameters,
             params,
             meta: provider.meta,
+          })
+          trackEvent('tool_selected', {
+            tool_name: payload.name,
+            plugin_id: provider.plugin_id,
           })
         }}
       >

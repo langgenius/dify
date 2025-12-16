@@ -5,6 +5,7 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
+import type { ModelFeatureEnum } from '../declarations'
 import { useCurrentProviderAndModel } from '../hooks'
 import ModelTrigger from './model-trigger'
 import EmptyTrigger from './empty-trigger'
@@ -24,7 +25,7 @@ type ModelSelectorProps = {
   popupClassName?: string
   onSelect?: (model: DefaultModel) => void
   readonly?: boolean
-  scopeFeatures?: string[]
+  scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
 }

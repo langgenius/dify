@@ -1,5 +1,5 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
 import { NodeRunningStatus } from '../types'
 

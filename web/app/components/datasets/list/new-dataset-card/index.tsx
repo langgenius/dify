@@ -12,7 +12,7 @@ const CreateAppCard = () => {
   const { t } = useTranslation()
 
   return (
-    <div className='flex h-[166px] flex-col gap-y-0.5 rounded-xl bg-background-default-dimmed'>
+    <div className='flex h-[190px] flex-col gap-y-0.5 rounded-xl bg-background-default-dimmed'>
       <div className='flex grow flex-col items-center justify-center p-2'>
         <Option
           href={'/datasets/create'}

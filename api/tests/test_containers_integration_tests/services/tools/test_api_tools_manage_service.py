@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 from faker import Faker
 
-from models.account import Account, Tenant
+from models import Account, Tenant
 from models.tools import ApiToolProvider
 from services.tools.api_tools_manage_service import ApiToolManageService
 
@@ -72,7 +72,7 @@ class TestApiToolManageService:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)

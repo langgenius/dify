@@ -81,6 +81,10 @@ const translation = {
     learnMore: 'Pelajari lebih lanjut',
     addUrl: 'Tambahkan URL',
     title: 'Dokumen',
+    sort: {
+      uploadTime: 'Waktu Unggah',
+      hitCount: 'Jumlah Pengambilan',
+    },
   },
   metadata: {
     placeholder: {
@@ -396,6 +400,7 @@ const translation = {
     paragraphs: 'Paragraf',
     newQaSegment: 'Segmen Tanya Jawab Baru',
     searchResults_other: 'HASIL',
+    allFilesUploaded: 'Semua file harus diunggah sebelum disimpan',
   },
 }
 

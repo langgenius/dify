@@ -52,6 +52,7 @@ const translation = {
     },
     isAboutToExpire: {
       summary: 'Nie martw się — to nie wpłynie na twoją obecną subskrypcję, ale nie otrzymasz zniżki edukacyjnej przy jej odnawianiu, chyba że ponownie zweryfikujesz swój status.',
+      title: 'Twój status edukacyjny wygaśnie {{date}}',
     },
     stillInEducation: {
       title: 'Wciąż w edukacji?',

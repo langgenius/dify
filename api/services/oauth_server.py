@@ -7,7 +7,7 @@ from werkzeug.exceptions import BadRequest
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.account import Account
+from models import Account
 from models.model import OAuthProviderApp
 from services.account_service import AccountService
 

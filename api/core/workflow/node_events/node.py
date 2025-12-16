@@ -3,8 +3,10 @@ from datetime import datetime
 
 from pydantic import Field
 
+from core.file import File
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
+from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.node_events import NodeRunResult
 
 from .base import NodeEventBase
@@ -13,6 +15,7 @@ from .base import NodeEventBase
 class RunRetrieverResourceEvent(NodeEventBase):
     retriever_resources: Sequence[RetrievalSourceMetadata] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")
+    context_files: list[File] | None = Field(default=None, description="context files")
 
 
 class ModelInvokeCompletedEvent(NodeEventBase):
@@ -20,6 +23,7 @@ class ModelInvokeCompletedEvent(NodeEventBase):
     usage: LLMUsage
     finish_reason: str | None = None
     reasoning_content: str | None = None
+    structured_output: dict | None = None
 
 
 class RunRetryEvent(NodeEventBase):
@@ -39,3 +43,7 @@ class StreamChunkEvent(NodeEventBase):
 
 class StreamCompletedEvent(NodeEventBase):
     node_run_result: NodeRunResult = Field(..., description="run result")
+
+
+class PauseRequestedEvent(NodeEventBase):
+    reason: PauseReason = Field(..., description="pause reason")

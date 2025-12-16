@@ -16,8 +16,8 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_default_output(self):
         """Test that MockTemplateTransformNode processes templates with Jinja2."""
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -63,7 +63,6 @@ class TestMockTemplateTransformNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -76,8 +75,8 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_custom_output(self):
         """Test that MockTemplateTransformNode returns custom configured output."""
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -125,7 +124,6 @@ class TestMockTemplateTransformNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -137,8 +135,8 @@ class TestMockTemplateTransformNode:
 
     def test_mock_template_transform_node_error_simulation(self):
         """Test that MockTemplateTransformNode can simulate errors."""
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -184,7 +182,6 @@ class TestMockTemplateTransformNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -196,8 +193,8 @@ class TestMockTemplateTransformNode:
     def test_mock_template_transform_node_with_variables(self):
         """Test that MockTemplateTransformNode processes templates with variables."""
         from core.variables import StringVariable
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -246,7 +243,6 @@ class TestMockTemplateTransformNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -262,8 +258,8 @@ class TestMockCodeNode:
 
     def test_mock_code_node_default_output(self):
         """Test that MockCodeNode returns default output."""
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -311,7 +307,6 @@ class TestMockCodeNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -323,8 +318,8 @@ class TestMockCodeNode:
 
     def test_mock_code_node_with_output_schema(self):
         """Test that MockCodeNode generates outputs based on schema."""
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -376,7 +371,6 @@ class TestMockCodeNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -392,8 +386,8 @@ class TestMockCodeNode:
 
     def test_mock_code_node_custom_output(self):
         """Test that MockCodeNode returns custom configured output."""
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -445,7 +439,6 @@ class TestMockCodeNode:
             graph_runtime_state=graph_runtime_state,
             mock_config=mock_config,
         )
-        mock_node.init_node_data(node_config["data"])
 
         # Run the node
         result = mock_node._run()
@@ -463,8 +456,8 @@ class TestMockNodeFactory:
 
     def test_code_and_template_nodes_mocked_by_default(self):
         """Test that CODE and TEMPLATE_TRANSFORM nodes are mocked by default (they require SSRF proxy)."""
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -504,8 +497,8 @@ class TestMockNodeFactory:
 
     def test_factory_creates_mock_template_transform_node(self):
         """Test that MockNodeFactory creates MockTemplateTransformNode for template-transform type."""
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(
@@ -555,8 +548,8 @@ class TestMockNodeFactory:
 
     def test_factory_creates_mock_code_node(self):
         """Test that MockNodeFactory creates MockCodeNode for code type."""
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
-        from core.workflow.entities.variable_pool import VariablePool
+        from core.workflow.entities import GraphInitParams
+        from core.workflow.runtime import GraphRuntimeState, VariablePool
 
         # Create test parameters
         graph_init_params = GraphInitParams(

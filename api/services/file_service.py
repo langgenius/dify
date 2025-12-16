@@ -1,10 +1,11 @@
+import base64
 import hashlib
 import os
 import uuid
 from typing import Literal, Union
 
-from sqlalchemy import Engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import Engine, select
+from sqlalchemy.orm import Session, sessionmaker
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
@@ -19,17 +20,17 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_storage import storage
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_tenant_id
-from models.account import Account
+from models import Account
 from models.enums import CreatorUserRole
 from models.model import EndUser, UploadFile
 
-from .errors.file import FileTooLargeError, UnsupportedFileTypeError
+from .errors.file import BlockedFileExtensionError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
 
 
 class FileService:
-    _session_maker: sessionmaker
+    _session_maker: sessionmaker[Session]
 
     def __init__(self, session_factory: sessionmaker | Engine | None = None):
         if isinstance(session_factory, Engine):
@@ -58,6 +59,10 @@ class FileService:
 
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
+
+        # check if extension is in blacklist
+        if extension and extension in dify_config.UPLOAD_FILE_EXTENSION_BLACKLIST:
+            raise BlockedFileExtensionError(f"File extension '.{extension}' is not allowed for security reasons")
 
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
@@ -118,6 +123,15 @@ class FileService:
             file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
 
         return file_size <= file_size_limit
+
+    def get_file_base64(self, file_id: str) -> str:
+        upload_file = (
+            self._session_maker(expire_on_commit=False).query(UploadFile).where(UploadFile.id == file_id).first()
+        )
+        if not upload_file:
+            raise NotFound("File not found")
+        blob = storage.load_once(upload_file.key)
+        return base64.b64encode(blob).decode()
 
     def upload_text(self, text: str, text_name: str, user_id: str, tenant_id: str) -> UploadFile:
         if len(text_name) > 200:
@@ -232,11 +246,10 @@ class FileService:
         return content.decode("utf-8")
 
     def delete_file(self, file_id: str):
-        with self._session_maker(expire_on_commit=False) as session:
-            upload_file: UploadFile | None = session.query(UploadFile).where(UploadFile.id == file_id).first()
+        with self._session_maker() as session, session.begin():
+            upload_file = session.scalar(select(UploadFile).where(UploadFile.id == file_id))
 
-        if not upload_file:
-            return
-        storage.delete(upload_file.key)
-        session.delete(upload_file)
-        session.commit()
+            if not upload_file:
+                return
+            storage.delete(upload_file.key)
+            session.delete(upload_file)

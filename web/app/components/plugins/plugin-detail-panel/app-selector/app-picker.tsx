@@ -12,7 +12,7 @@ import type {
 } from '@floating-ui/react'
 import Input from '@/app/components/base/input'
 import AppIcon from '@/app/components/base/app-icon'
-import type { App } from '@/types/app'
+import { type App, AppModeEnum } from '@/types/app'
 import { useTranslation } from 'react-i18next'
 
 type Props = {
@@ -33,7 +33,7 @@ type Props = {
 }
 
 const AppPicker: FC<Props> = ({
-  scope,
+  scope: _scope,
   disabled,
   trigger,
   placement = 'right-start',
@@ -90,7 +90,7 @@ const AppPicker: FC<Props> = ({
     }
 
     // Set up MutationObserver to watch DOM changes
-    mutationObserver = new MutationObserver((mutations) => {
+    mutationObserver = new MutationObserver((_mutations) => {
       if (observerTarget.current) {
         setupIntersectionObserver()
         mutationObserver?.disconnect()
@@ -118,15 +118,15 @@ const AppPicker: FC<Props> = ({
 
   const getAppType = (app: App) => {
     switch (app.mode) {
-      case 'advanced-chat':
+      case AppModeEnum.ADVANCED_CHAT:
         return 'chatflow'
-      case 'agent-chat':
+      case AppModeEnum.AGENT_CHAT:
         return 'agent'
-      case 'chat':
+      case AppModeEnum.CHAT:
         return 'chat'
-      case 'completion':
+      case AppModeEnum.COMPLETION:
         return 'completion'
-      case 'workflow':
+      case AppModeEnum.WORKFLOW:
         return 'workflow'
     }
   }

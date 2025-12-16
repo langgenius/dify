@@ -14,15 +14,19 @@ from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
-from models import Account
-from models.account import AccountStatus
+from libs.token import (
+    set_access_token_to_cookie,
+    set_csrf_token_to_cookie,
+    set_refresh_token_to_cookie,
+)
+from models import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
-from .. import api, console_ns
+from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
@@ -52,11 +56,13 @@ def get_oauth_providers():
 
 @console_ns.route("/oauth/login/<provider>")
 class OAuthLogin(Resource):
-    @api.doc("oauth_login")
-    @api.doc(description="Initiate OAuth login process")
-    @api.doc(params={"provider": "OAuth provider name (github/google)", "invite_token": "Optional invitation token"})
-    @api.response(302, "Redirect to OAuth authorization URL")
-    @api.response(400, "Invalid provider")
+    @console_ns.doc("oauth_login")
+    @console_ns.doc(description="Initiate OAuth login process")
+    @console_ns.doc(
+        params={"provider": "OAuth provider name (github/google)", "invite_token": "Optional invitation token"}
+    )
+    @console_ns.response(302, "Redirect to OAuth authorization URL")
+    @console_ns.response(400, "Invalid provider")
     def get(self, provider: str):
         invite_token = request.args.get("invite_token") or None
         OAUTH_PROVIDERS = get_oauth_providers()
@@ -71,17 +77,17 @@ class OAuthLogin(Resource):
 
 @console_ns.route("/oauth/authorize/<provider>")
 class OAuthCallback(Resource):
-    @api.doc("oauth_callback")
-    @api.doc(description="Handle OAuth callback and complete login process")
-    @api.doc(
+    @console_ns.doc("oauth_callback")
+    @console_ns.doc(description="Handle OAuth callback and complete login process")
+    @console_ns.doc(
         params={
             "provider": "OAuth provider name (github/google)",
             "code": "Authorization code from OAuth provider",
             "state": "Optional state parameter (used for invite token)",
         }
     )
-    @api.response(302, "Redirect to console with access token")
-    @api.response(400, "OAuth process failed")
+    @console_ns.response(302, "Redirect to console with access token")
+    @console_ns.response(400, "OAuth process failed")
     def get(self, provider: str):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
@@ -130,11 +136,11 @@ class OAuthCallback(Resource):
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message={e.description}")
 
         # Check account status
-        if account.status == AccountStatus.BANNED.value:
+        if account.status == AccountStatus.BANNED:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
 
-        if account.status == AccountStatus.PENDING.value:
-            account.status = AccountStatus.ACTIVE.value
+        if account.status == AccountStatus.PENDING:
+            account.status = AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()
             db.session.commit()
 
@@ -153,9 +159,12 @@ class OAuthCallback(Resource):
             ip_address=extract_remote_ip(request),
         )
 
-        return redirect(
-            f"{dify_config.CONSOLE_WEB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
-        )
+        response = redirect(f"{dify_config.CONSOLE_WEB_URL}")
+
+        set_access_token_to_cookie(request, response, token_pair.access_token)
+        set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
+        set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
+        return response
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Account | None:

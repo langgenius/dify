@@ -149,7 +149,7 @@ class TestCeleryWorkflowNodeExecutionRepository:
         assert call_args["execution_data"] == sample_workflow_node_execution.model_dump()
         assert call_args["tenant_id"] == mock_account.current_tenant_id
         assert call_args["app_id"] == "test-app"
-        assert call_args["triggered_from"] == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
+        assert call_args["triggered_from"] == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN
         assert call_args["creator_user_id"] == mock_account.id
 
         # Verify execution is cached

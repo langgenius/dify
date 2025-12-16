@@ -63,9 +63,11 @@ class SavedMessageListApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("last_id", type=uuid_value, location="args")
+            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        )
         args = parser.parse_args()
 
         return SavedMessageService.pagination_by_last_id(app_model, end_user, args["last_id"], args["limit"])
@@ -92,8 +94,7 @@ class SavedMessageListApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("message_id", type=uuid_value, required=True, location="json")
+        parser = reqparse.RequestParser().add_argument("message_id", type=uuid_value, required=True, location="json")
         args = parser.parse_args()
 
         try:

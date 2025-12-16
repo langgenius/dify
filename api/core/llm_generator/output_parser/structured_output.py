@@ -224,8 +224,8 @@ def _handle_native_json_schema(
 
     # Set appropriate response format if required by the model
     for rule in rules:
-        if rule.name == "response_format" and ResponseFormat.JSON_SCHEMA.value in rule.options:
-            model_parameters["response_format"] = ResponseFormat.JSON_SCHEMA.value
+        if rule.name == "response_format" and ResponseFormat.JSON_SCHEMA in rule.options:
+            model_parameters["response_format"] = ResponseFormat.JSON_SCHEMA
 
     return model_parameters
 
@@ -239,10 +239,10 @@ def _set_response_format(model_parameters: dict, rules: list):
     """
     for rule in rules:
         if rule.name == "response_format":
-            if ResponseFormat.JSON.value in rule.options:
-                model_parameters["response_format"] = ResponseFormat.JSON.value
-            elif ResponseFormat.JSON_OBJECT.value in rule.options:
-                model_parameters["response_format"] = ResponseFormat.JSON_OBJECT.value
+            if ResponseFormat.JSON in rule.options:
+                model_parameters["response_format"] = ResponseFormat.JSON
+            elif ResponseFormat.JSON_OBJECT in rule.options:
+                model_parameters["response_format"] = ResponseFormat.JSON_OBJECT
 
 
 def _handle_prompt_based_schema(

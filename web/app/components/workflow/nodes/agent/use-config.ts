@@ -12,7 +12,7 @@ import { useCheckInstalled, useFetchPluginsInMarketPlaceByIds } from '@/service/
 import type { Memory, Var } from '../../types'
 import { VarType as VarKindType } from '../../types'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
-import produce from 'immer'
+import { produce } from 'immer'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { isSupportMCP } from '@/utils/plugin-version-feature'
 import { generateAgentToolValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'

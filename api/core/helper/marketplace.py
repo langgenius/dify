@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 
 import httpx
@@ -8,6 +9,7 @@ from core.helper.download import download_with_size_limit
 from core.plugin.entities.marketplace import MarketplacePluginDeclaration
 
 marketplace_api_url = URL(str(dify_config.MARKETPLACE_API_URL))
+logger = logging.getLogger(__name__)
 
 
 def get_plugin_pkg_url(plugin_unique_identifier: str) -> str:
@@ -26,7 +28,19 @@ def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplaceP
     response = httpx.post(url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version})
     response.raise_for_status()
 
-    return [MarketplacePluginDeclaration(**plugin) for plugin in response.json()["data"]["plugins"]]
+    return [MarketplacePluginDeclaration.model_validate(plugin) for plugin in response.json()["data"]["plugins"]]
+
+
+def batch_fetch_plugin_by_ids(plugin_ids: list[str]) -> list[dict]:
+    if not plugin_ids:
+        return []
+
+    url = str(marketplace_api_url / "api/v1/plugins/batch")
+    response = httpx.post(url, json={"plugin_ids": plugin_ids}, headers={"X-Dify-Version": dify_config.project.version})
+    response.raise_for_status()
+
+    data = response.json()
+    return data.get("data", {}).get("plugins", [])
 
 
 def batch_fetch_plugin_manifests_ignore_deserialization_error(
@@ -41,9 +55,11 @@ def batch_fetch_plugin_manifests_ignore_deserialization_error(
     result: list[MarketplacePluginDeclaration] = []
     for plugin in response.json()["data"]["plugins"]:
         try:
-            result.append(MarketplacePluginDeclaration(**plugin))
+            result.append(MarketplacePluginDeclaration.model_validate(plugin))
         except Exception:
-            pass
+            logger.exception(
+                "Failed to deserialize marketplace plugin manifest for %s", plugin.get("plugin_id", "unknown")
+            )
 
     return result
 

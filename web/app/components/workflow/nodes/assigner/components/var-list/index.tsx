@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { RiDeleteBinLine } from '@remixicon/react'
 import OperationSelector from '../operation-selector'
 import { AssignerNodeInputType, WriteMode } from '../../types'
@@ -68,7 +68,7 @@ const VarList: FC<Props> = ({
         draft[index].value = '' // Clear value when operation changes
         if (item.value === WriteMode.set || item.value === WriteMode.increment || item.value === WriteMode.decrement
           || item.value === WriteMode.multiply || item.value === WriteMode.divide) {
-          if(varType === VarType.boolean)
+          if (varType === VarType.boolean)
             draft[index].value = false
           draft[index].input_type = AssignerNodeInputType.constant
         }

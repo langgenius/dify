@@ -30,7 +30,7 @@ export default function InviteSettingsPage() {
   const { setLocaleOnClient } = useContext(I18n)
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(LanguagesSupported[0])
-  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
+  const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
 
   const checkParams = {
     url: '/activate/check',
@@ -58,8 +58,7 @@ export default function InviteSettingsPage() {
         },
       })
       if (res.result === 'success') {
-        localStorage.setItem('console_token', res.data.access_token)
-        localStorage.setItem('refresh_token', res.data.refresh_token)
+        // Tokens are now stored in cookies by the backend
         await setLocaleOnClient(language, false)
         const redirectUrl = resolvePostLoginRedirect(searchParams)
         router.replace(redirectUrl || '/apps')

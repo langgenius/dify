@@ -1,6 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
-import { RiDiscordFill, RiGithubFill } from '@remixicon/react'
+import { RiDiscordFill, RiDiscussLine, RiGithubFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 
 type CustomLinkProps = {
@@ -37,6 +37,9 @@ const Footer = () => {
         </CustomLink>
         <CustomLink href='https://discord.gg/FngNHpbcY7'>
           <RiDiscordFill className='h-5 w-5 text-text-tertiary' />
+        </CustomLink>
+        <CustomLink href='https://forum.dify.ai'>
+          <RiDiscussLine className='h-5 w-5 text-text-tertiary' />
         </CustomLink>
       </div>
     </footer>

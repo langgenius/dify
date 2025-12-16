@@ -23,6 +23,7 @@ class CrawlOptions:
     only_main_content: bool = False
     includes: str | None = None
     excludes: str | None = None
+    prompt: str | None = None
     max_depth: int | None = None
     use_sitemap: bool = True
 
@@ -70,6 +71,7 @@ class WebsiteCrawlApiRequest:
             only_main_content=self.options.get("only_main_content", False),
             includes=self.options.get("includes"),
             excludes=self.options.get("excludes"),
+            prompt=self.options.get("prompt"),
             max_depth=self.options.get("max_depth"),
             use_sitemap=self.options.get("use_sitemap", True),
         )
@@ -174,6 +176,7 @@ class WebsiteService:
     def _crawl_with_firecrawl(cls, request: CrawlRequest, api_key: str, config: dict) -> dict[str, Any]:
         firecrawl_app = FirecrawlApp(api_key=api_key, base_url=config.get("base_url"))
 
+        params: dict[str, Any]
         if not request.options.crawl_sub_pages:
             params = {
                 "includePaths": [],
@@ -188,8 +191,10 @@ class WebsiteService:
                 "limit": request.options.limit,
                 "scrapeOptions": {"onlyMainContent": request.options.only_main_content},
             }
-            if request.options.max_depth:
-                params["maxDepth"] = request.options.max_depth
+
+        # Add optional prompt for Firecrawl v2 crawl-params compatibility
+        if request.options.prompt:
+            params["prompt"] = request.options.prompt
 
         job_id = firecrawl_app.crawl_url(request.url, params)
         website_crawl_time_cache_key = f"website_crawl_{job_id}"

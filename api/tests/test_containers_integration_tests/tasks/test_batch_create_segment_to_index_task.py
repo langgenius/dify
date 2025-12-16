@@ -18,7 +18,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from faker import Faker
 
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset, Document, DocumentSegment
 from models.enums import CreatorUserRole
 from models.model import UploadFile
@@ -112,7 +112,7 @@ class TestBatchCreateSegmentToIndexTask:
         join = TenantAccountJoin(
             tenant_id=tenant.id,
             account_id=account.id,
-            role=TenantAccountRole.OWNER.value,
+            role=TenantAccountRole.OWNER,
             current=True,
         )
         db.session.add(join)

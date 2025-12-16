@@ -7,11 +7,41 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { FileResponse } from '@/types/workflow'
 import { TransferMethod } from '@/types/app'
 
+/**
+ * Get appropriate error message for file upload errors
+ * @param error - The error object from upload failure
+ * @param defaultMessage - Default error message to use if no specific error is matched
+ * @param t - Translation function
+ * @returns Localized error message
+ */
+export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t: (key: string) => string): string => {
+  const errorCode = error?.response?.code
+
+  if (errorCode === 'forbidden')
+    return error?.response?.message
+
+  if (errorCode === 'file_extension_blocked')
+    return t('common.fileUploader.fileExtensionBlocked')
+
+  return defaultMessage
+}
+
+type FileUploadResponse = {
+  created_at: number
+  created_by: string
+  extension: string
+  id: string
+  mime_type: string
+  name: string
+  preview_url: string | null
+  size: number
+  source_url: string
+}
 type FileUploadParams = {
   file: File
   onProgressCallback: (progress: number) => void
-  onSuccessCallback: (res: { id: string }) => void
-  onErrorCallback: () => void
+  onSuccessCallback: (res: FileUploadResponse) => void
+  onErrorCallback: (error?: any) => void
 }
 type FileUpload = (v: FileUploadParams, isPublic?: boolean, url?: string) => void
 export const fileUpload: FileUpload = ({
@@ -34,11 +64,11 @@ export const fileUpload: FileUpload = ({
     data: formData,
     onprogress: onProgress,
   }, isPublic, url)
-    .then((res: { id: string }) => {
-      onSuccessCallback(res)
+    .then((res) => {
+      onSuccessCallback(res as FileUploadResponse)
     })
-    .catch(() => {
-      onErrorCallback()
+    .catch((error) => {
+      onErrorCallback(error)
     })
 }
 
@@ -155,9 +185,9 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
       const detectedTypeFromMime = getSupportFileType('', fileItem.mime_type)
 
       if (detectedTypeFromFileName
-          && detectedTypeFromMime
-          && detectedTypeFromFileName === detectedTypeFromMime
-          && detectedTypeFromFileName !== fileItem.type)
+        && detectedTypeFromMime
+        && detectedTypeFromFileName === detectedTypeFromMime
+        && detectedTypeFromFileName !== fileItem.type)
         supportFileType = detectedTypeFromFileName
     }
 

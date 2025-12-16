@@ -16,7 +16,7 @@ export default function ContentSwitch({
   return (
     count && count > 1 && currentIndex !== undefined && (
       <div className="flex items-center justify-center pt-3.5 text-sm">
-        <button
+        <button type="button"
           className={`${prevDisabled ? 'opacity-30' : 'opacity-100'}`}
           disabled={prevDisabled}
           onClick={() => !prevDisabled && switchSibling('prev')}
@@ -26,7 +26,7 @@ export default function ContentSwitch({
         <span className="px-2 text-xs text-text-primary">
           {currentIndex + 1} / {count}
         </span>
-        <button
+        <button type="button"
           className={`${nextDisabled ? 'opacity-30' : 'opacity-100'}`}
           disabled={nextDisabled}
           onClick={() => !nextDisabled && switchSibling('next')}

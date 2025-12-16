@@ -17,7 +17,6 @@ from controllers.web.error import (
 )
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
-from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
     ModelCurrentlyNotSupportError,
@@ -29,6 +28,7 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.app_task_service import AppTaskService
 from services.errors.llm import InvokeRateLimitError
 
 logger = logging.getLogger(__name__)
@@ -64,15 +64,17 @@ class CompletionApi(WebApiResource):
         }
     )
     def post(self, app_model, end_user):
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, location="json", default="")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="web_app", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, location="json")
+            .add_argument("query", type=str, location="json", default="")
+            .add_argument("files", type=list, required=False, location="json")
+            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+            .add_argument("retriever_from", type=str, required=False, default="web_app", location="json")
+        )
 
         args = parser.parse_args()
 
@@ -123,10 +125,15 @@ class CompletionStopApi(WebApiResource):
         }
     )
     def post(self, app_model, end_user, task_id):
-        if app_model.mode != "completion":
+        if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.WEB_APP,
+            user_id=end_user.id,
+            app_mode=AppMode.value_of(app_model.mode),
+        )
 
         return {"result": "success"}, 200
 
@@ -166,14 +173,16 @@ class ChatApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("inputs", type=dict, required=True, location="json")
-        parser.add_argument("query", type=str, required=True, location="json")
-        parser.add_argument("files", type=list, required=False, location="json")
-        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-        parser.add_argument("conversation_id", type=uuid_value, location="json")
-        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
-        parser.add_argument("retriever_from", type=str, required=False, default="web_app", location="json")
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, location="json")
+            .add_argument("query", type=str, required=True, location="json")
+            .add_argument("files", type=list, required=False, location="json")
+            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+            .add_argument("conversation_id", type=uuid_value, location="json")
+            .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
+            .add_argument("retriever_from", type=str, required=False, default="web_app", location="json")
+        )
 
         args = parser.parse_args()
 
@@ -230,6 +239,11 @@ class ChatStopApi(WebApiResource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
+        AppTaskService.stop_task(
+            task_id=task_id,
+            invoke_from=InvokeFrom.WEB_APP,
+            user_id=end_user.id,
+            app_mode=app_mode,
+        )
 
         return {"result": "success"}, 200

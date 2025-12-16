@@ -70,8 +70,9 @@ const translation = {
       moreThanMaxLengthLine: 'ردیف {{rowIndex}}: مقدار {{varName}} نمی‌تواند بیشتر از {{maxLength}} کاراکتر باشد',
       atLeastOne: 'لطفاً حداقل یک ردیف در فایل بارگذاری شده وارد کنید.',
     },
-    executions: '{{num}} اعدام',
     execution: 'اجرا',
+    executions: '{{num}} بار اجرا',
+    stopRun: 'توقف اجرا',
   },
   login: {
     backToHome: 'بازگشت به خانه',

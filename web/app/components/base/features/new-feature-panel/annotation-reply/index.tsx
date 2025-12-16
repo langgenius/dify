@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePathname, useRouter } from 'next/navigation'
-import produce from 'immer'
+import { produce } from 'immer'
 import { RiEqualizer2Line, RiExternalLinkLine } from '@remixicon/react'
 import { MessageFast } from '@/app/components/base/icons/src/vender/features'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'

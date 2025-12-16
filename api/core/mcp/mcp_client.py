@@ -7,9 +7,9 @@ from urllib.parse import urlparse
 
 from core.mcp.client.sse_client import sse_client
 from core.mcp.client.streamable_client import streamablehttp_client
-from core.mcp.error import MCPAuthError, MCPConnectionError
+from core.mcp.error import MCPConnectionError
 from core.mcp.session.client_session import ClientSession
-from core.mcp.types import Tool
+from core.mcp.types import CallToolResult, Tool
 
 logger = logging.getLogger(__name__)
 
@@ -18,40 +18,18 @@ class MCPClient:
     def __init__(
         self,
         server_url: str,
-        provider_id: str,
-        tenant_id: str,
-        authed: bool = True,
-        authorization_code: str | None = None,
-        for_list: bool = False,
         headers: dict[str, str] | None = None,
         timeout: float | None = None,
         sse_read_timeout: float | None = None,
     ):
-        # Initialize info
-        self.provider_id = provider_id
-        self.tenant_id = tenant_id
-        self.client_type = "streamable"
         self.server_url = server_url
         self.headers = headers or {}
         self.timeout = timeout
         self.sse_read_timeout = sse_read_timeout
 
-        # Authentication info
-        self.authed = authed
-        self.authorization_code = authorization_code
-        if authed:
-            from core.mcp.auth.auth_provider import OAuthClientProvider
-
-            self.provider = OAuthClientProvider(self.provider_id, self.tenant_id, for_list=for_list)
-            self.token = self.provider.tokens()
-
         # Initialize session and client objects
         self._session: ClientSession | None = None
-        self._streams_context: AbstractContextManager[Any] | None = None
-        self._session_context: ClientSession | None = None
         self._exit_stack = ExitStack()
-
-        # Whether the client has been initialized
         self._initialized = False
 
     def __enter__(self):
@@ -85,61 +63,42 @@ class MCPClient:
                 logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
                 self.connect_server(streamablehttp_client, "mcp")
 
-    def connect_server(
-        self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str, first_try: bool = True
-    ):
-        from core.mcp.auth.auth_flow import auth
+    def connect_server(self, client_factory: Callable[..., AbstractContextManager[Any]], method_name: str) -> None:
+        """
+        Connect to the MCP server using streamable http or sse.
+        Default to streamable http.
+        Args:
+            client_factory: The client factory to use(streamablehttp_client or sse_client).
+            method_name: The method name to use(mcp or sse).
+        """
+        streams_context = client_factory(
+            url=self.server_url,
+            headers=self.headers,
+            timeout=self.timeout,
+            sse_read_timeout=self.sse_read_timeout,
+        )
 
-        try:
-            headers = (
-                {"Authorization": f"{self.token.token_type.capitalize()} {self.token.access_token}"}
-                if self.authed and self.token
-                else self.headers
-            )
-            self._streams_context = client_factory(
-                url=self.server_url,
-                headers=headers,
-                timeout=self.timeout,
-                sse_read_timeout=self.sse_read_timeout,
-            )
-            if not self._streams_context:
-                raise MCPConnectionError("Failed to create connection context")
+        # Use exit_stack to manage context managers properly
+        if method_name == "mcp":
+            read_stream, write_stream, _ = self._exit_stack.enter_context(streams_context)
+            streams = (read_stream, write_stream)
+        else:  # sse_client
+            streams = self._exit_stack.enter_context(streams_context)
 
-            # Use exit_stack to manage context managers properly
-            if method_name == "mcp":
-                read_stream, write_stream, _ = self._exit_stack.enter_context(self._streams_context)
-                streams = (read_stream, write_stream)
-            else:  # sse_client
-                streams = self._exit_stack.enter_context(self._streams_context)
-
-            self._session_context = ClientSession(*streams)
-            self._session = self._exit_stack.enter_context(self._session_context)
-            self._session.initialize()
-            return
-
-        except MCPAuthError:
-            if not self.authed:
-                raise
-            try:
-                auth(self.provider, self.server_url, self.authorization_code)
-            except Exception as e:
-                raise ValueError(f"Failed to authenticate: {e}")
-            self.token = self.provider.tokens()
-            if first_try:
-                return self.connect_server(client_factory, method_name, first_try=False)
+        session_context = ClientSession(*streams)
+        self._session = self._exit_stack.enter_context(session_context)
+        self._session.initialize()
 
     def list_tools(self) -> list[Tool]:
-        """Connect to an MCP server running with SSE transport"""
-        # List available tools to verify connection
-        if not self._initialized or not self._session:
+        """List available tools from the MCP server"""
+        if not self._session:
             raise ValueError("Session not initialized.")
         response = self._session.list_tools()
-        tools = response.tools
-        return tools
+        return response.tools
 
-    def invoke_tool(self, tool_name: str, tool_args: dict):
+    def invoke_tool(self, tool_name: str, tool_args: dict[str, Any]) -> CallToolResult:
         """Call a tool"""
-        if not self._initialized or not self._session:
+        if not self._session:
             raise ValueError("Session not initialized.")
         return self._session.call_tool(tool_name, tool_args)
 
@@ -153,6 +112,4 @@ class MCPClient:
             raise ValueError(f"Error during cleanup: {e}")
         finally:
             self._session = None
-            self._session_context = None
-            self._streams_context = None
             self._initialized = False

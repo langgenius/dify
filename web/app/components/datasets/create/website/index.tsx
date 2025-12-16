@@ -13,6 +13,7 @@ import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { DataSourceProvider } from '@/models/common'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
@@ -48,7 +49,7 @@ const Website: FC<Props> = ({
 
   const handleOnConfig = useCallback(() => {
     setShowAccountSettingModal({
-      payload: 'data-source',
+      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
   }, [setShowAccountSettingModal])
 
@@ -61,7 +62,7 @@ const Website: FC<Props> = ({
           {t('datasetCreation.stepOne.website.chooseProvider')}
         </div>
         <div className='flex space-x-2'>
-          {ENABLE_WEBSITE_JINAREADER && <button
+          {ENABLE_WEBSITE_JINAREADER && <button type="button"
             className={cn('flex items-center justify-center rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.jinaReader
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
@@ -76,7 +77,7 @@ const Website: FC<Props> = ({
             <span className={cn(s.jinaLogo, 'mr-2')} />
             <span>Jina Reader</span>
           </button>}
-          {ENABLE_WEBSITE_FIRECRAWL && <button
+          {ENABLE_WEBSITE_FIRECRAWL && <button type="button"
             className={cn('rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.fireCrawl
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
@@ -90,7 +91,7 @@ const Website: FC<Props> = ({
           >
             🔥 Firecrawl
           </button>}
-          {ENABLE_WEBSITE_WATERCRAWL && <button
+          {ENABLE_WEBSITE_WATERCRAWL && <button type="button"
             className={cn('flex items-center justify-center rounded-lg px-4 py-2',
               selectedProvider === DataSourceProvider.waterCrawl
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'

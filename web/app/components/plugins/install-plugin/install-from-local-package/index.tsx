@@ -64,10 +64,12 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       uniqueIdentifier,
     } = result
     const icon = await getIconUrl(manifest!.icon)
+    const iconDark = manifest.icon_dark ? await getIconUrl(manifest.icon_dark) : undefined
     setUniqueIdentifier(uniqueIdentifier)
     setManifest({
       ...manifest,
       icon,
+      icon_dark: iconDark,
     })
     setStep(InstallStep.readyToInstall)
   }, [getIconUrl])

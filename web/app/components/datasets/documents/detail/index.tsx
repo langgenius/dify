@@ -17,7 +17,7 @@ import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { ChunkingMode } from '@/models/datasets'
-import type { FileItem } from '@/models/datasets'
+import type { DataSourceInfo, FileItem, LegacyDataSourceInfo } from '@/models/datasets'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -109,6 +109,18 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
 
   const embedding = ['queuing', 'indexing', 'paused'].includes((documentDetail?.display_status || '').toLowerCase())
 
+  const isLegacyDataSourceInfo = (info?: DataSourceInfo): info is LegacyDataSourceInfo => {
+    return !!info && 'upload_file' in info
+  }
+
+  const documentUploadFile = useMemo(() => {
+    if (!documentDetail?.data_source_info)
+      return undefined
+    if (isLegacyDataSourceInfo(documentDetail.data_source_info))
+      return documentDetail.data_source_info.upload_file
+    return undefined
+  }, [documentDetail?.data_source_info])
+
   const invalidChunkList = useInvalid(useSegmentListKey)
   const invalidChildChunkList = useInvalid(useChildSegmentListKey)
   const invalidDocumentList = useInvalidDocumentList(datasetId)
@@ -153,7 +165,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           </div>
           <DocumentTitle
             datasetId={datasetId}
-            extension={documentDetail?.data_source_info?.upload_file?.extension}
+            extension={documentUploadFile?.extension}
             name={documentDetail?.name}
             wrapperCls='mr-2'
             parent_mode={parentMode}
@@ -200,7 +212,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               onUpdate={handleOperate}
               className='!w-[200px]'
             />
-            <button
+            <button type="button"
               className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
             >

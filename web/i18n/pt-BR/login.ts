@@ -120,6 +120,7 @@ const translation = {
     signUp: 'Inscreva-se',
     welcome: '👋 Bem-vindo! Por favor, preencha os detalhes para começar.',
   },
+  pageTitleForE: 'Ei, vamos começar!',
 }
 
 export default translation

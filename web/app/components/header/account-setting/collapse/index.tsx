@@ -39,7 +39,7 @@ const Collapse = ({
           <div className='mx-1 mb-1 rounded-lg border-t border-divider-subtle bg-components-panel-on-panel-item-bg py-1'>
             {
               items.map(item => (
-                <div key={item.key} onClick={() => onSelect && onSelect(item)}>
+                <div key={item.key} onClick={() => onSelect?.(item)}>
                   {renderItem(item)}
                 </div>
               ))

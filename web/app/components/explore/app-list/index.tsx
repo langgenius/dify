@@ -152,23 +152,20 @@ const Apps = ({
       <div className={cn(
         'mt-6 flex items-center justify-between px-12',
       )}>
-        <>
-          <Category
-            list={categories}
-            value={currCategory}
-            onChange={setCurrCategory}
-            allCategoriesEn={allCategoriesEn}
-          />
-        </>
+        <Category
+          list={categories}
+          value={currCategory}
+          onChange={setCurrCategory}
+          allCategoriesEn={allCategoriesEn}
+        />
         <Input
           showLeftIcon
           showClearIcon
-          wrapperClassName='w-[200px]'
+          wrapperClassName='w-[200px] self-start'
           value={keywords}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}
         />
-
       </div>
 
       <div className={cn(

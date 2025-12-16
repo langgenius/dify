@@ -1,7 +1,6 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useRef,
 } from 'react'
 import {
@@ -19,11 +18,13 @@ type Shape = {
 
 export const createFileStore = (
   value: FileEntity[] = [],
+  onChange?: (files: FileEntity[]) => void,
 ) => {
   return create<Shape>(set => ({
     files: value ? [...value] : [],
     setFiles: (files) => {
       set({ files })
+      onChange?.(files)
     },
   }))
 }
@@ -54,35 +55,9 @@ export const FileContextProvider = ({
   onChange,
 }: FileProviderProps) => {
   const storeRef = useRef<FileStore | undefined>(undefined)
-  const onChangeRef = useRef<FileProviderProps['onChange']>(onChange)
-  const isSyncingRef = useRef(false)
 
   if (!storeRef.current)
-    storeRef.current = createFileStore(value)
-
-  // keep latest onChange
-  useEffect(() => {
-    onChangeRef.current = onChange
-  }, [onChange])
-
-  // subscribe to store changes and call latest onChange
-  useEffect(() => {
-    const store = storeRef.current!
-    const unsubscribe = store.subscribe((state: Shape) => {
-      if (isSyncingRef.current) return
-      onChangeRef.current?.(state.files)
-    })
-    return unsubscribe
-  }, [])
-
-  // sync external value into internal store when value changes
-  useEffect(() => {
-    const store = storeRef.current!
-    const nextFiles = value ? [...value] : []
-    isSyncingRef.current = true
-    store.setState({ files: nextFiles })
-    isSyncingRef.current = false
-  }, [value])
+    storeRef.current = createFileStore(value, onChange)
 
   return (
     <FileContext.Provider value={storeRef.current}>

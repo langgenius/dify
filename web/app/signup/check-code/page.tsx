@@ -42,7 +42,6 @@ export default function CheckCode() {
       }
       setIsLoading(true)
       const res = await verifyCode({ email, code, token })
-      console.log(res)
       if ((res as MailValidityResponse).is_valid) {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent((res as MailValidityResponse).token))
@@ -93,7 +92,7 @@ export default function CheckCode() {
 
     <form action="">
       <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
-      <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
+      <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
       <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
       <Countdown onResend={resendCode} />
     </form>

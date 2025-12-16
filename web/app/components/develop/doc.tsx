@@ -18,7 +18,7 @@ import TemplateChatJa from './template/template_chat.ja.mdx'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
+import { AppModeEnum, Theme } from '@/types/app'
 import cn from '@/utils/classnames'
 
 type IDocProps = {
@@ -115,7 +115,7 @@ const Doc = ({ appDetail }: IDocProps) => {
   }
 
   const Template = useMemo(() => {
-    if (appDetail?.mode === 'chat' || appDetail?.mode === 'agent-chat') {
+    if (appDetail?.mode === AppModeEnum.CHAT || appDetail?.mode === AppModeEnum.AGENT_CHAT) {
       switch (locale) {
         case LanguagesSupported[1]:
           return <TemplateChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
@@ -125,7 +125,7 @@ const Doc = ({ appDetail }: IDocProps) => {
           return <TemplateChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
       }
     }
-    if (appDetail?.mode === 'advanced-chat') {
+    if (appDetail?.mode === AppModeEnum.ADVANCED_CHAT) {
       switch (locale) {
         case LanguagesSupported[1]:
           return <TemplateAdvancedChatZh appDetail={appDetail} variables={variables} inputs={inputs} />
@@ -135,7 +135,7 @@ const Doc = ({ appDetail }: IDocProps) => {
           return <TemplateAdvancedChatEn appDetail={appDetail} variables={variables} inputs={inputs} />
       }
     }
-    if (appDetail?.mode === 'workflow') {
+    if (appDetail?.mode === AppModeEnum.WORKFLOW) {
       switch (locale) {
         case LanguagesSupported[1]:
           return <TemplateWorkflowZh appDetail={appDetail} variables={variables} inputs={inputs} />
@@ -145,7 +145,7 @@ const Doc = ({ appDetail }: IDocProps) => {
           return <TemplateWorkflowEn appDetail={appDetail} variables={variables} inputs={inputs} />
       }
     }
-    if (appDetail?.mode === 'completion') {
+    if (appDetail?.mode === AppModeEnum.COMPLETION) {
       switch (locale) {
         case LanguagesSupported[1]:
           return <TemplateZh appDetail={appDetail} variables={variables} inputs={inputs} />
@@ -168,7 +168,7 @@ const Doc = ({ appDetail }: IDocProps) => {
                 <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
                   {t('appApi.develop.toc')}
                 </span>
-                <button
+                <button type="button"
                   onClick={() => setIsTocExpanded(false)}
                   className="group flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-state-base-hover"
                   aria-label="Close"
@@ -224,7 +224,7 @@ const Doc = ({ appDetail }: IDocProps) => {
             </nav>
           )
           : (
-            <button
+            <button type="button"
               onClick={() => setIsTocExpanded(true)}
               className="group flex h-11 w-11 items-center justify-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-all duration-150 hover:bg-background-default-hover hover:shadow-xl"
               aria-label="Open table of contents"

@@ -1,4 +1,3 @@
-from core.workflow.entities import VariablePool
 from core.workflow.nodes.http_request import (
     BodyData,
     HttpRequestNodeAuthorization,
@@ -7,6 +6,7 @@ from core.workflow.nodes.http_request import (
 )
 from core.workflow.nodes.http_request.entities import HttpRequestNodeTimeout
 from core.workflow.nodes.http_request.executor import Executor
+from core.workflow.runtime import VariablePool
 from core.workflow.system_variable import SystemVariable
 
 

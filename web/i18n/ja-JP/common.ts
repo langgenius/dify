@@ -66,7 +66,17 @@ const translation = {
     more: 'もっと',
     selectAll: 'すべて選択',
     deSelectAll: 'すべて選択解除',
+    now: '今',
     config: 'コンフィグ',
+    yes: 'はい',
+    no: 'いいえ',
+    deleteConfirmTitle: '削除しますか？',
+    confirmAction: '操作を確認してください。',
+    noSearchResults: '{{content}}は見つかりませんでした',
+    resetKeywords: 'キーワードをリセット',
+    selectCount: '{{count}}件選択済み',
+    searchCount: '{{count}}件の{{content}}が見つかりました',
+    noSearchCount: '0件の{{content}}',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -75,6 +85,7 @@ const translation = {
   placeholder: {
     input: '入力してください',
     select: '選択してください',
+    search: '検索...',
   },
   voice: {
     language: {
@@ -166,15 +177,16 @@ const translation = {
     emailSupport: 'サポート',
     workspace: 'ワークスペース',
     createWorkspace: 'ワークスペースを作成',
-    helpCenter: 'ヘルプ',
+    helpCenter: 'ドキュメントを見る',
     support: 'サポート',
     compliance: 'コンプライアンス',
-    communityFeedback: 'フィードバック',
     roadmap: 'ロードマップ',
     community: 'コミュニティ',
     about: 'Dify について',
     logout: 'ログアウト',
     github: 'GitHub',
+    contactUs: 'お問い合わせ',
+    forum: 'フォーラム',
   },
   compliance: {
     soc2Type1: 'SOC 2 Type I 報告書',
@@ -484,6 +496,7 @@ const translation = {
     emptyProviderTitle: 'モデルプロバイダーが設定されていません',
     discoverMore: 'もっと発見する',
     installProvider: 'モデルプロバイダーをインストールする',
+    installDataSourceProvider: 'データソースプロバイダーをインストールする',
     configureTip: 'API キーを設定するか、使用するモデルを追加してください',
     toBeConfigured: '設定中',
     emptyProviderTip: '最初にモデルプロバイダーをインストールしてください。',
@@ -734,6 +747,8 @@ const translation = {
     uploadFromComputerReadError: 'ファイルの読み取りに失敗しました。もう一度やり直してください。',
     fileExtensionNotSupport: 'ファイル拡張子はサポートされていません',
     pasteFileLinkInvalid: '無効なファイルリンク',
+    uploadDisabled: 'ファイルアップロードは無効です',
+    fileExtensionBlocked: 'このファイルタイプは、セキュリティ上の理由でブロックされています',
   },
   license: {
     expiring_plural: '有効期限 {{count}} 日',
@@ -761,6 +776,13 @@ const translation = {
   },
   label: {
     optional: '(オプション)',
+  },
+  noData: 'データなし',
+  dynamicSelect: {
+    error: 'オプションの読み込みに失敗しました',
+    noData: '利用可能なオプションはありません',
+    loading: 'オプションを読み込み中...',
+    selected: '{{count}}件が選択されました',
   },
 }
 

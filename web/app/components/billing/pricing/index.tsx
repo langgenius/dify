@@ -13,7 +13,12 @@ import { useAppContext } from '@/context/app-context'
 import { useGetPricingPageLanguage } from '@/context/i18n'
 import { NoiseBottom, NoiseTop } from './assets'
 
-export type Category = 'cloud' | 'self'
+export enum CategoryEnum {
+  CLOUD = 'cloud',
+  SELF = 'self',
+}
+
+export type Category = CategoryEnum.CLOUD | CategoryEnum.SELF
 
 type PricingProps = {
   onCancel: () => void
@@ -25,9 +30,8 @@ const Pricing: FC<PricingProps> = ({
   const { plan } = useProviderContext()
   const { isCurrentWorkspaceManager } = useAppContext()
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
-  const [currentCategory, setCurrentCategory] = useState<Category>('cloud')
+  const [currentCategory, setCurrentCategory] = useState<Category>(CategoryEnum.CLOUD)
   const canPay = isCurrentWorkspaceManager
-
   useKeyPress(['esc'], onCancel)
 
   const pricingPageLanguage = useGetPricingPageLanguage()
@@ -57,7 +61,7 @@ const Pricing: FC<PricingProps> = ({
           planRange={planRange}
           canPay={canPay}
         />
-        <Footer pricingPageURL={pricingPageURL} />
+        <Footer pricingPageURL={pricingPageURL} currentCategory={currentCategory}/>
         <div className='absolute -bottom-12 left-0 right-0 -z-10'>
           <NoiseBottom />
         </div>

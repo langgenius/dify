@@ -14,7 +14,7 @@ import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
 import { RiQuestionLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
 import AddMetadataButton from '../add-metadata-button'
-import produce from 'immer'
+import { produce } from 'immer'
 import useCheckMetadataName from '../hooks/use-check-metadata-name'
 import Toast from '@/app/components/base/toast'
 import { useCreateMetaData } from '@/service/knowledge/use-metadata'
@@ -119,7 +119,7 @@ const EditMetadataBatchModal: FC<Props> = ({
       className='!max-w-[640px]'
     >
       <div className='system-xs-medium mt-1 text-text-accent'>{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
-      <div className='ml-[-16px] max-h-[305px] overflow-y-auto'>
+      <div className='max-h-[305px] overflow-y-auto overflow-x-hidden'>
         <div className='mt-4 space-y-2'>
           {templeList.map(item => (
             <EditMetadataBatchItem

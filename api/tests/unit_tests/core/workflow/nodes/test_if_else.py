@@ -7,12 +7,13 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.nodes.if_else.entities import IfElseNodeData
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.utils.condition.entities import Condition, SubCondition, SubVariableCondition
 from extensions.ext_database import db
@@ -113,9 +114,6 @@ def test_execute_if_else_result_true():
         config=node_config,
     )
 
-    # Initialize node data
-    node.init_node_data(node_config["data"])
-
     # Mock db.session.close()
     db.session.close = MagicMock()
 
@@ -186,9 +184,6 @@ def test_execute_if_else_result_false():
         config=node_config,
     )
 
-    # Initialize node data
-    node.init_node_data(node_config["data"])
-
     # Mock db.session.close()
     db.session.close = MagicMock()
 
@@ -250,9 +245,6 @@ def test_array_file_contains_file_name():
         graph_runtime_state=Mock(),
         config=node_config,
     )
-
-    # Initialize node data
-    node.init_node_data(node_config["data"])
 
     node.graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(
         value=[
@@ -346,7 +338,6 @@ def test_execute_if_else_boolean_conditions(condition: Condition):
         graph_runtime_state=graph_runtime_state,
         config={"id": "if-else", "data": node_data},
     )
-    node.init_node_data(node_data)
 
     # Mock db.session.close()
     db.session.close = MagicMock()
@@ -416,7 +407,6 @@ def test_execute_if_else_boolean_false_conditions():
             "data": node_data,
         },
     )
-    node.init_node_data(node_data)
 
     # Mock db.session.close()
     db.session.close = MagicMock()
@@ -486,7 +476,6 @@ def test_execute_if_else_boolean_cases_structure():
         graph_runtime_state=graph_runtime_state,
         config={"id": "if-else", "data": node_data},
     )
-    node.init_node_data(node_data)
 
     # Mock db.session.close()
     db.session.close = MagicMock()

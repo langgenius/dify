@@ -16,7 +16,7 @@ const strToKeyValueList = (value: string) => {
 }
 
 const useKeyValueList = (value: string, onChange: (value: string) => void, noFilter?: boolean) => {
-  const [list, doSetList] = useState<KeyValue[]>(value ? strToKeyValueList(value) : [])
+  const [list, doSetList] = useState<KeyValue[]>(() => value ? strToKeyValueList(value) : [])
   const setList = (l: KeyValue[]) => {
     doSetList(l.map((item) => {
       return {

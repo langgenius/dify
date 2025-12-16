@@ -5,8 +5,8 @@ const translation = {
   table: {
     header: {
       source: 'Źródło',
-      text: 'Tekst',
       time: 'Czas',
+      queryContent: 'Treść zapytania',
     },
   },
   input: {
@@ -29,6 +29,12 @@ const translation = {
   open: 'Otwierać',
   records: 'Rekordy',
   chunkDetail: 'Szczegóły kawałka',
+  imageUploader: {
+    tip: 'Prześlij lub upuść obrazy (Maks. {{batchCount}}, {{size}} MB każdy)',
+    tooltip: 'Prześlij obrazy (maks. {{batchCount}}, {{size}} MB każdy)',
+    dropZoneTip: 'Przeciągnij plik tutaj, aby go przesłać',
+    singleChunkAttachmentLimitTooltip: 'Liczba pojedynczych załączników nie może przekroczyć {{limit}}',
+  },
 }
 
 export default translation
