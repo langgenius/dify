@@ -99,6 +99,8 @@ const translation = {
       hiIN: '힌디어',
       trTR: '터키어',
       faIR: '페르시아어',
+      slSI: '슬로베니아어',
+      arTN: '튀니지 아랍어',
     },
   },
   unit: {

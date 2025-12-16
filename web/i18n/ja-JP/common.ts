@@ -109,6 +109,8 @@ const translation = {
       hiIN: 'ヒンディー語',
       trTR: 'トルコ語',
       faIR: 'ペルシア語',
+      slSI: 'スロベニア語',
+      arTN: 'チュニジア・アラビア語',
     },
   },
   unit: {
