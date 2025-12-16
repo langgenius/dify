@@ -94,16 +94,25 @@ class TriggerProviderService:
 
         provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
         for subscription in subscriptions:
-            encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+            credential_encrypter, _ = create_trigger_provider_encrypter_for_subscription(
                 tenant_id=tenant_id,
                 controller=provider_controller,
                 subscription=subscription,
             )
             subscription.credentials = dict(
-                encrypter.mask_credentials(dict(encrypter.decrypt(subscription.credentials)))
+                credential_encrypter.mask_credentials(dict(credential_encrypter.decrypt(subscription.credentials)))
             )
-            subscription.properties = dict(encrypter.mask_credentials(dict(encrypter.decrypt(subscription.properties))))
-            subscription.parameters = dict(encrypter.mask_credentials(dict(encrypter.decrypt(subscription.parameters))))
+            properties_encrypter, _ = create_trigger_provider_encrypter_for_properties(
+                tenant_id=tenant_id,
+                controller=provider_controller,
+                subscription=subscription,
+            )
+            subscription.properties = dict(
+                properties_encrypter.mask_credentials(dict(properties_encrypter.decrypt(subscription.properties)))
+            )
+            subscription.parameters = dict(
+                credential_encrypter.mask_credentials(dict(credential_encrypter.decrypt(subscription.parameters)))
+            )
             count = workflows_in_use_map.get(subscription.id)
             subscription.workflows_in_use = count if count is not None else 0
 
