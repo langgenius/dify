@@ -29,21 +29,21 @@ class FieldEncryption:
     def _derive_key_and_iv(passphrase: str, salt: bytes) -> tuple[bytes, bytes]:
         """
         Derive key and IV from passphrase using PBKDF2-HMAC-SHA256.
-        
+
         This uses a modern, secure KDF instead of the legacy MD5-based EVP_BytesToKey.
         Both frontend and backend must use the same KDF parameters for compatibility.
-        
+
         Args:
             passphrase: The encryption passphrase
             salt: 8-byte salt
-            
+
         Returns:
             Tuple of (key, iv) each 32 bytes and 16 bytes respectively
         """
         key_size = 32  # 256 bits for AES-256
         iv_size = 16  # 128 bits for AES CBC mode
         iterations = 100_000  # OWASP recommended minimum for PBKDF2
-        
+
         # Derive key and IV using PBKDF2-HMAC-SHA256
         derived = hashlib.pbkdf2_hmac(
             "sha256",
@@ -52,7 +52,7 @@ class FieldEncryption:
             iterations,
             dklen=key_size + iv_size,
         )
-        
+
         key = derived[:key_size]
         iv = derived[key_size : key_size + iv_size]
         return key, iv
