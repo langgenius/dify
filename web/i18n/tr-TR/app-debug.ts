@@ -348,7 +348,6 @@ const translation = {
     'description': 'Değişken ayarı {{varName}}',
     'fieldType': 'Alan türü',
     'string': 'Kısa Metin',
-    'textInput': 'Kısa Metin',
     'paragraph': 'Paragraf',
     'select': 'Seçim',
     'number': 'Numara',
@@ -364,7 +363,6 @@ const translation = {
     'content': 'İçerik',
     'required': 'Gerekli',
     'errorMsg': {
-      varNameRequired: 'Değişken adı gereklidir',
       labelNameRequired: 'Etiket adı gereklidir',
       varNameCanBeRepeat: 'Değişken adı tekrar edemez',
       atLeastOneOption: 'En az bir seçenek gereklidir',

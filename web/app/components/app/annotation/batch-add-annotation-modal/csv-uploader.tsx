@@ -114,7 +114,7 @@ const CSVUploader: FC<Props> = ({
             <div className='hidden items-center group-hover:flex'>
               <Button variant='secondary' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
               <div className='mx-2 h-4 w-px bg-divider-regular' />
-              <div className='cursor-pointer p-2' onClick={removeFile}>
+              <div className='cursor-pointer p-2' onClick={removeFile} data-testid="remove-file-button">
                 <RiDeleteBinLine className='h-4 w-4 text-text-tertiary' />
               </div>
             </div>

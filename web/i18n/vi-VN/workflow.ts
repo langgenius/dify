@@ -437,6 +437,7 @@ const translation = {
         variable: 'Sử dụng biến',
       },
       inputVars: 'Biến đầu vào',
+      pluginNotInstalled: 'Plugin chưa được cài đặt',
     },
     start: {
       required: 'bắt buộc',
@@ -543,6 +544,7 @@ const translation = {
         icon: 'Biểu tượng phân đoạn',
         url: 'URL phân đoạn',
         metadata: 'Siêu dữ liệu khác',
+        files: 'Các tệp đã được truy xuất',
       },
       metadata: {
         options: {
@@ -572,6 +574,8 @@ const translation = {
         title: 'Lọc siêu dữ liệu',
         tip: 'Lọc siêu dữ liệu là quá trình sử dụng các thuộc tính siêu dữ liệu (chẳng hạn như thẻ, danh mục hoặc quyền truy cập) để tinh chỉnh và kiểm soát việc truy xuất thông tin liên quan trong một hệ thống.',
       },
+      queryText: 'Văn bản truy vấn',
+      queryAttachment: 'Truy vấn hình ảnh',
     },
     http: {
       inputVars: 'Biến đầu vào',

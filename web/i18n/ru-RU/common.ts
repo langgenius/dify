@@ -734,6 +734,7 @@ const translation = {
     uploadFromComputerLimit: 'Файл загрузки не может превышать {{size}}',
     uploadFromComputerUploadError: 'Загрузка файла не удалась, пожалуйста, загрузите еще раз.',
     fileExtensionBlocked: 'Этот тип файла заблокирован по соображениям безопасности',
+    uploadDisabled: 'Загрузка файлов отключена',
   },
   license: {
     expiring: 'Срок действия истекает за один день',

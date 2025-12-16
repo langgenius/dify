@@ -31,6 +31,7 @@ const translation = {
     vectorSpaceTooltip:
       'Przestrzeń wektorowa jest systemem pamięci długoterminowej wymaganym dla LLM, aby zrozumieć Twoje dane.',
     documentProcessingPriority: 'Priorytet przetwarzania dokumentów',
+    documentProcessingPriorityTip: 'Aby uzyskać wyższy priorytet przetwarzania dokumentów, zaktualizuj swój plan.',
     documentProcessingPriorityUpgrade:
       'Przetwarzaj więcej danych z większą dokładnością i w szybszym tempie.',
     priority: {
@@ -146,7 +147,7 @@ const translation = {
       description:
         'Uzyskaj pełne możliwości i wsparcie dla systemów o kluczowym znaczeniu dla misji.',
       includesTitle: 'Wszystko w planie Zespołowym, plus:',
-      features: ['Skalowalne rozwiązania wdrożeniowe klasy korporacyjnej', 'Autoryzacja licencji komercyjnej', 'Ekskluzywne funkcje dla przedsiębiorstw', 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem', 'SSO', 'Negocjowane umowy SLA przez partnerów Dify', 'Zaawansowane zabezpieczenia i kontrola', 'Aktualizacje i konserwacja przez Dify oficjalnie', 'Profesjonalne wsparcie techniczne'],
+      features: ['Rozwiązania wdrożeniowe klasy korporacyjnej, skalowalne', 'Autoryzacja licencji komercyjnej', 'Ekskluzywne funkcje dla przedsiębiorstw', 'Wiele przestrzeni roboczych i zarządzanie przedsiębiorstwem', 'SSO', 'Negocjowane umowy SLA przez partnerów Dify', 'Zaawansowane zabezpieczenia i kontrola', 'Aktualizacje i konserwacja przez Dify oficjalnie', 'Profesjonalne wsparcie techniczne'],
       priceTip: 'Tylko roczne fakturowanie',
       btnText: 'Skontaktuj się z działem sprzedaży',
       for: 'Dla dużych zespołów',
@@ -207,6 +208,23 @@ const translation = {
     description: 'Osiągnąłeś limit wyzwalaczy zdarzeń przepływu pracy dla tego planu.',
     title: 'Uaktualnij, aby odblokować więcej zdarzeń wyzwalających',
     dismiss: 'Odrzuć',
+  },
+  viewBillingTitle: 'Rozliczenia i subskrypcje',
+  viewBillingDescription: 'Zarządzaj metodami płatności, fakturami i zmianami subskrypcji',
+  viewBillingAction: 'Zarządzać',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Przejdź na wyższą wersję, aby przesyłać wiele dokumentów jednocześnie',
+      description: 'Osiągnąłeś limit przesyłania — w ramach obecnego planu można wybrać i przesłać tylko jeden dokument naraz.',
+    },
+    uploadMultipleFiles: {
+      title: 'Uaktualnij, aby odblokować przesyłanie dokumentów wsadowych',
+      description: 'Przesyłaj wiele dokumentów jednocześnie, aby zaoszczędzić czas i zwiększyć wydajność.',
+    },
+    addChunks: {
+      title: 'Uaktualnij, aby kontynuować dodawanie fragmentów',
+      description: 'Osiągnąłeś limit dodawania fragmentów w tym planie.',
+    },
   },
 }
 

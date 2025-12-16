@@ -36,17 +36,20 @@ select = [
     "UP",      # pyupgrade rules
     "W191",    # tab-indentation
     "W605",    # invalid-escape-sequence
+    "G001",    # don't use str format to logging messages
+    "G003",    # don't use + in logging messages
+    "G004",    # don't use f-strings to format logging messages
+    "UP042",   # use StrEnum,
+    "S110",    # disallow the try-except-pass pattern.
+
     # security related linting rules
     # RCE proctection (sort of)
     "S102", # exec-builtin, disallow use of `exec`
     "S307", # suspicious-eval-usage, disallow use of `eval` and `ast.literal_eval`
     "S301", # suspicious-pickle-usage, disallow use of `pickle` and its wrappers.
     "S302", # suspicious-marshal-usage, disallow use of `marshal` module
-    "S311", # suspicious-non-cryptographic-random-usage
-    "G001", # don't use str format to logging messages
-    "G003", # don't use + in logging messages
-    "G004", # don't use f-strings to format logging messages
-    "UP042", # use StrEnum
+    "S311", # suspicious-non-cryptographic-random-usage,
+
 ]
 
 ignore = [
@@ -91,18 +94,16 @@ ignore = [
 "configs/*" = [
     "N802", # invalid-function-name
 ]
-"core/model_runtime/callbacks/base_callback.py" = [
-    "T201",
-]
-"core/workflow/callbacks/workflow_logging_callback.py" = [
-    "T201",
-]
+"core/model_runtime/callbacks/base_callback.py" = ["T201"]
+"core/workflow/callbacks/workflow_logging_callback.py" = ["T201"]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
 ]
 "tests/*" = [
     "F811", # redefined-while-unused
-    "T201", # allow print in tests
+    "T201", # allow print in tests,
+    "S110", # allow ignoring exceptions in tests code (currently)
+
 ]
 
 [lint.pyflakes]

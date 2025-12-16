@@ -401,6 +401,7 @@ const translation = {
     collapseChunks: 'チャンクを折りたたむ',
     keywordDuplicate: 'そのキーワードは既に存在しています',
     keywordEmpty: 'キーワードは空であってはいけません',
+    allFilesUploaded: '保存する前にすべてのファイルをアップロードする必要があります',
   },
 }
 

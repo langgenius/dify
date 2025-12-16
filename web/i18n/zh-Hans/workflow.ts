@@ -464,6 +464,7 @@ const translation = {
         variable: '使用变量',
       },
       inputVars: '输入变量',
+      pluginNotInstalled: '插件未安装',
     },
     start: {
       required: '必填',
@@ -562,6 +563,8 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: '查询变量',
+      queryText: '查询文本',
+      queryAttachment: '查询图片',
       knowledge: '知识库',
       outputVars: {
         output: '召回的分段',
@@ -570,6 +573,7 @@ const translation = {
         icon: '分段图标',
         url: '分段链接',
         metadata: '其他元数据',
+        files: '召回的文件',
       },
       metadata: {
         title: '元数据过滤',

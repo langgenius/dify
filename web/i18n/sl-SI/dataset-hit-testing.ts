@@ -6,8 +6,8 @@ const translation = {
   table: {
     header: {
       source: 'Vir',
-      text: 'Besedilo',
       time: 'Čas',
+      queryContent: 'Vsebina poizvedbe',
     },
   },
   input: {
@@ -29,6 +29,12 @@ const translation = {
   chunkDetail: 'Detajl koščka',
   open: 'Odprt',
   hitChunks: 'Zadenite {{num}} podrejene koščke',
+  imageUploader: {
+    tip: 'Naložite ali povlecite slike (največ {{batchCount}}, {{size}} MB vsaka)',
+    tooltip: 'Naloži slike (maksimalno {{batchCount}}, {{size}} MB vsaka)',
+    dropZoneTip: 'Povlecite datoteko sem za nalaganje',
+    singleChunkAttachmentLimitTooltip: 'Število priponk enega kosa ne sme presegati {{limit}}',
+  },
 }
 
 export default translation

@@ -99,6 +99,15 @@ class BaseAppGenerator:
             if value is None:
                 return None
 
+        # Treat empty placeholders for optional file inputs as unset
+        if (
+            variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
+            and not variable_entity.required
+        ):
+            # Treat empty string (frontend default) or empty list as unset
+            if not value and isinstance(value, (str, list)):
+                return None
+
         if variable_entity.type in {
             VariableEntityType.TEXT_INPUT,
             VariableEntityType.SELECT,
