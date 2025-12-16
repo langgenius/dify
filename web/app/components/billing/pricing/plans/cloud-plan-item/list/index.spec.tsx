@@ -4,7 +4,6 @@ import List from './index'
 import { Plan } from '../../../../type'
 
 describe('CloudPlanItem/List', () => {
-  // Free plan copy
   test('should show sandbox specific quotas', () => {
     render(<List plan={Plan.sandbox} />)
 
@@ -13,7 +12,6 @@ describe('CloudPlanItem/List', () => {
     expect(screen.getByText('billing.plansCommon.startNodes.limited:{"count":2}')).toBeInTheDocument()
   })
 
-  // Paid plan copy
   test('should show professional monthly quotas and tooltips', () => {
     render(<List plan={Plan.professional} />)
 
@@ -22,7 +20,6 @@ describe('CloudPlanItem/List', () => {
     expect(screen.getByText('billing.plansCommon.workflowExecution.faster')).toBeInTheDocument()
   })
 
-  // Unlimited plan copy
   test('should show unlimited messaging details for team plan', () => {
     render(<List plan={Plan.team} />)
 
