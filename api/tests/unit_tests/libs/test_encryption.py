@@ -50,9 +50,9 @@ class TestKeyDerivation:
         """Test that derived key and IV have correct lengths."""
         passphrase = "test-passphrase"
         salt = b"12345678"  # 8 bytes
-        
+
         key, iv = FieldEncryption._derive_key_and_iv(passphrase, salt)
-        
+
         assert len(key) == 32  # 256 bits
         assert len(iv) == 16  # 128 bits
 
@@ -60,10 +60,10 @@ class TestKeyDerivation:
         """Test that same passphrase and salt produce same key and IV."""
         passphrase = "test-passphrase"
         salt = b"12345678"
-        
+
         key1, iv1 = FieldEncryption._derive_key_and_iv(passphrase, salt)
         key2, iv2 = FieldEncryption._derive_key_and_iv(passphrase, salt)
-        
+
         assert key1 == key2
         assert iv1 == iv2
 
@@ -72,10 +72,10 @@ class TestKeyDerivation:
         passphrase = "test-passphrase"
         salt1 = b"12345678"
         salt2 = b"87654321"
-        
+
         key1, iv1 = FieldEncryption._derive_key_and_iv(passphrase, salt1)
         key2, iv2 = FieldEncryption._derive_key_and_iv(passphrase, salt2)
-        
+
         assert key1 != key2
         assert iv1 != iv2
 
@@ -87,9 +87,9 @@ class TestKeyDerivation:
         # Test with known values
         passphrase = "password"
         salt = b"\x01\x02\x03\x04\x05\x06\x07\x08"
-        
+
         key, iv = FieldEncryption._derive_key_and_iv(passphrase, salt)
-        
+
         # Verify we're using MD5-based derivation (not PBKDF2)
         # The first hash should be MD5(password + salt)
         first_hash = hashlib.md5(b"password" + salt).digest()
@@ -134,19 +134,19 @@ class TestDecryptField:
         plaintext = "password123"
         passphrase = "shared-secret-key"
         salt = b"12345678"
-        
+
         # Derive key and IV using same method as crypto-js
         key, iv = FieldEncryption._derive_key_and_iv(passphrase, salt)
-        
+
         # Encrypt using AES-256-CBC with PKCS7 padding
         cipher = AES.new(key, AES.MODE_CBC, iv)
         padded = pad(plaintext.encode("utf-8"), AES.block_size)
         ciphertext = cipher.encrypt(padded)
-        
+
         # Create crypto-js format: "Salted__" + salt + ciphertext
         cryptojs_format = b"Salted__" + salt + ciphertext
         encrypted_base64 = base64.b64encode(cryptojs_format).decode()
-        
+
         # Test decryption
         result = FieldEncryption.decrypt_field(encrypted_base64)
         assert result == plaintext
@@ -159,15 +159,15 @@ class TestDecryptField:
         plaintext = "password123"
         correct_key = "correct-key"
         salt = b"12345678"
-        
+
         key, iv = FieldEncryption._derive_key_and_iv(correct_key, salt)
         cipher = AES.new(key, AES.MODE_CBC, iv)
         padded = pad(plaintext.encode("utf-8"), AES.block_size)
         ciphertext = cipher.encrypt(padded)
-        
+
         cryptojs_format = b"Salted__" + salt + ciphertext
         encrypted_base64 = base64.b64encode(cryptojs_format).decode()
-        
+
         # Try to decrypt with wrong key (mocked as "wrong-key")
         result = FieldEncryption.decrypt_field(encrypted_base64)
         assert result is None  # Should fail and return None
@@ -216,7 +216,7 @@ class TestDecryptVerificationCode:
 class TestCryptoJSCompatibility:
     """
     Integration tests to verify compatibility with crypto-js encryption.
-    
+
     These tests use known crypto-js encrypted strings to ensure backend
     can properly decrypt frontend-encrypted data.
     """
@@ -226,7 +226,7 @@ class TestCryptoJSCompatibility:
     def test_decrypt_cryptojs_encrypted_password(self):
         """
         Test decrypting a password encrypted by crypto-js.
-        
+
         To generate test data, run in browser console:
         CryptoJS.AES.encrypt('TestPassword123', 'my-secret-key').toString()
         """
@@ -234,15 +234,15 @@ class TestCryptoJSCompatibility:
         plaintext = "TestPassword123"
         passphrase = "my-secret-key"
         salt = b"testsalt"  # 8 bytes
-        
+
         key, iv = FieldEncryption._derive_key_and_iv(passphrase, salt)
         cipher = AES.new(key, AES.MODE_CBC, iv)
         padded = pad(plaintext.encode("utf-8"), AES.block_size)
         ciphertext = cipher.encrypt(padded)
-        
+
         cryptojs_format = b"Salted__" + salt + ciphertext
         encrypted_base64 = base64.b64encode(cryptojs_format).decode()
-        
+
         # Decrypt and verify
         result = FieldEncryption.decrypt_field(encrypted_base64)
         assert result == plaintext
@@ -255,15 +255,15 @@ class TestCryptoJSCompatibility:
         code = "789012"
         passphrase = "verification-key"
         salt = b"codesalt"
-        
+
         key, iv = FieldEncryption._derive_key_and_iv(passphrase, salt)
         cipher = AES.new(key, AES.MODE_CBC, iv)
         padded = pad(code.encode("utf-8"), AES.block_size)
         ciphertext = cipher.encrypt(padded)
-        
+
         cryptojs_format = b"Salted__" + salt + ciphertext
         encrypted_base64 = base64.b64encode(cryptojs_format).decode()
-        
+
         # Decrypt and verify
         result = FieldEncryption.decrypt_verification_code(encrypted_base64)
         assert result == code
@@ -306,10 +306,10 @@ class TestEdgeCases:
         # Create valid format but with corrupted ciphertext
         salt = b"12345678"
         corrupted_ct = b"corrupted_data_not_valid_aes_block"
-        
+
         cryptojs_format = b"Salted__" + salt + corrupted_ct
         encrypted_base64 = base64.b64encode(cryptojs_format).decode()
-        
+
         # Should return None (decryption failed)
         result = FieldEncryption.decrypt_field(encrypted_base64)
         assert result is None
@@ -351,19 +351,19 @@ class TestRoundTripEncryptionDecryption:
         original_password = "SecureP@ssw0rd!"
         passphrase = "integration-test-key"
         salt = b"salttest"
-        
+
         # Simulate frontend encryption (crypto-js format)
         key, iv = FieldEncryption._derive_key_and_iv(passphrase, salt)
         cipher = AES.new(key, AES.MODE_CBC, iv)
         padded = pad(original_password.encode("utf-8"), AES.block_size)
         ciphertext = cipher.encrypt(padded)
-        
+
         cryptojs_format = b"Salted__" + salt + ciphertext
         encrypted_base64 = base64.b64encode(cryptojs_format).decode()
-        
+
         # Backend decryption
         decrypted = FieldEncryption.decrypt_password(encrypted_base64)
-        
+
         assert decrypted == original_password
 
     @patch("libs.encryption.dify_config.ENABLE_FIELD_ENCRYPTION", True)
@@ -373,19 +373,19 @@ class TestRoundTripEncryptionDecryption:
         original_code = "123456"
         passphrase = "code-test-key"
         salt = b"codesalt"
-        
+
         # Simulate frontend encryption
         key, iv = FieldEncryption._derive_key_and_iv(passphrase, salt)
         cipher = AES.new(key, AES.MODE_CBC, iv)
         padded = pad(original_code.encode("utf-8"), AES.block_size)
         ciphertext = cipher.encrypt(padded)
-        
+
         cryptojs_format = b"Salted__" + salt + ciphertext
         encrypted_base64 = base64.b64encode(cryptojs_format).decode()
-        
+
         # Backend decryption
         decrypted = FieldEncryption.decrypt_verification_code(encrypted_base64)
-        
+
         assert decrypted == original_code
 
     @patch("libs.encryption.dify_config.ENABLE_FIELD_ENCRYPTION", True)
@@ -395,15 +395,14 @@ class TestRoundTripEncryptionDecryption:
         original_password = "密码Test123!@#"
         passphrase = "unicode-test-key"
         salt = b"unicsalt"
-        
+
         key, iv = FieldEncryption._derive_key_and_iv(passphrase, salt)
         cipher = AES.new(key, AES.MODE_CBC, iv)
         padded = pad(original_password.encode("utf-8"), AES.block_size)
         ciphertext = cipher.encrypt(padded)
-        
+
         cryptojs_format = b"Salted__" + salt + ciphertext
         encrypted_base64 = base64.b64encode(cryptojs_format).decode()
-        
+
         decrypted = FieldEncryption.decrypt_password(encrypted_base64)
         assert decrypted == original_password
-
