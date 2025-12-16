@@ -188,15 +188,15 @@ export const interactions = {
 // Text content keys for assertions
 export const textKeys = {
   selfHost: {
-    titleRow1: 'appOverview.apiKeyInfo.selfHost.title.row1',
-    titleRow2: 'appOverview.apiKeyInfo.selfHost.title.row2',
-    setAPIBtn: 'appOverview.apiKeyInfo.setAPIBtn',
-    tryCloud: 'appOverview.apiKeyInfo.tryCloud',
+    titleRow1: /appOverview\.apiKeyInfo\.selfHost\.title\.row1/,
+    titleRow2: /appOverview\.apiKeyInfo\.selfHost\.title\.row2/,
+    setAPIBtn: /appOverview\.apiKeyInfo\.setAPIBtn/,
+    tryCloud: /appOverview\.apiKeyInfo\.tryCloud/,
   },
   cloud: {
     trialTitle: /appOverview\.apiKeyInfo\.cloud\.trial\.title/,
     trialDescription: /appOverview\.apiKeyInfo\.cloud\.trial\.description/,
-    setAPIBtn: 'appOverview.apiKeyInfo.setAPIBtn',
+    setAPIBtn: /appOverview\.apiKeyInfo\.setAPIBtn/,
   },
 }
 
