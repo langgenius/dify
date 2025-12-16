@@ -28,41 +28,33 @@ class FieldEncryption:
     @staticmethod
     def _derive_key_and_iv(passphrase: str, salt: bytes) -> tuple[bytes, bytes]:
         """
-        Derive key and IV from passphrase using OpenSSL's EVP_BytesToKey algorithm.
-        This matches crypto-js's default key derivation which uses MD5.
-
-        NOTE: MD5 is a weak hashing algorithm and not recommended for new applications.
-        This implementation is required for compatibility with crypto-js default behavior.
-        For better security, consider configuring crypto-js to use a stronger KDF like
-        PBKDF2 with SHA-256, and update this function accordingly.
-
+        Derive key and IV from passphrase using PBKDF2-HMAC-SHA256.
+        
+        This uses a modern, secure KDF instead of the legacy MD5-based EVP_BytesToKey.
+        Both frontend and backend must use the same KDF parameters for compatibility.
+        
         Args:
             passphrase: The encryption passphrase
             salt: 8-byte salt
-
+            
         Returns:
             Tuple of (key, iv) each 32 bytes and 16 bytes respectively
         """
-        # crypto-js uses EVP_BytesToKey with MD5, 1 iteration
-        key_size = 32  # 256 bits
-        iv_size = 16  # 128 bits
-
-        m = []
-        i = 0
-        # Encode passphrase once before the loop for better performance
-        data = passphrase.encode("utf-8")
-        while len(b"".join(m)) < (key_size + iv_size):
-            md = hashlib.md5()
-            if i > 0:
-                md.update(m[i - 1])
-            md.update(data)
-            md.update(salt)
-            m.append(md.digest())
-            i += 1
-
-        ms = b"".join(m)
-        key = ms[:key_size]
-        iv = ms[key_size : key_size + iv_size]
+        key_size = 32  # 256 bits for AES-256
+        iv_size = 16  # 128 bits for AES CBC mode
+        iterations = 100_000  # OWASP recommended minimum for PBKDF2
+        
+        # Derive key and IV using PBKDF2-HMAC-SHA256
+        derived = hashlib.pbkdf2_hmac(
+            "sha256",
+            passphrase.encode("utf-8"),
+            salt,
+            iterations,
+            dklen=key_size + iv_size,
+        )
+        
+        key = derived[:key_size]
+        iv = derived[key_size : key_size + iv_size]
         return key, iv
 
     @classmethod

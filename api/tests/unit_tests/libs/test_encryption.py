@@ -79,10 +79,10 @@ class TestKeyDerivation:
         assert key1 != key2
         assert iv1 != iv2
 
-    def test_derive_key_matches_cryptojs_evp_bytestokey(self):
+    def test_derive_key_uses_pbkdf2_sha256(self):
         """
-        Test that our key derivation matches crypto-js's EVP_BytesToKey.
-        This is a known test vector to ensure compatibility.
+        Test that our key derivation uses PBKDF2-HMAC-SHA256.
+        This ensures we're using a modern, secure KDF.
         """
         # Test with known values
         passphrase = "password"
@@ -90,10 +90,19 @@ class TestKeyDerivation:
 
         key, iv = FieldEncryption._derive_key_and_iv(passphrase, salt)
 
-        # Verify we're using MD5-based derivation (not PBKDF2)
-        # The first hash should be MD5(password + salt)
-        first_hash = hashlib.md5(b"password" + salt).digest()
-        assert key[:16] == first_hash  # First 16 bytes of key should match first MD5
+        # Verify we're using PBKDF2 by deriving the same key manually
+        expected_derived = hashlib.pbkdf2_hmac(
+            "sha256",
+            passphrase.encode("utf-8"),
+            salt,
+            100_000,
+            dklen=48,
+        )
+        expected_key = expected_derived[:32]
+        expected_iv = expected_derived[32:48]
+
+        assert key == expected_key
+        assert iv == expected_iv
 
 
 class TestDecryptField:
