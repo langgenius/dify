@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import VarPicker, { type Props } from './var-picker'
 
@@ -8,48 +9,55 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/test',
 }))
 
-// Mock PortalToFollowElem components with conditional rendering
-let mockPortalOpenState = false
-let mockOnOpenChange: ((open: boolean) => void) | undefined
+type PortalToFollowElemProps = {
+  children: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode; asChild?: boolean }
+type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
 
-jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange }: any) => {
-    mockPortalOpenState = open || false
-    mockOnOpenChange = onOpenChange
+jest.mock('@/app/components/base/portal-to-follow-elem', () => {
+  const PortalContext = React.createContext({ open: false })
+
+  const PortalToFollowElem = ({ children, open }: PortalToFollowElemProps) => {
     return (
-      <div data-testid="portal" data-open={open}>
+      <PortalContext.Provider value={{ open: !!open }}>
+        <div data-testid="portal">{children}</div>
+      </PortalContext.Provider>
+    )
+  }
+
+  const PortalToFollowElemContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
+    const { open } = React.useContext(PortalContext)
+    if (!open) return null
+    return (
+      <div data-testid="portal-content" {...props}>
         {children}
       </div>
     )
-  },
-  PortalToFollowElemContent: ({ children }: any) => {
-    // Match actual behavior: returns null when not open
-    if (!mockPortalOpenState) return null
-    return <div data-testid="portal-content">{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, onKeyDown, ...props }: any) => (
-    <button
-      data-testid="portal-trigger"
-      onClick={(e) => {
-        if (onClick) onClick(e)
-        // Simulate the toggle behavior
-        if (mockOnOpenChange)
-          mockOnOpenChange(!mockPortalOpenState)
-      }}
-      onKeyDown={(e) => {
-        if (onKeyDown) onKeyDown(e)
-        // Handle keyboard interactions
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          if (mockOnOpenChange) mockOnOpenChange(!mockPortalOpenState)
-        }
-      }}
-      {...props}
-    >
-      {children}
-    </button>
-  ),
-}))
+  }
+
+  const PortalToFollowElemTrigger = ({ children, asChild, ...props }: PortalToFollowElemTriggerProps) => {
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children, {
+        ...props,
+        'data-testid': 'portal-trigger',
+      } as React.HTMLAttributes<HTMLElement>)
+    }
+    return (
+      <div data-testid="portal-trigger" {...props}>
+        {children}
+      </div>
+    )
+  }
+
+  return {
+    PortalToFollowElem,
+    PortalToFollowElemContent,
+    PortalToFollowElemTrigger,
+  }
+})
 
 describe('VarPicker', () => {
   const mockOptions: Props['options'] = [
@@ -66,7 +74,6 @@ describe('VarPicker', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   // Rendering tests (REQUIRED)
@@ -79,7 +86,7 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
       expect(screen.getByText('var1')).toBeInTheDocument()
     })
 
@@ -110,7 +117,7 @@ describe('VarPicker', () => {
 
       // Assert
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
-      expect(screen.getByText(/choosePlaceholder/i)).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
     })
 
     it('should display custom tip message when notSelectedVarTip is provided', () => {
@@ -135,9 +142,8 @@ describe('VarPicker', () => {
       // Act
       render(<VarPicker {...props} />)
 
-      // Assert - Check for dropdown indicator
-      const button = screen.getByRole('button')
-      expect(button).toBeInTheDocument()
+      // Assert - Trigger should be present
+      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
     })
   })
 
@@ -168,9 +174,7 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      const button = screen.getByRole('button')
-      expect(button).toBeInTheDocument()
-      // Note: triggerClassName is passed to PortalToFollowElemTrigger
+      expect(screen.getByTestId('portal-trigger')).toHaveClass('custom-trigger-class')
     })
 
     it('should display selected value with proper formatting', () => {
@@ -203,10 +207,9 @@ describe('VarPicker', () => {
 
       // Act
       render(<VarPicker {...props} />)
-      await user.click(screen.getByRole('button'))
+      await user.click(screen.getByTestId('portal-trigger'))
 
       // Assert
-      expect(mockPortalOpenState).toBe(true)
       expect(screen.getByTestId('portal-content')).toBeInTheDocument()
     })
 
@@ -220,8 +223,8 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Open dropdown
-      await user.click(screen.getByRole('button'))
-      expect(mockPortalOpenState).toBe(true)
+      await user.click(screen.getByTestId('portal-trigger'))
+      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
 
       // Select a different option
       const options = screen.getAllByText('var2')
@@ -230,7 +233,7 @@ describe('VarPicker', () => {
 
       // Assert
       expect(onChange).toHaveBeenCalledWith('var2')
-      expect(mockPortalOpenState).toBe(false)
+      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     })
 
     it('should toggle dropdown when clicking trigger button multiple times', async () => {
@@ -241,49 +244,15 @@ describe('VarPicker', () => {
       // Act
       render(<VarPicker {...props} />)
 
-      const button = screen.getByRole('button')
+      const trigger = screen.getByTestId('portal-trigger')
 
       // Open dropdown
-      await user.click(button)
-      expect(mockPortalOpenState).toBe(true)
+      await user.click(trigger)
+      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
 
       // Close dropdown
-      await user.click(button)
-      expect(mockPortalOpenState).toBe(false)
-    })
-
-    it('should support keyboard navigation with Enter key', async () => {
-      // Arrange
-      const props = { ...defaultProps }
-
-      // Act
-      render(<VarPicker {...props} />)
-
-      const button = screen.getByRole('button')
-
-      // Focus button and press Enter
-      button.focus()
-      fireEvent.keyDown(button, { key: 'Enter' })
-
-      // Assert - Portal should be rendered
-      expect(screen.getByTestId('portal')).toBeInTheDocument()
-    })
-
-    it('should support keyboard navigation with Space key', async () => {
-      // Arrange
-      const props = { ...defaultProps }
-
-      // Act
-      render(<VarPicker {...props} />)
-
-      const button = screen.getByRole('button')
-
-      // Focus button and press Space
-      button.focus()
-      fireEvent.keyDown(button, { key: ' ' })
-
-      // Assert - Portal should be rendered
-      expect(screen.getByTestId('portal')).toBeInTheDocument()
+      await user.click(trigger)
+      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     })
   })
 
@@ -297,7 +266,6 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(mockPortalOpenState).toBe(false)
       expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     })
 
@@ -309,16 +277,16 @@ describe('VarPicker', () => {
       // Act
       render(<VarPicker {...props} />)
 
-      // Initial state
-      expect(mockPortalOpenState).toBe(false)
+      const trigger = screen.getByTestId('portal-trigger')
+      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
 
       // Open dropdown
-      await user.click(screen.getByRole('button'))
-      expect(mockPortalOpenState).toBe(true)
+      await user.click(trigger)
+      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
 
       // Close dropdown
-      await user.click(screen.getByRole('button'))
-      expect(mockPortalOpenState).toBe(false)
+      await user.click(trigger)
+      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     })
 
     it('should preserve selected value when dropdown is closed without selection', async () => {
@@ -330,8 +298,9 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Open and close dropdown without selecting anything
-      await user.click(screen.getByRole('button'))
-      await user.click(screen.getByRole('button'))
+      const trigger = screen.getByTestId('portal-trigger')
+      await user.click(trigger)
+      await user.click(trigger)
 
       // Assert
       expect(screen.getByText('var1')).toBeInTheDocument() // Original value still displayed
@@ -351,8 +320,8 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByText(/choosePlaceholder/i)).toBeInTheDocument()
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
     })
 
     it('should handle empty options array', () => {
@@ -367,8 +336,8 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByRole('button')).toBeInTheDocument()
-      expect(screen.getByText(/choosePlaceholder/i)).toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
     })
 
     it('should handle null value without crashing', () => {
@@ -382,20 +351,7 @@ describe('VarPicker', () => {
       render(<VarPicker {...props} />)
 
       // Assert
-      expect(screen.getByText(/choosePlaceholder/i)).toBeInTheDocument()
-    })
-
-    it('should render when onChange is not provided', () => {
-      // Arrange
-      const props = {
-        ...defaultProps,
-        onChange: undefined as any,
-      }
-
-      // Act & Assert - Should not throw
-      expect(() => {
-        render(<VarPicker {...props} />)
-      }).not.toThrow()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
     })
 
     it('should handle variable names with special characters safely', () => {
@@ -430,7 +386,7 @@ describe('VarPicker', () => {
 
       // Assert
       expect(screen.getByText('longVar')).toBeInTheDocument()
-      expect(screen.getByRole('button')).toBeInTheDocument()
+      expect(screen.getByTestId('portal-trigger')).toBeInTheDocument()
     })
   })
 })

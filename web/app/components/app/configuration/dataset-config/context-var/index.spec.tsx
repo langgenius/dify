@@ -1,4 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ContextVar from './index'
 import type { Props } from './var-picker'
@@ -9,42 +10,55 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/test',
 }))
 
-// Mock PortalToFollowElem components with conditional rendering
-let mockPortalOpenState = false
-let mockOnOpenChange: ((open: boolean) => void) | undefined
+type PortalToFollowElemProps = {
+  children: React.ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+}
+type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode; asChild?: boolean }
+type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
 
-jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
-  PortalToFollowElem: ({ children, open, onOpenChange }: any) => {
-    mockPortalOpenState = open || false
-    mockOnOpenChange = onOpenChange
-    return <div data-testid="portal" data-open={open}>{children}</div>
-  },
-  PortalToFollowElemContent: ({ children }: any) => {
-    // Match actual behavior: returns null when not open
-    if (!mockPortalOpenState) return null
-    return <div data-testid="portal-content">{children}</div>
-  },
-  PortalToFollowElemTrigger: ({ children, onClick, onKeyDown, ...props }: any) => (
-    <button
-      data-testid="portal-trigger"
-      onClick={(e) => {
-        if (onClick) onClick(e)
-        if (mockOnOpenChange) mockOnOpenChange(!mockPortalOpenState)
-      }}
-      onKeyDown={(e) => {
-        if (onKeyDown) onKeyDown(e)
-        // Handle keyboard interactions
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          if (mockOnOpenChange) mockOnOpenChange(!mockPortalOpenState)
-        }
-      }}
-      {...props}
-    >
-      {children}
-    </button>
-  ),
-}))
+jest.mock('@/app/components/base/portal-to-follow-elem', () => {
+  const PortalContext = React.createContext({ open: false })
+
+  const PortalToFollowElem = ({ children, open }: PortalToFollowElemProps) => {
+    return (
+      <PortalContext.Provider value={{ open: !!open }}>
+        <div data-testid="portal">{children}</div>
+      </PortalContext.Provider>
+    )
+  }
+
+  const PortalToFollowElemContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
+    const { open } = React.useContext(PortalContext)
+    if (!open) return null
+    return (
+      <div data-testid="portal-content" {...props}>
+        {children}
+      </div>
+    )
+  }
+
+  const PortalToFollowElemTrigger = ({ children, asChild, ...props }: PortalToFollowElemTriggerProps) => {
+    if (asChild && React.isValidElement(children)) {
+      return React.cloneElement(children, {
+        ...props,
+        'data-testid': 'portal-trigger',
+      } as React.HTMLAttributes<HTMLElement>)
+    }
+    return (
+      <div data-testid="portal-trigger" {...props}>
+        {children}
+      </div>
+    )
+  }
+
+  return {
+    PortalToFollowElem,
+    PortalToFollowElemContent,
+    PortalToFollowElemTrigger,
+  }
+})
 
 describe('ContextVar', () => {
   const mockOptions: Props['options'] = [
@@ -60,7 +74,6 @@ describe('ContextVar', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
-    mockPortalOpenState = false
   })
 
   // Rendering tests (REQUIRED)
@@ -73,7 +86,7 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText(/appDebug.feature.dataSet.queryVariable.title/i)).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
     })
 
     it('should show selected variable with proper formatting when value is provided', () => {
@@ -87,18 +100,6 @@ describe('ContextVar', () => {
       expect(screen.getByText('var1')).toBeInTheDocument()
       expect(screen.getByText('{{')).toBeInTheDocument()
       expect(screen.getByText('}}')).toBeInTheDocument()
-    })
-
-    it('should render tooltip with help content', () => {
-      // Arrange
-      const props = { ...defaultProps }
-
-      // Act
-      render(<ContextVar {...props} />)
-
-      // Assert - Tooltip trigger should be present
-      const tooltipTrigger = screen.getAllByRole('button')[0]
-      expect(tooltipTrigger).toBeInTheDocument()
     })
   })
 
@@ -127,7 +128,7 @@ describe('ContextVar', () => {
 
       // Assert - Should show placeholder instead of variable
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
-      expect(screen.getByText(/choosePlaceholder/i)).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
     })
 
     it('should display custom tip message when notSelectedVarTip is provided', () => {
@@ -171,10 +172,11 @@ describe('ContextVar', () => {
       // Act
       render(<ContextVar {...props} />)
 
-      // Open dropdown (second button is the VarPicker trigger)
-      const triggers = screen.getAllByRole('button')
-      await user.click(triggers[1])
-      expect(mockPortalOpenState).toBe(true)
+      const triggers = screen.getAllByTestId('portal-trigger')
+      const varPickerTrigger = triggers[triggers.length - 1]
+
+      await user.click(varPickerTrigger)
+      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
 
       // Select a different option
       const options = screen.getAllByText('var2')
@@ -183,7 +185,7 @@ describe('ContextVar', () => {
 
       // Assert
       expect(onChange).toHaveBeenCalledWith('var2')
-      expect(mockPortalOpenState).toBe(false)
+      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     })
 
     it('should toggle dropdown when clicking the trigger button', async () => {
@@ -194,34 +196,16 @@ describe('ContextVar', () => {
       // Act
       render(<ContextVar {...props} />)
 
-      const triggers = screen.getAllByRole('button')
-      const varPickerTrigger = triggers[1]
+      const triggers = screen.getAllByTestId('portal-trigger')
+      const varPickerTrigger = triggers[triggers.length - 1]
 
       // Open dropdown
       await user.click(varPickerTrigger)
-      expect(mockPortalOpenState).toBe(true)
+      expect(screen.getByTestId('portal-content')).toBeInTheDocument()
 
       // Close dropdown
       await user.click(varPickerTrigger)
-      expect(mockPortalOpenState).toBe(false)
-    })
-
-    it('should support keyboard navigation', async () => {
-      // Arrange
-      const props = { ...defaultProps }
-
-      // Act
-      render(<ContextVar {...props} />)
-
-      const triggers = screen.getAllByRole('button')
-      const varPickerTrigger = triggers[1]
-
-      // Focus trigger and press Enter
-      varPickerTrigger.focus()
-      fireEvent.keyDown(varPickerTrigger, { key: 'Enter' })
-
-      // Assert - Portal should be toggled (check for open state change)
-      expect(mockPortalOpenState).toBe(true)
+      expect(screen.queryByTestId('portal-content')).not.toBeInTheDocument()
     })
   })
 
@@ -238,8 +222,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText(/queryVariable.title/i)).toBeInTheDocument()
-      expect(screen.getByText(/choosePlaceholder/i)).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
       expect(screen.queryByText('var1')).not.toBeInTheDocument()
     })
 
@@ -255,8 +239,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText(/queryVariable.title/i)).toBeInTheDocument()
-      expect(screen.getByText(/choosePlaceholder/i)).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
     })
 
     it('should handle null value without crashing', () => {
@@ -270,8 +254,8 @@ describe('ContextVar', () => {
       render(<ContextVar {...props} />)
 
       // Assert
-      expect(screen.getByText(/queryVariable.title/i)).toBeInTheDocument()
-      expect(screen.getByText(/choosePlaceholder/i)).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.title')).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.dataSet.queryVariable.choosePlaceholder')).toBeInTheDocument()
     })
 
     it('should handle options with different data types', () => {

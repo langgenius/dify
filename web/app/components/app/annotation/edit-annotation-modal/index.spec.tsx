@@ -1,16 +1,12 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import Toast, { type IToastProps, type ToastHandle } from '@/app/components/base/toast'
 import EditAnnotationModal from './index'
-
-// Import real components as per skill guidelines
 
 // Mock only external dependencies
 jest.mock('@/service/annotation', () => ({
-  addAnnotation: jest.fn().mockResolvedValue({
-    id: 'test-id',
-    account: { name: 'Test User' },
-  }),
-  editAnnotation: jest.fn().mockResolvedValue({}),
+  addAnnotation: jest.fn(),
+  editAnnotation: jest.fn(),
 }))
 
 jest.mock('@/context/provider-context', () => ({
@@ -32,17 +28,20 @@ jest.mock('@/hooks/use-timestamp', () => ({
 
 // Note: i18n is automatically mocked by Jest via __mocks__/react-i18next.ts
 
-jest.mock('@/app/components/base/toast', () => ({
-  notify: jest.fn(),
-}))
-
-// Mock AnnotationFull to avoid dependency issues
 jest.mock('@/app/components/billing/annotation-full', () => ({
-  default: () => <div data-testid="annotation-full">Annotation Full</div>,
+  __esModule: true,
+  default: () => <div data-testid="annotation-full" />,
 }))
 
-const mockAddAnnotation = require('@/service/annotation').addAnnotation
-const mockEditAnnotation = require('@/service/annotation').editAnnotation
+type ToastNotifyProps = Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent' | 'onClose'>
+type ToastWithNotify = typeof Toast & { notify: (props: ToastNotifyProps) => ToastHandle }
+const toastWithNotify = Toast as unknown as ToastWithNotify
+const toastNotifySpy = jest.spyOn(toastWithNotify, 'notify').mockReturnValue({ clear: jest.fn() })
+
+const { addAnnotation: mockAddAnnotation, editAnnotation: mockEditAnnotation } = jest.requireMock('@/service/annotation') as {
+  addAnnotation: jest.Mock
+  editAnnotation: jest.Mock
+}
 
 describe('EditAnnotationModal', () => {
   const defaultProps = {
@@ -56,8 +55,17 @@ describe('EditAnnotationModal', () => {
     onRemove: jest.fn(),
   }
 
+  afterAll(() => {
+    toastNotifySpy.mockRestore()
+  })
+
   beforeEach(() => {
     jest.clearAllMocks()
+    mockAddAnnotation.mockResolvedValue({
+      id: 'test-id',
+      account: { name: 'Test User' },
+    })
+    mockEditAnnotation.mockResolvedValue({})
   })
 
   // Rendering tests (REQUIRED)
@@ -126,7 +134,7 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert - Remove option should be present (using pattern)
-      expect(screen.getByText(/remove.*cache/i)).toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.removeThisCache')).toBeInTheDocument()
     })
   })
 
@@ -155,7 +163,7 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert
-      expect(screen.getByText(/remove.*cache/i)).toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.removeThisCache')).toBeInTheDocument()
     })
 
     it('should save content when edited', async () => {
@@ -186,7 +194,7 @@ describe('EditAnnotationModal', () => {
       await user.type(textarea, 'New query content')
 
       // Click save button
-      const saveButton = screen.getByRole('button', { name: /save/i })
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await user.click(saveButton)
 
       // Assert
@@ -226,7 +234,7 @@ describe('EditAnnotationModal', () => {
       await user.clear(textarea)
       await user.type(textarea, 'Updated query')
 
-      const saveButton = screen.getByRole('button', { name: /save/i })
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await user.click(saveButton)
 
       // Assert
@@ -259,7 +267,7 @@ describe('EditAnnotationModal', () => {
       await user.clear(textarea)
       await user.type(textarea, 'Modified query')
 
-      const saveButton = screen.getByRole('button', { name: /save/i })
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
       await user.click(saveButton)
 
       // Assert
@@ -285,7 +293,7 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Assert - Confirm dialog should not be visible initially
-      expect(screen.queryByText(/remove.*confirm/i)).not.toBeInTheDocument()
+      expect(screen.queryByText('appDebug.feature.annotation.removeConfirm')).not.toBeInTheDocument()
     })
 
     it('should show confirm modal when remove is clicked', async () => {
@@ -298,10 +306,10 @@ describe('EditAnnotationModal', () => {
 
       // Act
       render(<EditAnnotationModal {...props} />)
-      await user.click(screen.getByText(/remove.*cache/i))
+      await user.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
 
       // Assert - Confirmation dialog should appear
-      expect(screen.getByText(/remove.*confirm/i)).toBeInTheDocument()
+      expect(screen.getByText('appDebug.feature.annotation.removeConfirm')).toBeInTheDocument()
     })
 
     it('should call onRemove when removal is confirmed', async () => {
@@ -318,10 +326,10 @@ describe('EditAnnotationModal', () => {
       render(<EditAnnotationModal {...props} />)
 
       // Click remove
-      await user.click(screen.getByText(/remove.*cache/i))
+      await user.click(screen.getByText('appAnnotation.editModal.removeThisCache'))
 
       // Click confirm
-      const confirmButton = screen.getByRole('button', { name: /confirm/i })
+      const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
       await user.click(confirmButton)
 
       // Assert

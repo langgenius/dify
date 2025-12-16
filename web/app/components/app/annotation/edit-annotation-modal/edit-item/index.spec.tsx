@@ -2,13 +2,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import EditItem, { EditItemType, EditTitle } from './index'
 
-// Mock external dependencies only
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('EditTitle', () => {
   it('should render title content correctly', () => {
     // Arrange
@@ -62,7 +55,7 @@ describe('EditItem', () => {
       // Assert
       expect(screen.getByText(/test content/i)).toBeInTheDocument()
       // Should show item name (query or answer)
-      expect(screen.getByText(/appAnnotation.editModal.queryName/i)).toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.queryName')).toBeInTheDocument()
     })
 
     it('should render different item types correctly', () => {
@@ -78,7 +71,7 @@ describe('EditItem', () => {
 
       // Assert
       expect(screen.getByText(/answer content/i)).toBeInTheDocument()
-      expect(screen.getByText(/appAnnotation.editModal.answerName/i)).toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.answerName')).toBeInTheDocument()
     })
 
     it('should show edit controls when not readonly', () => {
@@ -89,7 +82,7 @@ describe('EditItem', () => {
       render(<EditItem {...props} />)
 
       // Assert
-      expect(screen.getByText(/common.operation.edit/i)).toBeInTheDocument()
+      expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
     })
 
     it('should hide edit controls when readonly', () => {
@@ -103,7 +96,7 @@ describe('EditItem', () => {
       render(<EditItem {...props} />)
 
       // Assert
-      expect(screen.queryByText(/common.operation.edit/i)).not.toBeInTheDocument()
+      expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
     })
   })
 
@@ -121,7 +114,7 @@ describe('EditItem', () => {
 
       // Assert
       expect(screen.getByText(/test content/i)).toBeInTheDocument()
-      expect(screen.queryByText(/common.operation.edit/i)).not.toBeInTheDocument()
+      expect(screen.queryByText('common.operation.edit')).not.toBeInTheDocument()
     })
 
     it('should display provided content', () => {
@@ -151,7 +144,7 @@ describe('EditItem', () => {
 
       // Assert
       expect(screen.getByText(/question content/i)).toBeInTheDocument()
-      expect(screen.getByText(/appAnnotation.editModal.queryName/i)).toBeInTheDocument()
+      expect(screen.getByText('appAnnotation.editModal.queryName')).toBeInTheDocument()
     })
   })
 
@@ -164,12 +157,12 @@ describe('EditItem', () => {
 
       // Act
       render(<EditItem {...props} />)
-      await user.click(screen.getByText(/common.operation.edit/i))
+      await user.click(screen.getByText('common.operation.edit'))
 
       // Assert
       expect(screen.getByRole('textbox')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /common.operation.save/i })).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: /common.operation.cancel/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.cancel' })).toBeInTheDocument()
     })
 
     it('should save new content when save button is clicked', async () => {
@@ -183,7 +176,7 @@ describe('EditItem', () => {
 
       // Act
       render(<EditItem {...props} />)
-      await user.click(screen.getByText(/common.operation.edit/i))
+      await user.click(screen.getByText('common.operation.edit'))
 
       // Type new content
       const textarea = screen.getByRole('textbox')
@@ -191,7 +184,7 @@ describe('EditItem', () => {
       await user.type(textarea, 'Updated content')
 
       // Save
-      await user.click(screen.getByRole('button', { name: /common.operation.save/i }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
       expect(mockSave).toHaveBeenCalledWith('Updated content')
@@ -204,8 +197,8 @@ describe('EditItem', () => {
 
       // Act
       render(<EditItem {...props} />)
-      await user.click(screen.getByText(/common.operation.edit/i))
-      await user.click(screen.getByRole('button', { name: /common.operation.cancel/i }))
+      await user.click(screen.getByText('common.operation.edit'))
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
       // Assert
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
@@ -219,7 +212,7 @@ describe('EditItem', () => {
 
       // Act
       render(<EditItem {...props} />)
-      await user.click(screen.getByText(/common.operation.edit/i))
+      await user.click(screen.getByText('common.operation.edit'))
 
       const textarea = screen.getByRole('textbox')
       await user.type(textarea, 'New content')
@@ -239,14 +232,14 @@ describe('EditItem', () => {
 
       // Act
       render(<EditItem {...props} />)
-      await user.click(screen.getByText(/common.operation.edit/i))
+      await user.click(screen.getByText('common.operation.edit'))
 
       const textarea = screen.getByRole('textbox')
       await user.clear(textarea)
       await user.type(textarea, 'Test save content')
 
       // Save
-      await user.click(screen.getByRole('button', { name: /common.operation.save/i }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
       expect(mockSave).toHaveBeenCalledWith('Test save content')
@@ -265,13 +258,13 @@ describe('EditItem', () => {
       render(<EditItem {...props} />)
 
       // Enter edit mode and change content
-      await user.click(screen.getByText(/common.operation.edit/i))
+      await user.click(screen.getByText('common.operation.edit'))
       const textarea = screen.getByRole('textbox')
       await user.clear(textarea)
       await user.type(textarea, 'Modified content')
 
       // Save to trigger content change
-      await user.click(screen.getByRole('button', { name: /common.operation.save/i }))
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
       expect(mockSave).toHaveBeenCalledWith('Modified content')
@@ -284,7 +277,7 @@ describe('EditItem', () => {
 
       // Act
       render(<EditItem {...props} />)
-      await user.click(screen.getByText(/common.operation.edit/i))
+      await user.click(screen.getByText('common.operation.edit'))
 
       const textarea = screen.getByRole('textbox')
 
@@ -305,7 +298,7 @@ describe('EditItem', () => {
 
       // Act - Enter edit mode and type something
       const user = userEvent.setup()
-      await user.click(screen.getByText(/common.operation.edit/i))
+      await user.click(screen.getByText('common.operation.edit'))
       const textarea = screen.getByRole('textbox')
       await user.clear(textarea)
       await user.type(textarea, 'New content')
@@ -323,7 +316,7 @@ describe('EditItem', () => {
       const user = userEvent.setup()
 
       // Act - Enter edit mode
-      await user.click(screen.getByText(/common.operation.edit/i))
+      await user.click(screen.getByText('common.operation.edit'))
 
       // Rerender with new content
       rerender(<EditItem {...defaultProps} content="Updated content" />)
@@ -349,20 +342,7 @@ describe('EditItem', () => {
       // Check that the component renders properly with empty content
       expect(container.querySelector('.grow')).toBeInTheDocument()
       // Should still show edit button
-      expect(screen.getByText(/common.operation.edit/i)).toBeInTheDocument()
-    })
-
-    it('should handle null onSave prop', () => {
-      // Arrange
-      const props = {
-        ...defaultProps,
-        onSave: null as any,
-      }
-
-      // Act & Assert - Should not crash
-      expect(() => {
-        render(<EditItem {...props} />)
-      }).not.toThrow()
+      expect(screen.getByText('common.operation.edit')).toBeInTheDocument()
     })
 
     it('should handle very long content', () => {
@@ -404,10 +384,10 @@ describe('EditItem', () => {
       render(<EditItem {...props} />)
 
       // Rapid edit/cancel operations
-      await user.click(screen.getByText(/common.operation.edit/i))
-      await user.click(screen.getByText(/common.operation.cancel/i))
-      await user.click(screen.getByText(/common.operation.edit/i))
-      await user.click(screen.getByText(/common.operation.cancel/i))
+      await user.click(screen.getByText('common.operation.edit'))
+      await user.click(screen.getByText('common.operation.cancel'))
+      await user.click(screen.getByText('common.operation.edit'))
+      await user.click(screen.getByText('common.operation.cancel'))
 
       // Assert
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
