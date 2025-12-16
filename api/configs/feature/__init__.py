@@ -65,7 +65,6 @@ class SecurityConfig(BaseSettings):
     )
 
 
-
 class AppExecutionConfig(BaseSettings):
     """
     Configuration parameters for application execution
