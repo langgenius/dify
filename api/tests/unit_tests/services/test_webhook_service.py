@@ -173,6 +173,7 @@ class TestWebhookServiceUnit:
 
             assert result == "application/octet-stream"
             mock_logger.debug.assert_called_once()
+
     def test_extract_webhook_data_invalid_json(self):
         """Test webhook data extraction with invalid JSON."""
         app = Flask(__name__)
