@@ -198,9 +198,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "test@example.com", "password": encode_password("password")}
+            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("password")}
         ):
             login_api = LoginApi()
             with pytest.raises(EmailPasswordLoginLimitError):
@@ -223,9 +221,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "frozen@example.com", "password": encode_password("password")}
+            "/login", method="POST", json={"email": "frozen@example.com", "password": encode_password("password")}
         ):
             login_api = LoginApi()
             with pytest.raises(AccountInFreezeError):
@@ -262,9 +258,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "test@example.com", "password": encode_password("WrongPass123!")}
+            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("WrongPass123!")}
         ):
             login_api = LoginApi()
             with pytest.raises(AuthenticationFailedError):
@@ -295,9 +289,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "banned@example.com", "password": encode_password("ValidPass123!")}
+            "/login", method="POST", json={"email": "banned@example.com", "password": encode_password("ValidPass123!")}
         ):
             login_api = LoginApi()
             with pytest.raises(AccountBannedError):
@@ -342,9 +334,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login",
-            method="POST",
-            json={"email": "test@example.com", "password": encode_password("ValidPass123!")}
+            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("ValidPass123!")}
         ):
             login_api = LoginApi()
             with pytest.raises(WorkspacesLimitExceeded):

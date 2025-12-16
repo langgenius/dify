@@ -50,7 +50,7 @@ class TestAuthenticationSecurity:
         with self.app.test_request_context(
             "/login",
             method="POST",
-            json={"email": "nonexistent@example.com", "password": encode_password("WrongPass123!")}
+            json={"email": "nonexistent@example.com", "password": encode_password("WrongPass123!")},
         ):
             login_api = LoginApi()
 
@@ -82,7 +82,7 @@ class TestAuthenticationSecurity:
         with self.app.test_request_context(
             "/login",
             method="POST",
-            json={"email": "existing@example.com", "password": encode_password("WrongPass123!")}
+            json={"email": "existing@example.com", "password": encode_password("WrongPass123!")},
         ):
             login_api = LoginApi()
 
@@ -116,7 +116,7 @@ class TestAuthenticationSecurity:
         with self.app.test_request_context(
             "/login",
             method="POST",
-            json={"email": "nonexistent@example.com", "password": encode_password("WrongPass123!")}
+            json={"email": "nonexistent@example.com", "password": encode_password("WrongPass123!")},
         ):
             login_api = LoginApi()
 
