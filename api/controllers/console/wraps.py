@@ -425,29 +425,25 @@ def annotation_import_concurrency_limit(view: Callable[P, R]):
 
 def _decrypt_field(field_name: str, error_class: type[Exception], error_message: str) -> None:
     """
-    Helper to decrypt a field in the request payload.
+    Helper to decode a Base64 encoded field in the request payload.
 
     Args:
-        field_name: Name of the field to decrypt
-        error_class: Exception class to raise on decryption failure
+        field_name: Name of the field to decode
+        error_class: Exception class to raise on decoding failure
         error_message: Error message to include in the exception
     """
     if request and request.is_json:
         # Get the payload dict - it's cached and mutable
         payload = request.get_json()
         if payload and field_name in payload:
-            encrypted_value = payload[field_name]
-            decrypted_value = FieldEncryption.decrypt_field(encrypted_value)
+            encoded_value = payload[field_name]
+            decoded_value = FieldEncryption.decrypt_field(encoded_value)
 
-            # Only raise error if encryption is enabled and decryption failed
-            if decrypted_value is None and FieldEncryption.is_enabled():
-                raise error_class(error_message)
-
-            # Update payload dict in-place
+            # Update payload dict in-place with decoded value
             # Since payload is a mutable dict and get_json() returns the cached reference,
             # modifying it will affect all subsequent accesses including console_ns.payload
-            if decrypted_value is not None:
-                payload[field_name] = decrypted_value
+            if decoded_value is not None:
+                payload[field_name] = decoded_value
 
 
 def decrypt_password_field(view: Callable[P, R]):

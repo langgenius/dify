@@ -64,30 +64,6 @@ class SecurityConfig(BaseSettings):
         default=None,
     )
 
-    # Field Encryption Configuration
-    ENABLE_FIELD_ENCRYPTION: bool = Field(
-        description="Enable encryption for sensitive fields (password, verification code) during transmission. "
-        "When enabled, the frontend encrypts sensitive fields using AES-256-CBC before sending to backend.",
-        default=False,
-    )
-
-    ENCRYPTION_KEY: str = Field(
-        description="AES encryption key for sensitive field encryption. "
-        "Must be a 32-byte key encoded in base64. Generate using: "
-        '`python3 -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"`',
-        default="",
-    )
-
-    @model_validator(mode="after")
-    def check_encryption_key(self):
-        """Validate that ENCRYPTION_KEY is set when ENABLE_FIELD_ENCRYPTION is enabled."""
-        if self.ENABLE_FIELD_ENCRYPTION and not self.ENCRYPTION_KEY:
-            raise ValueError(
-                "ENCRYPTION_KEY must be set when ENABLE_FIELD_ENCRYPTION is True. "
-                "Generate a key using: "
-                '`python3 -c "import secrets, base64; print(base64.b64encode(secrets.token_bytes(32)).decode())"`'
-            )
-        return self
 
 
 class AppExecutionConfig(BaseSettings):
