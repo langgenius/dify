@@ -20,6 +20,17 @@ import { request, test as teardown } from '@playwright/test'
 // Ensure baseURL ends with '/' for proper path concatenation
 const API_BASE_URL = (process.env.NEXT_PUBLIC_API_PREFIX || 'http://localhost:5001/console/api').replace(/\/?$/, '/')
 
+// Cloudflare Access headers (for protected environments).
+// Prefer environment variables to avoid hardcoding secrets in repo.
+const CF_ACCESS_CLIENT_ID = process.env.CF_ACCESS_CLIENT_ID
+const CF_ACCESS_CLIENT_SECRET = process.env.CF_ACCESS_CLIENT_SECRET
+
+const cfAccessHeaders: Record<string, string> = {}
+if (CF_ACCESS_CLIENT_ID && CF_ACCESS_CLIENT_SECRET) {
+  cfAccessHeaders['CF-Access-Client-Id'] = CF_ACCESS_CLIENT_ID
+  cfAccessHeaders['CF-Access-Client-Secret'] = CF_ACCESS_CLIENT_SECRET
+}
+
 // Test data prefixes - used to identify test-created data
 // Should match the prefix used in generateTestId()
 const TEST_DATA_PREFIXES = ['e2e-', 'test-']
@@ -87,7 +98,10 @@ teardown('cleanup test data', async () => {
       return
     }
     // Extract CSRF token from cookies for API requests
-    const csrfCookie = authState.cookies.find((c: { name: string }) => c.name === 'csrf_token')
+    // Cookie name may be 'csrf_token' or '__Host-csrf_token' depending on environment
+    const csrfCookie = authState.cookies.find((c: { name: string }) =>
+      c.name === 'csrf_token' || c.name === '__Host-csrf_token',
+    )
     csrfToken = csrfCookie?.value || ''
   }
   catch {
@@ -103,6 +117,7 @@ teardown('cleanup test data', async () => {
       storageState: authPath,
       extraHTTPHeaders: {
         'X-CSRF-Token': csrfToken,
+        ...cfAccessHeaders,
       },
     })
 

@@ -25,6 +25,17 @@ const BASE_URL = process.env.E2E_BASE_URL || 'http://localhost:3000'
 // - CI/CD with deployed env: true (use existing server)
 const SKIP_WEB_SERVER = process.env.E2E_SKIP_WEB_SERVER === 'true'
 
+// Cloudflare Access headers (for protected environments).
+// Prefer environment variables to avoid hardcoding secrets in repo.
+const CF_ACCESS_CLIENT_ID = process.env.CF_ACCESS_CLIENT_ID
+const CF_ACCESS_CLIENT_SECRET = process.env.CF_ACCESS_CLIENT_SECRET
+
+const cfAccessHeaders: Record<string, string> = {}
+if (CF_ACCESS_CLIENT_ID && CF_ACCESS_CLIENT_SECRET) {
+  cfAccessHeaders['CF-Access-Client-Id'] = CF_ACCESS_CLIENT_ID
+  cfAccessHeaders['CF-Access-Client-Secret'] = CF_ACCESS_CLIENT_SECRET
+}
+
 export default defineConfig({
   // Directory containing test files
   testDir: './e2e/tests',
@@ -43,13 +54,20 @@ export default defineConfig({
 
   // Reporter to use
   reporter: process.env.CI
-    ? [['html', { open: 'never' }], ['github']]
+    ? [['html', { open: 'never', outputFolder: 'playwright-report' }], ['github'], ['json', { outputFile: 'e2e/test-results/results.json' }]]
     : [['html', { open: 'on-failure' }], ['list']],
 
   // Shared settings for all the projects below
   use: {
     // Base URL for all page.goto() calls
     baseURL: BASE_URL,
+
+    // Extra headers for all requests made by the browser context.
+    extraHTTPHeaders: cfAccessHeaders,
+
+    // Bypass Content Security Policy to allow test automation
+    // This is needed when testing against environments with strict CSP headers
+    bypassCSP: true,
 
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',

@@ -28,6 +28,28 @@ E2E_SKIP_WEB_SERVER=true
 
 # API URL (optional, defaults to http://localhost:5001/console/api)
 NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
+
+# Authentication Configuration
+# Test user credentials
+NEXT_PUBLIC_E2E_USER_EMAIL=test@example.com
+NEXT_PUBLIC_E2E_USER_PASSWORD=your-password
+```
+
+### Authentication Methods
+
+Dify supports multiple login methods, but not all are suitable for E2E testing:
+
+| Method | E2E Support | Configuration |
+|--------|-------------|---------------|
+| **Email + Password** | ✅ Recommended | Set `NEXT_PUBLIC_E2E_USER_EMAIL` and `NEXT_PUBLIC_E2E_USER_PASSWORD` |
+
+#### Email + Password (Default)
+
+The most reliable method for E2E testing. Simply set the credentials:
+
+```env
+NEXT_PUBLIC_E2E_USER_EMAIL=test@example.com
+NEXT_PUBLIC_E2E_USER_PASSWORD=your-password
 ```
 
 ### 3. Run Tests
