@@ -35,7 +35,7 @@ class FieldEncryption:
             logger.debug("Field decoding successful")
             return decoded_text
 
-        except Exception as e:
+        except Exception:
             # Decoding failed - return None to trigger error
             return None
 
