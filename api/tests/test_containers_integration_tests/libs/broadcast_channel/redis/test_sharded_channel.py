@@ -16,12 +16,13 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
 import redis
+from testcontainers.redis import RedisContainer
+
 from libs.broadcast_channel.channel import BroadcastChannel, Subscription, Topic
 from libs.broadcast_channel.exc import SubscriptionClosedError
 from libs.broadcast_channel.redis.sharded_channel import (
     ShardedRedisBroadcastChannel,
 )
-from testcontainers.redis import RedisContainer
 
 
 class TestShardedRedisBroadcastChannelIntegration:
@@ -52,9 +53,7 @@ class TestShardedRedisBroadcastChannelIntegration:
 
     # ==================== Basic Functionality Tests ====================
 
-    def test_close_an_active_subscription_should_stop_iteration(
-        self, broadcast_channel: BroadcastChannel
-    ):
+    def test_close_an_active_subscription_should_stop_iteration(self, broadcast_channel: BroadcastChannel):
         topic_name = self._get_test_topic_name()
         topic = broadcast_channel.topic(topic_name)
         subscription = topic.subscribe()
@@ -123,17 +122,13 @@ class TestShardedRedisBroadcastChannelIntegration:
                 if remaining <= 0:
                     break
                 if not ev.wait(timeout=max(0.0, remaining)):
-                    pytest.fail(
-                        "subscriber did not become ready before publish deadline"
-                    )
+                    pytest.fail("subscriber did not become ready before publish deadline")
             producer.publish(message)
             time.sleep(0.2)
             for sub in subscriptions:
                 sub.close()
 
-        def consumer_thread(
-            subscription: Subscription, ready_event: threading.Event
-        ) -> list[bytes]:
+        def consumer_thread(subscription: Subscription, ready_event: threading.Event) -> list[bytes]:
             received_msgs = []
             # Prime subscription so the underlying Pub/Sub listener thread starts before publishing
             try:
@@ -257,9 +252,7 @@ class TestShardedRedisBroadcastChannelIntegration:
         with ThreadPoolExecutor(max_workers=producer_count + 1) as executor:
             consumer_future = executor.submit(consumer_thread)
             consumer_ready.wait()
-            producer_futures = [
-                executor.submit(producer_thread, i) for i in range(producer_count)
-            ]
+            producer_futures = [executor.submit(producer_thread, i) for i in range(producer_count)]
 
             sent_msgs: set[bytes] = set()
             for future in as_completed(producer_futures, timeout=30.0):
@@ -287,9 +280,7 @@ class TestShardedRedisBroadcastChannelIntegration:
             if len(res) >= 2:
                 key = res[0]
                 cnt = res[1]
-                if key == topic_name or (
-                    isinstance(key, (bytes, bytearray)) and key == topic_name.encode()
-                ):
+                if key == topic_name or (isinstance(key, (bytes, bytearray)) and key == topic_name.encode()):
                     try:
                         return int(cnt)
                     except Exception:
@@ -299,9 +290,7 @@ class TestShardedRedisBroadcastChannelIntegration:
             for i in range(0, len(res) - 1, 2):
                 key = res[i]
                 cnt = res[i + 1]
-                if key == topic_name or (
-                    isinstance(key, (bytes, bytearray)) and key == topic_name.encode()
-                ):
+                if key == topic_name or (isinstance(key, (bytes, bytearray)) and key == topic_name.encode()):
                     try:
                         count = int(cnt)
                     except Exception:
@@ -310,9 +299,7 @@ class TestShardedRedisBroadcastChannelIntegration:
             return count
         return 0
 
-    def test_subscription_cleanup(
-        self, broadcast_channel: BroadcastChannel, redis_client: redis.Redis
-    ):
+    def test_subscription_cleanup(self, broadcast_channel: BroadcastChannel, redis_client: redis.Redis):
         """Test proper cleanup of sharded subscription resources via SHARDNUMSUB."""
         topic_name = self._get_test_topic_name()
 
