@@ -4,6 +4,7 @@ import Item from './index'
 import type React from 'react'
 import type { DataSet } from '@/models/datasets'
 import { ChunkingMode, DataSourceType, DatasetPermission } from '@/models/datasets'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -42,6 +43,8 @@ const baseRetrievalConfig: RetrievalConfig = {
   score_threshold: 0,
 }
 
+const defaultIndexingTechnique: IndexingType = 'high_quality' as IndexingType
+
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
   const {
     retrieval_model,
@@ -78,7 +81,7 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
     description: 'A test dataset',
     permission: DatasetPermission.onlyMe,
     data_source_type: DataSourceType.FILE,
-    indexing_technique: 'high_quality',
+    indexing_technique: defaultIndexingTechnique,
     author_name: 'author',
     created_by: 'creator',
     updated_by: 'updater',
