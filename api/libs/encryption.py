@@ -26,7 +26,7 @@ class FieldEncryption:
             encoded_text: Base64 encoded text from frontend
 
         Returns:
-            Decoded plaintext, or original text if decoding fails
+            Decoded plaintext, or None if decoding fails
         """
         try:
             # Decode base64
@@ -36,9 +36,8 @@ class FieldEncryption:
             return decoded_text
 
         except Exception as e:
-            # If decode fails, might be plaintext (fallback for compatibility)
-            logger.warning("Failed to decode base64, treating as plaintext: %s", e)
-            return encoded_text
+            # Decoding failed - return None to trigger error
+            return None
 
     @classmethod
     def decrypt_password(cls, encrypted_password: str) -> str | None:

@@ -21,12 +21,12 @@ class TestDecodeField:
         result = FieldEncryption.decrypt_field(encoded)
         assert result == plaintext
 
-    def test_decode_handles_non_base64_input(self):
-        """Test that non-base64 input is treated as plaintext (fallback)."""
+    def test_decode_non_base64_returns_none(self):
+        """Test that non-base64 input returns None."""
         non_base64 = "plain-password-!@#"
         result = FieldEncryption.decrypt_field(non_base64)
-        # Should return as plaintext (fallback for compatibility)
-        assert result == non_base64
+        # Should return None (decoding failed)
+        assert result is None
 
     def test_decode_unicode_text(self):
         """Test decoding Base64 encoded Unicode text."""
@@ -37,9 +37,9 @@ class TestDecodeField:
         assert result == plaintext
 
     def test_decode_empty_string(self):
-        """Test decoding an empty string."""
+        """Test decoding an empty string returns empty string."""
         result = FieldEncryption.decrypt_field("")
-        # Empty string fallback to plaintext
+        # Empty string base64 decodes to empty string
         assert result == ""
 
     def test_decode_special_characters(self):
@@ -62,12 +62,12 @@ class TestDecodePassword:
         result = FieldEncryption.decrypt_password(encoded)
         assert result == password
 
-    def test_decode_password_plaintext_fallback(self):
-        """Test that plaintext passwords are handled (fallback)."""
-        password = "PlainPassword"
-        result = FieldEncryption.decrypt_password(password)
-        # Fallback: return as-is
-        assert result == password
+    def test_decode_password_invalid_returns_none(self):
+        """Test that invalid base64 passwords return None."""
+        invalid = "PlainPassword!@#"
+        result = FieldEncryption.decrypt_password(invalid)
+        # Should return None (decoding failed)
+        assert result is None
 
 
 class TestDecodeVerificationCode:
@@ -81,12 +81,12 @@ class TestDecodeVerificationCode:
         result = FieldEncryption.decrypt_verification_code(encoded)
         assert result == code
 
-    def test_decode_code_plaintext_fallback(self):
-        """Test that plaintext codes are handled (fallback)."""
-        code = "123456"
-        result = FieldEncryption.decrypt_verification_code(code)
-        # Fallback: return as-is
-        assert result == code
+    def test_decode_code_invalid_returns_none(self):
+        """Test that invalid base64 codes return None."""
+        invalid = "123456"  # Plain 6-digit code, not base64
+        result = FieldEncryption.decrypt_verification_code(invalid)
+        # Should return None (decoding failed)
+        assert result is None
 
 
 class TestRoundTripEncodingDecoding:
