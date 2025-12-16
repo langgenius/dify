@@ -1418,21 +1418,115 @@ export const useNodesInteractions = () => {
         extent: currentNode.extent,
         zIndex: currentNode.zIndex,
       })
-      const nodesConnectedSourceOrTargetHandleIdsMap
-        = getNodesConnectedSourceOrTargetHandleIdsMap(
-          connectedEdges.map(edge => ({ type: 'remove', edge })),
-          nodes,
-        )
-      const newNodes = produce(nodes, (draft) => {
+      const parentNode = nodes.find(node => node.id === currentNode.parentId)
+      const newNodeIsInIteration
+        = !!parentNode && parentNode.data.type === BlockEnum.Iteration
+      const newNodeIsInLoop
+        = !!parentNode && parentNode.data.type === BlockEnum.Loop
+      const outgoingEdges = connectedEdges.filter(
+        edge => edge.source === currentNodeId,
+      )
+      const firstOutgoingEdge
+        = outgoingEdges.find(edge => edge.sourceHandle === 'source')
+        || outgoingEdges[0]
+      const reconnectedEdges = connectedEdges.reduce<Edge[]>(
+        (acc, edge) => {
+          if (firstOutgoingEdge && edge.id === firstOutgoingEdge.id) {
+            const originalTargetNode = nodes.find(
+              node => node.id === edge.target,
+            )
+            const targetNodeForEdge
+              = originalTargetNode && originalTargetNode.id !== currentNodeId
+                ? originalTargetNode
+                : newCurrentNode
+            if (!targetNodeForEdge) return acc
+
+            const targetHandle = edge.targetHandle || 'target'
+            const targetParentNode
+              = targetNodeForEdge.id === newCurrentNode.id
+                ? parentNode || null
+                : nodes.find(node => node.id === targetNodeForEdge.parentId)
+                  || null
+            const isInIteration
+              = !!targetParentNode
+              && targetParentNode.data.type === BlockEnum.Iteration
+            const isInLoop
+              = !!targetParentNode
+              && targetParentNode.data.type === BlockEnum.Loop
+
+            acc.push({
+              ...edge,
+              id: `${newCurrentNode.id}-source-${targetNodeForEdge.id}-${targetHandle}`,
+              source: newCurrentNode.id,
+              sourceHandle: 'source',
+              target: targetNodeForEdge.id,
+              targetHandle,
+              type: CUSTOM_EDGE,
+              data: {
+                ...(edge.data || {}),
+                sourceType: newCurrentNode.data.type,
+                targetType: targetNodeForEdge.data.type,
+                isInIteration,
+                iteration_id: isInIteration
+                  ? targetNodeForEdge.parentId
+                  : undefined,
+                isInLoop,
+                loop_id: isInLoop ? targetNodeForEdge.parentId : undefined,
+                _connectedNodeIsSelected: false,
+              },
+              zIndex: targetNodeForEdge.parentId
+                ? isInIteration
+                  ? ITERATION_CHILDREN_Z_INDEX
+                  : LOOP_CHILDREN_Z_INDEX
+                : 0,
+            })
+          }
+
+          if (
+            edge.target === currentNodeId
+            && (!firstOutgoingEdge || edge.id !== firstOutgoingEdge.id)
+          ) {
+            const sourceNode = nodes.find(node => node.id === edge.source)
+            if (!sourceNode) return acc
+
+            const targetHandle = edge.targetHandle || 'target'
+            const sourceHandle = edge.sourceHandle || 'source'
+
+            acc.push({
+              ...edge,
+              id: `${sourceNode.id}-${sourceHandle}-${newCurrentNode.id}-${targetHandle}`,
+              source: sourceNode.id,
+              sourceHandle,
+              target: newCurrentNode.id,
+              targetHandle,
+              type: CUSTOM_EDGE,
+              data: {
+                ...(edge.data || {}),
+                sourceType: sourceNode.data.type,
+                targetType: newCurrentNode.data.type,
+                isInIteration: newNodeIsInIteration,
+                iteration_id: newNodeIsInIteration
+                  ? newCurrentNode.parentId
+                  : undefined,
+                isInLoop: newNodeIsInLoop,
+                loop_id: newNodeIsInLoop ? newCurrentNode.parentId : undefined,
+                _connectedNodeIsSelected: false,
+              },
+              zIndex: newCurrentNode.parentId
+                ? newNodeIsInIteration
+                  ? ITERATION_CHILDREN_Z_INDEX
+                  : LOOP_CHILDREN_Z_INDEX
+                : 0,
+            })
+          }
+
+          return acc
+        },
+        [],
+      )
+      const nodesWithNewNode = produce(nodes, (draft) => {
         draft.forEach((node) => {
           node.data.selected = false
-
-          if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
-            node.data = {
-              ...node.data,
-              ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
-            }
-          }
         })
         const index = draft.findIndex(node => node.id === currentNodeId)
 
@@ -1442,18 +1536,32 @@ export const useNodesInteractions = () => {
         if (newLoopStartNode)
           draft.push(newLoopStartNode)
       })
-      setNodes(newNodes)
-      const newEdges = produce(edges, (draft) => {
-        const filtered = draft.filter(
-          edge =>
-            !connectedEdges.find(
-              connectedEdge => connectedEdge.id === edge.id,
-            ),
+      const nodesConnectedSourceOrTargetHandleIdsMap
+        = getNodesConnectedSourceOrTargetHandleIdsMap(
+          [
+            ...connectedEdges.map(edge => ({ type: 'remove', edge })),
+            ...reconnectedEdges.map(edge => ({ type: 'add', edge })),
+          ],
+          nodesWithNewNode,
         )
-
-        return filtered
+      const newNodes = produce(nodesWithNewNode, (draft) => {
+        draft.forEach((node) => {
+          if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+            node.data = {
+              ...node.data,
+              ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+            }
+          }
+        })
       })
-      setEdges(newEdges)
+      setNodes(newNodes)
+      const remainingEdges = edges.filter(
+        edge =>
+          !connectedEdges.find(
+            connectedEdge => connectedEdge.id === edge.id,
+          ),
+      )
+      setEdges([...remainingEdges, ...reconnectedEdges])
       if (nodeType === BlockEnum.TriggerWebhook) {
         handleSyncWorkflowDraft(true, true, {
           onSuccess: () => autoGenerateWebhookUrl(newCurrentNode.id),
