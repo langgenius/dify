@@ -11,7 +11,7 @@ jest.mock('@/context/modal-context', () => ({
 }))
 
 jest.mock('@/config', () => ({
-  IS_CE_EDITION: true, // Test CE edition by default
+  IS_CE_EDITION: false, // Test Cloud edition
 }))
 
 import { useProviderContext } from '@/context/provider-context'
@@ -72,7 +72,7 @@ const defaultModalContext = {
 
 afterEach(cleanup)
 
-describe('APIKeyInfoPanel', () => {
+describe('APIKeyInfoPanel - Cloud Edition', () => {
   const mockSetShowAccountSettingModal = jest.fn()
 
   beforeEach(() => {
@@ -117,45 +117,36 @@ describe('APIKeyInfoPanel', () => {
     })
   })
 
-  describe('Content Display', () => {
-    it('should display self-host title content', () => {
+  describe('Cloud Edition Content', () => {
+    it('should display cloud version title', () => {
       render(<APIKeyInfoPanel />)
 
-      expect(screen.getByText('appOverview.apiKeyInfo.selfHost.title.row1')).toBeInTheDocument()
-      expect(screen.getByText('appOverview.apiKeyInfo.selfHost.title.row2')).toBeInTheDocument()
+      expect(screen.getByText('appOverview.apiKeyInfo.cloud.trial.title')).toBeInTheDocument()
+    })
+
+    it('should display emoji for cloud version', () => {
+      const { container } = render(<APIKeyInfoPanel />)
+
+      expect(container.querySelector('em-emoji')).toBeInTheDocument()
+      expect(container.querySelector('em-emoji')).toHaveAttribute('id', '😀')
+    })
+
+    it('should display cloud version description', () => {
+      render(<APIKeyInfoPanel />)
+
+      expect(screen.getByText(/appOverview\.apiKeyInfo\.cloud\.trial\.description/)).toBeInTheDocument()
+    })
+
+    it('should not render external link for cloud version', () => {
+      const { container } = render(<APIKeyInfoPanel />)
+
+      expect(container.querySelector('a[href="https://cloud.dify.ai/apps"]')).not.toBeInTheDocument()
     })
 
     it('should display set API button text', () => {
       render(<APIKeyInfoPanel />)
 
       expect(screen.getByText('appOverview.apiKeyInfo.setAPIBtn')).toBeInTheDocument()
-    })
-
-    it('should render external link with correct href for self-host version', () => {
-      const { container } = render(<APIKeyInfoPanel />)
-      const link = container.querySelector('a[href="https://cloud.dify.ai/apps"]')
-
-      expect(link).toBeInTheDocument()
-      expect(link).toHaveAttribute('target', '_blank')
-      expect(link).toHaveAttribute('rel', 'noopener noreferrer')
-      expect(link).toHaveTextContent('appOverview.apiKeyInfo.tryCloud')
-    })
-
-    it('should have external link with proper styling for self-host version', () => {
-      const { container } = render(<APIKeyInfoPanel />)
-      const link = container.querySelector('a[href="https://cloud.dify.ai/apps"]')
-
-      expect(link).toHaveClass(
-        'mt-2',
-        'flex',
-        'h-[26px]',
-        'items-center',
-        'space-x-1',
-        'p-1',
-        'text-xs',
-        'font-medium',
-        'text-[#155EEF]',
-      )
     })
   })
 
@@ -203,37 +194,6 @@ describe('APIKeyInfoPanel', () => {
         'p-8',
         'shadow-md',
       )
-    })
-  })
-
-  describe('State Management', () => {
-    it('should start with visible panel (isShow: true)', () => {
-      render(<APIKeyInfoPanel />)
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
-    })
-
-    it('should toggle visibility when close button is clicked', () => {
-      const { container } = render(<APIKeyInfoPanel />)
-      expect(container.firstChild).toBeInTheDocument()
-
-      const closeButton = container.querySelector('.cursor-pointer')
-      fireEvent.click(closeButton!)
-
-      expect(container.firstChild).toBeNull()
-    })
-  })
-
-  describe('Edge Cases', () => {
-    it('should handle provider context loading state', () => {
-      mockUseProviderContext.mockReturnValue({
-        ...defaultProviderContext,
-        isAPIKeySet: false,
-      })
-
-      render(<APIKeyInfoPanel />)
-
-      expect(screen.getByRole('button')).toBeInTheDocument()
     })
   })
 
