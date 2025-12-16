@@ -27,6 +27,14 @@ from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogo
 P = ParamSpec("P")
 R = TypeVar("R")
 
+# Field names for decryption
+FIELD_NAME_PASSWORD = "password"
+FIELD_NAME_CODE = "code"
+
+# Error messages for decryption failures
+ERROR_MSG_INVALID_ENCRYPTED_DATA = "Invalid encrypted data"
+ERROR_MSG_INVALID_ENCRYPTED_CODE = "Invalid encrypted code"
+
 
 def account_initialization_required(view: Callable[P, R]):
     @wraps(view)
@@ -465,7 +473,7 @@ def decrypt_password_field(view: Callable[P, R]):
 
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        _decrypt_field("password", AuthenticationFailedError, "Invalid encrypted data")
+        _decrypt_field(FIELD_NAME_PASSWORD, AuthenticationFailedError, ERROR_MSG_INVALID_ENCRYPTED_DATA)
         return view(*args, **kwargs)
 
     return decorated
@@ -487,7 +495,7 @@ def decrypt_code_field(view: Callable[P, R]):
 
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        _decrypt_field("code", EmailCodeError, "Invalid encrypted code")
+        _decrypt_field(FIELD_NAME_CODE, EmailCodeError, ERROR_MSG_INVALID_ENCRYPTED_CODE)
         return view(*args, **kwargs)
 
     return decorated
