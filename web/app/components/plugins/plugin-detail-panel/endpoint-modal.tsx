@@ -10,12 +10,16 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import Toast from '@/app/components/base/toast'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import cn from '@/utils/classnames'
+import { ReadmeEntrance } from '../readme-panel/entrance'
+import type { PluginDetail } from '../types'
+import type { FormSchema } from '../../base/form/types'
 
 type Props = {
-  formSchemas: any
+  formSchemas: FormSchema[]
   defaultValues?: any
   onCancel: () => void
   onSaved: (value: Record<string, any>) => void
+  pluginDetail: PluginDetail
 }
 
 const extractDefaultValues = (schemas: any[]) => {
@@ -32,6 +36,7 @@ const EndpointModal: FC<Props> = ({
   defaultValues = {},
   onCancel,
   onSaved,
+  pluginDetail,
 }) => {
   const getValueFromI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
@@ -43,14 +48,14 @@ const EndpointModal: FC<Props> = ({
   const handleSave = () => {
     for (const field of formSchemas) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: getValueFromI18nObject(field.label) }) })
+        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: typeof field.label === 'string' ? field.label : getValueFromI18nObject(field.label as Record<string, string>) }) })
         return
       }
     }
 
     // Fix: Process boolean fields to ensure they are sent as proper boolean values
     const processedCredential = { ...tempCredential }
-    formSchemas.forEach((field) => {
+    formSchemas.forEach((field: any) => {
       if (field.type === 'boolean' && processedCredential[field.name] !== undefined) {
         const value = processedCredential[field.name]
         if (typeof value === 'string')
@@ -84,6 +89,7 @@ const EndpointModal: FC<Props> = ({
             </ActionButton>
           </div>
           <div className='system-xs-regular mt-0.5 text-text-tertiary'>{t('plugin.detailPanel.endpointModalDesc')}</div>
+          <ReadmeEntrance pluginDetail={pluginDetail} className='px-0 pt-3' />
         </div>
         <div className='grow overflow-y-auto'>
           <div className='px-4 py-2'>
@@ -92,7 +98,7 @@ const EndpointModal: FC<Props> = ({
               onChange={(v) => {
                 setTempCredential(v)
               }}
-              formSchemas={formSchemas}
+              formSchemas={formSchemas as any}
               isEditMode={true}
               showOnVariableMap={{}}
               validating={false}

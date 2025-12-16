@@ -12,11 +12,11 @@ import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import type { FileItem } from '@/models/datasets'
 import { upload } from '@/service/base'
-import useSWR from 'swr'
-import { fetchFileUploadConfig } from '@/service/common'
+import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
+import { useFileUploadConfig } from '@/service/use-common'
 
 export type Props = {
   file: FileItem | undefined
@@ -33,10 +33,12 @@ const CSVUploader: FC<Props> = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
   }, [fileUploadConfigResponse])
+
+  type UploadResult = Awaited<ReturnType<typeof upload>>
 
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     fileItem.progress = 0
@@ -58,17 +60,22 @@ const CSVUploader: FC<Props> = ({
       data: formData,
       onprogress: onProgress,
     }, false, undefined, '?source=datasets')
-      .then((res: File) => {
-        const completeFile = {
+      .then((res: UploadResult) => {
+        const updatedFile = Object.assign({}, fileItem.file, {
+          id: res.id,
+          ...(res as Partial<File>),
+        }) as File
+        const completeFile: FileItem = {
           fileID: fileItem.fileID,
-          file: res,
+          file: updatedFile,
           progress: 100,
         }
         updateFile(completeFile)
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
+        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        notify({ type: 'error', message: errorMessage })
         const errorFile = {
           ...fileItem,
           progress: -2,

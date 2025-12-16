@@ -5,7 +5,7 @@ from faker import Faker
 from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
-from models.account import Account, Tenant, TenantAccountJoin, TenantAccountRole
+from models import Account, Tenant, TenantAccountJoin, TenantAccountRole
 from models.dataset import Dataset
 from models.model import App, Tag, TagBinding
 from services.tag_service import TagService

@@ -18,6 +18,7 @@ import ReactFlow, {
   ReactFlowProvider,
   SelectionMode,
   useEdgesState,
+  useNodes,
   useNodesState,
   useOnViewportChange,
   useReactFlow,
@@ -37,7 +38,6 @@ import {
 } from './types'
 import {
   useEdgesInteractions,
-  useFetchToolsData,
   useNodesInteractions,
   useNodesReadOnly,
   useNodesSyncDraft,
@@ -92,6 +92,13 @@ import useMatchSchemaType from './nodes/_base/components/variable/use-match-sche
 import type { VarInInspect } from '@/types/workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
 import cn from '@/utils/classnames'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
+import { isEqual } from 'lodash-es'
 
 const Confirm = dynamic(() => import('@/app/components/base/confirm'), {
   ssr: false,
@@ -162,7 +169,24 @@ export const Workflow: FC<WorkflowProps> = memo(({
     setShowConfirm,
     setControlPromptEditorRerenderKey,
     setSyncWorkflowDraftHash,
+    setNodes: setNodesInStore,
   } = workflowStore.getState()
+  const currentNodes = useNodes()
+  const setNodesOnlyChangeWithData = useCallback((nodes: Node[]) => {
+    const nodesData = nodes.map(node => ({
+      id: node.id,
+      data: node.data,
+    }))
+    const oldData = workflowStore.getState().nodes.map(node => ({
+      id: node.id,
+      data: node.data,
+    }))
+    if (!isEqual(oldData, nodesData))
+      setNodesInStore(nodes)
+  }, [setNodesInStore, workflowStore])
+  useEffect(() => {
+    setNodesOnlyChangeWithData(currentNodes as Node[])
+  }, [currentNodes, setNodesOnlyChangeWithData])
   const {
     handleSyncWorkflowDraft,
     syncWorkflowDraftWhenPageClose,
@@ -242,13 +266,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
       })
     }
   })
-  const { handleFetchAllTools } = useFetchToolsData()
-  useEffect(() => {
-    handleFetchAllTools('builtin')
-    handleFetchAllTools('custom')
-    handleFetchAllTools('workflow')
-    handleFetchAllTools('mcp')
-  }, [handleFetchAllTools])
 
   const {
     handleNodeDragStart,
@@ -299,10 +316,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   const { schemaTypeDefinitions } = useMatchSchemaType()
   const { fetchInspectVars } = useSetWorkflowVarsWithValue()
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   // buildInTools, customTools, workflowTools, mcpTools, dataSourceList
   const configsMap = useHooksStore(s => s.configsMap)
@@ -323,10 +340,10 @@ export const Workflow: FC<WorkflowProps> = memo(({
         passInVars: true,
         vars,
         passedInAllPluginInfoList: {
-          buildInTools,
-          customTools,
-          workflowTools,
-          mcpTools,
+          buildInTools: buildInTools || [],
+          customTools: customTools || [],
+          workflowTools: workflowTools || [],
+          mcpTools: mcpTools || [],
           dataSourceList: dataSourceList ?? [],
         },
         passedInSchemaTypeDefinitions: schemaTypeDefinitions,
@@ -411,8 +428,8 @@ export const Workflow: FC<WorkflowProps> = memo(({
         nodesConnectable={!nodesReadOnly}
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
-        panOnScroll={false}
-        panOnDrag={controlMode === ControlMode.Hand}
+        panOnScroll={controlMode === ControlMode.Pointer && !workflowReadOnly}
+        panOnDrag={controlMode === ControlMode.Hand || [1]}
         zoomOnPinch={true}
         zoomOnScroll={true}
         zoomOnDoubleClick={true}

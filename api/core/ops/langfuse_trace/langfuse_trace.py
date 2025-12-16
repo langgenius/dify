@@ -2,7 +2,7 @@ import logging
 import os
 from datetime import datetime, timedelta
 
-from langfuse import Langfuse  # type: ignore
+from langfuse import Langfuse
 from sqlalchemy.orm import sessionmaker
 
 from core.ops.base_trace_instance import BaseTraceInstance

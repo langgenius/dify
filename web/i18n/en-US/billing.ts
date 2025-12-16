@@ -7,14 +7,27 @@ const translation = {
     documentsUploadQuota: 'Documents Upload Quota',
     vectorSpace: 'Knowledge Data Storage',
     vectorSpaceTooltip: 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.',
+    triggerEvents: 'Trigger Events',
+    perMonth: 'per month',
+    resetsIn: 'Resets in {{count,number}} days',
   },
   teamMembers: 'Team Members',
+  triggerLimitModal: {
+    title: 'Upgrade to unlock more trigger events',
+    description: 'You\'ve reached the limit of workflow event triggers for this plan.',
+    dismiss: 'Dismiss',
+    upgrade: 'Upgrade',
+    usageTitle: 'TRIGGER EVENTS',
+  },
   upgradeBtn: {
     plain: 'View Plan',
     encourage: 'Upgrade Now',
     encourageShort: 'Upgrade',
   },
   viewBilling: 'Manage billing and subscriptions',
+  viewBillingTitle: 'Billing and Subscriptions',
+  viewBillingDescription: 'Manage payment methods, invoices, and subscription changes',
+  viewBillingAction: 'Manage',
   buyPermissionDeniedTip: 'Please contact your enterprise administrator to subscribe',
   plansCommon: {
     title: {
@@ -59,18 +72,35 @@ const translation = {
     documentsTooltip: 'Quota on the number of documents imported from the Knowledge Data Source.',
     vectorSpace: '{{size}} Knowledge Data Storage',
     vectorSpaceTooltip: 'Documents with the High Quality indexing mode will consume Knowledge Data Storage resources. When Knowledge Data Storage reaches the limit, new documents will not be uploaded.',
-    documentsRequestQuota: '{{count,number}}/min Knowledge Request Rate Limit',
+    documentsRequestQuota: '{{count,number}} Knowledge Request/min',
     documentsRequestQuotaTooltip: 'Specifies the total number of actions a workspace can perform per minute within the knowledge base, including dataset creation, deletion, updates, document uploads, modifications, archiving, and knowledge base queries. This metric is used to evaluate the performance of knowledge base requests. For example, if a Sandbox user performs 10 consecutive hit tests within one minute, their workspace will be temporarily restricted from performing the following actions for the next minute: dataset creation, deletion, updates, and document uploads or modifications. ',
     apiRateLimit: 'API Rate Limit',
-    apiRateLimitUnit: '{{count,number}}/day',
-    unlimitedApiRate: 'No API Rate Limit',
+    apiRateLimitUnit: '{{count,number}}',
+    unlimitedApiRate: 'No Dify API Rate Limit',
     apiRateLimitTooltip: 'API Rate Limit applies to all requests made through the Dify API, including text generation, chat conversations, workflow executions, and document processing.',
     documentProcessingPriority: ' Document Processing',
+    documentProcessingPriorityTip: 'For higher document processing priority, please upgrade your plan.',
     documentProcessingPriorityUpgrade: 'Process more data with higher accuracy at faster speeds.',
     priority: {
       'standard': 'Standard',
       'priority': 'Priority',
       'top-priority': 'Top Priority',
+    },
+    triggerEvents: {
+      sandbox: '{{count,number}} Trigger Events',
+      professional: '{{count,number}} Trigger Events/month',
+      unlimited: 'Unlimited Trigger Events',
+      tooltip: 'The number of events that automatically start workflows through Plugin, Schedule, or Webhook triggers.',
+    },
+    workflowExecution: {
+      standard: 'Standard Workflow Execution',
+      faster: 'Faster Workflow Execution',
+      priority: 'Priority Workflow Execution',
+      tooltip: 'Workflow execution queue priority and speed.',
+    },
+    startNodes: {
+      limited: 'Up to {{count}} Triggers/workflow',
+      unlimited: 'Unlimited Triggers/workflow',
     },
     logsHistory: '{{days}} Log history',
     customTools: 'Custom Tools',
@@ -190,6 +220,20 @@ const translation = {
     fullTipLine1: 'Upgrade your plan to',
     fullTipLine2: 'annotate more conversations.',
     quotaTitle: 'Annotation Reply Quota',
+  },
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Upgrade to upload multiple documents at once',
+      description: 'You’ve reached the upload limit — only one document can be selected and uploaded at a time on your current plan.',
+    },
+    uploadMultipleFiles: {
+      title: 'Upgrade to unlock batch document upload',
+      description: 'Batch-upload more documents at once to save time and improve efficiency.',
+    },
+    addChunks: {
+      title: 'Upgrade to continue adding chunks',
+      description: 'You’ve reached the limit of adding chunks for this plan.',
+    },
   },
 }
 

@@ -121,7 +121,7 @@ const RegenerationModal: FC<IRegenerationModalProps> = ({
   })
 
   return (
-    <Modal isShow={isShow} onClose={noop} className='!max-w-[480px] !rounded-2xl'>
+    <Modal isShow={isShow} onClose={noop} className='!max-w-[480px] !rounded-2xl' wrapperClassName='!z-[10000]'>
       {!loading && !updateSucceeded && <DefaultContent onCancel={onCancel} onConfirm={onConfirm} />}
       {loading && !updateSucceeded && <RegeneratingContent />}
       {!loading && updateSucceeded && <RegenerationCompletedContent onClose={onClose} />}

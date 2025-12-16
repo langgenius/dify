@@ -1,11 +1,13 @@
 import logging
-from typing import NoReturn
+from typing import Any, NoReturn
 
-from flask import Response
-from flask_restx import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask import Response, request
+from flask_restx import Resource, fields, marshal, marshal_with
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import (
     DraftWorkflowNotExist,
@@ -23,7 +25,7 @@ from extensions.ext_database import db
 from factories.file_factory import build_from_mapping, build_from_mappings
 from factories.variable_factory import build_segment_with_type
 from libs.login import current_user, login_required
-from models.account import Account
+from models import Account
 from models.dataset import Pipeline
 from models.workflow import WorkflowDraftVariable
 from services.rag_pipeline.rag_pipeline import RagPipelineService
@@ -33,17 +35,21 @@ logger = logging.getLogger(__name__)
 
 
 def _create_pagination_parser():
-    parser = reqparse.RequestParser()
-    parser.add_argument(
-        "page",
-        type=inputs.int_range(1, 100_000),
-        required=False,
-        default=1,
-        location="args",
-        help="the page of data requested",
-    )
-    parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=20, location="args")
-    return parser
+    class PaginationQuery(BaseModel):
+        page: int = Field(default=1, ge=1, le=100_000)
+        limit: int = Field(default=20, ge=1, le=100)
+
+    register_schema_models(console_ns, PaginationQuery)
+
+    return PaginationQuery
+
+
+class WorkflowDraftVariablePatchPayload(BaseModel):
+    name: str | None = None
+    value: Any | None = None
+
+
+register_schema_models(console_ns, WorkflowDraftVariablePatchPayload)
 
 
 def _get_items(var_list: WorkflowDraftVariableList) -> list[WorkflowDraftVariable]:
@@ -91,8 +97,8 @@ class RagPipelineVariableCollectionApi(Resource):
         """
         Get draft workflow
         """
-        parser = _create_pagination_parser()
-        args = parser.parse_args()
+        pagination = _create_pagination_parser()
+        query = pagination.model_validate(request.args.to_dict())
 
         # fetch draft workflow by app_model
         rag_pipeline_service = RagPipelineService()
@@ -107,8 +113,8 @@ class RagPipelineVariableCollectionApi(Resource):
             )
         workflow_vars = draft_var_srv.list_variables_without_values(
             app_id=pipeline.id,
-            page=args.page,
-            limit=args.limit,
+            page=query.page,
+            limit=query.limit,
         )
 
         return workflow_vars
@@ -184,6 +190,7 @@ class RagPipelineVariableApi(Resource):
 
     @_api_prerequisite
     @marshal_with(_WORKFLOW_DRAFT_VARIABLE_FIELDS)
+    @console_ns.expect(console_ns.models[WorkflowDraftVariablePatchPayload.__name__])
     def patch(self, pipeline: Pipeline, variable_id: str):
         # Request payload for file types:
         #
@@ -206,15 +213,11 @@ class RagPipelineVariableApi(Resource):
         #         "upload_file_id": "1602650a-4fe4-423c-85a2-af76c083e3c4"
         #     }
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(self._PATCH_NAME_FIELD, type=str, required=False, nullable=True, location="json")
-        # Parse 'value' field as-is to maintain its original data structure
-        parser.add_argument(self._PATCH_VALUE_FIELD, type=lambda x: x, required=False, nullable=True, location="json")
-
         draft_var_srv = WorkflowDraftVariableService(
             session=db.session(),
         )
-        args = parser.parse_args(strict=True)
+        payload = WorkflowDraftVariablePatchPayload.model_validate(console_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
         variable = draft_var_srv.get_variable(variable_id=variable_id)
         if variable is None:

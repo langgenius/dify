@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
 import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'

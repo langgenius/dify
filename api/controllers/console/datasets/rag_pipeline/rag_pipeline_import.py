@@ -1,23 +1,41 @@
-from typing import cast
-
-from flask_login import current_user  # type: ignore
-from flask_restx import Resource, marshal_with, reqparse  # type: ignore
+from flask import request
+from flask_restx import Resource, marshal_with  # type: ignore
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
-from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.datasets.wraps import get_rag_pipeline
 from controllers.console.wraps import (
     account_initialization_required,
+    edit_permission_required,
     setup_required,
 )
 from extensions.ext_database import db
 from fields.rag_pipeline_fields import pipeline_import_check_dependencies_fields, pipeline_import_fields
-from libs.login import login_required
-from models import Account
+from libs.login import current_account_with_tenant, login_required
 from models.dataset import Pipeline
 from services.app_dsl_service import ImportStatus
 from services.rag_pipeline.rag_pipeline_dsl_service import RagPipelineDslService
+
+
+class RagPipelineImportPayload(BaseModel):
+    mode: str
+    yaml_content: str | None = None
+    yaml_url: str | None = None
+    name: str | None = None
+    description: str | None = None
+    icon_type: str | None = None
+    icon: str | None = None
+    icon_background: str | None = None
+    pipeline_id: str | None = None
+
+
+class IncludeSecretQuery(BaseModel):
+    include_secret: str = Field(default="false")
+
+
+register_schema_models(console_ns, RagPipelineImportPayload, IncludeSecretQuery)
 
 
 @console_ns.route("/rag/pipelines/imports")
@@ -25,36 +43,26 @@ class RagPipelineImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @marshal_with(pipeline_import_fields)
+    @console_ns.expect(console_ns.models[RagPipelineImportPayload.__name__])
     def post(self):
         # Check user role first
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("mode", type=str, required=True, location="json")
-        parser.add_argument("yaml_content", type=str, location="json")
-        parser.add_argument("yaml_url", type=str, location="json")
-        parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=str, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
-        parser.add_argument("pipeline_id", type=str, location="json")
-        args = parser.parse_args()
+        current_user, _ = current_account_with_tenant()
+        payload = RagPipelineImportPayload.model_validate(console_ns.payload or {})
 
         # Create service with session
         with Session(db.engine) as session:
             import_service = RagPipelineDslService(session)
             # Import app
-            account = cast(Account, current_user)
+            account = current_user
             result = import_service.import_rag_pipeline(
                 account=account,
-                import_mode=args["mode"],
-                yaml_content=args.get("yaml_content"),
-                yaml_url=args.get("yaml_url"),
-                pipeline_id=args.get("pipeline_id"),
-                dataset_name=args.get("name"),
+                import_mode=payload.mode,
+                yaml_content=payload.yaml_content,
+                yaml_url=payload.yaml_url,
+                pipeline_id=payload.pipeline_id,
+                dataset_name=payload.name,
             )
             session.commit()
 
@@ -72,17 +80,16 @@ class RagPipelineImportConfirmApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @edit_permission_required
     @marshal_with(pipeline_import_fields)
     def post(self, import_id):
-        # Check user role first
-        if not current_user.is_editor:
-            raise Forbidden()
+        current_user, _ = current_account_with_tenant()
 
         # Create service with session
         with Session(db.engine) as session:
             import_service = RagPipelineDslService(session)
             # Confirm import
-            account = cast(Account, current_user)
+            account = current_user
             result = import_service.confirm_import(import_id=import_id, account=account)
             session.commit()
 
@@ -98,11 +105,9 @@ class RagPipelineImportCheckDependenciesApi(Resource):
     @login_required
     @get_rag_pipeline
     @account_initialization_required
+    @edit_permission_required
     @marshal_with(pipeline_import_check_dependencies_fields)
     def get(self, pipeline: Pipeline):
-        if not current_user.is_editor:
-            raise Forbidden()
-
         with Session(db.engine) as session:
             import_service = RagPipelineDslService(session)
             result = import_service.check_dependencies(pipeline=pipeline)
@@ -116,19 +121,15 @@ class RagPipelineExportApi(Resource):
     @login_required
     @get_rag_pipeline
     @account_initialization_required
+    @edit_permission_required
     def get(self, pipeline: Pipeline):
-        if not current_user.is_editor:
-            raise Forbidden()
-
-            # Add include_secret params
-        parser = reqparse.RequestParser()
-        parser.add_argument("include_secret", type=str, default="false", location="args")
-        args = parser.parse_args()
+        # Add include_secret params
+        query = IncludeSecretQuery.model_validate(request.args.to_dict())
 
         with Session(db.engine) as session:
             export_service = RagPipelineDslService(session)
             result = export_service.export_rag_pipeline_dsl(
-                pipeline=pipeline, include_secret=args["include_secret"] == "true"
+                pipeline=pipeline, include_secret=query.include_secret == "true"
             )
 
         return {"data": result}, 200

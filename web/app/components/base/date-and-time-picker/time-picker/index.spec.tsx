@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import TimePicker from './index'
 import dayjs from '../utils/dayjs'
 import { isDayjsObject } from '../utils/dayjs'
+import type { TimePickerProps } from '../types'
 
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
@@ -28,11 +29,21 @@ jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
 
 jest.mock('./options', () => () => <div data-testid="time-options" />)
 jest.mock('./header', () => () => <div data-testid="time-header" />)
+jest.mock('@/app/components/base/timezone-label', () => {
+  return function MockTimezoneLabel({ timezone, inline, className }: { timezone: string, inline?: boolean, className?: string }) {
+    return (
+      <span data-testid="timezone-label" data-timezone={timezone} data-inline={inline} className={className}>
+        UTC+8
+      </span>
+    )
+  }
+})
 
 describe('TimePicker', () => {
-  const baseProps = {
+  const baseProps: Pick<TimePickerProps, 'onChange' | 'onClear' | 'value'> = {
     onChange: jest.fn(),
     onClear: jest.fn(),
+    value: undefined,
   }
 
   beforeEach(() => {
@@ -91,5 +102,87 @@ describe('TimePicker', () => {
     const emitted = onChange.mock.calls[0][0]
     expect(isDayjsObject(emitted)).toBe(true)
     expect(emitted?.utcOffset()).toBe(dayjs().tz('America/New_York').utcOffset())
+  })
+
+  describe('Timezone Label Integration', () => {
+    test('should not display timezone label by default', () => {
+      render(
+        <TimePicker
+          {...baseProps}
+          value="12:00 AM"
+          timezone="Asia/Shanghai"
+        />,
+      )
+
+      expect(screen.queryByTestId('timezone-label')).not.toBeInTheDocument()
+    })
+
+    test('should not display timezone label when showTimezone is false', () => {
+      render(
+        <TimePicker
+          {...baseProps}
+          value="12:00 AM"
+          timezone="Asia/Shanghai"
+          showTimezone={false}
+        />,
+      )
+
+      expect(screen.queryByTestId('timezone-label')).not.toBeInTheDocument()
+    })
+
+    test('should display timezone label when showTimezone is true', () => {
+      render(
+        <TimePicker
+          {...baseProps}
+          value="12:00 AM"
+          timezone="Asia/Shanghai"
+          showTimezone={true}
+        />,
+      )
+
+      const timezoneLabel = screen.getByTestId('timezone-label')
+      expect(timezoneLabel).toBeInTheDocument()
+      expect(timezoneLabel).toHaveAttribute('data-timezone', 'Asia/Shanghai')
+    })
+
+    test('should pass inline prop to timezone label', () => {
+      render(
+        <TimePicker
+          {...baseProps}
+          value="12:00 AM"
+          timezone="America/New_York"
+          showTimezone={true}
+        />,
+      )
+
+      const timezoneLabel = screen.getByTestId('timezone-label')
+      expect(timezoneLabel).toHaveAttribute('data-inline', 'true')
+    })
+
+    test('should not display timezone label when showTimezone is true but timezone is not provided', () => {
+      render(
+        <TimePicker
+          {...baseProps}
+          value="12:00 AM"
+          showTimezone={true}
+        />,
+      )
+
+      expect(screen.queryByTestId('timezone-label')).not.toBeInTheDocument()
+    })
+
+    test('should apply shrink-0 and text-xs classes to timezone label', () => {
+      render(
+        <TimePicker
+          {...baseProps}
+          value="12:00 AM"
+          timezone="Europe/London"
+          showTimezone={true}
+        />,
+      )
+
+      const timezoneLabel = screen.getByTestId('timezone-label')
+      expect(timezoneLabel).toHaveClass('shrink-0', 'text-xs')
+    })
   })
 })

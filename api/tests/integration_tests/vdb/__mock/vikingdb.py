@@ -4,7 +4,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from volcengine.viking_db import (  # type: ignore
+from volcengine.viking_db import (
     Collection,
     Data,
     DistanceType,

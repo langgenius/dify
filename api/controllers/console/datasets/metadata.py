@@ -1,19 +1,28 @@
 from typing import Literal
 
-from flask_login import current_user
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with
+from pydantic import BaseModel
 from werkzeug.exceptions import NotFound
 
+from controllers.common.schema import register_schema_model, register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from fields.dataset_fields import dataset_metadata_fields
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from services.dataset_service import DatasetService
 from services.entities.knowledge_entities.knowledge_entities import (
     MetadataArgs,
     MetadataOperationData,
 )
 from services.metadata_service import MetadataService
+
+
+class MetadataUpdatePayload(BaseModel):
+    name: str
+
+
+register_schema_models(console_ns, MetadataArgs, MetadataOperationData)
+register_schema_model(console_ns, MetadataUpdatePayload)
 
 
 @console_ns.route("/datasets/<uuid:dataset_id>/metadata")
@@ -23,12 +32,10 @@ class DatasetMetadataCreateApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @marshal_with(dataset_metadata_fields)
+    @console_ns.expect(console_ns.models[MetadataArgs.__name__])
     def post(self, dataset_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("type", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
-        metadata_args = MetadataArgs.model_validate(args)
+        current_user, _ = current_account_with_tenant()
+        metadata_args = MetadataArgs.model_validate(console_ns.payload or {})
 
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -58,11 +65,11 @@ class DatasetMetadataApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     @marshal_with(dataset_metadata_fields)
+    @console_ns.expect(console_ns.models[MetadataUpdatePayload.__name__])
     def patch(self, dataset_id, metadata_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument("name", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
-        name = args["name"]
+        current_user, _ = current_account_with_tenant()
+        payload = MetadataUpdatePayload.model_validate(console_ns.payload or {})
+        name = payload.name
 
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
@@ -79,6 +86,7 @@ class DatasetMetadataApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def delete(self, dataset_id, metadata_id):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         metadata_id_str = str(metadata_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -108,6 +116,7 @@ class DatasetMetadataBuiltInFieldActionApi(Resource):
     @account_initialization_required
     @enterprise_license_required
     def post(self, dataset_id, action: Literal["enable", "disable"]):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
@@ -127,17 +136,16 @@ class DocumentMetadataEditApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
+    @console_ns.expect(console_ns.models[MetadataOperationData.__name__])
     def post(self, dataset_id):
+        current_user, _ = current_account_with_tenant()
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
         DatasetService.check_dataset_permission(dataset, current_user)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("operation_data", type=list, required=True, nullable=False, location="json")
-        args = parser.parse_args()
-        metadata_args = MetadataOperationData.model_validate(args)
+        metadata_args = MetadataOperationData.model_validate(console_ns.payload or {})
 
         MetadataService.update_documents_metadata(dataset, metadata_args)
 

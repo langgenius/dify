@@ -7,12 +7,13 @@ from functools import wraps
 from typing import ParamSpec, TypeVar
 
 from flask import abort, request
-from flask_login import current_user
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from libs.login import current_account_with_tenant
 from models.account import AccountStatus
 from models.dataset import RateLimitLog
 from models.model import DifySetup
@@ -29,9 +30,8 @@ def account_initialization_required(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         # check account initialization
-        account = current_user
-
-        if account.status == AccountStatus.UNINITIALIZED:
+        current_user, _ = current_account_with_tenant()
+        if current_user.status == AccountStatus.UNINITIALIZED:
             raise AccountNotInitializedError()
 
         return view(*args, **kwargs)
@@ -75,7 +75,8 @@ def only_edition_self_hosted(view: Callable[P, R]):
 def cloud_edition_billing_enabled(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        _, current_tenant_id = current_account_with_tenant()
+        features = FeatureService.get_features(current_tenant_id)
         if not features.billing.enabled:
             abort(403, "Billing feature is not enabled.")
         return view(*args, **kwargs)
@@ -87,7 +88,8 @@ def cloud_edition_billing_resource_check(resource: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
-            features = FeatureService.get_features(current_user.current_tenant_id)
+            _, current_tenant_id = current_account_with_tenant()
+            features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
                 members = features.members
                 apps = features.apps
@@ -128,10 +130,11 @@ def cloud_edition_billing_knowledge_limit_check(resource: str):
     def interceptor(view: Callable[P, R]):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
-            features = FeatureService.get_features(current_user.current_tenant_id)
+            _, current_tenant_id = current_account_with_tenant()
+            features = FeatureService.get_features(current_tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
-                    if features.billing.subscription.plan == "sandbox":
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         abort(
                             403,
                             "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
@@ -151,10 +154,11 @@ def cloud_edition_billing_rate_limit_check(resource: str):
         @wraps(view)
         def decorated(*args: P.args, **kwargs: P.kwargs):
             if resource == "knowledge":
-                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_user.current_tenant_id)
+                _, current_tenant_id = current_account_with_tenant()
+                knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(current_tenant_id)
                 if knowledge_rate_limit.enabled:
                     current_time = int(time.time() * 1000)
-                    key = f"rate_limit_{current_user.current_tenant_id}"
+                    key = f"rate_limit_{current_tenant_id}"
 
                     redis_client.zadd(key, {current_time: current_time})
 
@@ -165,7 +169,7 @@ def cloud_edition_billing_rate_limit_check(resource: str):
                     if request_count > knowledge_rate_limit.limit:
                         # add ratelimit record
                         rate_limit_log = RateLimitLog(
-                            tenant_id=current_user.current_tenant_id,
+                            tenant_id=current_tenant_id,
                             subscription_plan=knowledge_rate_limit.subscription_plan,
                             operation="knowledge",
                         )
@@ -185,14 +189,15 @@ def cloud_utm_record(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
         with contextlib.suppress(Exception):
-            features = FeatureService.get_features(current_user.current_tenant_id)
+            _, current_tenant_id = current_account_with_tenant()
+            features = FeatureService.get_features(current_tenant_id)
 
             if features.billing.enabled:
                 utm_info = request.cookies.get("utm_info")
 
                 if utm_info:
                     utm_info_dict: dict = json.loads(utm_info)
-                    OperationService.record_utm(current_user.current_tenant_id, utm_info_dict)
+                    OperationService.record_utm(current_tenant_id, utm_info_dict)
 
         return view(*args, **kwargs)
 
@@ -242,9 +247,9 @@ def email_password_login_enabled(view: Callable[P, R]):
     return decorated
 
 
-def email_register_enabled(view):
+def email_register_enabled(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
+    def decorated(*args: P.args, **kwargs: P.kwargs):
         features = FeatureService.get_system_features()
         if features.is_allow_register:
             return view(*args, **kwargs)
@@ -271,7 +276,8 @@ def enable_change_email(view: Callable[P, R]):
 def is_allow_transfer_owner(view: Callable[P, R]):
     @wraps(view)
     def decorated(*args: P.args, **kwargs: P.kwargs):
-        features = FeatureService.get_features(current_user.current_tenant_id)
+        _, current_tenant_id = current_account_with_tenant()
+        features = FeatureService.get_features(current_tenant_id)
         if features.is_allow_transfer_workspace:
             return view(*args, **kwargs)
 
@@ -281,12 +287,135 @@ def is_allow_transfer_owner(view: Callable[P, R]):
     return decorated
 
 
-def knowledge_pipeline_publish_enabled(view):
+def knowledge_pipeline_publish_enabled(view: Callable[P, R]):
     @wraps(view)
-    def decorated(*args, **kwargs):
-        features = FeatureService.get_features(current_user.current_tenant_id)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        _, current_tenant_id = current_account_with_tenant()
+        features = FeatureService.get_features(current_tenant_id)
         if features.knowledge_pipeline.publish_enabled:
             return view(*args, **kwargs)
         abort(403)
+
+    return decorated
+
+
+def edit_permission_required(f: Callable[P, R]):
+    @wraps(f)
+    def decorated_function(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        from libs.login import current_user
+        from models import Account
+
+        user = current_user._get_current_object()  # type: ignore
+        if not isinstance(user, Account):
+            raise Forbidden()
+        if not current_user.has_edit_permission:
+            raise Forbidden()
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def is_admin_or_owner_required(f: Callable[P, R]):
+    @wraps(f)
+    def decorated_function(*args: P.args, **kwargs: P.kwargs):
+        from werkzeug.exceptions import Forbidden
+
+        from libs.login import current_user
+        from models import Account
+
+        user = current_user._get_current_object()
+        if not isinstance(user, Account) or not user.is_admin_or_owner:
+            raise Forbidden()
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
+def annotation_import_rate_limit(view: Callable[P, R]):
+    """
+    Rate limiting decorator for annotation import operations.
+
+    Implements sliding window rate limiting with two tiers:
+    - Short-term: Configurable requests per minute (default: 5)
+    - Long-term: Configurable requests per hour (default: 20)
+
+    Uses Redis ZSET for distributed rate limiting across multiple instances.
+    """
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        _, current_tenant_id = current_account_with_tenant()
+        current_time = int(time.time() * 1000)
+
+        # Check per-minute rate limit
+        minute_key = f"annotation_import_rate_limit:{current_tenant_id}:1min"
+        redis_client.zadd(minute_key, {current_time: current_time})
+        redis_client.zremrangebyscore(minute_key, 0, current_time - 60000)
+        minute_count = redis_client.zcard(minute_key)
+        redis_client.expire(minute_key, 120)  # 2 minutes TTL
+
+        if minute_count > dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE:
+            abort(
+                429,
+                f"Too many annotation import requests. Maximum {dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE} "
+                f"requests per minute allowed. Please try again later.",
+            )
+
+        # Check per-hour rate limit
+        hour_key = f"annotation_import_rate_limit:{current_tenant_id}:1hour"
+        redis_client.zadd(hour_key, {current_time: current_time})
+        redis_client.zremrangebyscore(hour_key, 0, current_time - 3600000)
+        hour_count = redis_client.zcard(hour_key)
+        redis_client.expire(hour_key, 7200)  # 2 hours TTL
+
+        if hour_count > dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR:
+            abort(
+                429,
+                f"Too many annotation import requests. Maximum {dify_config.ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR} "
+                f"requests per hour allowed. Please try again later.",
+            )
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def annotation_import_concurrency_limit(view: Callable[P, R]):
+    """
+    Concurrency control decorator for annotation import operations.
+
+    Limits the number of concurrent import tasks per tenant to prevent
+    resource exhaustion and ensure fair resource allocation.
+
+    Uses Redis ZSET to track active import jobs with automatic cleanup
+    of stale entries (jobs older than 2 minutes).
+    """
+
+    @wraps(view)
+    def decorated(*args: P.args, **kwargs: P.kwargs):
+        _, current_tenant_id = current_account_with_tenant()
+        current_time = int(time.time() * 1000)
+
+        active_jobs_key = f"annotation_import_active:{current_tenant_id}"
+
+        # Clean up stale entries (jobs that should have completed or timed out)
+        stale_threshold = current_time - 120000  # 2 minutes ago
+        redis_client.zremrangebyscore(active_jobs_key, 0, stale_threshold)
+
+        # Check current active job count
+        active_count = redis_client.zcard(active_jobs_key)
+
+        if active_count >= dify_config.ANNOTATION_IMPORT_MAX_CONCURRENT:
+            abort(
+                429,
+                f"Too many concurrent import tasks. Maximum {dify_config.ANNOTATION_IMPORT_MAX_CONCURRENT} "
+                f"concurrent imports allowed per workspace. Please wait for existing imports to complete.",
+            )
+
+        # Allow the request to proceed
+        # The actual job registration will happen in the service layer
+        return view(*args, **kwargs)
 
     return decorated

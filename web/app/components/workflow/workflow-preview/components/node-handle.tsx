@@ -34,7 +34,10 @@ export const NodeTargetHandle = memo(({
           'after:absolute after:left-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           'transition-all hover:scale-125',
           !connected && 'after:opacity-0',
-          data.type === BlockEnum.Start && 'opacity-0',
+          (data.type === BlockEnum.Start
+           || data.type === BlockEnum.TriggerWebhook
+           || data.type === BlockEnum.TriggerSchedule
+           || data.type === BlockEnum.TriggerPlugin) && 'opacity-0',
           handleClassName,
         )}
       >

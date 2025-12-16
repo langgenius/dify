@@ -40,6 +40,10 @@ const translation = {
       enableTip: '该文件可以被索引',
       disableTip: '该文件无法被索引',
     },
+    sort: {
+      uploadTime: '上传时间',
+      hitCount: '召回次数',
+    },
     status: {
       queuing: '排队中',
       indexing: '索引中',
@@ -371,6 +375,7 @@ const translation = {
     answerEmpty: '答案不能为空',
     contentPlaceholder: '在这里添加内容',
     contentEmpty: '内容不能为空',
+    allFilesUploaded: '所有文件必须上传完成才能保存',
     newTextSegment: '新文本分段',
     newQaSegment: '新问答分段',
     addChunk: '新增分段',

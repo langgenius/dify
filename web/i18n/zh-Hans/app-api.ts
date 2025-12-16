@@ -31,7 +31,7 @@ const translation = {
   },
   completionMode: {
     title: '文本生成型应用 API',
-    info: '可用于生成高质量文本的应用，例如生成文章、摘要、翻译等，通过调用 completion-messages 接口，发送用户输入得到生成文本结果。用于生成文本的模型参数和提示词模版取决于开发者在 Dify 提示词编排页的设置。',
+    info: '可用于生成高质量文本的应用，例如生成文章、摘要、翻译等，通过调用 completion-messages 接口，发送用户输入得到生成文本结果。用于生成文本的模型参数和提示词模板取决于开发者在 Dify 提示词编排页的设置。',
     createCompletionApi: '创建文本补全消息',
     createCompletionApiTip: '创建文本补全消息，支持一问一答模式。',
     inputsTips: '（选填）以键值对方式提供用户输入字段，与提示词编排中的变量对应。Key 为变量名称，Value 是参数值。如果字段类型为 Select，传入的 Value 需为预设选项之一。',

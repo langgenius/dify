@@ -44,8 +44,31 @@ fi
 
 if $web_modified; then
     echo "Running ESLint on web module"
+
+    if git diff --cached --quiet -- 'web/**/*.ts' 'web/**/*.tsx'; then
+        web_ts_modified=false
+    else
+        ts_diff_status=$?
+        if [ $ts_diff_status -eq 1 ]; then
+            web_ts_modified=true
+        else
+            echo "Unable to determine staged TypeScript changes (git exit code: $ts_diff_status)."
+            exit $ts_diff_status
+        fi
+    fi
+
     cd ./web || exit 1
     lint-staged
+
+    if $web_ts_modified; then
+        echo "Running TypeScript type-check:tsgo"
+        if ! pnpm run type-check:tsgo; then
+            echo "Type check failed. Please run 'pnpm run type-check:tsgo' to fix the errors."
+            exit 1
+        fi
+    else
+        echo "No staged TypeScript changes detected, skipping type-check:tsgo"
+    fi
 
     echo "Running unit tests check"
     modified_files=$(git diff --cached --name-only -- utils | grep -v '\.spec\.ts$' || true)

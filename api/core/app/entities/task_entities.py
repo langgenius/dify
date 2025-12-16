@@ -48,6 +48,9 @@ class WorkflowTaskState(TaskState):
     """
 
     answer: str = ""
+    first_token_time: float | None = None
+    last_token_time: float | None = None
+    is_streaming_response: bool = False
 
 
 class StreamEvent(StrEnum):
@@ -257,13 +260,8 @@ class NodeStartStreamResponse(StreamResponse):
         inputs_truncated: bool = False
         created_at: int
         extras: dict[str, object] = Field(default_factory=dict)
-        parallel_id: str | None = None
-        parallel_start_node_id: str | None = None
-        parent_parallel_id: str | None = None
-        parent_parallel_start_node_id: str | None = None
         iteration_id: str | None = None
         loop_id: str | None = None
-        parallel_run_id: str | None = None
         agent_strategy: AgentNodeStrategyInit | None = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
@@ -285,10 +283,6 @@ class NodeStartStreamResponse(StreamResponse):
                 "inputs": None,
                 "created_at": self.data.created_at,
                 "extras": {},
-                "parallel_id": self.data.parallel_id,
-                "parallel_start_node_id": self.data.parallel_start_node_id,
-                "parent_parallel_id": self.data.parent_parallel_id,
-                "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
                 "iteration_id": self.data.iteration_id,
                 "loop_id": self.data.loop_id,
             },
@@ -324,10 +318,6 @@ class NodeFinishStreamResponse(StreamResponse):
         created_at: int
         finished_at: int
         files: Sequence[Mapping[str, Any]] | None = []
-        parallel_id: str | None = None
-        parallel_start_node_id: str | None = None
-        parent_parallel_id: str | None = None
-        parent_parallel_start_node_id: str | None = None
         iteration_id: str | None = None
         loop_id: str | None = None
 
@@ -357,10 +347,6 @@ class NodeFinishStreamResponse(StreamResponse):
                 "created_at": self.data.created_at,
                 "finished_at": self.data.finished_at,
                 "files": [],
-                "parallel_id": self.data.parallel_id,
-                "parallel_start_node_id": self.data.parallel_start_node_id,
-                "parent_parallel_id": self.data.parent_parallel_id,
-                "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
                 "iteration_id": self.data.iteration_id,
                 "loop_id": self.data.loop_id,
             },
@@ -396,10 +382,6 @@ class NodeRetryStreamResponse(StreamResponse):
         created_at: int
         finished_at: int
         files: Sequence[Mapping[str, Any]] | None = []
-        parallel_id: str | None = None
-        parallel_start_node_id: str | None = None
-        parent_parallel_id: str | None = None
-        parent_parallel_start_node_id: str | None = None
         iteration_id: str | None = None
         loop_id: str | None = None
         retry_index: int = 0
@@ -430,10 +412,6 @@ class NodeRetryStreamResponse(StreamResponse):
                 "created_at": self.data.created_at,
                 "finished_at": self.data.finished_at,
                 "files": [],
-                "parallel_id": self.data.parallel_id,
-                "parallel_start_node_id": self.data.parallel_start_node_id,
-                "parent_parallel_id": self.data.parent_parallel_id,
-                "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
                 "iteration_id": self.data.iteration_id,
                 "loop_id": self.data.loop_id,
                 "retry_index": self.data.retry_index,
@@ -541,8 +519,6 @@ class LoopNodeStartStreamResponse(StreamResponse):
         metadata: Mapping = {}
         inputs: Mapping = {}
         inputs_truncated: bool = False
-        parallel_id: str | None = None
-        parallel_start_node_id: str | None = None
 
     event: StreamEvent = StreamEvent.LOOP_STARTED
     workflow_run_id: str
@@ -567,9 +543,6 @@ class LoopNodeNextStreamResponse(StreamResponse):
         created_at: int
         pre_loop_output: Any = None
         extras: Mapping[str, object] = Field(default_factory=dict)
-        parallel_id: str | None = None
-        parallel_start_node_id: str | None = None
-        parallel_mode_run_id: str | None = None
 
     event: StreamEvent = StreamEvent.LOOP_NEXT
     workflow_run_id: str
@@ -603,8 +576,6 @@ class LoopNodeCompletedStreamResponse(StreamResponse):
         execution_metadata: Mapping[str, object] = Field(default_factory=dict)
         finished_at: int
         steps: int
-        parallel_id: str | None = None
-        parallel_start_node_id: str | None = None
 
     event: StreamEvent = StreamEvent.LOOP_COMPLETED
     workflow_run_id: str

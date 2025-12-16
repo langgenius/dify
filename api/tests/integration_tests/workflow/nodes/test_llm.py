@@ -6,12 +6,13 @@ from unittest.mock import MagicMock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.output_parser.structured_output import _parse_structured_output
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.node_events import StreamCompletedEvent
 from core.workflow.nodes.llm.node import LLMNode
 from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from extensions.ext_database import db
 from models.enums import UserFrom
@@ -80,10 +81,6 @@ def init_llm_node(config: dict) -> LLMNode:
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-
-    # Initialize node data
-    if "data" in config:
-        node.init_node_data(config["data"])
 
     return node
 

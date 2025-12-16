@@ -5,12 +5,13 @@ import pytest
 
 from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.enums import WorkflowNodeExecutionStatus
 from core.workflow.graph import Graph
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
@@ -67,10 +68,6 @@ def init_code_node(code_config: dict):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-
-    # Initialize node data
-    if "data" in code_config:
-        node.init_node_data(code_config["data"])
 
     return node
 

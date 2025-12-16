@@ -5,7 +5,7 @@ from dify_app import DifyApp
 def init_app(app: DifyApp):
     if dify_config.SENTRY_DSN:
         import sentry_sdk
-        from langfuse import parse_error  # type: ignore
+        from langfuse import parse_error
         from sentry_sdk.integrations.celery import CeleryIntegration
         from sentry_sdk.integrations.flask import FlaskIntegration
         from werkzeug.exceptions import HTTPException

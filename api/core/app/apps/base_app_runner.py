@@ -79,10 +79,11 @@ class AppRunner:
         prompt_template_entity: PromptTemplateEntity,
         inputs: Mapping[str, str],
         files: Sequence["File"],
-        query: str | None = None,
+        query: str = "",
         context: str | None = None,
         memory: TokenBufferMemory | None = None,
         image_detail_config: ImagePromptMessageContent.DETAIL | None = None,
+        context_files: list["File"] | None = None,
     ) -> tuple[list[PromptMessage], list[str] | None]:
         """
         Organize prompt messages
@@ -105,12 +106,13 @@ class AppRunner:
                 app_mode=AppMode.value_of(app_record.mode),
                 prompt_template_entity=prompt_template_entity,
                 inputs=inputs,
-                query=query or "",
+                query=query,
                 files=files,
                 context=context,
                 memory=memory,
                 model_config=model_config,
                 image_detail_config=image_detail_config,
+                context_files=context_files,
             )
         else:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))

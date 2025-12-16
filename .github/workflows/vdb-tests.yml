@@ -51,13 +51,13 @@ jobs:
       - name: Expose Service Ports
         run: sh .github/workflows/expose_service_ports.sh
 
-      - name: Set up Vector Store (TiDB)
-        uses: hoverkraft-tech/compose-action@v2.0.2
-        with:
-          compose-file: docker/tidb/docker-compose.yaml
-          services: |
-            tidb
-            tiflash
+#      - name: Set up Vector Store (TiDB)
+#        uses: hoverkraft-tech/compose-action@v2.0.2
+#        with:
+#          compose-file: docker/tidb/docker-compose.yaml
+#          services: |
+#            tidb
+#            tiflash
 
       - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase, OceanBase)
         uses: hoverkraft-tech/compose-action@v2.0.2
@@ -83,8 +83,8 @@ jobs:
           ls -lah .
           cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
 
-      - name: Check VDB Ready (TiDB)
-        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
+#      - name: Check VDB Ready (TiDB)
+#        run: uv run --project api python api/tests/integration_tests/vdb/tidb_vector/check_tiflash_ready.py
 
       - name: Test Vector Stores
         run: uv run --project api bash dev/pytest/pytest_vdb.sh

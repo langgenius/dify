@@ -8,6 +8,7 @@ workflow_run_for_log_fields = {
     "id": fields.String,
     "version": fields.String,
     "status": fields.String,
+    "triggered_from": fields.String,
     "error": fields.String,
     "elapsed_time": fields.Float,
     "total_tokens": fields.Integer,
@@ -62,6 +63,15 @@ workflow_run_pagination_fields = {
     "limit": fields.Integer(attribute="limit"),
     "has_more": fields.Boolean(attribute="has_more"),
     "data": fields.List(fields.Nested(workflow_run_for_list_fields), attribute="data"),
+}
+
+workflow_run_count_fields = {
+    "total": fields.Integer,
+    "running": fields.Integer,
+    "succeeded": fields.Integer,
+    "failed": fields.Integer,
+    "stopped": fields.Integer,
+    "partial_succeeded": fields.Integer(attribute="partial-succeeded"),
 }
 
 workflow_run_detail_fields = {

@@ -1,9 +1,13 @@
 import logging
+from typing import Literal
+from uuid import UUID
 
-from flask_restx import marshal_with, reqparse
-from flask_restx.inputs import int_range
+from flask import request
+from flask_restx import marshal_with
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import InternalServerError, NotFound
 
+from controllers.common.schema import register_schema_models
 from controllers.console.app.error import (
     AppMoreLikeThisDisabledError,
     CompletionRequestError,
@@ -22,9 +26,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
 from libs import helper
-from libs.helper import uuid_value
-from libs.login import current_user
-from models import Account
+from libs.login import current_account_with_tenant
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
 from services.errors.app import MoreLikeThisDisabledError
@@ -41,30 +43,47 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 
+class MessageListQuery(BaseModel):
+    conversation_id: UUID
+    first_id: UUID | None = None
+    limit: int = Field(default=20, ge=1, le=100)
+
+
+class MessageFeedbackPayload(BaseModel):
+    rating: Literal["like", "dislike"] | None = None
+    content: str | None = None
+
+
+class MoreLikeThisQuery(BaseModel):
+    response_mode: Literal["blocking", "streaming"]
+
+
+register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, MoreLikeThisQuery)
+
+
 @console_ns.route(
     "/installed-apps/<uuid:installed_app_id>/messages",
     endpoint="installed_app_messages",
 )
 class MessageListApi(InstalledAppResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
+    @console_ns.expect(console_ns.models[MessageListQuery.__name__])
     def get(self, installed_app):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("conversation_id", required=True, type=uuid_value, location="args")
-        parser.add_argument("first_id", type=uuid_value, location="args")
-        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        args = parser.parse_args()
+        args = MessageListQuery.model_validate(request.args.to_dict())
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             return MessageService.pagination_by_first_id(
-                app_model, current_user, args["conversation_id"], args["first_id"], args["limit"]
+                app_model,
+                current_user,
+                str(args.conversation_id),
+                str(args.first_id) if args.first_id else None,
+                args.limit,
             )
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -77,25 +96,22 @@ class MessageListApi(InstalledAppResource):
     endpoint="installed_app_message_feedback",
 )
 class MessageFeedbackApi(InstalledAppResource):
+    @console_ns.expect(console_ns.models[MessageFeedbackPayload.__name__])
     def post(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
 
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("rating", type=str, choices=["like", "dislike", None], location="json")
-        parser.add_argument("content", type=str, location="json")
-        args = parser.parse_args()
+        payload = MessageFeedbackPayload.model_validate(console_ns.payload or {})
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             MessageService.create_feedback(
                 app_model=app_model,
                 message_id=message_id,
                 user=current_user,
-                rating=args.get("rating"),
-                content=args.get("content"),
+                rating=payload.rating,
+                content=payload.content,
             )
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
@@ -108,24 +124,20 @@ class MessageFeedbackApi(InstalledAppResource):
     endpoint="installed_app_more_like_this",
 )
 class MessageMoreLikeThisApi(InstalledAppResource):
+    @console_ns.expect(console_ns.models[MoreLikeThisQuery.__name__])
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
         message_id = str(message_id)
 
-        parser = reqparse.RequestParser()
-        parser.add_argument(
-            "response_mode", type=str, required=True, choices=["blocking", "streaming"], location="args"
-        )
-        args = parser.parse_args()
+        args = MoreLikeThisQuery.model_validate(request.args.to_dict())
 
-        streaming = args["response_mode"] == "streaming"
+        streaming = args.response_mode == "streaming"
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             response = AppGenerateService.generate_more_like_this(
                 app_model=app_model,
                 user=current_user,
@@ -159,6 +171,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
 )
 class MessageSuggestedQuestionApi(InstalledAppResource):
     def get(self, installed_app, message_id):
+        current_user, _ = current_account_with_tenant()
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -167,8 +180,6 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         message_id = str(message_id)
 
         try:
-            if not isinstance(current_user, Account):
-                raise ValueError("current_user must be an Account instance")
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model, user=current_user, message_id=message_id, invoke_from=InvokeFrom.EXPLORE
             )

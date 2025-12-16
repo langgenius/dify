@@ -120,6 +120,7 @@ const translation = {
     noAccount: 'Haben Sie kein Konto?',
     verifyMail: 'Fahren Sie mit dem Bestätigungscode fort',
   },
+  pageTitleForE: 'Hey, lass uns anfangen!',
 }
 
 export default translation

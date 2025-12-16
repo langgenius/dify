@@ -73,13 +73,13 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum allowed execution time for the application in seconds",
         default=1200,
     )
+    APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
+        description="Default number of concurrent active requests per app (0 for unlimited)",
+        default=0,
+    )
     APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
-    )
-    APP_DAILY_RATE_LIMIT: NonNegativeInt = Field(
-        description="Maximum number of requests per app per day",
-        default=5000,
     )
 
 
@@ -174,6 +174,33 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
 
+class TriggerConfig(BaseSettings):
+    """
+    Configuration for trigger
+    """
+
+    WEBHOOK_REQUEST_BODY_MAX_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for webhook request bodies in bytes",
+        default=10485760,
+    )
+
+
+class AsyncWorkflowConfig(BaseSettings):
+    """
+    Configuration for async workflow
+    """
+
+    ASYNC_WORKFLOW_SCHEDULER_GRANULARITY: int = Field(
+        description="Granularity for async workflow scheduler, "
+        "sometime, few users could block the queue due to some time-consuming tasks, "
+        "to avoid this, workflow can be suspended if needed, to achieve"
+        "this, a time-based checker is required, every granularity seconds, "
+        "the checker will check the workflow queue and suspend the workflow",
+        default=120,
+        ge=1,
+    )
+
+
 class PluginConfig(BaseSettings):
     """
     Plugin configs
@@ -187,6 +214,11 @@ class PluginConfig(BaseSettings):
     PLUGIN_DAEMON_KEY: str = Field(
         description="Plugin API key",
         default="plugin-api-key",
+    )
+
+    PLUGIN_DAEMON_TIMEOUT: PositiveFloat | None = Field(
+        description="Timeout in seconds for requests to the plugin daemon (set to None to disable)",
+        default=300.0,
     )
 
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
@@ -258,6 +290,8 @@ class EndpointConfig(BaseSettings):
         description="Template url for endpoint plugin", default="http://localhost:5002/e/{hook_id}"
     )
 
+    TRIGGER_URL: str = Field(description="Template url for triggers", default="http://localhost:5001")
+
 
 class FileAccessConfig(BaseSettings):
     """
@@ -326,11 +360,92 @@ class FileUploadConfig(BaseSettings):
         default=10,
     )
 
+    IMAGE_FILE_BATCH_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a image batch upload operation",
+        default=10,
+    )
+
+    SINGLE_CHUNK_ATTACHMENT_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a single chunk attachment",
+        default=10,
+    )
+
+    ATTACHMENT_IMAGE_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed image file size for attachments in megabytes",
+        default=2,
+    )
+
+    ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT: NonNegativeInt = Field(
+        description="Timeout for downloading image attachments in seconds",
+        default=60,
+    )
+
+    # Annotation Import Security Configurations
+    ANNOTATION_IMPORT_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed CSV file size for annotation import in megabytes",
+        default=2,
+    )
+
+    ANNOTATION_IMPORT_MAX_RECORDS: PositiveInt = Field(
+        description="Maximum number of annotation records allowed in a single import",
+        default=10000,
+    )
+
+    ANNOTATION_IMPORT_MIN_RECORDS: PositiveInt = Field(
+        description="Minimum number of annotation records required in a single import",
+        default=1,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE: PositiveInt = Field(
+        description="Maximum number of annotation import requests per minute per tenant",
+        default=5,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
+        description="Maximum number of annotation import requests per hour per tenant",
+        default=20,
+    )
+
+    ANNOTATION_IMPORT_MAX_CONCURRENT: PositiveInt = Field(
+        description="Maximum number of concurrent annotation import tasks per tenant",
+        default=2,
+    )
+
+    inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
+        description=(
+            "Comma-separated list of file extensions that are blocked from upload. "
+            "Extensions should be lowercase without dots (e.g., 'exe,bat,sh,dll'). "
+            "Empty by default to allow all file types."
+        ),
+        validation_alias=AliasChoices("UPLOAD_FILE_EXTENSION_BLACKLIST"),
+        default="",
+    )
+
+    @computed_field  # type: ignore[misc]
+    @property
+    def UPLOAD_FILE_EXTENSION_BLACKLIST(self) -> set[str]:
+        """
+        Parse and return the blacklist as a set of lowercase extensions.
+        Returns an empty set if no blacklist is configured.
+        """
+        if not self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST:
+            return set()
+        return {
+            ext.strip().lower().strip(".")
+            for ext in self.inner_UPLOAD_FILE_EXTENSION_BLACKLIST.split(",")
+            if ext.strip()
+        }
+
 
 class HttpConfig(BaseSettings):
     """
     HTTP-related configurations for the application
     """
+
+    COOKIE_DOMAIN: str = Field(
+        description="Explicit cookie domain for console/service cookies when sharing across subdomains",
+        default="",
+    )
 
     API_COMPRESSION_ENABLED: bool = Field(
         description="Enable or disable gzip compression for HTTP responses",
@@ -489,7 +604,10 @@ class LoggingConfig(BaseSettings):
 
     LOG_FORMAT: str = Field(
         description="Format string for log messages",
-        default="%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s",
+        default=(
+            "%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] "
+            "[%(filename)s:%(lineno)d] %(trace_id)s - %(message)s"
+        ),
     )
 
     LOG_DATEFORMAT: str | None = Field(
@@ -543,7 +661,7 @@ class UpdateConfig(BaseSettings):
 
 class WorkflowVariableTruncationConfig(BaseSettings):
     WORKFLOW_VARIABLE_TRUNCATION_MAX_SIZE: PositiveInt = Field(
-        # 100KB
+        # 1000 KiB
         1024_000,
         description="Maximum size for variable to trigger final truncation.",
     )
@@ -910,6 +1028,11 @@ class DataSetConfig(BaseSettings):
         default=True,
     )
 
+    DATASET_MAX_SEGMENTS_PER_REQUEST: NonNegativeInt = Field(
+        description="Maximum number of segments for dataset segments API (0 for unlimited)",
+        default=0,
+    )
+
 
 class WorkspaceConfig(BaseSettings):
     """
@@ -984,6 +1107,44 @@ class CeleryScheduleTasksConfig(BaseSettings):
     ENABLE_CHECK_UPGRADABLE_PLUGIN_TASK: bool = Field(
         description="Enable check upgradable plugin task",
         default=True,
+    )
+    ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK: bool = Field(
+        description="Enable workflow schedule poller task",
+        default=True,
+    )
+    WORKFLOW_SCHEDULE_POLLER_INTERVAL: int = Field(
+        description="Workflow schedule poller interval in minutes",
+        default=1,
+    )
+    WORKFLOW_SCHEDULE_POLLER_BATCH_SIZE: int = Field(
+        description="Maximum number of schedules to process in each poll batch",
+        default=100,
+    )
+    WORKFLOW_SCHEDULE_MAX_DISPATCH_PER_TICK: int = Field(
+        description="Maximum schedules to dispatch per tick (0=unlimited, circuit breaker)",
+        default=0,
+    )
+
+    # Trigger provider refresh (simple version)
+    ENABLE_TRIGGER_PROVIDER_REFRESH_TASK: bool = Field(
+        description="Enable trigger provider refresh poller",
+        default=True,
+    )
+    TRIGGER_PROVIDER_REFRESH_INTERVAL: int = Field(
+        description="Trigger provider refresh poller interval in minutes",
+        default=1,
+    )
+    TRIGGER_PROVIDER_REFRESH_BATCH_SIZE: int = Field(
+        description="Max trigger subscriptions to process per tick",
+        default=200,
+    )
+    TRIGGER_PROVIDER_CREDENTIAL_THRESHOLD_SECONDS: int = Field(
+        description="Proactive credential refresh threshold in seconds",
+        default=60 * 60,
+    )
+    TRIGGER_PROVIDER_SUBSCRIPTION_THRESHOLD_SECONDS: int = Field(
+        description="Proactive subscription refresh threshold in seconds",
+        default=60 * 60,
     )
 
 
@@ -1083,7 +1244,7 @@ class AccountConfig(BaseSettings):
 
 
 class WorkflowLogConfig(BaseSettings):
-    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=True, description="Enable workflow run log cleanup")
+    WORKFLOW_LOG_CLEANUP_ENABLED: bool = Field(default=False, description="Enable workflow run log cleanup")
     WORKFLOW_LOG_RETENTION_DAYS: int = Field(default=30, description="Retention days for workflow run logs")
     WORKFLOW_LOG_CLEANUP_BATCH_SIZE: int = Field(
         default=100, description="Batch size for workflow run log cleanup operations"
@@ -1102,12 +1263,21 @@ class SwaggerUIConfig(BaseSettings):
     )
 
 
+class TenantIsolatedTaskQueueConfig(BaseSettings):
+    TENANT_ISOLATED_TASK_CONCURRENCY: int = Field(
+        description="Number of tasks allowed to be delivered concurrently from isolated queue per tenant",
+        default=1,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
     AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
+    TriggerConfig,
+    AsyncWorkflowConfig,
     PluginConfig,
     MarketplaceConfig,
     DataSetConfig,
@@ -1126,6 +1296,7 @@ class FeatureConfig(
     RagEtlConfig,
     RepositoryConfig,
     SecurityConfig,
+    TenantIsolatedTaskQueueConfig,
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,

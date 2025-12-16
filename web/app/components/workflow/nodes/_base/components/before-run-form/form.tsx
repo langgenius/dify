@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { InputVar } from '../../../../types'
 import FormItem from './form-item'
 import cn from '@/utils/classnames'

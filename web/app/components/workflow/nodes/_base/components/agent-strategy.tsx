@@ -22,6 +22,7 @@ import type { Node } from 'reactflow'
 import type { PluginMeta } from '@/app/components/plugins/types'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
+import { AppModeEnum } from '@/types/app'
 
 export type Strategy = {
   agent_strategy_provider_name: string
@@ -90,7 +91,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             nodeId={nodeId}
             isSupportPromptGenerator={!!def.auto_generate?.type}
             titleTooltip={schema.tooltip && renderI18nObject(schema.tooltip)}
-            editorContainerClassName='px-0'
+            editorContainerClassName='px-0 bg-components-input-bg-normal focus-within:bg-components-input-bg-active rounded-lg'
             availableNodes={availableNodes}
             nodesOutputVars={nodeOutputVars}
             isSupportJinja={def.template?.enabled}
@@ -99,7 +100,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             modelConfig={
               defaultModel.data
                 ? {
-                  mode: 'chat',
+                  mode: AppModeEnum.CHAT,
                   name: defaultModel.data.model,
                   provider: defaultModel.data.provider.provider,
                   completion_params: {},
@@ -107,7 +108,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
             }
             placeholderClassName='px-2 py-1'
             titleClassName='system-sm-semibold-uppercase text-text-secondary text-[13px]'
-            inputClassName='px-2 py-1 bg-components-input-bg-normal focus:bg-components-input-bg-active focus:border-components-input-border-active focus:border rounded-lg'
+            inputClassName='px-2 py-1'
           />
         }
         case FormTypeEnum.textNumber: {

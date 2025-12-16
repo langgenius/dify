@@ -4,7 +4,7 @@ from typing import Any, Protocol
 
 from core.variables import Variable
 from core.variables.consts import SELECTORS_LENGTH
-from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.runtime import VariablePool
 
 
 class VariableLoader(Protocol):

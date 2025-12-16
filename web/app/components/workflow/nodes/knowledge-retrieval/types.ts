@@ -97,6 +97,7 @@ export type MetadataFilteringConditions = {
 
 export type KnowledgeRetrievalNodeType = CommonNodeType & {
   query_variable_selector: ValueSelector
+  query_attachment_selector: ValueSelector
   dataset_ids: string[]
   retrieval_mode: RETRIEVE_TYPE
   multiple_retrieval_config?: MultipleRetrievalConfig
@@ -128,6 +129,6 @@ export type MetadataShape = {
   availableNumberVars?: NodeOutPutVar[]
   availableNumberNodesWithParent?: Node[]
   isCommonVariable?: boolean
-  availableCommonStringVars?: { name: string; type: string; }[]
-  availableCommonNumberVars?: { name: string; type: string; }[]
+  availableCommonStringVars?: { name: string; type: string; value: string }[]
+  availableCommonNumberVars?: { name: string; type: string; value: string }[]
 }

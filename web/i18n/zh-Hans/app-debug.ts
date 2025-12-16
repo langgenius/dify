@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: '知识库',
       noData: '您可以导入知识库作为上下文',
-      words: '词',
-      textBlocks: '文本块',
       selectTitle: '选择引用知识库',
       selected: '个知识库被选中',
       noDataSet: '未找到知识库',
@@ -342,7 +340,6 @@ const translation = {
   variableTable: {
     key: '变量 Key',
     name: '字段名称',
-    optional: '可选',
     type: '类型',
     action: '操作',
     typeString: '文本',

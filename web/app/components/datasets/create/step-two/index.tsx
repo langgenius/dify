@@ -1,6 +1,6 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
@@ -11,8 +11,8 @@ import {
 import Link from 'next/link'
 import Image from 'next/image'
 import SettingCog from '../assets/setting-gear-mod.svg'
-import OrangeEffect from '../assets/option-card-effect-orange.svg'
-import FamilyMod from '../assets/family-mod.svg'
+import BlueEffect from '../assets/option-card-effect-blue.svg'
+import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import Note from '../assets/note-mod.svg'
 import FileList from '../assets/file-list-3-fill.svg'
 import { indexMethodIcon } from '../icons'
@@ -63,6 +63,8 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { checkShowMultiModalTip } from '../../settings/utils'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -495,12 +497,6 @@ const StepTwo = ({
       setDefaultConfig(data.rules)
       setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
     },
-    onError(error) {
-      Toast.notify({
-        type: 'error',
-        message: `${error}`,
-      })
-    },
   })
 
   const getRulesFromDetail = () => {
@@ -538,22 +534,8 @@ const StepTwo = ({
       setSegmentationType(documentDetail.dataset_process_rule.mode)
   }
 
-  const createFirstDocumentMutation = useCreateFirstDocument({
-    onError(error) {
-      Toast.notify({
-        type: 'error',
-        message: `${error}`,
-      })
-    },
-  })
-  const createDocumentMutation = useCreateDocument(datasetId!, {
-    onError(error) {
-      Toast.notify({
-        type: 'error',
-        message: `${error}`,
-      })
-    },
-  })
+  const createFirstDocumentMutation = useCreateFirstDocument()
+  const createDocumentMutation = useCreateDocument(datasetId!)
 
   const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
   const invalidDatasetList = useInvalidDatasetList()
@@ -587,6 +569,10 @@ const StepTwo = ({
     if (mutateDatasetRes)
       mutateDatasetRes()
     invalidDatasetList()
+    trackEvent('create_datasets', {
+      data_source_type: dataSourceType,
+      indexing_technique: getIndexing_technique(),
+    })
     onStepChange?.(+1)
     if (isSetting)
       onSave?.()
@@ -612,6 +598,20 @@ const StepTwo = ({
   }, [isAPIKeySet, indexingType, datasetId])
 
   const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
+
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel,
+      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+      },
+      indexMethod: indexType,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [embeddingModel, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, indexType, embeddingModelList, rerankModelList])
 
   return (
     <div className='flex h-full w-full'>
@@ -733,9 +733,10 @@ const StepTwo = ({
           )
           && <OptionCard
             title={t('datasetCreation.stepTwo.parentChild')}
-            icon={<Image width={20} height={20} src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
-            effectImg={OrangeEffect.src}
-            activeHeaderClassName='bg-dataset-option-card-orange-gradient'
+            icon={<ParentChildChunk className='h-[20px] w-[20px]' />}
+            effectImg={BlueEffect.src}
+            className='text-util-colors-blue-light-blue-light-500'
+            activeHeaderClassName='bg-dataset-option-card-blue-gradient'
             description={t('datasetCreation.stepTwo.parentChildTip')}
             isActive={currentDocForm === ChunkingMode.parentChild}
             onSwitched={() => handleChangeDocform(ChunkingMode.parentChild)}
@@ -1011,6 +1012,7 @@ const StepTwo = ({
                     disabled={isModelAndRetrievalConfigDisabled}
                     value={retrievalConfig}
                     onChange={setRetrievalConfig}
+                    showMultiModalTip={showMultiModalTip}
                   />
                 )
                 : (

@@ -13,9 +13,10 @@ import { DataSourceProvider, type NotionPage } from '@/models/common'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useGetDefaultDataSourceListAuth } from '@/service/use-datasource'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Loading from '@/app/components/base/loading'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 type DatasetUpdateFormProps = {
   datasetId?: string
@@ -117,7 +118,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               {step === 1 && (
                 <StepOne
                   authedDataSourceList={dataSourceList?.result || []}
-                  onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
+                  onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.DATA_SOURCE })}
                   datasetId={datasetId}
                   dataSourceType={dataSourceType}
                   dataSourceTypeDisable={!!datasetDetail?.data_source_type}
@@ -141,7 +142,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
               {(step === 2 && (!datasetId || (datasetId && !!datasetDetail))) && (
                 <StepTwo
                   isAPIKeySet={!!embeddingsDefaultModel}
-                  onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
+                  onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
                   indexingType={datasetDetail?.indexing_technique}
                   datasetId={datasetId}
                   dataSourceType={dataSourceType}

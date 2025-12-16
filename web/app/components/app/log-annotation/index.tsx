@@ -11,6 +11,7 @@ import Loading from '@/app/components/base/loading'
 import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { AppModeEnum } from '@/types/app'
 
 type Props = {
   pageType: PageType
@@ -24,7 +25,7 @@ const LogAnnotation: FC<Props> = ({
   const appDetail = useAppStore(state => state.appDetail)
 
   const options = useMemo(() => {
-    if (appDetail?.mode === 'completion')
+    if (appDetail?.mode === AppModeEnum.COMPLETION)
       return [{ value: PageType.log, text: t('appLog.title') }]
     return [
       { value: PageType.log, text: t('appLog.title') },
@@ -42,7 +43,7 @@ const LogAnnotation: FC<Props> = ({
 
   return (
     <div className='flex h-full flex-col px-6 pt-3'>
-      {appDetail.mode !== 'workflow' && (
+      {appDetail.mode !== AppModeEnum.WORKFLOW && (
         <TabSlider
           className='shrink-0'
           value={pageType}
@@ -52,10 +53,10 @@ const LogAnnotation: FC<Props> = ({
           options={options}
         />
       )}
-      <div className={cn('h-0 grow', appDetail.mode !== 'workflow' && 'mt-3')}>
-        {pageType === PageType.log && appDetail.mode !== 'workflow' && (<Log appDetail={appDetail} />)}
+      <div className={cn('h-0 grow', appDetail.mode !== AppModeEnum.WORKFLOW && 'mt-3')}>
+        {pageType === PageType.log && appDetail.mode !== AppModeEnum.WORKFLOW && (<Log appDetail={appDetail} />)}
         {pageType === PageType.annotation && (<Annotation appDetail={appDetail} />)}
-        {pageType === PageType.log && appDetail.mode === 'workflow' && (<WorkflowLog appDetail={appDetail} />)}
+        {pageType === PageType.log && appDetail.mode === AppModeEnum.WORKFLOW && (<WorkflowLog appDetail={appDetail} />)}
       </div>
     </div>
   )

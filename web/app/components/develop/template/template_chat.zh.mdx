@@ -72,7 +72,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       （选填）自动生成标题，默认 `true`。 若设置为 `false`，则可通过调用会话重命名接口并设置 `auto_generate` 为 `true` 实现异步生成标题。
       </Property>
       <Property name='workflow_id' type='string' key='workflow_id'>
-      （选填）工作流ID，用于指定特定版本，如果不提供则使用默认的已发布版本。
+      （选填）工作流ID，用于指定特定版本，如果不提供则使用默认的已发布版本。<br/>
+      获取方式：在版本历史界面，点击每个版本条目右侧的复制图标即可复制完整的工作流 ID。
       </Property>
       <Property name='trace_id' type='string' key='trace_id'>
        （选填）链路追踪ID。适用于与业务系统已有的trace组件打通，实现端到端分布式追踪等场景。如果未指定，系统会自动生成<code>trace_id</code>。支持以下三种方式传递，具体优先级依次为：<br/>
@@ -1188,7 +1189,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 --header 'Content-Type: application/json' \\
 --data-raw '{
     "value": "Updated Value",
-  "user": "abc-123"
+    "user": "abc-123"
 }'`}
     />
 
@@ -1579,8 +1580,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   <Col>
     <CodeGroup
       title="Request"
-      tag="POST"
-      label="/meta"
+      tag="GET"
+      label="/site"
       targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
 -H 'Authorization: Bearer {api_key}'`}
     />

@@ -209,7 +209,6 @@ class TestWorkflowAppService:
 
         # Create workflow app log
         workflow_app_log = WorkflowAppLog(
-            id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow.id,
@@ -217,8 +216,9 @@ class TestWorkflowAppService:
             created_from="service-api",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        workflow_app_log.id = str(uuid.uuid4())
+        workflow_app_log.created_at = datetime.now(UTC)
         db.session.add(workflow_app_log)
         db.session.commit()
 
@@ -365,7 +365,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -373,8 +372,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -473,7 +473,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -481,8 +480,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=timestamp,
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = timestamp
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -580,7 +580,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -588,8 +587,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -710,7 +710,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -718,8 +717,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -752,7 +752,6 @@ class TestWorkflowAppService:
             db.session.commit()
 
             workflow_app_log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -760,8 +759,9 @@ class TestWorkflowAppService:
                 created_from="web-app",
                 created_by_role=CreatorUserRole.END_USER,
                 created_by=end_user.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i + 10),
             )
+            workflow_app_log.id = str(uuid.uuid4())
+            workflow_app_log.created_at = datetime.now(UTC) + timedelta(minutes=i + 10)
             db.session.add(workflow_app_log)
             db.session.commit()
 
@@ -789,6 +789,31 @@ class TestWorkflowAppService:
         assert result_account_filter["total"] == 3
         assert all(log.created_by_role == CreatorUserRole.ACCOUNT for log in result_account_filter["data"])
 
+        # Test filtering by changed account email
+        original_email = account.email
+        new_email = "changed@example.com"
+        account.email = new_email
+        db_session_with_containers.commit()
+
+        assert account.email == new_email
+
+        # Results for new email, is expected to be the same as the original email
+        result_with_new_email = service.get_paginate_workflow_app_logs(
+            session=db_session_with_containers, app_model=app, created_by_account=new_email, page=1, limit=20
+        )
+        assert result_with_new_email["total"] == 3
+        assert all(log.created_by_role == CreatorUserRole.ACCOUNT for log in result_with_new_email["data"])
+
+        # Old email unbound, is unexpected input, should raise ValueError
+        with pytest.raises(ValueError) as exc_info:
+            service.get_paginate_workflow_app_logs(
+                session=db_session_with_containers, app_model=app, created_by_account=original_email, page=1, limit=20
+            )
+        assert "Account not found" in str(exc_info.value)
+
+        account.email = original_email
+        db_session_with_containers.commit()
+
         # Test filtering by non-existent session ID
         result_no_session = service.get_paginate_workflow_app_logs(
             session=db_session_with_containers,
@@ -799,15 +824,16 @@ class TestWorkflowAppService:
         )
         assert result_no_session["total"] == 0
 
-        # Test filtering by non-existent account email
-        result_no_account = service.get_paginate_workflow_app_logs(
-            session=db_session_with_containers,
-            app_model=app,
-            created_by_account="nonexistent@example.com",
-            page=1,
-            limit=20,
-        )
-        assert result_no_account["total"] == 0
+        # Test filtering by non-existent account email, is unexpected input, should raise ValueError
+        with pytest.raises(ValueError) as exc_info:
+            service.get_paginate_workflow_app_logs(
+                session=db_session_with_containers,
+                app_model=app,
+                created_by_account="nonexistent@example.com",
+                page=1,
+                limit=20,
+            )
+        assert "Account not found" in str(exc_info.value)
 
     def test_get_paginate_workflow_app_logs_with_uuid_keyword_search(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -863,7 +889,6 @@ class TestWorkflowAppService:
 
         # Create workflow app log
         workflow_app_log = WorkflowAppLog(
-            id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow.id,
@@ -871,8 +896,9 @@ class TestWorkflowAppService:
             created_from="service-api",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        workflow_app_log.id = str(uuid.uuid4())
+        workflow_app_log.created_at = datetime.now(UTC)
         db.session.add(workflow_app_log)
         db.session.commit()
 
@@ -953,7 +979,6 @@ class TestWorkflowAppService:
 
         # Create workflow app log
         workflow_app_log = WorkflowAppLog(
-            id=str(uuid.uuid4()),
             tenant_id=app.tenant_id,
             app_id=app.id,
             workflow_id=workflow.id,
@@ -961,8 +986,9 @@ class TestWorkflowAppService:
             created_from="service-api",
             created_by_role=CreatorUserRole.ACCOUNT,
             created_by=account.id,
-            created_at=datetime.now(UTC),
         )
+        workflow_app_log.id = str(uuid.uuid4())
+        workflow_app_log.created_at = datetime.now(UTC)
         db.session.add(workflow_app_log)
         db.session.commit()
 
@@ -1057,15 +1083,15 @@ class TestWorkflowAppService:
         assert len(result_no_session["data"]) == 0
 
         # Test with account email that doesn't exist
-        result_no_account = service.get_paginate_workflow_app_logs(
-            session=db_session_with_containers,
-            app_model=app,
-            created_by_account="nonexistent@example.com",
-            page=1,
-            limit=20,
-        )
-        assert result_no_account["total"] == 0
-        assert len(result_no_account["data"]) == 0
+        with pytest.raises(ValueError) as exc_info:
+            service.get_paginate_workflow_app_logs(
+                session=db_session_with_containers,
+                app_model=app,
+                created_by_account="nonexistent@example.com",
+                page=1,
+                limit=20,
+            )
+        assert "Account not found" in str(exc_info.value)
 
     def test_get_paginate_workflow_app_logs_with_complex_query_combinations(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -1107,7 +1133,6 @@ class TestWorkflowAppService:
             db_session_with_containers.flush()
 
             log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -1115,8 +1140,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            log.id = str(uuid.uuid4())
+            log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db_session_with_containers.add(log)
             logs_data.append((log, workflow_run))
 
@@ -1207,7 +1233,6 @@ class TestWorkflowAppService:
             db_session_with_containers.flush()
 
             log = WorkflowAppLog(
-                id=str(uuid.uuid4()),
                 tenant_id=app.tenant_id,
                 app_id=app.id,
                 workflow_id=workflow.id,
@@ -1215,8 +1240,9 @@ class TestWorkflowAppService:
                 created_from="service-api",
                 created_by_role=CreatorUserRole.ACCOUNT,
                 created_by=account.id,
-                created_at=datetime.now(UTC) + timedelta(minutes=i),
             )
+            log.id = str(uuid.uuid4())
+            log.created_at = datetime.now(UTC) + timedelta(minutes=i)
             db_session_with_containers.add(log)
             logs_data.append((log, workflow_run))
 
@@ -1309,7 +1335,6 @@ class TestWorkflowAppService:
                 db_session_with_containers.flush()
 
                 log = WorkflowAppLog(
-                    id=str(uuid.uuid4()),
                     tenant_id=app.tenant_id,
                     app_id=app.id,
                     workflow_id=workflow.id,
@@ -1317,8 +1342,9 @@ class TestWorkflowAppService:
                     created_from="service-api",
                     created_by_role=CreatorUserRole.ACCOUNT,
                     created_by=account.id,
-                    created_at=datetime.now(UTC) + timedelta(minutes=i * 10 + j),
                 )
+                log.id = str(uuid.uuid4())
+                log.created_at = datetime.now(UTC) + timedelta(minutes=i * 10 + j)
                 db_session_with_containers.add(log)
 
         db_session_with_containers.commit()

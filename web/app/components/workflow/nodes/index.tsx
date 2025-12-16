@@ -8,7 +8,7 @@ import { CUSTOM_NODE } from '../constants'
 import {
   NodeComponentMap,
   PanelComponentMap,
-} from './constants'
+} from './components'
 import BaseNode from './_base/node'
 import BasePanel from './_base/components/workflow-panel'
 

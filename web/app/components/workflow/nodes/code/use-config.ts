@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import useVarList from '../_base/hooks/use-var-list'
 import useOutputVarList from '../_base/hooks/use-output-var-list'
 import { BlockEnum, VarType } from '../../types'

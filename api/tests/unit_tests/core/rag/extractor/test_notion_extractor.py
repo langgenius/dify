@@ -1,5 +1,7 @@
 from unittest import mock
 
+from pytest_mock import MockerFixture
+
 from core.rag.extractor import notion_extractor
 
 user_id = "user1"
@@ -57,7 +59,7 @@ def _remove_multiple_new_lines(text):
     return text.strip()
 
 
-def test_notion_page(mocker):
+def test_notion_page(mocker: MockerFixture):
     texts = ["Head 1", "1.1", "paragraph 1", "1.1.1"]
     mocked_notion_page = {
         "object": "list",
@@ -77,7 +79,7 @@ def test_notion_page(mocker):
     assert content == "# Head 1\n## 1.1\nparagraph 1\n### 1.1.1"
 
 
-def test_notion_database(mocker):
+def test_notion_database(mocker: MockerFixture):
     page_title_list = ["page1", "page2", "page3"]
     mocked_notion_database = {
         "object": "list",

@@ -7,6 +7,16 @@ const translation = {
     documentsUploadQuota: 'ドキュメント・アップロード・クォータ',
     vectorSpace: 'ナレッジベースのデータストレージ',
     vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、ナレッジベースのデータストレージのリソースを消費します。ナレッジベースのデータストレージの上限に達すると、新しいドキュメントはアップロードされません。',
+    triggerEvents: 'トリガーイベント数',
+    perMonth: '月あたり',
+    resetsIn: '{{count,number}}日後にリセット',
+  },
+  triggerLimitModal: {
+    title: 'アップグレードして、より多くのトリガーイベントを利用できるようになります',
+    description: 'このプランでは、ワークフローのトリガーイベント数の上限に達しています。',
+    dismiss: '閉じる',
+    upgrade: 'アップグレード',
+    usageTitle: 'TRIGGER EVENTS',
   },
   upgradeBtn: {
     plain: 'プランをアップグレード',
@@ -14,6 +24,9 @@ const translation = {
     encourageShort: 'アップグレード',
   },
   viewBilling: '請求とサブスクリプションの管理',
+  viewBillingTitle: '請求とサブスクリプション',
+  viewBillingDescription: '支払い方法、請求書、サブスクリプションの変更の管理。',
+  viewBillingAction: '管理',
   buyPermissionDeniedTip: 'サブスクリプションするには、エンタープライズ管理者に連絡してください',
   plansCommon: {
     title: {
@@ -57,18 +70,35 @@ const translation = {
     documentsTooltip: 'ナレッジデータソースからインポートされたドキュメントの数に対するクォータ。',
     vectorSpace: '{{size}}のナレッジベースのデータストレージ',
     vectorSpaceTooltip: '高品質インデックスモードのドキュメントは、ナレッジベースのデータストレージのリソースを消費します。ナレッジベースのデータストレージの上限に達すると、新しいドキュメントはアップロードされません。',
-    documentsRequestQuota: '{{count,number}}/分のナレッジ リクエストのレート制限',
+    documentsRequestQuota: '{{count,number}} のナレッジリクエスト上限/分',
     documentsRequestQuotaTooltip: 'ナレッジベース内でワークスペースが 1 分間に実行できる操作の総数を示します。これには、データセットの作成、削除、更新、ドキュメントのアップロード、修正、アーカイブ、およびナレッジベースクエリが含まれます。この指標は、ナレッジベースリクエストのパフォーマンスを評価するために使用されます。例えば、Sandbox ユーザーが 1 分間に 10 回連続でヒットテストを実行した場合、そのワークスペースは次の 1 分間、データセットの作成、削除、更新、ドキュメントのアップロードや修正などの操作を一時的に実行できなくなります。',
-    apiRateLimit: 'API レート制限',
-    apiRateLimitUnit: '{{count,number}}/日',
+    apiRateLimit: 'API リクエスト制限',
+    apiRateLimitUnit: '{{count,number}} の',
     unlimitedApiRate: '無制限の API コール',
     apiRateLimitTooltip: 'API レート制限は、テキスト生成、チャットボット、ワークフロー、ドキュメント処理など、Dify API 経由のすべてのリクエストに適用されます。',
     documentProcessingPriority: '文書処理',
+    documentProcessingPriorityTip: 'より高い文書処理優先度が必要な場合は、プランをアップグレードしてください。',
     documentProcessingPriorityUpgrade: 'より高い精度と高速な速度でデータを処理します。',
     priority: {
       'standard': '標準',
       'priority': '優先',
       'top-priority': '最優先',
+    },
+    triggerEvents: {
+      sandbox: '{{count,number}}のトリガーイベント数',
+      professional: '{{count,number}}のトリガーイベント数/月',
+      unlimited: '無制限のトリガーイベント数',
+      tooltip: 'プラグイントリガー、タイマートリガー、または Webhook トリガーによって自動的にワークフローを起動するイベントの回数です。',
+    },
+    workflowExecution: {
+      standard: '標準ワークフロー実行キュー',
+      faster: '高速ワークフロー実行キュー',
+      priority: '優先度の高いワークフロー実行キュー',
+      tooltip: 'ワークフローの実行キューの優先度と実行速度。',
+    },
+    startNodes: {
+      limited: '各ワークフローは最大{{count}}つのトリガーまで',
+      unlimited: '各ワークフローのトリガーは無制限',
     },
     logsHistory: '{{days}}のログ履歴',
     customTools: 'カスタムツール',
@@ -131,11 +161,7 @@ const translation = {
       price: '無料',
       btnText: 'コミュニティ版を始めましょう',
       includesTitle: '無料機能：',
-      features: [
-        'パブリックリポジトリの全コア機能',
-        'シングルワークスペース',
-        'Dify オープンソースライセンス準拠',
-      ],
+      features: ['すべてのコア機能がパブリックリポジトリで公開されました', '単一ワークスペース', 'Difyオープンソースライセンスに準拠'],
     },
     premium: {
       name: 'プレミアム',
@@ -146,12 +172,7 @@ const translation = {
       btnText: 'プレミアム版を取得',
       includesTitle: 'コミュニティ版機能に加えて：',
       comingSoon: 'Microsoft Azure & Google Cloud 近日対応',
-      features: [
-        'クラウドプロバイダーによる自己管理',
-        'シングルワークスペース',
-        'Web アプリのロゴ＆ブランドカスタマイズ',
-        '優先メール/チャットサポート',
-      ],
+      features: ['さまざまなクラウドプロバイダーによる自己管理型の信頼性', '単一ワークスペース', 'Webアプリのロゴとブランドカスタマイズ', '優先メール＆チャットサポート'],
     },
     enterprise: {
       name: 'エンタープライズ',
@@ -161,17 +182,7 @@ const translation = {
       priceTip: '年間契約専用',
       btnText: '営業に相談',
       includesTitle: '<highlight>プレミアム</highlight>版機能に加えて：',
-      features: [
-        'エンタープライズ向け拡張ソリューション',
-        '商用ライセンス認可',
-        '企業専用機能',
-        'マルチワークスペース管理',
-        'シングルサインオン（SSO）',
-        'Dify パートナーによる SLA 保証',
-        '高度なセキュリティ管理',
-        '公式メンテナンス＆アップデート',
-        'プロフェッショナル技術支援',
-      ],
+      features: ['エンタープライズ向けスケーラブルな展開ソリューション', '商用ライセンス認可', 'エンタープライズ専用機能', '複数ワークスペースとエンタープライズ管理', 'シングルサインオン', 'Difyパートナーによる交渉済みSLA', '高度なセキュリティと制御', 'Dify公式による更新とメンテナンス', 'プロフェッショナル技術サポート'],
     },
   },
   vectorSpace: {
@@ -191,6 +202,20 @@ const translation = {
     quotaTitle: '注釈返信クォータ',
   },
   teamMembers: 'チームメンバー',
+  upgrade: {
+    uploadMultiplePages: {
+      title: '複数ドキュメントを一度にアップロードするにはアップグレード',
+      description: '現在のプランではアップロード上限に達しています。1回の操作で選択・アップロードできるドキュメントは1つのみです。',
+    },
+    uploadMultipleFiles: {
+      title: '一括ドキュメントアップロード機能を解放するにはアップグレードが必要です',
+      description: '複数のドキュメントを一度にバッチアップロードすることで、時間を節約し、作業効率を向上できます。',
+    },
+    addChunks: {
+      title: 'アップグレードして、チャンクを引き続き追加できるようにしてください。',
+      description: 'このプランでは、チャンク追加の上限に達しています。',
+    },
+  },
 }
 
 export default translation

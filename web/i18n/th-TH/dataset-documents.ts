@@ -81,6 +81,10 @@ const translation = {
       ok: 'ตกลง, ได้',
     },
     learnMore: 'ศึกษาเพิ่มเติม',
+    sort: {
+      uploadTime: 'เวลาที่อัปโหลด',
+      hitCount: 'จำนวนการดึงข้อมูล',
+    },
   },
   metadata: {
     title: 'ข้อมูลเมตา',
@@ -396,6 +400,7 @@ const translation = {
     childChunks_one: 'ก้อนเด็ก',
     keywordDuplicate: 'คำสำคัญมีอยู่แล้ว',
     keywordEmpty: 'คีย์เวิร์ดไม่สามารถว่างเปล่าได้',
+    allFilesUploaded: 'ต้องอัปโหลดไฟล์ทั้งหมดก่อนบันทึก',
   },
 }
 

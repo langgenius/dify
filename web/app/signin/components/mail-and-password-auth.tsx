@@ -12,6 +12,7 @@ import I18NContext from '@/context/i18n'
 import { noop } from 'lodash-es'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 import type { ResponseError } from '@/service/fetch'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -30,6 +31,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
   const [password, setPassword] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
+
   const handleEmailPasswordLogin = async () => {
     if (!email) {
       Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
@@ -62,12 +64,16 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
         body: loginData,
       })
       if (res.result === 'success') {
+        // Track login success event
+        trackEvent('user_login_success', {
+          method: 'email_password',
+          is_invite: isInvite,
+        })
+
         if (isInvite) {
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          localStorage.setItem('console_token', res.data.access_token)
-          localStorage.setItem('refresh_token', res.data.refresh_token)
           const redirectUrl = resolvePostLoginRedirect(searchParams)
           router.replace(redirectUrl || '/apps')
         }

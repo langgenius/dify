@@ -81,6 +81,10 @@ const translation = {
     },
     addUrl: 'Додати URL-адресу',
     learnMore: 'Дізнатися більше',
+    sort: {
+      uploadTime: 'Час завантаження',
+      hitCount: 'Кількість отримань',
+    },
   },
   metadata: {
     title: 'Метадані',
@@ -396,6 +400,7 @@ const translation = {
     regenerationConfirmTitle: 'Хочете регенерувати дитячі шматки?',
     keywordEmpty: 'Ключове слово не може бути порожнім',
     keywordDuplicate: 'Ключове слово вже існує',
+    allFilesUploaded: 'Усі файли повинні бути завантажені перед збереженням',
   },
 }
 

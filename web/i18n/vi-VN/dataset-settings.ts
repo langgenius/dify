@@ -26,6 +26,7 @@ const translation = {
       description: ' về phương pháp truy xuất.',
       longDescription: ' về phương pháp truy xuất. Bạn có thể thay đổi điều này bất kỳ lúc nào trong cài đặt Kiến thức.',
       method: 'Phương pháp truy xuất',
+      multiModalTip: 'Khi mô hình nhúng hỗ trợ đa phương thức, vui lòng chọn một mô hình sắp xếp lại đa phương thức để hiệu suất tốt hơn.',
     },
     save: 'Lưu',
     permissionsInvitedMembers: 'Thành viên một phần trong nhóm',

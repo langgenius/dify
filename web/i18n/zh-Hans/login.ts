@@ -1,5 +1,6 @@
 const translation = {
   pageTitle: '登录 Dify',
+  pageTitleForE: '嗨，近来可好',
   welcome: '👋 欢迎！请登录以开始使用。',
   email: '邮箱',
   emailPlaceholder: '输入邮箱地址',

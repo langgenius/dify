@@ -7,10 +7,11 @@ import { useTheme } from 'next-themes'
 import { setLocaleOnClient } from '@/i18n-config'
 import { themeCommand } from './theme'
 import { languageCommand } from './language'
-import { feedbackCommand } from './feedback'
+import { forumCommand } from './forum'
 import { docsCommand } from './docs'
 import { communityCommand } from './community'
 import { accountCommand } from './account'
+import { zenCommand } from './zen'
 import i18n from '@/i18n-config/i18next-config'
 
 export const slashAction: ActionItem = {
@@ -34,20 +35,22 @@ export const registerSlashCommands = (deps: Record<string, any>) => {
   // Register command handlers to the registry system with their respective dependencies
   slashCommandRegistry.register(themeCommand, { setTheme: deps.setTheme })
   slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale })
-  slashCommandRegistry.register(feedbackCommand, {})
+  slashCommandRegistry.register(forumCommand, {})
   slashCommandRegistry.register(docsCommand, {})
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
+  slashCommandRegistry.register(zenCommand, {})
 }
 
 export const unregisterSlashCommands = () => {
   // Remove command handlers from registry system (automatically calls each command's unregister method)
   slashCommandRegistry.unregister('theme')
   slashCommandRegistry.unregister('language')
-  slashCommandRegistry.unregister('feedback')
+  slashCommandRegistry.unregister('forum')
   slashCommandRegistry.unregister('docs')
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
+  slashCommandRegistry.unregister('zen')
 }
 
 export const SlashCommandProvider = () => {

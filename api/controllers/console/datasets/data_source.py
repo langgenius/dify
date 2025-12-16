@@ -1,16 +1,15 @@
 import json
 from collections.abc import Generator
-from typing import cast
+from typing import Any, cast
 
 from flask import request
-from flask_login import current_user
-from flask_restx import Resource, marshal_with, reqparse
+from flask_restx import Resource, marshal_with
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
-from controllers.console import console_ns
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.common.schema import register_schema_model
 from core.datasource.entities.datasource_entities import DatasourceProviderType, OnlineDocumentPagesMessage
 from core.datasource.online_document.online_document_plugin import OnlineDocumentDatasourcePlugin
 from core.indexing_runner import IndexingRunner
@@ -20,11 +19,24 @@ from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
 from libs.datetime_utils import naive_utc_now
-from libs.login import login_required
+from libs.login import current_account_with_tenant, login_required
 from models import DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
 from services.datasource_provider_service import DatasourceProviderService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
+
+from .. import console_ns
+from ..wraps import account_initialization_required, setup_required
+
+
+class NotionEstimatePayload(BaseModel):
+    notion_info_list: list[dict[str, Any]]
+    process_rule: dict[str, Any]
+    doc_form: str = Field(default="text_model")
+    doc_language: str = Field(default="English")
+
+
+register_schema_model(console_ns, NotionEstimatePayload)
 
 
 @console_ns.route(
@@ -37,10 +49,12 @@ class DataSourceApi(Resource):
     @account_initialization_required
     @marshal_with(integrate_list_fields)
     def get(self):
+        _, current_tenant_id = current_account_with_tenant()
+
         # get workspace data source integrates
         data_source_integrates = db.session.scalars(
             select(DataSourceOauthBinding).where(
-                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.tenant_id == current_tenant_id,
                 DataSourceOauthBinding.disabled == False,
             )
         ).all()
@@ -120,13 +134,15 @@ class DataSourceNotionListApi(Resource):
     @account_initialization_required
     @marshal_with(integrate_notion_info_list_fields)
     def get(self):
+        current_user, current_tenant_id = current_account_with_tenant()
+
         dataset_id = request.args.get("dataset_id", default=None, type=str)
         credential_id = request.args.get("credential_id", default=None, type=str)
         if not credential_id:
             raise ValueError("Credential id is required.")
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             credential_id=credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
@@ -146,7 +162,7 @@ class DataSourceNotionListApi(Resource):
                 documents = session.scalars(
                     select(Document).filter_by(
                         dataset_id=dataset_id,
-                        tenant_id=current_user.current_tenant_id,
+                        tenant_id=current_tenant_id,
                         data_source_type="notion_import",
                         enabled=True,
                     )
@@ -161,7 +177,7 @@ class DataSourceNotionListApi(Resource):
             datasource_runtime = DatasourceManager.get_datasource_runtime(
                 provider_id="langgenius/notion_datasource/notion_datasource",
                 datasource_name="notion_datasource",
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=current_tenant_id,
                 datasource_type=DatasourceProviderType.ONLINE_DOCUMENT,
             )
             datasource_provider_service = DatasourceProviderService()
@@ -210,12 +226,14 @@ class DataSourceNotionApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, workspace_id, page_id, page_type):
+        _, current_tenant_id = current_account_with_tenant()
+
         credential_id = request.args.get("credential_id", default=None, type=str)
         if not credential_id:
             raise ValueError("Credential id is required.")
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
             credential_id=credential_id,
             provider="notion_datasource",
             plugin_id="langgenius/notion_datasource",
@@ -229,7 +247,7 @@ class DataSourceNotionApi(Resource):
             notion_obj_id=page_id,
             notion_page_type=page_type,
             notion_access_token=credential.get("integration_secret"),
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=current_tenant_id,
         )
 
         text_docs = extractor.extract()
@@ -238,18 +256,15 @@ class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @console_ns.expect(console_ns.models[NotionEstimatePayload.__name__])
     def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("notion_info_list", type=list, required=True, nullable=True, location="json")
-        parser.add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-        parser.add_argument(
-            "doc_language", type=str, default="English", required=False, nullable=False, location="json"
-        )
-        args = parser.parse_args()
+        _, current_tenant_id = current_account_with_tenant()
+
+        payload = NotionEstimatePayload.model_validate(console_ns.payload or {})
+        args = payload.model_dump()
         # validate args
         DocumentService.estimate_args_validate(args)
-        notion_info_list = args["notion_info_list"]
+        notion_info_list = payload.notion_info_list
         extract_settings = []
         for notion_info in notion_info_list:
             workspace_id = notion_info["workspace_id"]
@@ -263,7 +278,7 @@ class DataSourceNotionApi(Resource):
                             "notion_workspace_id": workspace_id,
                             "notion_obj_id": page["page_id"],
                             "notion_page_type": page["type"],
-                            "tenant_id": current_user.current_tenant_id,
+                            "tenant_id": current_tenant_id,
                         }
                     ),
                     document_model=args["doc_form"],
@@ -271,7 +286,7 @@ class DataSourceNotionApi(Resource):
                 extract_settings.append(extract_setting)
         indexing_runner = IndexingRunner()
         response = indexing_runner.indexing_estimate(
-            current_user.current_tenant_id,
+            current_tenant_id,
             extract_settings,
             args["process_rule"],
             args["doc_form"],

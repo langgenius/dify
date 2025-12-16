@@ -1,5 +1,5 @@
 import time
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -25,8 +25,9 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
+from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunFailedEvent,
@@ -54,6 +55,7 @@ from core.workflow.graph_events.graph import GraphRunAbortedEvent
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
@@ -68,10 +70,12 @@ class WorkflowBasedAppRunner:
         queue_manager: AppQueueManager,
         variable_loader: VariableLoader = DUMMY_VARIABLE_LOADER,
         app_id: str,
+        graph_engine_layers: Sequence[GraphEngineLayer] = (),
     ):
         self._queue_manager = queue_manager
         self._variable_loader = variable_loader
         self._app_id = app_id
+        self._graph_engine_layers = graph_engine_layers
 
     def _init_graph(
         self,
@@ -80,6 +84,7 @@ class WorkflowBasedAppRunner:
         workflow_id: str = "",
         tenant_id: str = "",
         user_id: str = "",
+        root_node_id: str | None = None,
     ) -> Graph:
         """
         Init graph
@@ -113,7 +118,7 @@ class WorkflowBasedAppRunner:
         )
 
         # init graph
-        graph = Graph.init(graph_config=graph_config, node_factory=node_factory)
+        graph = Graph.init(graph_config=graph_config, node_factory=node_factory, root_node_id=root_node_id)
 
         if not graph:
             raise ValueError("graph not found in workflow")
@@ -346,9 +351,7 @@ class WorkflowBasedAppRunner:
         :param event: event
         """
         if isinstance(event, GraphRunStartedEvent):
-            self._publish_event(
-                QueueWorkflowStartedEvent(graph_runtime_state=workflow_entry.graph_engine.graph_runtime_state)
-            )
+            self._publish_event(QueueWorkflowStartedEvent())
         elif isinstance(event, GraphRunSucceededEvent):
             self._publish_event(QueueWorkflowSucceededEvent(outputs=event.outputs))
         elif isinstance(event, GraphRunPartialSucceededEvent):
@@ -372,7 +375,6 @@ class WorkflowBasedAppRunner:
                     node_title=event.node_title,
                     node_type=event.node_type,
                     start_at=event.start_at,
-                    predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                     inputs=inputs,
@@ -393,7 +395,6 @@ class WorkflowBasedAppRunner:
                     node_title=event.node_title,
                     node_type=event.node_type,
                     start_at=event.start_at,
-                    predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                     agent_strategy=event.agent_strategy,
@@ -494,7 +495,6 @@ class WorkflowBasedAppRunner:
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,
-                    predecessor_node_id=event.predecessor_node_id,
                     metadata=event.metadata,
                 )
             )
@@ -536,7 +536,6 @@ class WorkflowBasedAppRunner:
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,
-                    predecessor_node_id=event.predecessor_node_id,
                     metadata=event.metadata,
                 )
             )

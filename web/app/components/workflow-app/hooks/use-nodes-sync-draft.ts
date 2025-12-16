@@ -1,14 +1,9 @@
 import { useCallback } from 'react'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useStoreApi } from 'reactflow'
-import { useParams } from 'next/navigation'
-import {
-  useWorkflowStore,
-} from '@/app/components/workflow/store'
-import { BlockEnum } from '@/app/components/workflow/types'
-import {
-  useNodesReadOnly,
-} from '@/app/components/workflow/hooks/use-workflow'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks/use-workflow'
+import { useSerialAsyncCallback } from '@/app/components/workflow/hooks/use-serial-async-callback'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { API_PREFIX } from '@/config'
@@ -20,7 +15,6 @@ export const useNodesSyncDraft = () => {
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
-  const params = useParams()
 
   const getPostParams = useCallback(() => {
     const {
@@ -28,65 +22,60 @@ export const useNodesSyncDraft = () => {
       edges,
       transform,
     } = store.getState()
-    const nodes = getNodes()
+    const nodes = getNodes().filter(node => !node.data?._isTempNode)
     const [x, y, zoom] = transform
     const {
       appId,
       conversationVariables,
       environmentVariables,
       syncWorkflowDraftHash,
+      isWorkflowDataLoaded,
     } = workflowStore.getState()
 
-    if (appId && !!nodes.length) {
-      const hasStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    if (!appId || !isWorkflowDataLoaded)
+      return null
 
-      if (!hasStartNode)
-        return
-
-      const features = featuresStore!.getState().features
-      const producedNodes = produce(nodes, (draft) => {
-        draft.forEach((node) => {
-          Object.keys(node.data).forEach((key) => {
-            if (key.startsWith('_'))
-              delete node.data[key]
-          })
+    const features = featuresStore!.getState().features
+    const producedNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        Object.keys(node.data).forEach((key) => {
+          if (key.startsWith('_'))
+            delete node.data[key]
         })
       })
-      const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp), (draft) => {
-        draft.forEach((edge) => {
-          Object.keys(edge.data).forEach((key) => {
-            if (key.startsWith('_'))
-              delete edge.data[key]
-          })
+    })
+    const producedEdges = produce(edges.filter(edge => !edge.data?._isTemp), (draft) => {
+      draft.forEach((edge) => {
+        Object.keys(edge.data).forEach((key) => {
+          if (key.startsWith('_'))
+            delete edge.data[key]
         })
       })
-      return {
-        url: `/apps/${appId}/workflows/draft`,
-        params: {
-          graph: {
-            nodes: producedNodes,
-            edges: producedEdges,
-            viewport: {
-              x,
-              y,
-              zoom,
-            },
-          },
-          features: {
-            opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
-            suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
-            suggested_questions_after_answer: features.suggested,
-            text_to_speech: features.text2speech,
-            speech_to_text: features.speech2text,
-            retriever_resource: features.citation,
-            sensitive_word_avoidance: features.moderation,
-            file_upload: features.file,
-          },
-          environment_variables: environmentVariables,
-          conversation_variables: conversationVariables,
-          hash: syncWorkflowDraftHash,
+    })
+    const viewport = { x, y, zoom }
+
+    return {
+      url: `/apps/${appId}/workflows/draft`,
+      params: {
+        graph: {
+          nodes: producedNodes,
+          edges: producedEdges,
+          viewport,
         },
-      }
+        features: {
+          opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
+          suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
+          suggested_questions_after_answer: features.suggested,
+          text_to_speech: features.text2speech,
+          speech_to_text: features.speech2text,
+          retriever_resource: features.citation,
+          sensitive_word_avoidance: features.moderation,
+          file_upload: features.file,
+        },
+        environment_variables: environmentVariables,
+        conversation_variables: conversationVariables,
+        hash: syncWorkflowDraftHash,
+      },
     }
   }, [store, featuresStore, workflowStore])
 
@@ -95,15 +84,11 @@ export const useNodesSyncDraft = () => {
       return
     const postParams = getPostParams()
 
-    if (postParams) {
-      navigator.sendBeacon(
-        `${API_PREFIX}/apps/${params.appId}/workflows/draft?_token=${localStorage.getItem('console_token')}`,
-        JSON.stringify(postParams.params),
-      )
-    }
-  }, [getPostParams, params.appId, getNodesReadOnly])
+    if (postParams)
+      navigator.sendBeacon(`${API_PREFIX}${postParams.url}`, JSON.stringify(postParams.params))
+  }, [getPostParams, getNodesReadOnly])
 
-  const doSyncWorkflowDraft = useCallback(async (
+  const performSync = useCallback(async (
     notRefreshWhenSyncError?: boolean,
     callback?: {
       onSuccess?: () => void
@@ -140,6 +125,8 @@ export const useNodesSyncDraft = () => {
       }
     }
   }, [workflowStore, getPostParams, getNodesReadOnly, handleRefreshWorkflowDraft])
+
+  const doSyncWorkflowDraft = useSerialAsyncCallback(performSync, getNodesReadOnly)
 
   return {
     doSyncWorkflowDraft,
