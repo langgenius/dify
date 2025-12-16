@@ -12,7 +12,6 @@ Assertions:
   matching one of the two LLM branch roots.
 """
 
-
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any

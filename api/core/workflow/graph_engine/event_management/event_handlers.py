@@ -438,6 +438,6 @@ class EventHandler:
             return
 
         # Single-child path: inherit the parent's parallel context (if any)
-        only_child = (ready_child_ids[0] if ready_child_ids else candidate_children[0])
+        only_child = ready_child_ids[0] if ready_child_ids else candidate_children[0]
         if isinstance(parent_ctx, dict) and parent_ctx:
             self._graph_runtime_state.variable_pool.add(("engine_parallel", only_child), parent_ctx)
