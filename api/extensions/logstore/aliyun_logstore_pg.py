@@ -128,7 +128,7 @@ class AliyunLogStorePG:
                 try:
                     self._pg_pool.closeall()
                 except Exception:
-                    pass
+                    logger.debug("Failed to close PG connection pool during cleanup, ignoring")
             self._pg_pool = None
 
             logger.info(
@@ -289,7 +289,6 @@ class AliyunLogStorePG:
                 return
 
             except psycopg2.Error as e:
-
                 # Check if error is retriable
                 if not self._is_retriable_error(e):
                     # Not a retriable error (e.g., data validation error), fail immediately
@@ -373,7 +372,6 @@ class AliyunLogStorePG:
                         return result
 
             except psycopg2.Error as e:
-
                 # Check if error is retriable
                 if not self._is_retriable_error(e):
                     # Not a retriable error (e.g., SQL syntax error), fail immediately
@@ -404,3 +402,6 @@ class AliyunLogStorePG:
                         sql,
                     )
                     raise
+
+        # This line should never be reached due to raise above, but makes type checker happy
+        return []

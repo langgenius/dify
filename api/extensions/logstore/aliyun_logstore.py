@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 import time
 from collections.abc import Sequence
 from typing import Any
@@ -35,10 +36,35 @@ class AliyunLogStore:
     _instance: "AliyunLogStore | None" = None
     _initialized: bool = False
 
+    # Track delayed PG connection for newly created projects
+    _pg_connection_timer: threading.Timer | None = None
+    _pg_connection_delay: int = 90  # delay seconds
+
     # Default tokenizer for text/json fields and full-text index
     # Common delimiters: comma, space, quotes, punctuation, operators, brackets, special chars
-    DEFAULT_TOKEN_LIST = [",", " ", "\"", "\"", ";", "=",  "(", ")", "[", "]",
-        "{", "}", "?", "@", "&", "<", ">", "/", ":", "\n", "\t"]
+    DEFAULT_TOKEN_LIST = [
+        ",",
+        " ",
+        '"',
+        '"',
+        ";",
+        "=",
+        "(",
+        ")",
+        "[",
+        "]",
+        "{",
+        "}",
+        "?",
+        "@",
+        "&",
+        "<",
+        ">",
+        "/",
+        ":",
+        "\n",
+        "\t",
+    ]
 
     def __new__(cls) -> "AliyunLogStore":
         """Implement singleton pattern."""
@@ -145,32 +171,29 @@ class AliyunLogStore:
 
         load_dotenv()
 
-        access_key_id: str = os.environ.get("ALIYUN_SLS_ACCESS_KEY_ID", "")
-        access_key_secret: str = os.environ.get("ALIYUN_SLS_ACCESS_KEY_SECRET", "")
-        endpoint: str = os.environ.get("ALIYUN_SLS_ENDPOINT", "")
-        region: str = os.environ.get("ALIYUN_SLS_REGION", "")
-
+        self.access_key_id: str = os.environ.get("ALIYUN_SLS_ACCESS_KEY_ID", "")
+        self.access_key_secret: str = os.environ.get("ALIYUN_SLS_ACCESS_KEY_SECRET", "")
+        self.endpoint: str = os.environ.get("ALIYUN_SLS_ENDPOINT", "")
+        self.region: str = os.environ.get("ALIYUN_SLS_REGION", "")
         self.project_name: str = os.environ.get("ALIYUN_SLS_PROJECT_NAME", "")
-        self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 90))
+        self.logstore_ttl: int = int(os.environ.get("ALIYUN_SLS_LOGSTORE_TTL", 365))
         self.log_enabled: bool = os.environ.get("SQLALCHEMY_ECHO", "false").lower() == "true"
         self.pg_mode_enabled: bool = os.environ.get("LOGSTORE_PG_MODE_ENABLED", "true").lower() == "true"
 
-        self.client = LogClient(endpoint, access_key_id, access_key_secret, auth_version=AUTH_VERSION_4, region=region)
+        # Initialize SDK client
+        self.client = LogClient(
+            self.endpoint, self.access_key_id, self.access_key_secret, auth_version=AUTH_VERSION_4, region=self.region
+        )
 
         # Append Dify identification to the existing user agent
-        # This preserves the Python SDK version info while adding Dify version
         original_user_agent = self.client._user_agent  # pyright: ignore[reportPrivateUsage]
         dify_version = dify_config.project.version
         enhanced_user_agent = f"Dify,Dify-{dify_version},{original_user_agent}"
         self.client.set_user_agent(enhanced_user_agent)
 
-        # Initialize PG connection pool (if PG mode is enabled and region supports it)
-        if self.pg_mode_enabled:
-            self._pg_client = AliyunLogStorePG(access_key_id, access_key_secret, endpoint, self.project_name)
-            self._use_pg_protocol = self._pg_client.init_connection()
-        else:
-            self._pg_client = None
-            self._use_pg_protocol = False
+        # PG client will be initialized in init_project_logstore
+        self._pg_client: AliyunLogStorePG | None = None
+        self._use_pg_protocol: bool = False
 
         self.__class__._initialized = True
 
@@ -179,18 +202,103 @@ class AliyunLogStore:
         """Check if PG protocol is supported and enabled."""
         return self._use_pg_protocol
 
+    def _attempt_pg_connection_init(self) -> bool:
+        """
+        Attempt to initialize PG connection.
+
+        This method tries to establish PG connection and performs necessary checks.
+        It's used both for immediate connection (existing projects) and delayed connection (new projects).
+
+        Returns:
+            True if PG connection was successfully established, False otherwise.
+        """
+        if not self.pg_mode_enabled or not self._pg_client:
+            return False
+
+        try:
+            self._use_pg_protocol = self._pg_client.init_connection()
+            if self._use_pg_protocol:
+                logger.info("Successfully connected to project %s using PG protocol", self.project_name)
+                # Check if scan_index is enabled for all logstores
+                self._check_and_disable_pg_if_scan_index_disabled()
+                return True
+            else:
+                logger.info("PG connection failed for project %s. Will use SDK mode.", self.project_name)
+                return False
+        except Exception as e:
+            logger.warning(
+                "Failed to establish PG connection for project %s: %s. Will use SDK mode.",
+                self.project_name,
+                str(e),
+            )
+            self._use_pg_protocol = False
+            return False
+
+    def _delayed_pg_connection_init(self) -> None:
+        """
+        Delayed initialization of PG connection for newly created projects.
+
+        This method is called by a background timer 3 minutes after project creation.
+        """
+        # Double check conditions in case state changed
+        if self._use_pg_protocol:
+            return
+
+        logger.info(
+            "Attempting delayed PG connection for newly created project %s ...",
+            self.project_name,
+        )
+        self._attempt_pg_connection_init()
+        self.__class__._pg_connection_timer = None
+
     def init_project_logstore(self):
         """
-        Check, create, and update project/logstore/index
+        Initialize project, logstore, index, and PG connection.
+
+        This method should be called once during application startup to ensure
+        all required resources exist and connections are established.
         """
+        # Step 1: Ensure project and logstore exist
+        project_is_new = False
         if not self.is_project_exist():
             self.create_project()
+            project_is_new = True
+
         self.create_logstore_if_not_exist()
 
-        # Check if scan_index is enabled for all logstores
-        # If any logstore has scan_index=false, disable PG protocol
-        if self._use_pg_protocol:
-            self._check_and_disable_pg_if_scan_index_disabled()
+        # Step 2: Initialize PG client and connection (if enabled)
+        if not self.pg_mode_enabled:
+            logger.info("PG mode is disabled. Will use SDK mode.")
+            return
+
+        # Create PG client if not already created
+        if self._pg_client is None:
+            logger.info("Initializing PG client for project %s...", self.project_name)
+            self._pg_client = AliyunLogStorePG(
+                self.access_key_id, self.access_key_secret, self.endpoint, self.project_name
+            )
+
+        # Step 3: Establish PG connection based on project status
+        if project_is_new:
+            # For newly created projects, schedule delayed PG connection
+            self._use_pg_protocol = False
+            logger.info(
+                "Project %s is newly created. Will use SDK mode and schedule PG connection attempt in %d seconds.",
+                self.project_name,
+                self.__class__._pg_connection_delay,
+            )
+            if self.__class__._pg_connection_timer is not None:
+                self.__class__._pg_connection_timer.cancel()
+            self.__class__._pg_connection_timer = threading.Timer(
+                self.__class__._pg_connection_delay,
+                self._delayed_pg_connection_init,
+            )
+            self.__class__._pg_connection_timer.daemon = True  # Don't block app shutdown
+            self.__class__._pg_connection_timer.start()
+        else:
+            # For existing projects, attempt PG connection immediately
+            logger.info("Project %s already exists. Attempting PG connection...", self.project_name)
+            self._attempt_pg_connection_init()
 
     def _check_and_disable_pg_if_scan_index_disabled(self) -> None:
         """
@@ -473,9 +581,7 @@ class AliyunLogStore:
                 # Check if type matches
                 # Special case: json and text are interchangeable for JSON content fields
                 # Allow users to manually configure text instead of json (or vice versa) without forcing updates
-                is_compatible = existing_type == required_type or (
-                    {existing_type, required_type} == {"json", "text"}
-                )
+                is_compatible = existing_type == required_type or ({existing_type, required_type} == {"json", "text"})
 
                 if not is_compatible:
                     type_mismatches.append((required_name, existing_type, required_type))
@@ -591,7 +697,7 @@ class AliyunLogStore:
 
     def put_log(self, logstore: str, contents: Sequence[tuple[str, str]]) -> None:
         # Route to PG or SDK based on protocol availability
-        if self._use_pg_protocol:
+        if self._use_pg_protocol and self._pg_client:
             self._pg_client.put_log(logstore, contents, self.log_enabled)
         else:
             log_item = LogItem(contents=contents)
@@ -715,7 +821,7 @@ class AliyunLogStore:
             raise ValueError("logstore parameter is required for execute_sql")
 
         # Route to PG or SDK based on protocol availability
-        if self._use_pg_protocol:
+        if self._use_pg_protocol and self._pg_client:
             # PG mode: execute SQL directly (ignore query parameter)
             return self._pg_client.execute_sql(sql, logstore, self.log_enabled)
         else:

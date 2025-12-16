@@ -201,11 +201,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         try:
             results = self.logstore_client.execute_sql(
-                sql=sql, 
-                query="*",
-                logstore=AliyunLogStore.workflow_execution_logstore, 
-                from_time=None, 
-                to_time=None
+                sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore, from_time=None, to_time=None
             )
 
             # Check if there are more records
@@ -452,9 +448,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
             try:
                 results = self.logstore_client.execute_sql(
-                    sql=sql, 
-                    query="*",
-                    logstore=AliyunLogStore.workflow_execution_logstore
+                    sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
                 )
                 count = results[0]["count"] if results and len(results) > 0 else 0
 
@@ -501,14 +495,10 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
             """
 
             finished_results = self.logstore_client.execute_sql(
-                sql=finished_sql, 
-                query="*",
-                logstore=AliyunLogStore.workflow_execution_logstore
+                sql=finished_sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
             )
             running_results = self.logstore_client.execute_sql(
-                sql=running_sql, 
-                query="*",
-                logstore=AliyunLogStore.workflow_execution_logstore
+                sql=running_sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
             )
 
             # Build response
@@ -578,9 +568,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         try:
             results = self.logstore_client.execute_sql(
-                sql=sql, 
-                query="*",
-                logstore=AliyunLogStore.workflow_execution_logstore
+                sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
             )
 
             response_data = []
@@ -634,9 +622,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         try:
             results = self.logstore_client.execute_sql(
-                sql=sql, 
-                query="*",
-                logstore=AliyunLogStore.workflow_execution_logstore
+                sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
             )
 
             response_data = []
@@ -690,9 +676,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         try:
             results = self.logstore_client.execute_sql(
-                sql=sql, 
-                query="*",
-                logstore=AliyunLogStore.workflow_execution_logstore
+                sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
             )
 
             response_data = []
@@ -754,9 +738,7 @@ class LogstoreAPIWorkflowRunRepository(APIWorkflowRunRepository):
 
         try:
             results = self.logstore_client.execute_sql(
-                sql=sql, 
-                query="*",
-                logstore=AliyunLogStore.workflow_execution_logstore
+                sql=sql, query="*", logstore=AliyunLogStore.workflow_execution_logstore
             )
 
             response_data = []
