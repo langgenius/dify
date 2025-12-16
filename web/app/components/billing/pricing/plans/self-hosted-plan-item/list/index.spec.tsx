@@ -15,7 +15,7 @@ jest.mock('react-i18next', () => ({
 }))
 
 describe('SelfHostedPlanItem/List', () => {
-  test('should render includes title and features', () => {
+  test('should render plan info', () => {
     render(<List plan={SelfHostedPlan.community} />)
 
     expect(screen.getByText('billing.plans.community.includesTitle')).toBeInTheDocument()

@@ -85,7 +85,7 @@ beforeEach(() => {
 describe('SelfHostedPlanItem', () => {
   // Copy rendering for each plan
   describe('Rendering', () => {
-    test('should display community plan info and features', () => {
+    test('should display community plan info', () => {
       render(<SelfHostedPlanItem plan={SelfHostedPlan.community} />)
 
       expect(screen.getByText('billing.plans.community.name')).toBeInTheDocument()
