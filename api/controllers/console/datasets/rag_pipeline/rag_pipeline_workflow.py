@@ -968,7 +968,10 @@ class RagPipelineDatasourceVariableApi(Resource):
         )
         return workflow_node_execution
 
+
 from flask_restx import reqparse
+
+
 @console_ns.route("/rag/pipelines/recommended-plugins")
 class RagPipelineRecommendedPluginApi(Resource):
     @setup_required
@@ -976,7 +979,7 @@ class RagPipelineRecommendedPluginApi(Resource):
     @account_initialization_required
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('type', type=str, location='args', required=False, default='all')
+        parser.add_argument("type", type=str, location="args", required=False, default="all")
         args = parser.parse_args()
         type = args["type"]
 
