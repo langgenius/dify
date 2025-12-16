@@ -2,13 +2,6 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import Footer from './footer'
 
-// Mock react-i18next - return key as per testing skills
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('Footer', () => {
   beforeEach(() => {
     jest.clearAllMocks()

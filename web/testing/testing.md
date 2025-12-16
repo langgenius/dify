@@ -326,12 +326,19 @@ describe('ComponentName', () => {
 
 ### General
 
-1. **i18n**: Always return key
+1. **i18n**: Uses shared mock at `web/__mocks__/react-i18next.ts` (auto-loaded by Jest)
+
+   The shared mock returns translation keys as-is. For custom translations, override:
 
    ```typescript
    jest.mock('react-i18next', () => ({
      useTranslation: () => ({
-       t: (key: string) => key,
+       t: (key: string) => {
+         const translations: Record<string, string> = {
+           'my.custom.key': 'Custom translation',
+         }
+         return translations[key] || key
+       },
      }),
    }))
    ```
