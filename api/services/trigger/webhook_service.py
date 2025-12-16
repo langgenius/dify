@@ -33,6 +33,11 @@ from services.errors.app import QuotaExceededError
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
 
+try:
+    import magic
+except ImportError:
+    magic = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 
@@ -317,7 +322,8 @@ class WebhookService:
         try:
             file_content = request.get_data()
             if file_content:
-                file_obj = cls._create_file_from_binary(file_content, "application/octet-stream", webhook_trigger)
+                mimetype = cls._detect_binary_mimetype(file_content)
+                file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger)
                 return {"raw": file_obj.to_dict()}, {}
             else:
                 return {"raw": None}, {}
@@ -340,6 +346,18 @@ class WebhookService:
             logger.warning("Failed to extract text body")
             body = {"raw": ""}
         return body, {}
+
+    @staticmethod
+    def _detect_binary_mimetype(file_content: bytes) -> str:
+        """Guess MIME type for binary payloads using python-magic when available."""
+        if magic is not None:
+            try:
+                detected = magic.from_buffer(file_content[:1024], mime=True)
+                if detected:
+                    return detected
+            except Exception:
+                logger.debug("python-magic detection failed for octet-stream payload")
+        return "application/octet-stream"
 
     @classmethod
     def _process_file_uploads(

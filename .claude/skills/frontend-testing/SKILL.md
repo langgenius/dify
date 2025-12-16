@@ -318,3 +318,4 @@ For more detailed information, refer to:
 - `web/jest.config.ts` - Jest configuration
 - `web/jest.setup.ts` - Test environment setup
 - `web/testing/analyze-component.js` - Component analysis tool
+- `web/__mocks__/react-i18next.ts` - Shared i18n mock (auto-loaded by Jest, no explicit mock needed; override locally only for custom translations)
