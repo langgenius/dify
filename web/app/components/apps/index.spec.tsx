@@ -1,13 +1,6 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 
-// Mock react-i18next - return key as per testing skills
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Track mock calls
 let documentTitleCalls: string[] = []
 let educationInitCalls: number = 0
