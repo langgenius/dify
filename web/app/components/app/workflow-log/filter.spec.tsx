@@ -16,12 +16,6 @@ import type { QueryParam } from './index'
 // Mocks
 // ============================================================================
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 const mockTrackEvent = jest.fn()
 jest.mock('@/app/components/base/amplitude/utils', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),

@@ -18,12 +18,6 @@ import type { App, AppIconType, AppModeEnum } from '@/types/app'
 // Mocks
 // ============================================================================
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 const mockRouterPush = jest.fn()
 jest.mock('next/navigation', () => ({
   useRouter: () => ({
