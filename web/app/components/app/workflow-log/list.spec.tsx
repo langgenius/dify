@@ -22,12 +22,6 @@ import { APP_PAGE_LIMIT } from '@/config'
 // Mocks
 // ============================================================================
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 const mockRouterPush = jest.fn()
 jest.mock('next/navigation', () => ({
   useRouter: () => ({

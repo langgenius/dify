@@ -15,12 +15,6 @@ import { Theme } from '@/types/app'
 // Mocks
 // ============================================================================
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 let mockTheme = Theme.light
 jest.mock('@/hooks/use-theme', () => ({
   __esModule: true,

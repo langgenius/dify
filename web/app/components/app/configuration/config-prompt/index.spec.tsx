@@ -6,12 +6,6 @@ import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
 import { type PromptItem, PromptRole, type PromptVariable } from '@/models/debug'
 import { AppModeEnum, ModelModeType } from '@/types/app'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 type DebugConfiguration = {
   isAdvancedMode: boolean
   currentAdvancedPrompt: PromptItem | PromptItem[]
