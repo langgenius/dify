@@ -9,7 +9,6 @@ import base64
 import hashlib
 from unittest.mock import patch
 
-import pytest
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad
 
