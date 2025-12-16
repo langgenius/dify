@@ -194,7 +194,7 @@ export const textKeys = {
     tryCloud: 'appOverview.apiKeyInfo.tryCloud',
   },
   cloud: {
-    trialTitle: 'appOverview.apiKeyInfo.cloud.trial.title',
+    trialTitle: /appOverview\.apiKeyInfo\.cloud\.trial\.title/,
     trialDescription: /appOverview\.apiKeyInfo\.cloud\.trial\.description/,
     setAPIBtn: 'appOverview.apiKeyInfo.setAPIBtn',
   },
