@@ -19,7 +19,13 @@
  */
 
 export const useTranslation = () => ({
-  t: (key: string) => key,
+  t: (key: string, options?: Record<string, unknown>) => {
+    if (options?.returnObjects)
+      return [`${key}-feature-1`, `${key}-feature-2`]
+    if (options)
+      return `${key}:${JSON.stringify(options)}`
+    return key
+  },
   i18n: {
     language: 'en',
     changeLanguage: jest.fn(),
