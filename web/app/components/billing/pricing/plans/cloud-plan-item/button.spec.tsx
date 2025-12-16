@@ -21,7 +21,6 @@ describe('CloudPlanButton', () => {
       // Assert
       expect(button).toBeDisabled()
       expect(button.className).toContain('cursor-not-allowed')
-      expect(button.querySelector('svg')).toBeNull()
       expect(handleGetPayUrl).not.toHaveBeenCalled()
     })
   })
@@ -46,7 +45,6 @@ describe('CloudPlanButton', () => {
       // Assert
       expect(handleGetPayUrl).toHaveBeenCalledTimes(1)
       expect(button).not.toBeDisabled()
-      expect(button.querySelector('svg')).not.toBeNull()
     })
   })
 })

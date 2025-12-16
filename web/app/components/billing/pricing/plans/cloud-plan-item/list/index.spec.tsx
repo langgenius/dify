@@ -3,18 +3,6 @@ import { render, screen } from '@testing-library/react'
 import List from './index'
 import { Plan } from '../../../../type'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => {
-      if (options?.returnObjects)
-        return [`${key}-feature-1`, `${key}-feature-2`]
-      if (options)
-        return `${key}:${JSON.stringify(options)}`
-      return key
-    },
-  }),
-}))
-
 describe('CloudPlanItem/List', () => {
   // Free plan copy
   test('should show sandbox specific quotas', () => {

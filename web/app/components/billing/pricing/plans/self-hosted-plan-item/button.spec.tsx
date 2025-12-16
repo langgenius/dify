@@ -5,12 +5,6 @@ import { SelfHostedPlan } from '../../../type'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('@/hooks/use-theme')
 
 jest.mock('@/app/components/base/icons/src/public/billing', () => ({

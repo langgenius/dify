@@ -8,16 +8,6 @@ import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
 import Toast from '../../../../base/toast'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: Record<string, unknown>) => {
-      if (options)
-        return `${key}:${JSON.stringify(options)}`
-      return key
-    },
-  }),
-}))
-
 jest.mock('../../../../base/toast', () => ({
   __esModule: true,
   default: {
