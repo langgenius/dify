@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from typing import Union
 
@@ -71,3 +72,13 @@ def init_celery_worker(*args, **kwargs):
         if dify_config.DEBUG:
             logger.info("Initializing OpenTelemetry for Celery worker")
         CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()
+
+
+def is_instrument_flag_enabled() -> bool:
+    """
+    Check if external instrumentation is enabled via environment variable.
+
+    Third-party non-invasive instrumentation agents set this flag to coordinate
+    with Dify's manual OpenTelemetry instrumentation.
+    """
+    return os.getenv("ENABLE_OTEL_FOR_INSTRUMENT", "").strip().lower() == "true"

@@ -1,12 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import ContrlBtnGroup from './index'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('ContrlBtnGroup', () => {
   beforeEach(() => {
     jest.clearAllMocks()

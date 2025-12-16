@@ -432,21 +432,21 @@ def _decrypt_field(field_name: str, error_class: type[Exception], error_message:
         error_class: Exception class to raise on decoding failure
         error_message: Error message to include in the exception
     """
-    if request and request.is_json:
-        # Get the payload dict - it's cached and mutable
-        payload = request.get_json()
-        if payload and field_name in payload:
-            encoded_value = payload[field_name]
-            decoded_value = FieldEncryption.decrypt_field(encoded_value)
+    if not request or not request.is_json:
+        return
+    # Get the payload dict - it's cached and mutable
+    payload = request.get_json()
+    if not payload or field_name not in payload:
+        return
+    encoded_value = payload[field_name]
+    decoded_value = FieldEncryption.decrypt_field(encoded_value)
 
-            # If decoding failed, raise error
-            if decoded_value is None:
-                raise error_class(error_message)
-
-            # Update payload dict in-place with decoded value
-            # Since payload is a mutable dict and get_json() returns the cached reference,
-            # modifying it will affect all subsequent accesses including console_ns.payload
-            payload[field_name] = decoded_value
+    # Update payload dict in-place with decoded value
+    # Since payload is a mutable dict and get_json() returns the cached reference,
+    # modifying it will affect all subsequent accesses including console_ns.payload
+    if decoded_value is None:
+        return
+    payload[field_name] = decoded_value
 
 
 def decrypt_password_field(view: Callable[P, R]):

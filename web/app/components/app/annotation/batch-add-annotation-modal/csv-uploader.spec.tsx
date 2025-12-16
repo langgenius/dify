@@ -3,12 +3,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CSVUploader, { type Props } from './csv-uploader'
 import { ToastContext } from '@/app/components/base/toast'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('CSVUploader', () => {
   const notify = jest.fn()
   const updateFile = jest.fn()

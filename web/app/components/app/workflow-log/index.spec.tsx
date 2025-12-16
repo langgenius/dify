@@ -49,13 +49,6 @@ jest.mock('next/navigation', () => ({
   }),
 }))
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-  Trans: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-}))
-
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
