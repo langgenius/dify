@@ -28,8 +28,8 @@ class FieldEncryption:
     @staticmethod
     def _derive_key_and_iv(passphrase: str, salt: bytes) -> tuple[bytes, bytes]:
         """
-        Derive key and IV from passphrase using OpenSSL's EVP_BytesToKey algorithm
-        This matches crypto-js's key derivation which uses MD5
+        Derive key and IV from passphrase using PBKDF2-HMAC-SHA256.
+        NOTE: This requires the frontend (crypto-js or equivalent) to also use PBKDF2 with matching parameters.
 
         Args:
             passphrase: The encryption passphrase
@@ -38,25 +38,20 @@ class FieldEncryption:
         Returns:
             Tuple of (key, iv) each 32 bytes and 16 bytes respectively
         """
-        # crypto-js uses EVP_BytesToKey with MD5, 1 iteration
+        # Use PBKDF2-HMAC-SHA256 for key derivation with sufficient iterations.
         key_size = 32  # 256 bits
         iv_size = 16  # 128 bits
-
-        m = []
-        i = 0
-        while len(b"".join(m)) < (key_size + iv_size):
-            md = hashlib.md5()
-            data = passphrase.encode("utf-8")
-            if i > 0:
-                md.update(m[i - 1])
-            md.update(data)
-            md.update(salt)
-            m.append(md.digest())
-            i += 1
-
-        ms = b"".join(m)
-        key = ms[:key_size]
-        iv = ms[key_size : key_size + iv_size]
+        iterations = 100_000  # Choose an appropriate number of iterations.
+        dk_len = key_size + iv_size
+        derived = hashlib.pbkdf2_hmac(
+            'sha256',
+            passphrase.encode('utf-8'),
+            salt,
+            iterations,
+            dk_len
+        )
+        key = derived[:key_size]
+        iv = derived[key_size : key_size + iv_size]
         return key, iv
 
     @classmethod
