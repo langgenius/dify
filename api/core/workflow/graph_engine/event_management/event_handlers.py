@@ -6,9 +6,10 @@ import logging
 from collections.abc import Mapping
 from functools import singledispatchmethod
 from typing import TYPE_CHECKING, final
+from uuid import uuid4
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, WorkflowNodeExecutionMetadataKey
 from core.workflow.graph import Graph
 from core.workflow.graph_events import (
     GraphNodeEventBase,
@@ -131,6 +132,15 @@ class EventHandler:
         node_execution.mark_started(event.id)
         self._graph_runtime_state.increment_node_run_steps()
 
+        # Stage active parallel context for this node if precomputed
+        try:
+            pending_map = self._graph_runtime_state.variable_pool.get_by_prefix("engine_parallel")
+            ctx = pending_map.get(event.node_id)
+            if isinstance(ctx, dict) and ctx:
+                self._graph_runtime_state.variable_pool.add(("engine_active_parallel", event.node_id), ctx)
+        except Exception:
+            logger.debug("unable to stage active parallel ctx for %s", event.node_id, exc_info=True)
+
         # Track in response coordinator for stream ordering
         self._response_coordinator.track_node_execution(event.node_id, event.id)
 
@@ -186,6 +196,21 @@ class EventHandler:
             )
         else:
             ready_nodes, edge_streaming_events = self._edge_processor.process_node_success(event.node_id)
+
+        # Precompute and stage parallel-group metadata for downstream nodes
+        try:
+            self._stage_parallel_context(
+                parent_node_id=event.node_id,
+                parent_event_id=event.id,
+                ready_nodes=list(ready_nodes),
+                selected_handle=(
+                    event.node_run_result.edge_source_handle
+                    if node.execution_type == NodeExecutionType.BRANCH
+                    else None
+                ),
+            )
+        except Exception:
+            logger.warning("unable to stage parallel ctx for successors of %s", event.node_id, exc_info=True)
 
         # Collect streaming events from edge processing
         for edge_event in edge_streaming_events:
@@ -272,6 +297,21 @@ class EventHandler:
         else:
             raise NotImplementedError(f"Unsupported error strategy: {node.error_strategy}")
 
+        # Precompute and stage parallel-group metadata even on exception flows
+        try:
+            self._stage_parallel_context(
+                parent_node_id=event.node_id,
+                parent_event_id=event.id,
+                ready_nodes=list(ready_nodes),
+                selected_handle=(
+                    event.node_run_result.edge_source_handle
+                    if node.execution_type == NodeExecutionType.BRANCH
+                    else None
+                ),
+            )
+        except Exception:
+            logger.debug("unable to stage parallel ctx for successors of %s (exception)", event.node_id, exc_info=True)
+
         for edge_event in edge_streaming_events:
             self._event_collector.collect(edge_event)
 
@@ -345,3 +385,59 @@ class EventHandler:
                     self._graph_runtime_state.set_output("answer", value)
             else:
                 self._graph_runtime_state.set_output(key, value)
+
+    def _stage_parallel_context(
+        self,
+        *,
+        parent_node_id: str,
+        parent_event_id: str,
+        ready_nodes: list[str],
+        selected_handle: str | None,
+    ) -> None:
+        """
+        Compute and stage parallel-group metadata for downstream nodes.
+
+        Writes per-child context into variable_pool namespace "engine_parallel" so that
+        NodeRunStartedEvent can attach it to persisted metadata.
+        """
+        if not ready_nodes:
+            return
+
+        # Determine children constrained by selected handle (for branch nodes)
+        outgoing = self._graph.get_outgoing_edges(parent_node_id)
+        if selected_handle is not None:
+            candidate_children = [e.head for e in outgoing if e.source_handle == selected_handle]
+        else:
+            candidate_children = [e.head for e in outgoing]
+
+        ready_child_ids = [nid for nid in candidate_children if nid in set(ready_nodes)]
+
+        if not candidate_children:
+            return
+
+        parent_ctx_map = self._graph_runtime_state.variable_pool.get_by_prefix("engine_active_parallel")
+        parent_ctx = parent_ctx_map.get(parent_node_id) if isinstance(parent_ctx_map, dict) else None
+
+        if len(candidate_children) > 1:
+            new_parallel_id = f"{parent_node_id}:{parent_event_id}"
+            new_run_id = str(uuid4())
+            for cid in candidate_children:
+                ctx: dict[str, object] = {
+                    WorkflowNodeExecutionMetadataKey.PARALLEL_ID.value: new_parallel_id,
+                    WorkflowNodeExecutionMetadataKey.PARALLEL_START_NODE_ID.value: cid,
+                    WorkflowNodeExecutionMetadataKey.PARALLEL_MODE_RUN_ID.value: new_run_id,
+                }
+                if isinstance(parent_ctx, dict) and parent_ctx:
+                    ppid = parent_ctx.get(WorkflowNodeExecutionMetadataKey.PARALLEL_ID.value)
+                    pp_sid = parent_ctx.get(WorkflowNodeExecutionMetadataKey.PARALLEL_START_NODE_ID.value)
+                    if ppid:
+                        ctx[WorkflowNodeExecutionMetadataKey.PARENT_PARALLEL_ID.value] = ppid
+                    if pp_sid:
+                        ctx[WorkflowNodeExecutionMetadataKey.PARENT_PARALLEL_START_NODE_ID.value] = pp_sid
+                self._graph_runtime_state.variable_pool.add(("engine_parallel", cid), ctx)
+            return
+
+        # Single-child path: inherit the parent's parallel context (if any)
+        only_child = (ready_child_ids[0] if ready_child_ids else candidate_children[0])
+        if isinstance(parent_ctx, dict) and parent_ctx:
+            self._graph_runtime_state.variable_pool.add(("engine_parallel", only_child), parent_ctx)

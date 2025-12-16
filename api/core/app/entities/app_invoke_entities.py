@@ -235,6 +235,8 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
 
     # app config
+    # Accept either a fully validated WorkflowUIBasedAppConfig or a loose dict for internal/test-only flows
+    # where only minimal fields (e.g., app_id) may be provided and not used by the execution path.
     app_config: WorkflowUIBasedAppConfig = None  # type: ignore
     workflow_execution_id: str
 

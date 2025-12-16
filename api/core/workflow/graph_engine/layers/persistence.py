@@ -9,6 +9,7 @@ allowing presentation layers to remain read-only observers of repository
 state.
 """
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -47,6 +48,8 @@ from core.workflow.repositories.workflow_execution_repository import WorkflowExe
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.workflow_entry import WorkflowEntry
 from libs.datetime_utils import naive_utc_now
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True)
@@ -231,6 +234,21 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             WorkflowNodeExecutionMetadataKey.ITERATION_ID: event.in_iteration_id,
             WorkflowNodeExecutionMetadataKey.LOOP_ID: event.in_loop_id,
         }
+        # Attach active parallel context if present (staged by EventHandler)
+        try:
+            active_ctx_map = (
+                self.graph_runtime_state.variable_pool.get_by_prefix("engine_active_parallel")
+                if self.graph_runtime_state
+                else {}
+            )
+            if isinstance(active_ctx_map, dict):
+                ctx = active_ctx_map.get(event.node_id)
+                if isinstance(ctx, dict) and ctx:
+                    # Merge staged context
+                    metadata.update(ctx)
+        except Exception:
+            # Non-fatal: log for diagnostics
+            logger.exception("Failed to merge active parallel context for node %s", event.node_id)
 
         domain_execution = WorkflowNodeExecution(
             id=event.id,
@@ -364,11 +382,15 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
             domain_execution.error = error
 
         if update_outputs:
+            # Merge metadata to preserve engine-staged keys set at start
+            existing_meta = dict(domain_execution.metadata or {})
+            new_meta = dict(node_result.metadata or {})
+            merged_meta = {**existing_meta, **new_meta}
             domain_execution.update_from_mapping(
                 inputs=node_result.inputs,
                 process_data=node_result.process_data,
                 outputs=node_result.outputs,
-                metadata=node_result.metadata,
+                metadata=merged_meta,
             )
 
         self._workflow_node_execution_repository.save(domain_execution)

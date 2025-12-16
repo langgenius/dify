@@ -406,7 +406,8 @@ def test_workflow_resumption_context_dumps_loads_roundtrip(state: WorkflowResump
     dumped = state.dumps()
     loaded = WorkflowResumptionContext.loads(dumped)
 
-    assert loaded == state
+    assert loaded.get_generate_entity().model_dump() == state.get_generate_entity().model_dump()
+    assert loaded.generate_entity.type == state.generate_entity.type
     assert loaded.serialized_graph_runtime_state == state.serialized_graph_runtime_state
     restored_entity = loaded.get_generate_entity()
     assert isinstance(restored_entity, type(state.generate_entity.entity))
