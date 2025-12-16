@@ -997,7 +997,7 @@ class RagPipelineDatasourceVariableApi(Resource):
         )
         return workflow_node_execution
 
-
+from flask_restx import reqparse
 @console_ns.route("/rag/pipelines/recommended-plugins")
 class RagPipelineRecommendedPluginApi(Resource):
     @setup_required
