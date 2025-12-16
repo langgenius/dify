@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from flask import abort, request
+from flask import abort, make_response, request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
 
@@ -259,7 +259,7 @@ class AnnotationApi(Resource):
 @console_ns.route("/apps/<uuid:app_id>/annotations/export")
 class AnnotationExportApi(Resource):
     @console_ns.doc("export_annotations")
-    @console_ns.doc(description="Export all annotations for an app")
+    @console_ns.doc(description="Export all annotations for an app with CSV injection protection")
     @console_ns.doc(params={"app_id": "Application ID"})
     @console_ns.response(
         200,
@@ -274,8 +274,14 @@ class AnnotationExportApi(Resource):
     def get(self, app_id):
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
-        response = {"data": marshal(annotation_list, annotation_fields)}
-        return response, 200
+        response_data = {"data": marshal(annotation_list, annotation_fields)}
+
+        # Create response with secure headers for CSV export
+        response = make_response(response_data, 200)
+        response.headers["Content-Type"] = "application/json; charset=utf-8"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+
+        return response
 
 
 @console_ns.route("/apps/<uuid:app_id>/annotations/<uuid:annotation_id>")
