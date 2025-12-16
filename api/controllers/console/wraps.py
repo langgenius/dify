@@ -449,11 +449,13 @@ def _decrypt_field(field_name: str, error_class: type[Exception], error_message:
     encoded_value = payload[field_name]
     decoded_value = FieldEncryption.decrypt_field(encoded_value)
 
+    # If decoding failed, raise error immediately
+    if decoded_value is None:
+        raise error_class(error_message)
+
     # Update payload dict in-place with decoded value
     # Since payload is a mutable dict and get_json() returns the cached reference,
     # modifying it will affect all subsequent accesses including console_ns.payload
-    if decoded_value is None:
-        return
     payload[field_name] = decoded_value
 
 

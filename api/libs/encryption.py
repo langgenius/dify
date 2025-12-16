@@ -36,7 +36,7 @@ class FieldEncryption:
             return decoded_text
 
         except Exception:
-            # Decoding failed - return None to trigger error
+            # Decoding failed - return None to trigger error in caller
             return None
 
     @classmethod
