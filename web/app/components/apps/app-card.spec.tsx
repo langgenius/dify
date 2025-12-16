@@ -3,13 +3,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import { AccessMode } from '@/models/access-control'
 
-// Mock react-i18next - return key as per testing skills
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock next/navigation
 const mockPush = jest.fn()
 jest.mock('next/navigation', () => ({

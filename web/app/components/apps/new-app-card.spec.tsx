@@ -1,13 +1,6 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 
-// Mock react-i18next - return key as per testing skills
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock next/navigation
 const mockReplace = jest.fn()
 jest.mock('next/navigation', () => ({

@@ -2,13 +2,6 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 
-// Mock react-i18next - return key as per testing skills
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock next/navigation
 const mockReplace = jest.fn()
 const mockRouter = { replace: mockReplace }
