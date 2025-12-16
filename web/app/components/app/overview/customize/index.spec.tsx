@@ -2,13 +2,6 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CustomizeModal from './index'
 import { AppModeEnum } from '@/types/app'
 
-// Mock react-i18next
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock useDocLink from context
 const mockDocLink = jest.fn((path?: string) => `https://docs.dify.ai/en-US${path || ''}`)
 jest.mock('@/context/i18n', () => ({
