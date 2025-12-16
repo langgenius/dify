@@ -5,13 +5,6 @@ import type { AppIconType } from '@/types/app'
 import { AppModeEnum } from '@/types/app'
 import type { App } from '@/models/explore'
 
-// Mock only external dependencies as per guidance
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('@heroicons/react/20/solid', () => ({
   PlusIcon: ({ className }: any) => <div data-testid="plus-icon" className={className} aria-label="Add icon">+</div>,
 }))
