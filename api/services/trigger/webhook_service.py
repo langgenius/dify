@@ -352,7 +352,7 @@ class WebhookService:
         """Guess MIME type for binary payloads using python-magic when available."""
         if magic is not None:
             try:
-                detected = magic.from_buffer(file_content[:4096], mime=True)
+                detected = magic.from_buffer(file_content[:1024], mime=True)
                 if detected:
                     return detected
             except Exception:
