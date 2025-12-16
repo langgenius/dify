@@ -8,15 +8,9 @@ import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Radio from '@/app/components/base/radio/ui'
 import { cn } from '@/utils/classnames'
-
-type NotionPageTreeItem = {
-  children: Set<string>
-  descendants: Set<string>
-  depth: number
-  ancestors: string[]
-} & DataSourceNotionPage
-
-type NotionPageTreeMap = Record<string, NotionPageTreeItem>
+import { OnlineDriveViewMode } from '@/models/pipeline'
+import type { OnlineDriveViewMode as OnlineDriveViewModeType } from '@/models/pipeline'
+import type { NotionPageTreeMap } from './index'
 
 type NotionPageItem = {
   expand: boolean
@@ -36,6 +30,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
   previewPageId: string
   pagesMap: DataSourceNotionPageMap
   isMultipleChoice?: boolean
+  viewMode?: OnlineDriveViewModeType
 }>) => {
   const { t } = useTranslation()
   const {
@@ -51,6 +46,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
     previewPageId,
     pagesMap,
     isMultipleChoice,
+    viewMode = OnlineDriveViewMode.flat,
   } = data
   const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
@@ -111,7 +107,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
               }}
             />
           )}
-      {!searchValue && renderArrow()}
+      {!searchValue && viewMode === OnlineDriveViewMode.tree && renderArrow()}
       <NotionIcon
         className="mr-1 shrink-0"
         type="page"

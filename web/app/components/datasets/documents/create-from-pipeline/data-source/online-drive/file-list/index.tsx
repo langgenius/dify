@@ -1,8 +1,12 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { OnlineDriveViewMode } from '@/models/pipeline'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import { useDataSourceStoreWithSelector } from '../../store'
 import Header from './header'
 import List from './list'
+import TreeList from './list/tree-list'
 
 type FileListProps = {
   fileList: OnlineDriveFile[]
@@ -37,6 +41,13 @@ const FileList = ({
 }: FileListProps) => {
   const [inputValue, setInputValue] = useState(keywords)
 
+  const { viewMode, setViewMode } = useDataSourceStoreWithSelector(
+    useShallow(state => ({
+      viewMode: state.viewMode,
+      setViewMode: state.setViewMode,
+    })),
+  )
+
   const { run: updateKeywordsWithDebounce } = useDebounceFn(
     (keywords: string) => {
       updateKeywords(keywords)
@@ -66,17 +77,34 @@ const FileList = ({
         handleInputChange={handleInputChange}
         searchResultsLength={searchResultsLength}
         handleResetKeywords={handleResetKeywords}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
-      <List
-        fileList={fileList}
-        selectedFileIds={selectedFileIds}
-        keywords={keywords}
-        handleResetKeywords={handleResetKeywords}
-        handleOpenFolder={handleOpenFolder}
-        handleSelectFile={handleSelectFile}
-        isLoading={isLoading}
-        supportBatchUpload={supportBatchUpload}
-      />
+      {viewMode === OnlineDriveViewMode.flat
+        ? (
+          <List
+            fileList={fileList}
+            selectedFileIds={selectedFileIds}
+            keywords={keywords}
+            handleResetKeywords={handleResetKeywords}
+            handleOpenFolder={handleOpenFolder}
+            handleSelectFile={handleSelectFile}
+            isLoading={isLoading}
+            supportBatchUpload={supportBatchUpload}
+          />
+        )
+        : (
+          <TreeList
+            fileList={fileList}
+            selectedFileIds={selectedFileIds}
+            keywords={keywords}
+            handleResetKeywords={handleResetKeywords}
+            handleOpenFolder={handleOpenFolder}
+            handleSelectFile={handleSelectFile}
+            isLoading={isLoading}
+            supportBatchUpload={supportBatchUpload}
+          />
+        )}
     </div>
   )
 }

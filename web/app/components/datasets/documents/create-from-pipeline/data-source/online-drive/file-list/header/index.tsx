@@ -1,7 +1,9 @@
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
+import type { OnlineDriveViewMode } from '@/models/pipeline'
 import Breadcrumbs from './breadcrumbs'
+import ViewToggle from './view-toggle'
 
 type HeaderProps = {
   breadcrumbs: string[]
@@ -12,6 +14,8 @@ type HeaderProps = {
   handleInputChange: React.ChangeEventHandler<HTMLInputElement>
   handleResetKeywords: () => void
   isInPipeline: boolean
+  viewMode: OnlineDriveViewMode
+  onViewModeChange: (mode: OnlineDriveViewMode) => void
 }
 
 const Header = ({
@@ -23,6 +27,8 @@ const Header = ({
   searchResultsLength,
   handleInputChange,
   handleResetKeywords,
+  viewMode,
+  onViewModeChange,
 }: HeaderProps) => {
   const { t } = useTranslation()
 
@@ -35,6 +41,12 @@ const Header = ({
         searchResultsLength={searchResultsLength}
         isInPipeline={isInPipeline}
       />
+
+      <ViewToggle
+        viewMode={viewMode}
+        onChange={onViewModeChange}
+      />
+
       <Input
         value={inputValue}
         onChange={handleInputChange}
