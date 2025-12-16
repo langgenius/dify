@@ -5,7 +5,8 @@ export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD'
 export type ArrayElementType = 'string' | 'number' | 'boolean' | 'object'
 
 export const getArrayElementType = (arrayType: `array[${ArrayElementType}]`): ArrayElementType => {
-  const match = arrayType.match(/^array\[(.+)\]$/)
+  const arrayRegex = /^array\[(.+)\]$/
+  const match = arrayRegex.exec(arrayType)
   return (match?.[1] as ArrayElementType) || 'string'
 }
 

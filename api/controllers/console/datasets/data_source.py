@@ -218,14 +218,14 @@ class DataSourceNotionListApi(Resource):
 
 
 @console_ns.route(
-    "/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview",
+    "/notion/pages/<uuid:page_id>/<string:page_type>/preview",
     "/datasets/notion-indexing-estimate",
 )
 class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, workspace_id, page_id, page_type):
+    def get(self, page_id, page_type):
         _, current_tenant_id = current_account_with_tenant()
 
         credential_id = request.args.get("credential_id", default=None, type=str)
@@ -239,11 +239,10 @@ class DataSourceNotionApi(Resource):
             plugin_id="langgenius/notion_datasource",
         )
 
-        workspace_id = str(workspace_id)
         page_id = str(page_id)
 
         extractor = NotionExtractor(
-            notion_workspace_id=workspace_id,
+            notion_workspace_id="",
             notion_obj_id=page_id,
             notion_page_type=page_type,
             notion_access_token=credential.get("integration_secret"),
