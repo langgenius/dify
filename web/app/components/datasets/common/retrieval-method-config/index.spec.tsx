@@ -9,13 +9,6 @@ import {
 } from '@/models/datasets'
 import RetrievalMethodConfig from './index'
 
-// Mock react-i18next
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock provider context with controllable supportRetrievalMethods
 let mockSupportRetrievalMethods: RETRIEVE_METHOD[] = [
   RETRIEVE_METHOD.semantic,

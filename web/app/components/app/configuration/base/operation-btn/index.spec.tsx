@@ -1,12 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import OperationBtn from './index'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('@remixicon/react', () => ({
   RiAddLine: (props: { className?: string }) => (
     <svg data-testid='add-icon' className={props.className} />
