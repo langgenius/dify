@@ -1,5 +1,6 @@
 'use client'
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useShallow } from 'zustand/react/shallow'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { OnlineDriveFileType } from '@/models/pipeline'
 import TreeItem from './tree-item'
@@ -7,7 +8,7 @@ import EmptyFolder from './empty-folder'
 import EmptySearchResult from './empty-search-result'
 import Loading from '@/app/components/base/loading'
 import { RiLoader2Line } from '@remixicon/react'
-import { useDataSourceStore } from '../../../store'
+import { useDataSourceStoreWithSelector } from '../../../store'
 import {
   buildTreeMapFromFlatList,
   filterTreeBySearchKeywords,
@@ -40,13 +41,23 @@ const TreeList = ({
 }: TreeListProps) => {
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
-  const dataSourceStore = useDataSourceStore()
-  const { treeMap, prefix, expandedFolderIds } = dataSourceStore.getState()
 
-  // Build/update tree map when fileList changes
+  const { prefix, expandedFolderIds, setExpandedFolderIds, setSelectedFileIds, setNextPageParameters, currentNextPageParametersRef, isTruncated } = useDataSourceStoreWithSelector(
+    useShallow(state => ({
+      prefix: state.prefix,
+      expandedFolderIds: state.expandedFolderIds,
+      setExpandedFolderIds: state.setExpandedFolderIds,
+      setSelectedFileIds: state.setSelectedFileIds,
+      setNextPageParameters: state.setNextPageParameters,
+      currentNextPageParametersRef: state.currentNextPageParametersRef,
+      isTruncated: state.isTruncated,
+    })),
+  )
+
+  // Build tree map from fileList (not stored in state to avoid circular dependencies)
   const currentTreeMap = useMemo(() => {
-    return buildTreeMapFromFlatList(fileList, prefix, treeMap, expandedFolderIds)
-  }, [fileList, prefix, treeMap, expandedFolderIds])
+    return buildTreeMapFromFlatList(fileList, prefix, {}, expandedFolderIds)
+  }, [fileList, prefix, expandedFolderIds])
 
   // Apply search filtering if keywords present
   const displayList = useMemo(() => {
@@ -78,20 +89,11 @@ const TreeList = ({
     return getFlattenedTreeList(currentTreeMap, rootIds)
   }, [currentTreeMap, prefix, keywords, expandedFolderIds])
 
-  // Update store with current tree map
-  useEffect(() => {
-    const { setTreeMap } = dataSourceStore.getState()
-    if (Object.keys(currentTreeMap).length > 0)
-      setTreeMap(currentTreeMap)
-  }, [currentTreeMap, dataSourceStore])
-
   // Infinite scroll observer
   useEffect(() => {
     if (anchorRef.current) {
       observerRef.current = new IntersectionObserver(
         (entries) => {
-          const { setNextPageParameters, currentNextPageParametersRef, isTruncated }
-            = dataSourceStore.getState()
           if (entries[0].isIntersecting && isTruncated.current && !isLoading)
             setNextPageParameters(currentNextPageParametersRef.current)
         },
@@ -102,20 +104,18 @@ const TreeList = ({
       observerRef.current.observe(anchorRef.current)
     }
     return () => observerRef.current?.disconnect()
-  }, [anchorRef, isLoading, dataSourceStore])
+  }, [anchorRef, isLoading, isTruncated, currentNextPageParametersRef, setNextPageParameters])
 
   const handleToggleExpand = useCallback(
     (folderId: string) => {
-      const { setTreeMap, setExpandedFolderIds } = dataSourceStore.getState()
-      const { newTreeMap, newExpandedIds } = toggleFolderExpand(
+      const { newExpandedIds } = toggleFolderExpand(
         currentTreeMap,
         folderId,
         expandedFolderIds,
       )
-      setTreeMap(newTreeMap)
       setExpandedFolderIds(newExpandedIds)
     },
-    [currentTreeMap, expandedFolderIds, dataSourceStore],
+    [currentTreeMap, expandedFolderIds, setExpandedFolderIds],
   )
 
   const handleSelect = useCallback(
@@ -137,13 +137,11 @@ const TreeList = ({
           newSelectedIds = selectedFileIds.filter(id => !descendantIds.includes(id))
         }
         else {
-          // Select: add all descendants
-          newSelectedIds = [...selectedFileIds, ...descendantIds]
+          // Select: add all descendants (use Set to prevent duplicates)
+          newSelectedIds = Array.from(new Set([...selectedFileIds, ...descendantIds]))
         }
 
-        // Call handleSelectFile with a mock file that represents bulk selection
-        // We need to update selectedFileIds in the store directly
-        const { setSelectedFileIds } = dataSourceStore.getState()
+        // Directly update selectedFileIds in the store for bulk selection/deselection
         setSelectedFileIds(newSelectedIds)
       }
       else {
@@ -156,7 +154,7 @@ const TreeList = ({
       currentTreeMap,
       selectedFileIds,
       handleSelectFile,
-      dataSourceStore,
+      setSelectedFileIds,
     ],
   )
 
@@ -176,18 +174,12 @@ const TreeList = ({
           {displayList.map((treeItem) => {
             const isSelected = selectedFileIds.includes(treeItem.id)
 
-            // For folders, check if any descendants are selected
-            const canExpand
-              = treeItem.hasChildren
-              && (treeItem.type === OnlineDriveFileType.folder
-                || treeItem.type === OnlineDriveFileType.bucket)
-
             return (
               <TreeItem
                 key={treeItem.id}
                 treeItem={treeItem}
                 isSelected={isSelected}
-                canExpand={canExpand}
+                canExpand={treeItem.hasChildren}
                 onSelect={handleSelect}
                 onOpen={handleOpenFolder}
                 onToggleExpand={handleToggleExpand}
@@ -197,7 +189,7 @@ const TreeList = ({
           })}
           {isPartialLoading && (
             <div className='flex items-center justify-center py-2'>
-              <RiLoader2Line className='animation-spin size-4 text-text-tertiary' />
+              <RiLoader2Line className='size-4 animate-spin text-text-tertiary' />
             </div>
           )}
           <div ref={anchorRef} className='h-0' />

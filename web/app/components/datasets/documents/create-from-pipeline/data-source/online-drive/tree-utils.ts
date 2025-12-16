@@ -17,6 +17,7 @@ export const buildTreeMapFromFlatList = (
   const currentParentId = prefix.length > 0 ? prefix[prefix.length - 1] : null
   const currentDepth = Math.min(prefix.length, MAX_DEPTH)
 
+  // First pass: create/update nodes and populate children
   fileList.forEach((file) => {
     if (!newTreeMap[file.id]) {
       // Create new node
@@ -31,33 +32,63 @@ export const buildTreeMapFromFlatList = (
       }
     }
     else {
-      // Update existing node
+      // Update existing node (deep clone Sets to avoid mutations)
+      const existingNode = newTreeMap[file.id]
       newTreeMap[file.id] = {
-        ...newTreeMap[file.id],
+        ...existingNode,
         ...file,
+        children: new Set(existingNode.children),
+        descendants: new Set(existingNode.descendants),
         isExpanded: expandedFolderIds.has(file.id),
       }
     }
 
-    // Update parent's children and descendants
+    // Update parent's children (clone parent node to avoid mutation)
     if (currentParentId && newTreeMap[currentParentId]) {
-      newTreeMap[currentParentId].children.add(file.id)
-      newTreeMap[currentParentId].hasChildren = true
-
-      // Build descendants recursively up the tree
-      const buildDescendants = (nodeId: string, childId: string) => {
-        if (newTreeMap[nodeId]) {
-          newTreeMap[nodeId].descendants.add(childId)
-
-          // Recursively add to ancestors
-          const parentOfNode = newTreeMap[nodeId].parentId
-          if (parentOfNode && newTreeMap[parentOfNode])
-            buildDescendants(parentOfNode, childId)
-        }
+      const parentNode = newTreeMap[currentParentId]
+      newTreeMap[currentParentId] = {
+        ...parentNode,
+        children: new Set(parentNode.children),
+        descendants: new Set(parentNode.descendants),
+        hasChildren: true,
       }
-      buildDescendants(currentParentId, file.id)
+      newTreeMap[currentParentId].children.add(file.id)
     }
   })
+
+  // Second pass: build descendants bottom-up for affected ancestors
+  const updateDescendantsForNode = (nodeId: string) => {
+    const node = newTreeMap[nodeId]
+    if (!node)
+      return
+
+    // Clear and rebuild descendants from children
+    const descendants = new Set<string>()
+
+    node.children.forEach((childId) => {
+      descendants.add(childId)
+      // Add child's descendants (union of sets)
+      const childNode = newTreeMap[childId]
+      if (childNode)
+        childNode.descendants.forEach(descendantId => descendants.add(descendantId))
+    })
+
+    // Clone children Set to avoid mutation
+    newTreeMap[nodeId] = {
+      ...node,
+      children: new Set(node.children),
+      descendants,
+    }
+  }
+
+  // Update ancestors starting from current parent up to root
+  if (currentParentId) {
+    let ancestorId: string | null = currentParentId
+    while (ancestorId && newTreeMap[ancestorId]) {
+      updateDescendantsForNode(ancestorId)
+      ancestorId = newTreeMap[ancestorId].parentId
+    }
+  }
 
   return newTreeMap
 }

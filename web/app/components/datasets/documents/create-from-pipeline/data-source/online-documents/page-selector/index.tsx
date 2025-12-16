@@ -53,26 +53,16 @@ const PageSelector = ({
   const [currentPreviewPageId, setCurrentPreviewPageId] = useState('')
 
   useEffect(() => {
-    // In flat mode, show all items with depth 0
-    // In tree mode, show only root items
-    if (viewMode === OnlineDriveViewMode.flat) {
-      setDataList(list.map((item) => {
-        return {
-          ...item,
-          expand: false,
-          depth: 0,
-        }
-      }))
-    }
-    else {
-      setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
-        return {
-          ...item,
-          expand: false,
-          depth: 0,
-        }
-      }))
-    }
+    // In tree mode, show only root items, otherwise show all.
+    const initialList = viewMode === OnlineDriveViewMode.tree
+      ? list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id])
+      : list
+
+    setDataList(initialList.map(item => ({
+      ...item,
+      expand: false,
+      depth: 0,
+    })))
   }, [currentCredentialId, viewMode, list, pagesMap])
 
   const searchDataList = list.filter((item) => {
