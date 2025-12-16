@@ -386,6 +386,7 @@ const translation = {
     optional_and_hidden: '(वैकल्पिक और छिपा हुआ)',
     goTo: 'जाओ',
     startNode: 'प्रारंभ नोड',
+    openWorkflow: 'वर्कफ़्लो खोलें',
   },
   nodes: {
     common: {
@@ -448,6 +449,7 @@ const translation = {
         variable: 'चर का प्रयोग करें',
       },
       inputVars: 'इनपुट चर',
+      pluginNotInstalled: 'प्लगइन इंस्टॉल नहीं है',
     },
     start: {
       required: 'आवश्यक',
@@ -555,6 +557,7 @@ const translation = {
         icon: 'विभाजित आइकन',
         url: 'विभाजित URL',
         metadata: 'अन्य मेटाडेटा',
+        files: 'प्राप्त फ़ाइलें',
       },
       metadata: {
         options: {
@@ -584,6 +587,8 @@ const translation = {
         title: 'मेटाडेटा फ़िल्टरिंग',
         tip: 'मेटाडेटा छानने की प्रक्रिया है जिसमें मेटाडेटा विशेषताओं (जैसे टैग, श्रेणियाँ, या पहुंच अनुमतियाँ) का उपयोग करके एक प्रणाली के भीतर प्रासंगिक जानकारी की पुनर्प्राप्ति को सुधारने और नियंत्रित करने के लिए किया जाता है।',
       },
+      queryText: 'प्रश्न पाठ',
+      queryAttachment: 'क्वेरी इमेजेस',
     },
     http: {
       inputVars: 'इनपुट वेरिएबल्स',

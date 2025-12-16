@@ -238,6 +238,16 @@ const translation = {
   docAllEnabled_other: 'Todos os documentos {{count}} ativados',
   partialEnabled_one: 'Total de {{count}} documentos, {{num}} disponíveis',
   partialEnabled_other: 'Total de {{count}} documentos, {{num}} disponíveis',
+  cornerLabel: {
+    unavailable: 'Indisponível',
+    pipeline: 'Pipeline',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Arraste e solte o arquivo ou pasta, ou',
+    browse: 'Navegar',
+    tip: '{{supportTypes}} (Máx. {{batchCount}}, {{size}}MB cada)',
+  },
 }
 
 export default translation

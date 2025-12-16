@@ -75,44 +75,18 @@ class ParserPreferredProviderType(BaseModel):
     preferred_provider_type: Literal["system", "custom"]
 
 
-console_ns.schema_model(
-    ParserModelList.__name__, ParserModelList.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
-console_ns.schema_model(
-    ParserCredentialId.__name__,
-    ParserCredentialId.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
 
-console_ns.schema_model(
-    ParserCredentialCreate.__name__,
-    ParserCredentialCreate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserCredentialUpdate.__name__,
-    ParserCredentialUpdate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserCredentialDelete.__name__,
-    ParserCredentialDelete.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserCredentialSwitch.__name__,
-    ParserCredentialSwitch.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserCredentialValidate.__name__,
-    ParserCredentialValidate.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserPreferredProviderType.__name__,
-    ParserPreferredProviderType.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+reg(ParserModelList)
+reg(ParserCredentialId)
+reg(ParserCredentialCreate)
+reg(ParserCredentialUpdate)
+reg(ParserCredentialDelete)
+reg(ParserCredentialSwitch)
+reg(ParserCredentialValidate)
+reg(ParserPreferredProviderType)
 
 
 @console_ns.route("/workspaces/current/model-providers")

@@ -10,12 +10,13 @@ import uuid
 from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Annotated, Any, Optional, Union, cast
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restx import fields
 from pydantic import BaseModel
+from pydantic.functional_validators import AfterValidator
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
@@ -103,7 +104,10 @@ def email(email):
     raise ValueError(error)
 
 
-def uuid_value(value):
+EmailStr = Annotated[str, AfterValidator(email)]
+
+
+def uuid_value(value: Any) -> str:
     if value == "":
         return str(value)
 
@@ -180,7 +184,7 @@ def timezone(timezone_string):
 def convert_datetime_to_date(field, target_timezone: str = ":tz"):
     if dify_config.DB_TYPE == "postgresql":
         return f"DATE(DATE_TRUNC('day', {field} AT TIME ZONE 'UTC' AT TIME ZONE {target_timezone}))"
-    elif dify_config.DB_TYPE == "mysql":
+    elif dify_config.DB_TYPE in ["mysql", "oceanbase", "seekdb"]:
         return f"DATE(CONVERT_TZ({field}, 'UTC', {target_timezone}))"
     else:
         raise NotImplementedError(f"Unsupported database type: {dify_config.DB_TYPE}")
@@ -211,7 +215,11 @@ def generate_text_hash(text: str) -> str:
 
 def compact_generate_response(response: Union[Mapping, Generator, RateLimitGenerator]) -> Response:
     if isinstance(response, dict):
-        return Response(response=json.dumps(jsonable_encoder(response)), status=200, mimetype="application/json")
+        return Response(
+            response=json.dumps(jsonable_encoder(response)),
+            status=200,
+            content_type="application/json; charset=utf-8",
+        )
     else:
 
         def generate() -> Generator:

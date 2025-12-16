@@ -36,6 +36,11 @@ import { useAddDocumentsSteps, useLocalFile, useOnlineDocument, useOnlineDrive, 
 import DataSourceProvider from './data-source/store/provider'
 import { useDataSourceStore } from './data-source/store'
 import { useFileUploadConfig } from '@/service/use-common'
+import UpgradeCard from '../../create/step-one/upgrade-card'
+import Divider from '@/app/components/base/divider'
+import { useBoolean } from 'ahooks'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const CreateFormPipeline = () => {
   const { t } = useTranslation()
@@ -57,7 +62,7 @@ const CreateFormPipeline = () => {
   const {
     steps,
     currentStep,
-    handleNextStep,
+    handleNextStep: doHandleNextStep,
     handleBackStep,
   } = useAddDocumentsSteps()
   const {
@@ -102,7 +107,34 @@ const CreateFormPipeline = () => {
       return onlineDriveFileList.length > 0 && isVectorSpaceFull && enableBilling
     return false
   }, [allFileLoaded, datasource, datasourceType, enableBilling, isVectorSpaceFull, onlineDocuments.length, onlineDriveFileList.length, websitePages.length])
-  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
+  const supportBatchUpload = !enableBilling || plan.type !== 'sandbox'
+
+  const [isShowPlanUpgradeModal, {
+    setTrue: showPlanUpgradeModal,
+    setFalse: hidePlanUpgradeModal,
+  }] = useBoolean(false)
+  const handleNextStep = useCallback(() => {
+    if (!supportBatchUpload) {
+      let isMultiple = false
+      if (datasourceType === DatasourceType.localFile && localFileList.length > 1)
+        isMultiple = true
+
+      if (datasourceType === DatasourceType.onlineDocument && onlineDocuments.length > 1)
+        isMultiple = true
+
+      if (datasourceType === DatasourceType.websiteCrawl && websitePages.length > 1)
+        isMultiple = true
+
+      if (datasourceType === DatasourceType.onlineDrive && selectedFileIds.length > 1)
+        isMultiple = true
+
+      if (isMultiple) {
+        showPlanUpgradeModal()
+        return
+      }
+    }
+    doHandleNextStep()
+  }, [datasourceType, doHandleNextStep, localFileList.length, onlineDocuments.length, selectedFileIds.length, showPlanUpgradeModal, supportBatchUpload, websitePages.length])
 
   const nextBtnDisabled = useMemo(() => {
     if (!datasource) return true
@@ -133,6 +165,7 @@ const CreateFormPipeline = () => {
         return item.type !== 'bucket'
       }).length > 0
     }
+    return false
   }, [currentWorkspace?.pages.length, datasourceType, onlineDriveFileList])
 
   const totalOptions = useMemo(() => {
@@ -311,6 +344,10 @@ const CreateFormPipeline = () => {
         setBatchId((res as PublishedPipelineRunResponse).batch || '')
         setDocuments((res as PublishedPipelineRunResponse).documents || [])
         handleNextStep()
+        trackEvent('dataset_document_added', {
+          data_source_type: datasourceType,
+          indexing_technique: 'pipeline',
+        })
       },
     })
   }, [dataSourceStore, datasource, datasourceType, handleNextStep, pipelineId, runPublishedPipeline])
@@ -389,13 +426,14 @@ const CreateFormPipeline = () => {
   }, [PagesMapAndSelectedPagesId, currentWorkspace?.pages, dataSourceStore, datasourceType])
 
   const clearDataSourceData = useCallback((dataSource: Datasource) => {
-    if (dataSource.nodeData.provider_type === DatasourceType.onlineDocument)
+    const providerType = dataSource.nodeData.provider_type
+    if (providerType === DatasourceType.onlineDocument)
       clearOnlineDocumentData()
-    else if (dataSource.nodeData.provider_type === DatasourceType.websiteCrawl)
+    else if (providerType === DatasourceType.websiteCrawl)
       clearWebsiteCrawlData()
-    else if (dataSource.nodeData.provider_type === DatasourceType.onlineDrive)
+    else if (providerType === DatasourceType.onlineDrive)
       clearOnlineDriveData()
-  }, [])
+  }, [clearOnlineDocumentData, clearOnlineDriveData, clearWebsiteCrawlData])
 
   const handleSwitchDataSource = useCallback((dataSource: Datasource) => {
     const {
@@ -406,13 +444,13 @@ const CreateFormPipeline = () => {
     setCurrentCredentialId('')
     currentNodeIdRef.current = dataSource.nodeId
     setDatasource(dataSource)
-  }, [dataSourceStore])
+  }, [clearDataSourceData, dataSourceStore])
 
   const handleCredentialChange = useCallback((credentialId: string) => {
     const { setCurrentCredentialId } = dataSourceStore.getState()
     clearDataSourceData(datasource!)
     setCurrentCredentialId(credentialId)
-  }, [dataSourceStore, datasource])
+  }, [clearDataSourceData, dataSourceStore, datasource])
 
   if (isFetchingPipelineInfo) {
     return (
@@ -443,7 +481,7 @@ const CreateFormPipeline = () => {
                   {datasourceType === DatasourceType.localFile && (
                     <LocalFile
                       allowedExtensions={datasource!.nodeData.fileExtensions || []}
-                      notSupportBatchUpload={notSupportBatchUpload}
+                      supportBatchUpload={supportBatchUpload}
                     />
                   )}
                   {datasourceType === DatasourceType.onlineDocument && (
@@ -479,6 +517,14 @@ const CreateFormPipeline = () => {
                     handleNextStep={handleNextStep}
                     tip={tip}
                   />
+                  {
+                    !supportBatchUpload && datasourceType === DatasourceType.localFile && localFileList.length > 0 && (
+                      <>
+                        <Divider type='horizontal' className='my-4 h-px bg-divider-subtle' />
+                        <UpgradeCard />
+                      </>
+                    )
+                  }
                 </div>
               )
             }
@@ -557,6 +603,14 @@ const CreateFormPipeline = () => {
           </div>
         )
       }
+      {isShowPlanUpgradeModal && (
+        <PlanUpgradeModal
+          show
+          onClose={hidePlanUpgradeModal}
+          title={t('billing.upgrade.uploadMultiplePages.title')!}
+          description={t('billing.upgrade.uploadMultiplePages.description')!}
+        />
+      )}
     </div>
   )
 }

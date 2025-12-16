@@ -157,7 +157,7 @@ const JinaReader: FC<Props> = ({
           total: 1,
           data: [{
             title,
-            content,
+            markdown: content,
             description,
             source_url: url,
           }],

@@ -29,7 +29,7 @@ class _TestNode(Node[_TestNodeData]):
 
     @classmethod
     def version(cls) -> str:
-        return "test"
+        return "1"
 
     def __init__(
         self,

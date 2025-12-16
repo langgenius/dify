@@ -5,9 +5,9 @@ from sqlalchemy import func, select
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.rag.models.document import Document
+from core.rag.models.document import AttachmentDocument, Document
 from extensions.ext_database import db
-from models.dataset import ChildChunk, Dataset, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DocumentSegment, SegmentAttachmentBinding
 
 
 class DatasetDocumentStore:
@@ -120,6 +120,9 @@ class DatasetDocumentStore:
 
                 db.session.add(segment_document)
                 db.session.flush()
+                self.add_multimodel_documents_binding(
+                    segment_id=segment_document.id, multimodel_documents=doc.attachments
+                )
                 if save_child:
                     if doc.children:
                         for position, child in enumerate(doc.children, start=1):
@@ -144,6 +147,9 @@ class DatasetDocumentStore:
                 segment_document.index_node_hash = doc.metadata.get("doc_hash")
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
+                self.add_multimodel_documents_binding(
+                    segment_id=segment_document.id, multimodel_documents=doc.attachments
+                )
                 if save_child and doc.children:
                     # delete the existing child chunks
                     db.session.query(ChildChunk).where(
@@ -233,3 +239,15 @@ class DatasetDocumentStore:
         document_segment = db.session.scalar(stmt)
 
         return document_segment
+
+    def add_multimodel_documents_binding(self, segment_id: str, multimodel_documents: list[AttachmentDocument] | None):
+        if multimodel_documents:
+            for multimodel_document in multimodel_documents:
+                binding = SegmentAttachmentBinding(
+                    tenant_id=self._dataset.tenant_id,
+                    dataset_id=self._dataset.id,
+                    document_id=self._document_id,
+                    segment_id=segment_id,
+                    attachment_id=multimodel_document.metadata["doc_id"],
+                )
+                db.session.add(binding)

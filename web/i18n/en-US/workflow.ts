@@ -464,6 +464,7 @@ const translation = {
         variable: 'Use variable',
       },
       inputVars: 'Input Variables',
+      pluginNotInstalled: 'Plugin is not installed',
     },
     start: {
       required: 'required',
@@ -562,6 +563,8 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',
+      queryText: 'Query Text',
+      queryAttachment: 'Query Images',
       knowledge: 'Knowledge',
       outputVars: {
         output: 'Retrieval segmented data',
@@ -570,6 +573,7 @@ const translation = {
         icon: 'Segmented icon',
         url: 'Segmented URL',
         metadata: 'Other metadata',
+        files: 'Retrieved files',
       },
       metadata: {
         title: 'Metadata Filtering',

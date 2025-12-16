@@ -29,6 +29,7 @@ const translation = {
     vectorSpace: 'Spațiu vectorial',
     vectorSpaceTooltip: 'Spațiul vectorial este sistemul de memorie pe termen lung necesar pentru ca LLM-urile să înțeleagă datele dvs.',
     documentProcessingPriority: 'Prioritatea procesării documentelor',
+    documentProcessingPriorityTip: 'Pentru o prioritate mai mare a procesării documentelor, vă rugăm să vă actualizați planul.',
     documentProcessingPriorityUpgrade: 'Procesați mai multe date cu o acuratețe mai mare și la viteze mai rapide.',
     priority: {
       'standard': 'Standard',
@@ -136,14 +137,14 @@ const translation = {
       name: 'Întreprindere',
       description: 'Obțineți capacități și asistență complete pentru sisteme critice la scară largă.',
       includesTitle: 'Tot ce este în planul Echipă, plus:',
-      features: ['Soluții de implementare scalabile la nivel de întreprindere', 'Autorizație de licență comercială', 'Funcții Exclusive pentru Afaceri', 'Mai multe spații de lucru și managementul întreprinderii', 'SSO', 'SLA-uri negociate de partenerii Dify', 'Securitate și Control Avansate', 'Actualizări și întreținere de către Dify Oficial', 'Asistență Tehnică Profesională'],
+      features: ['Soluții de implementare scalabile la nivel de întreprindere', 'Autorizație de licență comercială', 'Funcții Exclusive pentru Afaceri', 'Mai multe spații de lucru și managementul întreprinderii', 'Autentificare unică', 'SLA-uri negociate de partenerii Dify', 'Securitate și Control Avansate', 'Actualizări și întreținere de către Dify Oficial', 'Asistență Tehnică Profesională'],
       for: 'Pentru echipe de mari dimensiuni',
       price: 'Personalizat',
       priceTip: 'Facturare anuală doar',
       btnText: 'Contactați Vânzări',
     },
     community: {
-      features: ['Toate Funcțiile Principale Lansate în Repositorul Public', 'Spațiu de lucru unic', 'Respectă Licența Open Source Dify'],
+      features: ['Toate Funcționalitățile de Bază Lansate în Repositorul Public', 'Spațiu de lucru unic', 'Respectă Licența Open Source Dify'],
       description: 'Pentru utilizatori individuali, echipe mici sau proiecte necomerciale',
       btnText: 'Începe cu Comunitatea',
       price: 'Gratuit',
@@ -197,6 +198,23 @@ const translation = {
     usageTitle: 'EVENIMENTE DECLANȘATOARE',
     description: 'Ai atins limita de evenimente declanșatoare de flux de lucru pentru acest plan.',
     title: 'Actualizează pentru a debloca mai multe evenimente declanșatoare',
+  },
+  viewBillingTitle: 'Facturare și abonamente',
+  viewBillingDescription: 'Gestionează metodele de plată, facturile și modificările abonamentului',
+  viewBillingAction: 'Gestiona',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Actualizează pentru a încărca mai multe documente odată',
+      description: 'Ați atins limita de încărcare — poate fi selectat și încărcat doar un singur document odată în planul dvs. actual.',
+    },
+    uploadMultipleFiles: {
+      title: 'Fă upgrade pentru a debloca încărcarea documentelor în masă',
+      description: 'Încărcați mai multe documente simultan pentru a economisi timp și a îmbunătăți eficiența.',
+    },
+    addChunks: {
+      title: 'Actualizează pentru a continua să adaugi segmente',
+      description: 'Ai atins limita de adăugare a segmentelor pentru acest plan.',
+    },
   },
 }
 

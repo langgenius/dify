@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(ตัวเลือก & ซ่อน)',
     goTo: 'ไปที่',
     startNode: 'เริ่มต้นโหนด',
+    openWorkflow: 'เปิดเวิร์กโฟลว์',
   },
   nodes: {
     common: {
@@ -436,6 +437,7 @@ const translation = {
         variable: 'ใช้ตัวแปร',
       },
       inputVars: 'ตัวแปรอินพุต',
+      pluginNotInstalled: 'ปลั๊กอินไม่ได้ติดตั้ง',
     },
     start: {
       required: 'ต้องระบุ',
@@ -542,6 +544,7 @@ const translation = {
         icon: 'ไอคอนแบ่งส่วน',
         url: 'URL ที่แบ่งกลุ่ม',
         metadata: 'ข้อมูลเมตาอื่นๆ',
+        files: 'ไฟล์ที่ดึงมา',
       },
       metadata: {
         options: {
@@ -571,6 +574,8 @@ const translation = {
         title: 'การกรองข้อมูลเมตา',
         tip: 'การกรองข้อมูลเมตาดาต้าเป็นกระบวนการที่ใช้คุณลักษณะของเมตาดาต้า (เช่น แท็ก หมวดหมู่ หรือสิทธิการเข้าถึง) เพื่อปรับแต่งและควบคุมการดึงข้อมูลที่เกี่ยวข้องภายในระบบ.',
       },
+      queryText: 'ข้อความค้นหา',
+      queryAttachment: 'ค้นหารูปภาพ',
     },
     http: {
       inputVars: 'ตัวแปรอินพุต',

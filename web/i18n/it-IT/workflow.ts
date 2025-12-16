@@ -389,6 +389,7 @@ const translation = {
     optional_and_hidden: '(opzionale e nascosto)',
     goTo: 'Vai a',
     startNode: 'Nodo iniziale',
+    openWorkflow: 'Apri flusso di lavoro',
   },
   nodes: {
     common: {
@@ -451,6 +452,7 @@ const translation = {
         variable: 'Usa la variabile',
       },
       inputVars: 'Variabili di input',
+      pluginNotInstalled: 'Il plugin non è installato',
     },
     start: {
       required: 'richiesto',
@@ -559,6 +561,7 @@ const translation = {
         icon: 'Icona segmentata',
         url: 'URL segmentato',
         metadata: 'Altri metadati',
+        files: 'File recuperati',
       },
       metadata: {
         options: {
@@ -588,6 +591,8 @@ const translation = {
         title: 'Filtraggio dei metadati',
         tip: 'Il filtraggio dei metadati è il processo di utilizzo degli attributi dei metadati (come tag, categorie o permessi di accesso) per affinare e controllare il recupero di informazioni pertinenti all\'interno di un sistema.',
       },
+      queryText: 'Testo della query',
+      queryAttachment: 'Immagini della query',
     },
     http: {
       inputVars: 'Variabili di Input',
