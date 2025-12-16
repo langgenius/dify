@@ -32,9 +32,3 @@ export const initReactI18next = {
   type: '3rdParty',
   init: jest.fn(),
 }
-
-export default {
-  useTranslation,
-  Trans,
-  initReactI18next,
-}
