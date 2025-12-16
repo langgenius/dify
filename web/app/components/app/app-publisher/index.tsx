@@ -51,6 +51,7 @@ import { AppModeEnum } from '@/types/app'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import { basePath } from '@/utils/var'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
@@ -189,11 +190,12 @@ const AppPublisher = ({
     try {
       await onPublish?.(params)
       setPublished(true)
+      trackEvent('app_published_time', { action_mode: 'app', app_id: appDetail?.id, app_name: appDetail?.name })
     }
     catch {
       setPublished(false)
     }
-  }, [onPublish])
+  }, [appDetail, onPublish])
 
   const handleRestore = useCallback(async () => {
     try {
