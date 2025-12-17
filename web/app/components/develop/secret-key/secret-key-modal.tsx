@@ -5,7 +5,6 @@ import {
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
-import useSWR, { useSWRConfig } from 'swr'
 import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
 import ActionButton from '@/app/components/base/action-button'
@@ -15,18 +14,18 @@ import CopyFeedback from '@/app/components/base/copy-feedback'
 import {
   createApikey as createAppApikey,
   delApikey as delAppApikey,
-  fetchApiKeysList as fetchAppApiKeysList,
 } from '@/service/apps'
 import {
   createApikey as createDatasetApikey,
   delApikey as delDatasetApikey,
-  fetchApiKeysList as fetchDatasetApiKeysList,
 } from '@/service/datasets'
 import type { CreateApiKeyResponse } from '@/models/app'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useAppContext } from '@/context/app-context'
+import { useAppApiKeys, useInvalidateAppApiKeys } from '@/service/use-apps'
+import { useDatasetApiKeys, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
 
 type ISecretKeyModalProps = {
   isShow: boolean
@@ -45,12 +44,12 @@ const SecretKeyModal = ({
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
-  const { mutate } = useSWRConfig()
-  const commonParams = appId
-    ? { url: `/apps/${appId}/api-keys`, params: {} }
-    : { url: '/datasets/api-keys', params: {} }
-  const fetchApiKeysList = appId ? fetchAppApiKeysList : fetchDatasetApiKeysList
-  const { data: apiKeysList } = useSWR(commonParams, fetchApiKeysList)
+  const invalidateAppApiKeys = useInvalidateAppApiKeys()
+  const invalidateDatasetApiKeys = useInvalidateDatasetApiKeys()
+  const { data: appApiKeys, isLoading: isAppApiKeysLoading } = useAppApiKeys(appId, { enabled: !!appId && isShow })
+  const { data: datasetApiKeys, isLoading: isDatasetApiKeysLoading } = useDatasetApiKeys({ enabled: !appId && isShow })
+  const apiKeysList = appId ? appApiKeys : datasetApiKeys
+  const isApiKeysLoading = appId ? isAppApiKeysLoading : isDatasetApiKeysLoading
 
   const [delKeyID, setDelKeyId] = useState('')
 
@@ -64,7 +63,10 @@ const SecretKeyModal = ({
       ? { url: `/apps/${appId}/api-keys/${delKeyID}`, params: {} }
       : { url: `/datasets/api-keys/${delKeyID}`, params: {} }
     await delApikey(params)
-    mutate(commonParams)
+    if (appId)
+      invalidateAppApiKeys(appId)
+    else
+      invalidateDatasetApiKeys()
   }
 
   const onCreate = async () => {
@@ -75,7 +77,10 @@ const SecretKeyModal = ({
     const res = await createApikey(params)
     setVisible(true)
     setNewKey(res)
-    mutate(commonParams)
+    if (appId)
+      invalidateAppApiKeys(appId)
+    else
+      invalidateDatasetApiKeys()
   }
 
   const generateToken = (token: string) => {
@@ -88,7 +93,7 @@ const SecretKeyModal = ({
         <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
       </div>
       <p className='mt-1 shrink-0 text-[13px] font-normal leading-5 text-text-tertiary'>{t('appApi.apiKeyModal.apiSecretKeyTips')}</p>
-      {!apiKeysList && <div className='mt-4'><Loading /></div>}
+      {isApiKeysLoading && <div className='mt-4'><Loading /></div>}
       {
         !!apiKeysList?.data?.length && (
           <div className='mt-4 flex grow flex-col overflow-hidden'>

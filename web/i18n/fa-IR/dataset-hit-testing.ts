@@ -5,8 +5,8 @@ const translation = {
   table: {
     header: {
       source: 'منبع',
-      text: 'متن',
       time: 'زمان',
+      queryContent: 'محتوای پرس‌وجو',
     },
   },
   input: {
@@ -29,6 +29,12 @@ const translation = {
   hitChunks: '{{num}} را بزنید تکه های فرزند',
   chunkDetail: 'جزئیات تکه',
   open: 'باز',
+  imageUploader: {
+    tip: 'تصاویر را آپلود کنید یا رها کنید (حداکثر {{batchCount}} تصویر، هر کدام {{size}} مگابایت)',
+    tooltip: 'آپلود تصاویر (حداکثر {{batchCount}}، هر کدام {{size}} مگابایت)',
+    dropZoneTip: 'فایل را اینجا بکشید تا بارگذاری شود',
+    singleChunkAttachmentLimitTooltip: 'تعداد پیوست‌های تک قطعه‌ای نمی‌تواند از {{limit}} بیشتر باشد',
+  },
 }
 
 export default translation

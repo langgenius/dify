@@ -36,8 +36,6 @@ const translation = {
       recommend: 'Empfehlen',
     },
     invertedIndex: {
-      title: 'Invertierter Index',
-      description: 'Ein invertierter Index ist eine Struktur, die für effiziente Abfragen verwendet wird. Organisiert nach Begriffen, zeigt jeder Begriff auf Dokumente oder Webseiten, die ihn enthalten.',
     },
     change: 'Ändern',
     changeRetrievalMethod: 'Abfragemethode ändern',
@@ -235,6 +233,20 @@ const translation = {
     title: 'Service-API',
     enabled: 'Im Dienst',
     disabled: 'Behindert',
+  },
+  docAllEnabled_one: '{{count}} Dokument aktiviert',
+  docAllEnabled_other: 'Alle {{count}} Dokumente aktiviert',
+  partialEnabled_one: 'Insgesamt {{count}} Dokumente, {{num}} verfügbar',
+  partialEnabled_other: 'Insgesamt {{count}} Dokumente, {{num}} verfügbar',
+  cornerLabel: {
+    unavailable: 'Nicht verfügbar',
+    pipeline: 'Pipeline',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Datei oder Ordner ziehen und ablegen, oder',
+    browse: 'Durchsuchen',
+    tip: '{{supportTypes}} (Max {{batchCount}}, je {{size}}MB)',
   },
 }
 

@@ -57,8 +57,6 @@ def list_operator_node():
         graph_init_params=graph_init_params,
         graph_runtime_state=MagicMock(),
     )
-    # Initialize node data
-    node.init_node_data(node_config["data"])
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.variable_pool = MagicMock()
     return node

@@ -6,14 +6,15 @@ from celery import shared_task
 
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
-from models.dataset import Dataset, Document
+from models.dataset import Dataset, Document, SegmentAttachmentBinding
+from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="dataset")
 def delete_segment_from_index_task(
-    index_node_ids: list, dataset_id: str, document_id: str, child_node_ids: list | None = None
+    index_node_ids: list, dataset_id: str, document_id: str, segment_ids: list, child_node_ids: list | None = None
 ):
     """
     Async Remove segment from index
@@ -49,6 +50,21 @@ def delete_segment_from_index_task(
             delete_child_chunks=True,
             precomputed_child_node_ids=child_node_ids,
         )
+        if dataset.is_multimodal:
+            # delete segment attachment binding
+            segment_attachment_bindings = (
+                db.session.query(SegmentAttachmentBinding)
+                .where(SegmentAttachmentBinding.segment_id.in_(segment_ids))
+                .all()
+            )
+            if segment_attachment_bindings:
+                attachment_ids = [binding.attachment_id for binding in segment_attachment_bindings]
+                index_processor.clean(dataset=dataset, node_ids=attachment_ids, with_keywords=False)
+                for binding in segment_attachment_bindings:
+                    db.session.delete(binding)
+                # delete upload file
+                db.session.query(UploadFile).where(UploadFile.id.in_(attachment_ids)).delete(synchronize_session=False)
+                db.session.commit()
 
         end_at = time.perf_counter()
         logger.info(click.style(f"Segment deleted from index latency: {end_at - start_at}", fg="green"))

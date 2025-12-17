@@ -6,6 +6,7 @@ import {
 import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
 import Recorder from 'js-audio-recorder'
+import { decode } from 'html-entities'
 import type {
   EnableType,
   OnSend,
@@ -78,7 +79,7 @@ const ChatInputArea = ({
     handleDropFile,
     handleClipboardPasteFile,
     isDragActive,
-  } = useFile(visionConfig!)
+  } = useFile(visionConfig!, false)
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
@@ -203,7 +204,7 @@ const ChatInputArea = ({
                 className={cn(
                   'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
                 )}
-                placeholder={t('common.chat.inputPlaceholder', { botName }) || ''}
+                placeholder={decode(t('common.chat.inputPlaceholder', { botName }) || '')}
                 autoFocus
                 minRows={1}
                 value={query}

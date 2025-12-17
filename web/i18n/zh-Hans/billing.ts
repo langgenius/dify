@@ -24,6 +24,9 @@ const translation = {
     encourageShort: '升级',
   },
   viewBilling: '管理账单及订阅',
+  viewBillingTitle: '账单与订阅',
+  viewBillingDescription: '管理支付方式、发票和订阅变更。',
+  viewBillingAction: '管理',
   buyPermissionDeniedTip: '请联系企业管理员订阅',
   plansCommon: {
     title: {
@@ -75,6 +78,7 @@ const translation = {
     unlimitedApiRate: 'API 请求频率无限制',
     apiRateLimitTooltip: 'API 请求频率限制涵盖所有通过 Dify API 发起的调用，例如文本生成、聊天对话、工作流执行和文档处理等。',
     documentProcessingPriority: '文档处理',
+    documentProcessingPriorityTip: '如需更高的文档处理优先级，请升级您的套餐。',
     documentProcessingPriorityUpgrade: '以更快的速度、更高的精度处理更多的数据。',
     priority: {
       'standard': '标准',
@@ -157,11 +161,7 @@ const translation = {
       price: '免费',
       btnText: '开始使用',
       includesTitle: '免费功能：',
-      features: [
-        '所有核心功能均在公共存储库下发布',
-        '单一工作空间',
-        '符合 Dify 开源许可证',
-      ],
+      features: ['所有核心功能已在公共仓库发布', '单一工作区', '遵守 Dify 开源许可证'],
     },
     premium: {
       name: 'Premium',
@@ -172,12 +172,7 @@ const translation = {
       btnText: '获得 Premium 版',
       includesTitle: 'Community 版的所有功能，加上：',
       comingSoon: '即将支持 Microsoft Azure & Google Cloud',
-      features: [
-        '各个云提供商自行管理的可靠性',
-        '单一工作空间',
-        '自定义 WebApp & 品牌',
-        '优先电子邮件 & 聊天支持',
-      ],
+      features: ['由各云服务提供商自主管理的可靠性', '单一工作区', 'WebApp 徽标与品牌定制', '优先电子邮件和聊天支持'],
     },
     enterprise: {
       name: 'Enterprise',
@@ -187,17 +182,7 @@ const translation = {
       priceTip: '仅按年计费',
       btnText: '联系销售',
       includesTitle: '<highlight>Premium</highlight> 版的所有功能，加上：',
-      features: [
-        '企业级可扩展部署解决方案',
-        '商业许可授权',
-        '专属企业级功能',
-        '多个工作空间 & 企业级管理',
-        'SSO',
-        '由 Dify 合作伙伴支持的可协商的 SLAs',
-        '高级的安全 & 控制',
-        '由 Dify 官方提供的更新 & 维护',
-        '专业技术支持',
-      ],
+      features: ['企业级可扩展部署解决方案', '商业许可授权', '专属企业功能', '多个工作区与企业管理', '单点登录', '由 Dify 合作伙伴协商的服务水平协议', '高级安全与控制', '由 Dify 官方进行的更新和维护', '专业技术支持'],
     },
   },
   vectorSpace: {
@@ -217,6 +202,20 @@ const translation = {
     quotaTitle: '标注的配额',
   },
   teamMembers: '团队成员',
+  upgrade: {
+    uploadMultiplePages: {
+      title: '升级以一次性上传多个文档',
+      description: '您已达到当前套餐的上传限制 —— 该套餐每次只能选择并上传 1 个文档。',
+    },
+    uploadMultipleFiles: {
+      title: '升级以解锁批量文档上传功能',
+      description: '一次性批量上传更多文档，以节省时间并提升效率。',
+    },
+    addChunks: {
+      title: '升级以继续添加分段',
+      description: '您已达到此计划的添加分段上限。',
+    },
+  },
 }
 
 export default translation

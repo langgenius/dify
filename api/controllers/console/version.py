@@ -2,8 +2,10 @@ import json
 import logging
 
 import httpx
-from flask_restx import Resource, fields, reqparse
+from flask import request
+from flask_restx import Resource, fields
 from packaging import version
+from pydantic import BaseModel, Field
 
 from configs import dify_config
 
@@ -11,8 +13,14 @@ from . import console_ns
 
 logger = logging.getLogger(__name__)
 
-parser = reqparse.RequestParser().add_argument(
-    "current_version", type=str, required=True, location="args", help="Current application version"
+
+class VersionQuery(BaseModel):
+    current_version: str = Field(..., description="Current application version")
+
+
+console_ns.schema_model(
+    VersionQuery.__name__,
+    VersionQuery.model_json_schema(ref_template="#/definitions/{model}"),
 )
 
 
@@ -20,7 +28,7 @@ parser = reqparse.RequestParser().add_argument(
 class VersionApi(Resource):
     @console_ns.doc("check_version_update")
     @console_ns.doc(description="Check for application version updates")
-    @console_ns.expect(parser)
+    @console_ns.expect(console_ns.models[VersionQuery.__name__])
     @console_ns.response(
         200,
         "Success",
@@ -37,7 +45,7 @@ class VersionApi(Resource):
     )
     def get(self):
         """Check for application version updates"""
-        args = parser.parse_args()
+        args = VersionQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         check_update_url = dify_config.CHECK_UPDATE_URL
 
         result = {
@@ -57,16 +65,16 @@ class VersionApi(Resource):
         try:
             response = httpx.get(
                 check_update_url,
-                params={"current_version": args["current_version"]},
-                timeout=httpx.Timeout(connect=3, read=10),
+                params={"current_version": args.current_version},
+                timeout=httpx.Timeout(timeout=10.0, connect=3.0),
             )
         except Exception as error:
             logger.warning("Check update version error: %s.", str(error))
-            result["version"] = args["current_version"]
+            result["version"] = args.current_version
             return result
 
         content = json.loads(response.content)
-        if _has_new_version(latest_version=content["version"], current_version=f"{args['current_version']}"):
+        if _has_new_version(latest_version=content["version"], current_version=f"{args.current_version}"):
             result["version"] = content["version"]
             result["release_date"] = content["releaseDate"]
             result["release_notes"] = content["releaseNotes"]

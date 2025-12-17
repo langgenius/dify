@@ -40,7 +40,12 @@ const ProviderIcon: FC<ProviderIconProps> = ({
     <div className={cn('inline-flex items-center gap-2', className)}>
       <img
         alt='provider-icon'
-        src={renderI18nObject(provider.icon_small, language)}
+        src={renderI18nObject(
+          theme === Theme.dark && provider.icon_small_dark
+            ? provider.icon_small_dark
+            : provider.icon_small,
+          language,
+        )}
         className='h-6 w-6'
       />
       <div className='system-md-semibold text-text-primary'>

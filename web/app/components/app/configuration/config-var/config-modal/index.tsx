@@ -109,6 +109,13 @@ const ConfigModal: FC<IConfigModalProps> = ({
           [key]: value,
         }
 
+        // Clear default value if modified options no longer include current default
+        if (key === 'options' && prev.default) {
+          const optionsArray = Array.isArray(value) ? value : []
+          if (!optionsArray.includes(prev.default))
+            newPayload.default = undefined
+        }
+
         return newPayload
       })
     }
