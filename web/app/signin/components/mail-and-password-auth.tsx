@@ -13,6 +13,7 @@ import { noop } from 'lodash-es'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 import type { ResponseError } from '@/service/fetch'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { encryptPassword } from '@/utils/encryption'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -53,7 +54,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
       setIsLoading(true)
       const loginData: Record<string, any> = {
         email,
-        password,
+        password: encryptPassword(password),
         language: locale,
         remember_me: true,
       }

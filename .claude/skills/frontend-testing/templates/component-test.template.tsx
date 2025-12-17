@@ -26,13 +26,20 @@ import userEvent from '@testing-library/user-event'
 // WHY: Mocks must be hoisted to top of file (Jest requirement).
 // They run BEFORE imports, so keep them before component imports.
 
-// i18n (always required in Dify)
-// WHY: Returns key instead of translation so tests don't depend on i18n files
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+// i18n (automatically mocked)
+// WHY: Shared mock at web/__mocks__/react-i18next.ts is auto-loaded by Jest
+// No explicit mock needed - it returns translation keys as-is
+// Override only if custom translations are required:
+// jest.mock('react-i18next', () => ({
+//   useTranslation: () => ({
+//     t: (key: string) => {
+//       const customTranslations: Record<string, string> = {
+//         'my.custom.key': 'Custom Translation',
+//       }
+//       return customTranslations[key] || key
+//     },
+//   }),
+// }))
 
 // Router (if component uses useRouter, usePathname, useSearchParams)
 // WHY: Isolates tests from Next.js routing, enables testing navigation behavior
