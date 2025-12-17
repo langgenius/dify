@@ -5,27 +5,51 @@ import { ChunkingMode, DataSourceType, DatasetPermission, RerankingModeEnum } fr
 import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 
-jest.mock('@/app/components/datasets/external-knowledge-base/create/RetrievalSettings', () => ({
-  __esModule: true,
-  default: () => <div data-testid='retrieval-settings-mock' />,
-}))
-
-jest.mock('@/app/components/datasets/common/retrieval-method-config', () => ({
-  __esModule: true,
-  default: () => <div data-testid='retrieval-method-config-mock' />,
-}))
-
-jest.mock('@/app/components/datasets/common/economical-retrieval-method-config', () => ({
-  __esModule: true,
-  default: () => <div data-testid='economical-retrieval-method-config-mock' />,
-}))
+jest.mock('ky', () => {
+  const ky = () => ky
+  ky.extend = () => ky
+  ky.create = () => ky
+  return { __esModule: true, default: ky }
+})
 
 jest.mock('@/app/components/datasets/create/step-two', () => ({
   __esModule: true,
   IndexingType: {
-    QUALIFIED: 'qualified',
+    QUALIFIED: 'high_quality',
     ECONOMICAL: 'economy',
   },
+}))
+
+jest.mock('@/context/provider-context', () => ({
+  useProviderContext: () => ({
+    supportRetrievalMethods: [
+      RETRIEVE_METHOD.semantic,
+      RETRIEVE_METHOD.fullText,
+      RETRIEVE_METHOD.hybrid,
+      RETRIEVE_METHOD.keywordSearch,
+    ],
+  }),
+}))
+
+jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  __esModule: true,
+  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
+    defaultModel: null,
+    currentModel: true,
+  }),
+  useModelListAndDefaultModel: () => ({
+    modelList: [],
+  }),
+  useCurrentProviderAndModel: () => ({
+    currentModel: { provider: 'provider', model: 'model' },
+  }),
+  useModelList: jest.fn(() => ({ data: [] })),
+}))
+
+jest.mock('@/app/components/base/toast', () => ({
+  __esModule: true,
+  default: { notify: jest.fn() },
+  useToastContext: () => ({ notify: jest.fn() }),
 }))
 
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
@@ -201,7 +225,7 @@ describe('RetrievalSection', () => {
     expect(screen.getByText('External API')).toBeInTheDocument()
     expect(screen.getByText('https://api.external.com')).toBeInTheDocument()
     expect(screen.getByText('ext-id-999')).toBeInTheDocument()
-    expect(screen.getByTestId('retrieval-settings-mock')).toBeInTheDocument()
+    expect(screen.getByText('appDebug.datasetConfig.top_k')).toBeInTheDocument()
   })
 
   it('should render internal retrieval config when indexing is qualified', () => {
@@ -222,7 +246,7 @@ describe('RetrievalSection', () => {
       />,
     )
 
-    expect(screen.getByTestId('retrieval-method-config-mock')).toBeInTheDocument()
+    expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     const learnMoreLink = screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })
     expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
     expect(docLink).toHaveBeenCalledWith('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
@@ -243,7 +267,7 @@ describe('RetrievalSection', () => {
       />,
     )
 
-    expect(screen.getByTestId('economical-retrieval-method-config-mock')).toBeInTheDocument()
-    expect(screen.queryByTestId('retrieval-method-config-mock')).not.toBeInTheDocument()
+    expect(screen.getByText('dataset.retrieval.keyword_search.title')).toBeInTheDocument()
+    expect(screen.queryByText('dataset.retrieval.semantic_search.title')).not.toBeInTheDocument()
   })
 })
