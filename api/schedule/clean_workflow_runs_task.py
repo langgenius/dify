@@ -14,8 +14,11 @@ def clean_workflow_runs_task() -> None:
     """
     click.echo(
         click.style(
-            f"Scheduled workflow run cleanup starting: cutoff={dify_config.WORKFLOW_LOG_RETENTION_DAYS} days, "
-            f"batch={dify_config.WORKFLOW_LOG_CLEANUP_BATCH_SIZE}",
+            (
+                "Scheduled workflow run cleanup starting: "
+                f"cutoff={dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS} days, "
+                f"batch={dify_config.WORKFLOW_LOG_CLEANUP_BATCH_SIZE}"
+            ),
             fg="green",
         )
     )
@@ -23,7 +26,7 @@ def clean_workflow_runs_task() -> None:
     start_time = datetime.now(UTC)
 
     WorkflowRunCleanup(
-        days=dify_config.WORKFLOW_LOG_RETENTION_DAYS,
+        days=dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS,
         batch_size=dify_config.WORKFLOW_LOG_CLEANUP_BATCH_SIZE,
         start_after=None,
         end_before=None,

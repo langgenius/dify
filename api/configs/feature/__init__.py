@@ -1161,6 +1161,10 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
         description="Maximum number of records to process in each batch",
         default=1000,
     )
+    SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
+        description="Retention days for sandbox expired workflow_run records and message records",
+        default=30,
+    )
 
 
 class PositionConfig(BaseSettings):
@@ -1310,7 +1314,7 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
-    SandboxRecordsCleanConfig,
+    SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
