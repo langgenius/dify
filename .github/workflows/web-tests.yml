@@ -22,14 +22,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v46
-        with:
-          files: web/**
-
       - name: Install pnpm
-        if: steps.changed-files.outputs.any_changed == 'true'
         uses: pnpm/action-setup@v4
         with:
           package_json_file: web/package.json
@@ -37,31 +30,29 @@ jobs:
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
-        if: steps.changed-files.outputs.any_changed == 'true'
         with:
           node-version: 22
           cache: pnpm
           cache-dependency-path: ./web/pnpm-lock.yaml
 
       - name: Install dependencies
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
         run: pnpm install --frozen-lockfile
 
       - name: Check i18n types synchronization
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
         run: pnpm run check:i18n-types
 
       - name: Run tests
-        if: steps.changed-files.outputs.any_changed == 'true'
-        working-directory: ./web
-        run: pnpm exec jest --coverage --passWithNoTests
+        run: |
+          pnpm exec jest \
+            --ci \
+            --runInBand \
+            --coverage \
+            --coverageReporters=text-summary,lcov,json \
+            --passWithNoTests
 
       - name: Coverage Summary
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: always()
         id: coverage-summary
-        working-directory: ./web
         run: |
           set -eo pipefail
 
@@ -196,7 +187,7 @@ jobs:
           NODE
 
       - name: Upload Coverage Artifact
-        if: steps.changed-files.outputs.any_changed == 'true' && steps.coverage-summary.outputs.has_coverage == 'true'
+        if: steps.coverage-summary.outputs.has_coverage == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: web-coverage-report
