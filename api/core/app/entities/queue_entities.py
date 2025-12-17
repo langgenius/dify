@@ -9,6 +9,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
 from core.workflow.entities import AgentNodeStrategyInit
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
+from core.workflow.graph_events import ToolCall, ToolResult
 from core.workflow.nodes import NodeType
 
 
@@ -204,19 +205,11 @@ class QueueTextChunkEvent(AppQueueEvent):
     chunk_type: ChunkType = ChunkType.TEXT
     """type of the chunk"""
 
-    # Tool call fields (when chunk_type == TOOL_CALL)
-    tool_call_id: str | None = None
-    """unique identifier for this tool call"""
-    tool_name: str | None = None
-    """name of the tool being called"""
-    tool_arguments: str | None = None
-    """accumulated tool arguments JSON"""
-
-    # Tool result fields (when chunk_type == TOOL_RESULT)
-    tool_files: list[str] = Field(default_factory=list)
-    """file IDs produced by tool"""
-    tool_error: str | None = None
-    """error message if tool failed"""
+    # Tool streaming payloads
+    tool_call: ToolCall | None = None
+    """structured tool call info"""
+    tool_result: ToolResult | None = None
+    """structured tool result info"""
 
 
 class QueueAgentMessageEvent(AppQueueEvent):

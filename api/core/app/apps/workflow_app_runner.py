@@ -464,11 +464,8 @@ class WorkflowBasedAppRunner:
                     in_iteration_id=event.in_iteration_id,
                     in_loop_id=event.in_loop_id,
                     chunk_type=QueueChunkType(event.chunk_type.value),
-                    tool_call_id=event.tool_call_id,
-                    tool_name=event.tool_name,
-                    tool_arguments=event.tool_arguments,
-                    tool_files=event.tool_files,
-                    tool_error=event.tool_error,
+                    tool_call=event.tool_call,
+                    tool_result=event.tool_result,
                 )
             )
         elif isinstance(event, NodeRunRetrieverResourceEvent):

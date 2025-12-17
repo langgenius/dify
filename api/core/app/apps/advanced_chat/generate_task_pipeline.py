@@ -516,6 +516,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if tts_publisher and queue_message:
             tts_publisher.publish(queue_message)
 
+        tool_call = event.tool_call
+        tool_result = event.tool_result
+        tool_payload = tool_call or tool_result
+        tool_call_id = tool_payload.id if tool_payload and tool_payload.id else ""
+        tool_name = tool_payload.name if tool_payload and tool_payload.name else ""
+        tool_arguments = tool_call.arguments if tool_call and tool_call.arguments else ""
+        tool_files = tool_result.files if tool_result else []
+
         # Record stream event based on chunk type
         chunk_type = event.chunk_type or ChunkType.TEXT
         match chunk_type:
@@ -525,13 +533,13 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 self._stream_buffer.record_thought_chunk(delta_text)
             case ChunkType.TOOL_CALL:
                 self._stream_buffer.record_tool_call(
-                    tool_call_id=event.tool_call_id or "",
-                    tool_name=event.tool_name or "",
-                    tool_arguments=event.tool_arguments or "",
+                    tool_call_id=tool_call_id,
+                    tool_name=tool_name,
+                    tool_arguments=tool_arguments,
                 )
             case ChunkType.TOOL_RESULT:
                 self._stream_buffer.record_tool_result(
-                    tool_call_id=event.tool_call_id or "",
+                    tool_call_id=tool_call_id,
                     result=delta_text,
                 )
 
@@ -541,11 +549,10 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             message_id=self._message_id,
             from_variable_selector=event.from_variable_selector,
             chunk_type=event.chunk_type.value if event.chunk_type else None,
-            tool_call_id=event.tool_call_id,
-            tool_name=event.tool_name,
-            tool_arguments=event.tool_arguments,
-            tool_files=event.tool_files,
-            tool_error=event.tool_error,
+            tool_call_id=tool_call_id or None,
+            tool_name=tool_name or None,
+            tool_arguments=tool_arguments or None,
+            tool_files=tool_files,
         )
 
     def _handle_iteration_start_event(

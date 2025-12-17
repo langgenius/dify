@@ -2,10 +2,16 @@
 
 from unittest.mock import MagicMock
 
+from core.workflow.entities import ToolResultStatus
 from core.workflow.enums import NodeType
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
-from core.workflow.graph_events import ChunkType, NodeRunStreamChunkEvent
+from core.workflow.graph_events import (
+    ChunkType,
+    NodeRunStreamChunkEvent,
+    ToolCall,
+    ToolResult,
+)
 from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.runtime import VariablePool
 
@@ -80,9 +86,11 @@ class TestResponseCoordinatorObjectStreaming:
             chunk='{"query": "test"}',
             is_final=True,
             chunk_type=ChunkType.TOOL_CALL,
-            tool_call_id="call_123",
-            tool_name="search",
-            tool_arguments='{"query": "test"}',
+            tool_call=ToolCall(
+                id="call_123",
+                name="search",
+                arguments='{"query": "test"}',
+            ),
         )
 
         # 3. Tool result stream
@@ -94,10 +102,13 @@ class TestResponseCoordinatorObjectStreaming:
             chunk="Found 10 results",
             is_final=True,
             chunk_type=ChunkType.TOOL_RESULT,
-            tool_call_id="call_123",
-            tool_name="search",
-            tool_files=[],
-            tool_error=None,
+            tool_result=ToolResult(
+                id="call_123",
+                name="search",
+                output="Found 10 results",
+                files=[],
+                status=ToolResultStatus.SUCCESS,
+            ),
         )
 
         # Intercept these events
@@ -110,6 +121,14 @@ class TestResponseCoordinatorObjectStreaming:
         assert ("llm_node", "generation", "content") in coordinator._stream_buffers
         assert ("llm_node", "generation", "tool_calls") in coordinator._stream_buffers
         assert ("llm_node", "generation", "tool_results") in coordinator._stream_buffers
+
+        # Verify payloads are preserved in buffered events
+        buffered_call = coordinator._stream_buffers[("llm_node", "generation", "tool_calls")][0]
+        assert buffered_call.tool_call is not None
+        assert buffered_call.tool_call.id == "call_123"
+        buffered_result = coordinator._stream_buffers[("llm_node", "generation", "tool_results")][0]
+        assert buffered_result.tool_result is not None
+        assert buffered_result.tool_result.status == "success"
 
         # Verify we can find child streams
         child_streams = coordinator._find_child_streams(["llm_node", "generation"])

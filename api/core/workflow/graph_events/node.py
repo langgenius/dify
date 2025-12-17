@@ -5,7 +5,7 @@ from enum import StrEnum
 from pydantic import Field
 
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import AgentNodeStrategyInit
+from core.workflow.entities import AgentNodeStrategyInit, ToolCall, ToolResult
 from core.workflow.entities.pause_reason import PauseReason
 
 from .base import GraphNodeEventBase
@@ -43,13 +43,16 @@ class NodeRunStreamChunkEvent(GraphNodeEventBase):
     chunk_type: ChunkType = Field(default=ChunkType.TEXT, description="type of the chunk")
 
     # Tool call fields (when chunk_type == TOOL_CALL)
-    tool_call_id: str | None = Field(default=None, description="unique identifier for this tool call")
-    tool_name: str | None = Field(default=None, description="name of the tool being called")
-    tool_arguments: str | None = Field(default=None, description="accumulated tool arguments JSON")
+    tool_call: ToolCall | None = Field(
+        default=None,
+        description="structured payload for tool_call chunks",
+    )
 
     # Tool result fields (when chunk_type == TOOL_RESULT)
-    tool_files: list[str] = Field(default_factory=list, description="file IDs produced by tool")
-    tool_error: str | None = Field(default=None, description="error message if tool failed")
+    tool_result: ToolResult | None = Field(
+        default=None,
+        description="structured payload for tool_result chunks",
+    )
 
 
 class NodeRunRetrieverResourceEvent(GraphNodeEventBase):

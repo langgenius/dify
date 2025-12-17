@@ -102,13 +102,11 @@ class WorkflowRunService:
         :param app_model: app model
         :param run_id: workflow run id
         """
-        workflow_run = self._workflow_run_repo.get_workflow_run_by_id(
+        return self._workflow_run_repo.get_workflow_run_by_id(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             run_id=run_id,
         )
-
-        return workflow_run
 
     def get_workflow_runs_count(
         self,

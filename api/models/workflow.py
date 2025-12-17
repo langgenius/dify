@@ -684,10 +684,6 @@ class WorkflowRun(Base):
         return json.loads(self.outputs) if self.outputs else {}
 
     @property
-    def outputs_as_generation(self) -> bool:
-        return is_generation_outputs(self.outputs_dict)
-
-    @property
     def message(self):
         from .model import Message
 
@@ -712,6 +708,7 @@ class WorkflowRun(Base):
             "inputs": self.inputs_dict,
             "status": self.status,
             "outputs": self.outputs_dict,
+            "outputs_as_generation": is_generation_outputs(self.outputs_dict),
             "error": self.error,
             "elapsed_time": self.elapsed_time,
             "total_tokens": self.total_tokens,

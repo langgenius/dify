@@ -556,6 +556,8 @@ class Node(Generic[NodeDataT]):
             chunk=event.chunk,
             is_final=event.is_final,
             chunk_type=ChunkType(event.chunk_type.value),
+            tool_call=event.tool_call,
+            tool_result=event.tool_result,
         )
 
     @_dispatch.register
@@ -570,14 +572,18 @@ class Node(Generic[NodeDataT]):
             chunk=event.chunk,
             is_final=event.is_final,
             chunk_type=ChunkType.TOOL_CALL,
-            tool_call_id=event.tool_call_id,
-            tool_name=event.tool_name,
-            tool_arguments=event.tool_arguments,
+            tool_call=event.tool_call,
         )
 
     @_dispatch.register
     def _(self, event: ToolResultChunkEvent) -> NodeRunStreamChunkEvent:
-        from core.workflow.graph_events import ChunkType
+        from core.workflow.entities import ToolResult
+        from core.workflow.graph_events import ChunkType, ToolResultStatus
+
+        tool_result = event.tool_result
+        status: ToolResultStatus = (
+            tool_result.status if tool_result and tool_result.status is not None else ToolResultStatus.SUCCESS
+        )
 
         return NodeRunStreamChunkEvent(
             id=self._node_execution_id,
@@ -587,10 +593,13 @@ class Node(Generic[NodeDataT]):
             chunk=event.chunk,
             is_final=event.is_final,
             chunk_type=ChunkType.TOOL_RESULT,
-            tool_call_id=event.tool_call_id,
-            tool_name=event.tool_name,
-            tool_files=event.tool_files,
-            tool_error=event.tool_error,
+            tool_result=ToolResult(
+                id=tool_result.id if tool_result else None,
+                name=tool_result.name if tool_result else None,
+                output=tool_result.output if tool_result else None,
+                files=tool_result.files if tool_result else [],
+                status=status,
+            ),
         )
 
     @_dispatch.register

@@ -16,7 +16,13 @@ from pydantic import BaseModel, Field
 
 from core.workflow.enums import NodeExecutionType, NodeState
 from core.workflow.graph import Graph
-from core.workflow.graph_events import NodeRunStreamChunkEvent, NodeRunSucceededEvent
+from core.workflow.graph_events import (
+    ChunkType,
+    NodeRunStreamChunkEvent,
+    NodeRunSucceededEvent,
+    ToolCall,
+    ToolResult,
+)
 from core.workflow.nodes.base.template import TextSegment, VariableSegment
 from core.workflow.runtime import VariablePool
 
@@ -321,7 +327,9 @@ class ResponseStreamCoordinator:
         selector: Sequence[str],
         chunk: str,
         is_final: bool = False,
-        **extra_fields,
+        chunk_type: ChunkType = ChunkType.TEXT,
+        tool_call: ToolCall | None = None,
+        tool_result: ToolResult | None = None,
     ) -> NodeRunStreamChunkEvent:
         """Create a stream chunk event with consistent structure.
 
@@ -334,7 +342,9 @@ class ResponseStreamCoordinator:
             selector: The variable selector
             chunk: The chunk content
             is_final: Whether this is the final chunk
-            **extra_fields: Additional fields for specialized events (chunk_type, tool_call_id, etc.)
+            chunk_type: The semantic type of the chunk being streamed
+            tool_call: Structured data for tool_call chunks
+            tool_result: Structured data for tool_result chunks
         """
         # Check if this is a special selector that doesn't correspond to a node
         if selector and selector[0] not in self._graph.nodes and self._active_session:
@@ -347,7 +357,9 @@ class ResponseStreamCoordinator:
                 selector=selector,
                 chunk=chunk,
                 is_final=is_final,
-                **extra_fields,
+                chunk_type=chunk_type,
+                tool_call=tool_call,
+                tool_result=tool_result,
             )
 
         # Standard case: selector refers to an actual node
@@ -359,7 +371,9 @@ class ResponseStreamCoordinator:
             selector=selector,
             chunk=chunk,
             is_final=is_final,
-            **extra_fields,
+            chunk_type=chunk_type,
+            tool_call=tool_call,
+            tool_result=tool_result,
         )
 
     def _process_variable_segment(self, segment: VariableSegment) -> tuple[Sequence[NodeRunStreamChunkEvent], bool]:
@@ -436,11 +450,8 @@ class ResponseStreamCoordinator:
                                     chunk=event.chunk,
                                     is_final=event.is_final,
                                     chunk_type=event.chunk_type,
-                                    tool_call_id=event.tool_call_id,
-                                    tool_name=event.tool_name,
-                                    tool_arguments=event.tool_arguments,
-                                    tool_files=event.tool_files,
-                                    tool_error=event.tool_error,
+                                    tool_call=event.tool_call,
+                                    tool_result=event.tool_result,
                                 )
                                 events.append(updated_event)
                             else:

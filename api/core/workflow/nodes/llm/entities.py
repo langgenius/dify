@@ -8,6 +8,7 @@ from core.model_runtime.entities import ImagePromptMessageContent, LLMMode
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.tools.entities.tool_entities import ToolProviderType
+from core.workflow.entities import ToolCallResult
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.entities import VariableSelector
 
@@ -33,12 +34,10 @@ class LLMTraceSegment(BaseModel):
     text: str | None = Field(None, description="Text chunk for thought/content")
 
     # Tool call fields (combined start + result)
-    tool_call_id: str | None = None
-    tool_name: str | None = None
-    tool_arguments: str | None = None
-    tool_output: str | None = None
-    tool_error: str | None = None
-    files: list[str] = Field(default_factory=list, description="File IDs from tool result if any")
+    tool_call: ToolCallResult | None = Field(
+        default=None,
+        description="Combined tool call arguments and result for this segment",
+    )
 
 
 class LLMGenerationData(BaseModel):
@@ -51,7 +50,7 @@ class LLMGenerationData(BaseModel):
 
     text: str = Field(..., description="Accumulated text content from all turns")
     reasoning_contents: list[str] = Field(default_factory=list, description="Reasoning content per turn")
-    tool_calls: list[dict[str, Any]] = Field(default_factory=list, description="Tool calls with results")
+    tool_calls: list[ToolCallResult] = Field(default_factory=list, description="Tool calls with results")
     sequence: list[dict[str, Any]] = Field(default_factory=list, description="Ordered segments for rendering")
     usage: LLMUsage = Field(..., description="LLM usage statistics")
     finish_reason: str | None = Field(None, description="Finish reason from LLM")

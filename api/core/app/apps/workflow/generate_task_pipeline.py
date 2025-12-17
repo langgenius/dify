@@ -484,6 +484,14 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         if delta_text is None:
             return
 
+        tool_call = event.tool_call
+        tool_result = event.tool_result
+        tool_payload = tool_call or tool_result
+        tool_call_id = tool_payload.id if tool_payload and tool_payload.id else None
+        tool_name = tool_payload.name if tool_payload and tool_payload.name else None
+        tool_arguments = tool_call.arguments if tool_call else None
+        tool_files = tool_result.files if tool_result else []
+
         # only publish tts message at text chunk streaming
         if tts_publisher and queue_message:
             tts_publisher.publish(queue_message)
@@ -492,11 +500,10 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             text=delta_text,
             from_variable_selector=event.from_variable_selector,
             chunk_type=event.chunk_type,
-            tool_call_id=event.tool_call_id,
-            tool_name=event.tool_name,
-            tool_arguments=event.tool_arguments,
-            tool_files=event.tool_files,
-            tool_error=event.tool_error,
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            tool_arguments=tool_arguments,
+            tool_files=tool_files,
         )
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:

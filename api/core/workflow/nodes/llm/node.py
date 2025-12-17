@@ -60,7 +60,8 @@ from core.variables import (
     StringSegment,
 )
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
-from core.workflow.entities import GraphInitParams
+from core.workflow.entities import GraphInitParams, ToolCall, ToolResult, ToolResultStatus
+from core.workflow.entities.tool_entities import ToolCallResult
 from core.workflow.enums import (
     NodeType,
     SystemVariableKey,
@@ -1671,9 +1672,11 @@ class LLMNode(Node[LLMNodeData]):
                         tool_call_segment = LLMTraceSegment(
                             type="tool_call",
                             text=None,
-                            tool_call_id=tool_call_id,
-                            tool_name=tool_name,
-                            tool_arguments=tool_arguments,
+                            tool_call=ToolCallResult(
+                                id=tool_call_id,
+                                name=tool_name,
+                                arguments=tool_arguments,
+                            ),
                         )
                         trace_segments.append(tool_call_segment)
                         if tool_call_id:
@@ -1682,9 +1685,11 @@ class LLMNode(Node[LLMNodeData]):
                         yield ToolCallChunkEvent(
                             selector=[self._node_id, "generation", "tool_calls"],
                             chunk=tool_arguments,
-                            tool_call_id=tool_call_id,
-                            tool_name=tool_name,
-                            tool_arguments=tool_arguments,
+                            tool_call=ToolCall(
+                                id=tool_call_id,
+                                name=tool_name,
+                                arguments=tool_arguments,
+                            ),
                             is_final=False,
                         )
 
@@ -1724,27 +1729,50 @@ class LLMNode(Node[LLMNodeData]):
                         tool_call_segment = existing_tool_segment or LLMTraceSegment(
                             type="tool_call",
                             text=None,
-                            tool_call_id=tool_call_id,
-                            tool_name=tool_name,
-                            tool_arguments=None,
+                            tool_call=ToolCallResult(
+                                id=tool_call_id,
+                                name=tool_name,
+                                arguments=None,
+                            ),
                         )
                         if existing_tool_segment is None:
                             trace_segments.append(tool_call_segment)
                             if tool_call_id:
                                 tool_trace_map[tool_call_id] = tool_call_segment
 
-                        tool_call_segment.tool_output = str(tool_output) if tool_output is not None else None
-                        tool_call_segment.tool_error = str(tool_error) if tool_error is not None else None
-                        tool_call_segment.files = [str(f) for f in tool_files] if tool_files else []
+                        if tool_call_segment.tool_call is None:
+                            tool_call_segment.tool_call = ToolCallResult(
+                                id=tool_call_id,
+                                name=tool_name,
+                                arguments=None,
+                            )
+                        tool_call_segment.tool_call.output = (
+                            str(tool_output)
+                            if tool_output is not None
+                            else str(tool_error)
+                            if tool_error is not None
+                            else None
+                        )
+                        tool_call_segment.tool_call.files = []
+                        tool_call_segment.tool_call.status = (
+                            ToolResultStatus.ERROR if tool_error else ToolResultStatus.SUCCESS
+                        )
                         current_turn += 1
+
+                        result_output = (
+                            str(tool_output) if tool_output is not None else str(tool_error) if tool_error else None
+                        )
 
                         yield ToolResultChunkEvent(
                             selector=[self._node_id, "generation", "tool_results"],
-                            chunk=str(tool_output) if tool_output else "",
-                            tool_call_id=tool_call_id,
-                            tool_name=tool_name,
-                            tool_files=tool_files,
-                            tool_error=tool_error,
+                            chunk=result_output or "",
+                            tool_result=ToolResult(
+                                id=tool_call_id,
+                                name=tool_name,
+                                output=result_output,
+                                files=tool_files,
+                                status=ToolResultStatus.ERROR if tool_error else ToolResultStatus.SUCCESS,
+                            ),
                             is_final=False,
                         )
 
@@ -1865,7 +1893,7 @@ class LLMNode(Node[LLMNodeData]):
                 sequence.append({"type": "content", "start": start, "end": end})
                 content_position = end
             elif trace_segment.type == "tool_call":
-                tool_id = trace_segment.tool_call_id or ""
+                tool_id = trace_segment.tool_call.id if trace_segment.tool_call and trace_segment.tool_call.id else ""
                 if tool_id not in tool_call_seen_index:
                     tool_call_seen_index[tool_id] = len(tool_call_seen_index)
                 sequence.append({"type": "tool_call", "index": tool_call_seen_index[tool_id]})
@@ -1893,9 +1921,11 @@ class LLMNode(Node[LLMNodeData]):
         yield ToolCallChunkEvent(
             selector=[self._node_id, "generation", "tool_calls"],
             chunk="",
-            tool_call_id="",
-            tool_name="",
-            tool_arguments="",
+            tool_call=ToolCall(
+                id="",
+                name="",
+                arguments="",
+            ),
             is_final=True,
         )
 
@@ -1903,33 +1933,40 @@ class LLMNode(Node[LLMNodeData]):
         yield ToolResultChunkEvent(
             selector=[self._node_id, "generation", "tool_results"],
             chunk="",
-            tool_call_id="",
-            tool_name="",
-            tool_files=[],
-            tool_error=None,
+            tool_result=ToolResult(
+                id="",
+                name="",
+                output="",
+                files=[],
+                status=ToolResultStatus.SUCCESS,
+            ),
             is_final=True,
         )
 
         # Build tool_calls from agent_logs (with results)
-        tool_calls_for_generation = []
+        tool_calls_for_generation: list[ToolCallResult] = []
         for log in agent_logs:
             tool_call_id = log.data.get("tool_call_id")
             if not tool_call_id or log.status == AgentLog.LogStatus.START.value:
                 continue
 
             tool_args = log.data.get("tool_args") or {}
+            log_error = log.data.get("error")
+            log_output = log.data.get("output")
+            result_text = log_output or log_error or ""
+            status = ToolResultStatus.ERROR if log_error else ToolResultStatus.SUCCESS
             tool_calls_for_generation.append(
-                {
-                    "id": tool_call_id,
-                    "name": log.data.get("tool_name", ""),
-                    "arguments": json.dumps(tool_args) if tool_args else "",
-                    # Prefer output, fall back to error text if present
-                    "result": log.data.get("output") or log.data.get("error") or "",
-                }
+                ToolCallResult(
+                    id=tool_call_id,
+                    name=log.data.get("tool_name", ""),
+                    arguments=json.dumps(tool_args) if tool_args else "",
+                    output=result_text,
+                    status=status,
+                )
             )
 
         tool_calls_for_generation.sort(
-            key=lambda item: tool_call_index_map.get(item.get("id", ""), len(tool_call_index_map))
+            key=lambda item: tool_call_index_map.get(item.id or "", len(tool_call_index_map))
         )
 
         # Return generation data for caller
