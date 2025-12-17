@@ -113,6 +113,8 @@ const translation = {
       hiIN: 'الهندية',
       trTR: 'التركية',
       faIR: 'الفارسية',
+      slSI: 'السلوفينية',
+      arTN: 'العربية التونسية',
     },
   },
   unit: {
@@ -743,6 +745,7 @@ const translation = {
     pasteFileLinkInvalid: 'رابط الملف غير صالح',
     fileExtensionNotSupport: 'امتداد الملف غير مدعوم',
     fileExtensionBlocked: 'تم حظر نوع الملف هذا لأسباب أمنية',
+    uploadDisabled: 'تم تعطيل رفع الملفات',
   },
   tag: {
     placeholder: 'جميع العلامات',

@@ -464,6 +464,7 @@ const translation = {
         variable: '変数を使用する',
       },
       inputVars: '入力変数',
+      pluginNotInstalled: 'プラグインがインストールされていません',
     },
     start: {
       required: '必須',

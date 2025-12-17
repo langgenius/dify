@@ -109,6 +109,8 @@ const translation = {
       hiIN: 'ヒンディー語',
       trTR: 'トルコ語',
       faIR: 'ペルシア語',
+      slSI: 'スロベニア語',
+      arTN: 'チュニジア・アラビア語',
     },
   },
   unit: {
@@ -747,6 +749,7 @@ const translation = {
     uploadFromComputerReadError: 'ファイルの読み取りに失敗しました。もう一度やり直してください。',
     fileExtensionNotSupport: 'ファイル拡張子はサポートされていません',
     pasteFileLinkInvalid: '無効なファイルリンク',
+    uploadDisabled: 'ファイルアップロードは無効です',
     fileExtensionBlocked: 'このファイルタイプは、セキュリティ上の理由でブロックされています',
   },
   license: {

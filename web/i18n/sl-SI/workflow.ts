@@ -444,6 +444,7 @@ const translation = {
         input: 'Vhodna vrednost',
       },
       inputVars: 'Vhodne spremenljivke',
+      pluginNotInstalled: 'Vtičnik ni nameščen',
     },
     start: {
       outputVars: {

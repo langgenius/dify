@@ -103,6 +103,8 @@ const translation = {
       hiIN: 'ฮินดี',
       trTR: 'ตุรกี',
       faIR: 'ภาษาเปอร์เซีย',
+      slSI: 'ภาษาสโลเวเนีย',
+      arTN: 'ภาษาอาหรับตูนิเซีย',
     },
   },
   unit: {
@@ -714,6 +716,7 @@ const translation = {
     pasteFileLinkInvalid: 'ลิงก์ไฟล์ไม่ถูกต้อง',
     fileExtensionNotSupport: 'ไม่รองรับนามสกุลไฟล์',
     fileExtensionBlocked: 'ประเภทไฟล์นี้ถูกบล็อกด้วยเหตุผลด้านความปลอดภัย',
+    uploadDisabled: 'การอัปโหลดไฟล์ถูกปิดใช้งาน',
   },
   tag: {
     placeholder: 'แท็กทั้งหมด',

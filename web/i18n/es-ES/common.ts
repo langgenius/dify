@@ -103,6 +103,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turco',
       faIR: 'Persa',
+      slSI: 'Esloveno',
+      arTN: 'Árabe tunecino',
     },
   },
   unit: {
@@ -734,6 +736,7 @@ const translation = {
     pasteFileLinkInputPlaceholder: 'Introduzca la URL...',
     uploadFromComputerLimit: 'El archivo de carga no puede exceder {{size}}',
     fileExtensionBlocked: 'Este tipo de archivo está bloqueado por motivos de seguridad',
+    uploadDisabled: 'La carga de archivos está deshabilitada',
   },
   license: {
     expiring: 'Caduca en un día',

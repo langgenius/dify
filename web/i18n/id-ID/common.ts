@@ -103,6 +103,8 @@ const translation = {
       viVN: 'Vietnam',
       ukUA: 'Ukraina',
       faIR: 'Farsi',
+      slSI: 'Bahasa Slovenia',
+      arTN: 'Bahasa Arab Tunisia',
       itIT: 'Italia',
       zhHant: 'Mandarin Tradisional',
       thTH: 'Thai',
@@ -734,6 +736,7 @@ const translation = {
     uploadFromComputerReadError: 'Pembacaan file gagal, silakan coba lagi.',
     fileExtensionBlocked: 'Tipe file ini diblokir karena alasan keamanan',
     uploadFromComputerLimit: 'Unggahan {{type}} tidak boleh melebihi {{size}}',
+    uploadDisabled: 'Unggah file dinonaktifkan',
   },
   tag: {
     noTag: 'Tidak ada tag',

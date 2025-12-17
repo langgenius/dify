@@ -103,6 +103,8 @@ const translation = {
       hiIN: 'हिन्दी',
       trTR: 'तुर्की',
       faIR: 'फ़ारसी',
+      slSI: 'स्लोवेनियाई',
+      arTN: 'ट्यूनीशियाई अरबी',
     },
   },
   unit: {
@@ -756,6 +758,7 @@ const translation = {
     fileExtensionNotSupport: 'फ़ाइल एक्सटेंशन समर्थित नहीं है',
     uploadFromComputer: 'स्थानीय अपलोड',
     fileExtensionBlocked: 'सुरक्षा कारणों से इस फ़ाइल प्रकार को अवरुद्ध कर दिया गया है',
+    uploadDisabled: 'फ़ाइल अपलोड अक्षम है',
   },
   license: {
     expiring: 'एक दिन में समाप्त हो रहा है',
