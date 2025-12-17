@@ -1,14 +1,14 @@
 """Add index on workflow_runs.created_at
 
 Revision ID: 8a7f2ad7c23e
-Revises: d57accd375ae
-Create Date: 2025-12-10 15:04:00.000000
+Revises: 03ea244985ce
+Create Date: 2025-12-17 15:04:00.000000
 """
 
 from alembic import op
 # revision identifiers, used by Alembic.
 revision = "8a7f2ad7c23e"
-down_revision = "d57accd375ae"
+down_revision = "03ea244985ce"
 branch_labels = None
 depends_on = None
 
