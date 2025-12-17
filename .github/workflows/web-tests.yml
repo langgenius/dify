@@ -47,7 +47,6 @@ jobs:
             --ci \
             --runInBand \
             --coverage \
-            --coverageReporters=text-summary,lcov,json \
             --passWithNoTests
 
       - name: Coverage Summary
