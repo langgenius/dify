@@ -42,7 +42,7 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/model-mod
 let pluginAuthClickValue = 'credential-from-plugin'
 jest.mock('@/app/components/plugins/plugin-auth', () => ({
   AuthCategory: { tool: 'tool' },
-  PluginAuthInAgent: (props: any) => (
+  PluginAuthInAgent: (props: { onAuthorizationItemClick?: (id: string) => void }) => (
     <div data-testid="plugin-auth">
       <button type="button" onClick={() => props.onAuthorizationItemClick?.(pluginAuthClickValue)}>
         choose-plugin-credential
