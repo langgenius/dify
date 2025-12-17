@@ -39,7 +39,7 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/model-mod
   default: (props: MockFormProps) => <FormMock {...props} />,
 }))
 
-const pluginAuthClickValue = 'credential-from-plugin'
+let pluginAuthClickValue = 'credential-from-plugin'
 jest.mock('@/app/components/plugins/plugin-auth', () => ({
   AuthCategory: { tool: 'tool' },
   PluginAuthInAgent: (props: { onAuthorizationItemClick?: (id: string) => void }) => (
