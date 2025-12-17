@@ -365,8 +365,8 @@ describe('AgentTools', () => {
   })
 
   test('should remove tool when delete action is clicked', async () => {
-    const { container, getModelConfig } = renderAgentTools()
-    const deleteButton = container.querySelector('div.cursor-pointer.rounded-md.p-1.text-text-tertiary.hover\\:text-text-destructive')
+    const { getModelConfig } = renderAgentTools()
+    const deleteButton = screen.getByTestId('delete-removed-tool')
     if (!deleteButton)
       throw new Error('Delete button not found')
     await userEvent.click(deleteButton)

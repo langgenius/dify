@@ -277,6 +277,7 @@ const AgentTools: FC = () => {
                       }}
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
+                      data-testid='delete-removed-tool'
                     >
                       <RiDeleteBinLine className='h-4 w-4' />
                     </div>
