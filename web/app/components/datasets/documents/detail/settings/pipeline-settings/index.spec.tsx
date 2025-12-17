@@ -4,13 +4,6 @@ import PipelineSettings from './index'
 import { DatasourceType } from '@/models/pipeline'
 import type { PipelineExecutionLogResponse } from '@/models/pipeline'
 
-// Mock i18n
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock Next.js router
 const mockPush = jest.fn()
 const mockBack = jest.fn()

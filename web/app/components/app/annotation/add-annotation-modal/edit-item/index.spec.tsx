@@ -2,12 +2,6 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import EditItem, { EditItemType } from './index'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('AddAnnotationModal/EditItem', () => {
   test('should render query inputs with user avatar and placeholder strings', () => {
     render(

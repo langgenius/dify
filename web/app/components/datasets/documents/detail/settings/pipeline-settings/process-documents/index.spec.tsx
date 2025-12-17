@@ -4,13 +4,6 @@ import ProcessDocuments from './index'
 import { PipelineInputVarType } from '@/models/pipeline'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 
-// Mock i18n
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock dataset detail context - required for useInputVariables hook
 const mockPipelineId = 'pipeline-123'
 jest.mock('@/context/dataset-detail', () => ({
