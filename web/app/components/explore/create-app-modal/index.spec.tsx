@@ -321,7 +321,7 @@ describe('CreateAppModal', () => {
 
         fireEvent.click(getAppIconTrigger())
 
-        const emoji = document.querySelector('em-emoji[id=\"😀\"]')
+        const emoji = document.querySelector('em-emoji[id="😀"]')
         if (!(emoji instanceof HTMLElement))
           throw new Error('Failed to locate emoji option in icon picker')
         fireEvent.click(emoji)
