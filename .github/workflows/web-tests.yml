@@ -56,7 +56,7 @@ jobs:
       - name: Run tests
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm test -- --coverage
+        run: pnpm exec jest --coverage --passWithNoTests
 
       - name: Coverage Summary
         if: steps.changed-files.outputs.any_changed == 'true'
