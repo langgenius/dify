@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import ItemPanel from './item-panel'
 
 describe('AgentSetting/ItemPanel', () => {
-  test('should render icon, title, and children content', () => {
+  test('should render icon, name, and children content', () => {
     render(
       <ItemPanel
         className="custom"
