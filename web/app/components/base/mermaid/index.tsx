@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import mermaid, { type MermaidConfig } from 'mermaid'
+import DOMPurify from 'dompurify'
 import { useTranslation } from 'react-i18next'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { MoonIcon, SunIcon } from '@heroicons/react/24/solid'
@@ -8,6 +9,7 @@ import {
   isMermaidCodeComplete,
   prepareMermaidCode,
   processSvgForTheme,
+  sanitizeMermaidCode,
   svgToBase64,
   waitForDOMElement,
 } from './utils'
@@ -71,7 +73,7 @@ const initMermaid = () => {
       const config: MermaidConfig = {
         startOnLoad: false,
         fontFamily: 'sans-serif',
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         flowchart: {
           htmlLabels: true,
           useMaxWidth: true,
@@ -267,6 +269,8 @@ const Flowchart = (props: FlowchartProps) => {
         finalCode = prepareMermaidCode(primitiveCode, look)
       }
 
+      finalCode = sanitizeMermaidCode(finalCode)
+
       // Step 2: Render chart
       const svgGraph = await renderMermaidChart(finalCode, look)
 
@@ -282,8 +286,11 @@ const Flowchart = (props: FlowchartProps) => {
       const cleanedSvg = cleanUpSvgCode(processedSvg)
 
       if (cleanedSvg && typeof cleanedSvg === 'string') {
-        diagramCache.set(cacheKey, cleanedSvg)
-        setSvgString(cleanedSvg)
+        const sanitizedSvg = DOMPurify.sanitize(cleanedSvg, {
+          USE_PROFILES: { svg: true, svgFilters: true },
+        })
+        diagramCache.set(cacheKey, sanitizedSvg)
+        setSvgString(sanitizedSvg)
       }
 
       setIsLoading(false)
@@ -297,9 +304,9 @@ const Flowchart = (props: FlowchartProps) => {
   const configureMermaid = useCallback((primitiveCode: string) => {
     if (typeof window !== 'undefined' && isInitialized) {
       const themeVars = THEMES[currentTheme]
-      const config: any = {
+      const config: MermaidConfig = {
         startOnLoad: false,
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         fontFamily: 'sans-serif',
         maxTextSize: 50000,
         gantt: {
@@ -325,7 +332,8 @@ const Flowchart = (props: FlowchartProps) => {
         config.theme = currentTheme === 'dark' ? 'dark' : 'neutral'
 
         if (isFlowchart) {
-          config.flowchart = {
+          type FlowchartConfigWithRanker = NonNullable<MermaidConfig['flowchart']> & { ranker?: string }
+          const flowchartConfig: FlowchartConfigWithRanker = {
             htmlLabels: true,
             useMaxWidth: true,
             nodeSpacing: 60,
@@ -333,6 +341,7 @@ const Flowchart = (props: FlowchartProps) => {
             curve: 'linear',
             ranker: 'tight-tree',
           }
+          config.flowchart = flowchartConfig as unknown as MermaidConfig['flowchart']
         }
 
         if (currentTheme === 'dark') {
