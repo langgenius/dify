@@ -13,7 +13,6 @@ const mockOnCancel = jest.fn()
 const mockOnSave = jest.fn()
 const mockSetShowAccountSettingModal = jest.fn()
 let mockIsWorkspaceDatasetOperator = false
-let _capturedIndexMethodProps: any = null
 
 jest.mock('@/app/components/datasets/create/step-two', () => ({
   __esModule: true,
@@ -250,7 +249,6 @@ describe('SettingsModal', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockIsWorkspaceDatasetOperator = false
-    _capturedIndexMethodProps = null
     mockFetchMembers.mockResolvedValue({
       accounts: [
         {

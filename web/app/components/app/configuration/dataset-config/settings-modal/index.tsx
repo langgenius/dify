@@ -293,22 +293,31 @@ const SettingsModal: FC<SettingsModalProps> = ({
         )}
 
         {/* Retrieval Method Config */}
-        <RetrievalSection
-          isExternal={currentDataset?.provider === 'external'}
-          rowClass={rowClass}
-          labelClass={labelClass}
-          topK={topK}
-          scoreThreshold={scoreThreshold}
-          scoreThresholdEnabled={scoreThresholdEnabled}
-          onExternalSettingChange={handleSettingsChange}
-          currentDataset={currentDataset}
-          t={t}
-          indexMethod={indexMethod}
-          retrievalConfig={retrievalConfig}
-          showMultiModalTip={showMultiModalTip}
-          onRetrievalConfigChange={setRetrievalConfig}
-          docLink={docLink}
-        />
+        {isExternal ? (
+          <RetrievalSection
+            isExternal
+            rowClass={rowClass}
+            labelClass={labelClass}
+            t={t}
+            topK={topK}
+            scoreThreshold={scoreThreshold}
+            scoreThresholdEnabled={scoreThresholdEnabled}
+            onExternalSettingChange={handleSettingsChange}
+            currentDataset={currentDataset}
+          />
+        ) : (
+          <RetrievalSection
+            isExternal={false}
+            rowClass={rowClass}
+            labelClass={labelClass}
+            t={t}
+            indexMethod={indexMethod}
+            retrievalConfig={retrievalConfig}
+            showMultiModalTip={showMultiModalTip}
+            onRetrievalConfigChange={setRetrievalConfig}
+            docLink={docLink}
+          />
+        )}
       </div>
       <RetrievalChangeTip
         visible={isRetrievalChanged && !isHideChangedTip}

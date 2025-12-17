@@ -126,29 +126,23 @@ const InternalRetrievalSection: FC<InternalRetrievalSectionProps> = ({
   </div>
 )
 
-type RetrievalSectionProps = InternalRetrievalSectionProps & ExternalRetrievalSectionProps & {
-  isExternal: boolean
-}
+type RetrievalSectionProps
+  = | (ExternalRetrievalSectionProps & { isExternal: true })
+  | (InternalRetrievalSectionProps & { isExternal: false })
 
 export const RetrievalSection: FC<RetrievalSectionProps> = (props) => {
-  const {
-    isExternal,
-    rowClass,
-    labelClass,
-    t,
-    topK,
-    scoreThreshold,
-    scoreThresholdEnabled,
-    onExternalSettingChange,
-    currentDataset,
-    indexMethod,
-    retrievalConfig,
-    showMultiModalTip,
-    onRetrievalConfigChange,
-    docLink,
-  } = props
+  if (props.isExternal) {
+    const {
+      rowClass,
+      labelClass,
+      t,
+      topK,
+      scoreThreshold,
+      scoreThresholdEnabled,
+      onExternalSettingChange,
+      currentDataset,
+    } = props
 
-  if (isExternal) {
     return (
       <ExternalRetrievalSection
         rowClass={rowClass}
@@ -162,6 +156,17 @@ export const RetrievalSection: FC<RetrievalSectionProps> = (props) => {
       />
     )
   }
+
+  const {
+    rowClass,
+    labelClass,
+    t,
+    indexMethod,
+    retrievalConfig,
+    showMultiModalTip,
+    onRetrievalConfigChange,
+    docLink,
+  } = props
 
   return (
     <InternalRetrievalSection
@@ -203,7 +208,6 @@ export const RetrievalChangeTip: FC<RetrievalChangeTipProps> = ({
         onClick={(event) => {
           onDismiss()
           event.stopPropagation()
-          event.nativeEvent.stopImmediatePropagation()
         }}
         aria-label='close-retrieval-change-tip'
       >
