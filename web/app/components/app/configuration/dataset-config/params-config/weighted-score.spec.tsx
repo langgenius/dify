@@ -2,12 +2,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import WeightedScore from './weighted-score'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('WeightedScore', () => {
   beforeEach(() => {
     jest.clearAllMocks()
