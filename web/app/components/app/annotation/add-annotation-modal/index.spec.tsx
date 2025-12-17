@@ -83,7 +83,7 @@ describe('AddAnnotationModal', () => {
 
     typeQuestion('Question value')
     typeAnswer('Answer value')
-    fireEvent.click(screen.getByRole('checkbox'))
+    fireEvent.click(screen.getByTestId('checkbox-create-next-checkbox'))
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
