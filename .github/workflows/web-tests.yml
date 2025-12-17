@@ -56,3 +56,92 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
         run: pnpm test
+
+      - name: Coverage Summary
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: |
+          set -x
+
+          # Check if coverage files exist
+          if [ ! -f "coverage/coverage-summary.json" ]; then
+            echo "### 🚨 Test Coverage Report :test_tube:" >> $GITHUB_STEP_SUMMARY
+            echo "No coverage data found. Make sure tests generate coverage reports." >> $GITHUB_STEP_SUMMARY
+            exit 0
+          fi
+
+          # Extract coverage percentages
+          LINES_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-summary.json", "utf8")).total.lines.pct')
+          FUNCTIONS_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-summary.json", "utf8")).total.functions.pct')
+          BRANCHES_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-summary.json", "utf8")).total.branches.pct')
+          STATEMENTS_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-summary.json", "utf8")).total.statements.pct')
+
+          # Create a detailed coverage summary
+          echo "### 📊 Test Coverage Report :test_tube:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Metric | Coverage | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|--------|----------|--------|" >> $GITHUB_STEP_SUMMARY
+
+          # Function to determine status emoji and color
+          get_status() {
+            local coverage=$1
+            if (( $(echo "$coverage >= 80" | bc -l) )); then
+              echo "✅"
+            elif (( $(echo "$coverage >= 60" | bc -l) )); then
+              echo "⚠️"
+            else
+              echo "❌"
+            fi
+          }
+
+          LINES_STATUS=$(get_status $LINES_COVERAGE)
+          FUNCTIONS_STATUS=$(get_status $FUNCTIONS_COVERAGE)
+          BRANCHES_STATUS=$(get_status $BRANCHES_COVERAGE)
+          STATEMENTS_STATUS=$(get_status $STATEMENTS_COVERAGE)
+
+          echo "| Lines | ${LINES_COVERAGE}% | $LINES_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Functions | ${FUNCTIONS_COVERAGE}% | $FUNCTIONS_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Branches | ${BRANCHES_COVERAGE}% | $BRANCHES_STATUS |" >> $GITHUB_STEP_SUMMARY
+          echo "| Statements | ${STATEMENTS_COVERAGE}% | $STATEMENTS_STATUS |" >> $GITHUB_STEP_SUMMARY
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Coverage thresholds
+          if (( $(echo "$LINES_COVERAGE >= 80 && $FUNCTIONS_COVERAGE >= 80 && $BRANCHES_COVERAGE >= 80 && $STATEMENTS_COVERAGE >= 80" | bc -l) )); then
+            echo "🎉 **Excellent coverage! All metrics above 80%**" >> $GITHUB_STEP_SUMMARY
+          elif (( $(echo "$LINES_COVERAGE >= 60 && $FUNCTIONS_COVERAGE >= 60 && $BRANCHES_COVERAGE >= 60 && $STATEMENTS_COVERAGE >= 60" | bc -l) )); then
+            echo "👍 **Good coverage! All metrics above 60%**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ **Coverage needs improvement. Consider adding more tests.**" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          {
+            echo "<details><summary>📋 Detailed coverage report (click to expand)</summary>"
+            echo ""
+            echo '```'
+            cat coverage/coverage-summary.json | jq -r '
+              .total as $total |
+              "Overall Coverage:",
+              "  Lines: \($total.lines.pct)% (\($total.lines.covered)/\($total.lines.total))",
+              "  Functions: \($total.functions.pct)% (\($total.functions.covered)/\($total.functions.total))",
+              "  Branches: \($total.branches.pct)% (\($total.branches.covered)/\($total.branches.total))",
+              "  Statements: \($total.statements.pct)% (\($total.statements.covered)/\($total.statements.total))"
+            '
+            echo '```'
+            echo "</details>"
+          } >> $GITHUB_STEP_SUMMARY
+
+          # Upload coverage artifact for potential download
+          if [ -d "coverage" ]; then
+            echo "Uploading coverage reports as artifact..."
+            tar -czf coverage-report.tar.gz coverage/
+          fi
+
+      - name: Upload Coverage Artifact
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage-report
+          path: web/coverage-report.tar.gz
+          retention-days: 30
