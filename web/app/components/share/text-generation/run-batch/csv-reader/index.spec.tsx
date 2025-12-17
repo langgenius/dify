@@ -57,14 +57,14 @@ describe('CSVReader', () => {
       capturedHandlers.onDragOver?.(dragEvent)
     })
     await waitFor(() => {
-      expect(screen.getByTestId('drop-zone').className).toContain('border-components-dropzone-border-accent')
+      expect(screen.getByTestId('drop-zone')).toHaveClass('border-components-dropzone-border-accent')
     })
 
     await act(async () => {
       capturedHandlers.onDragLeave?.(dragEvent)
     })
     await waitFor(() => {
-      expect(screen.getByTestId('drop-zone').className).not.toContain('border-components-dropzone-border-accent')
+      expect(screen.getByTestId('drop-zone')).not.toHaveClass('border-components-dropzone-border-accent')
     })
   })
 })

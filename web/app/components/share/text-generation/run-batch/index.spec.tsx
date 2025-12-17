@@ -80,9 +80,9 @@ describe('RunBatch', () => {
     await waitFor(() => {
       expect(runButton).toBeDisabled()
     })
-    expect(runButton.className).toContain('grow')
+    expect(runButton).toHaveClass('grow')
     const icon = container.querySelector('svg')
-    expect(icon?.className).toContain('animate-spin')
+    expect(icon).toHaveClass('animate-spin')
     expect(onSend).not.toHaveBeenCalled()
   })
 })
