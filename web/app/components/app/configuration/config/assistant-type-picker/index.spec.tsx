@@ -5,16 +5,25 @@ import AssistantTypePicker from './index'
 import type { AgentConfig } from '@/models/debug'
 import { AgentStrategy } from '@/types/app'
 
+// Type definition for AgentSetting props
+type AgentSettingProps = {
+  isChatModel: boolean
+  payload: AgentConfig
+  isFunctionCall: boolean
+  onCancel: () => void
+  onSave: (payload: AgentConfig) => void
+}
+
 // Track mock calls for props validation
-let mockAgentSettingProps: any = null
+let mockAgentSettingProps: AgentSettingProps | null = null
 
 // Mock AgentSetting component (complex modal with external hooks)
 jest.mock('../agent/agent-setting', () => {
-  return function MockAgentSetting(props: any) {
+  return function MockAgentSetting(props: AgentSettingProps) {
     mockAgentSettingProps = props
     return (
       <div data-testid="agent-setting-modal">
-        <button onClick={() => props.onSave({ max_iteration: 5 })}>Save</button>
+        <button onClick={() => props.onSave({ max_iteration: 5 } as AgentConfig)}>Save</button>
         <button onClick={props.onCancel}>Cancel</button>
       </div>
     )
@@ -266,18 +275,20 @@ describe('AssistantTypePicker', () => {
       const onChange = jest.fn()
       renderComponent({ disabled: true, onChange })
 
-      // Act - Try to open dropdown
+      // Act - Open dropdown (dropdown can still open when disabled)
       const trigger = screen.getByText(/chatAssistant.name/i).closest('div')
       await user.click(trigger!)
 
-      // Wait and try to click an option
+      // Wait for dropdown to open
       await waitFor(() => {
-        const agentOptions = screen.queryAllByText(/agentAssistant.name/i)
-        if (agentOptions.length > 0)
-          return user.click(agentOptions[0].closest('div')!)
+        expect(screen.getByText(/agentAssistant.description/i)).toBeInTheDocument()
       })
 
-      // Assert
+      // Act - Try to click an option
+      const agentOption = getOptionByDescription(/agentAssistant.description/i)
+      await user.click(agentOption)
+
+      // Assert - onChange should not be called (options are disabled)
       expect(onChange).not.toHaveBeenCalled()
     })
 
@@ -346,17 +357,12 @@ describe('AssistantTypePicker', () => {
       const trigger = screen.getByText(/chatAssistant.name/i).closest('div')
       await user.click(trigger!)
 
-      // Try to find and click agent settings (should not be clickable)
+      // Wait for dropdown to open
       await waitFor(() => {
-        const settingsElements = screen.queryAllByText(/agent.setting.name/i)
-        if (settingsElements.length > 0) {
-          const settingsTrigger = settingsElements[0].closest('div')
-          if (settingsTrigger)
-            return user.click(settingsTrigger)
-        }
+        expect(screen.getByText(/chatAssistant.description/i)).toBeInTheDocument()
       })
 
-      // Assert - Modal should not appear
+      // Assert - Agent settings modal should not appear (value is 'chat')
       expect(screen.queryByTestId('agent-setting-modal')).not.toBeInTheDocument()
     })
 
@@ -527,8 +533,8 @@ describe('AssistantTypePicker', () => {
       // Act & Assert - Should not crash
       expect(() => {
         renderComponent({
-          onChange: undefined as any,
-          onAgentSettingChange: undefined as any,
+          onChange: undefined!,
+          onAgentSettingChange: undefined!,
         })
       }).not.toThrow()
 
@@ -546,20 +552,25 @@ describe('AssistantTypePicker', () => {
       expect(screen.getByText(/chatAssistant.name/i)).toBeInTheDocument()
     })
 
-    it('should render with different prop combinations', async () => {
-      // Arrange & Act - Test various combinations
+    describe('should render with different prop combinations', () => {
       const combinations = [
-        { value: 'chat', disabled: true, isFunctionCall: true, isChatModel: true },
-        { value: 'agent', disabled: false, isFunctionCall: false, isChatModel: false },
-        { value: 'agent', disabled: true, isFunctionCall: true, isChatModel: false },
-        { value: 'chat', disabled: false, isFunctionCall: false, isChatModel: true },
+        { value: 'chat' as const, disabled: true, isFunctionCall: true, isChatModel: true },
+        { value: 'agent' as const, disabled: false, isFunctionCall: false, isChatModel: false },
+        { value: 'agent' as const, disabled: true, isFunctionCall: true, isChatModel: false },
+        { value: 'chat' as const, disabled: false, isFunctionCall: false, isChatModel: true },
       ]
 
-      for (const combo of combinations) {
-        const { unmount } = renderComponent(combo)
-        expect(screen.getByText(new RegExp(combo.value === 'agent' ? 'agentAssistant.name' : 'chatAssistant.name', 'i'))).toBeInTheDocument()
-        unmount()
-      }
+      it.each(combinations)(
+        'value=$value, disabled=$disabled, isFunctionCall=$isFunctionCall, isChatModel=$isChatModel',
+        (combo) => {
+          // Arrange & Act
+          renderComponent(combo)
+
+          // Assert
+          const expectedText = combo.value === 'agent' ? 'agentAssistant.name' : 'chatAssistant.name'
+          expect(screen.getByText(new RegExp(expectedText, 'i'))).toBeInTheDocument()
+        },
+      )
     })
   })
 
@@ -674,8 +685,8 @@ describe('AssistantTypePicker', () => {
       })
 
       expect(mockAgentSettingProps).not.toBeNull()
-      expect(mockAgentSettingProps.isFunctionCall).toBe(true)
-      expect(mockAgentSettingProps.isChatModel).toBe(false)
+      expect(mockAgentSettingProps!.isFunctionCall).toBe(true)
+      expect(mockAgentSettingProps!.isChatModel).toBe(false)
     })
 
     it('should pass agentConfig payload to AgentSetting', async () => {
@@ -709,7 +720,8 @@ describe('AssistantTypePicker', () => {
         expect(screen.getByTestId('agent-setting-modal')).toBeInTheDocument()
       })
 
-      expect(mockAgentSettingProps.payload).toEqual(customConfig)
+      expect(mockAgentSettingProps).not.toBeNull()
+      expect(mockAgentSettingProps!.payload).toEqual(customConfig)
     })
   })
 
