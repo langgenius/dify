@@ -17,7 +17,7 @@ def clean_workflow_runs_task() -> None:
             (
                 "Scheduled workflow run cleanup starting: "
                 f"cutoff={dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS} days, "
-                f"batch={dify_config.WORKFLOW_LOG_CLEANUP_BATCH_SIZE}"
+                f"batch={dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE}"
             ),
             fg="green",
         )
@@ -27,7 +27,7 @@ def clean_workflow_runs_task() -> None:
 
     WorkflowRunCleanup(
         days=dify_config.SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS,
-        batch_size=dify_config.WORKFLOW_LOG_CLEANUP_BATCH_SIZE,
+        batch_size=dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE,
         start_after=None,
         end_before=None,
     ).run()
