@@ -18,7 +18,7 @@ jest.mock('ahooks', () => {
   }
 })
 
-jest.mock('react-slider', () => (props: any) => (
+jest.mock('react-slider', () => (props: { className?: string; min?: number; max?: number; value: number; onChange: (value: number) => void }) => (
   <input
     type="range"
     className={props.className}
