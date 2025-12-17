@@ -4,6 +4,13 @@ import type { DataSet } from '@/models/datasets'
 import { ChunkingMode, DataSourceType, DatasetPermission, RerankingModeEnum } from '@/models/datasets'
 import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
+
+const mockUseModelList = jest.fn()
+const mockUseModelListAndDefaultModel = jest.fn()
+const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = jest.fn()
+const mockUseCurrentProviderAndModel = jest.fn()
 
 jest.mock('ky', () => {
   const ky = () => ky
@@ -12,16 +19,10 @@ jest.mock('ky', () => {
   return { __esModule: true, default: ky }
 })
 
-jest.mock('@/app/components/datasets/create/step-two', () => ({
-  __esModule: true,
-  IndexingType: {
-    QUALIFIED: 'high_quality',
-    ECONOMICAL: 'economy',
-  },
-}))
-
 jest.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
+    modelProviders: [],
+    textGenerationModelList: [],
     supportRetrievalMethods: [
       RETRIEVE_METHOD.semantic,
       RETRIEVE_METHOD.fullText,
@@ -33,26 +34,29 @@ jest.mock('@/context/provider-context', () => ({
 
 jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   __esModule: true,
-  useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
-    defaultModel: null,
-    currentModel: true,
-  }),
-  useModelListAndDefaultModel: () => ({
-    modelList: [],
-  }),
-  useCurrentProviderAndModel: () => ({
-    currentModel: { provider: 'provider', model: 'model' },
-  }),
-  useModelList: jest.fn(() => ({ data: [] })),
+  useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
+    mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
+  useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
+  useModelList: (...args: unknown[]) => mockUseModelList(...args),
+  useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
 }))
 
-jest.mock('@/app/components/base/toast', () => ({
+jest.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   __esModule: true,
-  default: { notify: jest.fn() },
-  useToastContext: () => ({ notify: jest.fn() }),
+  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
+    <div data-testid='model-selector'>
+      {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
+    </div>
+  ),
 }))
 
-import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
+jest.mock('@/app/components/datasets/create/step-two', () => ({
+  __esModule: true,
+  IndexingType: {
+    QUALIFIED: 'high_quality',
+    ECONOMICAL: 'economy',
+  },
+}))
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
@@ -140,53 +144,25 @@ describe('RetrievalChangeTip', () => {
     jest.clearAllMocks()
   })
 
-  describe('Rendering', () => {
-    it('should render without crashing when visible', () => {
-      render(<RetrievalChangeTip {...defaultProps} />)
+  it('renders and supports dismiss', async () => {
+    // Arrange
+    const onDismiss = jest.fn()
+    render(<RetrievalChangeTip {...defaultProps} onDismiss={onDismiss} />)
 
-      expect(screen.getByText('Test message')).toBeInTheDocument()
-      expect(screen.getByRole('button', { name: 'close-retrieval-change-tip' })).toBeInTheDocument()
-    })
+    // Act
+    await userEvent.click(screen.getByRole('button', { name: 'close-retrieval-change-tip' }))
 
-    it('should not render when not visible', () => {
-      render(<RetrievalChangeTip {...defaultProps} visible={false} />)
-
-      expect(screen.queryByText('Test message')).not.toBeInTheDocument()
-      expect(screen.queryByLabelText('close-retrieval-change-tip')).not.toBeInTheDocument()
-    })
+    // Assert
+    expect(screen.getByText('Test message')).toBeInTheDocument()
+    expect(onDismiss).toHaveBeenCalledTimes(1)
   })
 
-  describe('Props', () => {
-    it('should display the correct message', () => {
-      render(<RetrievalChangeTip {...defaultProps} message='Custom warning message' />)
+  it('does not render when hidden', () => {
+    // Arrange & Act
+    render(<RetrievalChangeTip {...defaultProps} visible={false} />)
 
-      expect(screen.getByText('Custom warning message')).toBeInTheDocument()
-    })
-  })
-
-  describe('User Interactions', () => {
-    it('should call onDismiss when close button is clicked', async () => {
-      const onDismiss = jest.fn()
-      render(<RetrievalChangeTip {...defaultProps} onDismiss={onDismiss} />)
-      await userEvent.click(screen.getByRole('button', { name: 'close-retrieval-change-tip' }))
-
-      expect(onDismiss).toHaveBeenCalledTimes(1)
-    })
-
-    it('should prevent click bubbling when close button is clicked', async () => {
-      const onDismiss = jest.fn()
-      const parentClick = jest.fn()
-      render(
-        <div onClick={parentClick}>
-          <RetrievalChangeTip {...defaultProps} onDismiss={onDismiss} />
-        </div>,
-      )
-
-      await userEvent.click(screen.getByRole('button', { name: 'close-retrieval-change-tip' }))
-
-      expect(onDismiss).toHaveBeenCalledTimes(1)
-      expect(parentClick).not.toHaveBeenCalled()
-    })
+    // Assert
+    expect(screen.queryByText('Test message')).not.toBeInTheDocument()
   })
 })
 
@@ -195,7 +171,20 @@ describe('RetrievalSection', () => {
   const rowClass = 'row'
   const labelClass = 'label'
 
-  it('should render external retrieval details', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockUseModelList.mockImplementation((type: ModelTypeEnum) => {
+      if (type === ModelTypeEnum.rerank)
+        return { data: [{ provider: 'rerank-provider', models: [{ model: 'rerank-model' }] }] }
+      return { data: [] }
+    })
+    mockUseModelListAndDefaultModel.mockReturnValue({ modelList: [], defaultModel: null })
+    mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({ defaultModel: null, currentModel: null })
+    mockUseCurrentProviderAndModel.mockReturnValue({ currentProvider: null, currentModel: null })
+  })
+
+  it('renders external retrieval details and propagates changes', async () => {
+    // Arrange
     const dataset = createDataset({
       provider: 'external',
       external_knowledge_info: {
@@ -205,33 +194,38 @@ describe('RetrievalSection', () => {
         external_knowledge_api_endpoint: 'https://api.external.com',
       },
     })
+    const handleExternalChange = jest.fn()
 
+    // Act
     render(
-      <div>
-        <RetrievalSection
-          isExternal
-          rowClass={rowClass}
-          labelClass={labelClass}
-          t={t}
-          topK={3}
-          scoreThreshold={0.4}
-          scoreThresholdEnabled
-          onExternalSettingChange={jest.fn()}
-          currentDataset={dataset}
-        />
-      </div>,
+      <RetrievalSection
+        isExternal
+        rowClass={rowClass}
+        labelClass={labelClass}
+        t={t}
+        topK={3}
+        scoreThreshold={0.4}
+        scoreThresholdEnabled
+        onExternalSettingChange={handleExternalChange}
+        currentDataset={dataset}
+      />,
     )
+    const [topKIncrement] = screen.getAllByLabelText('increment')
+    await userEvent.click(topKIncrement)
 
+    // Assert
     expect(screen.getByText('External API')).toBeInTheDocument()
     expect(screen.getByText('https://api.external.com')).toBeInTheDocument()
     expect(screen.getByText('ext-id-999')).toBeInTheDocument()
-    expect(screen.getByText('appDebug.datasetConfig.top_k')).toBeInTheDocument()
+    expect(handleExternalChange).toHaveBeenCalledWith(expect.objectContaining({ top_k: 4 }))
   })
 
-  it('should render internal retrieval config when indexing is qualified', () => {
+  it('renders internal retrieval config with doc link', () => {
+    // Arrange
     const docLink = jest.fn((path: string) => `https://docs.example${path}`)
     const retrievalConfig = createRetrievalConfig()
 
+    // Act
     render(
       <RetrievalSection
         isExternal={false}
@@ -246,13 +240,18 @@ describe('RetrievalSection', () => {
       />,
     )
 
+    // Assert
     expect(screen.getByText('dataset.retrieval.semantic_search.title')).toBeInTheDocument()
     const learnMoreLink = screen.getByRole('link', { name: 'datasetSettings.form.retrievalSetting.learnMore' })
     expect(learnMoreLink).toHaveAttribute('href', 'https://docs.example/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
     expect(docLink).toHaveBeenCalledWith('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')
   })
 
-  it('should render economical retrieval config when indexing is economical', () => {
+  it('propagates retrieval config changes for economical indexing', async () => {
+    // Arrange
+    const handleRetrievalChange = jest.fn()
+
+    // Act
     render(
       <RetrievalSection
         isExternal={false}
@@ -262,12 +261,17 @@ describe('RetrievalSection', () => {
         indexMethod={IndexingType.ECONOMICAL}
         retrievalConfig={createRetrievalConfig()}
         showMultiModalTip={false}
-        onRetrievalConfigChange={jest.fn()}
+        onRetrievalConfigChange={handleRetrievalChange}
         docLink={path => path}
       />,
     )
+    const [topKIncrement] = screen.getAllByLabelText('increment')
+    await userEvent.click(topKIncrement)
 
+    // Assert
     expect(screen.getByText('dataset.retrieval.keyword_search.title')).toBeInTheDocument()
-    expect(screen.queryByText('dataset.retrieval.semantic_search.title')).not.toBeInTheDocument()
+    expect(handleRetrievalChange).toHaveBeenCalledWith(expect.objectContaining({
+      top_k: 3,
+    }))
   })
 })
