@@ -27,6 +27,8 @@ jest.mock('@/context/modal-context', () => ({
 // Test Data Factories
 // ============================================================================
 
+// Note: limit and max_depth are typed as `number | string` in CrawlOptions
+// Tests may use number, string, or empty string values to cover all valid cases
 const createDefaultCrawlOptions = (overrides: Partial<CrawlOptions> = {}): CrawlOptions => ({
   crawl_sub_pages: true,
   only_main_content: true,
@@ -158,24 +160,28 @@ describe('WaterCrawl', () => {
       // Act
       render(<WaterCrawl {...props} />)
 
-      // Find the limit input by looking for input with value 10
-      const inputs = screen.getAllByRole('textbox')
-      const limitInput = inputs.find(input => (input as HTMLInputElement).value === '10')
+      // Find the limit input by its associated label text
+      const limitLabel = screen.queryByText('datasetCreation.stepOne.website.limit')
 
-      if (limitInput) {
-        await user.clear(limitInput)
-        await user.type(limitInput, '20')
+      if (limitLabel) {
+        // The limit input is a number input (spinbutton role) within the same container
+        const limitInput = limitLabel.closest('div')?.parentElement?.querySelector('input[type="number"]')
 
-        // Assert
-        expect(onCrawlOptionsChange).toHaveBeenCalled()
+        if (limitInput) {
+          await user.clear(limitInput)
+          await user.type(limitInput, '20')
+
+          // Assert
+          expect(onCrawlOptionsChange).toHaveBeenCalled()
+        }
       }
       else {
-        // Options might already be visible, just verify component renders
+        // Options might not be visible, just verify component renders
         expect(screen.getByText('datasetCreation.stepOne.website.options')).toBeInTheDocument()
       }
     })
 
-    it('should render with provided checkedCrawlResult', async () => {
+    it('should execute crawl task when checkedCrawlResult is provided', async () => {
       // Arrange
       const checkedItem = createCrawlResultItem({ source_url: 'https://checked.com' })
       const mockCreateTask = createWatercrawlTask as jest.Mock
@@ -199,7 +205,7 @@ describe('WaterCrawl', () => {
       await userEvent.type(input, 'https://example.com')
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
-      // Assert - wait for completion
+      // Assert - crawl task should be created even with pre-checked results
       await waitFor(() => {
         expect(mockCreateTask).toHaveBeenCalled()
       })
@@ -557,25 +563,12 @@ describe('WaterCrawl', () => {
       // Act
       render(<WaterCrawl {...props} />)
 
-      // Find the checkbox by its label text and then locate the actual checkbox div
-      const checkboxLabelText = screen.getByText('datasetCreation.stepOne.website.crawlSubPage')
-      const labelElement = checkboxLabelText.closest('label')
+      // Find and click the checkbox by data-testid
+      const checkbox = screen.getByTestId('checkbox-crawl-sub-pages')
+      fireEvent.click(checkbox)
 
-      // The Checkbox component is a div inside the label, click it directly
-      if (labelElement) {
-        const checkboxDiv = labelElement.querySelector('div[class*="cursor-pointer"]')
-        if (checkboxDiv) {
-          fireEvent.click(checkboxDiv)
-          expect(onCrawlOptionsChange).toHaveBeenCalled()
-        }
-        else {
-          fireEvent.click(labelElement)
-          expect(onCrawlOptionsChange).toHaveBeenCalled()
-        }
-      }
-      else {
-        expect(checkboxLabelText).toBeInTheDocument()
-      }
+      // Assert - onCrawlOptionsChange should be called
+      expect(onCrawlOptionsChange).toHaveBeenCalled()
     })
 
     it('should toggle options visibility when clicking options header', async () => {
@@ -817,26 +810,9 @@ describe('WaterCrawl', () => {
   // ============================================================================
   describe('Component Memoization', () => {
     it('should be wrapped with React.memo', () => {
-      // Assert
-      expect(WaterCrawl.$$typeof).toBeDefined()
-    })
-
-    it('should not re-render when props are the same', () => {
-      // Arrange
-      const props = createDefaultProps()
-      const renderSpy = jest.fn()
-
-      const TestWrapper = ({ props: p }: { props: typeof props }) => {
-        renderSpy()
-        return <WaterCrawl {...p} />
-      }
-
-      // Act
-      const { rerender } = render(<TestWrapper props={props} />)
-      rerender(<TestWrapper props={props} />)
-
-      // Assert - TestWrapper renders twice, but WaterCrawl should be memoized
-      expect(renderSpy).toHaveBeenCalledTimes(2)
+      // Assert - React.memo components have $$typeof Symbol(react.memo)
+      expect(WaterCrawl.$$typeof?.toString()).toBe('Symbol(react.memo)')
+      expect((WaterCrawl as unknown as { type: unknown }).type).toBeDefined()
     })
   })
 
@@ -975,7 +951,8 @@ describe('WaterCrawl', () => {
       // Arrange
       const mockCreateTask = createWatercrawlTask as jest.Mock
       mockCreateTask.mockRejectedValueOnce(new Error('Network error'))
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation()
+      // Suppress console output during test to avoid noisy logs
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(jest.fn())
 
       const props = createDefaultProps()
 
@@ -1598,7 +1575,8 @@ describe('WaterCrawl', () => {
       const mockCreateTask = createWatercrawlTask as jest.Mock
 
       mockCreateTask.mockRejectedValueOnce(new Error('Failed'))
-      jest.spyOn(console, 'log').mockImplementation()
+      // Suppress console output during test to avoid noisy logs
+      jest.spyOn(console, 'log').mockImplementation(jest.fn())
 
       const props = createDefaultProps()
 

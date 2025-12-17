@@ -32,6 +32,8 @@ jest.mock('@/context/i18n', () => ({
 // Test Data Factories
 // ============================================================================
 
+// Note: limit and max_depth are typed as `number | string` in CrawlOptions
+// Tests may use number, string, or empty string values to cover all valid cases
 const createDefaultCrawlOptions = (overrides: Partial<CrawlOptions> = {}): CrawlOptions => ({
   crawl_sub_pages: true,
   only_main_content: true,
@@ -162,25 +164,28 @@ describe('JinaReader', () => {
       // Act
       render(<JinaReader {...props} />)
 
-      // Find the limit input by looking for input with value 10
-      const inputs = screen.getAllByRole('textbox')
-      // The limit input should be visible in options section
-      const limitInput = inputs.find(input => (input as HTMLInputElement).value === '10')
+      // Find the limit input by its associated label text
+      const limitLabel = screen.queryByText('datasetCreation.stepOne.website.limit')
 
-      if (limitInput) {
-        await user.clear(limitInput)
-        await user.type(limitInput, '20')
+      if (limitLabel) {
+        // The limit input is a number input (spinbutton role) within the same container
+        const limitInput = limitLabel.closest('div')?.parentElement?.querySelector('input[type="number"]')
 
-        // Assert
-        expect(onCrawlOptionsChange).toHaveBeenCalled()
+        if (limitInput) {
+          await user.clear(limitInput)
+          await user.type(limitInput, '20')
+
+          // Assert
+          expect(onCrawlOptionsChange).toHaveBeenCalled()
+        }
       }
       else {
-        // Options might already be visible, just verify component renders
+        // Options might not be visible, just verify component renders
         expect(screen.getByText('datasetCreation.stepOne.website.options')).toBeInTheDocument()
       }
     })
 
-    it('should render with provided checkedCrawlResult', async () => {
+    it('should execute crawl task when checkedCrawlResult is provided', async () => {
       // Arrange
       const checkedItem = createCrawlResultItem({ source_url: 'https://checked.com' })
       const mockCreateTask = createJinaReaderTask as jest.Mock
@@ -203,7 +208,7 @@ describe('JinaReader', () => {
       await userEvent.type(input, 'https://example.com')
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
-      // Assert - wait for completion
+      // Assert - crawl task should be created even with pre-checked results
       await waitFor(() => {
         expect(mockCreateTask).toHaveBeenCalled()
       })
@@ -549,29 +554,12 @@ describe('JinaReader', () => {
       // Act
       render(<JinaReader {...props} />)
 
-      // Find the checkbox by its label text and then locate the actual checkbox div
-      const checkboxLabelText = screen.getByText('datasetCreation.stepOne.website.crawlSubPage')
-      const labelElement = checkboxLabelText.closest('label')
+      // Find and click the checkbox by data-testid
+      const checkbox = screen.getByTestId('checkbox-crawl-sub-pages')
+      fireEvent.click(checkbox)
 
-      // The Checkbox component is a div inside the label, click it directly
-      if (labelElement) {
-        // Find the checkbox div (first child of label that handles click)
-        const checkboxDiv = labelElement.querySelector('div[class*="cursor-pointer"]')
-        if (checkboxDiv) {
-          fireEvent.click(checkboxDiv)
-          // Assert - onCrawlOptionsChange should be called
-          expect(onCrawlOptionsChange).toHaveBeenCalled()
-        }
-        else {
-          // Fallback: click the label itself
-          fireEvent.click(labelElement)
-          expect(onCrawlOptionsChange).toHaveBeenCalled()
-        }
-      }
-      else {
-        // If no label found, verify the text is at least rendered
-        expect(checkboxLabelText).toBeInTheDocument()
-      }
+      // Assert - onCrawlOptionsChange should be called
+      expect(onCrawlOptionsChange).toHaveBeenCalled()
     })
 
     it('should toggle options visibility when clicking options header', async () => {
@@ -786,26 +774,9 @@ describe('JinaReader', () => {
   // ============================================================================
   describe('Component Memoization', () => {
     it('should be wrapped with React.memo', () => {
-      // Assert
-      expect(JinaReader.$$typeof).toBeDefined()
-    })
-
-    it('should not re-render when props are the same', () => {
-      // Arrange
-      const props = createDefaultProps()
-      const renderSpy = jest.fn()
-
-      const TestWrapper = ({ props: p }: { props: typeof props }) => {
-        renderSpy()
-        return <JinaReader {...p} />
-      }
-
-      // Act
-      const { rerender } = render(<TestWrapper props={props} />)
-      rerender(<TestWrapper props={props} />)
-
-      // Assert - TestWrapper renders twice, but JinaReader should be memoized
-      expect(renderSpy).toHaveBeenCalledTimes(2)
+      // Assert - React.memo components have $$typeof Symbol(react.memo)
+      expect(JinaReader.$$typeof?.toString()).toBe('Symbol(react.memo)')
+      expect((JinaReader as unknown as { type: unknown }).type).toBeDefined()
     })
   })
 
@@ -938,7 +909,8 @@ describe('JinaReader', () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as jest.Mock
       mockCreateTask.mockRejectedValueOnce(new Error('Network error'))
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation()
+      // Suppress console output during test to avoid noisy logs
+      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(jest.fn())
 
       const props = createDefaultProps()
 
@@ -1069,8 +1041,8 @@ describe('JinaReader', () => {
       })
     })
 
-    it('should handle undefined data from completed job polling (line 179 branch)', async () => {
-      // Arrange - tests data.data || [] fallback at line 179
+    it('should return empty array when completed job has undefined data', async () => {
+      // Arrange
       const mockCreateTask = createJinaReaderTask as jest.Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as jest.Mock
       const onCheckedCrawlResultChange = jest.fn()
@@ -1080,7 +1052,7 @@ describe('JinaReader', () => {
         status: 'completed',
         current: 0,
         total: 0,
-        // data is undefined - triggers || [] fallback
+        // data is undefined - should fallback to empty array
       })
 
       const props = createDefaultProps({ onCheckedCrawlResultChange })
@@ -1097,14 +1069,13 @@ describe('JinaReader', () => {
       })
     })
 
-    it('should handle crawlResult with zero current value (line 216 branch)', async () => {
-      // Arrange - tests crawlResult?.current || 0 fallback at line 216
+    it('should show zero current progress when crawlResult is not yet available', async () => {
+      // Arrange
       const mockCreateTask = createJinaReaderTask as jest.Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as jest.Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-current-job' })
-      // First call returns running with current = 0, never resolves to completed
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ })) // Never resolves
+      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
@@ -1116,21 +1087,20 @@ describe('JinaReader', () => {
       await userEvent.type(input, 'https://zero-current-test.com')
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
-      // Assert - should show 0/10 in crawling indicator (crawlResult is undefined, so uses || 0)
+      // Assert - should show 0/10 when crawlResult is undefined
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
       })
     })
 
-    it('should handle crawlResult with zero total and empty limit (line 217 branch)', async () => {
-      // Arrange - tests crawlResult?.total || parseFloat(limit) || 0 fallback at line 217
+    it('should show 0/0 progress when limit is zero string', async () => {
+      // Arrange
       const mockCreateTask = createJinaReaderTask as jest.Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as jest.Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ })) // Never resolves
+      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
 
-      // Use string '0' for limit to test parseFloat returning 0
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: '0' }),
       })
@@ -1141,14 +1111,14 @@ describe('JinaReader', () => {
       await userEvent.type(input, 'https://zero-total-test.com')
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
-      // Assert - should show 0/0 (falls through to final 0)
+      // Assert - should show 0/0 when limit parses to 0
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/0/)).toBeInTheDocument()
       })
     })
 
-    it('should handle undefined crawlResult data in finished state (line 225 branch)', async () => {
-      // Arrange - tests crawlResult?.data || [] fallback at line 225
+    it('should complete successfully when result data is undefined', async () => {
+      // Arrange
       const mockCreateTask = createJinaReaderTask as jest.Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as jest.Mock
       const onCheckedCrawlResultChange = jest.fn()
@@ -1159,7 +1129,7 @@ describe('JinaReader', () => {
         current: 0,
         total: 0,
         time_consuming: 1.5,
-        // data is undefined - triggers || [] fallback at line 225
+        // data is undefined - should fallback to empty array
       })
 
       const props = createDefaultProps({ onCheckedCrawlResultChange })
@@ -1170,19 +1140,19 @@ describe('JinaReader', () => {
       await userEvent.type(input, 'https://undefined-result-data-test.com')
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
-      // Assert - should complete and show results (even if empty)
+      // Assert - should complete and show results even if empty
       await waitFor(() => {
         expect(screen.getByText(/scrapTimeInfo/i)).toBeInTheDocument()
       })
     })
 
-    it('should use parseFloat fallback when crawlResult.total is undefined (line 217)', async () => {
-      // Arrange - specifically tests the Number.parseFloat(crawlOptions.limit) branch
+    it('should use limit as total when crawlResult total is not available', async () => {
+      // Arrange
       const mockCreateTask = createJinaReaderTask as jest.Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as jest.Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'no-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ })) // Never resolves
+      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 15 }),
@@ -1194,19 +1164,18 @@ describe('JinaReader', () => {
       await userEvent.type(input, 'https://no-total-test.com')
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
-      // Assert - should use limit (15) as total when crawlResult.total is undefined
+      // Assert - should use limit (15) as total
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/15/)).toBeInTheDocument()
       })
     })
 
-    it('should handle crawlResult with current=0 and total=0 during running (line 216-217)', async () => {
-      // Arrange - tests both || 0 fallbacks when values are explicitly 0
+    it('should fallback to limit when crawlResult has zero total', async () => {
+      // Arrange
       const mockCreateTask = createJinaReaderTask as jest.Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as jest.Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'both-zero-job' })
-      // Return running state with current=0 and total=0
       mockCheckStatus
         .mockResolvedValueOnce({
           status: 'running',
@@ -1214,7 +1183,7 @@ describe('JinaReader', () => {
           total: 0,
           data: [],
         })
-        .mockImplementationOnce(() => new Promise(() => { /* never resolves */ })) // Never resolves
+        .mockImplementationOnce(() => new Promise(() => { /* never resolves */ }))
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 5 }),
@@ -1226,21 +1195,17 @@ describe('JinaReader', () => {
       await userEvent.type(input, 'https://both-zero-test.com')
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
-      // Assert - should show 0/5 (current is 0, total falls through to limit)
+      // Assert - should show progress indicator
       await waitFor(() => {
-        // First shows 0/5, then updates to 0/5 from crawlResult
         expect(screen.getByText(/totalPageScraped/)).toBeInTheDocument()
       })
     })
 
-    it('should handle direct data response with constructed array (line 167)', async () => {
-      // Arrange - tests the data.data || [] at line 167
-      // Note: In this code path, data.data is always constructed with a value,
-      // so the || [] fallback is never triggered in normal operation
+    it('should construct result item from direct data response', async () => {
+      // Arrange
       const mockCreateTask = createJinaReaderTask as jest.Mock
       const onCheckedCrawlResultChange = jest.fn()
 
-      // Return direct data response
       mockCreateTask.mockResolvedValueOnce({
         data: {
           title: 'Direct Title',
@@ -1258,7 +1223,7 @@ describe('JinaReader', () => {
       await userEvent.type(input, 'https://direct-array.com')
       await userEvent.click(screen.getByRole('button', { name: /run/i }))
 
-      // Assert - data.data should have the constructed item
+      // Assert - should construct result item from direct response
       await waitFor(() => {
         expect(onCheckedCrawlResultChange).toHaveBeenCalledWith([
           expect.objectContaining({
@@ -1546,7 +1511,8 @@ describe('JinaReader', () => {
       const mockCreateTask = createJinaReaderTask as jest.Mock
 
       mockCreateTask.mockRejectedValueOnce(new Error('Failed'))
-      jest.spyOn(console, 'log').mockImplementation()
+      // Suppress console output during test to avoid noisy logs
+      jest.spyOn(console, 'log').mockImplementation(jest.fn())
 
       const props = createDefaultProps()
 

@@ -1,56 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import UrlInput from './base/url-input'
-import JinaReader from './index'
-import { createJinaReaderTask } from '@/service/datasets'
-import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-
-// Mock external dependencies
-jest.mock('@/service/datasets', () => ({
-  createJinaReaderTask: jest.fn(),
-  checkJinaReaderTaskStatus: jest.fn(),
-}))
-
-jest.mock('@/utils', () => ({
-  sleep: jest.fn(() => Promise.resolve()),
-}))
-
-// Mock modal context
-jest.mock('@/context/modal-context', () => ({
-  useModalContext: () => ({
-    setShowAccountSettingModal: jest.fn(),
-  }),
-}))
 
 // Mock doc link context
 jest.mock('@/context/i18n', () => ({
   useDocLink: () => () => 'https://docs.example.com',
 }))
-
-// ============================================================================
-// Test Data Factories for JinaReader Integration
-// ============================================================================
-
-const createDefaultCrawlOptions = (overrides: Partial<CrawlOptions> = {}): CrawlOptions => ({
-  crawl_sub_pages: true,
-  only_main_content: true,
-  includes: '',
-  excludes: '',
-  limit: 10,
-  max_depth: 2,
-  use_sitemap: false,
-  ...overrides,
-})
-
-const createDefaultProps = (overrides: Partial<Parameters<typeof JinaReader>[0]> = {}) => ({
-  onPreview: jest.fn(),
-  checkedCrawlResult: [] as CrawlResultItem[],
-  onCheckedCrawlResultChange: jest.fn(),
-  onJobIdChange: jest.fn(),
-  crawlOptions: createDefaultCrawlOptions(),
-  onCrawlOptionsChange: jest.fn(),
-  ...overrides,
-})
 
 // ============================================================================
 // UrlInput Component Tests
@@ -81,10 +36,7 @@ describe('UrlInput', () => {
 
       // Assert
       expect(screen.getByRole('textbox')).toBeInTheDocument()
-      // Use getAllByRole and find the primary button (not toast close button)
-      const buttons = screen.getAllByRole('button')
-      const primaryButton = buttons.find(btn => btn.classList.contains('btn-primary'))
-      expect(primaryButton).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /run/i })).toBeInTheDocument()
     })
 
     it('should render input with placeholder from docLink', () => {
@@ -117,12 +69,11 @@ describe('UrlInput', () => {
       // Act
       render(<UrlInput {...props} />)
 
-      // Assert - find the primary button
-      const buttons = screen.getAllByRole('button')
-      const primaryButton = buttons.find(btn => btn.classList.contains('btn-primary'))
-      expect(primaryButton).toBeInTheDocument()
+      // Assert - find button by data-testid when in loading state
+      const runButton = screen.getByTestId('url-input-run-button')
+      expect(runButton).toBeInTheDocument()
       // Button text should be empty when running
-      expect(primaryButton).not.toHaveTextContent(/run/i)
+      expect(runButton).not.toHaveTextContent(/run/i)
     })
 
     it('should show loading state on button when running', () => {
@@ -133,16 +84,15 @@ describe('UrlInput', () => {
       // Act
       render(<UrlInput {...props} />)
 
-      // Assert - find the primary button and verify it's in loading state
-      const buttons = screen.getAllByRole('button')
-      const primaryButton = buttons.find(btn => btn.classList.contains('btn-primary'))
-      expect(primaryButton).toBeInTheDocument()
+      // Assert - find button by data-testid when in loading state
+      const runButton = screen.getByTestId('url-input-run-button')
+      expect(runButton).toBeInTheDocument()
 
       // Verify button is empty (loading state removes text)
-      expect(primaryButton).not.toHaveTextContent(/run/i)
+      expect(runButton).not.toHaveTextContent(/run/i)
 
       // Verify clicking doesn't trigger onRun when loading
-      fireEvent.click(primaryButton!)
+      fireEvent.click(runButton)
       expect(onRun).not.toHaveBeenCalled()
     })
   })
@@ -232,17 +182,14 @@ describe('UrlInput', () => {
 
       // Act
       render(<UrlInput {...props} />)
-      // Find the primary button
-      const buttons = screen.getAllByRole('button')
-      const primaryButton = buttons.find(btn => btn.classList.contains('btn-primary'))
-      fireEvent.click(primaryButton!)
+      const runButton = screen.getByTestId('url-input-run-button')
+      fireEvent.click(runButton)
 
       // Assert
       expect(onRun).not.toHaveBeenCalled()
     })
 
-    it('should early return when clicking button while isRunning is true (line 28 coverage)', async () => {
-      // This test specifically covers line 27-28: if (isRunning) return
+    it('should not call onRun when already running', async () => {
       // Arrange
       const onRun = jest.fn()
 
@@ -254,12 +201,9 @@ describe('UrlInput', () => {
       // Rerender with isRunning=true to simulate a running state
       rerender(<UrlInput isRunning={true} onRun={onRun} />)
 
-      // Find and click the button - this should trigger handleOnRun which checks isRunning
-      const buttons = screen.getAllByRole('button')
-      const primaryButton = buttons.find(btn => btn.classList.contains('btn-primary'))
-
-      // Use fireEvent.click to ensure the click is not blocked
-      fireEvent.click(primaryButton!)
+      // Find and click the button by data-testid (loading state has no text)
+      const runButton = screen.getByTestId('url-input-run-button')
+      fireEvent.click(runButton)
 
       // Assert - onRun should not be called due to early return at line 28
       expect(onRun).not.toHaveBeenCalled()
@@ -272,12 +216,10 @@ describe('UrlInput', () => {
 
       // Act
       render(<UrlInput {...props} />)
-      // Find the primary button
-      const buttons = screen.getAllByRole('button')
-      const primaryButton = buttons.find(btn => btn.classList.contains('btn-primary'))
-      fireEvent.click(primaryButton!)
-      fireEvent.click(primaryButton!)
-      fireEvent.click(primaryButton!)
+      const runButton = screen.getByTestId('url-input-run-button')
+      fireEvent.click(runButton)
+      fireEvent.click(runButton)
+      fireEvent.click(runButton)
 
       // Assert
       expect(onRun).not.toHaveBeenCalled()
@@ -299,12 +241,11 @@ describe('UrlInput', () => {
       // Change isRunning to true
       rerender(<UrlInput {...props} isRunning={true} />)
 
-      // Assert - find the primary button and verify it's now in loading state
-      const buttons = screen.getAllByRole('button')
-      const primaryButton = buttons.find(btn => btn.classList.contains('btn-primary'))
-      expect(primaryButton).toBeInTheDocument()
+      // Assert - find button by data-testid and verify it's now in loading state
+      const runButton = screen.getByTestId('url-input-run-button')
+      expect(runButton).toBeInTheDocument()
       // When loading, the button text should be empty
-      expect(primaryButton).not.toHaveTextContent(/run/i)
+      expect(runButton).not.toHaveTextContent(/run/i)
     })
 
     it('should call updated onRun callback after prop change', async () => {
@@ -450,44 +391,6 @@ describe('UrlInput', () => {
 
       // Assert - should call with empty string
       expect(onRun).toHaveBeenCalledWith('')
-    })
-  })
-
-  // --------------------------------------------------------------------------
-  // Integration with JinaReader Tests
-  // --------------------------------------------------------------------------
-  describe('Integration', () => {
-    it('should work correctly as part of JinaReader workflow', async () => {
-      // Arrange
-      const mockCreateTask = createJinaReaderTask as jest.Mock
-      mockCreateTask.mockResolvedValueOnce({
-        data: {
-          title: 'Integration Test',
-          content: 'Content',
-          description: 'Desc',
-          url: 'https://integration.com',
-        },
-      })
-
-      const jinaProps = createDefaultProps()
-
-      // Act
-      render(<JinaReader {...jinaProps} />)
-
-      // Find the UrlInput's input field
-      const input = screen.getAllByRole('textbox')[0]
-      await userEvent.type(input, 'https://integration.com')
-
-      // Find and click the run button
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Assert
-      await waitFor(() => {
-        expect(mockCreateTask).toHaveBeenCalledWith({
-          url: 'https://integration.com',
-          options: jinaProps.crawlOptions,
-        })
-      })
     })
   })
 })

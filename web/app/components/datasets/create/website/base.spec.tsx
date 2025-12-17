@@ -265,6 +265,7 @@ describe('CrawledResultItem', () => {
     isPreview: false,
     onCheckChange: jest.fn(),
     onPreview: jest.fn(),
+    testId: 'test-item',
     ...overrides,
   })
 
@@ -284,10 +285,10 @@ describe('CrawledResultItem', () => {
 
     it('should render checkbox (custom Checkbox component)', () => {
       const props = createItemProps()
-      const { container } = render(<CrawledResultItem {...props} />)
+      render(<CrawledResultItem {...props} />)
 
-      // Custom Checkbox is a div with cursor-pointer class
-      const checkbox = container.querySelector('.cursor-pointer.rounded-\\[4px\\]')
+      // Find checkbox by data-testid
+      const checkbox = screen.getByTestId('checkbox-test-item')
       expect(checkbox).toBeInTheDocument()
     })
 
@@ -304,10 +305,9 @@ describe('CrawledResultItem', () => {
       const onCheckChange = jest.fn()
       const props = createItemProps({ isChecked: false, onCheckChange })
 
-      const { container } = render(<CrawledResultItem {...props} />)
-      // Custom Checkbox is a div with cursor-pointer
-      const checkbox = container.querySelector('.cursor-pointer.rounded-\\[4px\\]')
-      await userEvent.click(checkbox!)
+      render(<CrawledResultItem {...props} />)
+      const checkbox = screen.getByTestId('checkbox-test-item')
+      await userEvent.click(checkbox)
 
       expect(onCheckChange).toHaveBeenCalledWith(true)
     })
@@ -316,9 +316,9 @@ describe('CrawledResultItem', () => {
       const onCheckChange = jest.fn()
       const props = createItemProps({ isChecked: true, onCheckChange })
 
-      const { container } = render(<CrawledResultItem {...props} />)
-      const checkbox = container.querySelector('.cursor-pointer.rounded-\\[4px\\]')
-      await userEvent.click(checkbox!)
+      render(<CrawledResultItem {...props} />)
+      const checkbox = screen.getByTestId('checkbox-test-item')
+      await userEvent.click(checkbox)
 
       expect(onCheckChange).toHaveBeenCalledWith(false)
     })
@@ -377,9 +377,9 @@ describe('CrawledResult', () => {
     ...overrides,
   })
 
-  // Helper to get all custom checkboxes
-  const getCheckboxes = (container: HTMLElement) =>
-    container.querySelectorAll('.cursor-pointer.rounded-\\[4px\\]')
+  // Helper functions to get checkboxes by data-testid
+  const getSelectAllCheckbox = () => screen.getByTestId('checkbox-select-all')
+  const getItemCheckbox = (index: number) => screen.getByTestId(`checkbox-item-${index}`)
 
   describe('Rendering', () => {
     it('should render all items in list', () => {
@@ -427,10 +427,8 @@ describe('CrawledResult', () => {
       ]
       const props = createResultProps({ list, checkedList: [], onSelectedChange })
 
-      const { container } = render(<CrawledResult {...props} />)
-      // First checkbox is the select all checkbox
-      const checkboxes = getCheckboxes(container)
-      await userEvent.click(checkboxes[0])
+      render(<CrawledResult {...props} />)
+      await userEvent.click(getSelectAllCheckbox())
 
       expect(onSelectedChange).toHaveBeenCalledWith(list)
     })
@@ -443,9 +441,8 @@ describe('CrawledResult', () => {
       ]
       const props = createResultProps({ list, checkedList: list, onSelectedChange })
 
-      const { container } = render(<CrawledResult {...props} />)
-      const checkboxes = getCheckboxes(container)
-      await userEvent.click(checkboxes[0])
+      render(<CrawledResult {...props} />)
+      await userEvent.click(getSelectAllCheckbox())
 
       expect(onSelectedChange).toHaveBeenCalledWith([])
     })
@@ -460,10 +457,8 @@ describe('CrawledResult', () => {
       ]
       const props = createResultProps({ list, checkedList: [], onSelectedChange })
 
-      const { container } = render(<CrawledResult {...props} />)
-      // Index 0 is select all, 1 is first item
-      const checkboxes = getCheckboxes(container)
-      await userEvent.click(checkboxes[1])
+      render(<CrawledResult {...props} />)
+      await userEvent.click(getItemCheckbox(0))
 
       expect(onSelectedChange).toHaveBeenCalledWith([list[0]])
     })
@@ -476,10 +471,8 @@ describe('CrawledResult', () => {
       ]
       const props = createResultProps({ list, checkedList: [list[0]], onSelectedChange })
 
-      const { container } = render(<CrawledResult {...props} />)
-      // Click the first item's checkbox to uncheck it
-      const checkboxes = getCheckboxes(container)
-      await userEvent.click(checkboxes[1])
+      render(<CrawledResult {...props} />)
+      await userEvent.click(getItemCheckbox(0))
 
       expect(onSelectedChange).toHaveBeenCalledWith([])
     })
@@ -493,10 +486,9 @@ describe('CrawledResult', () => {
       ]
       const props = createResultProps({ list, checkedList: [list[0], list[1]], onSelectedChange })
 
-      const { container } = render(<CrawledResult {...props} />)
+      render(<CrawledResult {...props} />)
       // Click the first item's checkbox to uncheck it
-      const checkboxes = getCheckboxes(container)
-      await userEvent.click(checkboxes[1])
+      await userEvent.click(getItemCheckbox(0))
 
       expect(onSelectedChange).toHaveBeenCalledWith([list[1]])
     })
