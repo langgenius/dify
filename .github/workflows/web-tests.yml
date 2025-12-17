@@ -70,11 +70,56 @@ jobs:
             exit 0
           fi
 
-          # Extract coverage percentages
-          LINES_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-final.json", "utf8")).total.lines.pct')
-          FUNCTIONS_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-final.json", "utf8")).total.functions.pct')
-          BRANCHES_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-final.json", "utf8")).total.branches.pct')
-          STATEMENTS_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-final.json", "utf8")).total.statements.pct')
+          # Extract coverage percentages by calculating from all files
+          LINES_COVERAGE=$(node -e "
+            const coverage = JSON.parse(require('fs').readFileSync('coverage/coverage-final.json', 'utf8'));
+            let totalLines = 0;
+            let coveredLines = 0;
+            Object.values(coverage).forEach(file => {
+              if (file.s) {
+                Object.values(file.s).forEach(count => {
+                  totalLines += 1;
+                  if (count > 0) coveredLines += 1;
+                });
+              }
+            });
+            const pct = totalLines > 0 ? ((coveredLines / totalLines) * 100).toFixed(2) : '0.00';
+            console.log(pct);
+          ")
+
+          FUNCTIONS_COVERAGE=$(node -e "
+            const coverage = JSON.parse(require('fs').readFileSync('coverage/coverage-final.json', 'utf8'));
+            let totalFunctions = 0;
+            let coveredFunctions = 0;
+            Object.values(coverage).forEach(file => {
+              if (file.f) {
+                Object.values(file.f).forEach(count => {
+                  totalFunctions += 1;
+                  if (count > 0) coveredFunctions += 1;
+                });
+              }
+            });
+            const pct = totalFunctions > 0 ? ((coveredFunctions / totalFunctions) * 100).toFixed(2) : '0.00';
+            console.log(pct);
+          ")
+
+          BRANCHES_COVERAGE=$(node -e "
+            const coverage = JSON.parse(require('fs').readFileSync('coverage/coverage-final.json', 'utf8'));
+            let totalBranches = 0;
+            let coveredBranches = 0;
+            Object.values(coverage).forEach(file => {
+              if (file.b) {
+                Object.values(file.b).forEach(branches => {
+                  totalBranches += 1;
+                  if (branches.some(b => b > 0)) coveredBranches += 1;
+                });
+              }
+            });
+            const pct = totalBranches > 0 ? ((coveredBranches / totalBranches) * 100).toFixed(2) : '0.00';
+            console.log(pct);
+          ")
+
+          STATEMENTS_COVERAGE=$LINES_COVERAGE  # Lines and statements are the same in coverage-final.json
 
           # Create a detailed coverage summary
           echo "### 📊 Test Coverage Report :test_tube:" >> $GITHUB_STEP_SUMMARY
@@ -120,14 +165,39 @@ jobs:
             echo "<details><summary>📋 Detailed coverage report (click to expand)</summary>"
             echo ""
             echo '```'
-            cat coverage/coverage-final.json | jq -r '
-              .total as $total |
-              "Overall Coverage:",
-              "  Lines: \($total.lines.pct)% (\($total.lines.covered)/\($total.lines.total))",
-              "  Functions: \($total.functions.pct)% (\($total.functions.covered)/\($total.functions.total))",
-              "  Branches: \($total.branches.pct)% (\($total.branches.covered)/\($total.branches.total))",
-              "  Statements: \($total.statements.pct)% (\($total.statements.covered)/\($total.statements.total))"
-            '
+            node -e "
+              const coverage = JSON.parse(require('fs').readFileSync('coverage/coverage-final.json', 'utf8'));
+              let totalLines = 0, coveredLines = 0;
+              let totalFunctions = 0, coveredFunctions = 0;
+              let totalBranches = 0, coveredBranches = 0;
+
+              Object.values(coverage).forEach(file => {
+                if (file.s) {
+                  Object.values(file.s).forEach(count => {
+                    totalLines += 1;
+                    if (count > 0) coveredLines += 1;
+                  });
+                }
+                if (file.f) {
+                  Object.values(file.f).forEach(count => {
+                    totalFunctions += 1;
+                    if (count > 0) coveredFunctions += 1;
+                  });
+                }
+                if (file.b) {
+                  Object.values(file.b).forEach(branches => {
+                    totalBranches += 1;
+                    if (branches.some(b => b > 0)) coveredBranches += 1;
+                  });
+                }
+              });
+
+              console.log('Overall Coverage:');
+              console.log(\`  Lines: \${((coveredLines/totalLines)*100).toFixed(2)}% (\${coveredLines}/\${totalLines})\`);
+              console.log(\`  Functions: \${((coveredFunctions/totalFunctions)*100).toFixed(2)}% (\${coveredFunctions}/\${totalFunctions})\`);
+              console.log(\`  Branches: \${((coveredBranches/totalBranches)*100).toFixed(2)}% (\${coveredBranches}/\${totalBranches})\`);
+              console.log(\`  Statements: \${((coveredLines/totalLines)*100).toFixed(2)}% (\${coveredLines}/\${totalLines})\`);
+            "
             echo '```'
             echo "</details>"
           } >> $GITHUB_STEP_SUMMARY
