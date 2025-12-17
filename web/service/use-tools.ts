@@ -330,15 +330,24 @@ export const useRemoveProviderCredentials = ({
 
 const useRAGRecommendedPluginListKey = [NAME_SPACE, 'rag-recommended-plugins']
 
-export const useRAGRecommendedPlugins = () => {
+export const useRAGRecommendedPlugins = (type: 'tool' | 'datasource' | 'all' = 'all') => {
   return useQuery<RAGRecommendedPlugins>({
-    queryKey: useRAGRecommendedPluginListKey,
-    queryFn: () => get<RAGRecommendedPlugins>('/rag/pipelines/recommended-plugins'),
+    queryKey: [...useRAGRecommendedPluginListKey, type],
+    queryFn: () => get<RAGRecommendedPlugins>('/rag/pipelines/recommended-plugins', {
+      params: {
+        type,
+      },
+    }),
   })
 }
 
 export const useInvalidateRAGRecommendedPlugins = () => {
-  return useInvalid(useRAGRecommendedPluginListKey)
+  const queryClient = useQueryClient()
+  return (type: 'tool' | 'datasource' | 'all' = 'all') => {
+    queryClient.invalidateQueries({
+      queryKey: [...useRAGRecommendedPluginListKey, type],
+    })
+  }
 }
 
 // App Triggers API hooks
