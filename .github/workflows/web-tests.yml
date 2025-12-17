@@ -13,6 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
+        shell: bash
         working-directory: ./web
 
     steps:
@@ -40,7 +41,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: ./web/package.json
+          cache-dependency-path: ./web/pnpm-lock.yaml
 
       - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -59,159 +60,79 @@ jobs:
 
       - name: Coverage Summary
         if: steps.changed-files.outputs.any_changed == 'true'
+        id: coverage-summary
         working-directory: ./web
         run: |
-          set -x
+          set -eo pipefail
 
-          # Check if coverage files exist
-          if [ ! -f "coverage/coverage-final.json" ]; then
-            echo "### 🚨 Test Coverage Report :test_tube:" >> $GITHUB_STEP_SUMMARY
-            echo "No coverage data found. Make sure tests generate coverage reports." >> $GITHUB_STEP_SUMMARY
+          COVERAGE_FILE="coverage/coverage-final.json"
+
+          if [ ! -f "$COVERAGE_FILE" ]; then
+            echo "has_coverage=false" >> "$GITHUB_OUTPUT"
+            echo "### 🚨 Test Coverage Report :test_tube:" >> "$GITHUB_STEP_SUMMARY"
+            echo "Coverage data not found at $COVERAGE_FILE. Ensure Jest runs with coverage enabled." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
-          # Extract coverage percentages by calculating from all files
-          LINES_COVERAGE=$(node -e "
-            const coverage = JSON.parse(require('fs').readFileSync('coverage/coverage-final.json', 'utf8'));
-            let totalLines = 0;
-            let coveredLines = 0;
-            Object.values(coverage).forEach(file => {
-              if (file.s) {
-                Object.values(file.s).forEach(count => {
-                  totalLines += 1;
-                  if (count > 0) coveredLines += 1;
-                });
-              }
+          echo "has_coverage=true" >> "$GITHUB_OUTPUT"
+
+          node <<'NODE' >> "$GITHUB_STEP_SUMMARY"
+          const fs = require('fs');
+          const path = require('path');
+          const { createCoverageMap } = require('istanbul-lib-coverage');
+
+          const coveragePath = path.join('coverage', 'coverage-final.json');
+          const raw = fs.readFileSync(coveragePath, 'utf8');
+          const map = createCoverageMap(JSON.parse(raw));
+          const summary = map.getCoverageSummary();
+
+          const metrics = [
+            { key: 'lines', label: 'Lines' },
+            { key: 'statements', label: 'Statements' },
+            { key: 'branches', label: 'Branches' },
+            { key: 'functions', label: 'Functions' },
+          ];
+
+          const formatPct = (pct) => Number.isFinite(pct) ? pct.toFixed(2) : '0.00';
+
+          console.log('### Test Coverage Summary :test_tube:');
+          console.log('');
+          console.log('| Metric | Coverage | Covered / Total |');
+          console.log('|--------|----------|-----------------|');
+          metrics.forEach(({ key, label }) => {
+            const data = summary.data[key];
+            console.log(`| ${label} | ${formatPct(data.pct)}% | ${data.covered} / ${data.total} |`);
+          });
+
+          const fileSummaries = map.files().map((file) => {
+            const lines = map.fileCoverageFor(file).toSummary().data.lines;
+            return {
+              file,
+              pct: lines.pct,
+              covered: lines.covered,
+              total: lines.total,
+            };
+          });
+
+          console.log('');
+          console.log('<details><summary>File coverage (lowest lines first)</summary>');
+          console.log('');
+          console.log('```');
+          fileSummaries
+            .sort((a, b) => (a.pct - b.pct) || (b.total - a.total))
+            .slice(0, 25)
+            .forEach(({ file, pct, covered, total }) => {
+              console.log(`${formatPct(pct)}%\t${covered}/${total}\t${file}`);
             });
-            const pct = totalLines > 0 ? ((coveredLines / totalLines) * 100).toFixed(2) : '0.00';
-            console.log(pct);
-          ")
-
-          FUNCTIONS_COVERAGE=$(node -e "
-            const coverage = JSON.parse(require('fs').readFileSync('coverage/coverage-final.json', 'utf8'));
-            let totalFunctions = 0;
-            let coveredFunctions = 0;
-            Object.values(coverage).forEach(file => {
-              if (file.f) {
-                Object.values(file.f).forEach(count => {
-                  totalFunctions += 1;
-                  if (count > 0) coveredFunctions += 1;
-                });
-              }
-            });
-            const pct = totalFunctions > 0 ? ((coveredFunctions / totalFunctions) * 100).toFixed(2) : '0.00';
-            console.log(pct);
-          ")
-
-          BRANCHES_COVERAGE=$(node -e "
-            const coverage = JSON.parse(require('fs').readFileSync('coverage/coverage-final.json', 'utf8'));
-            let totalBranches = 0;
-            let coveredBranches = 0;
-            Object.values(coverage).forEach(file => {
-              if (file.b) {
-                Object.values(file.b).forEach(branches => {
-                  totalBranches += 1;
-                  if (branches.some(b => b > 0)) coveredBranches += 1;
-                });
-              }
-            });
-            const pct = totalBranches > 0 ? ((coveredBranches / totalBranches) * 100).toFixed(2) : '0.00';
-            console.log(pct);
-          ")
-
-          STATEMENTS_COVERAGE=$LINES_COVERAGE  # Lines and statements are the same in coverage-final.json
-
-          # Create a detailed coverage summary
-          echo "### 📊 Test Coverage Report :test_tube:" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "| Metric | Coverage | Status |" >> $GITHUB_STEP_SUMMARY
-          echo "|--------|----------|--------|" >> $GITHUB_STEP_SUMMARY
-
-          # Function to determine status emoji and color
-          get_status() {
-            local coverage=$1
-            if (( $(echo "$coverage >= 80" | bc -l) )); then
-              echo "✅"
-            elif (( $(echo "$coverage >= 60" | bc -l) )); then
-              echo "⚠️"
-            else
-              echo "❌"
-            fi
-          }
-
-          LINES_STATUS=$(get_status $LINES_COVERAGE)
-          FUNCTIONS_STATUS=$(get_status $FUNCTIONS_COVERAGE)
-          BRANCHES_STATUS=$(get_status $BRANCHES_COVERAGE)
-          STATEMENTS_STATUS=$(get_status $STATEMENTS_COVERAGE)
-
-          echo "| Lines | ${LINES_COVERAGE}% | $LINES_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| Functions | ${FUNCTIONS_COVERAGE}% | $FUNCTIONS_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| Branches | ${BRANCHES_COVERAGE}% | $BRANCHES_STATUS |" >> $GITHUB_STEP_SUMMARY
-          echo "| Statements | ${STATEMENTS_COVERAGE}% | $STATEMENTS_STATUS |" >> $GITHUB_STEP_SUMMARY
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          # Coverage thresholds
-          if (( $(echo "$LINES_COVERAGE >= 80 && $FUNCTIONS_COVERAGE >= 80 && $BRANCHES_COVERAGE >= 80 && $STATEMENTS_COVERAGE >= 80" | bc -l) )); then
-            echo "🎉 **Excellent coverage! All metrics above 80%**" >> $GITHUB_STEP_SUMMARY
-          elif (( $(echo "$LINES_COVERAGE >= 60 && $FUNCTIONS_COVERAGE >= 60 && $BRANCHES_COVERAGE >= 60 && $STATEMENTS_COVERAGE >= 60" | bc -l) )); then
-            echo "👍 **Good coverage! All metrics above 60%**" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "⚠️ **Coverage needs improvement. Consider adding more tests.**" >> $GITHUB_STEP_SUMMARY
-          fi
-
-          echo "" >> $GITHUB_STEP_SUMMARY
-          {
-            echo "<details><summary>📋 Detailed coverage report (click to expand)</summary>"
-            echo ""
-            echo '```'
-            node -e "
-              const coverage = JSON.parse(require('fs').readFileSync('coverage/coverage-final.json', 'utf8'));
-              let totalLines = 0, coveredLines = 0;
-              let totalFunctions = 0, coveredFunctions = 0;
-              let totalBranches = 0, coveredBranches = 0;
-
-              Object.values(coverage).forEach(file => {
-                if (file.s) {
-                  Object.values(file.s).forEach(count => {
-                    totalLines += 1;
-                    if (count > 0) coveredLines += 1;
-                  });
-                }
-                if (file.f) {
-                  Object.values(file.f).forEach(count => {
-                    totalFunctions += 1;
-                    if (count > 0) coveredFunctions += 1;
-                  });
-                }
-                if (file.b) {
-                  Object.values(file.b).forEach(branches => {
-                    totalBranches += 1;
-                    if (branches.some(b => b > 0)) coveredBranches += 1;
-                  });
-                }
-              });
-
-              console.log('Overall Coverage:');
-              console.log(\`  Lines: \${((coveredLines/totalLines)*100).toFixed(2)}% (\${coveredLines}/\${totalLines})\`);
-              console.log(\`  Functions: \${((coveredFunctions/totalFunctions)*100).toFixed(2)}% (\${coveredFunctions}/\${totalFunctions})\`);
-              console.log(\`  Branches: \${((coveredBranches/totalBranches)*100).toFixed(2)}% (\${coveredBranches}/\${totalBranches})\`);
-              console.log(\`  Statements: \${((coveredLines/totalLines)*100).toFixed(2)}% (\${coveredLines}/\${totalLines})\`);
-            "
-            echo '```'
-            echo "</details>"
-          } >> $GITHUB_STEP_SUMMARY
-
-          # Upload coverage artifact for potential download
-          if [ -d "coverage" ]; then
-            echo "Uploading coverage reports as artifact..."
-            tar -czf coverage-report.tar.gz coverage/
-          fi
+          console.log('```');
+          console.log('</details>');
+          NODE
 
       - name: Upload Coverage Artifact
-        if: steps.changed-files.outputs.any_changed == 'true'
+        if: steps.changed-files.outputs.any_changed == 'true' && steps.coverage-summary.outputs.has_coverage == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: web-coverage-report
-          path: web/coverage-report.tar.gz
+          path: web/coverage
           retention-days: 30
+          if-no-files-found: error
