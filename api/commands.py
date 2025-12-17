@@ -358,7 +358,13 @@ def migrate_knowledge_vector_database():
             )
             try:
                 click.echo(f"Creating dataset vector database index: {dataset.id}")
+                if not dataset.index_struct_dict:
+                    skipped_count = skipped_count + 1
+                    continue
                 if dataset.index_struct_dict:
+                    if not dataset.index_struct_dict["type"]:
+                        skipped_count = skipped_count + 1
+                        continue
                     if dataset.index_struct_dict["type"] == vector_type:
                         skipped_count = skipped_count + 1
                         continue
