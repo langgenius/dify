@@ -55,7 +55,7 @@ jobs:
       - name: Run tests
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm test
+        run: pnpm test -- --coverage
 
       - name: Coverage Summary
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -64,17 +64,17 @@ jobs:
           set -x
 
           # Check if coverage files exist
-          if [ ! -f "coverage/coverage-summary.json" ]; then
+          if [ ! -f "coverage/coverage-final.json" ]; then
             echo "### 🚨 Test Coverage Report :test_tube:" >> $GITHUB_STEP_SUMMARY
             echo "No coverage data found. Make sure tests generate coverage reports." >> $GITHUB_STEP_SUMMARY
             exit 0
           fi
 
           # Extract coverage percentages
-          LINES_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-summary.json", "utf8")).total.lines.pct')
-          FUNCTIONS_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-summary.json", "utf8")).total.functions.pct')
-          BRANCHES_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-summary.json", "utf8")).total.branches.pct')
-          STATEMENTS_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-summary.json", "utf8")).total.statements.pct')
+          LINES_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-final.json", "utf8")).total.lines.pct')
+          FUNCTIONS_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-final.json", "utf8")).total.functions.pct')
+          BRANCHES_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-final.json", "utf8")).total.branches.pct')
+          STATEMENTS_COVERAGE=$(node -p 'JSON.parse(require("fs").readFileSync("coverage/coverage-final.json", "utf8")).total.statements.pct')
 
           # Create a detailed coverage summary
           echo "### 📊 Test Coverage Report :test_tube:" >> $GITHUB_STEP_SUMMARY
@@ -120,7 +120,7 @@ jobs:
             echo "<details><summary>📋 Detailed coverage report (click to expand)</summary>"
             echo ""
             echo '```'
-            cat coverage/coverage-summary.json | jq -r '
+            cat coverage/coverage-final.json | jq -r '
               .total as $total |
               "Overall Coverage:",
               "  Lines: \($total.lines.pct)% (\($total.lines.covered)/\($total.lines.total))",
