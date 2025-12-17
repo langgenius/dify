@@ -888,9 +888,7 @@ def clean_workflow_runs(
         raise click.UsageError("--start-after and --end-before must be provided together.")
 
     start_time = datetime.datetime.now(datetime.UTC)
-    click.echo(
-        click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white")
-    )
+    click.echo(click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white"))
 
     WorkflowRunCleanup(
         days=days,
