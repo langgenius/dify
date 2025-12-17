@@ -46,12 +46,22 @@ Only mock these categories:
 
 ## Essential Mocks
 
-### 1. i18n (Always Required)
+### 1. i18n (Auto-loaded via Shared Mock)
+
+A shared mock is available at `web/__mocks__/react-i18next.ts` and is auto-loaded by Jest.
+**No explicit mock needed** for most tests - it returns translation keys as-is.
+
+For tests requiring custom translations, override the mock:
 
 ```typescript
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string) => {
+      const translations: Record<string, string> = {
+        'my.custom.key': 'Custom translation',
+      }
+      return translations[key] || key
+    },
   }),
 }))
 ```
@@ -313,7 +323,7 @@ Need to use a component in test?
 │  └─ YES → Mock it (next/navigation, external SDKs)
 │
 └─ Is it i18n?
-   └─ YES → Mock to return keys
+   └─ YES → Uses shared mock (auto-loaded). Override only for custom translations
 ```
 
 ## Factory Function Pattern

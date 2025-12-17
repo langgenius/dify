@@ -1263,42 +1263,15 @@ class WorkflowLogConfig(BaseSettings):
 
 
 class SwaggerUIConfig(BaseSettings):
-    """
-    Configuration for Swagger UI documentation.
-
-    Security Note: Swagger UI is automatically disabled in PRODUCTION environment
-    to prevent API information disclosure. Set SWAGGER_UI_ENABLED=true explicitly
-    to enable in production if needed.
-    """
-
-    SWAGGER_UI_ENABLED: bool | None = Field(
-        description="Whether to enable Swagger UI in api module. "
-        "Automatically disabled in PRODUCTION environment for security. "
-        "Set to true explicitly to enable in production.",
-        default=None,
+    SWAGGER_UI_ENABLED: bool = Field(
+        description="Whether to enable Swagger UI in api module",
+        default=True,
     )
 
     SWAGGER_UI_PATH: str = Field(
         description="Swagger UI page path in api module",
         default="/swagger-ui.html",
     )
-
-    @property
-    def swagger_ui_enabled(self) -> bool:
-        """
-        Compute whether Swagger UI should be enabled.
-
-        If SWAGGER_UI_ENABLED is explicitly set, use that value.
-        Otherwise, disable in PRODUCTION environment for security.
-        """
-        if self.SWAGGER_UI_ENABLED is not None:
-            return self.SWAGGER_UI_ENABLED
-
-        # Auto-disable in production environment
-        import os
-
-        deploy_env = os.environ.get("DEPLOY_ENV", "PRODUCTION")
-        return deploy_env.upper() != "PRODUCTION"
 
 
 class TenantIsolatedTaskQueueConfig(BaseSettings):

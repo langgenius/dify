@@ -166,7 +166,7 @@ class ExtractProcessor:
         elif extract_setting.datasource_type == DatasourceType.NOTION:
             assert extract_setting.notion_info is not None, "notion_info is required"
             extractor = NotionExtractor(
-                notion_workspace_id=extract_setting.notion_info.notion_workspace_id,
+                notion_workspace_id=extract_setting.notion_info.notion_workspace_id or "",
                 notion_obj_id=extract_setting.notion_info.notion_obj_id,
                 notion_page_type=extract_setting.notion_info.notion_page_type,
                 document_model=extract_setting.notion_info.document,

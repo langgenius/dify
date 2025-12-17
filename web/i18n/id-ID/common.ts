@@ -103,6 +103,8 @@ const translation = {
       viVN: 'Vietnam',
       ukUA: 'Ukraina',
       faIR: 'Farsi',
+      slSI: 'Bahasa Slovenia',
+      arTN: 'Bahasa Arab Tunisia',
       itIT: 'Italia',
       zhHant: 'Mandarin Tradisional',
       thTH: 'Thai',
