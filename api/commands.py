@@ -887,7 +887,10 @@ def clean_workflow_runs(
     if (start_after is None) ^ (end_before is None):
         raise click.UsageError("--start-after and --end-before must be provided together.")
 
-    click.echo(click.style("Starting workflow run cleanup.", fg="white"))
+    start_time = datetime.datetime.now(datetime.UTC)
+    click.echo(
+        click.style(f"Starting workflow run cleanup at {start_time.isoformat()}.", fg="white")
+    )
 
     WorkflowRunCleanup(
         days=days,
@@ -897,7 +900,15 @@ def clean_workflow_runs(
         dry_run=dry_run,
     ).run()
 
-    click.echo(click.style("Workflow run cleanup completed.", fg="green"))
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+    click.echo(
+        click.style(
+            f"Workflow run cleanup completed. start={start_time.isoformat()} "
+            f"end={end_time.isoformat()} duration={elapsed}",
+            fg="green",
+        )
+    )
 
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
