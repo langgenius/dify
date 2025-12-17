@@ -99,6 +99,8 @@ const translation = {
       hiIN: 'Tiếng Hindi',
       trTR: 'Tiếng Thổ Nhĩ Kỳ',
       faIR: 'Tiếng Ba Tư',
+      slSI: 'Tiếng Slovenia',
+      arTN: 'Tiếng Ả Rập Tunisia',
     },
   },
   unit: {
