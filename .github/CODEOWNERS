@@ -6,6 +6,9 @@
 
 * @crazywoola @laipz8200 @Yeuoly
 
+# CODEOWNERS file
+.github/CODEOWNERS @laipz8200 @crazywoola
+
 # Docs
 docs/ @crazywoola
 
