@@ -150,7 +150,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
 
     def _handle_empty_iteration(self, variable: ArraySegment | NoneSegment) -> Generator[NodeEventBase, None, None]:
         started_at = naive_utc_now()
-        inputs = {"iterator_selector": []}
+        inputs: dict[str, object] = {"iterator_selector": []}
         usage = LLMUsage.empty_usage()
 
         yield IterationStartedEvent(
