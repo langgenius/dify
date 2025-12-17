@@ -239,7 +239,7 @@ const renderAgentTools = (initialTools?: AgentTool[]) => {
 
 const hoverInfoIcon = async (rowIndex = 0) => {
   const rows = document.querySelectorAll('.group')
-  const infoTrigger = rows.item(rowIndex)?.querySelector('.ml-0\\.5')
+  const infoTrigger = rows.item(rowIndex)?.querySelector('[data-testid="tool-info-tooltip"]')
   if (!infoTrigger)
     throw new Error('Info trigger not found')
   await userEvent.hover(infoTrigger as HTMLElement)
