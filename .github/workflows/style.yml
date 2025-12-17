@@ -51,6 +51,12 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: dev/basedpyright-check
 
+      - name: Run Ty Type Checks
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          RUST_BACKTRACE: 1
+        run: uv --directory api add ty && uv --directory api run ty check || true
+
       - name: Run Mypy Type Checks
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
