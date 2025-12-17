@@ -2,9 +2,9 @@
 
 from unittest.mock import MagicMock
 
-from core.workflow.entities import ToolResultStatus
+from core.workflow.entities.tool_entities import ToolResultStatus
 from core.workflow.enums import NodeType
-from core.workflow.graph import Graph
+from core.workflow.graph.graph import Graph
 from core.workflow.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
 from core.workflow.graph_events import (
     ChunkType,

@@ -577,8 +577,8 @@ class Node(Generic[NodeDataT]):
 
     @_dispatch.register
     def _(self, event: ToolResultChunkEvent) -> NodeRunStreamChunkEvent:
-        from core.workflow.entities import ToolResult
-        from core.workflow.graph_events import ChunkType, ToolResultStatus
+        from core.workflow.entities import ToolResult, ToolResultStatus
+        from core.workflow.graph_events import ChunkType
 
         tool_result = event.tool_result
         status: ToolResultStatus = (
