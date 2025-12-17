@@ -74,7 +74,11 @@ def create_cleanup(
     grace_period_days: int = 0,
     **kwargs: Any,
 ) -> WorkflowRunCleanup:
-    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_FREE_PLAN_GRACE_PERIOD_DAYS", grace_period_days)
+    monkeypatch.setattr(
+        cleanup_module.dify_config,
+        "SANDBOX_RECORDS_CLEAN_GRACEFUL_PERIOD",
+        grace_period_days,
+    )
     return WorkflowRunCleanup(workflow_run_repo=repo, **kwargs)
 
 

@@ -647,13 +647,6 @@ class BillingConfig(BaseSettings):
         default=False,
     )
 
-    BILLING_FREE_PLAN_GRACE_PERIOD_DAYS: NonNegativeInt = Field(
-        description=(
-            "Extra grace period in days applied after a tenant leaves a paid plan before being treated as free."
-        ),
-        default=21,
-    )
-
 
 class UpdateConfig(BaseSettings):
     """
@@ -1159,6 +1152,17 @@ class CeleryScheduleTasksConfig(BaseSettings):
     )
 
 
+class SandboxRecordsCleanConfig(BaseSettings):
+    SANDBOX_RECORDS_CLEAN_GRACEFUL_PERIOD: NonNegativeInt = Field(
+        description="Graceful period in days for sandbox records clean after subscription expiration",
+        default=21,
+    )
+    SANDBOX_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum number of records to process in each batch",
+        default=1000,
+    )
+
+
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(
         description="Comma-separated list of pinned model providers",
@@ -1306,6 +1310,7 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
+    SandboxRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
