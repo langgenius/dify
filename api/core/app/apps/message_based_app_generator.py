@@ -161,7 +161,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         if not conversation:
             conversation = Conversation(
                 app_id=app_config.app_id,
-                app_model_config_id=app_model_config_id,
                 model_provider=model_provider,
                 model_id=model_id,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
@@ -181,7 +180,27 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 read_account_id=None,
             )
 
-            db.session.add(conversation)
+            db.session.add(message)
+            db.session.flush()
+            db.session.refresh(message)
+
+            message_files = []
+            for file in application_generate_entity.files:
+                message_file = MessageFile(
+                    message_id=message.id,
+                    type=file.type,
+                    transfer_method=file.transfer_method,
+                    belongs_to="user",
+                    url=file.remote_url,
+                    upload_file_id=file.related_id,
+                    created_by_role=(CreatorUserRole.ACCOUNT if account_id else CreatorUserRole.END_USER),
+                    created_by=account_id or end_user_id or "",
+                )
+                message_files.append(message_file)
+
+            if message_files:
+                db.session.add_all(message_files)
+
             db.session.commit()
             db.session.refresh(conversation)
         else:

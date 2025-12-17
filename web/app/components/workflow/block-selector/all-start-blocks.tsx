@@ -3,7 +3,11 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
+} from 'react'
+import type {
+  RefObject,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BlockEnum, OnSelectBlock } from '../types'
@@ -23,6 +27,9 @@ import Divider from '@/app/components/base/divider'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
 import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
+import { PluginCategoryEnum } from '../../plugins/types'
+import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
+import PluginList, { type ListRef } from './market-place-plugin/list'
 
 const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 
@@ -47,6 +54,8 @@ const AllStartBlocks = ({
   const [hasStartBlocksContent, setHasStartBlocksContent] = useState(false)
   const [hasPluginContent, setHasPluginContent] = useState(false)
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
+  const pluginRef = useRef<ListRef>(null)
+  const wrapElemRef = useRef<HTMLDivElement>(null)
 
   const entryNodeTypes = availableBlocksTypes?.length
     ? availableBlocksTypes
@@ -71,14 +80,21 @@ const AllStartBlocks = ({
   const invalidateTriggers = useInvalidateAllTriggerPlugins()
   const trimmedSearchText = searchText.trim()
   const hasSearchText = trimmedSearchText.length > 0
+  const hasFilter = hasSearchText || tags.length > 0
   const {
     plugins: featuredPlugins = [],
     isLoading: featuredLoading,
-  } = useFeaturedTriggersRecommendations(enableTriggerPlugin && enable_marketplace && !hasSearchText)
+  } = useFeaturedTriggersRecommendations(enableTriggerPlugin && enable_marketplace && !hasFilter)
+  const {
+    queryPluginsWithDebounced: fetchPlugins,
+    plugins: marketplacePlugins = [],
+  } = useMarketplacePlugins()
 
   const shouldShowFeatured = enableTriggerPlugin
     && enable_marketplace
-    && !hasSearchText
+    && !hasFilter
+  const shouldShowTriggerListTitle = hasStartBlocksContent || hasPluginContent
+  const shouldShowMarketplaceFooter = enable_marketplace && !hasFilter
 
   const handleStartBlocksContentChange = useCallback((hasContent: boolean) => {
     setHasStartBlocksContent(hasContent)
@@ -88,18 +104,34 @@ const AllStartBlocks = ({
     setHasPluginContent(hasContent)
   }, [])
 
-  const hasAnyContent = hasStartBlocksContent || hasPluginContent || shouldShowFeatured
-  const shouldShowEmptyState = hasSearchText && !hasAnyContent
+  const hasMarketplaceContent = enableTriggerPlugin && enable_marketplace && marketplacePlugins.length > 0
+  const hasAnyContent = hasStartBlocksContent || hasPluginContent || shouldShowFeatured || hasMarketplaceContent
+  const shouldShowEmptyState = hasFilter && !hasAnyContent
 
   useEffect(() => {
     if (!enableTriggerPlugin && hasPluginContent)
       setHasPluginContent(false)
   }, [enableTriggerPlugin, hasPluginContent])
 
+  useEffect(() => {
+    if (!enableTriggerPlugin || !enable_marketplace) return
+    if (hasFilter) {
+      fetchPlugins({
+        query: searchText,
+        tags,
+        category: PluginCategoryEnum.trigger,
+      })
+    }
+  }, [enableTriggerPlugin, enable_marketplace, hasFilter, fetchPlugins, searchText, tags])
+
   return (
     <div className={cn('min-w-[400px] max-w-[500px]', className)}>
       <div className='flex max-h-[640px] flex-col'>
-        <div className='flex-1 overflow-y-auto'>
+        <div
+          ref={wrapElemRef}
+          className='flex-1 overflow-y-auto'
+          onScroll={() => pluginRef.current?.handleScroll()}
+        >
           <div className={cn(shouldShowEmptyState && 'hidden')}>
             {shouldShowFeatured && (
               <>
@@ -117,9 +149,11 @@ const AllStartBlocks = ({
                 </div>
               </>
             )}
-            <div className='px-3 pb-1 pt-2'>
-              <span className='system-xs-medium text-text-primary'>{t('workflow.tabs.allTriggers')}</span>
-            </div>
+            {shouldShowTriggerListTitle && (
+              <div className='px-3 pb-1 pt-2'>
+                <span className='system-xs-medium text-text-primary'>{t('workflow.tabs.allTriggers')}</span>
+              </div>
+            )}
             <StartBlocks
               searchText={trimmedSearchText}
               onSelect={onSelect as OnSelectBlock}
@@ -134,6 +168,17 @@ const AllStartBlocks = ({
                 searchText={trimmedSearchText}
                 onContentStateChange={handlePluginContentChange}
                 tags={tags}
+              />
+            )}
+            {enableTriggerPlugin && enable_marketplace && (
+              <PluginList
+                ref={pluginRef}
+                wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
+                list={marketplacePlugins}
+                searchText={trimmedSearchText}
+                category={PluginCategoryEnum.trigger}
+                tags={tags}
+                hideFindMoreFooter
               />
             )}
           </div>
@@ -160,11 +205,11 @@ const AllStartBlocks = ({
           )}
         </div>
 
-        {!shouldShowEmptyState && (
+        {shouldShowMarketplaceFooter && !shouldShowEmptyState && (
           // Footer - Same as Tools tab marketplace footer
           <Link
             className={marketplaceFooterClassName}
-            href={getMarketplaceUrl('')}
+            href={getMarketplaceUrl('', { category: PluginCategoryEnum.trigger })}
             target='_blank'
           >
             <span>{t('plugin.findMoreInMarketplace')}</span>

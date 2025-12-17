@@ -302,6 +302,8 @@ const translation = {
       feedbackDesc: 'Обсуждения обратной связи с открытым сообществом',
       docDesc: 'Откройте справочную документацию',
       communityDesc: 'Открытое сообщество Discord',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noPluginsFound: 'Плагины не найдены',

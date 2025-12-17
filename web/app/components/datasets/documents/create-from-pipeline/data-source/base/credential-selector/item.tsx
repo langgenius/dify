@@ -2,22 +2,18 @@ import { CredentialIcon } from '@/app/components/datasets/common/credential-icon
 import type { DataSourceCredential } from '@/types/pipeline'
 import { RiCheckLine } from '@remixicon/react'
 import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 
 type ItemProps = {
   credential: DataSourceCredential
-  pluginName: string
   isSelected: boolean
   onCredentialChange: (credentialId: string) => void
 }
 
 const Item = ({
   credential,
-  pluginName,
   isSelected,
   onCredentialChange,
 }: ItemProps) => {
-  const { t } = useTranslation()
   const { avatar_url, name } = credential
 
   const handleCredentialChange = useCallback(() => {
@@ -30,15 +26,12 @@ const Item = ({
       onClick={handleCredentialChange}
     >
       <CredentialIcon
-        avatar_url={avatar_url}
+        avatarUrl={avatar_url}
         name={name}
         size={20}
       />
       <span className='system-sm-medium grow truncate text-text-secondary'>
-        {t('datasetPipeline.credentialSelector.name', {
-          credentialName: name,
-          pluginName,
-        })}
+        {name}
       </span>
       {
         isSelected && (

@@ -137,9 +137,6 @@ const translation = {
     emptySearchResult: 'アイテムは見つかりませんでした',
     resetKeywords: 'キーワードをリセットする',
   },
-  credentialSelector: {
-    name: '{{credentialName}}の{{pluginName}}',
-  },
   configurationTip: '{{pluginName}}を設定',
   conversion: {
     confirm: {

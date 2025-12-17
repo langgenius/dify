@@ -65,10 +65,17 @@ const translation = {
     yes: '네',
     deleteConfirmTitle: '삭제하시겠습니까?',
     confirmAction: '귀하의 행동을 확인해 주세요.',
+    noSearchResults: '{{content}}가(이) 발견되지 않았습니다',
+    resetKeywords: '키워드 재설정',
+    selectCount: '{{count}} 선택됨',
+    searchCount: '{{count}} {{content}} 찾기',
+    noSearchCount: '0 {{content}}',
+    now: '지금',
   },
   placeholder: {
     input: '입력해주세요',
     select: '선택해주세요',
+    search: '검색...',
   },
   voice: {
     language: {
@@ -92,6 +99,8 @@ const translation = {
       hiIN: '힌디어',
       trTR: '터키어',
       faIR: '페르시아어',
+      slSI: '슬로베니아어',
+      arTN: '튀니지 아랍어',
     },
   },
   unit: {
@@ -723,6 +732,7 @@ const translation = {
     uploadFromComputerLimit: '업로드 파일은 {{size}}를 초과할 수 없습니다.',
     uploadFromComputerUploadError: '파일 업로드에 실패했습니다. 다시 업로드하십시오.',
     fileExtensionBlocked: '보안상의 이유로 이 파일 형식은 차단되었습니다',
+    uploadDisabled: '파일 업로드가 비활성화되었습니다',
   },
   license: {
     expiring_plural: '{{count}}일 후에 만료',
@@ -764,6 +774,13 @@ const translation = {
   },
   label: {
     optional: '(선택 사항)',
+  },
+  noData: '데이터 없음',
+  dynamicSelect: {
+    error: '옵션 불러오기 실패',
+    noData: '사용 가능한 옵션이 없습니다',
+    loading: '옵션 불러오는 중...',
+    selected: '{{count}} 선택됨',
   },
 }
 

@@ -63,6 +63,10 @@ const Marketplace = ({
             </span>
             ,
             <span className="body-md-medium relative ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
+              {t('plugin.category.triggers')}
+            </span>
+            ,
+            <span className="body-md-medium relative ml-1 text-text-secondary after:absolute after:bottom-[1.5px] after:left-0 after:h-2 after:w-full after:bg-text-text-selected after:content-['']">
               {t('plugin.category.agents')}
             </span>
             ,

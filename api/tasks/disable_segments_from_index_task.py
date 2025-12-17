@@ -8,7 +8,7 @@ from sqlalchemy import select
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import Dataset, DocumentSegment, SegmentAttachmentBinding
 from models.dataset import Document as DatasetDocument
 
 logger = logging.getLogger(__name__)

@@ -28,10 +28,12 @@ const translation = {
       loading: 'Prelucrare... Te rog să aştepţi',
       viewDetails: 'Vezi detalii',
       error: 'A apărut o eroare în timpul execuției',
+      footerTip: 'În modul de testare, previzualizați până la {{count}} fragmente',
     },
   },
   ragToolSuggestions: {
     title: 'Sugestii pentru RAG',
+    noRecommendationPlugins: 'Nu există pluginuri recomandate, găsiți mai multe în <CustomLink>Marketplace</CustomLink>',
   },
 }
 

@@ -65,10 +65,17 @@ const translation = {
     yes: 'Vâng',
     deleteConfirmTitle: 'Xóa?',
     confirmAction: 'Vui lòng xác nhận hành động của bạn.',
+    noSearchResults: 'Không tìm thấy {{content}} nào',
+    resetKeywords: 'Đặt lại từ khóa',
+    selectCount: '{{count}} Đã chọn',
+    searchCount: 'Tìm {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Bây giờ',
   },
   placeholder: {
     input: 'Vui lòng nhập',
     select: 'Vui lòng chọn',
+    search: 'Tìm kiếm...',
   },
   voice: {
     language: {
@@ -92,6 +99,8 @@ const translation = {
       hiIN: 'Tiếng Hindi',
       trTR: 'Tiếng Thổ Nhĩ Kỳ',
       faIR: 'Tiếng Ba Tư',
+      slSI: 'Tiếng Slovenia',
+      arTN: 'Tiếng Ả Rập Tunisia',
     },
   },
   unit: {
@@ -727,6 +736,7 @@ const translation = {
     uploadFromComputerUploadError: 'Tải lên tệp không thành công, vui lòng tải lên lại.',
     uploadFromComputerReadError: 'Đọc tệp không thành công, vui lòng thử lại.',
     fileExtensionBlocked: 'Loại tệp này bị chặn vì lý do bảo mật',
+    uploadDisabled: 'Tải tệp bị vô hiệu hóa',
   },
   license: {
     expiring_plural: 'Hết hạn sau {{count}} ngày',
@@ -768,6 +778,13 @@ const translation = {
   },
   label: {
     optional: '(tùy chọn)',
+  },
+  noData: 'Không có dữ liệu',
+  dynamicSelect: {
+    error: 'Tải tùy chọn thất bại',
+    noData: 'Không có tùy chọn nào',
+    loading: 'Đang tải tùy chọn...',
+    selected: '{{count}} đã chọn',
   },
 }
 

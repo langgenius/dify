@@ -71,18 +71,18 @@ jobs:
         run: |
           cp api/tests/integration_tests/.env.example api/tests/integration_tests/.env
 
-      - name: Run Workflow
-        run: uv run --project api bash dev/pytest/pytest_workflow.sh
-
-      - name: Run Tool
-        run: uv run --project api bash dev/pytest/pytest_tools.sh
-
-      - name: Run TestContainers
-        run: uv run --project api bash dev/pytest/pytest_testcontainers.sh
-
-      - name: Run Unit tests
+      - name: Run API Tests
+        env:
+          STORAGE_TYPE: opendal
+          OPENDAL_SCHEME: fs
+          OPENDAL_FS_ROOT: /tmp/dify-storage
         run: |
-          uv run --project api bash dev/pytest/pytest_unit_tests.sh
+          uv run --project api pytest \
+            --timeout "${PYTEST_TIMEOUT:-180}" \
+            api/tests/integration_tests/workflow \
+            api/tests/integration_tests/tools \
+            api/tests/test_containers_integration_tests \
+            api/tests/unit_tests
 
       - name: Coverage Summary
         run: |
@@ -93,5 +93,12 @@ jobs:
           # Create a detailed coverage summary
           echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
           echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
-          uv run --project api coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
-
+          {
+            echo ""
+            echo "<details><summary>File-level coverage (click to expand)</summary>"
+            echo ""
+            echo '```'
+            uv run --project api coverage report -m
+            echo '```'
+            echo "</details>"
+          } >> $GITHUB_STEP_SUMMARY

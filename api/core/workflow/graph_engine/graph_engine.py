@@ -140,6 +140,10 @@ class GraphEngine:
         pause_handler = PauseCommandHandler()
         self._command_processor.register_handler(PauseCommand, pause_handler)
 
+        # === Extensibility ===
+        # Layers allow plugins to extend engine functionality
+        self._layers: list[GraphEngineLayer] = []
+
         # === Worker Pool Setup ===
         # Capture Flask app context for worker threads
         flask_app: Flask | None = None
@@ -158,6 +162,7 @@ class GraphEngine:
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
             graph=self._graph,
+            layers=self._layers,
             flask_app=flask_app,
             context_vars=context_vars,
             min_workers=self._min_workers,
@@ -196,10 +201,6 @@ class GraphEngine:
             event_emitter=self._event_manager,
         )
 
-        # === Extensibility ===
-        # Layers allow plugins to extend engine functionality
-        self._layers: list[GraphEngineLayer] = []
-
         # === Validation ===
         # Ensure all nodes share the same GraphRuntimeState instance
         self._validate_graph_state_consistency()
@@ -232,7 +233,7 @@ class GraphEngine:
                 self._graph_execution.start()
             else:
                 self._graph_execution.paused = False
-                self._graph_execution.pause_reason = None
+                self._graph_execution.pause_reasons = []
 
             start_event = GraphRunStartedEvent()
             self._event_manager.notify_layers(start_event)
@@ -246,11 +247,11 @@ class GraphEngine:
 
             # Handle completion
             if self._graph_execution.is_paused:
-                pause_reason = self._graph_execution.pause_reason
-                assert pause_reason is not None, "pause_reason should not be None when execution is paused."
+                pause_reasons = self._graph_execution.pause_reasons
+                assert pause_reasons, "pause_reasons should not be empty when execution is paused."
                 # Ensure we have a valid PauseReason for the event
                 paused_event = GraphRunPausedEvent(
-                    reason=pause_reason,
+                    reasons=pause_reasons,
                     outputs=self._graph_runtime_state.outputs,
                 )
                 self._event_manager.notify_layers(paused_event)

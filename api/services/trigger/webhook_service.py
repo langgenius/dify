@@ -5,6 +5,7 @@ import secrets
 from collections.abc import Mapping
 from typing import Any
 
+import orjson
 from flask import request
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -31,6 +32,11 @@ from services.end_user_service import EndUserService
 from services.errors.app import QuotaExceededError
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
+
+try:
+    import magic
+except ImportError:
+    magic = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -169,7 +175,7 @@ class WebhookService:
                 - method: HTTP method
                 - headers: Request headers
                 - query_params: Query parameters as strings
-                - body: Request body (varies by content type)
+                - body: Request body (varies by content type; JSON parsing errors raise ValueError)
                 - files: Uploaded files (if any)
         """
         cls._validate_content_length()
@@ -255,14 +261,21 @@ class WebhookService:
 
         Returns:
             tuple: (body_data, files_data) where:
-                - body_data: Parsed JSON content or empty dict if parsing fails
+                - body_data: Parsed JSON content
                 - files_data: Empty dict (JSON requests don't contain files)
+
+        Raises:
+            ValueError: If JSON parsing fails
         """
+        raw_body = request.get_data(cache=True)
+        if not raw_body or raw_body.strip() == b"":
+            return {}, {}
+
         try:
-            body = request.get_json() or {}
-        except Exception:
-            logger.warning("Failed to parse JSON body")
-            body = {}
+            body = orjson.loads(raw_body)
+        except orjson.JSONDecodeError as exc:
+            logger.warning("Failed to parse JSON body: %s", exc)
+            raise ValueError(f"Invalid JSON body: {exc}") from exc
         return body, {}
 
     @classmethod
@@ -309,7 +322,8 @@ class WebhookService:
         try:
             file_content = request.get_data()
             if file_content:
-                file_obj = cls._create_file_from_binary(file_content, "application/octet-stream", webhook_trigger)
+                mimetype = cls._detect_binary_mimetype(file_content)
+                file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger)
                 return {"raw": file_obj.to_dict()}, {}
             else:
                 return {"raw": None}, {}
@@ -332,6 +346,18 @@ class WebhookService:
             logger.warning("Failed to extract text body")
             body = {"raw": ""}
         return body, {}
+
+    @staticmethod
+    def _detect_binary_mimetype(file_content: bytes) -> str:
+        """Guess MIME type for binary payloads using python-magic when available."""
+        if magic is not None:
+            try:
+                detected = magic.from_buffer(file_content[:1024], mime=True)
+                if detected:
+                    return detected
+            except Exception:
+                logger.debug("python-magic detection failed for octet-stream payload")
+        return "application/octet-stream"
 
     @classmethod
     def _process_file_uploads(

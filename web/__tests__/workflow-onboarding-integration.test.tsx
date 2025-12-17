@@ -1,6 +1,24 @@
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
+// Type for mocked store
+type MockWorkflowStore = {
+  showOnboarding: boolean
+  setShowOnboarding: jest.Mock
+  hasShownOnboarding: boolean
+  setHasShownOnboarding: jest.Mock
+  hasSelectedStartNode: boolean
+  setHasSelectedStartNode: jest.Mock
+  setShouldAutoOpenStartNodeSelector: jest.Mock
+  notInitialWorkflow: boolean
+}
+
+// Type for mocked node
+type MockNode = {
+  id: string
+  data: { type?: BlockEnum }
+}
+
 // Mock zustand store
 jest.mock('@/app/components/workflow/store')
 
@@ -39,7 +57,7 @@ describe('Workflow Onboarding Integration Logic', () => {
 
   describe('Onboarding State Management', () => {
     it('should initialize onboarding state correctly', () => {
-      const store = useWorkflowStore()
+      const store = useWorkflowStore() as unknown as MockWorkflowStore
 
       expect(store.showOnboarding).toBe(false)
       expect(store.hasSelectedStartNode).toBe(false)
@@ -47,7 +65,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should update onboarding visibility', () => {
-      const store = useWorkflowStore()
+      const store = useWorkflowStore() as unknown as MockWorkflowStore
 
       store.setShowOnboarding(true)
       expect(mockSetShowOnboarding).toHaveBeenCalledWith(true)
@@ -57,14 +75,14 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should track node selection state', () => {
-      const store = useWorkflowStore()
+      const store = useWorkflowStore() as unknown as MockWorkflowStore
 
       store.setHasSelectedStartNode(true)
       expect(mockSetHasSelectedStartNode).toHaveBeenCalledWith(true)
     })
 
     it('should track onboarding show state', () => {
-      const store = useWorkflowStore()
+      const store = useWorkflowStore() as unknown as MockWorkflowStore
 
       store.setHasShownOnboarding(true)
       expect(mockSetHasShownOnboarding).toHaveBeenCalledWith(true)
@@ -205,60 +223,44 @@ describe('Workflow Onboarding Integration Logic', () => {
 
     it('should auto-expand for TriggerSchedule in new workflow', () => {
       const shouldAutoOpenStartNodeSelector = true
-      const nodeType = BlockEnum.TriggerSchedule
+      const nodeType: BlockEnum = BlockEnum.TriggerSchedule
       const isChatMode = false
+      const validStartTypes = [BlockEnum.Start, BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin]
 
-      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
-        nodeType === BlockEnum.Start
-        || nodeType === BlockEnum.TriggerSchedule
-        || nodeType === BlockEnum.TriggerWebhook
-        || nodeType === BlockEnum.TriggerPlugin
-      ) && !isChatMode
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && validStartTypes.includes(nodeType) && !isChatMode
 
       expect(shouldAutoExpand).toBe(true)
     })
 
     it('should auto-expand for TriggerWebhook in new workflow', () => {
       const shouldAutoOpenStartNodeSelector = true
-      const nodeType = BlockEnum.TriggerWebhook
+      const nodeType: BlockEnum = BlockEnum.TriggerWebhook
       const isChatMode = false
+      const validStartTypes = [BlockEnum.Start, BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin]
 
-      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
-        nodeType === BlockEnum.Start
-        || nodeType === BlockEnum.TriggerSchedule
-        || nodeType === BlockEnum.TriggerWebhook
-        || nodeType === BlockEnum.TriggerPlugin
-      ) && !isChatMode
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && validStartTypes.includes(nodeType) && !isChatMode
 
       expect(shouldAutoExpand).toBe(true)
     })
 
     it('should auto-expand for TriggerPlugin in new workflow', () => {
       const shouldAutoOpenStartNodeSelector = true
-      const nodeType = BlockEnum.TriggerPlugin
+      const nodeType: BlockEnum = BlockEnum.TriggerPlugin
       const isChatMode = false
+      const validStartTypes = [BlockEnum.Start, BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin]
 
-      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
-        nodeType === BlockEnum.Start
-        || nodeType === BlockEnum.TriggerSchedule
-        || nodeType === BlockEnum.TriggerWebhook
-        || nodeType === BlockEnum.TriggerPlugin
-      ) && !isChatMode
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && validStartTypes.includes(nodeType) && !isChatMode
 
       expect(shouldAutoExpand).toBe(true)
     })
 
     it('should not auto-expand for non-trigger nodes', () => {
       const shouldAutoOpenStartNodeSelector = true
-      const nodeType = BlockEnum.LLM
+      const nodeType: BlockEnum = BlockEnum.LLM
       const isChatMode = false
+      const validStartTypes = [BlockEnum.Start, BlockEnum.TriggerSchedule, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin]
 
-      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && (
-        nodeType === BlockEnum.Start
-        || nodeType === BlockEnum.TriggerSchedule
-        || nodeType === BlockEnum.TriggerWebhook
-        || nodeType === BlockEnum.TriggerPlugin
-      ) && !isChatMode
+      const shouldAutoExpand = shouldAutoOpenStartNodeSelector && validStartTypes.includes(nodeType) && !isChatMode
 
       expect(shouldAutoExpand).toBe(false)
     })
@@ -321,7 +323,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       const nodeData = { type: BlockEnum.Start, title: 'Start' }
 
       // Simulate node creation logic from workflow-children.tsx
-      const createdNodeData = {
+      const createdNodeData: Record<string, unknown> = {
         ...nodeData,
         // Note: 'selected: true' should NOT be added
       }
@@ -334,7 +336,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       const nodeData = { type: BlockEnum.TriggerWebhook, title: 'Webhook Trigger' }
       const toolConfig = { webhook_url: 'https://example.com/webhook' }
 
-      const createdNodeData = {
+      const createdNodeData: Record<string, unknown> = {
         ...nodeData,
         ...toolConfig,
         // Note: 'selected: true' should NOT be added
@@ -352,7 +354,7 @@ describe('Workflow Onboarding Integration Logic', () => {
         config: { interval: '1h' },
       }
 
-      const createdNodeData = {
+      const createdNodeData: Record<string, unknown> = {
         ...nodeData,
       }
 
@@ -495,7 +497,7 @@ describe('Workflow Onboarding Integration Logic', () => {
         BlockEnum.TriggerWebhook,
         BlockEnum.TriggerPlugin,
       ]
-      const hasStartNode = nodes.some(node => startNodeTypes.includes(node.data?.type))
+      const hasStartNode = nodes.some((node: MockNode) => startNodeTypes.includes(node.data?.type as BlockEnum))
       const isEmpty = nodes.length === 0 || !hasStartNode
 
       expect(isEmpty).toBe(true)
@@ -516,7 +518,7 @@ describe('Workflow Onboarding Integration Logic', () => {
         BlockEnum.TriggerWebhook,
         BlockEnum.TriggerPlugin,
       ]
-      const hasStartNode = nodes.some(node => startNodeTypes.includes(node.data.type))
+      const hasStartNode = nodes.some((node: MockNode) => startNodeTypes.includes(node.data.type as BlockEnum))
       const isEmpty = nodes.length === 0 || !hasStartNode
 
       expect(isEmpty).toBe(true)
@@ -536,7 +538,7 @@ describe('Workflow Onboarding Integration Logic', () => {
         BlockEnum.TriggerWebhook,
         BlockEnum.TriggerPlugin,
       ]
-      const hasStartNode = nodes.some(node => startNodeTypes.includes(node.data.type))
+      const hasStartNode = nodes.some((node: MockNode) => startNodeTypes.includes(node.data.type as BlockEnum))
       const isEmpty = nodes.length === 0 || !hasStartNode
 
       expect(isEmpty).toBe(false)
@@ -571,7 +573,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       })
 
       // Simulate the check logic with hasShownOnboarding = true
-      const store = useWorkflowStore()
+      const store = useWorkflowStore() as unknown as MockWorkflowStore
       const shouldTrigger = !store.hasShownOnboarding && !store.showOnboarding && !store.notInitialWorkflow
 
       expect(shouldTrigger).toBe(false)
@@ -605,7 +607,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       })
 
       // Simulate the check logic with notInitialWorkflow = true
-      const store = useWorkflowStore()
+      const store = useWorkflowStore() as unknown as MockWorkflowStore
       const shouldTrigger = !store.hasShownOnboarding && !store.showOnboarding && !store.notInitialWorkflow
 
       expect(shouldTrigger).toBe(false)
