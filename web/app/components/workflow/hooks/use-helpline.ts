@@ -4,6 +4,11 @@ import type { Node } from '../types'
 import { BlockEnum, isTriggerNode } from '../types'
 import { useWorkflowStore } from '../store'
 
+type HelplineOptions = {
+  nodes?: Node[];
+  visibleNodeIds?: Set<string>;
+}
+
 // Entry node (Start/Trigger) wrapper offsets
 // The EntryNodeContainer adds a wrapper with status indicator above the actual node
 // These offsets ensure alignment happens on the inner node, not the wrapper
@@ -29,28 +34,22 @@ export const useHelpline = () => {
         y: node.position.y + ENTRY_NODE_WRAPPER_OFFSET.y,
       }
     }
+
     return {
       x: node.position.x,
       y: node.position.y,
     }
   }, [isEntryNode])
 
-  const handleSetHelpline = useCallback((node: Node) => {
-    const { getNodes } = store.getState()
-    const nodes = getNodes()
+  const handleSetHelpline = useCallback((node: Node, options?: HelplineOptions) => {
+    const nodes = options?.nodes ?? store.getState().getNodes()
+    const visibleNodeIds = options?.visibleNodeIds
     const {
       setHelpLineHorizontal,
       setHelpLineVertical,
     } = workflowStore.getState()
 
-    if (node.data.isInIteration) {
-      return {
-        showHorizontalHelpLineNodes: [],
-        showVerticalHelpLineNodes: [],
-      }
-    }
-
-    if (node.data.isInLoop) {
+    if (node.data.isInIteration || node.data.isInLoop) {
       return {
         showHorizontalHelpLineNodes: [],
         showVerticalHelpLineNodes: [],
@@ -61,6 +60,10 @@ export const useHelpline = () => {
     const nodeAlignPos = getNodeAlignPosition(node)
 
     const showHorizontalHelpLineNodes = nodes.filter((n) => {
+      if (visibleNodeIds && !visibleNodeIds.has(n.id))
+        return false
+      if (n.hidden)
+        return false
       if (n.id === node.id)
         return false
 
@@ -124,6 +127,10 @@ export const useHelpline = () => {
     }
 
     const showVerticalHelpLineNodes = nodes.filter((n) => {
+      if (visibleNodeIds && !visibleNodeIds.has(n.id))
+        return false
+      if (n.hidden)
+        return false
       if (n.id === node.id)
         return false
       if (n.data.isInIteration)
@@ -188,7 +195,7 @@ export const useHelpline = () => {
       showHorizontalHelpLineNodes,
       showVerticalHelpLineNodes,
     }
-  }, [store, workflowStore, getNodeAlignPosition])
+  }, [store, workflowStore, getNodeAlignPosition, isEntryNode])
 
   return {
     handleSetHelpline,
