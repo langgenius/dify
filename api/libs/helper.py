@@ -130,7 +130,7 @@ def normalize_uuid(value: str | UUID | None) -> str | None:
         raise ValueError("must be a valid UUID") from exc
 
 
-UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
+UUIDStrOrEmpty = Annotated[str | None, AfterValidator(normalize_uuid)]
 
 
 def alphanumeric(value: str):
