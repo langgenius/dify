@@ -66,11 +66,12 @@ jobs:
           set -eo pipefail
 
           COVERAGE_FILE="coverage/coverage-final.json"
+          COVERAGE_SUMMARY_FILE="coverage/coverage-summary.json"
 
-          if [ ! -f "$COVERAGE_FILE" ]; then
+          if [ ! -f "$COVERAGE_FILE" ] && [ ! -f "$COVERAGE_SUMMARY_FILE" ]; then
             echo "has_coverage=false" >> "$GITHUB_OUTPUT"
             echo "### 🚨 Test Coverage Report :test_tube:" >> "$GITHUB_STEP_SUMMARY"
-            echo "Coverage data not found at $COVERAGE_FILE. Ensure Jest runs with coverage enabled." >> "$GITHUB_STEP_SUMMARY"
+            echo "Coverage data not found. Ensure Jest runs with coverage enabled." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -80,54 +81,94 @@ jobs:
           const fs = require('fs');
           const path = require('path');
 
-          const coveragePath = path.join('coverage', 'coverage-final.json');
-          const coverage = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
+          const summaryPath = path.join('coverage', 'coverage-summary.json');
+          const finalPath = path.join('coverage', 'coverage-final.json');
 
-          const total = {
+          const hasSummary = fs.existsSync(summaryPath);
+          const hasFinal = fs.existsSync(finalPath);
+
+          if (!hasSummary && !hasFinal) {
+            console.log('### Test Coverage Summary :test_tube:');
+            console.log('');
+            console.log('No coverage data found.');
+            process.exit(0);
+          }
+
+          const totals = {
             lines: { covered: 0, total: 0 },
             statements: { covered: 0, total: 0 },
             branches: { covered: 0, total: 0 },
             functions: { covered: 0, total: 0 },
           };
+          const fileSummaries = [];
 
-          const fileSummaries = Object.entries(coverage).map(([file, entry]) => {
-            const lineHits = entry.l ?? {};
-            const statementHits = entry.s ?? {};
-            const branchHits = entry.b ?? {};
-            const functionHits = entry.f ?? {};
+          if (hasSummary) {
+            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+            const totalEntry = summary.total ?? {};
+            ['lines', 'statements', 'branches', 'functions'].forEach((key) => {
+              if (totalEntry[key]) {
+                totals[key].covered = totalEntry[key].covered ?? 0;
+                totals[key].total = totalEntry[key].total ?? 0;
+              }
+            });
 
-            const lineTotal = Object.keys(lineHits).length;
-            const lineCovered = Object.values(lineHits).filter((n) => n > 0).length;
+            Object.entries(summary)
+              .filter(([file]) => file !== 'total')
+              .forEach(([file, data]) => {
+                fileSummaries.push({
+                  file,
+                  pct: data.lines?.pct ?? data.statements?.pct ?? 0,
+                  lines: {
+                    covered: data.lines?.covered ?? 0,
+                    total: data.lines?.total ?? 0,
+                  },
+                });
+              });
+          } else if (hasFinal) {
+            const coverage = JSON.parse(fs.readFileSync(finalPath, 'utf8'));
 
-            const statementTotal = Object.keys(statementHits).length;
-            const statementCovered = Object.values(statementHits).filter((n) => n > 0).length;
+            Object.entries(coverage).forEach(([file, entry]) => {
+              const lineHits = entry.l ?? {};
+              const statementHits = entry.s ?? {};
+              const branchHits = entry.b ?? {};
+              const functionHits = entry.f ?? {};
 
-            const branchTotal = Object.values(branchHits).reduce((acc, branches) => acc + branches.length, 0);
-            const branchCovered = Object.values(branchHits).reduce(
-              (acc, branches) => acc + branches.filter((n) => n > 0).length,
-              0,
-            );
+              const lineTotal = Object.keys(lineHits).length;
+              const lineCovered = Object.values(lineHits).filter((n) => n > 0).length;
 
-            const functionTotal = Object.keys(functionHits).length;
-            const functionCovered = Object.values(functionHits).filter((n) => n > 0).length;
+              const statementTotal = Object.keys(statementHits).length;
+              const statementCovered = Object.values(statementHits).filter((n) => n > 0).length;
 
-            total.lines.total += lineTotal;
-            total.lines.covered += lineCovered;
-            total.statements.total += statementTotal;
-            total.statements.covered += statementCovered;
-            total.branches.total += branchTotal;
-            total.branches.covered += branchCovered;
-            total.functions.total += functionTotal;
-            total.functions.covered += functionCovered;
+              const branchTotal = Object.values(branchHits).reduce((acc, branches) => acc + branches.length, 0);
+              const branchCovered = Object.values(branchHits).reduce(
+                (acc, branches) => acc + branches.filter((n) => n > 0).length,
+                0,
+              );
 
-            const pct = (covered, tot) => (tot > 0 ? (covered / tot) * 100 : 0);
+              const functionTotal = Object.keys(functionHits).length;
+              const functionCovered = Object.values(functionHits).filter((n) => n > 0).length;
 
-            return {
-              file,
-              pct: pct(lineCovered || statementCovered, lineTotal || statementTotal),
-              lines: { covered: lineCovered, total: lineTotal },
-            };
-          });
+              totals.lines.total += lineTotal;
+              totals.lines.covered += lineCovered;
+              totals.statements.total += statementTotal;
+              totals.statements.covered += statementCovered;
+              totals.branches.total += branchTotal;
+              totals.branches.covered += branchCovered;
+              totals.functions.total += functionTotal;
+              totals.functions.covered += functionCovered;
+
+              const pct = (covered, tot) => (tot > 0 ? (covered / tot) * 100 : 0);
+
+              fileSummaries.push({
+                file,
+                pct: pct(lineCovered || statementCovered, lineTotal || statementTotal),
+                lines: {
+                  covered: lineCovered || statementCovered,
+                  total: lineTotal || statementTotal,
+                },
+              });
+            });
+          }
 
           const pct = (covered, tot) => (tot > 0 ? ((covered / tot) * 100).toFixed(2) : '0.00');
 
@@ -135,10 +176,10 @@ jobs:
           console.log('');
           console.log('| Metric | Coverage | Covered / Total |');
           console.log('|--------|----------|-----------------|');
-          console.log(`| Lines | ${pct(total.lines.covered, total.lines.total)}% | ${total.lines.covered} / ${total.lines.total} |`);
-          console.log(`| Statements | ${pct(total.statements.covered, total.statements.total)}% | ${total.statements.covered} / ${total.statements.total} |`);
-          console.log(`| Branches | ${pct(total.branches.covered, total.branches.total)}% | ${total.branches.covered} / ${total.branches.total} |`);
-          console.log(`| Functions | ${pct(total.functions.covered, total.functions.total)}% | ${total.functions.covered} / ${total.functions.total} |`);
+          console.log(`| Lines | ${pct(totals.lines.covered, totals.lines.total)}% | ${totals.lines.covered} / ${totals.lines.total} |`);
+          console.log(`| Statements | ${pct(totals.statements.covered, totals.statements.total)}% | ${totals.statements.covered} / ${totals.statements.total} |`);
+          console.log(`| Branches | ${pct(totals.branches.covered, totals.branches.total)}% | ${totals.branches.covered} / ${totals.branches.total} |`);
+          console.log(`| Functions | ${pct(totals.functions.covered, totals.functions.total)}% | ${totals.functions.covered} / ${totals.functions.total} |`);
 
           console.log('');
           console.log('<details><summary>File coverage (lowest lines first)</summary>');
