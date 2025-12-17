@@ -1,12 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import AnnotationFullModal from './modal'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 let mockUsageProps: { className?: string } | null = null
 jest.mock('./usage', () => ({
   __esModule: true,

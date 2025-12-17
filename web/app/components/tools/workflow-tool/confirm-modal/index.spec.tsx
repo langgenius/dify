@@ -3,13 +3,6 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ConfirmModal from './index'
 
-// Mock external dependencies as per guidelines
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Test utilities
 const defaultProps = {
   show: true,

@@ -2,12 +2,6 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import HistoryPanel from './history-panel'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 const mockDocLink = jest.fn(() => 'doc-link')
 jest.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
