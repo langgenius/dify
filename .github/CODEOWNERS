@@ -6,6 +6,9 @@
 
 * @crazywoola @laipz8200 @Yeuoly
 
+# Docs
+docs/ @crazywoola
+
 # Backend (default owner, more specific rules below will override)
 api/ @QuantumGhost
 
