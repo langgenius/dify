@@ -24,7 +24,7 @@ from core.mcp.mcp_client import MCPClient
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
-from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
+from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration, ApiProviderSchemaType
 from extensions.ext_database import db
 from libs.helper import alphanumeric, uuid_value
 from libs.login import current_account_with_tenant, login_required
@@ -74,7 +74,7 @@ class BuiltinToolUpdatePayload(BaseModel):
 
 class ApiToolProviderBasePayload(BaseModel):
     credentials: dict[str, Any]
-    schema_type: str
+    schema_type: ApiProviderSchemaType
     schema_: str = Field(alias="schema")
     provider: str
     icon: dict[str, Any]
