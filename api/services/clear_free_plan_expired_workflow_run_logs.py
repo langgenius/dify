@@ -39,6 +39,9 @@ class WorkflowRunCleanup:
         if self.window_start and self.window_end <= self.window_start:
             raise ValueError("end_before must be greater than start_after.")
 
+        if batch_size <= 0:
+            raise ValueError("batch_size must be greater than 0.")
+
         self.batch_size = batch_size
         self.billing_cache: dict[str, TenantPlanInfo | None] = {}
         self.dry_run = dry_run
