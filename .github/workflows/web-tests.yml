@@ -79,50 +79,76 @@ jobs:
           node <<'NODE' >> "$GITHUB_STEP_SUMMARY"
           const fs = require('fs');
           const path = require('path');
-          const { createCoverageMap } = require('istanbul-lib-coverage');
 
           const coveragePath = path.join('coverage', 'coverage-final.json');
-          const raw = fs.readFileSync(coveragePath, 'utf8');
-          const map = createCoverageMap(JSON.parse(raw));
-          const summary = map.getCoverageSummary();
+          const coverage = JSON.parse(fs.readFileSync(coveragePath, 'utf8'));
 
-          const metrics = [
-            { key: 'lines', label: 'Lines' },
-            { key: 'statements', label: 'Statements' },
-            { key: 'branches', label: 'Branches' },
-            { key: 'functions', label: 'Functions' },
-          ];
+          const total = {
+            lines: { covered: 0, total: 0 },
+            statements: { covered: 0, total: 0 },
+            branches: { covered: 0, total: 0 },
+            functions: { covered: 0, total: 0 },
+          };
 
-          const formatPct = (pct) => Number.isFinite(pct) ? pct.toFixed(2) : '0.00';
+          const fileSummaries = Object.entries(coverage).map(([file, entry]) => {
+            const lineHits = entry.l ?? {};
+            const statementHits = entry.s ?? {};
+            const branchHits = entry.b ?? {};
+            const functionHits = entry.f ?? {};
+
+            const lineTotal = Object.keys(lineHits).length;
+            const lineCovered = Object.values(lineHits).filter((n) => n > 0).length;
+
+            const statementTotal = Object.keys(statementHits).length;
+            const statementCovered = Object.values(statementHits).filter((n) => n > 0).length;
+
+            const branchTotal = Object.values(branchHits).reduce((acc, branches) => acc + branches.length, 0);
+            const branchCovered = Object.values(branchHits).reduce(
+              (acc, branches) => acc + branches.filter((n) => n > 0).length,
+              0,
+            );
+
+            const functionTotal = Object.keys(functionHits).length;
+            const functionCovered = Object.values(functionHits).filter((n) => n > 0).length;
+
+            total.lines.total += lineTotal;
+            total.lines.covered += lineCovered;
+            total.statements.total += statementTotal;
+            total.statements.covered += statementCovered;
+            total.branches.total += branchTotal;
+            total.branches.covered += branchCovered;
+            total.functions.total += functionTotal;
+            total.functions.covered += functionCovered;
+
+            const pct = (covered, tot) => (tot > 0 ? (covered / tot) * 100 : 0);
+
+            return {
+              file,
+              pct: pct(lineCovered || statementCovered, lineTotal || statementTotal),
+              lines: { covered: lineCovered, total: lineTotal },
+            };
+          });
+
+          const pct = (covered, tot) => (tot > 0 ? ((covered / tot) * 100).toFixed(2) : '0.00');
 
           console.log('### Test Coverage Summary :test_tube:');
           console.log('');
           console.log('| Metric | Coverage | Covered / Total |');
           console.log('|--------|----------|-----------------|');
-          metrics.forEach(({ key, label }) => {
-            const data = summary.data[key];
-            console.log(`| ${label} | ${formatPct(data.pct)}% | ${data.covered} / ${data.total} |`);
-          });
-
-          const fileSummaries = map.files().map((file) => {
-            const lines = map.fileCoverageFor(file).toSummary().data.lines;
-            return {
-              file,
-              pct: lines.pct,
-              covered: lines.covered,
-              total: lines.total,
-            };
-          });
+          console.log(`| Lines | ${pct(total.lines.covered, total.lines.total)}% | ${total.lines.covered} / ${total.lines.total} |`);
+          console.log(`| Statements | ${pct(total.statements.covered, total.statements.total)}% | ${total.statements.covered} / ${total.statements.total} |`);
+          console.log(`| Branches | ${pct(total.branches.covered, total.branches.total)}% | ${total.branches.covered} / ${total.branches.total} |`);
+          console.log(`| Functions | ${pct(total.functions.covered, total.functions.total)}% | ${total.functions.covered} / ${total.functions.total} |`);
 
           console.log('');
           console.log('<details><summary>File coverage (lowest lines first)</summary>');
           console.log('');
           console.log('```');
           fileSummaries
-            .sort((a, b) => (a.pct - b.pct) || (b.total - a.total))
+            .sort((a, b) => (a.pct - b.pct) || (b.lines.total - a.lines.total))
             .slice(0, 25)
-            .forEach(({ file, pct, covered, total }) => {
-              console.log(`${formatPct(pct)}%\t${covered}/${total}\t${file}`);
+            .forEach(({ file, pct, lines }) => {
+              console.log(`${pct.toFixed(2)}%\t${lines.covered}/${lines.total}\t${file}`);
             });
           console.log('```');
           console.log('</details>');
