@@ -1996,6 +1996,13 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
   }, [store])
 
+  // Check if there are any nodes selected via box selection (框选)
+  const hasBundledNodes = useCallback(() => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    return nodes.some(node => node.data._isBundled)
+  }, [store])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -2022,5 +2029,6 @@ export const useNodesInteractions = () => {
     handleHistoryForward,
     dimOtherNodes,
     undimAllNodes,
+    hasBundledNodes,
   }
 }

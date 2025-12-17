@@ -359,6 +359,7 @@ const translation = {
     zoomTo50: '50% サイズ',
     zoomTo100: '等倍表示',
     zoomToFit: '画面に合わせる',
+    makeGroup: 'グループ化',
     horizontal: '水平',
     alignBottom: '下',
     alignNodes: 'ノードを整列',

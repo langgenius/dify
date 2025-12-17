@@ -8,6 +8,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
+import { shallow } from 'zustand/shallow'
+import type { FC, ReactElement } from 'react'
 import {
   RiAlignBottom,
   RiAlignCenter,
@@ -16,7 +18,9 @@ import {
   RiAlignRight,
   RiAlignTop,
 } from '@remixicon/react'
-import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
+import Tooltip from '@/app/components/base/tooltip'
+import ShortcutsName from './shortcuts-name'
+import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { produce } from 'immer'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './hooks/use-workflow-history'
 import { useStore } from './store'
@@ -34,21 +38,63 @@ enum AlignType {
   DistributeVertical = 'distributeVertical',
 }
 
+type AlignButtonConfig = {
+  type: AlignType
+  icon: ReactElement
+  labelKey: string
+}
+
+type AlignButtonProps = {
+  config: AlignButtonConfig
+  onClick: (type: AlignType) => void
+  position?: 'top' | 'bottom' | 'left' | 'right'
+}
+
+const AlignButton: FC<AlignButtonProps> = ({ config, onClick, position = 'bottom' }) => {
+  return (
+    <Tooltip position={position} popupContent={config.labelKey}>
+      <div
+        className='flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-state-base-hover'
+        onClick={() => onClick(config.type)}
+      >
+        {config.icon}
+      </div>
+    </Tooltip>
+  )
+}
+
+const ALIGN_BUTTONS: AlignButtonConfig[] = [
+  { type: AlignType.Left, icon: <RiAlignLeft className='h-4 w-4' />, labelKey: 'workflow.operator.alignLeft' },
+  { type: AlignType.Center, icon: <RiAlignCenter className='h-4 w-4' />, labelKey: 'workflow.operator.alignCenter' },
+  { type: AlignType.Right, icon: <RiAlignRight className='h-4 w-4' />, labelKey: 'workflow.operator.alignRight' },
+  { type: AlignType.DistributeHorizontal, icon: <RiAlignJustify className='h-4 w-4' />, labelKey: 'workflow.operator.distributeHorizontal' },
+  { type: AlignType.Top, icon: <RiAlignTop className='h-4 w-4' />, labelKey: 'workflow.operator.alignTop' },
+  { type: AlignType.Middle, icon: <RiAlignCenter className='h-4 w-4 rotate-90' />, labelKey: 'workflow.operator.alignMiddle' },
+  { type: AlignType.Bottom, icon: <RiAlignBottom className='h-4 w-4' />, labelKey: 'workflow.operator.alignBottom' },
+  { type: AlignType.DistributeVertical, icon: <RiAlignJustify className='h-4 w-4 rotate-90' />, labelKey: 'workflow.operator.distributeVertical' },
+]
+
 const SelectionContextmenu = () => {
   const { t } = useTranslation()
   const ref = useRef(null)
-  const { getNodesReadOnly } = useNodesReadOnly()
+  const { getNodesReadOnly, nodesReadOnly } = useNodesReadOnly()
   const { handleSelectionContextmenuCancel } = useSelectionInteractions()
+  const {
+    handleNodesCopy,
+    handleNodesDuplicate,
+    handleNodesDelete,
+  } = useNodesInteractions()
   const selectionMenu = useStore(s => s.selectionMenu)
 
   // Access React Flow methods
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
 
-  // Get selected nodes for alignment logic
-  const selectedNodes = useReactFlowStore(state =>
-    state.getNodes().filter(node => node.selected),
-  )
+  const selectedNodeIds = useReactFlowStore((state) => {
+    const ids = state.getNodes().filter(node => node.selected).map(node => node.id)
+    ids.sort()
+    return ids
+  }, shallow)
 
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
@@ -65,9 +111,9 @@ const SelectionContextmenu = () => {
     if (container) {
       const { width: containerWidth, height: containerHeight } = container.getBoundingClientRect()
 
-      const menuWidth = 240
+      const menuWidth = 244
 
-      const estimatedMenuHeight = 380
+      const estimatedMenuHeight = 203
 
       if (left + menuWidth > containerWidth)
         left = left - menuWidth
@@ -87,9 +133,9 @@ const SelectionContextmenu = () => {
   }, ref)
 
   useEffect(() => {
-    if (selectionMenu && selectedNodes.length <= 1)
+    if (selectionMenu && selectedNodeIds.length <= 1)
       handleSelectionContextmenuCancel()
-  }, [selectionMenu, selectedNodes.length, handleSelectionContextmenuCancel])
+  }, [selectionMenu, selectedNodeIds.length, handleSelectionContextmenuCancel])
 
   // Handle align nodes logic
   const handleAlignNode = useCallback((currentNode: any, nodeToAlign: any, alignType: AlignType, minX: number, maxX: number, minY: number, maxY: number) => {
@@ -247,7 +293,7 @@ const SelectionContextmenu = () => {
   }, [])
 
   const handleAlignNodes = useCallback((alignType: AlignType) => {
-    if (getNodesReadOnly() || selectedNodes.length <= 1) {
+    if (getNodesReadOnly() || selectedNodeIds.length <= 1) {
       handleSelectionContextmenuCancel()
       return
     }
@@ -257,9 +303,6 @@ const SelectionContextmenu = () => {
 
     // Get all current nodes
     const nodes = store.getState().getNodes()
-
-    // Get all selected nodes
-    const selectedNodeIds = selectedNodes.map(node => node.id)
 
     // Find container nodes and their children
     // Container nodes (like Iteration and Loop) have child nodes that should not be aligned independently
@@ -366,7 +409,7 @@ const SelectionContextmenu = () => {
     catch (err) {
       console.error('Failed to update nodes:', err)
     }
-  }, [store, workflowStore, selectedNodes, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory, handleSelectionContextmenuCancel, handleAlignNode, handleDistributeNodes])
+  }, [getNodesReadOnly, handleAlignNode, handleDistributeNodes, handleSelectionContextmenuCancel, handleSyncWorkflowDraft, saveStateToHistory, selectedNodeIds, store, workflowStore])
 
   if (!selectionMenu)
     return null
@@ -380,73 +423,69 @@ const SelectionContextmenu = () => {
       }}
       ref={ref}
     >
-      <div ref={menuRef} className='w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
-        <div className='p-1'>
-          <div className='system-xs-medium px-2 py-2 text-text-tertiary'>
-            {t('workflow.operator.vertical')}
-          </div>
-          <div
-            className='flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-            onClick={() => handleAlignNodes(AlignType.Top)}
-          >
-            <RiAlignTop className='h-4 w-4' />
-            {t('workflow.operator.alignTop')}
-          </div>
-          <div
-            className='flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-            onClick={() => handleAlignNodes(AlignType.Middle)}
-          >
-            <RiAlignCenter className='h-4 w-4 rotate-90' />
-            {t('workflow.operator.alignMiddle')}
-          </div>
-          <div
-            className='flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-            onClick={() => handleAlignNodes(AlignType.Bottom)}
-          >
-            <RiAlignBottom className='h-4 w-4' />
-            {t('workflow.operator.alignBottom')}
-          </div>
-          <div
-            className='flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-            onClick={() => handleAlignNodes(AlignType.DistributeVertical)}
-          >
-            <RiAlignJustify className='h-4 w-4 rotate-90' />
-            {t('workflow.operator.distributeVertical')}
-          </div>
-        </div>
-        <div className='h-px bg-divider-regular'></div>
-        <div className='p-1'>
-          <div className='system-xs-medium px-2 py-2 text-text-tertiary'>
-            {t('workflow.operator.horizontal')}
-          </div>
-          <div
-            className='flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-            onClick={() => handleAlignNodes(AlignType.Left)}
-          >
-            <RiAlignLeft className='h-4 w-4' />
-            {t('workflow.operator.alignLeft')}
-          </div>
-          <div
-            className='flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-            onClick={() => handleAlignNodes(AlignType.Center)}
-          >
-            <RiAlignCenter className='h-4 w-4' />
-            {t('workflow.operator.alignCenter')}
-          </div>
-          <div
-            className='flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-            onClick={() => handleAlignNodes(AlignType.Right)}
-          >
-            <RiAlignRight className='h-4 w-4' />
-            {t('workflow.operator.alignRight')}
-          </div>
-          <div
-            className='flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
-            onClick={() => handleAlignNodes(AlignType.DistributeHorizontal)}
-          >
-            <RiAlignJustify className='h-4 w-4' />
-            {t('workflow.operator.distributeHorizontal')}
-          </div>
+      <div ref={menuRef} className='w-[244px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
+        {!nodesReadOnly && (
+          <>
+            <div className='p-1'>
+              <div
+                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                onClick={() => {
+                  console.log('make group')
+                  // TODO: Make group functionality
+                  handleSelectionContextmenuCancel()
+                }}
+              >
+                {t('workflow.operator.makeGroup')}
+                <ShortcutsName keys={['ctrl', 'g']} />
+              </div>
+            </div>
+            <div className='h-px bg-divider-regular' />
+            <div className='p-1'>
+              <div
+                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                onClick={() => {
+                  handleNodesCopy()
+                  handleSelectionContextmenuCancel()
+                }}
+              >
+                {t('workflow.common.copy')}
+                <ShortcutsName keys={['ctrl', 'c']} />
+              </div>
+              <div
+                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                onClick={() => {
+                  handleNodesDuplicate()
+                  handleSelectionContextmenuCancel()
+                }}
+              >
+                {t('workflow.common.duplicate')}
+                <ShortcutsName keys={['ctrl', 'd']} />
+              </div>
+            </div>
+            <div className='h-px bg-divider-regular' />
+            <div className='p-1'>
+              <div
+                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive'
+                onClick={() => {
+                  handleNodesDelete()
+                  handleSelectionContextmenuCancel()
+                }}
+              >
+                {t('common.operation.delete')}
+                <ShortcutsName keys={['del']} />
+              </div>
+            </div>
+            <div className='h-px bg-divider-regular' />
+          </>
+        )}
+        <div className='flex items-center justify-between p-1'>
+          {ALIGN_BUTTONS.map(config => (
+            <AlignButton
+              key={config.type}
+              config={{ ...config, labelKey: t(config.labelKey) }}
+              onClick={handleAlignNodes}
+            />
+          ))}
         </div>
       </div>
     </div>

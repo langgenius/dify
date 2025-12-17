@@ -157,6 +157,42 @@ export const getValidTreeNodes = (nodes: Node[], edges: Edge[]) => {
   }
 }
 
+export const getCommonPredecessorNodeIds = (selectedNodeIds: string[], edges: Edge[]) => {
+  const uniqSelectedNodeIds = Array.from(new Set(selectedNodeIds))
+  if (uniqSelectedNodeIds.length <= 1)
+    return []
+
+  const selectedNodeIdSet = new Set(uniqSelectedNodeIds)
+  const predecessorNodeIdsMap = new Map<string, Set<string>>()
+
+  edges.forEach((edge) => {
+    if (!selectedNodeIdSet.has(edge.target))
+      return
+
+    const predecessors = predecessorNodeIdsMap.get(edge.target) ?? new Set<string>()
+    predecessors.add(edge.source)
+    predecessorNodeIdsMap.set(edge.target, predecessors)
+  })
+
+  let commonPredecessorNodeIds: Set<string> | null = null
+
+  uniqSelectedNodeIds.forEach((nodeId) => {
+    const predecessors = predecessorNodeIdsMap.get(nodeId) ?? new Set<string>()
+
+    if (!commonPredecessorNodeIds) {
+      commonPredecessorNodeIds = new Set(predecessors)
+      return
+    }
+
+    Array.from(commonPredecessorNodeIds).forEach((predecessorNodeId) => {
+      if (!predecessors.has(predecessorNodeId))
+        commonPredecessorNodeIds!.delete(predecessorNodeId)
+    })
+  })
+
+  return Array.from(commonPredecessorNodeIds ?? []).sort()
+}
+
 export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
   const idMap = nodes.reduce((acc, node) => {
     acc[node.id] = uuid4()

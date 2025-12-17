@@ -27,6 +27,7 @@ export const useShortcuts = (): void => {
     handleHistoryForward,
     dimOtherNodes,
     undimAllNodes,
+    hasBundledNodes,
   } = useNodesInteractions()
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -73,7 +74,8 @@ export const useShortcuts = (): void => {
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
     const { showDebugAndPreviewPanel } = workflowStore.getState()
-    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel) {
+    // Only intercept when nodes are selected via box selection
+    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel && hasBundledNodes()) {
       e.preventDefault()
       handleNodesCopy()
     }
@@ -91,6 +93,16 @@ export const useShortcuts = (): void => {
     if (shouldHandleShortcut(e)) {
       e.preventDefault()
       handleNodesDuplicate()
+    }
+  }, { exactMatch: true, useCapture: true })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.g`, (e) => {
+    if (shouldHandleShortcut(e) && hasBundledNodes()) {
+      e.preventDefault()
+      // Close selection context menu if open
+      workflowStore.setState({ selectionMenu: undefined })
+      // TODO: handleMakeGroup() - Make group functionality to be implemented
+      console.info('make group')
     }
   }, { exactMatch: true, useCapture: true })
 

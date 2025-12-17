@@ -359,6 +359,7 @@ const translation = {
     zoomTo50: 'Zoom to 50%',
     zoomTo100: 'Zoom to 100%',
     zoomToFit: 'Zoom to Fit',
+    makeGroup: 'Make group',
     alignNodes: 'Align Nodes',
     alignLeft: 'Left',
     alignCenter: 'Center',

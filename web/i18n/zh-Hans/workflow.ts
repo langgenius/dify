@@ -359,6 +359,7 @@ const translation = {
     zoomTo50: '缩放到 50%',
     zoomTo100: '放大到 100%',
     zoomToFit: '自适应视图',
+    makeGroup: '创建分组',
     alignNodes: '对齐节点',
     alignLeft: '左对齐',
     alignCenter: '居中对齐',

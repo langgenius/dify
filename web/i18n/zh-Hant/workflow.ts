@@ -344,6 +344,7 @@ const translation = {
     zoomTo50: '縮放到 50%',
     zoomTo100: '放大到 100%',
     zoomToFit: '自適應視圖',
+    makeGroup: '建立群組',
     alignNodes: '對齊節點',
     distributeVertical: '垂直等間距',
     alignLeft: '左對齊',
