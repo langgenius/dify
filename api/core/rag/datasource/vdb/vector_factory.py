@@ -331,7 +331,7 @@ class Vector:
             collection_exist_cache_key = f"vector_indexing_{self._vector_processor.collection_name}"
             redis_client.delete(collection_exist_cache_key)
 
-    def _get_embeddings(self) -> Embeddings:
+    def _get_embeddings(self) -> Embeddings | None:
         model_manager = ModelManager()
         try:
             embedding_model = model_manager.get_model_instance(
@@ -342,7 +342,6 @@ class Vector:
             )
             return CacheEmbedding(embedding_model)
         except Exception as e:
-            logger.exception("Error getting embeddings: %s", e)
             # return default embeddings
             try:
                 default_embeddings = model_manager.get_default_model_instance(
@@ -351,8 +350,8 @@ class Vector:
                 )
                 return CacheEmbedding(default_embeddings)
             except Exception as e:
-                logger.exception("Error getting default embeddings: %s", e)
-                raise e
+                logger.info("Error getting default embeddings: %s", e)
+                return None
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
         for text in texts.copy():
