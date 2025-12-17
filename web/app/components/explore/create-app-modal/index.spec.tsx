@@ -7,6 +7,32 @@ import { AppModeEnum } from '@/types/app'
 import CreateAppModal from './index'
 import type { CreateAppModalProps } from './index'
 
+let mockTranslationOverrides: Record<string, string | undefined> = {}
+
+jest.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: (key: string, options?: Record<string, unknown>) => {
+      const override = mockTranslationOverrides[key]
+      if (override !== undefined)
+        return override
+      if (options?.returnObjects)
+        return [`${key}-feature-1`, `${key}-feature-2`]
+      if (options)
+        return `${key}:${JSON.stringify(options)}`
+      return key
+    },
+    i18n: {
+      language: 'en',
+      changeLanguage: jest.fn(),
+    },
+  }),
+  Trans: ({ children }: { children?: React.ReactNode }) => children,
+  initReactI18next: {
+    type: '3rdParty',
+    init: jest.fn(),
+  },
+}))
+
 // ky is an ESM-only package; mock it to keep Jest (CJS) specs running.
 jest.mock('ky', () => ({
   __esModule: true,
@@ -106,6 +132,7 @@ const getAppIconTrigger = (): HTMLElement => {
 describe('CreateAppModal', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockTranslationOverrides = {}
     mockEnableBilling = false
     mockPlanType = Plan.team
     mockUsagePlanInfo = createPlanInfo(1)
@@ -131,6 +158,18 @@ describe('CreateAppModal', () => {
       expect((screen.getByRole('spinbutton') as HTMLInputElement).value).toBe('5')
     })
 
+    test.each([AppModeEnum.ADVANCED_CHAT, AppModeEnum.AGENT_CHAT])('should render answer icon switch when editing %s app', (mode) => {
+      setup({ isEditModal: true, appMode: mode })
+
+      expect(screen.getByRole('switch')).toBeInTheDocument()
+    })
+
+    test('should not render answer icon switch when editing a non-chat app', () => {
+      setup({ isEditModal: true, appMode: AppModeEnum.COMPLETION })
+
+      expect(screen.queryByRole('switch')).not.toBeInTheDocument()
+    })
+
     test('should not render modal content when hidden', () => {
       setup({ show: false })
 
@@ -150,6 +189,27 @@ describe('CreateAppModal', () => {
       setup({ appName: '   ' })
 
       expect(screen.getByRole('button', { name: 'common.operation.create' })).toBeDisabled()
+    })
+  })
+
+  // Defensive coverage for falsy input values and translation edge cases.
+  describe('Edge Cases', () => {
+    test('should default description to empty string when appDescription is empty', () => {
+      setup({ appDescription: '' })
+
+      expect((screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder') as HTMLTextAreaElement).value).toBe('')
+    })
+
+    test('should fall back to empty placeholders when translations return empty string', () => {
+      mockTranslationOverrides = {
+        'app.newApp.appNamePlaceholder': '',
+        'app.newApp.appDescriptionPlaceholder': '',
+      }
+
+      setup()
+
+      expect((screen.getByDisplayValue('Test App') as HTMLInputElement).placeholder).toBe('')
+      expect((screen.getByDisplayValue('Test description') as HTMLTextAreaElement).placeholder).toBe('')
     })
   })
 
@@ -345,6 +405,34 @@ describe('CreateAppModal', () => {
         jest.useRealTimers()
       }
     })
+
+    test('should reset emoji icon to initial props when picker is cancelled', () => {
+      setup({
+        appIconType: 'emoji',
+        appIcon: '🤖',
+        appIconBackground: '#FFEAD5',
+      })
+
+      expect(document.querySelector('em-emoji[id="🤖"]')).toBeInTheDocument()
+
+      fireEvent.click(getAppIconTrigger())
+
+      const emoji = document.querySelector('em-emoji[id="😀"]')
+      if (!(emoji instanceof HTMLElement))
+        throw new Error('Failed to locate emoji option in icon picker')
+      fireEvent.click(emoji)
+
+      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+
+      expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
+      expect(document.querySelector('em-emoji[id="😀"]')).toBeInTheDocument()
+
+      fireEvent.click(getAppIconTrigger())
+      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
+
+      expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
+      expect(document.querySelector('em-emoji[id="🤖"]')).toBeInTheDocument()
+    })
   })
 
   // Submitting uses a debounced handler and builds a payload from current form state.
@@ -384,6 +472,19 @@ describe('CreateAppModal', () => {
         use_icon_as_answer_icon: false,
       })
       expect(payload).not.toHaveProperty('max_active_requests')
+    })
+
+    test('should include updated description when textarea is changed before submitting', () => {
+      const { onConfirm } = setup({ appDescription: 'Old description' })
+
+      fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), { target: { value: 'Updated description' } })
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+      act(() => {
+        jest.advanceTimersByTime(300)
+      })
+
+      expect(onConfirm).toHaveBeenCalledTimes(1)
+      expect(onConfirm.mock.calls[0][0]).toMatchObject({ description: 'Updated description' })
     })
 
     test('should omit icon_background when submitting with image icon', () => {
