@@ -251,9 +251,6 @@ class ApiToolManageService:
         """
         update api tool provider
         """
-        if schema_type not in ApiProviderSchemaType:
-            raise ValueError(f"invalid schema type {schema}")
-
         provider_name = provider_name.strip()
 
         # check if the provider exists
