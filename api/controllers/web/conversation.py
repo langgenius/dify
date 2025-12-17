@@ -2,7 +2,7 @@ from typing import Literal
 
 from flask import request
 from flask_restx import fields, marshal_with
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -37,6 +37,13 @@ class ConversationListQuery(BaseModel):
 class ConversationRenamePayload(BaseModel):
     name: str | None = None
     auto_generate: bool = False
+
+    @model_validator(mode="after")
+    def validate_name_requirement(self):
+        if not self.auto_generate:
+            if self.name is None or not self.name.strip():
+                raise ValueError("name is required when auto_generate is false")
+        return self
 
 
 register_schema_models(web_ns, ConversationListQuery, ConversationRenamePayload)
