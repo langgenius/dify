@@ -20,6 +20,7 @@ const allTypes: AppModeEnum[] = [AppModeEnum.WORKFLOW, AppModeEnum.ADVANCED_CHAT
 
 const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
   const [open, setOpen] = useState(false)
+  const { t } = useTranslation()
 
   return (
     <PortalToFollowElem
@@ -37,12 +38,17 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
             'flex cursor-pointer items-center justify-between space-x-1 rounded-md px-2 hover:bg-state-base-hover',
           )}>
             <AppTypeSelectTrigger values={value} />
-            {value && value.length > 0 && <div className='h-4 w-4' onClick={(e) => {
-              e.stopPropagation()
-              onChange([])
-            }}>
+            {value && value.length > 0 && <button
+              type='button'
+              aria-label={t('common.operation.clear')}
+              className='h-4 w-4'
+              onClick={(e) => {
+                e.stopPropagation()
+                onChange([])
+              }}
+            >
               <RiCloseCircleFill className='h-3.5 w-3.5 cursor-pointer text-text-quaternary hover:text-text-tertiary' />
-            </div>}
+            </button>}
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
