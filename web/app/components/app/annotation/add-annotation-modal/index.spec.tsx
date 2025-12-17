@@ -83,8 +83,7 @@ describe('AddAnnotationModal', () => {
 
     typeQuestion('Question value')
     typeAnswer('Answer value')
-    const createNextToggle = screen.getByText('appAnnotation.addModal.createNext').previousElementSibling as HTMLElement
-    fireEvent.click(createNextToggle)
+    fireEvent.click(screen.getByRole('checkbox'))
 
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
