@@ -147,6 +147,8 @@ class DataSourceNotionListApi(Resource):
         if datasource_parameters_str:
             try:
                 datasource_parameters = json.loads(datasource_parameters_str)
+                if not isinstance(datasource_parameters, dict):
+                    raise ValueError("datasource_parameters must be a JSON object.")
             except json.JSONDecodeError:
                 raise ValueError("Invalid datasource_parameters JSON format.")
 
