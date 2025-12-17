@@ -45,7 +45,7 @@ class WorkflowRunCleanup:
         self.batch_size = batch_size
         self.billing_cache: dict[str, TenantPlanInfo | None] = {}
         self.dry_run = dry_run
-        self.free_plan_grace_period_days = dify_config.SANDBOX_RECORDS_CLEAN_GRACEFUL_PERIOD
+        self.free_plan_grace_period_days = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD
         self.workflow_run_repo: APIWorkflowRunRepository
         if workflow_run_repo:
             self.workflow_run_repo = workflow_run_repo

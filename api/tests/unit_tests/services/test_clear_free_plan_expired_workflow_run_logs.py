@@ -76,7 +76,7 @@ def create_cleanup(
 ) -> WorkflowRunCleanup:
     monkeypatch.setattr(
         cleanup_module.dify_config,
-        "SANDBOX_RECORDS_CLEAN_GRACEFUL_PERIOD",
+        "SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD",
         grace_period_days,
     )
     return WorkflowRunCleanup(workflow_run_repo=repo, **kwargs)
