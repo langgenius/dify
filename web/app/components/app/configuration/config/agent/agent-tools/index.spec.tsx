@@ -357,7 +357,9 @@ describe('AgentTools', () => {
     await userEvent.click(switchButton)
 
     await waitFor(() => {
-      expect((getModelConfig().agentConfig.tools[0] as { enabled: boolean }).enabled).toBe(false)
+      const tools = getModelConfig().agentConfig.tools as Array<{ tool_name?: string; enabled?: boolean }>
+      const toggledTool = tools.find(tool => tool.tool_name === 'search')
+      expect(toggledTool?.enabled).toBe(false)
     })
     expect(formattingDispatcherMock).toHaveBeenCalled()
   })
