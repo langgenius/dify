@@ -166,6 +166,7 @@ describe('SettingBuiltInTool', () => {
     })
 
     await waitFor(() => {
+      expect(fetchModelToolList).toHaveBeenCalledTimes(1)
       expect(fetchModelToolList).toHaveBeenCalledWith('vendor/provider-1')
     })
     expect(await screen.findByText('Search Tool')).toBeInTheDocument()
