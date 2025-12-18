@@ -244,7 +244,7 @@ class ApiToolManageService:
         original_provider: str,
         icon: dict,
         credentials: dict,
-        schema_type: str,
+        _schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str | None,
         custom_disclaimer: str,
@@ -362,7 +362,7 @@ class ApiToolManageService:
         tool_name: str,
         credentials: dict,
         parameters: dict,
-        schema_type: str,
+        schema_type: ApiProviderSchemaType,
         schema: str,
     ):
         """

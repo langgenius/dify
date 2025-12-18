@@ -119,7 +119,7 @@ class ApiToolTestPayload(BaseModel):
     provider_name: str | None = None
     credentials: dict[str, Any]
     parameters: dict[str, Any]
-    schema_type: str
+    schema_type: ApiProviderSchemaType
     schema_: str = Field(alias="schema")
 
 
