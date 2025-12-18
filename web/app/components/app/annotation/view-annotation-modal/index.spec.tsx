@@ -91,7 +91,7 @@ describe('ViewAnnotationModal', () => {
 
     fireEvent.click(screen.getByTestId('edit-answer'))
     await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledWith('query-updated', 'answer-updated')
+      expect(props.onSave).toHaveBeenCalledWith(props.item.question, 'answer-updated')
     })
 
     fireEvent.click(screen.getByText('appAnnotation.viewModal.hitHistory'))
