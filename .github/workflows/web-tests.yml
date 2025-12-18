@@ -356,44 +356,20 @@ jobs:
             };
 
             const rowsForOutput = [allFilesRow, ...tableRows];
-            const escapeHtml = (value) => String(value ?? '')
-              .replace(/&/g, '&amp;')
-              .replace(/</g, '&lt;')
-              .replace(/>/g, '&gt;')
-              .replace(/"/g, '&quot;')
-              .replace(/'/g, '&#39;');
-            const formatHtmlRow = (row) => `  <tr>${columns
-              .map(({ key, align }) => {
-                const content = key === 'uncovered'
-                  ? `<code>${escapeHtml(row[key])}</code>`
-                  : escapeHtml(row[key]);
-                return `<td align="${align}">${content}</td>`;
-              })
-              .join('')}</tr>`;
+            const formatRow = (row) => `| ${columns
+              .map(({ key }) => String(row[key] ?? ''))
+              .join(' | ')} |`;
+            const headerRow = `| ${columns.map(({ header }) => header).join(' | ')} |`;
+            const dividerRow = `| ${columns
+              .map(({ align }) => (align === 'right' ? '---:' : ':---'))
+              .join(' | ')} |`;
 
             console.log('');
             console.log('<details><summary>Jest coverage table</summary>');
             console.log('');
-            console.log('<div style="overflow-x:auto">');
-            console.log('<table width="100%">');
-            console.log('<colgroup>');
-            console.log('<col width="38%">');
-            console.log('<col width="8%">');
-            console.log('<col width="8%">');
-            console.log('<col width="8%">');
-            console.log('<col width="8%">');
-            console.log('<col width="30%">');
-            console.log('</colgroup>');
-            console.log('<thead>');
-            console.log(`  <tr>${columns
-              .map(({ header, align }) => `<th align="${align}">${escapeHtml(header)}</th>`)
-              .join('')}</tr>`);
-            console.log('</thead>');
-            console.log('<tbody>');
-            rowsForOutput.forEach((row) => console.log(formatHtmlRow(row)));
-            console.log('</tbody>');
-            console.log('</table>');
-            console.log('</div>');
+            console.log(headerRow);
+            console.log(dividerRow);
+            rowsForOutput.forEach((row) => console.log(formatRow(row)));
             console.log('</details>');
           }
           NODE
