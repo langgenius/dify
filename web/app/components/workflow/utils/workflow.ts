@@ -193,6 +193,59 @@ export const getCommonPredecessorNodeIds = (selectedNodeIds: string[], edges: Ed
   return Array.from(commonPredecessorNodeIds ?? []).sort()
 }
 
+export type PredecessorHandle = {
+  nodeId: string
+  handleId: string
+}
+
+export const getCommonPredecessorHandles = (targetNodeIds: string[], edges: Edge[]): PredecessorHandle[] => {
+  const uniqTargetNodeIds = Array.from(new Set(targetNodeIds))
+  if (uniqTargetNodeIds.length === 0)
+    return []
+
+  // Get the "direct predecessor handler", which is:
+  // - edge.source (predecessor node)
+  // - edge.sourceHandle (the specific output handle of the predecessor; defaults to 'source' if not set)
+  // Used to handle multi-handle branch scenarios like If-Else / Classifier.
+  const targetNodeIdSet = new Set(uniqTargetNodeIds)
+  const predecessorHandleMap = new Map<string, Set<string>>() // targetNodeId -> Set<`${source}\0${handleId}`>
+  const delimiter = '\u0000'
+
+  edges.forEach((edge) => {
+    if (!targetNodeIdSet.has(edge.target))
+      return
+
+    const predecessors = predecessorHandleMap.get(edge.target) ?? new Set<string>()
+    const handleId = edge.sourceHandle || 'source'
+    predecessors.add(`${edge.source}${delimiter}${handleId}`)
+    predecessorHandleMap.set(edge.target, predecessors)
+  })
+
+  // Intersect predecessor handlers of all targets, keeping only handlers common to all targets.
+  let commonKeys: Set<string> | null = null
+
+  uniqTargetNodeIds.forEach((nodeId) => {
+    const keys = predecessorHandleMap.get(nodeId) ?? new Set<string>()
+
+    if (!commonKeys) {
+      commonKeys = new Set(keys)
+      return
+    }
+
+    Array.from(commonKeys).forEach((key) => {
+      if (!keys.has(key))
+        commonKeys!.delete(key)
+    })
+  })
+
+  return Array.from<string>(commonKeys ?? [])
+    .map((key) => {
+      const [nodeId, handleId] = key.split(delimiter)
+      return { nodeId, handleId }
+    })
+    .sort((a, b) => a.nodeId.localeCompare(b.nodeId) || a.handleId.localeCompare(b.handleId))
+}
+
 export const changeNodesAndEdgesId = (nodes: Node[], edges: Edge[]) => {
   const idMap = nodes.reduce((acc, node) => {
     acc[node.id] = uuid4()

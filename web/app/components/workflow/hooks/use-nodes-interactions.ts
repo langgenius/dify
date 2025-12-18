@@ -49,6 +49,7 @@ import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useHelpline } from './use-helpline'
+import { checkMakeGroupAvailability } from './use-make-group'
 import {
   useNodesReadOnly,
   useWorkflow,
@@ -1996,11 +1997,31 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
   }, [store])
 
-  // Check if there are any nodes selected via box selection (框选)
+  // Check if there are any nodes selected via box selection
   const hasBundledNodes = useCallback(() => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
     return nodes.some(node => node.data._isBundled)
+  }, [store])
+
+  // Check if the current box selection can be grouped
+  const getCanMakeGroup = useCallback(() => {
+    const { getNodes, edges } = store.getState()
+    const nodes = getNodes()
+    const bundledNodeIds = nodes.filter(node => node.data._isBundled).map(node => node.id)
+
+    if (bundledNodeIds.length <= 1)
+      return false
+
+    const minimalEdges = edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      sourceHandle: edge.sourceHandle || 'source',
+      target: edge.target,
+    }))
+
+    const { canMakeGroup } = checkMakeGroupAvailability(bundledNodeIds, minimalEdges)
+    return canMakeGroup
   }, [store])
 
   return {
@@ -2030,5 +2051,6 @@ export const useNodesInteractions = () => {
     dimOtherNodes,
     undimAllNodes,
     hasBundledNodes,
+    getCanMakeGroup,
   }
 }

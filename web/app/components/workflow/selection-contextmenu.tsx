@@ -25,6 +25,7 @@ import { produce } from 'immer'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './hooks/use-workflow-history'
 import { useStore } from './store'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
+import { useMakeGroupAvailability } from './hooks/use-make-group'
 import { useWorkflowStore } from './store'
 
 enum AlignType {
@@ -95,6 +96,8 @@ const SelectionContextmenu = () => {
     ids.sort()
     return ids
   }, shallow)
+
+  const { canMakeGroup } = useMakeGroupAvailability(selectedNodeIds)
 
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { saveStateToHistory } = useWorkflowHistory()
@@ -428,15 +431,21 @@ const SelectionContextmenu = () => {
           <>
             <div className='p-1'>
               <div
-                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                className={`flex h-8 items-center justify-between rounded-lg px-3 text-sm ${
+                  canMakeGroup
+                    ? 'cursor-pointer text-text-secondary hover:bg-state-base-hover'
+                    : 'cursor-not-allowed text-text-disabled'
+                }`}
                 onClick={() => {
+                  if (!canMakeGroup)
+                    return
                   console.log('make group')
                   // TODO: Make group functionality
                   handleSelectionContextmenuCancel()
                 }}
               >
                 {t('workflow.operator.makeGroup')}
-                <ShortcutsName keys={['ctrl', 'g']} />
+                <ShortcutsName keys={['ctrl', 'g']} className={!canMakeGroup ? 'opacity-50' : ''} />
               </div>
             </div>
             <div className='h-px bg-divider-regular' />

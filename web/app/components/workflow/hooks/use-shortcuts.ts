@@ -28,6 +28,7 @@ export const useShortcuts = (): void => {
     dimOtherNodes,
     undimAllNodes,
     hasBundledNodes,
+    getCanMakeGroup,
   } = useNodesInteractions()
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -97,7 +98,8 @@ export const useShortcuts = (): void => {
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.g`, (e) => {
-    if (shouldHandleShortcut(e) && hasBundledNodes()) {
+    // Only intercept when the selection can be grouped
+    if (shouldHandleShortcut(e) && getCanMakeGroup()) {
       e.preventDefault()
       // Close selection context menu if open
       workflowStore.setState({ selectionMenu: undefined })
