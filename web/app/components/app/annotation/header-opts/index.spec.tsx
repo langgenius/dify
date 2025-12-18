@@ -1,0 +1,323 @@
+import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import type { ComponentProps } from 'react'
+import HeaderOptions from './index'
+import I18NContext from '@/context/i18n'
+import { LanguagesSupported } from '@/i18n-config/language'
+import type { AnnotationItemBasic } from '../type'
+import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+
+let lastCSVDownloaderProps: Record<string, unknown> | undefined
+const mockCSVDownloader = jest.fn(({ children, ...props }) => {
+  lastCSVDownloaderProps = props
+  return (
+    <div data-testid="csv-downloader">
+      {children}
+    </div>
+  )
+})
+
+jest.mock('react-papaparse', () => ({
+  useCSVDownloader: () => ({
+    CSVDownloader: (props: any) => mockCSVDownloader(props),
+    Type: { Link: 'link' },
+  }),
+}))
+
+jest.mock('@/service/annotation', () => ({
+  fetchExportAnnotationList: jest.fn(),
+  clearAllAnnotations: jest.fn(),
+}))
+
+jest.mock('@/context/provider-context', () => ({
+  useProviderContext: () => ({
+    plan: {
+      usage: { annotatedResponse: 0 },
+      total: { annotatedResponse: 10 },
+    },
+    enableBilling: false,
+  }),
+}))
+
+jest.mock('@/app/components/billing/annotation-full', () => ({
+  __esModule: true,
+  default: () => <div data-testid="annotation-full" />,
+}))
+
+type HeaderOptionsProps = ComponentProps<typeof HeaderOptions>
+
+const renderComponent = (
+  props: Partial<HeaderOptionsProps> = {},
+  locale: string = LanguagesSupported[0] as string,
+) => {
+  const defaultProps: HeaderOptionsProps = {
+    appId: 'test-app-id',
+    onAdd: jest.fn(),
+    onAdded: jest.fn(),
+    controlUpdateList: 0,
+    ...props,
+  }
+
+  return render(
+    <I18NContext.Provider
+      value={{
+        locale,
+        i18n: {},
+        setLocaleOnClient: jest.fn(),
+      }}
+    >
+      <HeaderOptions {...defaultProps} />
+    </I18NContext.Provider>,
+  )
+}
+
+const openOperationsPopover = async (user: ReturnType<typeof userEvent.setup>) => {
+  const trigger = document.querySelector('button.btn.btn-secondary') as HTMLButtonElement
+  expect(trigger).toBeTruthy()
+  await user.click(trigger)
+}
+
+const expandExportMenu = async (user: ReturnType<typeof userEvent.setup>) => {
+  await openOperationsPopover(user)
+  const exportLabel = await screen.findByText('appAnnotation.table.header.bulkExport')
+  const exportButton = exportLabel.closest('button') as HTMLButtonElement
+  expect(exportButton).toBeTruthy()
+  await user.click(exportButton)
+}
+
+const getExportButtons = async () => {
+  const csvLabel = await screen.findByText('CSV')
+  const jsonLabel = await screen.findByText('JSONL')
+  const csvButton = csvLabel.closest('button') as HTMLButtonElement
+  const jsonButton = jsonLabel.closest('button') as HTMLButtonElement
+  expect(csvButton).toBeTruthy()
+  expect(jsonButton).toBeTruthy()
+  return {
+    csvButton,
+    jsonButton,
+  }
+}
+
+const clickOperationAction = async (
+  user: ReturnType<typeof userEvent.setup>,
+  translationKey: string,
+) => {
+  const label = await screen.findByText(translationKey)
+  const button = label.closest('button') as HTMLButtonElement
+  expect(button).toBeTruthy()
+  await user.click(button)
+}
+
+const mockAnnotations: AnnotationItemBasic[] = [
+  {
+    question: 'Question 1',
+    answer: 'Answer 1',
+  },
+]
+
+const mockedFetchAnnotations = jest.mocked(fetchExportAnnotationList)
+const mockedClearAllAnnotations = jest.mocked(clearAllAnnotations)
+
+describe('HeaderOptions', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockCSVDownloader.mockClear()
+    lastCSVDownloaderProps = undefined
+    mockedFetchAnnotations.mockResolvedValue({ data: [] })
+  })
+
+  it('should fetch annotations on mount and render enabled export actions when data exist', async () => {
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    const user = userEvent.setup()
+    renderComponent()
+
+    await waitFor(() => {
+      expect(mockedFetchAnnotations).toHaveBeenCalledWith('test-app-id')
+    })
+
+    await expandExportMenu(user)
+
+    const { csvButton, jsonButton } = await getExportButtons()
+
+    expect(csvButton).not.toBeDisabled()
+    expect(jsonButton).not.toBeDisabled()
+
+    await waitFor(() => {
+      expect(lastCSVDownloaderProps).toMatchObject({
+        bom: true,
+        filename: 'annotations-en-US',
+        type: 'link',
+        data: [
+          ['Question', 'Answer'],
+          ['Question 1', 'Answer 1'],
+        ],
+      })
+    })
+  })
+
+  it('should disable export actions when there are no annotations', async () => {
+    const user = userEvent.setup()
+    renderComponent()
+
+    await expandExportMenu(user)
+
+    const { csvButton, jsonButton } = await getExportButtons()
+
+    expect(csvButton).toBeDisabled()
+    expect(jsonButton).toBeDisabled()
+
+    expect(lastCSVDownloaderProps).toMatchObject({
+      data: [['Question', 'Answer']],
+    })
+  })
+
+  it('should open the add annotation modal and forward the onAdd callback', async () => {
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    const user = userEvent.setup()
+    const onAdd = jest.fn().mockResolvedValue(undefined)
+    renderComponent({ onAdd })
+
+    await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalled())
+
+    await user.click(
+      screen.getByRole('button', { name: 'appAnnotation.table.header.addAnnotation' }),
+    )
+
+    await screen.findByText('appAnnotation.addModal.title')
+    const questionInput = screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')
+    const answerInput = screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')
+
+    await user.type(questionInput, 'Integration question')
+    await user.type(answerInput, 'Integration answer')
+    await user.click(screen.getByRole('button', { name: 'common.operation.add' }))
+
+    await waitFor(() => {
+      expect(onAdd).toHaveBeenCalledWith({
+        question: 'Integration question',
+        answer: 'Integration answer',
+      })
+    })
+  })
+
+  it('should allow bulk import through the batch modal', async () => {
+    const user = userEvent.setup()
+    const onAdded = jest.fn()
+    renderComponent({ onAdded })
+
+    await openOperationsPopover(user)
+    await clickOperationAction(user, 'appAnnotation.table.header.bulkImport')
+
+    expect(await screen.findByText('appAnnotation.batchModal.title')).toBeInTheDocument()
+    await user.click(
+      screen.getByRole('button', { name: 'appAnnotation.batchModal.cancel' }),
+    )
+    expect(onAdded).not.toHaveBeenCalled()
+  })
+
+  it('should trigger JSONL download with locale-specific filename', async () => {
+    mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
+    const user = userEvent.setup()
+    const originalCreateElement = document.createElement.bind(document)
+    const anchor = originalCreateElement('a') as HTMLAnchorElement
+    const clickSpy = jest.spyOn(anchor, 'click').mockImplementation(jest.fn())
+    const createElementSpy = jest
+      .spyOn(document, 'createElement')
+      .mockImplementation((tagName: Parameters<Document['createElement']>[0]) => {
+        if (tagName === 'a')
+          return anchor
+        return originalCreateElement(tagName)
+      })
+    const objectURLSpy = jest
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob://mock-url')
+    const revokeSpy = jest.spyOn(URL, 'revokeObjectURL').mockImplementation(jest.fn())
+
+    renderComponent({}, LanguagesSupported[1] as string)
+
+    await expandExportMenu(user)
+
+    await waitFor(() => expect(mockCSVDownloader).toHaveBeenCalled())
+
+    const { jsonButton } = await getExportButtons()
+    await user.click(jsonButton)
+
+    expect(createElementSpy).toHaveBeenCalled()
+    expect(anchor.download).toBe(`annotations-${LanguagesSupported[1]}.jsonl`)
+    expect(clickSpy).toHaveBeenCalled()
+    expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
+
+    const blobArg = objectURLSpy.mock.calls[0][0] as Blob
+    await expect(blobArg.text()).resolves.toContain('"Question 1"')
+
+    clickSpy.mockRestore()
+    createElementSpy.mockRestore()
+    objectURLSpy.mockRestore()
+    revokeSpy.mockRestore()
+  })
+
+  it('should clear all annotations when confirmation succeeds', async () => {
+    mockedClearAllAnnotations.mockResolvedValue(undefined)
+    const user = userEvent.setup()
+    const onAdded = jest.fn()
+    renderComponent({ onAdded })
+
+    await openOperationsPopover(user)
+    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
+
+    await screen.findByText('appAnnotation.table.header.clearAllConfirm')
+    const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+    await user.click(confirmButton)
+
+    await waitFor(() => {
+      expect(mockedClearAllAnnotations).toHaveBeenCalledWith('test-app-id')
+      expect(onAdded).toHaveBeenCalled()
+    })
+  })
+
+  it('should handle clear all failures gracefully', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(jest.fn())
+    mockedClearAllAnnotations.mockRejectedValue(new Error('network'))
+    const user = userEvent.setup()
+    const onAdded = jest.fn()
+    renderComponent({ onAdded })
+
+    await openOperationsPopover(user)
+    await clickOperationAction(user, 'appAnnotation.table.header.clearAll')
+    await screen.findByText('appAnnotation.table.header.clearAllConfirm')
+    const confirmButton = screen.getByRole('button', { name: 'common.operation.confirm' })
+    await user.click(confirmButton)
+
+    await waitFor(() => {
+      expect(mockedClearAllAnnotations).toHaveBeenCalled()
+      expect(onAdded).not.toHaveBeenCalled()
+      expect(consoleSpy).toHaveBeenCalled()
+    })
+
+    consoleSpy.mockRestore()
+  })
+
+  it('should refetch annotations when controlUpdateList changes', async () => {
+    const view = renderComponent({ controlUpdateList: 0 })
+
+    await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(1))
+
+    view.rerender(
+      <I18NContext.Provider
+        value={{
+          locale: LanguagesSupported[0] as string,
+          i18n: {},
+          setLocaleOnClient: jest.fn(),
+        }}
+      >
+        <HeaderOptions
+          appId="test-app-id"
+          onAdd={jest.fn()}
+          onAdded={jest.fn()}
+          controlUpdateList={1}
+        />
+      </I18NContext.Provider>,
+    )
+
+    await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalledTimes(2))
+  })
+})
