@@ -72,12 +72,18 @@ def create_cleanup(
     repo: FakeRepo,
     *,
     grace_period_days: int = 0,
+    whitelist: set[str] | None = None,
     **kwargs: Any,
 ) -> WorkflowRunCleanup:
     monkeypatch.setattr(
         cleanup_module.dify_config,
         "SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD",
         grace_period_days,
+    )
+    monkeypatch.setattr(
+        cleanup_module.WorkflowRunCleanup,
+        "_get_cleanup_whitelist",
+        lambda self: whitelist or set(),
     )
     return WorkflowRunCleanup(workflow_run_repo=repo, **kwargs)
 
@@ -134,6 +140,29 @@ def test_filter_free_tenants_respects_grace_period(monkeypatch: pytest.MonkeyPat
     free = cleanup._filter_free_tenants({"recently_downgraded", "long_sandbox"})
 
     assert free == {"long_sandbox"}
+
+
+def test_filter_free_tenants_skips_cleanup_whitelist(monkeypatch: pytest.MonkeyPatch) -> None:
+    cleanup = create_cleanup(
+        monkeypatch,
+        repo=FakeRepo([]),
+        days=30,
+        batch_size=10,
+        whitelist={"tenant_whitelist"},
+    )
+
+    monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", True)
+    cleanup.billing_cache["tenant_whitelist"] = plan_info("sandbox", -1)
+    monkeypatch.setattr(
+        cleanup_module.BillingService,
+        "get_plan_bulk",
+        staticmethod(lambda tenant_ids: {tenant_id: plan_info("sandbox", -1) for tenant_id in tenant_ids}),
+    )
+
+    tenants = {"tenant_whitelist", "tenant_regular"}
+    free = cleanup._filter_free_tenants(tenants)
+
+    assert free == {"tenant_regular"}
 
 
 def test_filter_free_tenants_bulk_failure(monkeypatch: pytest.MonkeyPatch) -> None:

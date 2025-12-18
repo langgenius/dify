@@ -44,6 +44,7 @@ class WorkflowRunCleanup:
 
         self.batch_size = batch_size
         self.billing_cache: dict[str, SubscriptionPlan | None] = {}
+        self._cleanup_whitelist: set[str] | None = None
         self.dry_run = dry_run
         self.free_plan_grace_period_days = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD
         self.workflow_run_repo: APIWorkflowRunRepository
@@ -169,6 +170,8 @@ class WorkflowRunCleanup:
         if not tenant_id_list:
             return set()
 
+        cleanup_whitelist = self._get_cleanup_whitelist()
+
         uncached_tenants = [tenant_id for tenant_id in tenant_id_list if tenant_id not in self.billing_cache]
 
         if uncached_tenants:
@@ -186,6 +189,9 @@ class WorkflowRunCleanup:
 
         eligible_free_tenants: set[str] = set()
         for tenant_id in tenant_id_list:
+            if tenant_id in cleanup_whitelist:
+                continue
+
             info = self.billing_cache.get(tenant_id)
             if not info:
                 continue
@@ -221,6 +227,23 @@ class WorkflowRunCleanup:
 
         grace_deadline = expiration_at + datetime.timedelta(days=self.free_plan_grace_period_days)
         return datetime.datetime.now(datetime.UTC) < grace_deadline
+
+    def _get_cleanup_whitelist(self) -> set[str]:
+        if self._cleanup_whitelist is not None:
+            return self._cleanup_whitelist
+
+        if not dify_config.BILLING_ENABLED:
+            self._cleanup_whitelist = set()
+            return self._cleanup_whitelist
+
+        try:
+            whitelist_ids = BillingService.get_expired_subscription_cleanup_whitelist()
+        except Exception:
+            logger.exception("Failed to fetch cleanup whitelist from billing service")
+            whitelist_ids = []
+
+        self._cleanup_whitelist = set(whitelist_ids)
+        return self._cleanup_whitelist
 
     def _delete_trigger_logs(self, session: Session, run_ids: Sequence[str]) -> int:
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
