@@ -86,7 +86,9 @@ class ApiToolManageService:
             raise ValueError(f"invalid schema: {str(e)}")
 
     @staticmethod
-    def convert_schema_to_tool_bundles(schema: str, extra_info: dict | None = None) -> tuple[list[ApiToolBundle], str]:
+    def convert_schema_to_tool_bundles(
+        schema: str, extra_info: dict | None = None
+    ) -> tuple[list[ApiToolBundle], ApiProviderSchemaType]:
         """
         convert schema to tool bundles
 
@@ -104,7 +106,7 @@ class ApiToolManageService:
         provider_name: str,
         icon: dict,
         credentials: dict,
-        schema_type: str,
+        schema_type: ApiProviderSchemaType,
         schema: str,
         privacy_policy: str,
         custom_disclaimer: str,
