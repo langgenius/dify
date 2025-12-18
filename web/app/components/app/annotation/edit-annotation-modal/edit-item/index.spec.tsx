@@ -457,6 +457,10 @@ describe('EditItem', () => {
       expect(mockSave).toHaveBeenCalledTimes(2)
       expect(mockSave).toHaveBeenNthCalledWith(1, 'Modified content')
       expect(mockSave).toHaveBeenNthCalledWith(2, 'Test content')
+
+      // When delete fails, the delete button should still be visible (state not changed)
+      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      expect(screen.getByText('Modified content')).toBeInTheDocument()
     })
   })
 })

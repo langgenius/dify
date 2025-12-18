@@ -103,13 +103,14 @@ const EditItem: FC<Props> = ({
                     <div
                       className='flex cursor-pointer items-center space-x-1'
                       onClick={async () => {
-                        setNewContent(content)
                         try {
                           await onSave(content)
+                          // Only update UI state after successful delete
+                          setNewContent(content)
                         }
                         catch {
                           // Delete action failed - error is already handled by parent
-                          // No additional action needed since user sees error toast
+                          // UI state remains unchanged, user can retry
                         }
                       }}
                     >
