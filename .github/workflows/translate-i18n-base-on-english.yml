@@ -55,7 +55,7 @@ jobs:
         with:
           node-version: 'lts/*'
           cache: pnpm
-          cache-dependency-path: ./web/package.json
+          cache-dependency-path: ./web/pnpm-lock.yaml
 
       - name: Install dependencies
         if: env.FILES_CHANGED == 'true'
