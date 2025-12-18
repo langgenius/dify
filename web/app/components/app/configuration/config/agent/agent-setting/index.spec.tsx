@@ -4,12 +4,6 @@ import AgentSetting from './index'
 import { MAX_ITERATIONS_NUM } from '@/config'
 import type { AgentConfig } from '@/models/debug'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('ahooks', () => {
   const actual = jest.requireActual('ahooks')
   return {
