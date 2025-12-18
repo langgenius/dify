@@ -4,7 +4,7 @@ from typing import Any
 import pytest
 
 from services import clear_free_plan_expired_workflow_run_logs as cleanup_module
-from services.billing_service import TenantPlanInfo
+from services.billing_service import SubscriptionPlan
 from services.clear_free_plan_expired_workflow_run_logs import WorkflowRunCleanup
 
 
@@ -63,8 +63,8 @@ class FakeRepo:
         return result
 
 
-def plan_info(plan: str, expiration: int) -> TenantPlanInfo:
-    return TenantPlanInfo(plan=plan, expiration_date=expiration)
+def plan_info(plan: str, expiration: int) -> SubscriptionPlan:
+    return SubscriptionPlan(plan=plan, expiration_date=expiration)
 
 
 def create_cleanup(
@@ -87,7 +87,7 @@ def test_filter_free_tenants_billing_disabled(monkeypatch: pytest.MonkeyPatch) -
 
     monkeypatch.setattr(cleanup_module.dify_config, "BILLING_ENABLED", False)
 
-    def fail_bulk(_: list[str]) -> dict[str, TenantPlanInfo]:
+    def fail_bulk(_: list[str]) -> dict[str, SubscriptionPlan]:
         raise RuntimeError("should not call")
 
     monkeypatch.setattr(cleanup_module.BillingService, "get_info_bulk", staticmethod(fail_bulk))
@@ -123,7 +123,7 @@ def test_filter_free_tenants_respects_grace_period(monkeypatch: pytest.MonkeyPat
     within_grace_ts = int((now - datetime.timedelta(days=10)).timestamp())
     outside_grace_ts = int((now - datetime.timedelta(days=90)).timestamp())
 
-    def fake_bulk(_: list[str]) -> dict[str, TenantPlanInfo]:
+    def fake_bulk(_: list[str]) -> dict[str, SubscriptionPlan]:
         return {
             "recently_downgraded": plan_info("sandbox", within_grace_ts),
             "long_sandbox": plan_info("sandbox", outside_grace_ts),

@@ -43,7 +43,7 @@ class WorkflowRunCleanup:
             raise ValueError("batch_size must be greater than 0.")
 
         self.batch_size = batch_size
-        self.billing_cache: dict[str, TenantPlanInfo | None] = {}
+        self.billing_cache: dict[str, SubscriptionPlan | None] = {}
         self.dry_run = dry_run
         self.free_plan_grace_period_days = dify_config.SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD
         self.workflow_run_repo: APIWorkflowRunRepository
