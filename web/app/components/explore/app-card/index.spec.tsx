@@ -4,12 +4,6 @@ import AppCard, { type AppCardProps } from './index'
 import type { App } from '@/models/explore'
 import { AppModeEnum } from '@/types/app'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('@/app/components/base/app-icon', () => ({
   __esModule: true,
   default: ({ children }: any) => <div data-testid="app-icon">{children}</div>,

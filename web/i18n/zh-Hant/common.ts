@@ -99,6 +99,8 @@ const translation = {
       hiIN: '印地語',
       trTR: '土耳其語',
       faIR: '波斯語',
+      slSI: '斯洛維尼亞語',
+      arTN: '突尼西亞阿拉伯語',
     },
   },
   unit: {

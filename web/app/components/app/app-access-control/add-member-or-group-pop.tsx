@@ -32,7 +32,7 @@ export default function AddMemberOrGroupDialog() {
 
   const anchorRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const hasMore = data?.pages?.[0].hasMore ?? false
+    const hasMore = data?.pages?.[0]?.hasMore ?? false
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {

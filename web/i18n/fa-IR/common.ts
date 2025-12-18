@@ -103,6 +103,8 @@ const translation = {
       hiIN: 'هندی',
       trTR: 'ترکی',
       faIR: 'فارسی',
+      slSI: 'اسلوونیایی',
+      arTN: 'عربی تونسی',
     },
   },
   unit: {
