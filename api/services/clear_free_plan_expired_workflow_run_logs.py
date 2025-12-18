@@ -190,7 +190,7 @@ class WorkflowRunCleanup:
             if not info:
                 continue
 
-            if info.plan != CloudPlan.SANDBOX:
+            if info.get("plan") != CloudPlan.SANDBOX:
                 continue
 
             if self._is_within_grace_period(tenant_id, info):
@@ -214,7 +214,8 @@ class WorkflowRunCleanup:
         if self.free_plan_grace_period_days <= 0:
             return False
 
-        expiration_at = self._expiration_datetime(tenant_id, info.expiration_date)
+        expiration_value = info.get("expiration_date", -1)
+        expiration_at = self._expiration_datetime(tenant_id, expiration_value)
         if expiration_at is None:
             return False
 
