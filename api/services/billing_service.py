@@ -279,7 +279,7 @@ class BillingService:
                 continue
 
         return results
-    
+
     @classmethod
     def get_expired_subscription_cleanup_whitelist(cls) -> Sequence[str]:
         resp = cls._send_request("GET", "/subscription/cleanup/whitelist")
