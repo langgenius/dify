@@ -204,7 +204,7 @@ const AllTools = ({
   }, [onSelect])
 
   return (
-    <div className={cn('min-w-[400px] max-w-[500px]', className)}>
+    <div className={cn('max-w-[500px]', className)}>
       <div className='flex items-center justify-between border-b border-divider-subtle px-3'>
         <div className='flex h-8 items-center space-x-1'>
           {

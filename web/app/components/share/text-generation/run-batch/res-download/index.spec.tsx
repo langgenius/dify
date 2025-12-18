@@ -2,12 +2,6 @@ import React from 'react'
 import { render, screen } from '@testing-library/react'
 import ResDownload from './index'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 const mockType = { Link: 'mock-link' }
 let capturedProps: Record<string, unknown> | undefined
 

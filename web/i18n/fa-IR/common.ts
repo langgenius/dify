@@ -103,6 +103,8 @@ const translation = {
       hiIN: 'هندی',
       trTR: 'ترکی',
       faIR: 'فارسی',
+      slSI: 'اسلوونیایی',
+      arTN: 'عربی تونسی',
     },
   },
   unit: {
@@ -734,6 +736,7 @@ const translation = {
     pasteFileLink: 'پیوند فایل را جایگذاری کنید',
     uploadFromComputerLimit: 'آپلود فایل نمی تواند از {{size}} تجاوز کند',
     fileExtensionBlocked: 'این نوع فایل به دلایل امنیتی مسدود شده است',
+    uploadDisabled: 'بارگذاری فایل غیرفعال است',
   },
   license: {
     expiring_plural: 'انقضا در {{count}} روز',

@@ -217,7 +217,7 @@ const AgentTools: FC = () => {
                       }
                     >
                       <div className='h-4 w-4'>
-                        <div className='ml-0.5 hidden group-hover:inline-block'>
+                        <div className='ml-0.5 hidden group-hover:inline-block' data-testid='tool-info-tooltip'>
                           <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
                         </div>
                       </div>
@@ -277,6 +277,7 @@ const AgentTools: FC = () => {
                       }}
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
+                      data-testid='delete-removed-tool'
                     >
                       <RiDeleteBinLine className='h-4 w-4' />
                     </div>

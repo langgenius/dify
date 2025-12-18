@@ -380,6 +380,37 @@ class FileUploadConfig(BaseSettings):
         default=60,
     )
 
+    # Annotation Import Security Configurations
+    ANNOTATION_IMPORT_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed CSV file size for annotation import in megabytes",
+        default=2,
+    )
+
+    ANNOTATION_IMPORT_MAX_RECORDS: PositiveInt = Field(
+        description="Maximum number of annotation records allowed in a single import",
+        default=10000,
+    )
+
+    ANNOTATION_IMPORT_MIN_RECORDS: PositiveInt = Field(
+        description="Minimum number of annotation records required in a single import",
+        default=1,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE: PositiveInt = Field(
+        description="Maximum number of annotation import requests per minute per tenant",
+        default=5,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
+        description="Maximum number of annotation import requests per hour per tenant",
+        default=20,
+    )
+
+    ANNOTATION_IMPORT_MAX_CONCURRENT: PositiveInt = Field(
+        description="Maximum number of concurrent annotation import tasks per tenant",
+        default=2,
+    )
+
     inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
         description=(
             "Comma-separated list of file extensions that are blocked from upload. "

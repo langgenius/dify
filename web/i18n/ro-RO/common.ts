@@ -98,6 +98,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turcă',
       faIR: 'Persană',
+      slSI: 'Slovenă',
+      arTN: 'Arabă tunisiană',
       plPL: 'Poloneză',
     },
   },
@@ -734,6 +736,7 @@ const translation = {
     uploadFromComputerLimit: 'Încărcarea fișierului nu poate depăși {{size}}',
     pasteFileLink: 'Lipiți linkul fișierului',
     fileExtensionBlocked: 'Acest tip de fișier este blocat din motive de securitate',
+    uploadDisabled: 'Încărcarea fișierelor este dezactivată',
   },
   license: {
     expiring: 'Expiră într-o zi',
