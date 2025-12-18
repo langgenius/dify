@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Toast, { type IToastProps, type ToastHandle } from '@/app/components/base/toast'
 import EditAnnotationModal from './index'
@@ -408,7 +408,7 @@ describe('EditAnnotationModal', () => {
 
   // Error Handling (CRITICAL for coverage)
   describe('Error Handling', () => {
-    it('should handle addAnnotation API failure gracefully', async () => {
+    it('should show error toast and skip callbacks when addAnnotation fails', async () => {
       // Arrange
       const mockOnAdded = jest.fn()
       const props = {
@@ -420,29 +420,33 @@ describe('EditAnnotationModal', () => {
       // Mock API failure
       mockAddAnnotation.mockRejectedValueOnce(new Error('API Error'))
 
-      // Act & Assert - Should handle API error without crashing
-      expect(async () => {
-        render(<EditAnnotationModal {...props} />)
+      // Act
+      render(<EditAnnotationModal {...props} />)
 
-        // Find and click edit link for query
-        const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-        await user.click(editLinks[0])
+      // Find and click edit link for query
+      const editLinks = screen.getAllByText(/common\.operation\.edit/i)
+      await user.click(editLinks[0])
 
-        // Find textarea and enter new content
-        const textarea = screen.getByRole('textbox')
-        await user.clear(textarea)
-        await user.type(textarea, 'New query content')
+      // Find textarea and enter new content
+      const textarea = screen.getByRole('textbox')
+      await user.clear(textarea)
+      await user.type(textarea, 'New query content')
 
-        // Click save button
-        const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-        await user.click(saveButton)
+      // Click save button
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+      await user.click(saveButton)
 
-        // Should not call onAdded on error
-        expect(mockOnAdded).not.toHaveBeenCalled()
-      }).not.toThrow()
+      // Assert
+      await waitFor(() => {
+        expect(toastNotifySpy).toHaveBeenCalledWith({
+          message: 'API Error',
+          type: 'error',
+        })
+      })
+      expect(mockOnAdded).not.toHaveBeenCalled()
     })
 
-    it('should handle editAnnotation API failure gracefully', async () => {
+    it('should show error toast and skip callbacks when editAnnotation fails', async () => {
       // Arrange
       const mockOnEdited = jest.fn()
       const props = {
@@ -456,24 +460,28 @@ describe('EditAnnotationModal', () => {
       // Mock API failure
       mockEditAnnotation.mockRejectedValueOnce(new Error('API Error'))
 
-      // Act & Assert - Should handle API error without crashing
-      expect(async () => {
-        render(<EditAnnotationModal {...props} />)
+      // Act
+      render(<EditAnnotationModal {...props} />)
 
-        // Edit query content
-        const editLinks = screen.getAllByText(/common\.operation\.edit/i)
-        await user.click(editLinks[0])
+      // Edit query content
+      const editLinks = screen.getAllByText(/common\.operation\.edit/i)
+      await user.click(editLinks[0])
 
-        const textarea = screen.getByRole('textbox')
-        await user.clear(textarea)
-        await user.type(textarea, 'Modified query')
+      const textarea = screen.getByRole('textbox')
+      await user.clear(textarea)
+      await user.type(textarea, 'Modified query')
 
-        const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-        await user.click(saveButton)
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+      await user.click(saveButton)
 
-        // Should not call onEdited on error
-        expect(mockOnEdited).not.toHaveBeenCalled()
-      }).not.toThrow()
+      // Assert
+      await waitFor(() => {
+        expect(toastNotifySpy).toHaveBeenCalledWith({
+          message: 'API Error',
+          type: 'error',
+        })
+      })
+      expect(mockOnEdited).not.toHaveBeenCalled()
     })
   })
 
@@ -526,25 +534,33 @@ describe('EditAnnotationModal', () => {
     })
   })
 
-  // Toast Notifications (Simplified)
+  // Toast Notifications (Success)
   describe('Toast Notifications', () => {
-    it('should trigger success notification when save operation completes', async () => {
+    it('should show success notification when save operation completes', async () => {
       // Arrange
-      const mockOnAdded = jest.fn()
-      const props = {
-        ...defaultProps,
-        onAdded: mockOnAdded,
-      }
+      const props = { ...defaultProps }
+      const user = userEvent.setup()
 
       // Act
       render(<EditAnnotationModal {...props} />)
 
-      // Simulate successful save by calling handleSave indirectly
-      const mockSave = jest.fn()
-      expect(mockSave).not.toHaveBeenCalled()
+      const editLinks = screen.getAllByText(/common\.operation\.edit/i)
+      await user.click(editLinks[0])
 
-      // Assert - Toast spy is available and will be called during real save operations
-      expect(toastNotifySpy).toBeDefined()
+      const textarea = screen.getByRole('textbox')
+      await user.clear(textarea)
+      await user.type(textarea, 'Updated query')
+
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+      await user.click(saveButton)
+
+      // Assert
+      await waitFor(() => {
+        expect(toastNotifySpy).toHaveBeenCalledWith({
+          message: 'common.api.actionSuccess',
+          type: 'success',
+        })
+      })
     })
   })
 

@@ -245,7 +245,7 @@ describe('EditItem', () => {
       expect(mockSave).toHaveBeenCalledWith('Test save content')
     })
 
-    it('should show delete option when content changes', async () => {
+    it('should show delete option and restore original content when delete is clicked', async () => {
       // Arrange
       const mockSave = jest.fn().mockResolvedValue(undefined)
       const props = {
@@ -267,7 +267,13 @@ describe('EditItem', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
-      expect(mockSave).toHaveBeenCalledWith('Modified content')
+      expect(mockSave).toHaveBeenNthCalledWith(1, 'Modified content')
+      expect(await screen.findByText('common.operation.delete')).toBeInTheDocument()
+
+      await user.click(screen.getByText('common.operation.delete'))
+
+      expect(mockSave).toHaveBeenNthCalledWith(2, 'Test content')
+      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
 
     it('should handle keyboard interactions in edit mode', async () => {
