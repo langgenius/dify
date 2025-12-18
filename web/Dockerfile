@@ -1,3 +1,7 @@
+# syntax=docker/dockerfile:1
+# check=error=true
+
+####################################################################################
 # base image
 FROM node:22-alpine3.21 AS base
 LABEL maintainer="takatost@gmail.com"
@@ -14,19 +18,22 @@ ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 ENV NEXT_PUBLIC_BASE_PATH=""
 
-
+####################################################################################
 # install packages
 FROM base AS packages
 
 WORKDIR /app/web
 
-COPY package.json pnpm-lock.yaml /app/web/
+COPY package.json pnpm-lock.yaml ./
 
-# Use packageManager from package.json
-RUN corepack install
+RUN <<EOF
+    # Use packageManager from package.json
+    corepack install
+    # Install dependencies with PNPM based on the lockfile
+    pnpm install --frozen-lockfile
+EOF
 
-RUN pnpm install --frozen-lockfile
-
+####################################################################################
 # build resources
 FROM base AS builder
 WORKDIR /app/web
@@ -36,7 +43,7 @@ COPY . .
 ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm build:docker
 
-
+####################################################################################
 # production stage
 FROM base AS production
 
@@ -50,36 +57,41 @@ ENV MARKETPLACE_URL=https://marketplace.dify.ai
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PM2_INSTANCES=2
-
-# set timezone
 ENV TZ=UTC
-RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
-    && echo ${TZ} > /etc/timezone
+ARG dify_uid=1001
 
 # global runtime packages
 RUN pnpm add -g pm2
 
+RUN <<EOF
+    set -ex
+    # set timezone
+    ln -s /usr/share/zoneinfo/${TZ} /etc/localtime
+    echo ${TZ} > /etc/timezone
 
-# Create non-root user
-ARG dify_uid=1001
-RUN addgroup -S -g ${dify_uid} dify && \
-    adduser -S -u ${dify_uid} -G dify -s /bin/ash -h /home/dify dify && \
-    mkdir /app && \
-    mkdir /.pm2 && \
+    # Create non-root user
+    addgroup -S -g ${dify_uid} dify
+    adduser -S -u ${dify_uid} -G dify -s /bin/ash -h /home/dify dify
+    mkdir /app
+    mkdir /.pm2
     chown -R dify:dify /app /.pm2
-
+EOF
 
 WORKDIR /app/web
 
+# Copy built web files
 COPY --from=builder --chown=dify:dify /app/web/public ./public
 COPY --from=builder --chown=dify:dify /app/web/.next/standalone ./
 COPY --from=builder --chown=dify:dify /app/web/.next/static ./.next/static
 
+# Prepare entrypoint script
 COPY --chown=dify:dify --chmod=755 docker/entrypoint.sh ./entrypoint.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
 
+# Switch to non-root user
 USER dify
+
 EXPOSE 3000
 ENTRYPOINT ["/bin/sh", "./entrypoint.sh"]
