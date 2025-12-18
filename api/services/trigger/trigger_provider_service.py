@@ -360,7 +360,7 @@ class TriggerProviderService:
 
         credential_type: CredentialType = CredentialType.of(subscription.credential_type)
         is_auto_created: bool = credential_type in [CredentialType.OAUTH2, CredentialType.API_KEY]
-        if is_auto_created:
+        if not is_auto_created:
             return None
 
         provider_id = TriggerProviderID(subscription.provider_id)
@@ -384,8 +384,8 @@ class TriggerProviderService:
         except Exception as e:
             logger.exception("Error unsubscribing trigger", exc_info=e)
 
-        # Clear cache
         session.delete(subscription)
+        # Clear cache
         delete_cache_for_subscription(
             tenant_id=tenant_id,
             provider_id=subscription.provider_id,
@@ -794,6 +794,50 @@ class TriggerProviderService:
             return subscription
 
     @classmethod
+    def verify_subscription_credentials(
+        cls,
+        tenant_id: str,
+        user_id: str,
+        provider_id: TriggerProviderID,
+        subscription_id: str,
+        credentials: Mapping[str, Any],
+    ) -> dict[str, Any]:
+        """
+        Verify credentials for an existing subscription without updating it.
+
+        This is used in edit mode to validate new credentials before rebuild.
+
+        :param tenant_id: Tenant ID
+        :param user_id: User ID
+        :param provider_id: Provider identifier
+        :param subscription_id: Subscription ID
+        :param credentials: New credentials to verify
+        :return: dict with 'verified' boolean
+        """
+        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        if not provider_controller:
+            raise ValueError(f"Provider {provider_id} not found")
+
+        subscription = cls.get_subscription_by_id(
+            tenant_id=tenant_id,
+            subscription_id=subscription_id,
+        )
+        if not subscription:
+            raise ValueError(f"Subscription {subscription_id} not found")
+
+        credential_type = CredentialType.of(subscription.credential_type)
+
+        # For API Key, validate the new credentials
+        if credential_type == CredentialType.API_KEY:
+            try:
+                provider_controller.validate_credentials(user_id, credentials)
+                return {"verified": True}
+            except Exception as e:
+                raise ValueError(f"Invalid credentials: {e}") from e
+
+        return {"verified": True}
+
+    @classmethod
     def rebuild_trigger_subscription(
         cls,
         tenant_id: str,
@@ -801,6 +845,7 @@ class TriggerProviderService:
         subscription_id: str,
         credentials: Mapping[str, Any],
         parameters: Mapping[str, Any],
+        name: str | None = None,
     ) -> None:
         """
         Create a subscription builder for rebuilding an existing subscription.
@@ -809,6 +854,7 @@ class TriggerProviderService:
         keeping the same subscription_id and endpoint_id so the webhook URL remains unchanged.
 
         :param tenant_id: Tenant ID
+        :param name: Name for the subscription
         :param subscription_id: Subscription ID
         :param provider_id: Provider identifier
         :param credentials: Credentials for the subscription
@@ -849,7 +895,7 @@ class TriggerProviderService:
             credentials=encrypter.decrypt(subscription.credentials),
             credential_type=credential_type,
         )
-
+        new_credentials = credentials or subscription.credentials
         # Create a new subscription with the same subscription_id and endpoint_id
         new_subscription: TriggerSubscriptionEntity = TriggerManager.subscribe_trigger(
             tenant_id=tenant_id,
@@ -857,13 +903,15 @@ class TriggerProviderService:
             provider_id=provider_id,
             endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
             parameters=parameters,
-            credentials=credentials or subscription.credentials,
+            credentials=new_credentials,
             credential_type=credential_type,
         )
         TriggerProviderService.update_trigger_subscription(
             tenant_id=tenant_id,
             subscription_id=subscription.id,
+            name=name,
             parameters=parameters,
-            credentials=credentials,
+            credentials=new_credentials,
+            properties=new_subscription.properties,
             expires_at=new_subscription.expires_at,
         )

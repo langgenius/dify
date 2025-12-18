@@ -45,8 +45,15 @@ class TriggerSubscriptionUpdateRequest(BaseModel):
 class SubscriptionRebuildRequest(BaseModel):
     """Request payload for rebuilding an existing subscription."""
 
+    name: str | None = Field(default=None, description="The name for the subscription")
     credentials: Mapping[str, Any] | None = Field(default=None, description="The credentials for the subscription")
     parameters: Mapping[str, Any] = Field(default_factory=dict, description="The parameters for the subscription")
+
+
+class SubscriptionVerifyRequest(BaseModel):
+    """Request payload for verifying subscription credentials."""
+
+    credentials: Mapping[str, Any] = Field(description="The credentials to verify")
 
 
 console_ns.schema_model(
@@ -57,6 +64,11 @@ console_ns.schema_model(
 console_ns.schema_model(
     SubscriptionRebuildRequest.__name__,
     SubscriptionRebuildRequest.model_json_schema(ref_template="#/definitions/{model}"),
+)
+
+console_ns.schema_model(
+    SubscriptionVerifyRequest.__name__,
+    SubscriptionVerifyRequest.model_json_schema(ref_template="#/definitions/{model}"),
 )
 
 
@@ -183,16 +195,16 @@ parser_api = (
 
 
 @console_ns.route(
-    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/verify/<path:subscription_builder_id>",
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/builder/verify-and-update/<path:subscription_builder_id>",
 )
-class TriggerSubscriptionBuilderVerifyApi(Resource):
+class TriggerSubscriptionBuilderVerifyAndUpdateApi(Resource):
     @console_ns.expect(parser_api)
     @setup_required
     @login_required
     @edit_permission_required
     @account_initialization_required
     def post(self, provider, subscription_builder_id):
-        """Verify a subscription instance for a trigger provider"""
+        """Verify and update a subscription instance for a trigger provider"""
         user = current_user
         assert user.current_tenant_id is not None
 
@@ -421,6 +433,7 @@ class TriggerSubscriptionRebuildApi(Resource):
         try:
             TriggerProviderService.rebuild_trigger_subscription(
                 tenant_id=user.current_tenant_id,
+                name=rebuild_request.name,
                 provider_id=TriggerProviderID(provider),
                 subscription_id=subscription_id,
                 credentials=rebuild_request.credentials or {},
@@ -686,3 +699,36 @@ class TriggerOAuthClientManageApi(Resource):
         except Exception as e:
             logger.exception("Error removing OAuth client", exc_info=e)
             raise
+
+
+@console_ns.route(
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
+)
+class TriggerSubscriptionVerifyApi(Resource):
+    @console_ns.expect(console_ns.models[SubscriptionVerifyRequest.__name__])
+    @setup_required
+    @login_required
+    @edit_permission_required
+    @account_initialization_required
+    def post(self, provider, subscription_id):
+        """Verify credentials for an existing subscription (edit mode only)"""
+        user = current_user
+        assert user.current_tenant_id is not None
+
+        verify_request: SubscriptionVerifyRequest = SubscriptionVerifyRequest.model_validate(console_ns.payload)
+
+        try:
+            result = TriggerProviderService.verify_subscription_credentials(
+                tenant_id=user.current_tenant_id,
+                user_id=user.id,
+                provider_id=TriggerProviderID(provider),
+                subscription_id=subscription_id,
+                credentials=verify_request.credentials,
+            )
+            return result
+        except ValueError as e:
+            logger.warning("Credential verification failed", exc_info=e)
+            raise BadRequest(str(e)) from e
+        except Exception as e:
+            logger.exception("Error verifying subscription credentials", exc_info=e)
+            raise BadRequest(str(e)) from e
