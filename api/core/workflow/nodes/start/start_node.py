@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from jsonschema import Draft7Validator, ValidationError
@@ -42,15 +43,25 @@ class StartNode(Node[StartNodeData]):
             if value is None and variable.required:
                 raise ValueError(f"{key} is required in input form")
 
-            if not isinstance(value, dict):
-                raise ValueError(f"{key} must be a JSON object")
-
             schema = variable.json_schema
             if not schema:
                 continue
 
+            if not value:
+                continue
+
             try:
-                Draft7Validator(schema).validate(value)
+                json_schema = json.loads(schema)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"{schema} must be a valid JSON object")
+
+            try:
+                json_value = json.loads(value)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"{value} must be a valid JSON object")
+
+            try:
+                Draft7Validator(json_schema).validate(json_value)
             except ValidationError as e:
                 raise ValueError(f"JSON object for '{key}' does not match schema: {e.message}")
-            node_inputs[key] = value
+            node_inputs[key] = json_value
