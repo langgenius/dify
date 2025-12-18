@@ -61,9 +61,7 @@ class MessageCycleManager:
             return StreamEvent.MESSAGE_FILE
 
         with Session(db.engine, expire_on_commit=False) as session:
-            has_file = session.query(
-                exists().where(MessageFile.message_id == message_id)
-            ).scalar()
+            has_file = session.query(exists().where(MessageFile.message_id == message_id)).scalar()
 
         if has_file:
             self._message_has_file.add(message_id)
