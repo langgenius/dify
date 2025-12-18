@@ -173,7 +173,7 @@ class WorkflowRunCleanup:
 
         if uncached_tenants:
             try:
-                bulk_info = BillingService.get_info_bulk(uncached_tenants)
+                bulk_info = BillingService.get_plan_bulk(uncached_tenants)
             except Exception:
                 bulk_info = {}
                 logger.exception("Failed to fetch billing plans in bulk for tenants: %s", uncached_tenants)

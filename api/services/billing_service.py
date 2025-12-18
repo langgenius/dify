@@ -39,47 +39,6 @@ class BillingService:
         return billing_info
 
     @classmethod
-    def get_info_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, TenantPlanInfo]:
-        """
-        Bulk billing info fetch via billing API.
-
-        Payload: {"tenant_ids": ["t1", "t2", ...]} (max 200 per request)
-
-        Returns:
-            Mapping of tenant_id -> TenantPlanInfo(plan + expiration timestamp)
-        """
-        results: dict[str, TenantPlanInfo] = {}
-
-        chunk_size = 200
-        for i in range(0, len(tenant_ids), chunk_size):
-            chunk = tenant_ids[i : i + chunk_size]
-            try:
-                resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
-                results.update(cls._parse_bulk_response(chunk, resp))
-            except Exception:
-                logger.exception("Failed to fetch billing info batch for tenants: %s", chunk)
-                raise
-
-        return results
-
-    @classmethod
-    def _parse_bulk_response(cls, expected_ids: Sequence[str], response: dict) -> dict[str, TenantPlanInfo]:
-        data = response.get("data")
-        if not isinstance(data, dict):
-            raise ValueError("Billing API response missing 'data' object.")
-
-        parsed: dict[str, TenantPlanInfo] = {}
-        for tenant_id in expected_ids:
-            payload = data.get(tenant_id)
-
-            try:
-                parsed[tenant_id] = TenantPlanInfo.model_validate(payload)
-            except ValidationError as exc:
-                raise ValueError(f"Invalid billing info for tenant {tenant_id}") from exc
-
-        return parsed
-
-    @classmethod
     def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
 
