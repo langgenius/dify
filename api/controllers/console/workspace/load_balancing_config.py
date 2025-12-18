@@ -16,7 +16,7 @@ DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 class LoadBalancingCredentialPayload(BaseModel):
     model: str
     model_type: ModelType
-    credentials: dict
+    credentials: dict[str, object]
 
 
 console_ns.schema_model(
