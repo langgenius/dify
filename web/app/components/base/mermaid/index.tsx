@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import mermaid, { type MermaidConfig } from 'mermaid'
-import DOMPurify from 'dompurify'
 import { useTranslation } from 'react-i18next'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { MoonIcon, SunIcon } from '@heroicons/react/24/solid'
@@ -286,11 +285,8 @@ const Flowchart = (props: FlowchartProps) => {
       const cleanedSvg = cleanUpSvgCode(processedSvg)
 
       if (cleanedSvg && typeof cleanedSvg === 'string') {
-        const sanitizedSvg = DOMPurify.sanitize(cleanedSvg, {
-          USE_PROFILES: { svg: true, svgFilters: true },
-        })
-        diagramCache.set(cacheKey, sanitizedSvg)
-        setSvgString(sanitizedSvg)
+        diagramCache.set(cacheKey, cleanedSvg)
+        setSvgString(cleanedSvg)
       }
 
       setIsLoading(false)
@@ -540,7 +536,7 @@ const Flowchart = (props: FlowchartProps) => {
 
       {isLoading && !svgString && (
         <div className='px-[26px] py-4'>
-          <LoadingAnim type='text'/>
+          <LoadingAnim type='text' />
           <div className="mt-2 text-sm text-gray-500">
             {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
           </div>
@@ -573,7 +569,7 @@ const Flowchart = (props: FlowchartProps) => {
       {errMsg && (
         <div className={themeClasses.errorMessage}>
           <div className="flex items-center">
-            <ExclamationTriangleIcon className={themeClasses.errorIcon}/>
+            <ExclamationTriangleIcon className={themeClasses.errorIcon} />
             <span className="ml-2">{errMsg}</span>
           </div>
         </div>
