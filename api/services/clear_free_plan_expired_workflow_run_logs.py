@@ -14,7 +14,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.billing_service import BillingService, TenantPlanInfo
+from services.billing_service import BillingService, SubscriptionPlan
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +210,7 @@ class WorkflowRunCleanup:
             logger.exception("Failed to parse expiration timestamp for tenant %s", tenant_id)
             return None
 
-    def _is_within_grace_period(self, tenant_id: str, info: TenantPlanInfo) -> bool:
+    def _is_within_grace_period(self, tenant_id: str, info: SubscriptionPlan) -> bool:
         if self.free_plan_grace_period_days <= 0:
             return False
 
