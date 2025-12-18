@@ -515,6 +515,9 @@ importers:
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@18.15.0)(ts-node@10.9.2(@types/node@18.15.0)(typescript@5.9.3))
+      jsdom-testing-mocks:
+        specifier: ^1.16.0
+        version: 1.16.0
       knip:
         specifier: ^5.66.1
         version: 5.72.0(@types/node@18.15.0)(typescript@5.9.3)
@@ -4190,6 +4193,9 @@ packages:
     resolution: {integrity: sha512-aVNobHnJqLiUelTaHat9DZ1qM2w0C0Eym4LPI/3JxOnSokGVdsl1T1kN7TFvsEAD8G47A6VKQ0TVHqbBnYMJlQ==}
     engines: {node: '>=12.0.0'}
 
+  bezier-easing@2.1.0:
+    resolution: {integrity: sha512-gbIqZ/eslnUFC1tjEvtz0sgx+xTK20wDnYMIA27VA04R7w6xxXQPZDbibjA9DTWZRA2CXtwHykkVzlCaAJAZig==}
+
   big.js@5.2.2:
     resolution: {integrity: sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==}
 
@@ -4659,6 +4665,9 @@ packages:
         optional: true
       webpack:
         optional: true
+
+  css-mediaquery@0.1.2:
+    resolution: {integrity: sha512-COtn4EROW5dBGlE/4PiKnh6rZpAPxDeFLaEEwt4i10jpDMFt2EhQGS79QmmrO+iKCHv0PU/HrOWEhijFd1x99Q==}
 
   css-select@4.3.0:
     resolution: {integrity: sha512-wPpOYtnsVontu2mODhA19JrqWxNsfdatRKd64kmpRbQgh1KtItko5sTnEpPdpSaJszTOhEMlF/RPz28qj4HqhQ==}
@@ -6316,6 +6325,10 @@ packages:
   jsdoc-type-pratt-parser@5.4.0:
     resolution: {integrity: sha512-F9GQ+F1ZU6qvSrZV8fNFpjDNf614YzR2eF6S0+XbDjAcUI28FSoXnYZFjQmb1kFx3rrJb5PnxUH3/Yti6fcM+g==}
     engines: {node: '>=12.0.0'}
+
+  jsdom-testing-mocks@1.16.0:
+    resolution: {integrity: sha512-wLrulXiLpjmcUYOYGEvz4XARkrmdVpyxzdBl9IAMbQ+ib2/UhUTRCn49McdNfXLff2ysGBUms49ZKX0LR1Q0gg==}
+    engines: {node: '>=14'}
 
   jsesc@3.0.2:
     resolution: {integrity: sha512-xKqzzWXDttJuOcawBt4KnKHHIf5oQ/Cxax+0PWFG+DFDgHNAdi+TXECADI+RYiFUMmx8792xsMbbgXj4CwnP4g==}
@@ -13070,6 +13083,8 @@ snapshots:
     dependencies:
       open: 8.4.2
 
+  bezier-easing@2.1.0: {}
+
   big.js@5.2.2: {}
 
   binary-extensions@2.3.0: {}
@@ -13576,6 +13591,8 @@ snapshots:
       semver: 7.7.3
     optionalDependencies:
       webpack: 5.103.0(esbuild@0.25.0)(uglify-js@3.19.3)
+
+  css-mediaquery@0.1.2: {}
 
   css-select@4.3.0:
     dependencies:
@@ -15681,6 +15698,11 @@ snapshots:
   jsdoc-type-pratt-parser@4.8.0: {}
 
   jsdoc-type-pratt-parser@5.4.0: {}
+
+  jsdom-testing-mocks@1.16.0:
+    dependencies:
+      bezier-easing: 2.1.0
+      css-mediaquery: 0.1.2
 
   jsesc@3.0.2: {}
 
