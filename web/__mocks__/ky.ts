@@ -27,17 +27,22 @@ type KyInstance = jest.Mock & {
   stop: symbol
 }
 
-const createResponse = (data: unknown = {}, status = 200): KyResponse => ({
-  ok: status >= 200 && status < 300,
-  status,
-  statusText: status === 200 ? 'OK' : 'Error',
-  headers: new Headers(),
-  json: jest.fn().mockResolvedValue(data),
-  text: jest.fn().mockResolvedValue(JSON.stringify(data)),
-  blob: jest.fn().mockResolvedValue(new Blob()),
-  arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(0)),
-  clone: jest.fn().mockReturnThis(),
-})
+const createResponse = (data: unknown = {}, status = 200): KyResponse => {
+  const response: KyResponse = {
+    ok: status >= 200 && status < 300,
+    status,
+    statusText: status === 200 ? 'OK' : 'Error',
+    headers: new Headers(),
+    json: jest.fn().mockResolvedValue(data),
+    text: jest.fn().mockResolvedValue(JSON.stringify(data)),
+    blob: jest.fn().mockResolvedValue(new Blob()),
+    arrayBuffer: jest.fn().mockResolvedValue(new ArrayBuffer(0)),
+    clone: jest.fn(),
+  }
+  // Ensure clone returns a new response-like object, not the same instance
+  response.clone.mockImplementation(() => createResponse(data, status))
+  return response
+}
 
 const createKyInstance = (): KyInstance => {
   const instance = jest.fn().mockImplementation(() => Promise.resolve(createResponse())) as KyInstance

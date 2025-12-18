@@ -68,9 +68,11 @@ jest.mock('@/hooks/use-api-access-url', () => ({
 
 /**
  * Creates a mock InitialDocumentDetail for testing
+ * Uses deterministic counter-based IDs to avoid flaky tests
  */
+let documentIdCounter = 0
 const createMockDocument = (overrides: Partial<InitialDocumentDetail> = {}): InitialDocumentDetail => ({
-  id: `doc-${Math.random().toString(36).slice(2, 9)}`,
+  id: overrides.id ?? `doc-${++documentIdCounter}`,
   name: 'test-document.txt',
   data_source_type: DatasourceType.localFile,
   data_source_info: {},
@@ -126,6 +128,9 @@ describe('EmbeddingProcess', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     jest.useFakeTimers()
+
+    // Reset deterministic ID counter for reproducible tests
+    documentIdCounter = 0
 
     // Reset mock states
     mockEnableBilling = false
@@ -908,26 +913,20 @@ describe('EmbeddingProcess', () => {
   // ==========================================
   describe('Edge Cases', () => {
     // Tests for boundary conditions
-    it('should handle empty documents array gracefully', () => {
+    it('should throw error when documents array is empty', () => {
       // Arrange
-      // Note: The component accesses documents[0].id for useProcessRule,
-      // so empty array will cause undefined access. This tests that behavior.
+      // The component accesses documents[0].id for useProcessRule (line 81-82),
+      // which throws TypeError when documents array is empty.
+      // This test documents this known limitation.
       const props = createDefaultProps({ documents: [] })
 
-      // Suppress console errors for this test
+      // Suppress console errors for expected error
       const consoleError = jest.spyOn(console, 'error').mockImplementation(Function.prototype as () => void)
 
-      // Act - component may throw due to accessing documents[0].id
-      // This documents the current behavior
-      try {
+      // Act & Assert - explicitly assert the error behavior
+      expect(() => {
         render(<EmbeddingProcess {...props} />)
-        // If it doesn't throw, that's also acceptable
-        expect(screen.getByTestId('rule-detail')).toBeInTheDocument()
-      }
-      catch {
-        // Expected behavior when documents array is empty
-        expect(true).toBe(true)
-      }
+      }).toThrow(TypeError)
 
       consoleError.mockRestore()
     })

@@ -58,9 +58,11 @@ jest.mock('./embedding-process', () => ({
 
 /**
  * Creates a mock InitialDocumentDetail for testing
+ * Uses deterministic counter-based IDs to avoid flaky tests
  */
+let documentIdCounter = 0
 const createMockDocument = (overrides: Partial<InitialDocumentDetail> = {}): InitialDocumentDetail => ({
-  id: `doc-${Math.random().toString(36).slice(2, 9)}`,
+  id: overrides.id ?? `doc-${++documentIdCounter}`,
   name: 'test-document.txt',
   data_source_type: DatasourceType.localFile,
   data_source_info: {},
@@ -91,6 +93,8 @@ describe('Processing', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     embeddingProcessProps = {}
+    // Reset deterministic ID counter for reproducible tests
+    documentIdCounter = 0
     // Reset mock dataset with default values
     mockDataset = {
       id: 'dataset-123',
@@ -160,7 +164,7 @@ describe('Processing', () => {
 
       // Assert
       const link = screen.getByRole('link', { name: 'datasetPipeline.addDocuments.stepThree.learnMore' })
-      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US//guides/knowledge-base/integrate-knowledge-within-application')
+      expect(link).toHaveAttribute('href', 'https://docs.dify.ai/en-US/guides/knowledge-base/integrate-knowledge-within-application')
       expect(link).toHaveAttribute('target', '_blank')
       expect(link).toHaveAttribute('rel', 'noreferrer noopener')
     })
