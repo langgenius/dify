@@ -45,7 +45,7 @@ class TriggerSubscriptionUpdateRequest(BaseModel):
 class SubscriptionRebuildRequest(BaseModel):
     """Request payload for rebuilding an existing subscription."""
 
-    credentials: Mapping[str, Any] = Field(default_factory=dict, description="The credentials for the subscription")
+    credentials: Mapping[str, Any] | None = Field(default=None, description="The credentials for the subscription")
     parameters: Mapping[str, Any] = Field(default_factory=dict, description="The parameters for the subscription")
 
 
@@ -423,7 +423,7 @@ class TriggerSubscriptionRebuildApi(Resource):
                 tenant_id=user.current_tenant_id,
                 provider_id=TriggerProviderID(provider),
                 subscription_id=subscription_id,
-                credentials=rebuild_request.credentials,
+                credentials=rebuild_request.credentials or {},
                 parameters=rebuild_request.parameters,
             )
 

@@ -857,7 +857,7 @@ class TriggerProviderService:
             provider_id=provider_id,
             endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
             parameters=parameters,
-            credentials=credentials,
+            credentials=credentials or subscription.credentials,
             credential_type=credential_type,
         )
         TriggerProviderService.update_trigger_subscription(
