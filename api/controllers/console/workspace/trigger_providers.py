@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 from flask import make_response, redirect, request
@@ -41,9 +42,21 @@ class TriggerSubscriptionUpdateRequest(BaseModel):
     properties: dict[str, Any] | None = Field(default=None, description="Subscription properties")
 
 
+class SubscriptionRebuildRequest(BaseModel):
+    """Request payload for rebuilding an existing subscription."""
+
+    credentials: Mapping[str, Any] = Field(default_factory=dict, description="The credentials for the subscription")
+    parameters: Mapping[str, Any] = Field(default_factory=dict, description="The parameters for the subscription")
+
+
 console_ns.schema_model(
     TriggerSubscriptionUpdateRequest.__name__,
     TriggerSubscriptionUpdateRequest.model_json_schema(ref_template="#/definitions/{model}"),
+)
+
+console_ns.schema_model(
+    SubscriptionRebuildRequest.__name__,
+    SubscriptionRebuildRequest.model_json_schema(ref_template="#/definitions/{model}"),
 )
 
 
@@ -320,15 +333,24 @@ class TriggerSubscriptionUpdateApi(Resource):
 
         args = TriggerSubscriptionUpdateRequest.model_validate(console_ns.payload)
 
+        subscription = TriggerProviderService.get_subscription_by_id(
+            tenant_id=user.current_tenant_id,
+            subscription_id=subscription_id,
+        )
+        if not subscription:
+            raise NotFoundError(f"Subscription {subscription_id} not found")
+
+        if subscription.credential_type is not CredentialType.UNAUTHORIZED:
+            raise Forbidden("Only unauthorized subscriptions can be update directly")
+
         try:
-            return jsonable_encoder(
-                TriggerProviderService.update_trigger_subscription(
-                    tenant_id=user.current_tenant_id,
-                    subscription_id=subscription_id,
-                    name=args.name,
-                    properties=args.properties,
-                )
+            TriggerProviderService.update_trigger_subscription(
+                tenant_id=user.current_tenant_id,
+                subscription_id=subscription_id,
+                name=args.name,
+                properties=args.properties,
             )
+            return 200
         except ValueError as e:
             raise BadRequest(str(e))
         except Exception as e:
@@ -369,6 +391,47 @@ class TriggerSubscriptionDeleteApi(Resource):
             raise BadRequest(str(e))
         except Exception as e:
             logger.exception("Error deleting provider credential", exc_info=e)
+            raise
+
+
+@console_ns.route(
+    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/<path:subscription_id>/rebuild",
+)
+class TriggerSubscriptionRebuildApi(Resource):
+    @console_ns.expect(console_ns.models[SubscriptionRebuildRequest.__name__])
+    @setup_required
+    @login_required
+    @edit_permission_required
+    @account_initialization_required
+    def post(self, provider: str, subscription_id: str):
+        """
+        Rebuild an existing subscription instance.
+
+        This will:
+        1. Unsubscribe from the provider (delete webhook on provider side)
+        2. Create a new subscription with the request data and keep the same subscription_id and endpoint_id
+
+        The user can then go through the normal build flow to re-create the webhook.
+        """
+        user = current_user
+        assert user.current_tenant_id is not None
+
+        rebuild_request: SubscriptionRebuildRequest = SubscriptionRebuildRequest.model_validate(console_ns.payload)
+
+        try:
+            TriggerProviderService.rebuild_trigger_subscription(
+                tenant_id=user.current_tenant_id,
+                provider_id=TriggerProviderID(provider),
+                subscription_id=subscription_id,
+                credentials=rebuild_request.credentials,
+                parameters=rebuild_request.parameters,
+            )
+
+            return 200
+        except ValueError as e:
+            raise BadRequest(str(e))
+        except Exception as e:
+            logger.exception("Error rebuilding subscription", exc_info=e)
             raise
 
 

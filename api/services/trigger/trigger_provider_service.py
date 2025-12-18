@@ -110,9 +110,7 @@ class TriggerProviderService:
             subscription.properties = dict(
                 properties_encrypter.mask_credentials(dict(properties_encrypter.decrypt(subscription.properties)))
             )
-            subscription.parameters = dict(
-                credential_encrypter.mask_credentials(dict(credential_encrypter.decrypt(subscription.parameters)))
-            )
+            subscription.parameters = dict(subscription.parameters)
             count = workflows_in_use_map.get(subscription.id)
             subscription.workflows_in_use = count if count is not None else 0
 
@@ -225,7 +223,11 @@ class TriggerProviderService:
         subscription_id: str,
         name: str | None = None,
         properties: Mapping[str, Any] | None = None,
-    ) -> Mapping[str, Any]:
+        parameters: Mapping[str, Any] | None = None,
+        credentials: Mapping[str, Any] | None = None,
+        credential_expires_at: int | None = None,
+        expires_at: int | None = None,
+    ) -> None:
         """
         Update an existing trigger subscription.
 
@@ -233,6 +235,10 @@ class TriggerProviderService:
         :param subscription_id: Subscription instance ID
         :param name: Optional new name for this subscription
         :param properties: Optional new properties
+        :param parameters: Optional new parameters
+        :param credentials: Optional new credentials
+        :param credential_expires_at: Optional new credential expiration timestamp
+        :param expires_at: Optional new expiration timestamp
         :return: Success response with updated subscription info
         """
         with Session(db.engine, expire_on_commit=False) as session:
@@ -261,7 +267,7 @@ class TriggerProviderService:
 
                 # Update properties if provided
                 if properties is not None:
-                    properties_encrypter, properties_cache = create_provider_encrypter(
+                    properties_encrypter, _ = create_provider_encrypter(
                         tenant_id=tenant_id,
                         config=provider_controller.get_properties_schema(),
                         cache=NoOpProviderCredentialCache(),
@@ -273,7 +279,28 @@ class TriggerProviderService:
                         for key, value in properties.items()
                     }
                     subscription.properties = dict(properties_encrypter.encrypt(new_properties))
-                    properties_cache.delete()
+
+                # Update parameters if provided
+                if parameters is not None:
+                    subscription.parameters = dict(parameters)
+
+                # Update credentials if provided
+                if credentials is not None:
+                    credential_type = CredentialType.of(subscription.credential_type)
+                    credential_encrypter, _ = create_provider_encrypter(
+                        tenant_id=tenant_id,
+                        config=provider_controller.get_credential_schema_config(credential_type),
+                        cache=NoOpProviderCredentialCache(),
+                    )
+                    subscription.credentials = dict(credential_encrypter.encrypt(dict(credentials)))
+
+                # Update credential expiration timestamp if provided
+                if credential_expires_at is not None:
+                    subscription.credential_expires_at = credential_expires_at
+
+                # Update expiration timestamp if provided
+                if expires_at is not None:
+                    subscription.expires_at = expires_at
 
                 session.commit()
 
@@ -283,11 +310,6 @@ class TriggerProviderService:
                     provider_id=subscription.provider_id,
                     subscription_id=subscription.id,
                 )
-
-                return {
-                    "result": "success",
-                    "id": str(subscription.id),
-                }
 
     @classmethod
     def get_subscription_by_id(cls, tenant_id: str, subscription_id: str | None = None) -> TriggerSubscription | None:
@@ -339,26 +361,28 @@ class TriggerProviderService:
         credential_type: CredentialType = CredentialType.of(subscription.credential_type)
         is_auto_created: bool = credential_type in [CredentialType.OAUTH2, CredentialType.API_KEY]
         if is_auto_created:
-            provider_id = TriggerProviderID(subscription.provider_id)
-            provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
-                tenant_id=tenant_id, provider_id=provider_id
-            )
-            encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+            return None
+
+        provider_id = TriggerProviderID(subscription.provider_id)
+        provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
+            tenant_id=tenant_id, provider_id=provider_id
+        )
+        encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+            tenant_id=tenant_id,
+            controller=provider_controller,
+            subscription=subscription,
+        )
+        try:
+            TriggerManager.unsubscribe_trigger(
                 tenant_id=tenant_id,
-                controller=provider_controller,
-                subscription=subscription,
+                user_id=subscription.user_id,
+                provider_id=provider_id,
+                subscription=subscription.to_entity(),
+                credentials=encrypter.decrypt(subscription.credentials),
+                credential_type=credential_type,
             )
-            try:
-                TriggerManager.unsubscribe_trigger(
-                    tenant_id=tenant_id,
-                    user_id=subscription.user_id,
-                    provider_id=provider_id,
-                    subscription=subscription.to_entity(),
-                    credentials=encrypter.decrypt(subscription.credentials),
-                    credential_type=credential_type,
-                )
-            except Exception as e:
-                logger.exception("Error unsubscribing trigger", exc_info=e)
+        except Exception as e:
+            logger.exception("Error unsubscribing trigger", exc_info=e)
 
         # Clear cache
         session.delete(subscription)
@@ -768,3 +792,78 @@ class TriggerProviderService:
             )
             subscription.properties = dict(properties_encrypter.decrypt(subscription.properties))
             return subscription
+
+    @classmethod
+    def rebuild_trigger_subscription(
+        cls,
+        tenant_id: str,
+        provider_id: TriggerProviderID,
+        subscription_id: str,
+        credentials: Mapping[str, Any],
+        parameters: Mapping[str, Any],
+    ) -> None:
+        """
+        Create a subscription builder for rebuilding an existing subscription.
+
+        This method creates a builder pre-filled with data from the rebuild request,
+        keeping the same subscription_id and endpoint_id so the webhook URL remains unchanged.
+
+        :param tenant_id: Tenant ID
+        :param subscription_id: Subscription ID
+        :param provider_id: Provider identifier
+        :param credentials: Credentials for the subscription
+        :param parameters: Parameters for the subscription
+        :return: SubscriptionBuilderApiEntity
+        """
+        provider_controller = TriggerManager.get_trigger_provider(tenant_id, provider_id)
+        if not provider_controller:
+            raise ValueError(f"Provider {provider_id} not found")
+
+        subscription = TriggerProviderService.get_subscription_by_id(
+            tenant_id=tenant_id,
+            subscription_id=subscription_id,
+        )
+        if not subscription:
+            raise ValueError(f"Subscription {subscription_id} not found")
+
+        credential_type = CredentialType.of(subscription.credential_type)
+        if credential_type not in [CredentialType.OAUTH2, CredentialType.API_KEY]:
+            raise ValueError("Credential type not supported for rebuild")
+
+        # TODO: Tring to invoke update api of the plugin trigger provider
+
+        # FALLBACK: If the update api is not implemented, delete the previous subscription and create a new one
+
+        # Delete the previous subscription
+        encrypter, _ = create_trigger_provider_encrypter_for_subscription(
+            tenant_id=tenant_id,
+            controller=provider_controller,
+            subscription=subscription,
+        )
+        user_id = subscription.user_id
+        TriggerManager.unsubscribe_trigger(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            subscription=subscription.to_entity(),
+            credentials=encrypter.decrypt(subscription.credentials),
+            credential_type=credential_type,
+        )
+
+        # Create a new subscription with the same subscription_id and endpoint_id
+        new_subscription: TriggerSubscriptionEntity = TriggerManager.subscribe_trigger(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            provider_id=provider_id,
+            endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
+            parameters=parameters,
+            credentials=credentials,
+            credential_type=credential_type,
+        )
+        TriggerProviderService.update_trigger_subscription(
+            tenant_id=tenant_id,
+            subscription_id=subscription.id,
+            parameters=parameters,
+            credentials=credentials,
+            expires_at=new_subscription.expires_at,
+        )
