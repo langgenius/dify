@@ -115,10 +115,14 @@ detect_differences() {
 
     # Use awk for efficient comparison (much faster for large files)
     local diff_count=$(awk -F= '
+    BEGIN { OFS="\x01" }
     FNR==NR {
         if (!/^[[:space:]]*#/ && !/^[[:space:]]*$/ && /=/) {
             gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1)
-            env_values[$1] = substr($0, index($0,"=")+1)
+            key = $1
+            value = substr($0, index($0,"=")+1)
+            gsub(/^[[:space:]]+|[[:space:]]+$/, "", value)
+            env_values[key] = value
         }
         next
     }
@@ -130,7 +134,7 @@ detect_differences() {
             gsub(/^[[:space:]]+|[[:space:]]+$/, "", example_value)
 
             if (key in env_values && env_values[key] != example_value) {
-                print key "|" env_values[key] > "'$temp_diff'"
+                print key, env_values[key], example_value > "'$temp_diff'"
                 diff_count++
             }
         }
@@ -186,40 +190,14 @@ show_differences_detail() {
     log_info "=== Environment Variable Differences ==="
 
     # Read differences from the already created diff file
-    if [[ ! -f "$DIFF_FILE" ]]; then
+    if [[ ! -s "$DIFF_FILE" ]]; then
         log_info "No differences to display"
         return
     fi
 
-    # Use the existing temp_example file if available
-    local temp_example="${TEMP_DIR:-}/example_values"
-
     # Display differences
     local count=1
-    while read -r diff_line; do
-        local key=$(echo "$diff_line" | cut -d'|' -f1)
-        local env_value=$(echo "$diff_line" | cut -d'|' -f2-)
-
-        # Find example value from temp file or re-read from .env.example
-        local example_value=""
-        if [[ -n "${TEMP_DIR:-}" && -f "$temp_example" ]]; then
-            example_value=$(grep "^${key}|" "$temp_example" 2>/dev/null | cut -d'|' -f2- || echo "")
-        fi
-
-        # Fallback to reading from .env.example directly
-        if [[ -z "$example_value" ]]; then
-            while read -r line; do
-                local parsed=$(parse_env_line "$line")
-                if [[ $? -eq 0 ]]; then
-                    local line_key=$(echo "$parsed" | cut -d'|' -f1)
-                    if [[ "$line_key" == "$key" ]]; then
-                        example_value=$(echo "$parsed" | cut -d'|' -f2-)
-                        break
-                    fi
-                fi
-            done < .env.example
-        fi
-
+    while IFS=$'\x01' read -r key env_value example_value; do
         echo ""
         echo -e "${YELLOW}[$count] $key${NC}"
         echo -e "  ${GREEN}.env (current)${NC}      : ${env_value}"
@@ -284,7 +262,7 @@ analyze_value_change() {
 
 # Synchronize .env file with .env.example while preserving custom values
 # Creates a new .env file based on .env.example structure, preserving existing custom values
-# Global variables used: DIFF_FILE
+# Global variables used: DIFF_FILE, TEMP_DIR
 sync_env_file() {
     log_info "Starting partial synchronization of .env file..."
 
@@ -304,21 +282,23 @@ sync_env_file() {
     # Use AWK for efficient processing (much faster than bash loop for large files)
     log_info "Processing $(wc -l < .env.example) lines with AWK..."
 
-    awk -F'=' -v lookup_file="$lookup_file" -v preserved_file="/tmp/preserved_keys" '
+    local preserved_keys_file="${TEMP_DIR}/preserved_keys"
+    local awk_preserved_count_file="${TEMP_DIR}/awk_preserved_count"
+    local awk_updated_count_file="${TEMP_DIR}/awk_updated_count"
+
+    awk -F'=' -v lookup_file="$lookup_file" -v preserved_file="$preserved_keys_file" \
+        -v preserved_count_file="$awk_preserved_count_file" -v updated_count_file="$awk_updated_count_file" '
     BEGIN {
         preserved_count = 0
         updated_count = 0
 
         # Load preserved values if lookup file exists
-        if (lookup_file != "" && (getline < lookup_file) >= 0) {
-            close(lookup_file)
+        if (lookup_file != "") {
             while ((getline line < lookup_file) > 0) {
-                split(line, parts, "|")
-                if (length(parts) >= 2) {
-                    key = parts[1]
-                    value = substr(line, length(key) + 2)
-                    preserved_values[key] = value
-                }
+                split(line, parts, "\x01")
+                key = parts[1]
+                value = parts[2]
+                preserved_values[key] = value
             }
             close(lookup_file)
         }
@@ -348,27 +328,24 @@ sync_env_file() {
     }
 
     END {
-        print preserved_count > "/tmp/awk_preserved_count"
-        print updated_count > "/tmp/awk_updated_count"
+        print preserved_count > preserved_count_file
+        print updated_count > updated_count_file
     }
     ' .env.example > "$new_env_file"
 
     # Read counters and preserved keys
-    if [[ -f "/tmp/awk_preserved_count" ]]; then
-        preserved_count=$(cat /tmp/awk_preserved_count)
-        rm -f /tmp/awk_preserved_count
+    if [[ -f "$awk_preserved_count_file" ]]; then
+        preserved_count=$(cat "$awk_preserved_count_file")
     fi
-    if [[ -f "/tmp/awk_updated_count" ]]; then
-        updated_count=$(cat /tmp/awk_updated_count)
-        rm -f /tmp/awk_updated_count
+    if [[ -f "$awk_updated_count_file" ]]; then
+        updated_count=$(cat "$awk_updated_count_file")
     fi
 
     # Show what was preserved
-    if [[ -f "/tmp/preserved_keys" ]]; then
+    if [[ -f "$preserved_keys_file" ]]; then
         while read -r key; do
             [[ -n "$key" ]] && log_info "  Preserved: $key (.env value)"
-        done < /tmp/preserved_keys
-        rm -f /tmp/preserved_keys
+        done < "$preserved_keys_file"
     fi
 
     # Clean up lookup file
@@ -416,29 +393,15 @@ detect_removed_variables() {
         cleanup_temp_dir="$temp_dir"
     fi
 
-    # Get keys from .env.example
-    > "$temp_example_keys"
-    while read -r line || [[ -n "$line" ]]; do
-        local parsed=$(parse_env_line "$line")
-        if [[ $? -eq 0 ]]; then
-            local key=$(echo "$parsed" | cut -d'|' -f1)
-            echo "$key" >> "$temp_example_keys"
-        fi
-    done < .env.example
-    sort "$temp_example_keys" -o "$temp_example_keys"
+    # Get keys from .env.example and .env, sorted for comm
+    awk -F= '!/^[[:space:]]*#/ && /=/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' .env.example | sort > "$temp_example_keys"
+    awk -F= '!/^[[:space:]]*#/ && /=/ {gsub(/^[[:space:]]+|[[:space:]]+$/, "", $1); print $1}' .env | sort > "$temp_current_keys"
 
     # Get keys from existing .env and check for removals
     local removed_vars=()
-    while read -r line || [[ -n "$line" ]]; do
-        local parsed=$(parse_env_line "$line")
-        if [[ $? -eq 0 ]]; then
-            local key=$(echo "$parsed" | cut -d'|' -f1)
-            # If key doesn't exist in example, it's been removed
-            if ! grep -q "^${key}$" "$temp_example_keys" 2>/dev/null; then
-                removed_vars+=("$key")
-            fi
-        fi
-    done < .env
+    while IFS= read -r var; do
+        removed_vars+=("$var")
+    done < <(comm -13 "$temp_example_keys" "$temp_current_keys")
 
     # Clean up temporary files if we created a new temp directory
     if [[ -n "$cleanup_temp_dir" ]]; then
@@ -482,11 +445,11 @@ main() {
     # Detect differences
     detect_differences
 
+    # Detect removed variables (before sync)
+    detect_removed_variables
+
     # Synchronize environment file
     sync_env_file
-
-    # Detect removed variables
-    detect_removed_variables
 
     # Show statistics
     show_statistics
