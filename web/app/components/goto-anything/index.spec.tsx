@@ -95,7 +95,7 @@ jest.mock('@/app/components/workflow/utils/node-navigation', () => ({
   selectWorkflowNode: jest.fn(),
 }))
 
-jest.mock('../plugins/install-plugin/install-from-marketplace', () => (props: any) => (
+jest.mock('../plugins/install-plugin/install-from-marketplace', () => (props: { manifest?: { name?: string }, onClose: () => void }) => (
   <div data-testid="install-modal">
     <span>{props.manifest?.name}</span>
     <button onClick={props.onClose}>close</button>
