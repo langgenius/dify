@@ -1270,6 +1270,21 @@ class TenantIsolatedTaskQueueConfig(BaseSettings):
     )
 
 
+class SandboxExpiredRecordsCleanConfig(BaseSettings):
+    SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: NonNegativeInt = Field(
+        description="Graceful period in days for sandbox records clean after subscription expiration",
+        default=21,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum number of records to process in each batch",
+        default=1000,
+    )
+    SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
+        description="Retention days for sandbox expired workflow_run records and message records",
+        default=30,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1295,6 +1310,7 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
+    SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
