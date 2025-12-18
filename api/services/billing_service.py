@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import Literal, TypedDict
 
 import httpx
+from pydantic import TypeAdapter
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from werkzeug.exceptions import InternalServerError
 
@@ -287,6 +288,7 @@ class BillingService:
             Mapping of tenant_id -> {plan: str, expiration_date: int}
         """
         results: dict[str, SubscriptionPlan] = {}
+        subscription_adapter = TypeAdapter(SubscriptionPlan)
 
         chunk_size = 200
         for i in range(0, len(tenant_ids), chunk_size):
@@ -294,13 +296,10 @@ class BillingService:
             try:
                 resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
                 data = resp.get("data", {})
+
                 for tenant_id, plan in data.items():
-                    if isinstance(plan, dict) and "plan" in plan and "expiration_date" in plan:
-                        subscription_plan: SubscriptionPlan = {
-                            "plan": str(plan["plan"]),
-                            "expiration_date": int(plan["expiration_date"]),
-                        }
-                        results[tenant_id] = subscription_plan
+                    subscription_plan = subscription_adapter.validate_python(plan)
+                    results[tenant_id] = subscription_plan
             except Exception:
                 logger.exception("Failed to fetch billing info batch for tenants: %s", chunk)
                 continue
