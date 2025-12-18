@@ -40,7 +40,7 @@ const createActions = (): Record<string, ActionItem> => ({
 })
 
 describe('CommandSelector', () => {
-  it('should list contextual search actions and notify selection', async () => {
+  test('should list contextual search actions and notify selection', async () => {
     const actions = createActions()
     const onSelect = jest.fn()
 
@@ -61,7 +61,7 @@ describe('CommandSelector', () => {
     expect(onSelect).toHaveBeenCalledWith('@app')
   })
 
-  it('should render slash commands when query starts with slash', async () => {
+  test('should render slash commands when query starts with slash', async () => {
     const actions = createActions()
     const onSelect = jest.fn()
 
