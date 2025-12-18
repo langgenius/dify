@@ -53,7 +53,7 @@ jobs:
         run: |
           pnpm exec jest \
             --ci \
-            --maxWorkers=2 \
+            --maxWorkers=100% \
             --coverage \
             --passWithNoTests
 
