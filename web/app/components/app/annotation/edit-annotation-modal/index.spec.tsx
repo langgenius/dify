@@ -444,6 +444,10 @@ describe('EditAnnotationModal', () => {
         })
       })
       expect(mockOnAdded).not.toHaveBeenCalled()
+
+      // Verify edit mode remains open (textarea should still be visible)
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
     })
 
     it('should show fallback error message when addAnnotation error has no message', async () => {
@@ -478,6 +482,10 @@ describe('EditAnnotationModal', () => {
         })
       })
       expect(mockOnAdded).not.toHaveBeenCalled()
+
+      // Verify edit mode remains open (textarea should still be visible)
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
     })
 
     it('should show error toast and skip callbacks when editAnnotation fails', async () => {
@@ -516,6 +524,10 @@ describe('EditAnnotationModal', () => {
         })
       })
       expect(mockOnEdited).not.toHaveBeenCalled()
+
+      // Verify edit mode remains open (textarea should still be visible)
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
     })
 
     it('should show fallback error message when editAnnotation error is not an Error instance', async () => {
@@ -552,6 +564,10 @@ describe('EditAnnotationModal', () => {
         })
       })
       expect(mockOnEdited).not.toHaveBeenCalled()
+
+      // Verify edit mode remains open (textarea should still be visible)
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
     })
   })
 

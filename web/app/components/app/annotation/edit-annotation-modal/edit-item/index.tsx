@@ -52,8 +52,14 @@ const EditItem: FC<Props> = ({
   }, [content])
 
   const handleSave = async () => {
-    await onSave(newContent)
-    setIsEdit(false)
+    try {
+      await onSave(newContent)
+      setIsEdit(false)
+    }
+    catch (error) {
+      // Keep edit mode open when save fails
+      // Error notification is handled by the parent component
+    }
   }
 
   const handleCancel = () => {
