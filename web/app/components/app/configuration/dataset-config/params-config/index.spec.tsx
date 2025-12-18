@@ -12,6 +12,37 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
+jest.mock('@headlessui/react', () => ({
+  Dialog: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+    <div role="dialog" className={className}>
+      {children}
+    </div>
+  ),
+  DialogPanel: ({ children, className, ...props }: { children: React.ReactNode; className?: string }) => (
+    <div className={className} {...props}>
+      {children}
+    </div>
+  ),
+  DialogTitle: ({ children, className, ...props }: { children: React.ReactNode; className?: string }) => (
+    <div className={className} {...props}>
+      {children}
+    </div>
+  ),
+  Transition: ({ show, children }: { show: boolean; children: React.ReactNode }) => (show ? <>{children}</> : null),
+  TransitionChild: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  Switch: ({ checked, onChange, children, ...props }: { checked: boolean; onChange?: (value: boolean) => void; children?: React.ReactNode }) => (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      onClick={() => onChange?.(!checked)}
+      {...props}
+    >
+      {children}
+    </button>
+  ),
+}))
+
 jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: jest.fn(),
   useCurrentProviderAndModel: jest.fn(),
