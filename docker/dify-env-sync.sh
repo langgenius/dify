@@ -228,11 +228,12 @@ analyze_value_change() {
         analysis="  ${RED}→ Setting from empty to recommended value${NC}"
     elif [[ -n "$current_value" && -z "$recommended_value" ]]; then
         analysis="  ${RED}→ Recommended value changed to empty${NC}"
-    # Numeric check
+    # Numeric check - using arithmetic evaluation for robust comparison
     elif [[ "$current_value" =~ ^[0-9]+$ && "$recommended_value" =~ ^[0-9]+$ ]]; then
-        if [[ $current_value -lt $recommended_value ]]; then
+        # Use arithmetic evaluation to handle leading zeros correctly
+        if (( 10#$current_value < 10#$recommended_value )); then
             analysis="  ${BLUE}→ Numeric increase (${current_value} < ${recommended_value})${NC}"
-        elif [[ $current_value -gt $recommended_value ]]; then
+        elif (( 10#$current_value > 10#$recommended_value )); then
             analysis="  ${YELLOW}→ Numeric decrease (${current_value} > ${recommended_value})${NC}"
         fi
     # Boolean check
