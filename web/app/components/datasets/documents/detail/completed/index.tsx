@@ -62,7 +62,7 @@ type CurrChildChunkType = {
   showModal: boolean
 }
 
-type SegmentListContextValue = {
+export type SegmentListContextValue = {
   isCollapsed: boolean
   fullScreen: boolean
   toggleFullScreen: (fullscreen?: boolean) => void

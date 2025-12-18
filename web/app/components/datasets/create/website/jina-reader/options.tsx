@@ -37,6 +37,7 @@ const Options: FC<Props> = ({
         isChecked={payload.crawl_sub_pages}
         onChange={handleChange('crawl_sub_pages')}
         labelClassName='text-[13px] leading-[16px] font-medium text-text-secondary'
+        testId='crawl-sub-pages'
       />
       <CheckboxWithLabel
         label={t(`${I18N_PREFIX}.useSitemap`)}
@@ -44,6 +45,7 @@ const Options: FC<Props> = ({
         onChange={handleChange('use_sitemap')}
         tooltip={t(`${I18N_PREFIX}.useSitemapTooltip`) as string}
         labelClassName='text-[13px] leading-[16px] font-medium text-text-secondary'
+        testId='use-sitemap'
       />
       <div className='flex justify-between space-x-4'>
         <Field

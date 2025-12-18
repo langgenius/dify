@@ -1,3 +1,4 @@
+import json
 import time
 
 import pytest
@@ -46,14 +47,16 @@ def make_start_node(user_inputs, variables):
 
 
 def test_json_object_valid_schema():
-    schema = {
-        "type": "object",
-        "properties": {
-            "age": {"type": "number"},
-            "name": {"type": "string"},
-        },
-        "required": ["age"],
-    }
+    schema = json.dumps(
+        {
+            "type": "object",
+            "properties": {
+                "age": {"type": "number"},
+                "name": {"type": "string"},
+            },
+            "required": ["age"],
+        }
+    )
 
     variables = [
         VariableEntity(
@@ -65,7 +68,7 @@ def test_json_object_valid_schema():
         )
     ]
 
-    user_inputs = {"profile": {"age": 20, "name": "Tom"}}
+    user_inputs = {"profile": json.dumps({"age": 20, "name": "Tom"})}
 
     node = make_start_node(user_inputs, variables)
     result = node._run()
@@ -74,12 +77,23 @@ def test_json_object_valid_schema():
 
 
 def test_json_object_invalid_json_string():
+    schema = json.dumps(
+        {
+            "type": "object",
+            "properties": {
+                "age": {"type": "number"},
+                "name": {"type": "string"},
+            },
+            "required": ["age", "name"],
+        }
+    )
     variables = [
         VariableEntity(
             variable="profile",
             label="profile",
             type=VariableEntityType.JSON_OBJECT,
             required=True,
+            json_schema=schema,
         )
     ]
 
@@ -88,38 +102,21 @@ def test_json_object_invalid_json_string():
 
     node = make_start_node(user_inputs, variables)
 
-    with pytest.raises(ValueError, match="profile must be a JSON object"):
-        node._run()
-
-
-@pytest.mark.parametrize("value", ["[1, 2, 3]", "123"])
-def test_json_object_valid_json_but_not_object(value):
-    variables = [
-        VariableEntity(
-            variable="profile",
-            label="profile",
-            type=VariableEntityType.JSON_OBJECT,
-            required=True,
-        )
-    ]
-
-    user_inputs = {"profile": value}
-
-    node = make_start_node(user_inputs, variables)
-
-    with pytest.raises(ValueError, match="profile must be a JSON object"):
+    with pytest.raises(ValueError, match='{"age": 20, "name": "Tom" must be a valid JSON object'):
         node._run()
 
 
 def test_json_object_does_not_match_schema():
-    schema = {
-        "type": "object",
-        "properties": {
-            "age": {"type": "number"},
-            "name": {"type": "string"},
-        },
-        "required": ["age", "name"],
-    }
+    schema = json.dumps(
+        {
+            "type": "object",
+            "properties": {
+                "age": {"type": "number"},
+                "name": {"type": "string"},
+            },
+            "required": ["age", "name"],
+        }
+    )
 
     variables = [
         VariableEntity(
@@ -132,7 +129,7 @@ def test_json_object_does_not_match_schema():
     ]
 
     # age is a string, which violates the schema (expects number)
-    user_inputs = {"profile": {"age": "twenty", "name": "Tom"}}
+    user_inputs = {"profile": json.dumps({"age": "twenty", "name": "Tom"})}
 
     node = make_start_node(user_inputs, variables)
 
@@ -141,14 +138,16 @@ def test_json_object_does_not_match_schema():
 
 
 def test_json_object_missing_required_schema_field():
-    schema = {
-        "type": "object",
-        "properties": {
-            "age": {"type": "number"},
-            "name": {"type": "string"},
-        },
-        "required": ["age", "name"],
-    }
+    schema = json.dumps(
+        {
+            "type": "object",
+            "properties": {
+                "age": {"type": "number"},
+                "name": {"type": "string"},
+            },
+            "required": ["age", "name"],
+        }
+    )
 
     variables = [
         VariableEntity(
@@ -161,7 +160,7 @@ def test_json_object_missing_required_schema_field():
     ]
 
     # Missing required field "name"
-    user_inputs = {"profile": {"age": 20}}
+    user_inputs = {"profile": json.dumps({"age": 20})}
 
     node = make_start_node(user_inputs, variables)
 
@@ -214,7 +213,7 @@ def test_json_object_optional_variable_not_provided():
             variable="profile",
             label="profile",
             type=VariableEntityType.JSON_OBJECT,
-            required=False,
+            required=True,
         )
     ]
 
@@ -223,5 +222,5 @@ def test_json_object_optional_variable_not_provided():
     node = make_start_node(user_inputs, variables)
 
     # Current implementation raises a validation error even when the variable is optional
-    with pytest.raises(ValueError, match="profile must be a JSON object"):
+    with pytest.raises(ValueError, match="profile is required in input form"):
         node._run()

@@ -99,6 +99,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turecki',
       faIR: 'Perski',
+      slSI: 'Słoweński',
+      arTN: 'Arabski tunezyjski',
     },
   },
   unit: {

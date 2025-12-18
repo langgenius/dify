@@ -1,11 +1,9 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import AnnotationFullModal from './modal'
 
-let mockUsageProps: { className?: string } | null = null
 jest.mock('./usage', () => ({
   __esModule: true,
   default: (props: { className?: string }) => {
-    mockUsageProps = props
     return (
       <div data-testid='usage-component' data-classname={props.className ?? ''}>
         usage
@@ -59,7 +57,6 @@ jest.mock('../../base/modal', () => ({
 describe('AnnotationFullModal', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockUsageProps = null
     mockUpgradeBtnProps = null
     mockModalProps = null
   })
