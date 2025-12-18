@@ -468,8 +468,8 @@ describe('AssistantTypePicker', () => {
       // Act
       const trigger = screen.getByText(/chatAssistant.name/i)
       await user.click(trigger)
-      await user.click(trigger!)
-      await user.click(trigger!)
+      await user.click(trigger)
+      await user.click(trigger)
 
       // Assert - Should not crash
       expect(trigger).toBeInTheDocument()
