@@ -37,7 +37,7 @@ const useRefreshPluginList = () => {
       if ((manifest && PluginCategoryEnum.tool.includes(manifest.category)) || refreshAllType) {
         invalidateAllToolProviders()
         invalidateAllBuiltInTools()
-        invalidateRAGRecommendedPlugins()
+        invalidateRAGRecommendedPlugins('tool')
         // TODO: update suggested tools. It's a function in hook useMarketplacePlugins,handleUpdatePlugins
       }
 

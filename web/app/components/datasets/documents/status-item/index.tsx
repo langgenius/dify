@@ -105,6 +105,7 @@ const StatusItem = ({
             <div className='max-w-[260px] break-all'>{errorMessage}</div>
           }
           triggerClassName='ml-1 w-4 h-4'
+          triggerTestId='error-tooltip-trigger'
         />
       )
     }

@@ -103,6 +103,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turco',
       faIR: 'Persa',
+      slSI: 'Esloveno',
+      arTN: 'Árabe tunecino',
     },
   },
   unit: {

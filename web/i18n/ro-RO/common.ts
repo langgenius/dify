@@ -98,6 +98,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turcă',
       faIR: 'Persană',
+      slSI: 'Slovenă',
+      arTN: 'Arabă tunisiană',
       plPL: 'Poloneză',
     },
   },
