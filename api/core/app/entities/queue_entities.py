@@ -7,9 +7,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import AgentNodeStrategyInit
+from core.workflow.entities import AgentNodeStrategyInit, ToolCall, ToolResult
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
-from core.workflow.graph_events import ToolCall, ToolResult
 from core.workflow.nodes import NodeType
 
 
