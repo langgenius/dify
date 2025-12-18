@@ -2,6 +2,7 @@ from flask_restx import Resource
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden
 
+from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
@@ -10,8 +11,6 @@ from libs.login import current_account_with_tenant, login_required
 from models import TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
 
 class LoadBalancingCredentialPayload(BaseModel):
     model: str
@@ -19,10 +18,7 @@ class LoadBalancingCredentialPayload(BaseModel):
     credentials: dict[str, object]
 
 
-console_ns.schema_model(
-    LoadBalancingCredentialPayload.__name__,
-    LoadBalancingCredentialPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
+register_schema_models(console_ns, LoadBalancingCredentialPayload)
 
 
 @console_ns.route(
