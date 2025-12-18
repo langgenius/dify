@@ -291,15 +291,19 @@ class BillingService:
         chunk_size = 200
         for i in range(0, len(tenant_ids), chunk_size):
             chunk = tenant_ids[i : i + chunk_size]
-            resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
-            data = resp.get("data", {})
-            for tenant_id, plan in data.items():
-                if isinstance(plan, dict) and "plan" in plan and "expiration_date" in plan:
-                    subscription_plan: SubscriptionPlan = {
-                        "plan": str(plan["plan"]),
-                        "expiration_date": int(plan["expiration_date"]),
-                    }
-                    results[tenant_id] = subscription_plan
+            try:
+                resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
+                data = resp.get("data", {})
+                for tenant_id, plan in data.items():
+                    if isinstance(plan, dict) and "plan" in plan and "expiration_date" in plan:
+                        subscription_plan: SubscriptionPlan = {
+                            "plan": str(plan["plan"]),
+                            "expiration_date": int(plan["expiration_date"]),
+                        }
+                        results[tenant_id] = subscription_plan
+            except Exception:
+                logger.exception("Failed to fetch billing info batch for tenants: %s", chunk)
+                continue
 
         return results
     
@@ -307,4 +311,7 @@ class BillingService:
     def get_expired_subscription_cleanup_whitelist(cls) -> Sequence[str]:
         resp = cls._send_request("GET", "/subscription/cleanup/whitelist")
         data = resp.get("data", [])
-        return data
+        tenant_whitelist = []
+        for item in data:
+            tenant_whitelist.append(item["tenant_id"])
+        return tenant_whitelist

@@ -1220,6 +1220,53 @@ class TestBillingServiceSubscriptionOperations:
         second_call = mock_send_request.call_args_list[1]
         assert len(second_call[1]["json"]["tenant_ids"]) == 50
 
+    def test_get_plan_bulk_with_partial_batch_failure(self, mock_send_request):
+        """Test bulk plan retrieval when one batch fails but others succeed."""
+        # Arrange - 250 tenants, second batch will fail
+        tenant_ids = [f"tenant-{i}" for i in range(250)]
+
+        # First chunk succeeds
+        first_chunk_response = {
+            "data": {f"tenant-{i}": {"plan": "sandbox", "expiration_date": 1735689600} for i in range(200)}
+        }
+
+        # Second chunk fails - need to create a mock that raises when called
+        def side_effect_func(*args, **kwargs):
+            if mock_send_request.call_count == 1:
+                return first_chunk_response
+            else:
+                raise ValueError("API error")
+
+        mock_send_request.side_effect = side_effect_func
+
+        # Act
+        result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert - should only have data from first batch
+        assert len(result) == 200
+        assert result["tenant-0"]["plan"] == "sandbox"
+        assert result["tenant-199"]["plan"] == "sandbox"
+        assert "tenant-200" not in result
+        assert mock_send_request.call_count == 2
+
+    def test_get_plan_bulk_with_all_batches_failing(self, mock_send_request):
+        """Test bulk plan retrieval when all batches fail."""
+        # Arrange
+        tenant_ids = [f"tenant-{i}" for i in range(250)]
+
+        # All chunks fail
+        def side_effect_func(*args, **kwargs):
+            raise ValueError("API error")
+
+        mock_send_request.side_effect = side_effect_func
+
+        # Act
+        result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert - should return empty dict
+        assert result == {}
+        assert mock_send_request.call_count == 2
+
     def test_get_plan_bulk_with_exactly_200_tenants(self, mock_send_request):
         """Test bulk plan retrieval with exactly 200 tenants (boundary condition)."""
         # Arrange
@@ -1250,7 +1297,7 @@ class TestBillingServiceSubscriptionOperations:
     def test_get_expired_subscription_cleanup_whitelist_success(self, mock_send_request):
         """Test successful retrieval of expired subscription cleanup whitelist."""
         # Arrange
-        expected_whitelist = [
+        api_response = [
             {
                 "created_at": "2025-10-16T01:56:17",
                 "tenant_id": "36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6",
@@ -1267,18 +1314,26 @@ class TestBillingServiceSubscriptionOperations:
                 "expired_at": "2026-02-01T00:00:00",
                 "updated_at": "2025-10-16T02:00:00",
             },
+            {
+                "created_at": "2025-10-16T03:00:00",
+                "tenant_id": "tenant-3",
+                "contact": "another@example.com",
+                "id": "whitelist-id-3",
+                "expired_at": "2026-03-01T00:00:00",
+                "updated_at": "2025-10-16T03:00:00",
+            },
         ]
-        mock_send_request.return_value = {"data": expected_whitelist}
+        mock_send_request.return_value = {"data": api_response}
 
         # Act
         result = BillingService.get_expired_subscription_cleanup_whitelist()
 
-        # Assert
-        assert result == expected_whitelist
-        assert len(result) == 2
-        assert result[0]["tenant_id"] == "36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6"
-        assert result[0]["contact"] == "example@dify.ai"
-        assert result[1]["tenant_id"] == "tenant-2"
+        # Assert - should return only tenant_ids
+        assert result == ["36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6", "tenant-2", "tenant-3"]
+        assert len(result) == 3
+        assert result[0] == "36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6"
+        assert result[1] == "tenant-2"
+        assert result[2] == "tenant-3"
         mock_send_request.assert_called_once_with("GET", "/subscription/cleanup/whitelist")
 
     def test_get_expired_subscription_cleanup_whitelist_empty_list(self, mock_send_request):
