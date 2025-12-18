@@ -84,6 +84,13 @@ jobs:
             process.exit(0);
           }
 
+          const summary = hasSummary
+            ? JSON.parse(fs.readFileSync(summaryPath, 'utf8'))
+            : null;
+          const coverage = hasFinal
+            ? JSON.parse(fs.readFileSync(finalPath, 'utf8'))
+            : null;
+
           const totals = {
             lines: { covered: 0, total: 0 },
             statements: { covered: 0, total: 0 },
@@ -92,15 +99,14 @@ jobs:
           };
           const fileSummaries = [];
 
-          if (hasSummary) {
-            const summary = JSON.parse(fs.readFileSync(summaryPath, 'utf8'));
+          if (summary) {
             const totalEntry = summary.total ?? {};
             ['lines', 'statements', 'branches', 'functions'].forEach((key) => {
               if (totalEntry[key]) {
                 totals[key].covered = totalEntry[key].covered ?? 0;
                 totals[key].total = totalEntry[key].total ?? 0;
               }
-            });
+              });
 
             Object.entries(summary)
               .filter(([file]) => file !== 'total')
@@ -114,9 +120,7 @@ jobs:
                   },
                 });
               });
-          } else if (hasFinal) {
-            const coverage = JSON.parse(fs.readFileSync(finalPath, 'utf8'));
-
+          } else if (coverage) {
             Object.entries(coverage).forEach(([file, entry]) => {
               const lineHits = entry.l ?? {};
               const statementHits = entry.s ?? {};
@@ -183,6 +187,155 @@ jobs:
             });
           console.log('```');
           console.log('</details>');
+
+          if (coverage) {
+            const pctValue = (covered, tot) => {
+              if (tot === 0) {
+                return '0';
+              }
+              return ((covered / tot) * 100)
+                .toFixed(2)
+                .replace(/\.?0+$/, '');
+            };
+
+            const formatLineRanges = (lines) => {
+              if (lines.length === 0) {
+                return '';
+              }
+              const ranges = [];
+              let start = lines[0];
+              let end = lines[0];
+
+              for (let i = 1; i < lines.length; i += 1) {
+                const current = lines[i];
+                if (current === end + 1) {
+                  end = current;
+                  continue;
+                }
+                ranges.push(start === end ? `${start}` : `${start}-${end}`);
+                start = current;
+                end = current;
+              }
+              ranges.push(start === end ? `${start}` : `${start}-${end}`);
+              return ranges.join(',');
+            };
+
+            const tableTotals = {
+              statements: { covered: 0, total: 0 },
+              branches: { covered: 0, total: 0 },
+              functions: { covered: 0, total: 0 },
+              lines: { covered: 0, total: 0 },
+            };
+            const tableRows = Object.entries(coverage)
+              .map(([file, entry]) => {
+                const lineHits = entry.l ?? {};
+                const statementHits = entry.s ?? {};
+                const branchHits = entry.b ?? {};
+                const functionHits = entry.f ?? {};
+
+                const lineTotal = Object.keys(lineHits).length;
+                const lineCovered = Object.values(lineHits).filter((n) => n > 0).length;
+                const statementTotal = Object.keys(statementHits).length;
+                const statementCovered = Object.values(statementHits).filter((n) => n > 0).length;
+                const branchTotal = Object.values(branchHits).reduce((acc, branches) => acc + branches.length, 0);
+                const branchCovered = Object.values(branchHits).reduce(
+                  (acc, branches) => acc + branches.filter((n) => n > 0).length,
+                  0,
+                );
+                const functionTotal = Object.keys(functionHits).length;
+                const functionCovered = Object.values(functionHits).filter((n) => n > 0).length;
+
+                tableTotals.lines.total += lineTotal;
+                tableTotals.lines.covered += lineCovered;
+                tableTotals.statements.total += statementTotal;
+                tableTotals.statements.covered += statementCovered;
+                tableTotals.branches.total += branchTotal;
+                tableTotals.branches.covered += branchCovered;
+                tableTotals.functions.total += functionTotal;
+                tableTotals.functions.covered += functionCovered;
+
+                const uncoveredLines = Object.entries(lineHits)
+                  .filter(([, count]) => count === 0)
+                  .map(([line]) => Number(line))
+                  .sort((a, b) => a - b);
+
+                const filePath = entry.path ?? file;
+                const relativePath = path.isAbsolute(filePath)
+                  ? path.relative(process.cwd(), filePath)
+                  : filePath;
+
+                return {
+                  file: relativePath || file,
+                  statements: pctValue(statementCovered, statementTotal),
+                  branches: pctValue(branchCovered, branchTotal),
+                  functions: pctValue(functionCovered, functionTotal),
+                  lines: pctValue(lineCovered, lineTotal),
+                  uncovered: formatLineRanges(uncoveredLines),
+                };
+              })
+              .sort((a, b) => a.file.localeCompare(b.file));
+
+            const columns = [
+              { key: 'file', header: 'File', align: 'left' },
+              { key: 'statements', header: '% Stmts', align: 'right' },
+              { key: 'branches', header: '% Branch', align: 'right' },
+              { key: 'functions', header: '% Funcs', align: 'right' },
+              { key: 'lines', header: '% Lines', align: 'right' },
+              { key: 'uncovered', header: 'Uncovered Line #s', align: 'left' },
+            ];
+
+            const allFilesRow = {
+              file: 'All files',
+              statements: pctValue(tableTotals.statements.covered, tableTotals.statements.total),
+              branches: pctValue(tableTotals.branches.covered, tableTotals.branches.total),
+              functions: pctValue(tableTotals.functions.covered, tableTotals.functions.total),
+              lines: pctValue(tableTotals.lines.covered, tableTotals.lines.total),
+              uncovered: '',
+            };
+
+            const rowsForOutput = [allFilesRow, ...tableRows];
+            const columnWidths = Object.fromEntries(
+              columns.map(({ key, header }) => [key, header.length]),
+            );
+
+            rowsForOutput.forEach((row) => {
+              columns.forEach(({ key }) => {
+                const value = String(row[key] ?? '');
+                columnWidths[key] = Math.max(columnWidths[key], value.length);
+              });
+            });
+
+            const formatRow = (row) => columns
+              .map(({ key, align }) => {
+                const value = String(row[key] ?? '');
+                const width = columnWidths[key];
+                return align === 'right' ? value.padStart(width) : value.padEnd(width);
+              })
+              .join(' | ');
+
+            const headerRow = columns
+              .map(({ header, key, align }) => {
+                const width = columnWidths[key];
+                return align === 'right' ? header.padStart(width) : header.padEnd(width);
+              })
+              .join(' | ');
+
+            const dividerRow = columns
+              .map(({ key }) => '-'.repeat(columnWidths[key]))
+              .join('|');
+
+            console.log('');
+            console.log('<details><summary>Jest coverage table</summary>');
+            console.log('');
+            console.log('```');
+            console.log(dividerRow);
+            console.log(headerRow);
+            console.log(dividerRow);
+            rowsForOutput.forEach((row) => console.log(formatRow(row)));
+            console.log(dividerRow);
+            console.log('```');
+            console.log('</details>');
+          }
           NODE
 
       - name: Upload Coverage Artifact
