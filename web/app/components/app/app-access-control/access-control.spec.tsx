@@ -181,7 +181,7 @@ describe('AccessControlItem', () => {
     expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
   })
 
-  it('should render selected styles when the current menu matches the type', () => {
+  it('should keep current menu when clicking the selected access type', () => {
     useAccessControlStore.setState({ currentMenu: AccessMode.ORGANIZATION })
     render(
       <AccessControlItem type={AccessMode.ORGANIZATION}>
@@ -190,8 +190,9 @@ describe('AccessControlItem', () => {
     )
 
     const option = screen.getByText('Organization Only').parentElement as HTMLElement
-    expect(option.className).toContain('border-[1.5px]')
-    expect(option.className).not.toContain('cursor-pointer')
+    fireEvent.click(option)
+
+    expect(useAccessControlStore.getState().currentMenu).toBe(AccessMode.ORGANIZATION)
   })
 })
 

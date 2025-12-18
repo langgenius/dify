@@ -1,3 +1,4 @@
+import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Union, final
 
@@ -175,6 +176,13 @@ class BaseAppGenerator:
                         value = True
                     elif value == 0:
                         value = False
+            case VariableEntityType.JSON_OBJECT:
+                if not isinstance(value, str):
+                    raise ValueError(f"{variable_entity.variable} in input form must be a string")
+                try:
+                    json.loads(value)
+                except json.JSONDecodeError:
+                    raise ValueError(f"{variable_entity.variable} in input form must be a valid JSON object")
             case _:
                 raise AssertionError("this statement should be unreachable.")
 

@@ -5,6 +5,7 @@
 @import '../../themes/dark.css';
 @import "../../themes/manual-light.css";
 @import "../../themes/manual-dark.css";
+@import "./monaco-sticky-fix.css";
 
 @import "../components/base/button/index.css";
 @import "../components/base/action-button/index.css";
