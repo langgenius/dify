@@ -46,7 +46,7 @@ describe('CSVDownload', () => {
     downloaderProps.length = 0
   })
 
-  it('should render the structure preview and pass english template data by default', () => {
+  it('should render the structure preview and pass English template data by default', () => {
     renderWithLocale('en-US' as Locale)
 
     expect(screen.getByText('share.generation.csvStructureTitle')).toBeInTheDocument()
