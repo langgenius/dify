@@ -31,7 +31,7 @@ from services.errors.audio import (
 )
 
 from ..common.schema import register_schema_models
-from ..web.wraps import WebApiResource
+from controllers.web.wraps import WebApiResource
 
 
 class TextToAudioPayload(BaseModel):
