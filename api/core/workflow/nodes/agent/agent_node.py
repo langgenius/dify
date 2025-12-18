@@ -305,7 +305,7 @@ class AgentNode(Node[AgentNodeData]):
                     model_instance, model_schema = self._fetch_model(value)
                     # memory config - only for LLM models
                     history_prompt_messages = []
-                    model_type_str = value.get("model_type", "")
+                    model_type_str = value.get("model_type", ModelType.LLM.value)
                     if node_data.memory and model_type_str == ModelType.LLM.value:
                         memory = self._fetch_memory(model_instance)
                         if memory:
