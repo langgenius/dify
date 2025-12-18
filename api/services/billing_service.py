@@ -1,11 +1,12 @@
 import logging
 import os
 from collections.abc import Sequence
-from typing import Literal, TypedDict
+from typing import Literal
 
 import httpx
 from pydantic import TypeAdapter
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+from typing_extensions import TypedDict
 from werkzeug.exceptions import InternalServerError
 
 from enums.cloud_plan import CloudPlan
