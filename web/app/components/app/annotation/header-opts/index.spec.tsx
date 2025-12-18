@@ -121,6 +121,7 @@ const mockedClearAllAnnotations = jest.mocked(clearAllAnnotations)
 describe('HeaderOptions', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    jest.useRealTimers()
     mockCSVDownloader.mockClear()
     lastCSVDownloaderProps = undefined
     mockedFetchAnnotations.mockResolvedValue({ data: [] })

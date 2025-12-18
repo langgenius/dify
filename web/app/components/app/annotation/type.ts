@@ -4,19 +4,18 @@ export type AnnotationItemBasic = {
   answer: string
 }
 
-export type AnnotationCreateResponse = {
-  id: string
-  account?: {
-    name?: string
-  }
-}
-
 export type AnnotationItem = {
   id: string
   question: string
   answer: string
   created_at: number
   hit_count: number
+}
+
+export type AnnotationCreateResponse = AnnotationItem & {
+  account?: {
+    name?: string
+  }
 }
 
 export type HitHistoryItem = {
