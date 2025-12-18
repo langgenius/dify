@@ -12,7 +12,7 @@ import {
   useConfigureTriggerOAuth,
   useDeleteTriggerOAuth,
   useInitiateTriggerOAuth,
-  useVerifyTriggerSubscriptionBuilder,
+  useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import {
   RiClipboardLine,
@@ -64,7 +64,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
 
   const providerName = detail?.provider || ''
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
-  const { mutate: verifyBuilder } = useVerifyTriggerSubscriptionBuilder()
+  const { mutate: verifyBuilder } = useVerifyAndUpdateTriggerSubscriptionBuilder()
   const { mutate: configureOAuth } = useConfigureTriggerOAuth()
   const { mutate: deleteOAuth } = useDeleteTriggerOAuth()
 

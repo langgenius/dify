@@ -162,9 +162,9 @@ export const useUpdateTriggerSubscriptionBuilder = () => {
   })
 }
 
-export const useVerifyTriggerSubscriptionBuilder = () => {
+export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'verify-subscription-builder'],
+    mutationKey: [NAME_SPACE, 'verify-and-update-subscription-builder'],
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
@@ -172,7 +172,7 @@ export const useVerifyTriggerSubscriptionBuilder = () => {
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return post<{ verified: boolean }>(
-        `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/verify/${subscriptionBuilderId}`,
+        `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/verify-and-update/${subscriptionBuilderId}`,
         { body },
         { silent: true },
       )

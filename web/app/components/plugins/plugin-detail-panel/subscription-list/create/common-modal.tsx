@@ -15,7 +15,7 @@ import {
   useCreateTriggerSubscriptionBuilder,
   useTriggerSubscriptionBuilderLogs,
   useUpdateTriggerSubscriptionBuilder,
-  useVerifyTriggerSubscriptionBuilder,
+  useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
@@ -98,7 +98,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const [subscriptionBuilder, setSubscriptionBuilder] = useState<TriggerSubscriptionBuilder | undefined>(builder)
   const isInitializedRef = useRef(false)
 
-  const { mutate: verifyCredentials, isPending: isVerifyingCredentials } = useVerifyTriggerSubscriptionBuilder()
+  const { mutate: verifyCredentials, isPending: isVerifyingCredentials } = useVerifyAndUpdateTriggerSubscriptionBuilder()
   const { mutateAsync: createBuilder /* isPending: isCreatingBuilder */ } = useCreateTriggerSubscriptionBuilder()
   const { mutate: buildSubscription, isPending: isBuilding } = useBuildTriggerSubscription()
   const { mutate: updateBuilder } = useUpdateTriggerSubscriptionBuilder()

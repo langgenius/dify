@@ -3,7 +3,7 @@ import {
   useBuildTriggerSubscription,
   useCreateTriggerSubscriptionBuilder,
   useUpdateTriggerSubscriptionBuilder,
-  useVerifyTriggerSubscriptionBuilder,
+  useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 
@@ -47,7 +47,7 @@ export const useTriggerAuthFlow = (provider: TriggerWithProvider): AuthFlowState
 
   const createBuilder = useCreateTriggerSubscriptionBuilder()
   const updateBuilder = useUpdateTriggerSubscriptionBuilder()
-  const verifyBuilder = useVerifyTriggerSubscriptionBuilder()
+  const verifyBuilder = useVerifyAndUpdateTriggerSubscriptionBuilder()
   const buildSubscription = useBuildTriggerSubscription()
 
   const startAuth = useCallback(async () => {
