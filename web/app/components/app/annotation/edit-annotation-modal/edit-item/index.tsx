@@ -56,7 +56,7 @@ const EditItem: FC<Props> = ({
       await onSave(newContent)
       setIsEdit(false)
     }
-    catch (error) {
+    catch {
       // Keep edit mode open when save fails
       // Error notification is handled by the parent component
     }
@@ -102,9 +102,15 @@ const EditItem: FC<Props> = ({
                     <div className='mr-2'>·</div>
                     <div
                       className='flex cursor-pointer items-center space-x-1'
-                      onClick={() => {
+                      onClick={async () => {
                         setNewContent(content)
-                        onSave(content)
+                        try {
+                          await onSave(content)
+                        }
+                        catch {
+                          // Delete action failed - error is already handled by parent
+                          // No additional action needed since user sees error toast
+                        }
                       }}
                     >
                       <div className='h-3.5 w-3.5'>
