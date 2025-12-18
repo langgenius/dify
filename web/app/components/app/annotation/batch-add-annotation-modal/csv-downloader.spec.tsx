@@ -60,7 +60,7 @@ describe('CSVDownload', () => {
     })
   })
 
-  it('should switch to the chinese template when locale matches the secondary language', () => {
+  it('should switch to the Chinese template when locale matches the secondary language', () => {
     const locale = LanguagesSupported[1] as Locale
     renderWithLocale(locale)
 
