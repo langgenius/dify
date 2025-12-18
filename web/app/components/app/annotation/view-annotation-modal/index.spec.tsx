@@ -77,24 +77,53 @@ describe('ViewAnnotationModal', () => {
     fetchHitHistoryListMock.mockResolvedValue({ data: [], total: 0 })
   })
 
-  it('should render annotation tab and allow saving updated content', async () => {
+  it('should render annotation tab and allow saving updated query', async () => {
+    // Arrange
     const { props } = renderComponent()
 
     await waitFor(() => {
       expect(fetchHitHistoryListMock).toHaveBeenCalled()
     })
 
+    // Act
     fireEvent.click(screen.getByTestId('edit-query'))
+
+    // Assert
     await waitFor(() => {
       expect(props.onSave).toHaveBeenCalledWith('query-updated', props.item.answer)
     })
+  })
 
-    fireEvent.click(screen.getByTestId('edit-answer'))
+  it('should render annotation tab and allow saving updated answer', async () => {
+    // Arrange
+    const { props } = renderComponent()
+
     await waitFor(() => {
-      expect(props.onSave).toHaveBeenCalledWith(props.item.question, 'answer-updated')
+      expect(fetchHitHistoryListMock).toHaveBeenCalled()
     })
 
+    // Act
+    fireEvent.click(screen.getByTestId('edit-answer'))
+
+    // Assert
+    await waitFor(() => {
+      expect(props.onSave).toHaveBeenCalledWith(props.item.question, 'answer-updated')
+    },
+    )
+  })
+
+  it('should switch to hit history tab and show no data message', async () => {
+    // Arrange
+    const { props } = renderComponent()
+
+    await waitFor(() => {
+      expect(fetchHitHistoryListMock).toHaveBeenCalled()
+    })
+
+    // Act
     fireEvent.click(screen.getByText('appAnnotation.viewModal.hitHistory'))
+
+    // Assert
     expect(await screen.findByText('appAnnotation.viewModal.noHitHistory')).toBeInTheDocument()
     expect(mockFormatTime).toHaveBeenCalledWith(props.item.created_at, 'appLog.dateTimeFormat')
   })
