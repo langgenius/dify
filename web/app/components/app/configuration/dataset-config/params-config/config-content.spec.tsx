@@ -39,13 +39,6 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/model-par
   default: () => <div data-testid="model-parameter-modal" />,
 }))
 
-jest.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
-  default: {
-    notify: jest.fn(),
-  },
-}))
-
 jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: jest.fn(),
   useCurrentProviderAndModel: jest.fn(),
@@ -54,7 +47,7 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', (
 const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as jest.MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
 const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as jest.MockedFunction<typeof useCurrentProviderAndModel>
 
-const mockToastNotify = Toast.notify as unknown as jest.Mock
+let toastNotifySpy: jest.SpyInstance
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -180,6 +173,7 @@ const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetC
 describe('ConfigContent', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    toastNotifySpy = jest.spyOn(Toast, 'notify').mockImplementation(() => ({}))
     mockedUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       modelList: [],
       defaultModel: undefined,
@@ -190,6 +184,10 @@ describe('ConfigContent', () => {
       currentProvider: undefined,
       currentModel: undefined,
     })
+  })
+
+  afterEach(() => {
+    toastNotifySpy.mockRestore()
   })
 
   // State management
@@ -336,7 +334,7 @@ describe('ConfigContent', () => {
       await user.click(screen.getByText('common.modelProvider.rerankModel.key'))
 
       // Assert
-      expect(mockToastNotify).toHaveBeenCalledWith({
+      expect(toastNotifySpy).toHaveBeenCalledWith({
         type: 'error',
         message: 'workflow.errorMsg.rerankModelRequired',
       })
@@ -378,7 +376,7 @@ describe('ConfigContent', () => {
       await user.click(screen.getByRole('switch'))
 
       // Assert
-      expect(mockToastNotify).toHaveBeenCalledWith({
+      expect(toastNotifySpy).toHaveBeenCalledWith({
         type: 'error',
         message: 'workflow.errorMsg.rerankModelRequired',
       })
