@@ -3,13 +3,6 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import StatusItem from './index'
 import type { DocumentDisplayStatus } from '@/models/datasets'
 
-// Mock i18n - required for translation
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock ToastContext - required to verify notifications
 const mockNotify = jest.fn()
 jest.mock('use-context-selector', () => ({

@@ -41,6 +41,7 @@ const UrlInput: FC<Props> = ({
         onClick={handleOnRun}
         className='ml-2'
         loading={isRunning}
+        data-testid='url-input-run-button'
       >
         {!isRunning ? t(`${I18N_PREFIX}.run`) : ''}
       </Button>
