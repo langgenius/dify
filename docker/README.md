@@ -138,7 +138,7 @@ This script compares your current `.env` file with the latest `.env.example` tem
 **Backup behavior**
 
 Before synchronization, the current `.env` file is saved to the `env-backup/` directory with a timestamped filename
-(e.g. `env-backup/.env.backup_YYYYMMDD_HHMMSS`).
+(e.g. `env-backup/.env.backup_20231218_143022`).
 
 **When to use**
 
