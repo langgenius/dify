@@ -2,7 +2,7 @@ import React from 'react'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import GotoAnything from './index'
-import type { ActionItem } from './actions/types'
+import type { ActionItem, SearchResult } from './actions/types'
 
 const routerPush = jest.fn()
 jest.mock('next/navigation', () => ({
@@ -32,7 +32,7 @@ const triggerKeyPress = (combo: string) => {
   }
 }
 
-let mockQueryResult = { data: [] as any[], isLoading: false, isError: false, error: null as any }
+let mockQueryResult = { data: [] as SearchResult[], isLoading: false, isError: false, error: null as Error | null }
 jest.mock('@tanstack/react-query', () => ({
   useQuery: () => mockQueryResult,
 }))
@@ -121,7 +121,7 @@ describe('GotoAnything', () => {
         path: '/apps/1',
         icon: <div data-testid="icon">🧩</div>,
         data: {},
-      }],
+      } as any],
       isLoading: false,
       isError: false,
       error: null,
@@ -153,7 +153,7 @@ describe('GotoAnything', () => {
           name: 'Plugin Item',
           latest_package_identifier: 'pkg',
         },
-      }],
+      } as any],
       isLoading: false,
       isError: false,
       error: null,

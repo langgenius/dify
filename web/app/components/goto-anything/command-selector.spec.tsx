@@ -28,13 +28,15 @@ const createActions = (): Record<string, ActionItem> => ({
     shortcut: '@app',
     title: 'Apps',
     search: jest.fn(),
-  } as unknown as ActionItem,
+    description: '',
+  } as ActionItem,
   plugin: {
     key: '@plugin',
     shortcut: '@plugin',
     title: 'Plugins',
     search: jest.fn(),
-  } as unknown as ActionItem,
+    description: '',
+  } as ActionItem,
 })
 
 describe('CommandSelector', () => {
