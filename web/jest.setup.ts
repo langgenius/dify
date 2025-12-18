@@ -4,6 +4,13 @@ import { cleanup } from '@testing-library/react'
 // Fix for @headlessui/react compatibility with happy-dom
 // headlessui tries to override focus properties which may be read-only in happy-dom
 if (typeof window !== 'undefined') {
+  // Provide a minimal animations API polyfill before @headlessui/react boots
+  if (typeof Element !== 'undefined' && !Element.prototype.getAnimations)
+    Element.prototype.getAnimations = () => []
+
+  if (!document.getAnimations)
+    document.getAnimations = () => []
+
   const ensureWritable = (target: object, prop: string) => {
     const descriptor = Object.getOwnPropertyDescriptor(target, prop)
     if (descriptor && !descriptor.writable) {
