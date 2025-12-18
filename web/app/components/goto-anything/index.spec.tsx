@@ -111,7 +111,7 @@ describe('GotoAnything', () => {
     searchAnythingMock.mockClear()
   })
 
-  test('should open modal via shortcut and navigate to selected result', async () => {
+  it('should open modal via shortcut and navigate to selected result', async () => {
     mockQueryResult = {
       data: [{
         id: 'app-1',
@@ -140,7 +140,7 @@ describe('GotoAnything', () => {
     expect(routerPush).toHaveBeenCalledWith('/apps/1')
   })
 
-  test('should open plugin installer when selecting plugin result', async () => {
+  it('should open plugin installer when selecting plugin result', async () => {
     mockQueryResult = {
       data: [{
         id: 'plugin-1',
