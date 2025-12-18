@@ -3,6 +3,7 @@ from flask_restx.inputs import int_range
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
+from controllers.common.schema import register_schema_models
 from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
@@ -42,12 +43,8 @@ class SavedMessageListApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("last_id", type=uuid_value, location="args")
-            .add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
-        )
-        args = parser.parse_args()
+        raw_args = request.args.to_dict()
+        query = SavedMessageListQuery.model_validate(raw_args)
 
         pagination = SavedMessageService.pagination_by_last_id(app_model, end_user, args["last_id"], args["limit"])
         adapter = TypeAdapter(SavedMessageItem)
@@ -79,11 +76,10 @@ class SavedMessageListApi(WebApiResource):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
 
-        parser = reqparse.RequestParser().add_argument("message_id", type=uuid_value, required=True, location="json")
-        args = parser.parse_args()
+        payload = SavedMessageCreatePayload.model_validate(web_ns.payload or {})
 
         try:
-            SavedMessageService.save(app_model, end_user, args["message_id"])
+            SavedMessageService.save(app_model, end_user, payload.message_id)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
