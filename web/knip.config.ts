@@ -37,10 +37,6 @@ const config: KnipConfig = {
       'tailwind-common-config.ts',
       'postcss.config.js',
 
-      // Testing configuration
-      'jest.config.ts',
-      'jest.setup.ts',
-
       // Linting configuration
       'eslint.config.mjs',
     ],
@@ -67,10 +63,6 @@ const config: KnipConfig = {
     'tailwind.config.js!',
     'tailwind-common-config.ts!',
     'postcss.config.js!',
-
-    // Testing setup
-    'jest.config.ts!',
-    'jest.setup.ts!',
 
     // Linting setup
     'eslint.config.mjs!',

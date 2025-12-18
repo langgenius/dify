@@ -1,10 +1,10 @@
+import type { ReactNode } from 'react'
+import type { FormSchema } from '../types'
 import {
   isValidElement,
   useCallback,
 } from 'react'
-import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { FormSchema } from '../types'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 
 export const useGetValidators = () => {

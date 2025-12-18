@@ -1,11 +1,12 @@
-import React, { useMemo } from 'react'
 import type { FC } from 'react'
-import Link from 'next/link'
-import cn from '@/utils/classnames'
 import { RiAlertFill } from '@remixicon/react'
-import { Trans } from 'react-i18next'
-import { useMixedTranslation } from '../marketplace/hooks'
 import { camelCase } from 'lodash-es'
+import Link from 'next/link'
+import * as React from 'react'
+import { useMemo } from 'react'
+import { Trans } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import { useMixedTranslation } from '../marketplace/hooks'
 
 type DeprecationNoticeProps = {
   status: 'deleted' | 'active'
@@ -35,13 +36,15 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   const { t } = useMixedTranslation(locale)
 
   const deprecatedReasonKey = useMemo(() => {
-    if (!deprecatedReason) return ''
+    if (!deprecatedReason)
+      return ''
     return camelCase(deprecatedReason)
   }, [deprecatedReason])
 
   // Check if the deprecatedReasonKey exists in i18n
   const hasValidDeprecatedReason = useMemo(() => {
-    if (!deprecatedReason || !deprecatedReasonKey) return false
+    if (!deprecatedReason || !deprecatedReasonKey)
+      return false
 
     // Define valid reason keys that exist in i18n
     const validReasonKeys = ['businessAdjustments', 'ownershipTransferred', 'noMaintainer']
@@ -56,10 +59,11 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
       <div className={cn(
         'relative flex items-start gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
         innerWrapperClassName,
-      )}>
-        <div className='absolute left-0 top-0 -z-10 h-full w-full bg-toast-warning-bg opacity-40' />
+      )}
+      >
+        <div className="absolute left-0 top-0 -z-10 h-full w-full bg-toast-warning-bg opacity-40" />
         <div className={cn('flex size-6 shrink-0 items-center justify-center', iconWrapperClassName)}>
-          <RiAlertFill className='size-4 text-text-warning-secondary' />
+          <RiAlertFill className="size-4 text-text-warning-secondary" />
         </div>
         <div className={cn('system-xs-regular grow py-1 text-text-primary', textClassName)}>
           {
@@ -71,14 +75,14 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                   CustomLink: (
                     <Link
                       href={alternativePluginURL}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='underline'
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
                     />
                   ),
                 }}
                 values={{
-                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}`),
+                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any) as string,
                   alternativePluginId,
                 }}
               />
@@ -87,7 +91,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
           {
             hasValidDeprecatedReason && !alternativePluginId && (
               <span>
-                {t(`${i18nPrefix}.onlyReason`, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}`) })}
+                {t(`${i18nPrefix}.onlyReason` as any, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any) as string }) as string}
               </span>
             )
           }

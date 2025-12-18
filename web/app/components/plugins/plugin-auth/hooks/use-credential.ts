@@ -1,3 +1,4 @@
+import type { CredentialTypeEnum, PluginPayload } from '../types'
 import {
   useAddPluginCredential,
   useDeletePluginCredential,
@@ -12,10 +13,8 @@ import {
   useSetPluginOAuthCustomClient,
   useUpdatePluginCredential,
 } from '@/service/use-plugins-auth'
-import { useGetApi } from './use-get-api'
-import type { PluginPayload } from '../types'
-import type { CredentialTypeEnum } from '../types'
 import { useInvalidToolsByType } from '@/service/use-tools'
+import { useGetApi } from './use-get-api'
 
 export const useGetPluginCredentialInfoHook = (pluginPayload: PluginPayload, enable?: boolean) => {
   const apiMap = useGetApi(pluginPayload)

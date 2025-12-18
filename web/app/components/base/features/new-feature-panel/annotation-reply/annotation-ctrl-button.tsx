@@ -1,17 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiEditLine,
   RiFileEditLine,
 } from '@remixicon/react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
-import { addAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
-import { useProviderContext } from '@/context/provider-context'
+import Tooltip from '@/app/components/base/tooltip'
 import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
+import { addAnnotation } from '@/service/annotation'
 
 type Props = {
   appId: string
@@ -41,7 +41,7 @@ const AnnotationCtrlButton: FC<Props> = ({
       setShowAnnotationFullModal()
       return
     }
-    const res: any = await addAnnotation(appId, {
+    const res = await addAnnotation(appId, {
       message_id: messageId,
       question: query,
       answer,
@@ -50,7 +50,7 @@ const AnnotationCtrlButton: FC<Props> = ({
       message: t('common.api.actionSuccess') as string,
       type: 'success',
     })
-    onAdded(res.id, res.account?.name)
+    onAdded(res.id, res.account?.name ?? '')
   }
 
   return (
@@ -60,7 +60,7 @@ const AnnotationCtrlButton: FC<Props> = ({
           popupContent={t('appDebug.feature.annotation.edit')}
         >
           <ActionButton onClick={onEdit}>
-            <RiEditLine className='h-4 w-4' />
+            <RiEditLine className="h-4 w-4" />
           </ActionButton>
         </Tooltip>
       )}
@@ -69,7 +69,7 @@ const AnnotationCtrlButton: FC<Props> = ({
           popupContent={t('appDebug.feature.annotation.add')}
         >
           <ActionButton onClick={handleAdd}>
-            <RiFileEditLine className='h-4 w-4' />
+            <RiFileEditLine className="h-4 w-4" />
           </ActionButton>
         </Tooltip>
       )}

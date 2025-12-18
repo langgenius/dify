@@ -39,7 +39,7 @@ from core.trigger.errors import (
 plugin_daemon_inner_api_baseurl = URL(str(dify_config.PLUGIN_DAEMON_URL))
 _plugin_daemon_timeout_config = cast(
     float | httpx.Timeout | None,
-    getattr(dify_config, "PLUGIN_DAEMON_TIMEOUT", 300.0),
+    getattr(dify_config, "PLUGIN_DAEMON_TIMEOUT", 600.0),
 )
 plugin_daemon_request_timeout: httpx.Timeout | None
 if _plugin_daemon_timeout_config is None:

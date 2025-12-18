@@ -1,4 +1,6 @@
 const translation = {
+  loading: '加载中',
+  error: '错误',
   theme: {
     theme: '主题',
     light: '浅色',
@@ -11,6 +13,7 @@ const translation = {
     saved: '已保存',
     create: '已创建',
     remove: '已移除',
+    actionFailed: '操作失败',
   },
   operation: {
     create: '创建',
@@ -77,6 +80,8 @@ const translation = {
     selectAll: '全选',
     deSelectAll: '取消全选',
     now: '现在',
+    back: '返回',
+    imageDownloaded: '图片已下载',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
@@ -251,6 +256,7 @@ const translation = {
     feedbackPlaceholder: '选填',
     editWorkspaceInfo: '编辑工作空间信息',
     workspaceName: '工作空间名称',
+    workspaceNamePlaceholder: '输入工作空间名称',
     workspaceIcon: '工作空间图标',
     changeEmail: {
       title: '更改邮箱',
@@ -508,6 +514,7 @@ const translation = {
     emptyProviderTip: '请安装模型供应商。',
     auth: {
       unAuthorized: '未授权',
+      credentialRemoved: '凭据已移除',
       authRemoved: '授权已移除',
       apiKeys: 'API 密钥',
       addApiKey: '添加 API 密钥',

@@ -1,7 +1,7 @@
-import React from 'react'
+import type { ScheduleMode } from '../types'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Asterisk, CalendarCheckLine } from '@/app/components/base/icons/src/vender/workflow'
-import type { ScheduleMode } from '../types'
 
 type ModeToggleProps = {
   mode: ScheduleMode
