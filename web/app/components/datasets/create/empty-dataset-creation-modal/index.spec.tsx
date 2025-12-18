@@ -194,7 +194,7 @@ describe('EmptyDatasetCreationModal', () => {
       expect(input.value).toBe('My Dataset')
     })
 
-    it('should clear input when modal is closed and reopened', () => {
+    it('should persist input value when modal is hidden and shown again via rerender', () => {
       // Arrange
       const onHide = jest.fn()
       const { rerender } = render(<EmptyDatasetCreationModal show={true} onHide={onHide} />)
@@ -204,15 +204,13 @@ describe('EmptyDatasetCreationModal', () => {
       fireEvent.change(input, { target: { value: 'Test Dataset' } })
       expect(input.value).toBe('Test Dataset')
 
-      // Note: In this component, state is not reset when hiding, but React will remount
-      // when show changes. This tests the current behavior.
+      // Hide and show modal via rerender (component is not unmounted, state persists)
       rerender(<EmptyDatasetCreationModal show={false} onHide={onHide} />)
       rerender(<EmptyDatasetCreationModal show={true} onHide={onHide} />)
 
-      // Assert - With component remount, input value persists in current implementation
-      // This documents the current behavior
+      // Assert - Input value persists because component state is preserved during rerender
       const newInput = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
-      expect(newInput).toBeInTheDocument()
+      expect(newInput.value).toBe('Test Dataset')
     })
 
     it('should handle consecutive input changes', () => {

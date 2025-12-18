@@ -1031,18 +1031,18 @@ describe('DatasetUpdateForm', () => {
       expect(stepThreeProps.creationCache).toBeUndefined()
     })
 
-    it('should handle updateResultCache with undefined', async () => {
+    it('should pass result cache to step three', async () => {
       // Arrange
       render(<DatasetUpdateForm />)
       fireEvent.click(screen.getByTestId('step-one-next'))
 
-      // First set a value
+      // Set result cache value
       fireEvent.click(screen.getByTestId('step-two-update-result-cache'))
 
-      // Navigate to step 3 (result will be set)
+      // Navigate to step 3
       fireEvent.click(screen.getByTestId('step-two-next'))
 
-      // Assert - Result cache is set
+      // Assert - Result cache is correctly passed to step three
       expect(stepThreeProps.creationCache).toBeDefined()
       expect(stepThreeProps.creationCache?.batch).toBe('batch-1')
     })
