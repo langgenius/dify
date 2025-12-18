@@ -4,6 +4,7 @@ import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce } from 'immer'
 import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
+import { buildWorkflowOutputParameters } from './utils'
 import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import Input from '@/app/components/base/input'
@@ -47,7 +48,9 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [name, setName] = useState(payload.name)
   const [description, setDescription] = useState(payload.description)
   const [parameters, setParameters] = useState<WorkflowToolProviderParameter[]>(payload.parameters)
-  const outputParameters = useMemo<WorkflowToolProviderOutputParameter[]>(() => payload.outputParameters, [payload.outputParameters])
+  const rawOutputParameters = payload.outputParameters
+  const outputSchema = payload.tool?.output_schema
+  const outputParameters = useMemo<WorkflowToolProviderOutputParameter[]>(() => buildWorkflowOutputParameters(rawOutputParameters, outputSchema), [rawOutputParameters, outputSchema])
   const reservedOutputParameters: WorkflowToolProviderOutputParameter[] = [
     {
       name: 'text',
