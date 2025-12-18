@@ -446,6 +446,40 @@ describe('EditAnnotationModal', () => {
       expect(mockOnAdded).not.toHaveBeenCalled()
     })
 
+    it('should show fallback error message when addAnnotation error has no message', async () => {
+      // Arrange
+      const mockOnAdded = jest.fn()
+      const props = {
+        ...defaultProps,
+        onAdded: mockOnAdded,
+      }
+      const user = userEvent.setup()
+
+      mockAddAnnotation.mockRejectedValueOnce({})
+
+      // Act
+      render(<EditAnnotationModal {...props} />)
+
+      const editLinks = screen.getAllByText(/common\.operation\.edit/i)
+      await user.click(editLinks[0])
+
+      const textarea = screen.getByRole('textbox')
+      await user.clear(textarea)
+      await user.type(textarea, 'New query content')
+
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+      await user.click(saveButton)
+
+      // Assert
+      await waitFor(() => {
+        expect(toastNotifySpy).toHaveBeenCalledWith({
+          message: 'common.api.actionFailed',
+          type: 'error',
+        })
+      })
+      expect(mockOnAdded).not.toHaveBeenCalled()
+    })
+
     it('should show error toast and skip callbacks when editAnnotation fails', async () => {
       // Arrange
       const mockOnEdited = jest.fn()
@@ -478,6 +512,42 @@ describe('EditAnnotationModal', () => {
       await waitFor(() => {
         expect(toastNotifySpy).toHaveBeenCalledWith({
           message: 'API Error',
+          type: 'error',
+        })
+      })
+      expect(mockOnEdited).not.toHaveBeenCalled()
+    })
+
+    it('should show fallback error message when editAnnotation error is not an Error instance', async () => {
+      // Arrange
+      const mockOnEdited = jest.fn()
+      const props = {
+        ...defaultProps,
+        annotationId: 'test-annotation-id',
+        messageId: 'test-message-id',
+        onEdited: mockOnEdited,
+      }
+      const user = userEvent.setup()
+
+      mockEditAnnotation.mockRejectedValueOnce('oops')
+
+      // Act
+      render(<EditAnnotationModal {...props} />)
+
+      const editLinks = screen.getAllByText(/common\.operation\.edit/i)
+      await user.click(editLinks[0])
+
+      const textarea = screen.getByRole('textbox')
+      await user.clear(textarea)
+      await user.type(textarea, 'Modified query')
+
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+      await user.click(saveButton)
+
+      // Assert
+      await waitFor(() => {
+        expect(toastNotifySpy).toHaveBeenCalledWith({
+          message: 'common.api.actionFailed',
           type: 'error',
         })
       })

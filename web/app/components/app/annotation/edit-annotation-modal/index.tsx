@@ -63,12 +63,12 @@ const EditAnnotationModal: FC<Props> = ({
         onEdited(postQuery, postAnswer)
       }
       else {
-        const res: any = await addAnnotation(appId, {
+        const res = await addAnnotation(appId, {
           question: postQuery,
           answer: postAnswer,
           message_id: messageId,
         })
-        onAdded(res.id, res.account?.name, postQuery, postAnswer)
+        onAdded(res.id, res.account?.name ?? '', postQuery, postAnswer)
       }
 
       Toast.notify({

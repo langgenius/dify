@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import ParamsConfig from './index'
 import ConfigContext from '@/context/debug-configuration'
 import type { DatasetConfigs } from '@/models/debug'
@@ -152,21 +153,27 @@ describe('dataset-config/params-config', () => {
     it('should open modal and persist changes when save is clicked', async () => {
       // Arrange
       const { setDatasetConfigsSpy } = renderParamsConfig()
+      const user = userEvent.setup()
 
       // Act
-      fireEvent.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
+      await user.click(screen.getByRole('button', { name: 'dataset.retrievalSettings' }))
       const dialog = await screen.findByRole('dialog', {}, { timeout: 3000 })
       const dialogScope = within(dialog)
 
-      // Change top_k via the first number input increment control.
       const incrementButtons = dialogScope.getAllByRole('button', { name: 'increment' })
-      fireEvent.click(incrementButtons[0])
+      await user.click(incrementButtons[0])
 
-      const saveButton = await dialogScope.findByRole('button', { name: 'common.operation.save' })
-      fireEvent.click(saveButton)
+      await waitFor(() => {
+        const [topKInput] = dialogScope.getAllByRole('spinbutton')
+        expect(topKInput).toHaveValue(5)
+      })
+
+      await user.click(dialogScope.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
-      expect(setDatasetConfigsSpy).toHaveBeenCalledWith(expect.objectContaining({ top_k: 5 }))
+      await waitFor(() => {
+        expect(setDatasetConfigsSpy).toHaveBeenCalledWith(expect.objectContaining({ top_k: 5 }))
+      })
       await waitFor(() => {
         expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
       })

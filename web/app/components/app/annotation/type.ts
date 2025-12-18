@@ -4,6 +4,13 @@ export type AnnotationItemBasic = {
   answer: string
 }
 
+export type AnnotationCreateResponse = {
+  id: string
+  account?: {
+    name?: string
+  }
+}
+
 export type AnnotationItem = {
   id: string
   question: string
