@@ -19,15 +19,15 @@ class TagBasePayload(BaseModel):
 
 
 class TagBindingPayload(BaseModel):
-    tag_ids: list[str]
-    target_id: str
-    type: Literal["knowledge", "app"] | None = None
+    tag_ids: list[str] = Field(description="Tag IDs to bind")
+    target_id: str = Field(description="Target ID to bind tags to")
+    type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
 
 
 class TagBindingRemovePayload(BaseModel):
-    tag_id: str
-    target_id: str
-    type: Literal["knowledge", "app"] | None = None
+    tag_id: str = Field(description="Tag ID to remove")
+    target_id: str = Field(description="Target ID to unbind tag from")
+    type: Literal["knowledge", "app"] | None = Field(default=None, description="Tag type")
 
 
 register_schema_models(
