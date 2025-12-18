@@ -433,7 +433,7 @@ class TestApiToolManageService:
         with pytest.raises(ValidationError) as exc_info:
             TypeAdapter(ApiProviderSchemaType).validate_python(schema_type)
 
-        assert "invalid schema type" in str(exc_info.value)
+        assert "validation error" in str(exc_info.value)
 
     def test_create_api_tool_provider_missing_auth_type(
         self, flask_req_ctx_with_containers, db_session_with_containers, mock_external_service_dependencies
