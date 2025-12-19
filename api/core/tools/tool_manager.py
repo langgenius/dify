@@ -80,6 +80,54 @@ class ToolManager:
     _builtin_tools_labels: dict[str, Union[I18nObject, None]] = {}
 
     @classmethod
+    def _refresh_oauth_credentials(
+        cls,
+        tenant_id: str,
+        provider_id: str,
+        user_id: str,
+        decrypted_credentials: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], int]:
+        """
+        Refresh OAuth credentials for a provider.
+
+        This is a helper method to centralize the OAuth token refresh logic
+        used by both end-user and workspace authentication flows.
+
+        :param tenant_id: the tenant id
+        :param provider_id: the provider id
+        :param user_id: the user id (end_user_id or workspace user_id)
+        :param decrypted_credentials: the current decrypted credentials
+
+        :return: tuple of (refreshed credentials dict, expires_at timestamp)
+        """
+        from core.plugin.impl.oauth import OAuthHandler
+
+        # Local import to avoid circular dependency at module level
+        # This import is necessary but creates a cycle: tool_manager -> builtin_tools_manage_service -> tool_manager
+        # TODO: Break the circular dependency by refactoring service layer
+        from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+
+        # Parse provider ID and build OAuth configuration
+        tool_provider = ToolProviderID(provider_id)
+        provider_name = tool_provider.provider_name
+        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
+        system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
+
+        # Refresh the credentials using OAuth handler
+        oauth_handler = OAuthHandler()
+        refreshed_credentials = oauth_handler.refresh_credentials(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            plugin_id=tool_provider.plugin_id,
+            provider=provider_name,
+            redirect_uri=redirect_uri,
+            system_credentials=system_credentials or {},
+            credentials=decrypted_credentials,
+        )
+
+        return refreshed_credentials.credentials, refreshed_credentials.expires_at
+
+    @classmethod
     def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
         """
 
@@ -244,34 +292,19 @@ class ToolManager:
 
                 # Handle OAuth token refresh for end-users if expired
                 if enduser_provider.expires_at != -1 and (enduser_provider.expires_at - 60) < int(time.time()):
-                    from core.plugin.impl.oauth import OAuthHandler
-                    from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-
-                    # refresh the credentials
-                    tool_provider = ToolProviderID(provider_id)
-                    provider_name = tool_provider.provider_name
-                    # Use the same redirect URI as workspace OAuth to reuse the same OAuth client
-                    redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
-                    system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
-
-                    oauth_handler = OAuthHandler()
-                    # refresh the credentials
-                    refreshed_credentials = oauth_handler.refresh_credentials(
+                    # Refresh credentials using the centralized helper method
+                    refreshed_credentials, expires_at = cls._refresh_oauth_credentials(
                         tenant_id=tenant_id,
+                        provider_id=provider_id,
                         user_id=end_user_id,
-                        plugin_id=tool_provider.plugin_id,
-                        provider=provider_name,
-                        redirect_uri=redirect_uri,
-                        system_credentials=system_credentials or {},
-                        credentials=decrypted_credentials,
+                        decrypted_credentials=decrypted_credentials,
                     )
-                    # update the credentials
-                    enduser_provider.encrypted_credentials = json.dumps(
-                        encrypter.encrypt(refreshed_credentials.credentials)
-                    )
-                    enduser_provider.expires_at = refreshed_credentials.expires_at
+
+                    # Update the provider with refreshed credentials
+                    enduser_provider.encrypted_credentials = json.dumps(encrypter.encrypt(refreshed_credentials))
+                    enduser_provider.expires_at = expires_at
                     db.session.commit()
-                    decrypted_credentials = refreshed_credentials.credentials
+                    decrypted_credentials = refreshed_credentials
                     cache.delete()
 
                 return cast(
@@ -359,34 +392,19 @@ class ToolManager:
 
             # check if the credentials is expired
             if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
-                # TODO: circular import
-                from core.plugin.impl.oauth import OAuthHandler
-                from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-
-                # refresh the credentials
-                tool_provider = ToolProviderID(provider_id)
-                provider_name = tool_provider.provider_name
-                redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
-                system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
-
-                oauth_handler = OAuthHandler()
-                # refresh the credentials
-                refreshed_credentials = oauth_handler.refresh_credentials(
+                # Refresh credentials using the centralized helper method
+                refreshed_credentials, expires_at = cls._refresh_oauth_credentials(
                     tenant_id=tenant_id,
+                    provider_id=provider_id,
                     user_id=builtin_provider.user_id,
-                    plugin_id=tool_provider.plugin_id,
-                    provider=provider_name,
-                    redirect_uri=redirect_uri,
-                    system_credentials=system_credentials or {},
-                    credentials=decrypted_credentials,
+                    decrypted_credentials=decrypted_credentials,
                 )
-                # update the credentials
-                builtin_provider.encrypted_credentials = json.dumps(
-                    encrypter.encrypt(refreshed_credentials.credentials)
-                )
-                builtin_provider.expires_at = refreshed_credentials.expires_at
+
+                # Update the provider with refreshed credentials
+                builtin_provider.encrypted_credentials = json.dumps(encrypter.encrypt(refreshed_credentials))
+                builtin_provider.expires_at = expires_at
                 db.session.commit()
-                decrypted_credentials = refreshed_credentials.credentials
+                decrypted_credentials = refreshed_credentials
                 cache.delete()
 
             return cast(
