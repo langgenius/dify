@@ -66,6 +66,7 @@ class ToolNode(Node[ToolNodeData]):
         # get tool runtime
         try:
             from core.tools.tool_manager import ToolManager
+            from models.enums import UserFrom
 
             # This is an issue that caused problems before.
             # Logically, we shouldn't use the node_data.version field for judgment
@@ -74,8 +75,20 @@ class ToolNode(Node[ToolNodeData]):
             variable_pool: VariablePool | None = None
             if self.node_data.version != "1" or self.node_data.tool_node_version is not None:
                 variable_pool = self.graph_runtime_state.variable_pool
+
+            # Determine end_user_id based on user_from
+            end_user_id = None
+            if self.user_from == UserFrom.END_USER:
+                end_user_id = self.user_id
+
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self._node_id, self.node_data, self.invoke_from, variable_pool
+                self.tenant_id,
+                self.app_id,
+                self._node_id,
+                self.node_data,
+                self.invoke_from,
+                variable_pool,
+                end_user_id,
             )
         except ToolNodeError as e:
             yield StreamCompletedEvent(

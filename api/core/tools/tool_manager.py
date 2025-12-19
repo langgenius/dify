@@ -49,6 +49,7 @@ from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ToolAuthType,
     ToolInvokeFrom,
     ToolParameter,
     ToolProviderType,
@@ -58,7 +59,7 @@ from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.tools.utils.encryption import create_provider_encrypter, create_tool_provider_encrypter
 from core.tools.workflow_as_tool.tool import WorkflowTool
-from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
+from models.tools import ApiToolProvider, BuiltinToolProvider, EndUserAuthenticationProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
 
 if TYPE_CHECKING:
@@ -77,6 +78,54 @@ class ToolManager:
     _hardcoded_providers: dict[str, BuiltinToolProviderController] = {}
     _builtin_providers_loaded = False
     _builtin_tools_labels: dict[str, Union[I18nObject, None]] = {}
+
+    @classmethod
+    def _refresh_oauth_credentials(
+        cls,
+        tenant_id: str,
+        provider_id: str,
+        user_id: str,
+        decrypted_credentials: Mapping[str, Any],
+    ) -> tuple[dict[str, Any], int]:
+        """
+        Refresh OAuth credentials for a provider.
+
+        This is a helper method to centralize the OAuth token refresh logic
+        used by both end-user and workspace authentication flows.
+
+        :param tenant_id: the tenant id
+        :param provider_id: the provider id
+        :param user_id: the user id (end_user_id or workspace user_id)
+        :param decrypted_credentials: the current decrypted credentials
+
+        :return: tuple of (refreshed credentials dict, expires_at timestamp)
+        """
+        from core.plugin.impl.oauth import OAuthHandler
+
+        # Local import to avoid circular dependency at module level
+        # This import is necessary but creates a cycle: tool_manager -> builtin_tools_manage_service -> tool_manager
+        # TODO: Break the circular dependency by refactoring service layer
+        from services.tools.builtin_tools_manage_service import BuiltinToolManageService
+
+        # Parse provider ID and build OAuth configuration
+        tool_provider = ToolProviderID(provider_id)
+        provider_name = tool_provider.provider_name
+        redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
+        system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
+
+        # Refresh the credentials using OAuth handler
+        oauth_handler = OAuthHandler()
+        refreshed_credentials = oauth_handler.refresh_credentials(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            plugin_id=tool_provider.plugin_id,
+            provider=provider_name,
+            redirect_uri=redirect_uri,
+            system_credentials=system_credentials or {},
+            credentials=decrypted_credentials,
+        )
+
+        return refreshed_credentials.credentials, refreshed_credentials.expires_at
 
     @classmethod
     def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
@@ -165,6 +214,8 @@ class ToolManager:
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
         credential_id: str | None = None,
+        auth_type: ToolAuthType = ToolAuthType.WORKSPACE,
+        end_user_id: str | None = None,
     ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool, MCPTool]:
         """
         get the tool runtime
@@ -176,6 +227,8 @@ class ToolManager:
         :param invoke_from: invoke from
         :param tool_invoke_from: the tool invoke from
         :param credential_id: the credential id
+        :param auth_type: the authentication type (workspace or end_user)
+        :param end_user_id: the end user id (required when auth_type is END_USER)
 
         :return: the tool
         """
@@ -200,6 +253,75 @@ class ToolManager:
                         )
                     ),
                 )
+
+            # Handle end-user authentication
+            if auth_type == ToolAuthType.END_USER:
+                if not end_user_id:
+                    raise ToolProviderNotFoundError("end_user_id is required for END_USER auth_type")
+
+                # Query end-user credentials
+                enduser_provider = (
+                    db.session.query(EndUserAuthenticationProvider)
+                    .where(
+                        EndUserAuthenticationProvider.tenant_id == tenant_id,
+                        EndUserAuthenticationProvider.end_user_id == end_user_id,
+                        EndUserAuthenticationProvider.provider == provider_id,
+                    )
+                    .order_by(EndUserAuthenticationProvider.created_at.asc())
+                    .first()
+                )
+
+                if enduser_provider is None:
+                    raise ToolProviderNotFoundError(
+                        f"No end-user credentials found for provider {provider_id}"
+                    )
+
+                # Decrypt end-user credentials
+                encrypter, cache = create_provider_encrypter(
+                    tenant_id=tenant_id,
+                    config=[
+                        x.to_basic_provider_config()
+                        for x in provider_controller.get_credentials_schema_by_type(enduser_provider.credential_type)
+                    ],
+                    cache=ToolProviderCredentialsCache(
+                        tenant_id=tenant_id, provider=provider_id, credential_id=enduser_provider.id
+                    ),
+                )
+
+                decrypted_credentials: Mapping[str, Any] = encrypter.decrypt(enduser_provider.credentials)
+
+                # Handle OAuth token refresh for end-users if expired
+                if enduser_provider.expires_at != -1 and (enduser_provider.expires_at - 60) < int(time.time()):
+                    # Refresh credentials using the centralized helper method
+                    refreshed_credentials, expires_at = cls._refresh_oauth_credentials(
+                        tenant_id=tenant_id,
+                        provider_id=provider_id,
+                        user_id=end_user_id,
+                        decrypted_credentials=decrypted_credentials,
+                    )
+
+                    # Update the provider with refreshed credentials
+                    enduser_provider.encrypted_credentials = json.dumps(encrypter.encrypt(refreshed_credentials))
+                    enduser_provider.expires_at = expires_at
+                    db.session.commit()
+                    decrypted_credentials = refreshed_credentials
+                    cache.delete()
+
+                return cast(
+                    BuiltinTool,
+                    builtin_tool.fork_tool_runtime(
+                        runtime=ToolRuntime(
+                            tenant_id=tenant_id,
+                            credentials=dict(decrypted_credentials),
+                            credential_type=CredentialType.of(enduser_provider.credential_type),
+                            runtime_parameters={},
+                            invoke_from=invoke_from,
+                            tool_invoke_from=tool_invoke_from,
+                        )
+                    ),
+                )
+
+            # Handle workspace authentication (existing logic)
             builtin_provider = None
             if isinstance(provider_controller, PluginToolProviderController):
                 provider_id_entity = ToolProviderID(provider_id)
@@ -270,34 +392,19 @@ class ToolManager:
 
             # check if the credentials is expired
             if builtin_provider.expires_at != -1 and (builtin_provider.expires_at - 60) < int(time.time()):
-                # TODO: circular import
-                from core.plugin.impl.oauth import OAuthHandler
-                from services.tools.builtin_tools_manage_service import BuiltinToolManageService
-
-                # refresh the credentials
-                tool_provider = ToolProviderID(provider_id)
-                provider_name = tool_provider.provider_name
-                redirect_uri = f"{dify_config.CONSOLE_API_URL}/console/api/oauth/plugin/{provider_id}/tool/callback"
-                system_credentials = BuiltinToolManageService.get_oauth_client(tenant_id, provider_id)
-
-                oauth_handler = OAuthHandler()
-                # refresh the credentials
-                refreshed_credentials = oauth_handler.refresh_credentials(
+                # Refresh credentials using the centralized helper method
+                refreshed_credentials, expires_at = cls._refresh_oauth_credentials(
                     tenant_id=tenant_id,
+                    provider_id=provider_id,
                     user_id=builtin_provider.user_id,
-                    plugin_id=tool_provider.plugin_id,
-                    provider=provider_name,
-                    redirect_uri=redirect_uri,
-                    system_credentials=system_credentials or {},
-                    credentials=decrypted_credentials,
+                    decrypted_credentials=decrypted_credentials,
                 )
-                # update the credentials
-                builtin_provider.encrypted_credentials = json.dumps(
-                    encrypter.encrypt(refreshed_credentials.credentials)
-                )
-                builtin_provider.expires_at = refreshed_credentials.expires_at
+
+                # Update the provider with refreshed credentials
+                builtin_provider.encrypted_credentials = json.dumps(encrypter.encrypt(refreshed_credentials))
+                builtin_provider.expires_at = expires_at
                 db.session.commit()
-                decrypted_credentials = refreshed_credentials.credentials
+                decrypted_credentials = refreshed_credentials
                 cache.delete()
 
             return cast(
@@ -368,6 +475,7 @@ class ToolManager:
         agent_tool: AgentToolEntity,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Optional["VariablePool"] = None,
+        end_user_id: str | None = None,
     ) -> Tool:
         """
         get the agent tool runtime
@@ -380,6 +488,8 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.AGENT,
             credential_id=agent_tool.credential_id,
+            auth_type=agent_tool.auth_type,
+            end_user_id=end_user_id,
         )
         runtime_parameters = {}
         parameters = tool_entity.get_merged_runtime_parameters()
@@ -410,6 +520,7 @@ class ToolManager:
         workflow_tool: "ToolEntity",
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         variable_pool: Optional["VariablePool"] = None,
+        end_user_id: str | None = None,
     ) -> Tool:
         """
         get the workflow tool runtime
@@ -423,6 +534,8 @@ class ToolManager:
             invoke_from=invoke_from,
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
             credential_id=workflow_tool.credential_id,
+            auth_type=workflow_tool.auth_type,
+            end_user_id=end_user_id,
         )
 
         parameters = tool_runtime.get_merged_runtime_parameters()

@@ -3,7 +3,7 @@ from typing import Any, Union
 
 from pydantic import BaseModel, Field
 
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
+from core.tools.entities.tool_entities import ToolAuthType, ToolInvokeMessage, ToolProviderType
 
 
 class AgentToolEntity(BaseModel):
@@ -17,6 +17,7 @@ class AgentToolEntity(BaseModel):
     tool_parameters: dict[str, Any] = Field(default_factory=dict)
     plugin_unique_identifier: str | None = None
     credential_id: str | None = None
+    auth_type: ToolAuthType = ToolAuthType.WORKSPACE
 
 
 class AgentPromptEntity(BaseModel):
