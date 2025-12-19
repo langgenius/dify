@@ -43,7 +43,7 @@ const Button = ({ className, variant, size, destructive, loading, styleCss, chil
     <button
       type='button'
       className={cn(buttonVariants({ variant, size, className }),
-      destructive && 'btn-destructive',)}
+        destructive && 'btn-destructive')}
       ref={ref}
       style={styleCss}
       {...props}

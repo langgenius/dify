@@ -21,8 +21,8 @@ const ExploreNav = ({
 
   return (
     <Link href="/explore/apps" className={cn(className, 'group',
-    activated && 'bg-components-main-nav-nav-button-bg-active shadow-md',
-    activated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover',)}>
+      activated && 'bg-components-main-nav-nav-button-bg-active shadow-md',
+      activated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover')}>
       {
         activated
           ? <RiPlanetFill className='h-4 w-4' />

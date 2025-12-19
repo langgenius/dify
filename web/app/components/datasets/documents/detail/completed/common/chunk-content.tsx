@@ -17,7 +17,7 @@ const Textarea: FC<IContentProps> = React.memo(({
   return (
     <textarea
       className={cn('inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-none',
-      className,)}
+        className)}
       placeholder={placeholder}
       value={value}
       disabled={disabled}
@@ -81,7 +81,7 @@ const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(({
     <textarea
       ref={textareaRef}
       className={cn('inset-0 w-full resize-none appearance-none border-none bg-transparent outline-none',
-      className,)}
+        className)}
       style={{
         maxHeight,
       }}

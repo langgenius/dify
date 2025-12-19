@@ -154,7 +154,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
     <div className={'flex h-full flex-col'}>
       <div
         className={cn('flex items-center justify-between',
-        fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3',)}
+          fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}
       >
         <div className='flex flex-col'>
           <div className='system-xl-semibold text-text-primary'>

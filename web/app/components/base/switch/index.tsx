@@ -61,18 +61,18 @@ const Switch = (
         onChange?.(checked)
       }}
       className={cn(wrapStyle[size],
-      enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
-      'relative inline-flex  shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out',
-      disabled ? '!cursor-not-allowed !opacity-50' : '',
-      size === 'xs' && 'rounded-sm',
-      className,)}
+        enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
+        'relative inline-flex  shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out',
+        disabled ? '!cursor-not-allowed !opacity-50' : '',
+        size === 'xs' && 'rounded-sm',
+        className)}
     >
       <span
         aria-hidden="true"
         className={cn(circleStyle[size],
-        enabled ? translateLeft[size] : 'translate-x-0',
-        size === 'xs' && 'rounded-[1px]',
-        'pointer-events-none inline-block rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out',)}
+          enabled ? translateLeft[size] : 'translate-x-0',
+          size === 'xs' && 'rounded-[1px]',
+          'pointer-events-none inline-block rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out')}
       />
     </OriginalSwitch>
   )

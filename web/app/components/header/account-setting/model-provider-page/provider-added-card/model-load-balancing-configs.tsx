@@ -147,9 +147,9 @@ const ModelLoadBalancingConfigs = ({
     <>
       <div
         className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
-        (withSwitch || !draftConfig.enabled) ? 'border-components-panel-border' : 'border-util-colors-blue-blue-600',
-        (withSwitch || draftConfig.enabled) ? 'cursor-default' : 'cursor-pointer',
-        className,)}
+          (withSwitch || !draftConfig.enabled) ? 'border-components-panel-border' : 'border-util-colors-blue-blue-600',
+          (withSwitch || draftConfig.enabled) ? 'cursor-default' : 'cursor-pointer',
+          className)}
         onClick={(!withSwitch && !draftConfig.enabled) ? () => toggleModalBalancing(true) : undefined}
       >
         <div className='flex select-none items-center gap-2 px-[15px] py-3'>

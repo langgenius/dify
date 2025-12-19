@@ -55,7 +55,7 @@ const ActionButton = ({ className, size, state = ActionButtonState.Default, styl
     <button
       type='button'
       className={cn(actionButtonVariants({ className, size }),
-      getActionButtonState(state),)}
+        getActionButtonState(state))}
       ref={ref}
       style={styleCss}
       {...props}

@@ -13,7 +13,7 @@ const PreviewContainer: FC<PreviewContainerProps> = (props) => {
     <div
       {...rest}
       ref={ref}
-      className={cn('flex h-full w-full flex-col rounded-tl-xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5',)}
+      className={cn('flex h-full w-full flex-col rounded-tl-xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5')}
     >
       <header className='border-b border-divider-subtle pb-3 pl-5 pr-4 pt-4'>
         {header}

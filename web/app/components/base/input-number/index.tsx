@@ -95,8 +95,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
       size={size}
     />
     <div className={cn('flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs',
-    disabled && 'cursor-not-allowed opacity-50',
-    controlWrapClassName)}
+      disabled && 'cursor-not-allowed opacity-50',
+      controlWrapClassName)}
     >
       <button
         type='button'
@@ -104,9 +104,9 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
         disabled={disabled}
         aria-label='increment'
         className={cn(size === 'regular' ? 'pt-1' : 'pt-1.5',
-        'px-1.5 hover:bg-components-input-bg-hover',
-        disabled && 'cursor-not-allowed hover:bg-transparent',
-        controlClassName,)}
+          'px-1.5 hover:bg-components-input-bg-hover',
+          disabled && 'cursor-not-allowed hover:bg-transparent',
+          controlClassName)}
       >
         <RiArrowUpSLine className='size-3' />
       </button>
@@ -116,9 +116,9 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
         disabled={disabled}
         aria-label='decrement'
         className={cn(size === 'regular' ? 'pb-1' : 'pb-1.5',
-        'px-1.5 hover:bg-components-input-bg-hover',
-        disabled && 'cursor-not-allowed hover:bg-transparent',
-        controlClassName,)}
+          'px-1.5 hover:bg-components-input-bg-hover',
+          disabled && 'cursor-not-allowed hover:bg-transparent',
+          controlClassName)}
       >
         <RiArrowDownSLine className='size-3' />
       </button>

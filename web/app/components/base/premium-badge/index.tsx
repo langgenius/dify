@@ -53,14 +53,14 @@ const PremiumBadge: React.FC<PremiumBadgeProps> = ({
   return (
     <div
       className={cn(PremiumBadgeVariants({ size, color, allowHover, className }),
-      'relative text-nowrap',)}
+        'relative text-nowrap')}
       style={styleCss}
       {...props}
     >
       {children}
       <Highlight
         className={cn('absolute right-1/2 top-0 translate-x-[20%] opacity-50 transition-all duration-100 ease-out hover:translate-x-[30%] hover:opacity-80',
-        size === 's' ? 'h-[18px] w-12' : 'h-6 w-12',)}
+          size === 's' ? 'h-[18px] w-12' : 'h-6 w-12')}
       />
     </div>
   )

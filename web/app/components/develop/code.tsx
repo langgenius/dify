@@ -51,9 +51,9 @@ function CopyButton({ code }: { code: string }) {
     <button
       type="button"
       className={cn('group/button absolute right-4 top-1.5 overflow-hidden rounded-full py-1 pl-2 pr-3 text-2xs font-medium opacity-0 backdrop-blur transition focus:opacity-100 group-hover:opacity-100',
-      copied
-        ? 'bg-emerald-400/10 ring-1 ring-inset ring-emerald-400/20'
-        : 'hover:bg-white/7.5 dark:bg-white/2.5 bg-white/5 dark:hover:bg-white/5',)}
+        copied
+          ? 'bg-emerald-400/10 ring-1 ring-inset ring-emerald-400/20'
+          : 'hover:bg-white/7.5 dark:bg-white/2.5 bg-white/5 dark:hover:bg-white/5')}
       onClick={() => {
         writeTextToClipboard(code).then(() => {
           setCopyCount(count => count + 1)
@@ -63,7 +63,7 @@ function CopyButton({ code }: { code: string }) {
       <span
         aria-hidden={copied}
         className={cn('pointer-events-none flex items-center gap-0.5 text-zinc-400 transition duration-300',
-        copied && '-translate-y-1.5 opacity-0',)}
+          copied && '-translate-y-1.5 opacity-0')}
       >
         <ClipboardIcon className="h-5 w-5 fill-zinc-500/20 stroke-zinc-500 transition-colors group-hover/button:stroke-zinc-400" />
         Copy
@@ -71,7 +71,7 @@ function CopyButton({ code }: { code: string }) {
       <span
         aria-hidden={!copied}
         className={cn('pointer-events-none absolute inset-0 flex items-center justify-center text-emerald-400 transition duration-300',
-        !copied && 'translate-y-1.5 opacity-0',)}
+          !copied && 'translate-y-1.5 opacity-0')}
       >
         Copied!
       </span>
@@ -163,9 +163,9 @@ function CodeGroupHeader({ title, tabTitles, selectedIndex }: CodeGroupHeaderPro
             <Tab
               key={tabIndex}
               className={cn('border-b py-3 transition focus:[&:not(:focus-visible)]:outline-none',
-              tabIndex === selectedIndex
-                ? 'border-emerald-500 text-emerald-400'
-                : 'border-transparent text-zinc-400 hover:text-zinc-300',)}
+                tabIndex === selectedIndex
+                  ? 'border-emerald-500 text-emerald-400'
+                  : 'border-transparent text-zinc-400 hover:text-zinc-300')}
             >
               {tabTitle}
             </Tab>

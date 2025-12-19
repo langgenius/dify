@@ -95,7 +95,7 @@ const SchemaNode: FC<SchemaNodeProps> = ({
       <div className={cn('relative z-10', indentPadding[depth])}>
         {depth > 0 && hasChildren && (
           <div className={cn('absolute top-0 z-10 flex h-7 w-5 items-center bg-background-section-burn px-0.5',
-          indentLeft[depth - 1],)}>
+            indentLeft[depth - 1])}>
             <button
               type="button"
               onClick={handleExpand}
@@ -139,8 +139,8 @@ const SchemaNode: FC<SchemaNodeProps> = ({
       </div>
 
       <div className={cn('absolute z-0 flex w-5 justify-center',
-      schema.description ? 'top-12 h-[calc(100%-3rem)]' : 'top-7 h-[calc(100%-1.75rem)]',
-      indentLeft[depth],)}>
+        schema.description ? 'top-12 h-[calc(100%-3rem)]' : 'top-7 h-[calc(100%-1.75rem)]',
+        indentLeft[depth])}>
         <Divider
           type='vertical'
           className={cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}

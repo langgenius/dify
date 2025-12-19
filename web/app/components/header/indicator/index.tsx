@@ -49,10 +49,10 @@ export default function Indicator({
     <div
       data-testid="status-indicator"
       className={cn('h-2 w-2 rounded-[3px] border border-solid',
-      BACKGROUND_MAP[color],
-      BORDER_MAP[color],
-      SHADOW_MAP[color],
-      className,)}
+        BACKGROUND_MAP[color],
+        BORDER_MAP[color],
+        SHADOW_MAP[color],
+        className)}
     />
   )
 }

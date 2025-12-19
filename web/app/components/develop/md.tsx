@@ -72,7 +72,7 @@ export function Col({ children, sticky = false }: IColProps) {
   return (
     <div
       className={cn('[&>:first-child]:mt-0 [&>:last-child]:mb-0',
-      sticky && 'xl:sticky xl:top-24',)}
+        sticky && 'xl:sticky xl:top-24')}
     >
       {children}
     </div>

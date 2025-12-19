@@ -36,19 +36,19 @@ const CustomDialog = ({
       <Dialog as="div" className="relative z-40" onClose={close}>
         <TransitionChild>
           <div className={cn('fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]',
-          'duration-300 ease-in data-[closed]:opacity-0',
-          'data-[enter]:opacity-100',
-          'data-[leave]:opacity-0',)} />
+            'duration-300 ease-in data-[closed]:opacity-0',
+            'data-[enter]:opacity-100',
+            'data-[leave]:opacity-0')} />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
           <div className="flex min-h-full items-center justify-center">
             <TransitionChild>
               <DialogPanel className={cn('w-full max-w-[800px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-6 shadow-xl transition-all',
-              'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
-              'data-[enter]:scale-100 data-[enter]:opacity-100',
-              'data-[enter]:scale-95 data-[leave]:opacity-0',
-              className,)}>
+                'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100',
+                'data-[enter]:scale-95 data-[leave]:opacity-0',
+                className)}>
                 {Boolean(title) && (
                   <DialogTitle
                     as={titleAs || 'h3'}

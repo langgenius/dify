@@ -41,10 +41,10 @@ export default function Modal({
       <Dialog as="div" className={cn('relative', highPriority ? 'z-[1100]' : 'z-[60]', wrapperClassName)} onClose={clickOutsideNotClose ? noop : onClose}>
         <TransitionChild>
           <div className={cn('fixed inset-0',
-          overlayOpacity ? 'bg-workflow-canvas-canvas-overlay' : 'bg-background-overlay',
-          'duration-300 ease-in data-[closed]:opacity-0',
-          'data-[enter]:opacity-100',
-          'data-[leave]:opacity-0',)} />
+            overlayOpacity ? 'bg-workflow-canvas-canvas-overlay' : 'bg-background-overlay',
+            'duration-300 ease-in data-[closed]:opacity-0',
+            'data-[enter]:opacity-100',
+            'data-[leave]:opacity-0')} />
         </TransitionChild>
         <div
           className="fixed inset-0 overflow-y-auto"
@@ -56,11 +56,11 @@ export default function Modal({
           <div className={cn('flex min-h-full items-center justify-center p-4 text-center', containerClassName)}>
             <TransitionChild>
               <DialogPanel className={cn('relative w-full max-w-[480px] rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',
-              overflowVisible ? 'overflow-visible' : 'overflow-hidden',
-              'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
-              'data-[enter]:scale-100 data-[enter]:opacity-100',
-              'data-[enter]:scale-95 data-[leave]:opacity-0',
-              className,)}>
+                overflowVisible ? 'overflow-visible' : 'overflow-hidden',
+                'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
+                'data-[enter]:scale-100 data-[enter]:opacity-100',
+                'data-[enter]:scale-95 data-[leave]:opacity-0',
+                className)}>
                 {title && <DialogTitle
                   as="h3"
                   className="title-2xl-semi-bold text-text-primary"

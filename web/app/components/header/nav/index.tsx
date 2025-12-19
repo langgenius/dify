@@ -59,8 +59,8 @@ const Nav = ({
             setAppDetail()
           }}
           className={cn('flex h-7 cursor-pointer items-center rounded-[10px] px-2.5',
-          isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text',
-          curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover',)}
+            isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text',
+            curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover')}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >

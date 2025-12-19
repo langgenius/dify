@@ -51,13 +51,13 @@ const NodeStatus = ({
 
   return (
     <div
-      className={cn(nodeStatusVariants({ status, className }),)}
+      className={cn(nodeStatusVariants({ status, className }))}
       style={styleCss}
       {...props}
     >
       <Icon
         className={cn('h-3.5 w-3.5 shrink-0',
-        iconClassName,)}
+          iconClassName)}
       />
       <span>{message ?? defaultMessage}</span>
       {children}

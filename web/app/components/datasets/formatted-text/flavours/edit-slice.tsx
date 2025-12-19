@@ -66,19 +66,19 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
       >
         <SliceLabel
           className={cn(isDestructive && '!bg-state-destructive-solid !text-text-primary-on-surface',
-          labelClassName,)}
+            labelClassName)}
           labelInnerClassName={labelInnerClassName}
         >
           {label}
         </SliceLabel>
         <SliceContent
           className={cn(isDestructive && '!bg-state-destructive-hover-alt',
-          contentClassName,)}
+            contentClassName)}
         >
           {text}
         </SliceContent>
         {showDivider && <SliceDivider
-          className={cn(isDestructive && '!bg-state-destructive-hover-alt',)}
+          className={cn(isDestructive && '!bg-state-destructive-hover-alt')}
         />}
         {delBtnShow && <FloatingFocusManager
           context={context}

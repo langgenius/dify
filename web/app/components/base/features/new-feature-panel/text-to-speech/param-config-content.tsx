@@ -127,7 +127,7 @@ const VoiceParamConfig = ({
                           className={cn('block', selected && 'font-normal')}>{t(`common.voice.language.${(item.value).toString().replace('-', '')}`)}</span>
                         {(selected || item.value === text2speech?.language) && (
                           <span
-                            className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',)}
+                            className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
                           >
                             <CheckIcon className="h-4 w-4" aria-hidden="true" />
                           </span>
@@ -190,7 +190,7 @@ const VoiceParamConfig = ({
                           <span className={cn('block', selected && 'font-normal')}>{item.name}</span>
                           {(selected || item.value === text2speech?.voice) && (
                             <span
-                              className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',)}
+                              className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
                             >
                               <CheckIcon className="h-4 w-4" aria-hidden="true" />
                             </span>

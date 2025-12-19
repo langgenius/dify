@@ -138,8 +138,8 @@ const Select: FC<ISelectProps> = ({
                 value={item}
                 className={({ active }: { active: boolean }) =>
                   cn('relative cursor-default select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                  active ? 'bg-state-base-hover' : '',
-                  optionClassName,)
+                    active ? 'bg-state-base-hover' : '',
+                    optionClassName)
                 }
               >
                 {({ /* active, */ selected }) => (
@@ -151,7 +151,7 @@ const Select: FC<ISelectProps> = ({
                           <span className={cn('block', selected && 'font-normal')}>{item.name}</span>
                           {selected && (
                             <span
-                              className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',)}
+                              className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
                             >
                               <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                             </span>
@@ -270,7 +270,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                     key={item.value}
                     className={
                       cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                      optionClassName,)
+                        optionClassName)
                     }
                     value={item}
                     disabled={item.disabled || disabled}
@@ -283,7 +283,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                             <span className={cn('block', selected && 'font-normal')}>{item.name}</span>
                             {selected && !hideChecked && (
                               <span
-                                className={cn('absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent',)}
+                                className={cn('absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent')}
                               >
                                 <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                               </span>

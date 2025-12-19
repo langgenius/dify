@@ -59,13 +59,13 @@ const Badge: React.FC<BadgeProps> = ({
   return (
     <div
       className={cn(BadgeVariants({ size, className }),
-      getBadgeState(state),
-      size === 's'
-        ? (iconOnly ? 'p-[3px]' : 'px-[5px] py-[3px]')
-        : size === 'l'
-          ? (iconOnly ? 'p-1.5' : 'px-2 py-1')
-          : (iconOnly ? 'p-1' : 'px-[5px] py-[2px]'),
-      uppercase ? 'system-2xs-medium-uppercase' : 'system-2xs-medium',)}
+        getBadgeState(state),
+        size === 's'
+          ? (iconOnly ? 'p-[3px]' : 'px-[5px] py-[3px]')
+          : size === 'l'
+            ? (iconOnly ? 'p-1.5' : 'px-2 py-1')
+            : (iconOnly ? 'p-1' : 'px-[5px] py-[2px]'),
+        uppercase ? 'system-2xs-medium-uppercase' : 'system-2xs-medium')}
       style={styleCss}
       {...props}
     >

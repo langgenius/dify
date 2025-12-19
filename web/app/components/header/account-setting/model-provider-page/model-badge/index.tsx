@@ -11,7 +11,7 @@ const ModelBadge: FC<ModelBadgeProps> = ({
 }) => {
   return (
     <div className={cn('system-2xs-medium-uppercase flex h-[18px] cursor-default items-center rounded-[5px] border border-divider-deep px-1 text-text-tertiary',
-    className,)}>
+      className)}>
       {children}
     </div>
   )

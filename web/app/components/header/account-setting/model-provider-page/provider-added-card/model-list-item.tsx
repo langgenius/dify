@@ -46,8 +46,8 @@ const ModelListItem = ({ model, provider, isConfigurable, onModifyLoadBalancing 
     <div
       key={`${model.model}-${model.fetch_from}`}
       className={cn('group flex h-8 items-center rounded-lg pl-2 pr-2.5',
-      isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover',
-      model.deprecated && 'opacity-60',)}
+        isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover',
+        model.deprecated && 'opacity-60')}
     >
       <ModelIcon
         className='mr-2 shrink-0'

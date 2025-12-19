@@ -50,7 +50,7 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           className={
             cn('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
               (nodesReadOnly || buttonsDisabled.redo)
-              && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',)}
+              && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
           onClick={() => !nodesReadOnly && !buttonsDisabled.redo && handleRedo()}
         >
           <RiArrowGoForwardFill className='h-4 w-4' />
