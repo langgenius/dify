@@ -1,5 +1,5 @@
 'use client'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import { useTranslation } from 'react-i18next'

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useHover } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import {

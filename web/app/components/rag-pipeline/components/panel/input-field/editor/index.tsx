@@ -7,7 +7,7 @@ import type { InputVar } from '@/models/pipeline'
 import type { FormData } from './form/types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { useFloatingRight } from '../hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type InputFieldEditorProps = {
   onClose: () => void

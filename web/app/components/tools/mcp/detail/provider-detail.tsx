@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import Drawer from '@/app/components/base/drawer'
 import MCPDetailContent from './content'
 import type { ToolWithProvider } from '../../../workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   detail?: ToolWithProvider

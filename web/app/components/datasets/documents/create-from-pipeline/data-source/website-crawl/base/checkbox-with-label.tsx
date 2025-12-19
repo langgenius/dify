@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Checkbox from '@/app/components/base/checkbox'
 import Tooltip from '@/app/components/base/tooltip'
 

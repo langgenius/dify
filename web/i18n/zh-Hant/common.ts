@@ -5,6 +5,7 @@ const translation = {
     saved: '已儲存',
     create: '已建立',
     remove: '已移除',
+    actionFailed: '操作失敗',
   },
   operation: {
     create: '建立',

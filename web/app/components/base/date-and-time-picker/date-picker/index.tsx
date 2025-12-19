@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { DatePickerProps, Period } from '../types'
 import { ViewType } from '../types'
 import type { Dayjs } from 'dayjs'

@@ -5,7 +5,7 @@ import type { Tool } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 
 type Props = {

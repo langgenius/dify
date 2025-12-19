@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import type { VariablePayload } from './types'
 import VariableLabel from './base/variable-label'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const VariableLabelInText = (variablePayload: VariablePayload) => {
   return (

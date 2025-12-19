@@ -7,7 +7,7 @@ import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import type { Inputs } from '@/models/debug'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 
 type Props = {

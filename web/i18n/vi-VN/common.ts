@@ -5,6 +5,7 @@ const translation = {
     saved: 'Đã lưu',
     create: 'Tạo',
     remove: 'Xóa',
+    actionFailed: 'Thao tác thất bại',
   },
   operation: {
     create: 'Tạo mới',

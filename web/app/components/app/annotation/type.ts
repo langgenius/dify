@@ -12,6 +12,12 @@ export type AnnotationItem = {
   hit_count: number
 }
 
+export type AnnotationCreateResponse = AnnotationItem & {
+  account?: {
+    name?: string
+  }
+}
+
 export type HitHistoryItem = {
   id: string
   question: string
