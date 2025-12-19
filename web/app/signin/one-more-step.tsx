@@ -57,6 +57,24 @@ const OneMoreStep = () => {
   })
   const { mutateAsync: submitOneMoreStep, isPending } = useOneMoreStep()
 
+  const handleSubmit = async () => {
+    if (isPending)
+      return
+    try {
+      await submitOneMoreStep({
+        invitation_code: state.invitation_code,
+        interface_language: state.interface_language,
+        timezone: state.timezone,
+      })
+      router.push('/apps')
+    }
+    catch (error: any) {
+      if (error && error.status === 400)
+        Toast.notify({ type: 'error', message: t('login.invalidInvitationCode') })
+      dispatch({ type: 'failed', payload: null })
+    }
+  }
+
   return (
     <>
       <div className="mx-auto w-full">
@@ -127,23 +145,7 @@ const OneMoreStep = () => {
               variant='primary'
               className='w-full'
               disabled={isPending}
-              onClick={async () => {
-                if (isPending)
-                  return
-                try {
-                  await submitOneMoreStep({
-                    invitation_code: state.invitation_code,
-                    interface_language: state.interface_language,
-                    timezone: state.timezone,
-                  })
-                  router.push('/apps')
-                }
-                catch (error: any) {
-                  if (error && error.status === 400)
-                    Toast.notify({ type: 'error', message: t('login.invalidInvitationCode') })
-                  dispatch({ type: 'failed', payload: null })
-                }
-              }}
+              onClick={handleSubmit}
             >
               {t('login.go')}
             </Button>
