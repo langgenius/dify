@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useContext } from 'use-context-selector'
 import type { Collection, Tool } from '../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'

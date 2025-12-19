@@ -13,7 +13,7 @@ import type {
 import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import Input from './Input'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import { useWorkflow } from '../../../hooks'
 import { BlockEnum } from '../../../types'
 import { getNodeInfoById, isSystemVar } from './variable/utils'

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import React, { useState } from 'react'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useProviderContext } from '@/context/provider-context'

@@ -20,7 +20,7 @@ import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
 
 export type Props = {

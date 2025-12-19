@@ -3,7 +3,7 @@ import { useFieldContext } from '../..'
 import Input, { type InputProps } from '../../../input'
 import type { LabelProps } from '../label'
 import Label from '../label'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type TextFieldProps = {
   label: string

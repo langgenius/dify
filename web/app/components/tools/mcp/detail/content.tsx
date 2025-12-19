@@ -30,7 +30,7 @@ import {
   useUpdateMCPTools,
 } from '@/service/use-tools'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   detail: ToolWithProvider

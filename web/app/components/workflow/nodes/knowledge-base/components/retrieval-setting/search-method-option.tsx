@@ -4,7 +4,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import Switch from '@/app/components/base/switch'
