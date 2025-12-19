@@ -120,7 +120,7 @@ class TestLoginApi:
             response = login_api.post()
 
         # Assert
-        mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!")
+        mock_authenticate.assert_called_once_with("test@example.com", "ValidPass123!", None)
         mock_login.assert_called_once()
         mock_reset_rate_limit.assert_called_once_with("test@example.com")
         assert response.json["result"] == "success"
@@ -370,6 +370,52 @@ class TestLoginApi:
             login_api = LoginApi()
             with pytest.raises(InvalidEmailError):
                 login_api.post()
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
+    @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.AccountService.authenticate")
+    @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
+    @patch("controllers.console.auth.login.TenantService.get_join_tenants")
+    @patch("controllers.console.auth.login.AccountService.login")
+    @patch("controllers.console.auth.login.AccountService.reset_login_error_rate_limit")
+    def test_login_retries_with_lowercase_email(
+        self,
+        mock_reset_rate_limit,
+        mock_login_service,
+        mock_get_tenants,
+        mock_add_rate_limit,
+        mock_authenticate,
+        mock_get_invitation,
+        mock_is_rate_limit,
+        mock_db,
+        app,
+        mock_account,
+        mock_token_pair,
+    ):
+        """Test that login retries with lowercase email when uppercase lookup fails."""
+        mock_db.session.query.return_value.first.return_value = MagicMock()
+        mock_is_rate_limit.return_value = False
+        mock_get_invitation.return_value = None
+        mock_authenticate.side_effect = [AccountPasswordError("Invalid"), mock_account]
+        mock_get_tenants.return_value = [MagicMock()]
+        mock_login_service.return_value = mock_token_pair
+
+        with app.test_request_context(
+            "/login",
+            method="POST",
+            json={"email": "Upper@Example.com", "password": encode_password("ValidPass123!")},
+        ):
+            response = LoginApi().post()
+
+        assert response.json["result"] == "success"
+        assert mock_authenticate.call_args_list == [
+            (("Upper@Example.com", "ValidPass123!", None), {}),
+            (("upper@example.com", "ValidPass123!", None), {}),
+        ]
+        mock_add_rate_limit.assert_not_called()
+        mock_reset_rate_limit.assert_called_once_with("upper@example.com")
 
 
 class TestLogoutApi:
