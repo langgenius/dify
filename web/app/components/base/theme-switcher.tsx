@@ -5,7 +5,7 @@ import {
   RiSunLine,
 } from '@remixicon/react'
 import { useTheme } from 'next-themes'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type Theme = 'light' | 'dark' | 'system'
 

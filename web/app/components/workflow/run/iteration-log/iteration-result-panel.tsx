@@ -11,7 +11,7 @@ import {
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 const i18nPrefix = 'workflow.singleRun'
 

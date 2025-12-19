@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiLock2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'

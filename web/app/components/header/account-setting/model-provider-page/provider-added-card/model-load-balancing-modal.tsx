@@ -15,7 +15,7 @@ import {
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import ModelLoadBalancingConfigs from './model-load-balancing-configs'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
@@ -265,10 +265,8 @@ const ModelLoadBalancingModal = ({
             <>
               <div className='py-2'>
                 <div
-                  className={classNames(
-                    'min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
-                    draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600',
-                  )}
+                  className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
+                    draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600')}
                   onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
                 >
                   <div className='flex select-none items-center gap-2 px-[15px] py-3'>

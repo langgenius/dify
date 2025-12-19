@@ -437,6 +437,7 @@ const translation = {
         input: 'Valor de entrada',
       },
       inputVars: 'Variáveis de entrada',
+      pluginNotInstalled: 'O plugin não está instalado',
     },
     start: {
       required: 'requerido',

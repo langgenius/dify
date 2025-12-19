@@ -5,7 +5,7 @@ import { NodeSourceHandle } from './node-handle'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { Node } from '@/app/components/workflow/types'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ErrorHandleOnNodeProps = Pick<Node, 'id' | 'data'>
 const ErrorHandleOnNode = ({

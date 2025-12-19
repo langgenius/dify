@@ -13,7 +13,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import SearchInput from '@/app/components/base/search-input'
 import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
 import { useDocumentList } from '@/service/knowledge/use-document'

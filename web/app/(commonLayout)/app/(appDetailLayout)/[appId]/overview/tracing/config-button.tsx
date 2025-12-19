@@ -4,7 +4,7 @@ import React, { useCallback, useRef, useState } from 'react'
 
 import type { PopupProps } from './config-popup'
 import ConfigPopup from './config-popup'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

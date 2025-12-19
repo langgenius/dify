@@ -138,9 +138,9 @@ class DifyTestContainers:
             logger.warning("Failed to create plugin database: %s", e)
 
         # Set up storage environment variables
-        os.environ["STORAGE_TYPE"] = "opendal"
-        os.environ["OPENDAL_SCHEME"] = "fs"
-        os.environ["OPENDAL_FS_ROOT"] = "storage"
+        os.environ.setdefault("STORAGE_TYPE", "opendal")
+        os.environ.setdefault("OPENDAL_SCHEME", "fs")
+        os.environ.setdefault("OPENDAL_FS_ROOT", "/tmp/dify-storage")
 
         # Start Redis container for caching and session management
         # Redis is used for storing session data, cache entries, and temporary data
@@ -348,6 +348,13 @@ def _create_app_with_containers() -> Flask:
     """
     logger.info("Creating Flask application with test container configuration...")
 
+    # Ensure Redis client reconnects to the containerized Redis (no auth)
+    from extensions import ext_redis
+
+    ext_redis.redis_client._client = None
+    os.environ["REDIS_USERNAME"] = ""
+    os.environ["REDIS_PASSWORD"] = ""
+
     # Re-create the config after environment variables have been set
     from configs import dify_config
 
@@ -486,3 +493,29 @@ def db_session_with_containers(flask_app_with_containers) -> Generator[Session, 
         finally:
             session.close()
             logger.debug("Database session closed")
+
+
+@pytest.fixture(scope="package", autouse=True)
+def mock_ssrf_proxy_requests():
+    """
+    Avoid outbound network during containerized tests by stubbing SSRF proxy helpers.
+    """
+
+    from unittest.mock import patch
+
+    import httpx
+
+    def _fake_request(method, url, **kwargs):
+        request = httpx.Request(method=method, url=url)
+        return httpx.Response(200, request=request, content=b"")
+
+    with (
+        patch("core.helper.ssrf_proxy.make_request", side_effect=_fake_request),
+        patch("core.helper.ssrf_proxy.get", side_effect=lambda url, **kw: _fake_request("GET", url, **kw)),
+        patch("core.helper.ssrf_proxy.post", side_effect=lambda url, **kw: _fake_request("POST", url, **kw)),
+        patch("core.helper.ssrf_proxy.put", side_effect=lambda url, **kw: _fake_request("PUT", url, **kw)),
+        patch("core.helper.ssrf_proxy.patch", side_effect=lambda url, **kw: _fake_request("PATCH", url, **kw)),
+        patch("core.helper.ssrf_proxy.delete", side_effect=lambda url, **kw: _fake_request("DELETE", url, **kw)),
+        patch("core.helper.ssrf_proxy.head", side_effect=lambda url, **kw: _fake_request("HEAD", url, **kw)),
+    ):
+        yield

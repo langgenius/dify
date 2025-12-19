@@ -3,7 +3,7 @@ import { OnlineDriveFileType } from '@/models/pipeline'
 import { BucketsBlue, Folder } from '@/app/components/base/icons/src/public/knowledge/online-drive'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { getFileType } from './utils'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type FileIconProps = {
   type: OnlineDriveFileType

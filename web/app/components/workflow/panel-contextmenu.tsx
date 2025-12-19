@@ -16,7 +16,7 @@ import {
 } from './hooks'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()

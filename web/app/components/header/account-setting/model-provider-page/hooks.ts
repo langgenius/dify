@@ -4,7 +4,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import useSWR, { useSWRConfig } from 'swr'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useContext } from 'use-context-selector'
 import type {
   Credential,
@@ -27,9 +27,9 @@ import {
   fetchDefaultModal,
   fetchModelList,
   fetchModelProviderCredentials,
-  fetchModelProviders,
   getPayUrl,
 } from '@/service/common'
+import { commonQueryKeys } from '@/service/use-common'
 import { useProviderContext } from '@/context/provider-context'
 import {
   useMarketplacePlugins,
@@ -81,17 +81,23 @@ export const useProviderCredentialsAndLoadBalancing = (
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   credentialId?: string,
 ) => {
-  const { data: predefinedFormSchemasValue, mutate: mutatePredefined, isLoading: isPredefinedLoading } = useSWR(
-    (configurationMethod === ConfigurationMethodEnum.predefinedModel && configured && credentialId)
-      ? `/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`
-      : null,
-    fetchModelProviderCredentials,
+  const queryClient = useQueryClient()
+  const predefinedEnabled = configurationMethod === ConfigurationMethodEnum.predefinedModel && configured && !!credentialId
+  const customEnabled = configurationMethod === ConfigurationMethodEnum.customizableModel && !!currentCustomConfigurationModelFixedFields && !!credentialId
+
+  const { data: predefinedFormSchemasValue, isPending: isPredefinedLoading } = useQuery(
+    {
+      queryKey: ['model-providers', 'credentials', provider, credentialId],
+      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/credentials${credentialId ? `?credential_id=${credentialId}` : ''}`),
+      enabled: predefinedEnabled,
+    },
   )
-  const { data: customFormSchemasValue, mutate: mutateCustomized, isLoading: isCustomizedLoading } = useSWR(
-    (configurationMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields && credentialId)
-      ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`
-      : null,
-    fetchModelProviderCredentials,
+  const { data: customFormSchemasValue, isPending: isCustomizedLoading } = useQuery(
+    {
+      queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId],
+      queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`),
+      enabled: customEnabled,
+    },
   )
 
   const credentials = useMemo(() => {
@@ -112,9 +118,11 @@ export const useProviderCredentialsAndLoadBalancing = (
   ])
 
   const mutate = useMemo(() => () => {
-    mutatePredefined()
-    mutateCustomized()
-  }, [mutateCustomized, mutatePredefined])
+    if (predefinedEnabled)
+      queryClient.invalidateQueries({ queryKey: ['model-providers', 'credentials', provider, credentialId] })
+    if (customEnabled)
+      queryClient.invalidateQueries({ queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId] })
+  }, [customEnabled, credentialId, currentCustomConfigurationModelFixedFields?.__model_name, currentCustomConfigurationModelFixedFields?.__model_type, predefinedEnabled, provider, queryClient])
 
   return {
     credentials,
@@ -129,22 +137,28 @@ export const useProviderCredentialsAndLoadBalancing = (
 }
 
 export const useModelList = (type: ModelTypeEnum) => {
-  const { data, mutate, isLoading } = useSWR(`/workspaces/current/models/model-types/${type}`, fetchModelList)
+  const { data, refetch, isPending } = useQuery({
+    queryKey: commonQueryKeys.modelList(type),
+    queryFn: () => fetchModelList(`/workspaces/current/models/model-types/${type}`),
+  })
 
   return {
     data: data?.data || [],
-    mutate,
-    isLoading,
+    mutate: refetch,
+    isLoading: isPending,
   }
 }
 
 export const useDefaultModel = (type: ModelTypeEnum) => {
-  const { data, mutate, isLoading } = useSWR(`/workspaces/current/default-model?model_type=${type}`, fetchDefaultModal)
+  const { data, refetch, isPending } = useQuery({
+    queryKey: commonQueryKeys.defaultModel(type),
+    queryFn: () => fetchDefaultModal(`/workspaces/current/default-model?model_type=${type}`),
+  })
 
   return {
     data: data?.data,
-    mutate,
-    isLoading,
+    mutate: refetch,
+    isLoading: isPending,
   }
 }
 
@@ -200,11 +214,11 @@ export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: Mode
 }
 
 export const useUpdateModelList = () => {
-  const { mutate } = useSWRConfig()
+  const queryClient = useQueryClient()
 
   const updateModelList = useCallback((type: ModelTypeEnum) => {
-    mutate(`/workspaces/current/models/model-types/${type}`)
-  }, [mutate])
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelList(type) })
+  }, [queryClient])
 
   return updateModelList
 }
@@ -230,22 +244,12 @@ export const useAnthropicBuyQuota = () => {
   return handleGetPayUrl
 }
 
-export const useModelProviders = () => {
-  const { data: providersData, mutate, isLoading } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
-
-  return {
-    data: providersData?.data || [],
-    mutate,
-    isLoading,
-  }
-}
-
 export const useUpdateModelProviders = () => {
-  const { mutate } = useSWRConfig()
+  const queryClient = useQueryClient()
 
   const updateModelProviders = useCallback(() => {
-    mutate('/workspaces/current/model-providers')
-  }, [mutate])
+    queryClient.invalidateQueries({ queryKey: commonQueryKeys.modelProviders })
+  }, [queryClient])
 
   return updateModelProviders
 }

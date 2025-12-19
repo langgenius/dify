@@ -15,7 +15,7 @@ import Dot from './completed/common/dot'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { ToastContext } from '@/app/components/base/toast'
 import { ChunkingMode, type SegmentUpdater } from '@/models/datasets'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
 import Divider from '@/app/components/base/divider'
 import { useAddSegment } from '@/service/knowledge/use-segment'
@@ -153,10 +153,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   return (
     <div className={'flex h-full flex-col'}>
       <div
-        className={classNames(
-          'flex items-center justify-between',
-          fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3',
-        )}
+        className={cn('flex items-center justify-between',
+          fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}
       >
         <div className='flex flex-col'>
           <div className='system-xl-semibold text-text-primary'>
@@ -189,8 +187,8 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
           </div>
         </div>
       </div>
-      <div className={classNames('flex grow', fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3')}>
-        <div className={classNames('overflow-hidden whitespace-pre-line break-all', fullScreen ? 'w-1/2' : 'grow')}>
+      <div className={cn('flex grow', fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3')}>
+        <div className={cn('overflow-hidden whitespace-pre-line break-all', fullScreen ? 'w-1/2' : 'grow')}>
           <ChunkContent
             docForm={docForm}
             question={question}
@@ -200,7 +198,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
             isEditMode={true}
           />
         </div>
-        <div className={classNames('flex flex-col', fullScreen ? 'w-[320px] gap-y-2' : 'w-full gap-y-1')}>
+        <div className={cn('flex flex-col', fullScreen ? 'w-[320px] gap-y-2' : 'w-full gap-y-1')}>
           <ImageUploaderInChunk
             key={imageUploaderKey}
             value={attachments}

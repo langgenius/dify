@@ -5,12 +5,6 @@ import PlanUpgradeModal from './index'
 
 const mockSetShowPricingModal = jest.fn()
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('@/app/components/base/modal', () => {
   const MockModal = ({ isShow, children }: { isShow: boolean; children: React.ReactNode }) => (
     isShow ? <div data-testid="plan-upgrade-modal">{children}</div> : null

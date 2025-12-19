@@ -25,7 +25,7 @@ import { NodeRunningStatus } from './types'
 import { getEdgeColor } from './utils'
 import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 const CustomEdge = ({

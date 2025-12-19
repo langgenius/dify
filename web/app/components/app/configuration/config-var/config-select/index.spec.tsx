@@ -5,12 +5,6 @@ jest.mock('react-sortablejs', () => ({
   ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('ConfigSelect Component', () => {
   const defaultProps = {
     options: ['Option 1', 'Option 2'],

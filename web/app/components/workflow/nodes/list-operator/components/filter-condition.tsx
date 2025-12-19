@@ -12,7 +12,7 @@ import { SimpleSelect as Select } from '@/app/components/base/select'
 import BoolValue from '../../../panel/chat-variable-panel/components/bool-value'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { VarType } from '../../../types'
 
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'

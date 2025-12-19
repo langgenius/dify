@@ -1,5 +1,5 @@
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { Option } from './types'
 import { EffectColor } from './types'
 

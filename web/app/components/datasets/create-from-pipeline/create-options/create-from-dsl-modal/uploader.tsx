@@ -9,7 +9,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { formatFileSize } from '@/utils/format'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
 import ActionButton from '@/app/components/base/action-button'
 

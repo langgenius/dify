@@ -437,6 +437,7 @@ const translation = {
         variable: 'Sử dụng biến',
       },
       inputVars: 'Biến đầu vào',
+      pluginNotInstalled: 'Plugin chưa được cài đặt',
     },
     start: {
       required: 'bắt buộc',

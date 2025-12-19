@@ -1,5 +1,5 @@
 import React from 'react'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import usePagination from './hook'
 import type {
   ButtonProps,

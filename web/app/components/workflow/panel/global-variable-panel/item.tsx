@@ -3,7 +3,7 @@ import { capitalize } from 'lodash-es'
 import { GlobalVariable as GlobalVariableIcon } from '@/app/components/base/icons/src/vender/line/others'
 
 import type { GlobalVariable } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   payload: GlobalVariable
