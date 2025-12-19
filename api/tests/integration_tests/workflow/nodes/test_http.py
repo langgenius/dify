@@ -5,10 +5,11 @@ from urllib.parse import urlencode
 import pytest
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
 from core.workflow.nodes.http_request.node import HttpRequestNode
 from core.workflow.nodes.node_factory import DifyNodeFactory
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
@@ -63,10 +64,6 @@ def init_http_node(config: dict):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-
-    # Initialize node data
-    if "data" in config:
-        node.init_node_data(config["data"])
 
     return node
 
@@ -174,13 +171,13 @@ def test_custom_authorization_header(setup_http_mock):
 @pytest.mark.parametrize("setup_http_mock", [["none"]], indirect=True)
 def test_custom_auth_with_empty_api_key_does_not_set_header(setup_http_mock):
     """Test: In custom authentication mode, when the api_key is empty, no header should be set."""
-    from core.workflow.entities.variable_pool import VariablePool
     from core.workflow.nodes.http_request.entities import (
         HttpRequestNodeAuthorization,
         HttpRequestNodeData,
         HttpRequestNodeTimeout,
     )
     from core.workflow.nodes.http_request.executor import Executor
+    from core.workflow.runtime import VariablePool
     from core.workflow.system_variable import SystemVariable
 
     # Create variable pool
@@ -707,10 +704,6 @@ def test_nested_object_variable_selector(setup_http_mock):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-
-    # Initialize node data
-    if "data" in graph_config["nodes"][1]:
-        node.init_node_data(graph_config["nodes"][1]["data"])
 
     result = node._run()
     assert result.process_data is not None

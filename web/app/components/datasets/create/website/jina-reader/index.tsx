@@ -14,6 +14,7 @@ import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datas
 import { sleep } from '@/utils'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Header from '../base/header'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const ERROR_I18N_PREFIX = 'common.errorMsg'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
@@ -51,7 +52,7 @@ const JinaReader: FC<Props> = ({
   const { setShowAccountSettingModal } = useModalContext()
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
-      payload: 'data-source',
+      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
   }, [setShowAccountSettingModal])
 
@@ -156,7 +157,7 @@ const JinaReader: FC<Props> = ({
           total: 1,
           data: [{
             title,
-            content,
+            markdown: content,
             description,
             source_url: url,
           }],

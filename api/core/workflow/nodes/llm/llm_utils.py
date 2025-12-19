@@ -15,9 +15,9 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment, FileSegment, NoneSegment, StringSegment
-from core.workflow.entities import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.llm.entities import ModelConfig
+from core.workflow.runtime import VariablePool
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.model import Conversation
@@ -92,7 +92,7 @@ def fetch_memory(
         return None
 
     # get conversation id
-    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID.value])
+    conversation_id_variable = variable_pool.get(["sys", SystemVariableKey.CONVERSATION_ID])
     if not isinstance(conversation_id_variable, StringSegment):
         return None
     conversation_id = conversation_id_variable.value

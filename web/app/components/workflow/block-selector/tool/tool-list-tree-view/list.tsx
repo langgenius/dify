@@ -11,7 +11,7 @@ import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../
 type Props = {
   payload: Record<string, ToolWithProvider[]>
   hasSearchText: boolean
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
+  onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
   canNotSelectMultiple?: boolean
   onSelectMultiple?: (type: BlockEnum, tools: ToolDefaultValue[]) => void
   selectedTools?: ToolValue[]

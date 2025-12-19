@@ -8,6 +8,7 @@ import {
   isMermaidCodeComplete,
   prepareMermaidCode,
   processSvgForTheme,
+  sanitizeMermaidCode,
   svgToBase64,
   waitForDOMElement,
 } from './utils'
@@ -71,7 +72,7 @@ const initMermaid = () => {
       const config: MermaidConfig = {
         startOnLoad: false,
         fontFamily: 'sans-serif',
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         flowchart: {
           htmlLabels: true,
           useMaxWidth: true,
@@ -122,7 +123,7 @@ const Flowchart = (props: FlowchartProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartId = useRef(`mermaid-chart-${Math.random().toString(36).slice(2, 11)}`).current
   const [isLoading, setIsLoading] = useState(true)
-  const renderTimeoutRef = useRef<NodeJS.Timeout>()
+  const renderTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
   const [errMsg, setErrMsg] = useState('')
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
@@ -187,7 +188,7 @@ const Flowchart = (props: FlowchartProps) => {
   }, [])
 
   // Update theme when prop changes, but allow internal override.
-  const prevThemeRef = useRef<string>()
+  const prevThemeRef = useRef<string | undefined>(undefined)
   useEffect(() => {
     // Only react if the theme prop from the outside has actually changed.
     if (props.theme && props.theme !== prevThemeRef.current) {
@@ -267,6 +268,8 @@ const Flowchart = (props: FlowchartProps) => {
         finalCode = prepareMermaidCode(primitiveCode, look)
       }
 
+      finalCode = sanitizeMermaidCode(finalCode)
+
       // Step 2: Render chart
       const svgGraph = await renderMermaidChart(finalCode, look)
 
@@ -297,9 +300,9 @@ const Flowchart = (props: FlowchartProps) => {
   const configureMermaid = useCallback((primitiveCode: string) => {
     if (typeof window !== 'undefined' && isInitialized) {
       const themeVars = THEMES[currentTheme]
-      const config: any = {
+      const config: MermaidConfig = {
         startOnLoad: false,
-        securityLevel: 'loose',
+        securityLevel: 'strict',
         fontFamily: 'sans-serif',
         maxTextSize: 50000,
         gantt: {
@@ -325,7 +328,8 @@ const Flowchart = (props: FlowchartProps) => {
         config.theme = currentTheme === 'dark' ? 'dark' : 'neutral'
 
         if (isFlowchart) {
-          config.flowchart = {
+          type FlowchartConfigWithRanker = NonNullable<MermaidConfig['flowchart']> & { ranker?: string }
+          const flowchartConfig: FlowchartConfigWithRanker = {
             htmlLabels: true,
             useMaxWidth: true,
             nodeSpacing: 60,
@@ -333,6 +337,7 @@ const Flowchart = (props: FlowchartProps) => {
             curve: 'linear',
             ranker: 'tight-tree',
           }
+          config.flowchart = flowchartConfig as unknown as MermaidConfig['flowchart']
         }
 
         if (currentTheme === 'dark') {
@@ -531,7 +536,7 @@ const Flowchart = (props: FlowchartProps) => {
 
       {isLoading && !svgString && (
         <div className='px-[26px] py-4'>
-          <LoadingAnim type='text'/>
+          <LoadingAnim type='text' />
           <div className="mt-2 text-sm text-gray-500">
             {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
           </div>
@@ -541,7 +546,7 @@ const Flowchart = (props: FlowchartProps) => {
       {svgString && (
         <div className={themeClasses.mermaidDiv} style={{ objectFit: 'cover' }} onClick={handlePreviewClick}>
           <div className="absolute bottom-2 left-2 z-[100]">
-            <button
+            <button type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 toggleTheme()
@@ -564,7 +569,7 @@ const Flowchart = (props: FlowchartProps) => {
       {errMsg && (
         <div className={themeClasses.errorMessage}>
           <div className="flex items-center">
-            <ExclamationTriangleIcon className={themeClasses.errorIcon}/>
+            <ExclamationTriangleIcon className={themeClasses.errorIcon} />
             <span className="ml-2">{errMsg}</span>
           </div>
         </div>

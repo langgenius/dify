@@ -19,6 +19,7 @@ const translation = {
       tokens: 'ТОКЕНЫ',
       user: 'Конечный пользователь или аккаунт',
       version: 'ВЕРСИЯ',
+      triggered_from: 'СРАБАТЫВАЕТ ОТ',
     },
     pagination: {
       previous: 'Предыдущий',
@@ -65,6 +66,8 @@ const translation = {
       quarterToDate: 'С начала квартала',
       yearToDate: 'С начала года',
       allTime: 'Все время',
+      last30days: 'Последние 30 дней',
+      custom: 'Кастомный',
     },
     annotation: {
       all: 'Все',
@@ -82,6 +85,7 @@ const translation = {
     workflowTitle: 'Подробная информация о журнале',
     fileListLabel: 'Сведения о файле',
     fileListDetail: 'Подробность',
+    testWithParams: 'Тест с параметрами',
   },
   promptLog: 'Журнал подсказок',
   agentLog: 'Журнал агента',
@@ -94,6 +98,15 @@ const translation = {
     finalProcessing: 'Окончательная обработка',
   },
   dateFormat: 'ДД/ММ/ГГГГ',
+  triggerBy: {
+    debugging: 'Отладка',
+    appRun: 'Веб-приложение',
+    webhook: 'Вебхук',
+    schedule: 'Расписание',
+    plugin: 'Плагин',
+    ragPipelineRun: 'Конвейер RAG',
+    ragPipelineDebugging: 'Отладка RAG',
+  },
 }
 
 export default translation

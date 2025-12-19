@@ -1,3 +1,4 @@
+export { default as IconR } from './IconR'
 export { default as ArrowNarrowLeft } from './ArrowNarrowLeft'
 export { default as ArrowUpRight } from './ArrowUpRight'
 export { default as ChevronDownDouble } from './ChevronDownDouble'

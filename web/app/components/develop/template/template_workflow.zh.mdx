@@ -182,7 +182,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{
-      "inputs": ${JSON.stringify(props.inputs)},
+    "inputs": ${JSON.stringify(props.inputs)},
     "response_mode": "streaming",
     "user": "abc-123"
 }'`}
@@ -334,7 +334,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     ### Path
     - `workflow_id` (string) Required 工作流ID，用于指定特定版本的工作流
 
-      获取方式：可以在版本历史中查询特定版本的工作流ID。
+      获取方式：在版本历史界面，点击每个版本条目右侧的复制图标即可复制完整的工作流 ID。
 
     ### Request Body
       - `inputs` (object) Required
@@ -1012,8 +1012,8 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   <Col>
     <CodeGroup
       title="Request"
-      tag="POST"
-      label="/meta"
+      tag="GET"
+      label="/site"
       targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
 -H 'Authorization: Bearer {api_key}'`}
     />

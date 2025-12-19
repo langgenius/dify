@@ -269,17 +269,17 @@ class ModelProviderFactory:
         }
 
         if model_type == ModelType.LLM:
-            return LargeLanguageModel(**init_params)  # type: ignore
+            return LargeLanguageModel.model_validate(init_params)
         elif model_type == ModelType.TEXT_EMBEDDING:
-            return TextEmbeddingModel(**init_params)  # type: ignore
+            return TextEmbeddingModel.model_validate(init_params)
         elif model_type == ModelType.RERANK:
-            return RerankModel(**init_params)  # type: ignore
+            return RerankModel.model_validate(init_params)
         elif model_type == ModelType.SPEECH2TEXT:
-            return Speech2TextModel(**init_params)  # type: ignore
+            return Speech2TextModel.model_validate(init_params)
         elif model_type == ModelType.MODERATION:
-            return ModerationModel(**init_params)  # type: ignore
+            return ModerationModel.model_validate(init_params)
         elif model_type == ModelType.TTS:
-            return TTSModel(**init_params)  # type: ignore
+            return TTSModel.model_validate(init_params)
 
     def get_provider_icon(self, provider: str, icon_type: str, lang: str) -> tuple[bytes, str]:
         """
@@ -300,6 +300,14 @@ class ModelProviderFactory:
                 file_name = provider_schema.icon_small.zh_Hans
             else:
                 file_name = provider_schema.icon_small.en_US
+        elif icon_type.lower() == "icon_small_dark":
+            if not provider_schema.icon_small_dark:
+                raise ValueError(f"Provider {provider} does not have small dark icon.")
+
+            if lang.lower() == "zh_hans":
+                file_name = provider_schema.icon_small_dark.zh_Hans
+            else:
+                file_name = provider_schema.icon_small_dark.en_US
         else:
             if not provider_schema.icon_large:
                 raise ValueError(f"Provider {provider} does not have large icon.")

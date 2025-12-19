@@ -1,8 +1,11 @@
 from collections.abc import Mapping
 from enum import StrEnum
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from core.file.models import File
+
+if TYPE_CHECKING:
+    pass
 
 
 class ArrayValidation(StrEnum):
@@ -155,6 +158,17 @@ class SegmentType(StrEnum):
             return isinstance(value, File)
         elif self == SegmentType.NONE:
             return value is None
+        elif self == SegmentType.GROUP:
+            from .segment_group import SegmentGroup
+            from .segments import Segment
+
+            if isinstance(value, SegmentGroup):
+                return all(isinstance(item, Segment) for item in value.value)
+
+            if isinstance(value, list):
+                return all(isinstance(item, Segment) for item in value)
+
+            return False
         else:
             raise AssertionError("this statement should be unreachable.")
 
@@ -201,6 +215,35 @@ class SegmentType(StrEnum):
         if not self.is_array_type():
             raise ValueError(f"element_type is only supported by array type, got {self}")
         return _ARRAY_ELEMENT_TYPES_MAPPING.get(self)
+
+    @staticmethod
+    def get_zero_value(t: "SegmentType"):
+        # Lazy import to avoid circular dependency
+        from factories import variable_factory
+
+        match t:
+            case (
+                SegmentType.ARRAY_OBJECT
+                | SegmentType.ARRAY_ANY
+                | SegmentType.ARRAY_STRING
+                | SegmentType.ARRAY_NUMBER
+                | SegmentType.ARRAY_BOOLEAN
+            ):
+                return variable_factory.build_segment_with_type(t, [])
+            case SegmentType.OBJECT:
+                return variable_factory.build_segment({})
+            case SegmentType.STRING:
+                return variable_factory.build_segment("")
+            case SegmentType.INTEGER:
+                return variable_factory.build_segment(0)
+            case SegmentType.FLOAT:
+                return variable_factory.build_segment(0.0)
+            case SegmentType.NUMBER:
+                return variable_factory.build_segment(0)
+            case SegmentType.BOOLEAN:
+                return variable_factory.build_segment(False)
+            case _:
+                raise ValueError(f"unsupported variable type: {t}")
 
 
 _ARRAY_ELEMENT_TYPES_MAPPING: Mapping[SegmentType, SegmentType] = {

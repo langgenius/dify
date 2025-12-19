@@ -125,9 +125,9 @@ class LindormVectorStore(BaseVector):
                     }
                 }
                 action_values: dict[str, Any] = {
-                    Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i],
-                    Field.METADATA_KEY.value: documents[i].metadata,
+                    Field.CONTENT_KEY: documents[i].page_content,
+                    Field.VECTOR: embeddings[i],
+                    Field.METADATA_KEY: documents[i].metadata,
                 }
                 if self._using_ugc:
                     action_header["index"]["routing"] = self._routing
@@ -149,7 +149,7 @@ class LindormVectorStore(BaseVector):
 
     def get_ids_by_metadata_field(self, key: str, value: str):
         query: dict[str, Any] = {
-            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY.value}.{key}.keyword": value}}]}}
+            "query": {"bool": {"must": [{"term": {f"{Field.METADATA_KEY}.{key}.keyword": value}}]}}
         }
         if self._using_ugc:
             query["query"]["bool"]["must"].append({"term": {f"{ROUTING_FIELD}.keyword": self._routing}})
@@ -252,14 +252,14 @@ class LindormVectorStore(BaseVector):
         search_query: dict[str, Any] = {
             "size": top_k,
             "_source": True,
-            "query": {"knn": {Field.VECTOR.value: {"vector": query_vector, "k": top_k}}},
+            "query": {"knn": {Field.VECTOR: {"vector": query_vector, "k": top_k}}},
         }
 
         final_ext: dict[str, Any] = {"lvector": {}}
         if filters is not None and len(filters) > 0:
             # when using filter, transform filter from List[Dict] to Dict as valid format
             filter_dict = {"bool": {"must": filters}} if len(filters) > 1 else filters[0]
-            search_query["query"]["knn"][Field.VECTOR.value]["filter"] = filter_dict  # filter should be Dict
+            search_query["query"]["knn"][Field.VECTOR]["filter"] = filter_dict  # filter should be Dict
             final_ext["lvector"]["filter_type"] = "pre_filter"
 
         if final_ext != {"lvector": {}}:
@@ -279,9 +279,9 @@ class LindormVectorStore(BaseVector):
             docs_and_scores.append(
                 (
                     Document(
-                        page_content=hit["_source"][Field.CONTENT_KEY.value],
-                        vector=hit["_source"][Field.VECTOR.value],
-                        metadata=hit["_source"][Field.METADATA_KEY.value],
+                        page_content=hit["_source"][Field.CONTENT_KEY],
+                        vector=hit["_source"][Field.VECTOR],
+                        metadata=hit["_source"][Field.METADATA_KEY],
                     ),
                     hit["_score"],
                 )
@@ -318,9 +318,9 @@ class LindormVectorStore(BaseVector):
 
         docs = []
         for hit in response["hits"]["hits"]:
-            metadata = hit["_source"].get(Field.METADATA_KEY.value)
-            vector = hit["_source"].get(Field.VECTOR.value)
-            page_content = hit["_source"].get(Field.CONTENT_KEY.value)
+            metadata = hit["_source"].get(Field.METADATA_KEY)
+            vector = hit["_source"].get(Field.VECTOR)
+            page_content = hit["_source"].get(Field.CONTENT_KEY)
             doc = Document(page_content=page_content, vector=vector, metadata=metadata)
             docs.append(doc)
 
@@ -342,8 +342,8 @@ class LindormVectorStore(BaseVector):
                     "settings": {"index": {"knn": True, "knn_routing": self._using_ugc}},
                     "mappings": {
                         "properties": {
-                            Field.CONTENT_KEY.value: {"type": "text"},
-                            Field.VECTOR.value: {
+                            Field.CONTENT_KEY: {"type": "text"},
+                            Field.VECTOR: {
                                 "type": "knn_vector",
                                 "dimension": len(embeddings[0]),  # Make sure the dimension is correct here
                                 "method": {

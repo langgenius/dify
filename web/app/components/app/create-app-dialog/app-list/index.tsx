@@ -25,9 +25,10 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
 import Input from '@/app/components/base/input'
-import type { AppMode } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import { DSLImportMode } from '@/models/app'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -61,7 +62,7 @@ const Apps = ({
     handleSearch()
   }
 
-  const [currentType, setCurrentType] = useState<AppMode[]>([])
+  const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
     disableSearchParams: true,
@@ -93,15 +94,15 @@ const Apps = ({
     if (currentType.length === 0)
       return filteredByCategory
     return filteredByCategory.filter((item) => {
-      if (currentType.includes('chat') && item.app.mode === 'chat')
+      if (currentType.includes(AppModeEnum.CHAT) && item.app.mode === AppModeEnum.CHAT)
         return true
-      if (currentType.includes('advanced-chat') && item.app.mode === 'advanced-chat')
+      if (currentType.includes(AppModeEnum.ADVANCED_CHAT) && item.app.mode === AppModeEnum.ADVANCED_CHAT)
         return true
-      if (currentType.includes('agent-chat') && item.app.mode === 'agent-chat')
+      if (currentType.includes(AppModeEnum.AGENT_CHAT) && item.app.mode === AppModeEnum.AGENT_CHAT)
         return true
-      if (currentType.includes('completion') && item.app.mode === 'completion')
+      if (currentType.includes(AppModeEnum.COMPLETION) && item.app.mode === AppModeEnum.COMPLETION)
         return true
-      if (currentType.includes('workflow') && item.app.mode === 'workflow')
+      if (currentType.includes(AppModeEnum.WORKFLOW) && item.app.mode === AppModeEnum.WORKFLOW)
         return true
       return false
     })
@@ -141,6 +142,15 @@ const Apps = ({
         icon_background,
         description,
       })
+
+      // Track app creation from template
+      trackEvent('create_app_with_template', {
+        app_mode: mode,
+        template_id: currApp?.app.id,
+        template_name: currApp?.app.name,
+        description,
+      })
+
       setIsShowCreateModal(false)
       Toast.notify({
         type: 'success',

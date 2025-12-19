@@ -23,8 +23,10 @@ import {
 } from '../node-handle'
 import ErrorHandleOnNode from '../error-handle-on-node'
 
+type NodeChildElement = ReactElement<Partial<NodeProps>>
+
 type NodeCardProps = NodeProps & {
-  children?: ReactElement
+  children?: NodeChildElement
 }
 
 const BaseCard = ({

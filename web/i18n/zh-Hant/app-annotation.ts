@@ -4,7 +4,7 @@ const translation = {
   editBy: '{{author}}編輯的答案',
   noData: {
     title: '沒有標註',
-    description: '你可以在應用會話除錯中編輯標註，也可以在此批次匯入標註用於高質量回復。',
+    description: '你可以在應用會話除錯中編輯標註，也可以在此批次匯入標註用於高品質回復。',
   },
   table: {
     header: {

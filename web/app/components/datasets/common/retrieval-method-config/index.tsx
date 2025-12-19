@@ -20,12 +20,14 @@ import { EffectColor } from '../../settings/chunk-structure/types'
 type Props = {
   disabled?: boolean
   value: RetrievalConfig
+  showMultiModalTip?: boolean
   onChange: (value: RetrievalConfig) => void
 }
 
 const RetrievalMethodConfig: FC<Props> = ({
   disabled = false,
   value,
+  showMultiModalTip = false,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -40,7 +42,7 @@ const RetrievalMethodConfig: FC<Props> = ({
       onChange({
         ...value,
         search_method: retrieveMethod,
-        ...(!value.reranking_model.reranking_model_name
+        ...((!value.reranking_model.reranking_model_name || !value.reranking_model.reranking_provider_name)
           ? {
             reranking_model: {
               reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',
@@ -57,7 +59,7 @@ const RetrievalMethodConfig: FC<Props> = ({
       onChange({
         ...value,
         search_method: retrieveMethod,
-        ...(!value.reranking_model.reranking_model_name
+        ...((!value.reranking_model.reranking_model_name || !value.reranking_model.reranking_provider_name)
           ? {
             reranking_model: {
               reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',
@@ -110,6 +112,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             type={RETRIEVE_METHOD.semantic}
             value={value}
             onChange={onChange}
+            showMultiModalTip={showMultiModalTip}
           />
         </OptionCard>
       )}
@@ -132,6 +135,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             type={RETRIEVE_METHOD.fullText}
             value={value}
             onChange={onChange}
+            showMultiModalTip={showMultiModalTip}
           />
         </OptionCard>
       )}
@@ -155,6 +159,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             type={RETRIEVE_METHOD.hybrid}
             value={value}
             onChange={onChange}
+            showMultiModalTip={showMultiModalTip}
           />
         </OptionCard>
       )}

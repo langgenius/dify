@@ -4,7 +4,7 @@ import React from 'react'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
-import type { AppMode } from '@/types/app'
+import { AppModeEnum } from '@/types/app'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/base/tag'
@@ -12,10 +12,9 @@ import Tag from '@/app/components/base/tag'
 type IShareLinkProps = {
   isShow: boolean
   onClose: () => void
-  linkUrl: string
   api_base_url: string
   appId: string
-  mode: AppMode
+  mode: AppModeEnum
 }
 
 const StepNum: FC<{ children: React.ReactNode }> = ({ children }) =>
@@ -42,7 +41,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
 }) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const isChatApp = mode === 'chat' || mode === 'advanced-chat'
+  const isChatApp = mode === AppModeEnum.CHAT || mode === AppModeEnum.ADVANCED_CHAT
 
   return <Modal
     title={t(`${prefixCustomize}.title`)}

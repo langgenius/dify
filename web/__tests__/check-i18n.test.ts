@@ -759,4 +759,104 @@ export default translation`
       expect(result).not.toContain('Zbuduj inteligentnego agenta')
     })
   })
+
+  describe('Performance and Scalability', () => {
+    it('should handle large translation files efficiently', async () => {
+      // Create a large translation file with 1000 keys
+      const largeContent = `const translation = {
+${Array.from({ length: 1000 }, (_, i) => `  key${i}: 'value${i}',`).join('\n')}
+}
+
+export default translation`
+
+      fs.writeFileSync(path.join(testEnDir, 'large.ts'), largeContent)
+
+      const startTime = Date.now()
+      const keys = await getKeysFromLanguage('en-US')
+      const endTime = Date.now()
+
+      expect(keys.length).toBe(1000)
+      expect(endTime - startTime).toBeLessThan(1000) // Should complete in under 1 second
+    })
+
+    it('should handle multiple translation files concurrently', async () => {
+      // Create multiple files
+      for (let i = 0; i < 10; i++) {
+        const content = `const translation = {
+  key${i}: 'value${i}',
+  nested${i}: {
+    subkey: 'subvalue'
+  }
+}
+
+export default translation`
+        fs.writeFileSync(path.join(testEnDir, `file${i}.ts`), content)
+      }
+
+      const startTime = Date.now()
+      const keys = await getKeysFromLanguage('en-US')
+      const endTime = Date.now()
+
+      expect(keys.length).toBe(20) // 10 files * 2 keys each
+      expect(endTime - startTime).toBeLessThan(500)
+    })
+  })
+
+  describe('Unicode and Internationalization', () => {
+    it('should handle Unicode characters in keys and values', async () => {
+      const unicodeContent = `const translation = {
+  '中文键': '中文值',
+  'العربية': 'قيمة',
+  'emoji_😀': 'value with emoji 🎉',
+  'mixed_中文_English': 'mixed value'
+}
+
+export default translation`
+
+      fs.writeFileSync(path.join(testEnDir, 'unicode.ts'), unicodeContent)
+
+      const keys = await getKeysFromLanguage('en-US')
+
+      expect(keys).toContain('unicode.中文键')
+      expect(keys).toContain('unicode.العربية')
+      expect(keys).toContain('unicode.emoji_😀')
+      expect(keys).toContain('unicode.mixed_中文_English')
+    })
+
+    it('should handle RTL language files', async () => {
+      const rtlContent = `const translation = {
+  مرحبا: 'Hello',
+  العالم: 'World',
+  nested: {
+    مفتاح: 'key'
+  }
+}
+
+export default translation`
+
+      fs.writeFileSync(path.join(testEnDir, 'rtl.ts'), rtlContent)
+
+      const keys = await getKeysFromLanguage('en-US')
+
+      expect(keys).toContain('rtl.مرحبا')
+      expect(keys).toContain('rtl.العالم')
+      expect(keys).toContain('rtl.nested.مفتاح')
+    })
+  })
+
+  describe('Error Recovery', () => {
+    it('should handle syntax errors in translation files gracefully', async () => {
+      const invalidContent = `const translation = {
+  validKey: 'valid value',
+  invalidKey: 'missing quote,
+  anotherKey: 'another value'
+}
+
+export default translation`
+
+      fs.writeFileSync(path.join(testEnDir, 'invalid.ts'), invalidContent)
+
+      await expect(getKeysFromLanguage('en-US')).rejects.toThrow()
+    })
+  })
 })

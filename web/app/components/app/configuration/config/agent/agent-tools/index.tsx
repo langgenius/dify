@@ -4,7 +4,7 @@ import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import copy from 'copy-to-clipboard'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
@@ -32,6 +32,7 @@ import { canFindTool } from '@/utils'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { useMittContextSelector } from '@/context/mitt-context'
+import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
 type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
@@ -93,13 +94,17 @@ const AgentTools: FC = () => {
 
   const [isDeleting, setIsDeleting] = useState<number>(-1)
   const getToolValue = (tool: ToolDefaultValue) => {
+    const currToolInCollections = collectionList.find(c => c.id === tool.provider_id)
+    const currToolWithConfigs = currToolInCollections?.tools.find(t => t.name === tool.tool_name)
+    const formSchemas = currToolWithConfigs ? toolParametersToFormSchemas(currToolWithConfigs.parameters) : []
+    const paramsWithDefaultValue = addDefaultValue(tool.params, formSchemas)
     return {
       provider_id: tool.provider_id,
       provider_type: tool.provider_type as CollectionType,
       provider_name: tool.provider_name,
       tool_name: tool.tool_name,
       tool_label: tool.tool_label,
-      tool_parameters: tool.params,
+      tool_parameters: paramsWithDefaultValue,
       notAuthor: !tool.is_team_authorization,
       enabled: true,
     }
@@ -119,7 +124,7 @@ const AgentTools: FC = () => {
   }
   const getProviderShowName = (item: AgentTool) => {
     const type = item.provider_type
-    if(type === CollectionType.builtIn)
+    if (type === CollectionType.builtIn)
       return item.provider_name.split('/').pop()
     return item.provider_name
   }
@@ -212,7 +217,7 @@ const AgentTools: FC = () => {
                       }
                     >
                       <div className='h-4 w-4'>
-                        <div className='ml-0.5 hidden group-hover:inline-block'>
+                        <div className='ml-0.5 hidden group-hover:inline-block' data-testid='tool-info-tooltip'>
                           <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
                         </div>
                       </div>
@@ -251,6 +256,7 @@ const AgentTools: FC = () => {
                     {!item.notAuthor && (
                       <Tooltip
                         popupContent={t('tools.setBuiltInTools.infoAndSetting')}
+                        needsDelay={false}
                       >
                         <div className='cursor-pointer rounded-md p-1  hover:bg-black/5' onClick={() => {
                           setCurrentTool(item)
@@ -271,6 +277,7 @@ const AgentTools: FC = () => {
                       }}
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
+                      data-testid='delete-removed-tool'
                     >
                       <RiDeleteBinLine className='h-4 w-4' />
                     </div>

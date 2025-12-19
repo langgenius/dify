@@ -113,7 +113,7 @@ class ApiProviderAuthType(StrEnum):
         # normalize & tiny alias for backward compatibility
         v = (value or "").strip().lower()
         if v == "api_key":
-            v = cls.API_KEY_HEADER.value
+            v = cls.API_KEY_HEADER
 
         for mode in cls:
             if mode.value == v:
@@ -129,6 +129,7 @@ class ToolInvokeMessage(BaseModel):
 
     class JsonMessage(BaseModel):
         json_object: dict
+        suppress_output: bool = Field(default=False, description="Whether to suppress JSON output in result string")
 
     class BlobMessage(BaseModel):
         blob: bytes
@@ -188,6 +189,11 @@ class ToolInvokeMessage(BaseModel):
         status: LogStatus = Field(..., description="The status of the log")
         data: Mapping[str, Any] = Field(..., description="Detailed log data")
         metadata: Mapping[str, Any] = Field(default_factory=dict, description="The metadata of the log")
+
+        @field_validator("metadata", mode="before")
+        @classmethod
+        def _normalize_metadata(cls, value: Mapping[str, Any] | None) -> Mapping[str, Any]:
+            return value or {}
 
     class RetrieverResourceMessage(BaseModel):
         retriever_resources: list[RetrievalSourceMetadata] = Field(..., description="retriever resources")
@@ -262,6 +268,7 @@ class ToolParameter(PluginParameter):
         SECRET_INPUT = PluginParameterType.SECRET_INPUT
         FILE = PluginParameterType.FILE
         FILES = PluginParameterType.FILES
+        CHECKBOX = PluginParameterType.CHECKBOX
         APP_SELECTOR = PluginParameterType.APP_SELECTOR
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR
         ANY = PluginParameterType.ANY
@@ -376,6 +383,11 @@ class ToolEntity(BaseModel):
     def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
         return v or []
 
+    @field_validator("output_schema", mode="before")
+    @classmethod
+    def _normalize_output_schema(cls, value: Mapping[str, object] | None) -> Mapping[str, object]:
+        return value or {}
+
 
 class OAuthSchema(BaseModel):
     client_schema: list[ProviderConfig] = Field(
@@ -478,36 +490,3 @@ class ToolSelector(BaseModel):
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return self.model_dump()
-
-
-class CredentialType(StrEnum):
-    API_KEY = "api-key"
-    OAUTH2 = auto()
-
-    def get_name(self):
-        if self == CredentialType.API_KEY:
-            return "API KEY"
-        elif self == CredentialType.OAUTH2:
-            return "AUTH"
-        else:
-            return self.value.replace("-", " ").upper()
-
-    def is_editable(self):
-        return self == CredentialType.API_KEY
-
-    def is_validate_allowed(self):
-        return self == CredentialType.API_KEY
-
-    @classmethod
-    def values(cls):
-        return [item.value for item in cls]
-
-    @classmethod
-    def of(cls, credential_type: str) -> "CredentialType":
-        type_name = credential_type.lower()
-        if type_name in {"api-key", "api_key"}:
-            return cls.API_KEY
-        elif type_name in {"oauth2", "oauth"}:
-            return cls.OAUTH2
-        else:
-            raise ValueError(f"Invalid credential type: {credential_type}")

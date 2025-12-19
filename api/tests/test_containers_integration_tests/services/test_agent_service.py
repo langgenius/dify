@@ -5,7 +5,7 @@ import pytest
 from faker import Faker
 
 from core.plugin.impl.exc import PluginDaemonClientSideError
-from models.account import Account
+from models import Account
 from models.model import AppModelConfig, Conversation, EndUser, Message, MessageAgentThought
 from services.account_service import AccountService, TenantService
 from services.agent_service import AgentService
@@ -852,6 +852,7 @@ class TestAgentService:
         # Add files to message
         from models.model import MessageFile
 
+        assert message.from_account_id is not None
         message_file1 = MessageFile(
             message_id=message.id,
             type=FileType.IMAGE,

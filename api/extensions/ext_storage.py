@@ -85,7 +85,7 @@ class Storage:
             case _:
                 raise ValueError(f"unsupported storage type {storage_type}")
 
-    def save(self, filename, data):
+    def save(self, filename: str, data: bytes):
         self.storage_runner.save(filename, data)
 
     @overload
@@ -112,7 +112,7 @@ class Storage:
     def exists(self, filename):
         return self.storage_runner.exists(filename)
 
-    def delete(self, filename):
+    def delete(self, filename: str):
         return self.storage_runner.delete(filename)
 
     def scan(self, path: str, files: bool = True, directories: bool = False) -> list[str]:

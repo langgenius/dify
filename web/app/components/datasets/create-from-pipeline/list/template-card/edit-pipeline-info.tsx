@@ -99,7 +99,7 @@ const EditPipelineInfo = ({
           {t('datasetPipeline.editPipelineInfo')}
         </span>
       </div>
-      <button
+      <button type="button"
         className='absolute right-5 top-5 flex size-8 items-center justify-center'
         onClick={onClose}
       >

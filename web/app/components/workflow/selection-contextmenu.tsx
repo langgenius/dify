@@ -17,7 +17,7 @@ import {
   RiAlignTop,
 } from '@remixicon/react'
 import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
-import produce from 'immer'
+import { produce } from 'immer'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './hooks/use-workflow-history'
 import { useStore } from './store'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'

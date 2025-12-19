@@ -11,7 +11,7 @@
 			"nodeGypDependencies": true,
 			"version": "lts"
 		},
-		"ghcr.io/devcontainers-contrib/features/npm-package:1": {
+		"ghcr.io/devcontainers-extra/features/npm-package:1": {
 			"package": "typescript",
 			"version": "latest"
 		},

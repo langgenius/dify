@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Crea Strumento Personalizzato',
   customToolTip: 'Scopri di più sugli strumenti personalizzati di Dify',
   type: {
-    all: 'Tutti',
     builtIn: 'Integrato',
     custom: 'Personalizzato',
     workflow: 'Flusso di lavoro',
@@ -22,13 +21,10 @@ const translation = {
       'Dopo aver configurato le credenziali, tutti i membri all\'interno del workspace possono utilizzare questo strumento durante l\'orchestrazione delle applicazioni.',
   },
   includeToolNum: '{{num}} strumenti inclusi',
-  addTool: 'Aggiungi Strumento',
   addToolModal: {
     type: 'tipo',
     category: 'categoria',
-    add: 'aggiungi',
     added: 'aggiunto',
-    manageInTools: 'Gestisci in Strumenti',
     custom: {
       title: 'Nessuno strumento personalizzato disponibile',
       tip: 'Crea uno strumento personalizzato',
@@ -130,6 +126,13 @@ const translation = {
     deleteToolConfirmTitle: 'Eliminare questo Strumento?',
     deleteToolConfirmContent:
       'L\'eliminazione dello Strumento è irreversibile. Gli utenti non potranno più accedere al tuo Strumento.',
+    toolOutput: {
+      title: 'Output dello strumento',
+      name: 'Nome',
+      reserved: 'Riservato',
+      reservedParameterDuplicateTip: 'text, json e files sono variabili riservate. Le variabili con questi nomi non possono comparire nello schema di output.',
+      description: 'Descrizione',
+    },
   },
   test: {
     title: 'Test',
@@ -213,6 +216,13 @@ const translation = {
       headerValuePlaceholder: 'ad esempio, Token di accesso123',
       headersTip: 'Intestazioni HTTP aggiuntive da inviare con le richieste al server MCP',
       maskedHeadersTip: 'I valori dell\'intestazione sono mascherati per motivi di sicurezza. Le modifiche aggiorneranno i valori effettivi.',
+      clientID: 'ID cliente',
+      clientSecret: 'Segreto del Cliente',
+      useDynamicClientRegistration: 'Usa la Registrazione Dinamica del Client',
+      clientSecretPlaceholder: 'Segreto del Cliente',
+      authentication: 'Autenticazione',
+      configurations: 'Configurazioni',
+      redirectUrlWarning: 'Si prega di configurare il vostro URL di reindirizzamento OAuth su:',
     },
     delete: 'Rimuovi Server MCP',
     deleteConfirmTitle: 'Vuoi rimuovere {mcp}?',
@@ -252,6 +262,10 @@ const translation = {
         confirm: 'Abilitare Server MCP',
       },
       publishTip: 'App non pubblicata. Pubblica l\'app prima.',
+    },
+    toolItem: {
+      parameters: 'Parametri',
+      noDescription: 'Nessuna descrizione',
     },
   },
   allTools: 'Tutti gli strumenti',

@@ -14,7 +14,8 @@ export enum FormTypeEnum {
   secretInput = 'secret-input',
   select = 'select',
   radio = 'radio',
-  boolean = 'checkbox',
+  checkbox = 'checkbox',
+  boolean = 'boolean',
   files = 'files',
   file = 'file',
   modelSelector = 'model-selector',
@@ -216,6 +217,7 @@ export type ModelProvider = {
     url: TypeWithI18N
   }
   icon_small: TypeWithI18N
+  icon_small_dark?: TypeWithI18N
   icon_large: TypeWithI18N
   background?: string
   supported_model_types: ModelTypeEnum[]
@@ -254,6 +256,7 @@ export type Model = {
   provider: string
   icon_large: TypeWithI18N
   icon_small: TypeWithI18N
+  icon_small_dark?: TypeWithI18N
   label: TypeWithI18N
   models: ModelItem[]
   status: ModelStatusEnum

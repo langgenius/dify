@@ -898,7 +898,7 @@ class TestRegisterService:
                     mock_dify_setup.return_value = mock_dify_setup_instance
 
                     # Execute test
-                    RegisterService.setup("admin@example.com", "Admin User", "password123", "192.168.1.1")
+                    RegisterService.setup("admin@example.com", "Admin User", "password123", "192.168.1.1", "en-US")
 
                     # Verify results
                     mock_create_account.assert_called_once_with(
@@ -930,6 +930,7 @@ class TestRegisterService:
                 "Admin User",
                 "password123",
                 "192.168.1.1",
+                "en-US",
             )
 
             # Verify rollback operations were called

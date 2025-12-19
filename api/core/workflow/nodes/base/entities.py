@@ -1,10 +1,11 @@
 import json
 from abc import ABC
+from builtins import type as type_
 from collections.abc import Sequence
 from enum import StrEnum
 from typing import Any, Union
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, field_validator, model_validator
 
 from core.workflow.enums import ErrorStrategy
 
@@ -34,6 +35,45 @@ class VariableSelector(BaseModel):
     value_selector: Sequence[str]
 
 
+class OutputVariableType(StrEnum):
+    STRING = "string"
+    NUMBER = "number"
+    INTEGER = "integer"
+    SECRET = "secret"
+    BOOLEAN = "boolean"
+    OBJECT = "object"
+    FILE = "file"
+    ARRAY = "array"
+    ARRAY_STRING = "array[string]"
+    ARRAY_NUMBER = "array[number]"
+    ARRAY_OBJECT = "array[object]"
+    ARRAY_BOOLEAN = "array[boolean]"
+    ARRAY_FILE = "array[file]"
+    ANY = "any"
+    ARRAY_ANY = "array[any]"
+
+
+class OutputVariableEntity(BaseModel):
+    """
+    Output Variable Entity.
+    """
+
+    variable: str
+    value_type: OutputVariableType = OutputVariableType.ANY
+    value_selector: Sequence[str]
+
+    @field_validator("value_type", mode="before")
+    @classmethod
+    def normalize_value_type(cls, v: Any) -> Any:
+        """
+        Normalize value_type to handle case-insensitive array types.
+        Converts 'Array[...]' to 'array[...]' for backward compatibility.
+        """
+        if isinstance(v, str) and v.startswith("Array["):
+            return v.lower()
+        return v
+
+
 class DefaultValueType(StrEnum):
     STRING = "string"
     NUMBER = "number"
@@ -58,10 +98,9 @@ class DefaultValue(BaseModel):
             raise DefaultValueTypeError(f"Invalid JSON format for value: {value}")
 
     @staticmethod
-    def _validate_array(value: Any, element_type: DefaultValueType) -> bool:
+    def _validate_array(value: Any, element_type: type_ | tuple[type_, ...]) -> bool:
         """Unified array type validation"""
-        # FIXME, type ignore here for do not find the reason mypy complain, if find the root cause, please fix it
-        return isinstance(value, list) and all(isinstance(x, element_type) for x in value)  # type: ignore
+        return isinstance(value, list) and all(isinstance(x, element_type) for x in value)
 
     @staticmethod
     def _convert_number(value: str) -> float:

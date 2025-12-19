@@ -81,6 +81,10 @@ const translation = {
     },
     addUrl: 'URL hinzufügen',
     learnMore: 'Weitere Informationen',
+    sort: {
+      uploadTime: 'Upload-Zeit',
+      hitCount: 'Abrufanzahl',
+    },
   },
   metadata: {
     title: 'Metadaten',
@@ -397,6 +401,7 @@ const translation = {
     searchResults_one: 'ERGEBNIS',
     keywordEmpty: 'Das Schlüsselwort darf nicht leer sein.',
     keywordDuplicate: 'Das Schlüsselwort existiert bereits',
+    allFilesUploaded: 'Alle Dateien müssen vor dem Speichern hochgeladen werden',
   },
 }
 

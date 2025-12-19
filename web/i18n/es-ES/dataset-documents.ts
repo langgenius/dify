@@ -81,6 +81,10 @@ const translation = {
       ok: 'Aceptar',
     },
     learnMore: 'Aprende más',
+    sort: {
+      uploadTime: 'Hora de subida',
+      hitCount: 'Conteo de Recuperaciones',
+    },
   },
   metadata: {
     title: 'Metadatos',
@@ -397,6 +401,7 @@ const translation = {
     regenerationConfirmTitle: '¿Desea regenerar fragmentos secundarios?',
     keywordEmpty: 'La palabra clave no puede estar vacía',
     keywordDuplicate: 'La palabra clave ya existe',
+    allFilesUploaded: 'Todos los archivos deben subirse antes de guardar',
   },
 }
 

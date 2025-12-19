@@ -18,7 +18,7 @@ from events.app_event import app_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
-from models.account import Account
+from models import Account
 from models.model import App, AppMode, AppModelConfig, Site
 from models.tools import ApiToolProvider
 from services.billing_service import BillingService
@@ -211,7 +211,7 @@ class AppService:
                     # override tool parameters
                     tool["tool_parameters"] = masked_parameter
                 except Exception:
-                    pass
+                    logger.exception("Failed to mask agent tool parameters for tool %s", agent_tool_entity.tool_name)
 
             # override agent mode
             if model_config:

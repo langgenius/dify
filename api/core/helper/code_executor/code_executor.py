@@ -131,7 +131,7 @@ class CodeExecutor:
         if (code := response_data.get("code")) != 0:
             raise CodeExecutionError(f"Got error code: {code}. Got error msg: {response_data.get('message')}")
 
-        response_code = CodeExecutionResponse(**response_data)
+        response_code = CodeExecutionResponse.model_validate(response_data)
 
         if response_code.data.error:
             raise CodeExecutionError(response_code.data.error)
@@ -152,10 +152,5 @@ class CodeExecutor:
             raise CodeExecutionError(f"Unsupported language {language}")
 
         runner, preload = template_transformer.transform_caller(code, inputs)
-
-        try:
-            response = cls.execute_code(language, preload, runner)
-        except CodeExecutionError as e:
-            raise e
-
+        response = cls.execute_code(language, preload, runner)
         return template_transformer.transform_response(response)

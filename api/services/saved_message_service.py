@@ -2,7 +2,7 @@ from typing import Union
 
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
-from models.account import Account
+from models import Account
 from models.model import App, EndUser
 from models.web import SavedMessage
 from services.message_service import MessageService

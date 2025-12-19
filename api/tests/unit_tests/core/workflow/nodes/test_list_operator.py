@@ -35,7 +35,7 @@ def list_operator_node():
         "extract_by": ExtractConfig(enabled=False, serial="1"),
         "title": "Test Title",
     }
-    node_data = ListOperatorNodeData(**config)
+    node_data = ListOperatorNodeData.model_validate(config)
     node_config = {
         "id": "test_node_id",
         "data": node_data.model_dump(),
@@ -57,8 +57,6 @@ def list_operator_node():
         graph_init_params=graph_init_params,
         graph_runtime_state=MagicMock(),
     )
-    # Initialize node data
-    node.init_node_data(node_config["data"])
     node.graph_runtime_state = MagicMock()
     node.graph_runtime_state.variable_pool = MagicMock()
     return node

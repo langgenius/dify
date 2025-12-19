@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatContext } from '../chat/chat/context'
+import cn from '@/utils/classnames'
 
 const hasEndThink = (children: any): boolean => {
   if (typeof children === 'string')
@@ -37,10 +38,10 @@ const removeEndThink = (children: any): any => {
 
 const useThinkTimer = (children: any) => {
   const { isResponding } = useChatContext()
-  const [startTime] = useState(Date.now())
+  const [startTime] = useState(() => Date.now())
   const [elapsedTime, setElapsedTime] = useState(0)
   const [isComplete, setIsComplete] = useState(false)
-  const timerRef = useRef<NodeJS.Timeout>()
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     if (isComplete) return
@@ -63,16 +64,26 @@ const useThinkTimer = (children: any) => {
   return { elapsedTime, isComplete }
 }
 
-const ThinkBlock = ({ children, ...props }: React.ComponentProps<'details'>) => {
+type ThinkBlockProps = React.ComponentProps<'details'> & {
+  'data-think'?: boolean
+}
+
+const ThinkBlock = ({ children, ...props }: ThinkBlockProps) => {
   const { elapsedTime, isComplete } = useThinkTimer(children)
   const displayContent = removeEndThink(children)
   const { t } = useTranslation()
+  const { 'data-think': isThink = false, className, open, ...rest } = props
 
-  if (!(props['data-think'] ?? false))
+  if (!isThink)
     return (<details {...props}>{children}</details>)
 
   return (
-    <details {...(!isComplete && { open: true })} className="group">
+    <details
+      {...rest}
+      data-think={isThink}
+      className={cn('group', className)}
+      open={isComplete ? open : true}
+    >
       <summary className="flex cursor-pointer select-none list-none items-center whitespace-nowrap pl-2 font-bold text-text-secondary">
         <div className="flex shrink-0 items-center">
           <svg

@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import type {
   DefaultModel,
   FormValue,
+  ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -57,7 +58,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
   const scopeArray = scope.split('&')
-  const scopeFeatures = useMemo(() => {
+  const scopeFeatures = useMemo((): ModelFeatureEnum[] => {
     if (scopeArray.includes('all'))
       return []
     return scopeArray.filter(item => ![
@@ -67,7 +68,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       ModelTypeEnum.moderation,
       ModelTypeEnum.speech2text,
       ModelTypeEnum.tts,
-    ].includes(item as ModelTypeEnum))
+    ].includes(item as ModelTypeEnum)).map(item => item as ModelFeatureEnum)
   }, [scopeArray])
 
   const { data: textGenerationList } = useModelList(ModelTypeEnum.textGeneration)
@@ -148,7 +149,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
           })
         }
       }
-      catch (e) {
+      catch {
         Toast.notify({ type: 'error', message: t('common.error') })
       }
     }

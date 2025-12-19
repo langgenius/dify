@@ -55,13 +55,13 @@ class TiDBVector(BaseVector):
         return Table(
             self._collection_name,
             self._orm_base.metadata,
-            Column(Field.PRIMARY_KEY.value, String(36), primary_key=True, nullable=False),
+            Column(Field.PRIMARY_KEY, String(36), primary_key=True, nullable=False),
             Column(
-                Field.VECTOR.value,
+                Field.VECTOR,
                 VectorType(dim),
                 nullable=False,
             ),
-            Column(Field.TEXT_KEY.value, TEXT, nullable=False),
+            Column(Field.TEXT_KEY, TEXT, nullable=False),
             Column("meta", JSON, nullable=False),
             Column("create_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP")),
             Column(

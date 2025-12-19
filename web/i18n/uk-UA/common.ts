@@ -61,10 +61,21 @@ const translation = {
     deSelectAll: 'Вимкнути все',
     selectAll: 'Вибрати все',
     config: 'Конфігурація',
+    yes: 'Так',
+    no: 'Ні',
+    deleteConfirmTitle: 'Видалити?',
+    confirmAction: 'Будь ласка, підтвердіть свої дії.',
+    noSearchResults: 'Жодного {{content}} не знайдено',
+    resetKeywords: 'Скинути ключові слова',
+    selectCount: '{{count}} вибрано',
+    searchCount: 'Знайти {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Зараз',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',
     select: 'Будь ласка, оберіть параметр',
+    search: 'Пошук...',
   },
   voice: {
     language: {
@@ -88,6 +99,8 @@ const translation = {
       hiIN: 'Хінді',
       trTR: 'Турецька',
       faIR: 'Перська',
+      slSI: 'Словенська',
+      arTN: 'Туніська арабська',
     },
   },
   unit: {
@@ -157,7 +170,6 @@ const translation = {
     workspace: 'Робочий простір',
     createWorkspace: 'Створити робочий простір',
     helpCenter: 'Довідковий центр',
-    communityFeedback: 'відгуки',
     roadmap: 'Дорожня карта',
     community: 'Спільнота',
     about: 'Про нас',
@@ -165,6 +177,8 @@ const translation = {
     compliance: 'Відповідність',
     support: 'Підтримка',
     github: 'Гітхаб',
+    contactUs: 'Зв’яжіться з нами',
+    forum: 'Форум',
   },
   settings: {
     accountGroup: 'ОБЛІКОВИЙ ЗАПИС',
@@ -502,6 +516,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Облікові дані використовуються і не можуть бути видалені',
     },
     parametersInvalidRemoved: 'Деякі параметри є недійсними і були видалені',
+    installDataSourceProvider: 'Встановіть постачальників джерел даних',
   },
   dataSource: {
     add: 'Додати джерело даних',
@@ -721,6 +736,8 @@ const translation = {
     fileExtensionNotSupport: 'Розширення файлу не підтримується',
     uploadFromComputerReadError: 'Не вдалося прочитати файл, будь ласка, спробуйте ще раз.',
     uploadFromComputerUploadError: 'Не вдалося завантажити файл, будь ласка, завантажте ще раз.',
+    fileExtensionBlocked: 'Цей тип файлу заблоковано з міркувань безпеки',
+    uploadDisabled: 'Завантаження файлів вимкнено',
   },
   license: {
     expiring: 'Термін дії закінчується за один день',
@@ -762,6 +779,13 @@ const translation = {
   },
   label: {
     optional: '(необов\'язково)',
+  },
+  noData: 'Немає даних',
+  dynamicSelect: {
+    error: 'Не вдалося завантажити параметри',
+    noData: 'Немає доступних опцій',
+    loading: 'Завантаження параметрів...',
+    selected: '{{count}} вибрано',
   },
 }
 

@@ -61,6 +61,16 @@ const translation = {
     selectAll: 'انتخاب همه',
     deSelectAll: 'همه را انتخاب نکنید',
     config: 'تنظیمات',
+    no: 'نه',
+    deleteConfirmTitle: 'حذف شود؟',
+    yes: 'بله',
+    confirmAction: 'لطفاً اقدام خود را تأیید کنید.',
+    noSearchResults: 'هیچ {{content}} یافت نشد',
+    resetKeywords: 'بازنشانی کلمات کلیدی',
+    selectCount: '{{count}} انتخاب شد',
+    searchCount: 'یافتن {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'الان',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -69,6 +79,7 @@ const translation = {
   placeholder: {
     input: 'لطفا وارد کنید',
     select: 'لطفا انتخاب کنید',
+    search: 'جستجو...',
   },
   voice: {
     language: {
@@ -92,6 +103,8 @@ const translation = {
       hiIN: 'هندی',
       trTR: 'ترکی',
       faIR: 'فارسی',
+      slSI: 'اسلوونیایی',
+      arTN: 'عربی تونسی',
     },
   },
   unit: {
@@ -161,7 +174,6 @@ const translation = {
     workspace: 'فضای کاری',
     createWorkspace: 'ایجاد فضای کاری',
     helpCenter: 'راهنما',
-    communityFeedback: 'بازخورد',
     roadmap: 'نقشه راه',
     community: 'انجمن',
     about: 'درباره',
@@ -169,6 +181,8 @@ const translation = {
     github: 'گیت‌هاب',
     compliance: 'انطباق',
     support: 'پشتیبانی',
+    contactUs: 'با ما تماس بگیرید',
+    forum: 'انجمن',
   },
   settings: {
     accountGroup: 'حساب کاربری',
@@ -505,6 +519,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'اعتبار در حال استفاده است و قابل حذف نیست',
     },
     parametersInvalidRemoved: 'برخی پارامترها نامعتبر هستند و حذف شده‌اند',
+    installDataSourceProvider: 'نصب ارائه‌دهندگان منبع داده',
   },
   dataSource: {
     add: 'افزودن منبع داده',
@@ -720,6 +735,8 @@ const translation = {
     uploadFromComputerUploadError: 'آپلود فایل انجام نشد، لطفا دوباره آپلود کنید.',
     pasteFileLink: 'پیوند فایل را جایگذاری کنید',
     uploadFromComputerLimit: 'آپلود فایل نمی تواند از {{size}} تجاوز کند',
+    fileExtensionBlocked: 'این نوع فایل به دلایل امنیتی مسدود شده است',
+    uploadDisabled: 'بارگذاری فایل غیرفعال است',
   },
   license: {
     expiring_plural: 'انقضا در {{count}} روز',
@@ -761,6 +778,13 @@ const translation = {
   },
   label: {
     optional: '(اختیاری)',
+  },
+  noData: 'بدون داده',
+  dynamicSelect: {
+    error: 'بارگیری گزینه‌ها ناموفق بود',
+    noData: 'هیچ گزینه‌ای در دسترس نیست',
+    loading: 'در حال بارگذاری گزینه‌ها...',
+    selected: '{{count}} انتخاب شد',
   },
 }
 

@@ -12,7 +12,7 @@ type CountdownProps = {
 
 export default function Countdown({ onResend }: CountdownProps) {
   const { t } = useTranslation()
-  const [leftTime, setLeftTime] = useState(Number(localStorage.getItem(COUNT_DOWN_KEY) || COUNT_DOWN_TIME_MS))
+  const [leftTime, setLeftTime] = useState(() => Number(localStorage.getItem(COUNT_DOWN_KEY) || COUNT_DOWN_TIME_MS))
   const [time] = useCountDown({
     leftTime,
     onEnd: () => {

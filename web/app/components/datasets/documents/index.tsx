@@ -25,10 +25,12 @@ import useEditDocumentMetadata from '../metadata/hooks/use-edit-dataset-metadata
 import DatasetMetadataDrawer from '../metadata/metadata-dataset/dataset-metadata-drawer'
 import StatusWithAction from '../common/document-status-with-action/status-with-action'
 import { useDocLink } from '@/context/i18n'
-import { SimpleSelect } from '../../base/select'
-import StatusItem from './detail/completed/status-item'
+import Chip from '../../base/chip'
+import Sort from '../../base/sort'
+import type { SortType } from '@/service/datasets'
 import type { Item } from '@/app/components/base/select'
 import { useIndexStatus } from './status-item/hooks'
+import { normalizeStatusForQuery, sanitizeStatusValue } from './status-filter'
 
 const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -84,13 +86,12 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const docLink = useDocLink()
   const { plan } = useProviderContext()
   const isFreePlan = plan.type === 'sandbox'
+  const { query, updateQuery } = useDocumentListQueryState()
   const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('')
-  const [statusFilter, setStatusFilter] = useState<Item>({ value: 'all', name: 'All Status' })
+  const [statusFilterValue, setStatusFilterValue] = useState<string>(() => sanitizeStatusValue(query.status))
+  const [sortValue, setSortValue] = useState<SortType>(query.sort)
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
-
-  // Use the new hook for URL state management
-  const { query, updateQuery } = useDocumentListQueryState()
   const [currPage, setCurrPage] = React.useState<number>(query.page - 1) // Convert to 0-based index
   const [limit, setLimit] = useState<number>(query.limit)
 
@@ -104,7 +105,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
   const statusFilterItems: Item[] = useMemo(() => [
-    { value: 'all', name: 'All Status' },
+    { value: 'all', name: t('datasetDocuments.list.index.all') as string },
     { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
     { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
     { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
@@ -114,6 +115,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     { value: 'disabled', name: DOC_INDEX_STATUS_MAP.disabled.text },
     { value: 'archived', name: DOC_INDEX_STATUS_MAP.archived.text },
   ], [DOC_INDEX_STATUS_MAP, t])
+  const normalizedStatusFilterValue = useMemo(() => normalizeStatusForQuery(statusFilterValue), [statusFilterValue])
+  const sortItems: Item[] = useMemo(() => [
+    { value: 'created_at', name: t('datasetDocuments.list.sort.uploadTime') as string },
+    { value: 'hit_count', name: t('datasetDocuments.list.sort.hitCount') as string },
+  ], [t])
 
   // Initialize search value from URL on mount
   useEffect(() => {
@@ -131,12 +137,17 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       setInputValue(query.keyword)
       setSearchValue(query.keyword)
     }
+    setStatusFilterValue((prev) => {
+      const nextValue = sanitizeStatusValue(query.status)
+      return prev === nextValue ? prev : nextValue
+    })
+    setSortValue(query.sort)
   }, [query])
 
   // Update URL when pagination changes
   const handlePageChange = (newPage: number) => {
     setCurrPage(newPage)
-    updateQuery({ page: newPage + 1 }) // Convert to 1-based index
+    updateQuery({ page: newPage + 1 }) // Pagination emits 0-based page, convert to 1-based for URL
   }
 
   // Update URL when limit changes
@@ -160,6 +171,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       page: currPage + 1,
       limit,
       keyword: debouncedSearchValue,
+      status: normalizedStatusFilterValue,
+      sort: sortValue,
     },
     refetchInterval: timerCanRun ? 2500 : 0,
   })
@@ -211,8 +224,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         percent,
       }
     })
-    setTimerCanRun(completedNum !== documentsRes?.data?.length)
-  }, [documentsRes])
+
+    const hasIncompleteDocuments = completedNum !== documentsRes?.data?.length
+    const transientStatuses = ['queuing', 'indexing', 'paused']
+    const shouldForcePolling = normalizedStatusFilterValue === 'all'
+      ? false
+      : transientStatuses.includes(normalizedStatusFilterValue)
+    setTimerCanRun(shouldForcePolling || hasIncompleteDocuments)
+  }, [documentsRes, normalizedStatusFilterValue])
   const total = documentsRes?.total || 0
 
   const routeToDocCreate = () => {
@@ -232,6 +251,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     if (searchValue !== query.keyword)
       setSelectedIds([])
   }, [searchValue, query.keyword])
+
+  useEffect(() => {
+    setSelectedIds([])
+  }, [normalizedStatusFilterValue])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchValue(inputValue)
@@ -260,7 +283,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   })
 
   return (
-    <div className='flex h-full flex-col overflow-y-auto'>
+    <div className='flex h-full flex-col'>
       <div className='flex flex-col justify-center gap-1 px-6 pt-4'>
         <h1 className='text-base font-semibold text-text-primary'>{t('datasetDocuments.list.title')}</h1>
         <div className='flex items-center space-x-0.5 text-sm font-normal text-text-tertiary'>
@@ -275,20 +298,27 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           </a>
         </div>
       </div>
-      <div className='flex flex-1 flex-col px-6 py-4'>
+      <div className='flex h-0 grow flex-col px-6 pt-4'>
         <div className='flex flex-wrap items-center justify-between'>
           <div className='flex items-center gap-2'>
-            <SimpleSelect
-              placeholder={t('datasetDocuments.list.table.header.status')}
-              onSelect={(item) => {
-                setStatusFilter(item)
-              }}
+            <Chip
+              className='w-[160px]'
+              showLeftIcon={false}
+              value={statusFilterValue}
               items={statusFilterItems}
-              defaultValue={statusFilter.value}
-              wrapperClassName='w-[160px] h-8'
-              renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
-              optionClassName='p-0'
-              notClearable
+              onSelect={(item) => {
+                const selectedValue = sanitizeStatusValue(item?.value ? String(item.value) : '')
+                setStatusFilterValue(selectedValue)
+                setCurrPage(0)
+                updateQuery({ status: selectedValue, page: 1 })
+              }}
+              onClear={() => {
+                if (statusFilterValue === 'all')
+                  return
+                setStatusFilterValue('all')
+                setCurrPage(0)
+                updateQuery({ status: 'all', page: 1 })
+              }}
             />
             <Input
               showLeftIcon
@@ -297,6 +327,20 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
               value={inputValue}
               onChange={e => handleInputChange(e.target.value)}
               onClear={() => handleInputChange('')}
+            />
+            <div className='h-3.5 w-px bg-divider-regular'></div>
+            <Sort
+              order={sortValue.startsWith('-') ? '-' : ''}
+              value={sortValue.replace('-', '')}
+              items={sortItems}
+              onSelect={(value) => {
+                const next = String(value) as SortType
+                if (next === sortValue)
+                  return
+                setSortValue(next)
+                setCurrPage(0)
+                updateQuery({ sort: next, page: 1 })
+              }}
             />
           </div>
           <div className='flex !h-8 items-center justify-center gap-2'>
@@ -343,7 +387,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
                 onUpdate={handleUpdate}
                 selectedIds={selectedIds}
                 onSelectedIdChange={setSelectedIds}
-                statusFilter={statusFilter}
+                statusFilterValue={normalizedStatusFilterValue}
+                remoteSortValue={sortValue}
                 pagination={{
                   total,
                   limit,

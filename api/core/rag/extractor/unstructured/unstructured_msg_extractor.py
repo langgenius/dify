@@ -1,5 +1,6 @@
 import logging
 
+from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 
@@ -31,7 +32,8 @@ class UnstructuredMsgExtractor(BaseExtractor):
             elements = partition_msg(filename=self._file_path)
         from unstructured.chunking.title import chunk_by_title
 
-        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
+        max_characters = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+        chunks = chunk_by_title(elements, max_characters=max_characters, combine_text_under_n_chars=max_characters)
         documents = []
         for chunk in chunks:
             text = chunk.text.strip()

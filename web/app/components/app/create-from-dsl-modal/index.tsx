@@ -28,6 +28,7 @@ import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { noop } from 'lodash-es'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -84,7 +85,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       handleFile(droppedFile)
   }, [droppedFile])
 
-  const onCreate: MouseEventHandler = async () => {
+  const onCreate = async (_e?: React.MouseEvent) => {
     if (currentTab === CreateFromDSLModalTab.FROM_FILE && !currentFile)
       return
     if (currentTab === CreateFromDSLModalTab.FROM_URL && !dslUrlValue)
@@ -112,6 +113,13 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         return
       const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
+        // Track app creation from DSL import
+        trackEvent('create_app_with_dsl', {
+          app_mode,
+          creation_method: currentTab === CreateFromDSLModalTab.FROM_FILE ? 'dsl_file' : 'dsl_url',
+          has_warnings: status === DSLImportStatus.COMPLETED_WITH_WARNINGS,
+        })
+
         if (onSuccess)
           onSuccess()
         if (onClose)
@@ -132,8 +140,6 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           importedVersion: imported_dsl_version ?? '',
           systemVersion: current_dsl_version ?? '',
         })
-        if (onClose)
-          onClose()
         setTimeout(() => {
           setShowErrorModal(true)
         }, 300)
@@ -154,7 +160,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (show && !isAppsFull && ((currentTab === CreateFromDSLModalTab.FROM_FILE && currentFile) || (currentTab === CreateFromDSLModalTab.FROM_URL && dslUrlValue)))
-      handleCreateApp()
+      handleCreateApp(undefined)
   })
 
   useKeyPress('esc', () => {

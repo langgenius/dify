@@ -6,11 +6,12 @@ from uuid import uuid4
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import ArrayStringVariable, StringVariable
 from core.workflow.conversation_variable_updater import ConversationVariableUpdater
-from core.workflow.entities import GraphInitParams, GraphRuntimeState, VariablePool
+from core.workflow.entities import GraphInitParams
 from core.workflow.graph import Graph
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode
 from core.workflow.nodes.variable_assigner.v1.node_data import WriteMode
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from models.enums import UserFrom
 
@@ -29,7 +30,13 @@ def test_overwrite_string_variable():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "version": "1", "title": "Variable Assigner", "items": []},
+                "data": {
+                    "type": "assigner",
+                    "title": "Variable Assigner",
+                    "assigned_variable_selector": ["conversation", "test_conversation_variable"],
+                    "write_mode": "over-write",
+                    "input_variable_selector": ["node_id", "test_string_variable"],
+                },
                 "id": "assigner",
             },
         ],
@@ -87,7 +94,7 @@ def test_overwrite_string_variable():
         "data": {
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
-            "write_mode": WriteMode.OVER_WRITE.value,
+            "write_mode": WriteMode.OVER_WRITE,
             "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
         },
     }
@@ -99,9 +106,6 @@ def test_overwrite_string_variable():
         config=node_config,
         conv_var_updater_factory=mock_conv_var_updater_factory,
     )
-
-    # Initialize node data
-    node.init_node_data(node_config["data"])
 
     list(node.run())
     expected_var = StringVariable(
@@ -133,7 +137,13 @@ def test_append_variable_to_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "version": "1", "title": "Variable Assigner", "items": []},
+                "data": {
+                    "type": "assigner",
+                    "title": "Variable Assigner",
+                    "assigned_variable_selector": ["conversation", "test_conversation_variable"],
+                    "write_mode": "append",
+                    "input_variable_selector": ["node_id", "test_string_variable"],
+                },
                 "id": "assigner",
             },
         ],
@@ -189,7 +199,7 @@ def test_append_variable_to_array():
         "data": {
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
-            "write_mode": WriteMode.APPEND.value,
+            "write_mode": WriteMode.APPEND,
             "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
         },
     }
@@ -201,9 +211,6 @@ def test_append_variable_to_array():
         config=node_config,
         conv_var_updater_factory=mock_conv_var_updater_factory,
     )
-
-    # Initialize node data
-    node.init_node_data(node_config["data"])
 
     list(node.run())
     expected_value = list(conversation_variable.value)
@@ -236,7 +243,13 @@ def test_clear_array():
         "nodes": [
             {"data": {"type": "start", "title": "Start"}, "id": "start"},
             {
-                "data": {"type": "assigner", "version": "1", "title": "Variable Assigner", "items": []},
+                "data": {
+                    "type": "assigner",
+                    "title": "Variable Assigner",
+                    "assigned_variable_selector": ["conversation", "test_conversation_variable"],
+                    "write_mode": "clear",
+                    "input_variable_selector": [],
+                },
                 "id": "assigner",
             },
         ],
@@ -282,7 +295,7 @@ def test_clear_array():
         "data": {
             "title": "test",
             "assigned_variable_selector": ["conversation", conversation_variable.name],
-            "write_mode": WriteMode.CLEAR.value,
+            "write_mode": WriteMode.CLEAR,
             "input_variable_selector": [],
         },
     }
@@ -294,9 +307,6 @@ def test_clear_array():
         config=node_config,
         conv_var_updater_factory=mock_conv_var_updater_factory,
     )
-
-    # Initialize node data
-    node.init_node_data(node_config["data"])
 
     list(node.run())
     expected_var = ArrayStringVariable(

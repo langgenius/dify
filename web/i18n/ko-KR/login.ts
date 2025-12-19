@@ -120,6 +120,7 @@ const translation = {
     noAccount: '계정이 없으신가요?',
     welcome: '👋 환영합니다! 시작하려면 세부 정보를 입력해 주세요.',
   },
+  pageTitleForE: '이봐, 시작하자!',
 }
 
 export default translation

@@ -74,7 +74,8 @@ Chat applications support session persistence, allowing previous chat history to
       If set to `false`, can achieve async title generation by calling the conversation rename API and setting `auto_generate` to `true`.
       </Property>
       <Property name='workflow_id' type='string' key='workflow_id'>
-      (Optional) Workflow ID to specify a specific version, if not provided, uses the default published version.
+      (Optional) Workflow ID to specify a specific version, if not provided, uses the default published version.<br/>
+      How to obtain: In the version history interface, click the copy icon on the right side of each version entry to copy the complete workflow ID.
       </Property>
       <Property name='trace_id' type='string' key='trace_id'>
         (Optional) Trace ID. Used for integration with existing business trace components to achieve end-to-end distributed tracing. If not provided, the system will automatically generate a trace_id. Supports the following three ways to pass, in order of priority:<br/>
@@ -199,7 +200,7 @@ Chat applications support session persistence, allowing previous chat history to
 --header 'Authorization: Bearer {api_key}' \\
 --header 'Content-Type: application/json' \\
 --data-raw '{
-      "inputs": ${JSON.stringify(props.inputs)},
+    "inputs": ${JSON.stringify(props.inputs)},
     "query": "What are the specs of the iPhone 13 Pro Max?",
     "response_mode": "streaming",
     "conversation_id": "",
@@ -1182,7 +1183,7 @@ Chat applications support session persistence, allowing previous chat history to
 --header 'Content-Type: application/json' \\
 --data-raw '{
     "value": "Updated Value",
-  "user": "abc-123"
+    "user": "abc-123"
 }'`}
     />
 
@@ -1599,8 +1600,8 @@ Chat applications support session persistence, allowing previous chat history to
   <Col>
     <CodeGroup
       title="Request"
-      tag="POST"
-      label="/meta"
+      tag="GET"
+      label="/site"
       targetCode={`curl -X GET '${props.appDetail.api_base_url}/site' \\
 -H 'Authorization: Bearer {api_key}'`}
     />

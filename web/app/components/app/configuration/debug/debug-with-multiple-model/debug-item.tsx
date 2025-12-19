@@ -11,6 +11,7 @@ import Dropdown from '@/app/components/base/dropdown'
 import type { Item } from '@/app/components/base/dropdown'
 import { useProviderContext } from '@/context/provider-context'
 import { ModelStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { AppModeEnum } from '@/types/app'
 
 type DebugItemProps = {
   modelAndParameter: ModelAndParameter
@@ -112,13 +113,13 @@ const DebugItem: FC<DebugItemProps> = ({
       </div>
       <div style={{ height: 'calc(100% - 40px)' }}>
         {
-          (mode === 'chat' || mode === 'agent-chat') && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
+          (mode === AppModeEnum.CHAT || mode === AppModeEnum.AGENT_CHAT) && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
             <ChatItem modelAndParameter={modelAndParameter} />
           )
         }
         {
-          mode === 'completion' && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
-            <TextGenerationItem modelAndParameter={modelAndParameter}/>
+          mode === AppModeEnum.COMPLETION && currentProvider && currentModel && currentModel.status === ModelStatusEnum.active && (
+            <TextGenerationItem modelAndParameter={modelAndParameter} />
           )
         }
       </div>

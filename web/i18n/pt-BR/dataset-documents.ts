@@ -81,6 +81,10 @@ const translation = {
     },
     addUrl: 'Adicionar URL',
     learnMore: 'Saiba Mais',
+    sort: {
+      uploadTime: 'Hora do envio',
+      hitCount: 'Contagem de Recuperação',
+    },
   },
   metadata: {
     title: 'Metadados',
@@ -397,6 +401,7 @@ const translation = {
     parentChunk: 'Pedaço pai',
     keywordEmpty: 'A palavra-chave não pode estar vazia',
     keywordDuplicate: 'A palavra-chave já existe',
+    allFilesUploaded: 'Todos os arquivos devem ser enviados antes de salvar',
   },
 }
 

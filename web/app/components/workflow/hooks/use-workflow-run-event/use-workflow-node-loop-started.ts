@@ -3,7 +3,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import produce from 'immer'
+import { produce } from 'immer'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import type { LoopStartedResponse } from '@/types/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'

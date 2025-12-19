@@ -15,6 +15,8 @@ from core.llm_generator.prompts import (
     LLM_MODIFY_CODE_SYSTEM,
     LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
+    SUGGESTED_QUESTIONS_MAX_TOKENS,
+    SUGGESTED_QUESTIONS_TEMPERATURE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
@@ -28,7 +30,6 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
-from core.workflow.node_events import AgentLogEvent
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
@@ -71,15 +72,22 @@ class LLMGenerator:
                 prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
             )
         answer = cast(str, response.message.content)
-        cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
-        if cleaned_answer is None:
+        if answer is None:
             return ""
         try:
-            result_dict = json.loads(cleaned_answer)
-            answer = result_dict["Your Output"]
+            result_dict = json.loads(answer)
         except json.JSONDecodeError:
-            logger.exception("Failed to generate name after answer, use query instead")
+            result_dict = json_repair.loads(answer)
+
+        if not isinstance(result_dict, dict):
             answer = query
+        else:
+            output = result_dict.get("Your Output")
+            if isinstance(output, str) and output.strip():
+                answer = output.strip()
+            else:
+                answer = query
+
         name = answer.strip()
 
         if len(name) > 75:
@@ -101,7 +109,7 @@ class LLMGenerator:
         return name
 
     @classmethod
-    def generate_suggested_questions_after_answer(cls, tenant_id: str, histories: str):
+    def generate_suggested_questions_after_answer(cls, tenant_id: str, histories: str) -> Sequence[str]:
         output_parser = SuggestedQuestionsAfterAnswerOutputParser()
         format_instructions = output_parser.get_format_instructions()
 
@@ -120,10 +128,15 @@ class LLMGenerator:
 
         prompt_messages = [UserPromptMessage(content=prompt)]
 
+        questions: Sequence[str] = []
+
         try:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=list(prompt_messages),
-                model_parameters={"max_tokens": 256, "temperature": 0},
+                model_parameters={
+                    "max_tokens": SUGGESTED_QUESTIONS_MAX_TOKENS,
+                    "temperature": SUGGESTED_QUESTIONS_TEMPERATURE,
+                },
                 stream=False,
             )
 
@@ -462,19 +475,18 @@ class LLMGenerator:
             )
 
         def agent_log_of(node_execution: WorkflowNodeExecutionModel) -> Sequence:
-            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
+            raw_agent_log = node_execution.execution_metadata_dict.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG, [])
             if not raw_agent_log:
                 return []
-            parsed: Sequence[AgentLogEvent] = json.loads(raw_agent_log)
 
-            def dict_of_event(event: AgentLogEvent):
-                return {
-                    "status": event.status,
-                    "error": event.error,
-                    "data": event.data,
+            return [
+                {
+                    "status": event["status"],
+                    "error": event["error"],
+                    "data": event["data"],
                 }
-
-            return [dict_of_event(event) for event in parsed]
+                for event in raw_agent_log
+            ]
 
         inputs = last_run.load_full_inputs(session, storage)
         last_run_dict = {
@@ -549,11 +561,16 @@ class LLMGenerator:
                 prompt_messages=list(prompt_messages), model_parameters=model_parameters, stream=False
             )
 
-            generated_raw = cast(str, response.message.content)
+            generated_raw = response.message.get_text_content()
             first_brace = generated_raw.find("{")
             last_brace = generated_raw.rfind("}")
-            return {**json.loads(generated_raw[first_brace : last_brace + 1])}
-
+            if first_brace == -1 or last_brace == -1 or last_brace < first_brace:
+                raise ValueError(f"Could not find a valid JSON object in response: {generated_raw}")
+            json_str = generated_raw[first_brace : last_brace + 1]
+            data = json_repair.loads(json_str)
+            if not isinstance(data, dict):
+                raise TypeError(f"Expected a JSON object, but got {type(data).__name__}")
+            return data
         except InvokeError as e:
             error = str(e)
             return {"error": f"Failed to generate code. Error: {error}"}
