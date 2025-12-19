@@ -1,5 +1,5 @@
 import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 
 // Mock next/navigation
@@ -28,20 +28,29 @@ jest.mock('@/context/global-public-context', () => ({
   }),
 }))
 
-// Mock custom hooks
+// Mock custom hooks - allow dynamic query state
 const mockSetQuery = jest.fn()
+const mockQueryState = {
+  tagIDs: [] as string[],
+  keywords: '',
+  isCreatedByMe: false,
+}
 jest.mock('./hooks/use-apps-query-state', () => ({
   __esModule: true,
   default: () => ({
-    query: { tagIDs: [], keywords: '', isCreatedByMe: false },
+    query: mockQueryState,
     setQuery: mockSetQuery,
   }),
 }))
 
+// Store callback for testing DSL file drop
+let mockOnDSLFileDropped: ((file: File) => void) | null = null
+let mockDragging = false
 jest.mock('./hooks/use-dsl-drag-drop', () => ({
-  useDSLDragDrop: () => ({
-    dragging: false,
-  }),
+  useDSLDragDrop: ({ onDSLFileDropped }: { onDSLFileDropped: (file: File) => void }) => {
+    mockOnDSLFileDropped = onDSLFileDropped
+    return { dragging: mockDragging }
+  },
 }))
 
 const mockSetActiveTab = jest.fn()
@@ -49,55 +58,90 @@ jest.mock('@/hooks/use-tab-searchparams', () => ({
   useTabSearchParams: () => ['all', mockSetActiveTab],
 }))
 
-// Mock service hooks
+// Mock service hooks - use object for mutable state (jest.mock is hoisted)
 const mockRefetch = jest.fn()
+const mockFetchNextPage = jest.fn()
+
+const mockServiceState = {
+  error: null as Error | null,
+  hasNextPage: false,
+  isLoading: false,
+  isFetchingNextPage: false,
+}
+
+const defaultAppData = {
+  pages: [{
+    data: [
+      {
+        id: 'app-1',
+        name: 'Test App 1',
+        description: 'Description 1',
+        mode: AppModeEnum.CHAT,
+        icon: '🤖',
+        icon_type: 'emoji',
+        icon_background: '#FFEAD5',
+        tags: [],
+        author_name: 'Author 1',
+        created_at: 1704067200,
+        updated_at: 1704153600,
+      },
+      {
+        id: 'app-2',
+        name: 'Test App 2',
+        description: 'Description 2',
+        mode: AppModeEnum.WORKFLOW,
+        icon: '⚙️',
+        icon_type: 'emoji',
+        icon_background: '#E4FBCC',
+        tags: [],
+        author_name: 'Author 2',
+        created_at: 1704067200,
+        updated_at: 1704153600,
+      },
+    ],
+    total: 2,
+  }],
+}
+
 jest.mock('@/service/use-apps', () => ({
   useInfiniteAppList: () => ({
-    data: {
-      pages: [{
-        data: [
-          {
-            id: 'app-1',
-            name: 'Test App 1',
-            description: 'Description 1',
-            mode: AppModeEnum.CHAT,
-            icon: '🤖',
-            icon_type: 'emoji',
-            icon_background: '#FFEAD5',
-            tags: [],
-            author_name: 'Author 1',
-            created_at: 1704067200,
-            updated_at: 1704153600,
-          },
-          {
-            id: 'app-2',
-            name: 'Test App 2',
-            description: 'Description 2',
-            mode: AppModeEnum.WORKFLOW,
-            icon: '⚙️',
-            icon_type: 'emoji',
-            icon_background: '#E4FBCC',
-            tags: [],
-            author_name: 'Author 2',
-            created_at: 1704067200,
-            updated_at: 1704153600,
-          },
-        ],
-        total: 2,
-      }],
-    },
-    isLoading: false,
-    isFetchingNextPage: false,
-    fetchNextPage: jest.fn(),
-    hasNextPage: false,
-    error: null,
+    data: defaultAppData,
+    isLoading: mockServiceState.isLoading,
+    isFetchingNextPage: mockServiceState.isFetchingNextPage,
+    fetchNextPage: mockFetchNextPage,
+    hasNextPage: mockServiceState.hasNextPage,
+    error: mockServiceState.error,
     refetch: mockRefetch,
   }),
 }))
 
 // Mock tag store
 jest.mock('@/app/components/base/tag-management/store', () => ({
-  useStore: () => false,
+  useStore: (selector: (state: { tagList: any[]; setTagList: any; showTagManagementModal: boolean; setShowTagManagementModal: any }) => any) => {
+    const state = {
+      tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app' }],
+      setTagList: jest.fn(),
+      showTagManagementModal: false,
+      setShowTagManagementModal: jest.fn(),
+    }
+    return selector(state)
+  },
+}))
+
+// Mock tag service to avoid API calls in TagFilter
+jest.mock('@/service/tag', () => ({
+  fetchTagList: jest.fn().mockResolvedValue([{ id: 'tag-1', name: 'Test Tag', type: 'app' }]),
+}))
+
+// Store TagFilter onChange callback for testing
+let mockTagFilterOnChange: ((value: string[]) => void) | null = null
+jest.mock('@/app/components/base/tag-management/filter', () => ({
+  __esModule: true,
+  default: ({ onChange }: { onChange: (value: string[]) => void }) => {
+    const React = require('react')
+    mockTagFilterOnChange = onChange
+    return React.createElement('div', { 'data-testid': 'tag-filter' }, 'common.tag.placeholder')
+  },
 }))
 
 // Mock config
@@ -110,9 +154,17 @@ jest.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
-// Mock debounce hook
+// Mock ahooks - useMount only executes once on mount, not on fn change
 jest.mock('ahooks', () => ({
   useDebounceFn: (fn: () => void) => ({ run: fn }),
+  useMount: (fn: () => void) => {
+    const React = require('react')
+    const fnRef = React.useRef(fn)
+    fnRef.current = fn
+    React.useEffect(() => {
+      fnRef.current()
+    }, [])
+  },
 }))
 
 // Mock dynamic imports
@@ -127,10 +179,11 @@ jest.mock('next/dynamic', () => {
       }
     }
     if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({ show, onClose }: any) {
+      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
         if (!show) return null
         return React.createElement('div', { 'data-testid': 'create-dsl-modal' },
           React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'),
+          React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'),
         )
       }
     }
@@ -174,127 +227,83 @@ jest.mock('./footer', () => ({
   },
 }))
 
-/**
- * Mock base components that have deep dependency chains or require controlled test behavior.
- *
- * Per frontend testing skills (mocking.md), we generally should NOT mock base components.
- * However, the following require mocking due to:
- * - Deep dependency chains importing ES modules (like ky) incompatible with Jest
- * - Need for controlled interaction behavior in tests (onChange, onClear handlers)
- * - Complex internal state that would make tests flaky
- *
- * These mocks preserve the component's props interface to test List's integration correctly.
- */
-jest.mock('@/app/components/base/tab-slider-new', () => ({
-  __esModule: true,
-  default: ({ value, onChange, options }: any) => {
-    const React = require('react')
-    return React.createElement('div', { 'data-testid': 'tab-slider', 'role': 'tablist' },
-      options.map((opt: any) =>
-        React.createElement('button', {
-          'key': opt.value,
-          'data-testid': `tab-${opt.value}`,
-          'role': 'tab',
-          'aria-selected': value === opt.value,
-          'onClick': () => onChange(opt.value),
-        }, opt.text),
-      ),
-    )
-  },
-}))
-
-jest.mock('@/app/components/base/input', () => ({
-  __esModule: true,
-  default: ({ value, onChange, onClear }: any) => {
-    const React = require('react')
-    return React.createElement('div', { 'data-testid': 'search-input' },
-      React.createElement('input', {
-        'data-testid': 'search-input-field',
-        'role': 'searchbox',
-        'value': value || '',
-        onChange,
-      }),
-      React.createElement('button', {
-        'data-testid': 'clear-search',
-        'aria-label': 'Clear search',
-        'onClick': onClear,
-      }, 'Clear'),
-    )
-  },
-}))
-
-jest.mock('@/app/components/base/tag-management/filter', () => ({
-  __esModule: true,
-  default: ({ value, onChange }: any) => {
-    const React = require('react')
-    return React.createElement('div', { 'data-testid': 'tag-filter', 'role': 'listbox' },
-      React.createElement('button', {
-        'data-testid': 'add-tag-filter',
-        'onClick': () => onChange([...value, 'new-tag']),
-      }, 'Add Tag'),
-    )
-  },
-}))
-
-jest.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
-  __esModule: true,
-  default: ({ label, isChecked, onChange }: any) => {
-    const React = require('react')
-    return React.createElement('label', { 'data-testid': 'created-by-me-checkbox' },
-      React.createElement('input', {
-        'type': 'checkbox',
-        'role': 'checkbox',
-        'checked': isChecked,
-        'aria-checked': isChecked,
-        onChange,
-        'data-testid': 'created-by-me-input',
-      }),
-      label,
-    )
-  },
-}))
-
 // Import after mocks
 import List from './list'
+
+// Store IntersectionObserver callback
+let intersectionCallback: IntersectionObserverCallback | null = null
+const mockObserve = jest.fn()
+const mockDisconnect = jest.fn()
+
+// Mock IntersectionObserver
+beforeAll(() => {
+  globalThis.IntersectionObserver = class MockIntersectionObserver {
+    constructor(callback: IntersectionObserverCallback) {
+      intersectionCallback = callback
+    }
+
+    observe = mockObserve
+    disconnect = mockDisconnect
+    unobserve = jest.fn()
+    root = null
+    rootMargin = ''
+    thresholds = []
+    takeRecords = () => []
+  } as unknown as typeof IntersectionObserver
+})
 
 describe('List', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
+    mockDragging = false
+    mockOnDSLFileDropped = null
+    mockTagFilterOnChange = null
+    mockServiceState.error = null
+    mockServiceState.hasNextPage = false
+    mockServiceState.isLoading = false
+    mockServiceState.isFetchingNextPage = false
+    mockQueryState.tagIDs = []
+    mockQueryState.keywords = ''
+    mockQueryState.isCreatedByMe = false
+    intersectionCallback = null
     localStorage.clear()
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<List />)
-      expect(screen.getByTestId('tab-slider')).toBeInTheDocument()
+      // Tab slider renders app type tabs
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 
     it('should render tab slider with all app types', () => {
       render(<List />)
 
-      expect(screen.getByTestId('tab-all')).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.WORKFLOW}`)).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.ADVANCED_CHAT}`)).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.CHAT}`)).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.AGENT_CHAT}`)).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.COMPLETION}`)).toBeInTheDocument()
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
+      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
+      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
+      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
+      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
     })
 
     it('should render search input', () => {
       render(<List />)
-      expect(screen.getByTestId('search-input')).toBeInTheDocument()
+      // Input component renders a searchbox
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should render tag filter', () => {
       render(<List />)
-      expect(screen.getByTestId('tag-filter')).toBeInTheDocument()
+      // Tag filter renders with placeholder text
+      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     })
 
     it('should render created by me checkbox', () => {
       render(<List />)
-      expect(screen.getByTestId('created-by-me-checkbox')).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
 
     it('should render app cards when apps exist', () => {
@@ -324,7 +333,7 @@ describe('List', () => {
     it('should call setActiveTab when tab is clicked', () => {
       render(<List />)
 
-      fireEvent.click(screen.getByTestId(`tab-${AppModeEnum.WORKFLOW}`))
+      fireEvent.click(screen.getByText('app.types.workflow'))
 
       expect(mockSetActiveTab).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
     })
@@ -332,7 +341,7 @@ describe('List', () => {
     it('should call setActiveTab for all tab', () => {
       render(<List />)
 
-      fireEvent.click(screen.getByTestId('tab-all'))
+      fireEvent.click(screen.getByText('app.types.all'))
 
       expect(mockSetActiveTab).toHaveBeenCalledWith('all')
     })
@@ -341,23 +350,38 @@ describe('List', () => {
   describe('Search Functionality', () => {
     it('should render search input field', () => {
       render(<List />)
-      expect(screen.getByTestId('search-input-field')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
     })
 
     it('should handle search input change', () => {
       render(<List />)
 
-      const input = screen.getByTestId('search-input-field')
+      const input = screen.getByRole('textbox')
       fireEvent.change(input, { target: { value: 'test search' } })
 
       expect(mockSetQuery).toHaveBeenCalled()
     })
 
-    it('should clear search when clear button is clicked', () => {
+    it('should handle search input interaction', () => {
       render(<List />)
 
-      fireEvent.click(screen.getByTestId('clear-search'))
+      const input = screen.getByRole('textbox')
+      expect(input).toBeInTheDocument()
+    })
 
+    it('should handle search clear button click', () => {
+      // Set initial keywords to make clear button visible
+      mockQueryState.keywords = 'existing search'
+
+      render(<List />)
+
+      // Find and click clear button (Input component uses .group class for clear icon container)
+      const clearButton = document.querySelector('.group')
+      expect(clearButton).toBeInTheDocument()
+      if (clearButton)
+        fireEvent.click(clearButton)
+
+      // handleKeywordsChange should be called with empty string
       expect(mockSetQuery).toHaveBeenCalled()
     })
   })
@@ -365,16 +389,14 @@ describe('List', () => {
   describe('Tag Filter', () => {
     it('should render tag filter component', () => {
       render(<List />)
-      expect(screen.getByTestId('tag-filter')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     })
 
-    it('should handle tag filter change', () => {
+    it('should render tag filter with placeholder', () => {
       render(<List />)
 
-      fireEvent.click(screen.getByTestId('add-tag-filter'))
-
-      // Tag filter change triggers debounced setTagIDs
-      expect(screen.getByTestId('tag-filter')).toBeInTheDocument()
+      // Tag filter is rendered
+      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     })
   })
 
@@ -387,7 +409,9 @@ describe('List', () => {
     it('should handle checkbox change', () => {
       render(<List />)
 
-      const checkbox = screen.getByTestId('created-by-me-input')
+      // Checkbox component uses data-testid="checkbox-{id}"
+      // CheckboxWithLabel doesn't pass testId, so id is undefined
+      const checkbox = screen.getByTestId('checkbox-undefined')
       fireEvent.click(checkbox)
 
       expect(mockSetQuery).toHaveBeenCalled()
@@ -436,10 +460,10 @@ describe('List', () => {
   describe('Edge Cases', () => {
     it('should handle multiple renders without issues', () => {
       const { rerender } = render(<List />)
-      expect(screen.getByTestId('tab-slider')).toBeInTheDocument()
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
 
       rerender(<List />)
-      expect(screen.getByTestId('tab-slider')).toBeInTheDocument()
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
     })
 
     it('should render app cards correctly', () => {
@@ -452,9 +476,9 @@ describe('List', () => {
     it('should render with all filter options visible', () => {
       render(<List />)
 
-      expect(screen.getByTestId('search-input')).toBeInTheDocument()
-      expect(screen.getByTestId('tag-filter')).toBeInTheDocument()
-      expect(screen.getByTestId('created-by-me-checkbox')).toBeInTheDocument()
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
+      expect(screen.getByText('app.showMyCreatedAppsOnly')).toBeInTheDocument()
     })
   })
 
@@ -469,27 +493,27 @@ describe('List', () => {
     it('should render all app type tabs', () => {
       render(<List />)
 
-      expect(screen.getByTestId('tab-all')).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.WORKFLOW}`)).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.ADVANCED_CHAT}`)).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.CHAT}`)).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.AGENT_CHAT}`)).toBeInTheDocument()
-      expect(screen.getByTestId(`tab-${AppModeEnum.COMPLETION}`)).toBeInTheDocument()
+      expect(screen.getByText('app.types.all')).toBeInTheDocument()
+      expect(screen.getByText('app.types.workflow')).toBeInTheDocument()
+      expect(screen.getByText('app.types.advanced')).toBeInTheDocument()
+      expect(screen.getByText('app.types.chatbot')).toBeInTheDocument()
+      expect(screen.getByText('app.types.agent')).toBeInTheDocument()
+      expect(screen.getByText('app.types.completion')).toBeInTheDocument()
     })
 
     it('should call setActiveTab for each app type', () => {
       render(<List />)
 
-      const appModes = [
-        AppModeEnum.WORKFLOW,
-        AppModeEnum.ADVANCED_CHAT,
-        AppModeEnum.CHAT,
-        AppModeEnum.AGENT_CHAT,
-        AppModeEnum.COMPLETION,
+      const appTypeTexts = [
+        { mode: AppModeEnum.WORKFLOW, text: 'app.types.workflow' },
+        { mode: AppModeEnum.ADVANCED_CHAT, text: 'app.types.advanced' },
+        { mode: AppModeEnum.CHAT, text: 'app.types.chatbot' },
+        { mode: AppModeEnum.AGENT_CHAT, text: 'app.types.agent' },
+        { mode: AppModeEnum.COMPLETION, text: 'app.types.completion' },
       ]
 
-      appModes.forEach((mode) => {
-        fireEvent.click(screen.getByTestId(`tab-${mode}`))
+      appTypeTexts.forEach(({ mode, text }) => {
+        fireEvent.click(screen.getByText(text))
         expect(mockSetActiveTab).toHaveBeenCalledWith(mode)
       })
     })
@@ -499,7 +523,7 @@ describe('List', () => {
     it('should display search input with correct attributes', () => {
       render(<List />)
 
-      const input = screen.getByTestId('search-input-field')
+      const input = screen.getByRole('textbox')
       expect(input).toBeInTheDocument()
       expect(input).toHaveAttribute('value', '')
     })
@@ -507,8 +531,7 @@ describe('List', () => {
     it('should have tag filter component', () => {
       render(<List />)
 
-      const tagFilter = screen.getByTestId('tag-filter')
-      expect(tagFilter).toBeInTheDocument()
+      expect(screen.getByText('common.tag.placeholder')).toBeInTheDocument()
     })
 
     it('should display created by me label', () => {
@@ -547,18 +570,17 @@ describe('List', () => {
   // --------------------------------------------------------------------------
   describe('Additional Coverage', () => {
     it('should render dragging state overlay when dragging', () => {
-      // Test dragging state is handled
+      mockDragging = true
       const { container } = render(<List />)
 
-      // Component should render successfully
+      // Component should render successfully with dragging state
       expect(container).toBeInTheDocument()
     })
 
     it('should handle app mode filter in query params', () => {
-      // Test that different modes are handled in query
       render(<List />)
 
-      const workflowTab = screen.getByTestId(`tab-${AppModeEnum.WORKFLOW}`)
+      const workflowTab = screen.getByText('app.types.workflow')
       fireEvent.click(workflowTab)
 
       expect(mockSetActiveTab).toHaveBeenCalledWith(AppModeEnum.WORKFLOW)
@@ -568,6 +590,170 @@ describe('List', () => {
       render(<List />)
 
       expect(screen.getByTestId('new-app-card')).toBeInTheDocument()
+    })
+  })
+
+  describe('DSL File Drop', () => {
+    it('should handle DSL file drop and show modal', () => {
+      render(<List />)
+
+      // Simulate DSL file drop via the callback
+      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
+      act(() => {
+        if (mockOnDSLFileDropped)
+          mockOnDSLFileDropped(mockFile)
+      })
+
+      // Modal should be shown
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+    })
+
+    it('should close DSL modal when onClose is called', () => {
+      render(<List />)
+
+      // Open modal via DSL file drop
+      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
+      act(() => {
+        if (mockOnDSLFileDropped)
+          mockOnDSLFileDropped(mockFile)
+      })
+
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+
+      // Close modal
+      fireEvent.click(screen.getByTestId('close-dsl-modal'))
+
+      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
+    })
+
+    it('should close DSL modal and refetch when onSuccess is called', () => {
+      render(<List />)
+
+      // Open modal via DSL file drop
+      const mockFile = new File(['test content'], 'test.yml', { type: 'application/yaml' })
+      act(() => {
+        if (mockOnDSLFileDropped)
+          mockOnDSLFileDropped(mockFile)
+      })
+
+      expect(screen.getByTestId('create-dsl-modal')).toBeInTheDocument()
+
+      // Click success button
+      fireEvent.click(screen.getByTestId('success-dsl-modal'))
+
+      // Modal should be closed and refetch should be called
+      expect(screen.queryByTestId('create-dsl-modal')).not.toBeInTheDocument()
+      expect(mockRefetch).toHaveBeenCalled()
+    })
+  })
+
+  describe('Tag Filter Change', () => {
+    it('should handle tag filter value change', () => {
+      jest.useFakeTimers()
+      render(<List />)
+
+      // TagFilter component is rendered
+      expect(screen.getByTestId('tag-filter')).toBeInTheDocument()
+
+      // Trigger tag filter change via captured callback
+      act(() => {
+        if (mockTagFilterOnChange)
+          mockTagFilterOnChange(['tag-1', 'tag-2'])
+      })
+
+      // Advance timers to trigger debounced setTagIDs
+      act(() => {
+        jest.advanceTimersByTime(500)
+      })
+
+      // setQuery should have been called with updated tagIDs
+      expect(mockSetQuery).toHaveBeenCalled()
+
+      jest.useRealTimers()
+    })
+
+    it('should handle empty tag filter selection', () => {
+      jest.useFakeTimers()
+      render(<List />)
+
+      // Trigger tag filter change with empty array
+      act(() => {
+        if (mockTagFilterOnChange)
+          mockTagFilterOnChange([])
+      })
+
+      // Advance timers
+      act(() => {
+        jest.advanceTimersByTime(500)
+      })
+
+      expect(mockSetQuery).toHaveBeenCalled()
+
+      jest.useRealTimers()
+    })
+  })
+
+  describe('Infinite Scroll', () => {
+    it('should call fetchNextPage when intersection observer triggers', () => {
+      mockServiceState.hasNextPage = true
+      render(<List />)
+
+      // Simulate intersection
+      if (intersectionCallback) {
+        act(() => {
+          intersectionCallback!(
+            [{ isIntersecting: true } as IntersectionObserverEntry],
+            {} as IntersectionObserver,
+          )
+        })
+      }
+
+      expect(mockFetchNextPage).toHaveBeenCalled()
+    })
+
+    it('should not call fetchNextPage when not intersecting', () => {
+      mockServiceState.hasNextPage = true
+      render(<List />)
+
+      // Simulate non-intersection
+      if (intersectionCallback) {
+        act(() => {
+          intersectionCallback!(
+            [{ isIntersecting: false } as IntersectionObserverEntry],
+            {} as IntersectionObserver,
+          )
+        })
+      }
+
+      expect(mockFetchNextPage).not.toHaveBeenCalled()
+    })
+
+    it('should not call fetchNextPage when loading', () => {
+      mockServiceState.hasNextPage = true
+      mockServiceState.isLoading = true
+      render(<List />)
+
+      if (intersectionCallback) {
+        act(() => {
+          intersectionCallback!(
+            [{ isIntersecting: true } as IntersectionObserverEntry],
+            {} as IntersectionObserver,
+          )
+        })
+      }
+
+      expect(mockFetchNextPage).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Error State', () => {
+    it('should handle error state in useEffect', () => {
+      mockServiceState.error = new Error('Test error')
+      const { container } = render(<List />)
+
+      // Component should still render
+      expect(container).toBeInTheDocument()
+      // Disconnect should be called when there's an error (cleanup)
     })
   })
 })
