@@ -11,24 +11,6 @@ const mockResetWorkflowVersionHistory = jest.fn()
 
 let appDetail: App
 
-jest.mock('ky', () => ({
-  __esModule: true,
-  default: {
-    create: () => ({
-      extend: () => async () => ({
-        status: 200,
-        headers: new Headers(),
-        json: async () => ({}),
-        blob: async () => new Blob(),
-        clone: () => ({
-          status: 200,
-          json: async () => ({}),
-        }),
-      }),
-    }),
-  },
-}))
-
 jest.mock('@/app/components/app/store', () => ({
   __esModule: true,
   useStore: (selector: (state: { appDetail?: App; setCurrentLogItem: typeof mockSetCurrentLogItem; setShowMessageLogModal: typeof mockSetShowMessageLogModal }) => unknown) => mockUseAppStoreSelector(selector),
