@@ -75,7 +75,7 @@
     "abcjs": "^6.5.2",
     "ahooks": "^3.9.5",
     "class-variance-authority": "^0.7.1",
-    "classnames": "^2.5.1",
+    "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "copy-to-clipboard": "^3.3.3",
     "cron-parser": "^5.4.0",

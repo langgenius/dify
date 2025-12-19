@@ -1,0 +1,17 @@
+id: convert-classnames-import-1
+language: tsx
+rule:
+  pattern: import $NAME from '@/utils/classnames'
+fix: "import { cn } from '@/utils/classnames'"
+---
+id: convert-classnames-import-2
+language: tsx
+rule:
+  pattern: import $NAME from 'classnames'
+fix: "import { cn } from '@/utils/classnames'"
+---
+id: convert-classnames-call
+language: tsx
+rule:
+  pattern: classNames($$$ARGS)
+fix: cn($$$ARGS)
