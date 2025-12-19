@@ -5,6 +5,7 @@ const translation = {
     saved: 'Zapisane',
     create: 'Utworzono',
     remove: 'Usunięto',
+    actionFailed: 'Akcja nie powiodła się',
   },
   operation: {
     create: 'Utwórz',

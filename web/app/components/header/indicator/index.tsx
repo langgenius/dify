@@ -1,6 +1,6 @@
 'use client'
 
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type IndicatorProps = {
   color?: 'green' | 'orange' | 'red' | 'blue' | 'yellow' | 'gray'
@@ -48,13 +48,11 @@ export default function Indicator({
   return (
     <div
       data-testid="status-indicator"
-      className={classNames(
-        'h-2 w-2 rounded-[3px] border border-solid',
+      className={cn('h-2 w-2 rounded-[3px] border border-solid',
         BACKGROUND_MAP[color],
         BORDER_MAP[color],
         SHADOW_MAP[color],
-        className,
-      )}
+        className)}
     />
   )
 }

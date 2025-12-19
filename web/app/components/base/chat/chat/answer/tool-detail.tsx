@@ -7,7 +7,7 @@ import {
   RiLoader2Line,
 } from '@remixicon/react'
 import type { ToolInfoInThought } from '../type'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ToolDetailProps = {
   payload: ToolInfoInThought

@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type Options = string[]
 export type IConfigSelectProps = {

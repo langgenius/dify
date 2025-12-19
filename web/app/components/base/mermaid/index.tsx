@@ -13,7 +13,7 @@ import {
   waitForDOMElement,
 } from './utils'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { Theme } from '@/types/app'
 

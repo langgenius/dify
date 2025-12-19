@@ -11,7 +11,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Checkbox from '@/app/components/base/checkbox'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Input from '@/app/components/base/input'
 import { useCategories } from '../../hooks'
 import { useTranslation } from 'react-i18next'

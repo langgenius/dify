@@ -2,7 +2,7 @@
   "name": "dify-web",
   "version": "1.11.1",
   "private": true,
-  "packageManager": "pnpm@10.26.0+sha512.3b3f6c725ebe712506c0ab1ad4133cf86b1f4b687effce62a9b38b4d72e3954242e643190fc51fa1642949c735f403debd44f5cb0edd657abe63a8b6a7e1e402",
+  "packageManager": "pnpm@10.26.1+sha512.664074abc367d2c9324fdc18037097ce0a8f126034160f709928e9e9f95d98714347044e5c3164d65bd5da6c59c6be362b107546292a8eecb7999196e5ce58fa",
   "engines": {
     "node": ">=v22.11.0"
   },
@@ -75,7 +75,7 @@
     "abcjs": "^6.5.2",
     "ahooks": "^3.9.5",
     "class-variance-authority": "^0.7.1",
-    "classnames": "^2.5.1",
+    "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
     "copy-to-clipboard": "^3.3.3",
     "cron-parser": "^5.4.0",
