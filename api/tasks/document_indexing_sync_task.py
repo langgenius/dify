@@ -12,7 +12,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from models.dataset import Dataset, Document, DocumentSegment
-from models.source import DataSourceOauthBinding
+from services.datasource_provider_service import DatasourceProviderService
 
 logger = logging.getLogger(__name__)
 
@@ -48,27 +48,34 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         page_id = data_source_info["notion_page_id"]
         page_type = data_source_info["type"]
         page_edited_time = data_source_info["last_edited_time"]
+        credential_id = data_source_info.get("credential_id")
 
-        data_source_binding = (
-            db.session.query(DataSourceOauthBinding)
-            .where(
-                sa.and_(
-                    DataSourceOauthBinding.tenant_id == document.tenant_id,
-                    DataSourceOauthBinding.provider == "notion",
-                    DataSourceOauthBinding.disabled == False,
-                    DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
-                )
-            )
-            .first()
+        # Get credentials from datasource provider
+        datasource_provider_service = DatasourceProviderService()
+        credential = datasource_provider_service.get_datasource_credentials(
+            tenant_id=document.tenant_id,
+            credential_id=credential_id,
+            provider="notion_datasource",
+            plugin_id="langgenius/notion_datasource",
         )
-        if not data_source_binding:
-            raise ValueError("Data source binding not found.")
+
+        if not credential:
+            logger.error(
+                f"Datasource credential not found for document {document_id}, "
+                f"tenant_id: {document.tenant_id}, credential_id: {credential_id}"
+            )
+            document.indexing_status = "error"
+            document.error = "Datasource credential not found. Please reconnect your Notion workspace."
+            document.stopped_at = naive_utc_now()
+            db.session.commit()
+            db.session.close()
+            return
 
         loader = NotionExtractor(
             notion_workspace_id=workspace_id,
             notion_obj_id=page_id,
             notion_page_type=page_type,
-            notion_access_token=data_source_binding.access_token,
+            notion_access_token=credential.get("integration_secret"),
             tenant_id=document.tenant_id,
         )
 
