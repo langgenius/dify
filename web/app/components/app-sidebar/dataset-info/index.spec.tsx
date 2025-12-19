@@ -153,12 +153,6 @@ jest.mock('@/app/components/datasets/rename-modal', () => ({
   },
 }))
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue || key,
-  }),
-}))
-
 const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
   const trigger = screen.getByRole('button')
   await user.click(trigger)
