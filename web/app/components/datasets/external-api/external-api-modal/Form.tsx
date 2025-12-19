@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { RiBookOpenLine } from '@remixicon/react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import Input from '@/app/components/base/input'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useDocLink } from '@/context/i18n'
 
 type FormProps = {

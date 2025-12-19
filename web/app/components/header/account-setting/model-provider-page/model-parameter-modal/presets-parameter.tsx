@@ -8,7 +8,7 @@ import { Brush01 } from '@/app/components/base/icons/src/vender/solid/editor'
 import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAndECommerce'
 import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { TONE_LIST } from '@/config'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type PresetsParameterProps = {
   onSelect: (toneId: number) => void

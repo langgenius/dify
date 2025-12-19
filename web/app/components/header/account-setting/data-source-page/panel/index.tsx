@@ -10,7 +10,7 @@ import s from './style.module.css'
 import { DataSourceType } from './types'
 import Button from '@/app/components/base/button'
 import { DataSourceProvider } from '@/models/common'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   type: DataSourceType

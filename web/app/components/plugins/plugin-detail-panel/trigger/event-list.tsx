@@ -2,7 +2,7 @@ import { useLanguage } from '@/app/components/header/account-setting/model-provi
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import { useTriggerProviderInfo } from '@/service/use-triggers'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginStore } from '../store'

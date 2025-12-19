@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import type { MetadataItemWithEdit } from '../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Label from './label'
 import InputCombined from './input-combined'
 import { RiIndeterminateCircleLine } from '@remixicon/react'

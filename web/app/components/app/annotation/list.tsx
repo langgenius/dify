@@ -7,7 +7,7 @@ import type { AnnotationItem } from './type'
 import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
 import ActionButton from '@/app/components/base/action-button'
 import useTimestamp from '@/hooks/use-timestamp'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Checkbox from '@/app/components/base/checkbox'
 import BatchAction from './batch-action'
 

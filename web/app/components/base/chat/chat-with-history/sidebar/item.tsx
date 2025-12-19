@@ -6,7 +6,7 @@ import {
 import { useHover } from 'ahooks'
 import type { ConversationItem } from '@/models/share'
 import Operation from '@/app/components/base/chat/chat-with-history/sidebar/operation'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ItemProps = {
   isPin?: boolean

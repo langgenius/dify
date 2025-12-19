@@ -3,7 +3,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import s from '../file-preview/index.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CrawlResultItem } from '@/models/datasets'
 
 type IProps = {

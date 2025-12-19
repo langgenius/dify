@@ -1,6 +1,6 @@
 'use client'
 
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'
 import type { PropsWithChildren } from 'react'

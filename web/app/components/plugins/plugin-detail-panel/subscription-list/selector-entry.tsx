@@ -6,7 +6,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { SubscriptionList, SubscriptionListMode } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'

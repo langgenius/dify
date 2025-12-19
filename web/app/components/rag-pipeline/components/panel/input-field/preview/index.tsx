@@ -7,7 +7,7 @@ import Divider from '@/app/components/base/divider'
 import ProcessDocuments from './process-documents'
 import type { Datasource } from '../../test-run/types'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useFloatingRight } from '../hooks'
 
 const PreviewPanel = () => {

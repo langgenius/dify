@@ -12,7 +12,7 @@ import {
   useNodesReadOnly,
 } from '../../hooks'
 import type { LoopNodeType } from './types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BlockSelector from '@/app/components/workflow/block-selector'
 
 import type {

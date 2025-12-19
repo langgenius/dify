@@ -5,7 +5,7 @@ import {
   useCSVReader,
 } from 'react-papaparse'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 
 export type Props = {
