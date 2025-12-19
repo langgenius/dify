@@ -57,6 +57,8 @@ const RunOnce: FC<IRunOnceProps> = ({
     promptConfig.prompt_variables.forEach((item) => {
       if (item.type === 'string' || item.type === 'paragraph')
         newInputs[item.key] = ''
+      else if (item.type === 'number')
+        newInputs[item.key] = ''
       else if (item.type === 'checkbox')
         newInputs[item.key] = false
       else
@@ -92,7 +94,7 @@ const RunOnce: FC<IRunOnceProps> = ({
       else if (item.type === 'string' || item.type === 'paragraph')
         newInputs[item.key] = item.default || ''
       else if (item.type === 'number')
-        newInputs[item.key] = item.default
+        newInputs[item.key] = item.default ?? ''
       else if (item.type === 'checkbox')
         newInputs[item.key] = item.default || false
       else if (item.type === 'file')
