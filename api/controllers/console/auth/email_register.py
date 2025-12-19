@@ -62,6 +62,7 @@ class EmailRegisterSendEmailApi(Resource):
     @email_register_enabled
     def post(self):
         args = EmailRegisterSendPayload.model_validate(console_ns.payload)
+        normalized_email = args.email.lower()
 
         ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
@@ -70,13 +71,12 @@ class EmailRegisterSendEmailApi(Resource):
         if args.language in languages:
             language = args.language
 
-        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(args.email):
+        if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
             raise AccountInFreezeError()
 
         with Session(db.engine) as session:
-            account = session.execute(select(Account).filter_by(email=args.email)).scalar_one_or_none()
-        token = None
-        token = AccountService.send_email_register_email(email=args.email, account=account, language=language)
+            account = _fetch_account_by_email(session, args.email)
+        token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
         return {"result": "success", "data": token}
 
 
@@ -88,9 +88,9 @@ class EmailRegisterCheckApi(Resource):
     def post(self):
         args = EmailRegisterValidityPayload.model_validate(console_ns.payload)
 
-        user_email = args.email
+        user_email = args.email.lower()
 
-        is_email_register_error_rate_limit = AccountService.is_email_register_error_rate_limit(args.email)
+        is_email_register_error_rate_limit = AccountService.is_email_register_error_rate_limit(user_email)
         if is_email_register_error_rate_limit:
             raise EmailRegisterLimitError()
 
@@ -98,11 +98,14 @@ class EmailRegisterCheckApi(Resource):
         if token_data is None:
             raise InvalidTokenError()
 
-        if user_email != token_data.get("email"):
+        token_email = token_data.get("email")
+        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
+
+        if user_email != normalized_token_email:
             raise InvalidEmailError()
 
         if args.code != token_data.get("code"):
-            AccountService.add_email_register_error_rate_limit(args.email)
+            AccountService.add_email_register_error_rate_limit(user_email)
             raise EmailCodeError()
 
         # Verified, revoke the first token
@@ -113,8 +116,8 @@ class EmailRegisterCheckApi(Resource):
             user_email, code=args.code, additional_data={"phase": "register"}
         )
 
-        AccountService.reset_email_register_error_rate_limit(args.email)
-        return {"is_valid": True, "email": token_data.get("email"), "token": new_token}
+        AccountService.reset_email_register_error_rate_limit(user_email)
+        return {"is_valid": True, "email": normalized_token_email, "token": new_token}
 
 
 @console_ns.route("/email-register")
@@ -141,22 +144,23 @@ class EmailRegisterResetApi(Resource):
         AccountService.revoke_email_register_token(args.token)
 
         email = register_data.get("email", "")
+        normalized_email = email.lower()
 
         with Session(db.engine) as session:
-            account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+            account = _fetch_account_by_email(session, email)
 
             if account:
                 raise EmailAlreadyInUseError()
             else:
-                account = self._create_new_account(email, args.password_confirm)
+                account = self._create_new_account(normalized_email, args.password_confirm)
                 if not account:
                     raise AccountNotFoundError()
                 token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
-                AccountService.reset_login_error_rate_limit(email)
+                AccountService.reset_login_error_rate_limit(normalized_email)
 
         return {"result": "success", "data": token_pair.model_dump()}
 
-    def _create_new_account(self, email, password) -> Account | None:
+    def _create_new_account(self, email: str, password: str) -> Account | None:
         # Create new account if allowed
         account = None
         try:
@@ -170,3 +174,16 @@ class EmailRegisterResetApi(Resource):
             raise AccountInFreezeError()
 
         return account
+
+
+def _fetch_account_by_email(session: Session, email: str) -> Account | None:
+    """
+    Retrieve account by email with lowercase fallback for backward compatibility.
+    To prevent user register with Uppercase email success get a lowercase email account,
+    but already exist the Uppercase email account.
+    """
+    account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+    if account or email == email.lower():
+        return account
+
+    return session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
