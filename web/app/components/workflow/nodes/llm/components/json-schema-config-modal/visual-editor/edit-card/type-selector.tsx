@@ -3,7 +3,7 @@ import type { ArrayType, Type } from '../../../../types'
 import type { FC } from 'react'
 import { useState } from 'react'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type TypeItem = {
   value: Type | ArrayType

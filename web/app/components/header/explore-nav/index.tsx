@@ -7,7 +7,7 @@ import {
   RiPlanetFill,
   RiPlanetLine,
 } from '@remixicon/react'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 type ExploreNavProps = {
   className?: string
 }
@@ -20,11 +20,9 @@ const ExploreNav = ({
   const activated = selectedSegment === 'explore'
 
   return (
-    <Link href="/explore/apps" className={classNames(
-      className, 'group',
+    <Link href="/explore/apps" className={cn(className, 'group',
       activated && 'bg-components-main-nav-nav-button-bg-active shadow-md',
-      activated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover',
-    )}>
+      activated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover')}>
       {
         activated
           ? <RiPlanetFill className='h-4 w-4' />

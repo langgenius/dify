@@ -4,7 +4,7 @@ import ModelIcon from '../model-icon'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { useProviderContext } from '@/context/provider-context'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ModelTriggerProps = {
   modelName: string

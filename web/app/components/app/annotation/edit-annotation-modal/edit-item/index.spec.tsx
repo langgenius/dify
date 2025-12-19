@@ -245,7 +245,7 @@ describe('EditItem', () => {
       expect(mockSave).toHaveBeenCalledWith('Test save content')
     })
 
-    it('should show delete option when content changes', async () => {
+    it('should show delete option and restore original content when delete is clicked', async () => {
       // Arrange
       const mockSave = jest.fn().mockResolvedValue(undefined)
       const props = {
@@ -267,7 +267,13 @@ describe('EditItem', () => {
       await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
       // Assert
-      expect(mockSave).toHaveBeenCalledWith('Modified content')
+      expect(mockSave).toHaveBeenNthCalledWith(1, 'Modified content')
+      expect(await screen.findByText('common.operation.delete')).toBeInTheDocument()
+
+      await user.click(screen.getByText('common.operation.delete'))
+
+      expect(mockSave).toHaveBeenNthCalledWith(2, 'Test content')
+      expect(screen.queryByText('common.operation.delete')).not.toBeInTheDocument()
     })
 
     it('should handle keyboard interactions in edit mode', async () => {
@@ -392,6 +398,69 @@ describe('EditItem', () => {
       // Assert
       expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
       expect(screen.getByText('Test content')).toBeInTheDocument()
+    })
+
+    it('should handle save failure gracefully in edit mode', async () => {
+      // Arrange
+      const mockSave = jest.fn().mockRejectedValueOnce(new Error('Save failed'))
+      const props = {
+        ...defaultProps,
+        onSave: mockSave,
+      }
+      const user = userEvent.setup()
+
+      // Act
+      render(<EditItem {...props} />)
+
+      // Enter edit mode and save (should fail)
+      await user.click(screen.getByText('common.operation.edit'))
+      const textarea = screen.getByRole('textbox')
+      await user.type(textarea, 'New content')
+
+      // Save should fail but not throw
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      // Assert - Should remain in edit mode when save fails
+      expect(screen.getByRole('textbox')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'common.operation.save' })).toBeInTheDocument()
+      expect(mockSave).toHaveBeenCalledWith('New content')
+    })
+
+    it('should handle delete action failure gracefully', async () => {
+      // Arrange
+      const mockSave = jest.fn()
+        .mockResolvedValueOnce(undefined) // First save succeeds
+        .mockRejectedValueOnce(new Error('Delete failed')) // Delete fails
+      const props = {
+        ...defaultProps,
+        onSave: mockSave,
+      }
+      const user = userEvent.setup()
+
+      // Act
+      render(<EditItem {...props} />)
+
+      // Edit content to show delete button
+      await user.click(screen.getByText('common.operation.edit'))
+      const textarea = screen.getByRole('textbox')
+      await user.clear(textarea)
+      await user.type(textarea, 'Modified content')
+
+      // Save to create new content
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      await screen.findByText('common.operation.delete')
+
+      // Click delete (should fail but not throw)
+      await user.click(screen.getByText('common.operation.delete'))
+
+      // Assert - Delete action should handle error gracefully
+      expect(mockSave).toHaveBeenCalledTimes(2)
+      expect(mockSave).toHaveBeenNthCalledWith(1, 'Modified content')
+      expect(mockSave).toHaveBeenNthCalledWith(2, 'Test content')
+
+      // When delete fails, the delete button should still be visible (state not changed)
+      expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      expect(screen.getByText('Modified content')).toBeInTheDocument()
     })
   })
 })

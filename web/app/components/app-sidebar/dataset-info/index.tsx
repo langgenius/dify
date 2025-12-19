@@ -8,7 +8,7 @@ import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import type { DataSet } from '@/models/datasets'
 import { DOC_FORM_TEXT } from '@/models/datasets'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Dropdown from './dropdown'
 
 type DatasetInfoProps = {

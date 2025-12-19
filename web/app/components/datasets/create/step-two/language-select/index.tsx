@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n-config/language'
 

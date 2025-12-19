@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import { RiQuestionLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { tooltipManager } from './TooltipManager'
 

@@ -5,7 +5,7 @@ import type { MarketplaceCollection } from '../types'
 import CardWrapper from './card-wrapper'
 import type { Plugin } from '@/app/components/plugins/types'
 import { getLanguage } from '@/i18n-config/language'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 

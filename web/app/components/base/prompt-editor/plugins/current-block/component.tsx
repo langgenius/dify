@@ -3,7 +3,7 @@ import { GeneratorType } from '@/app/components/app/configuration/config/automat
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useSelectOrDelete } from '../../hooks'
 import { CurrentBlockNode, DELETE_CURRENT_BLOCK_COMMAND } from '.'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { CodeAssistant, MagicEdit } from '../../../icons/src/vender/line/general'
 
 type CurrentBlockComponentProps = {

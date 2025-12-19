@@ -1,7 +1,7 @@
 import { Group } from '../../../base/icons/src/vender/other'
 import Title from './title'
 import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   wrapClassName: string
