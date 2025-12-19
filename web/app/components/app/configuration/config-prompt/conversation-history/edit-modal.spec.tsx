@@ -3,12 +3,6 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import EditModal from './edit-modal'
 import type { ConversationHistoriesRole } from '@/models/debug'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('@/app/components/base/modal', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,

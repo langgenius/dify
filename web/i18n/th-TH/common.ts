@@ -5,6 +5,7 @@ const translation = {
     saved: 'บันทึก',
     create: 'สร้าง',
     remove: 'ถูก เอา ออก',
+    actionFailed: 'การดำเนินการล้มเหลว',
   },
   operation: {
     create: 'สร้าง',
@@ -103,6 +104,8 @@ const translation = {
       hiIN: 'ฮินดี',
       trTR: 'ตุรกี',
       faIR: 'ภาษาเปอร์เซีย',
+      slSI: 'ภาษาสโลเวเนีย',
+      arTN: 'ภาษาอาหรับตูนิเซีย',
     },
   },
   unit: {

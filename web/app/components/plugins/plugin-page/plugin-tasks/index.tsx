@@ -19,7 +19,7 @@ import {
 import Button from '@/app/components/base/button'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import CardIcon from '@/app/components/plugins/card/base/card-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'

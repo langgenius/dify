@@ -44,7 +44,7 @@ import { useAllBuiltInTools } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
 import { canFindTool } from '@/utils'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import {
   RiCloseLine,

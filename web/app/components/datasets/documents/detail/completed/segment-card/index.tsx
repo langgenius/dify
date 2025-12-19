@@ -13,7 +13,7 @@ import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import { formatNumber } from '@/utils/format'
 import Confirm from '@/app/components/base/confirm'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import { isAfter } from '@/utils/time'
 import Tooltip from '@/app/components/base/tooltip'
@@ -129,6 +129,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
 
   return (
     <div
+      data-testid="segment-card"
       className={cn(
         'chunk-card group/card w-full rounded-xl px-3',
         isFullDocMode ? '' : 'pb-2 pt-2.5 hover:bg-dataset-chunk-detail-card-hover-bg',
@@ -172,6 +173,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                         popupClassName='text-text-secondary system-xs-medium'
                       >
                         <div
+                          data-testid="segment-edit-button"
                           className='flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover'
                           onClick={(e) => {
                             e.stopPropagation()
@@ -184,7 +186,9 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                         popupContent='Delete'
                         popupClassName='text-text-secondary system-xs-medium'
                       >
-                        <div className='group/delete flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-state-destructive-hover'
+                        <div
+                          data-testid="segment-delete-button"
+                          className='group/delete flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg hover:bg-state-destructive-hover'
                           onClick={(e) => {
                             e.stopPropagation()
                             setShowModal(true)

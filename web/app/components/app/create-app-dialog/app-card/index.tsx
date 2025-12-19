@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
 
@@ -15,6 +15,7 @@ export type AppCardProps = {
 
 const AppCard = ({
   app,
+  canCreate,
   onCreate,
 }: AppCardProps) => {
   const { t } = useTranslation()
@@ -45,14 +46,16 @@ const AppCard = ({
           {app.description}
         </div>
       </div>
-      <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-gradient-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
-        <div className={cn('flex h-8 w-full items-center space-x-2')}>
-          <Button variant='primary' className='grow' onClick={() => onCreate()}>
-            <PlusIcon className='mr-1 h-4 w-4' />
-            <span className='text-xs'>{t('app.newApp.useTemplate')}</span>
-          </Button>
+      {canCreate && (
+        <div className={cn('absolute bottom-0 left-0 right-0 hidden bg-gradient-to-t from-components-panel-gradient-2 from-[60.27%] to-transparent p-4 pt-8 group-hover:flex')}>
+          <div className={cn('flex h-8 w-full items-center space-x-2')}>
+            <Button variant='primary' className='grow' onClick={() => onCreate()}>
+              <PlusIcon className='mr-1 h-4 w-4' />
+              <span className='text-xs'>{t('app.newApp.useTemplate')}</span>
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

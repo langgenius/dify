@@ -1,5 +1,6 @@
 import { get, post } from './base'
 import type {
+  AccountIntegrate,
   CommonResponse,
   FileUploadConfigResponse,
   Member,
@@ -282,9 +283,9 @@ export const useSupportRetrievalMethods = () => {
 }
 
 export const useAccountIntegrates = () => {
-  return useQuery({
+  return useQuery<{ data: AccountIntegrate[] | null }>({
     queryKey: commonQueryKeys.accountIntegrates,
-    queryFn: () => get<{ data: any[] | null }>('/account/integrates'),
+    queryFn: () => get<{ data: AccountIntegrate[] | null }>('/account/integrates'),
   })
 }
 

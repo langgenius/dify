@@ -5,6 +5,7 @@ const translation = {
     saved: '已儲存',
     create: '已建立',
     remove: '已移除',
+    actionFailed: '操作失敗',
   },
   operation: {
     create: '建立',
@@ -99,6 +100,8 @@ const translation = {
       hiIN: '印地語',
       trTR: '土耳其語',
       faIR: '波斯語',
+      slSI: '斯洛維尼亞語',
+      arTN: '突尼西亞阿拉伯語',
     },
   },
   unit: {

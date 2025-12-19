@@ -11,7 +11,7 @@ import type { CommonResponse } from '@/models/common'
 import { asyncRunSafe } from '@/utils'
 import { useDebounceFn } from 'ahooks'
 import s from '../style.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import type { OperationName } from '../types'
@@ -105,6 +105,7 @@ const StatusItem = ({
             <div className='max-w-[260px] break-all'>{errorMessage}</div>
           }
           triggerClassName='ml-1 w-4 h-4'
+          triggerTestId='error-tooltip-trigger'
         />
       )
     }

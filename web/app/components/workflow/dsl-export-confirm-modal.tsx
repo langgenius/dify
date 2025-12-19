@@ -2,7 +2,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine, RiLock2Line } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import Modal from '@/app/components/base/modal'
 import Checkbox from '@/app/components/base/checkbox'

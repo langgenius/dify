@@ -11,6 +11,7 @@ const translation = {
     remove: 'Dihapus',
     actionSuccess: 'Aksi berhasil',
     create: 'Dibuat',
+    actionFailed: 'Tindakan gagal',
   },
   operation: {
     setup: 'Setup',
@@ -103,6 +104,8 @@ const translation = {
       viVN: 'Vietnam',
       ukUA: 'Ukraina',
       faIR: 'Farsi',
+      slSI: 'Bahasa Slovenia',
+      arTN: 'Bahasa Arab Tunisia',
       itIT: 'Italia',
       zhHant: 'Mandarin Tradisional',
       thTH: 'Thai',

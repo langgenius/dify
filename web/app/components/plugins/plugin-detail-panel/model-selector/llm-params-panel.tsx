@@ -9,7 +9,7 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useModelParameterRules } from '@/service/use-common'
 
 type Props = {

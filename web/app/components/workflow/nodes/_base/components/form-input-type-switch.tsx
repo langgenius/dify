@@ -7,7 +7,7 @@ import {
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Tooltip from '@/app/components/base/tooltip'
 import { VarType } from '@/app/components/workflow/nodes/tool/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   value: VarType

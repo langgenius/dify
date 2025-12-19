@@ -3,7 +3,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import { useNodesInteractions } from '../../hooks'
 import type {
   BlockEnum,

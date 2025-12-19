@@ -20,7 +20,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
 import { formatBooleanInputs } from '@/utils/model-config'
 import Avatar from '../../avatar'
@@ -218,7 +218,7 @@ const ChatWrapper = () => {
       )
     }
     return (
-      <div className={cn('flex h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
+      <div className={cn('flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
         <AppIcon
           size='xl'
           iconType={appData?.site.icon_type}

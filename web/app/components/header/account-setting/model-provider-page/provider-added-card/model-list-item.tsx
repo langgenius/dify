@@ -6,7 +6,7 @@ import { ModelStatusEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import { useUpdateModelList } from '../hooks'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
@@ -50,11 +50,9 @@ const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoad
   return (
     <div
       key={`${model.model}-${model.fetch_from}`}
-      className={classNames(
-        'group flex h-8 items-center rounded-lg pl-2 pr-2.5',
+      className={cn('group flex h-8 items-center rounded-lg pl-2 pr-2.5',
         isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover',
-        model.deprecated && 'opacity-60',
-      )}
+        model.deprecated && 'opacity-60')}
     >
       <ModelIcon
         className='mr-2 shrink-0'

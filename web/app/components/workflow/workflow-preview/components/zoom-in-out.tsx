@@ -17,7 +17,7 @@ import {
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import Divider from '@/app/components/base/divider'
 import TipPopup from '@/app/components/workflow/operator/tip-popup'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

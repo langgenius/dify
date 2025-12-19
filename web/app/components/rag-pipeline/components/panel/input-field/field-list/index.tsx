@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react'
 import { RiAddLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { InputVar } from '@/models/pipeline'
 import ActionButton from '@/app/components/base/action-button'
 import { useFieldList } from './hooks'

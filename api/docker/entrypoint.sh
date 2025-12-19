@@ -34,10 +34,10 @@ if [[ "${MODE}" == "worker" ]]; then
   if [[ -z "${CELERY_QUEUES}" ]]; then
     if [[ "${EDITION}" == "CLOUD" ]]; then
       # Cloud edition: separate queues for dataset and trigger tasks
-      DEFAULT_QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
+      DEFAULT_QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow_professional,workflow_team,workflow_sandbox,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention"
     else
       # Community edition (SELF_HOSTED): dataset, pipeline and workflow have separate queues
-      DEFAULT_QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor"
+      DEFAULT_QUEUES="dataset,priority_dataset,priority_pipeline,pipeline,mail,ops_trace,app_deletion,plugin,workflow_storage,conversation,workflow,schedule_poller,schedule_executor,triggered_workflow_dispatcher,trigger_refresh_executor,retention"
     fi
   else
     DEFAULT_QUEUES="${CELERY_QUEUES}"
@@ -69,6 +69,53 @@ if [[ "${MODE}" == "worker" ]]; then
 
 elif [[ "${MODE}" == "beat" ]]; then
   exec celery -A app.celery beat --loglevel ${LOG_LEVEL:-INFO}
+
+elif [[ "${MODE}" == "job" ]]; then
+  # Job mode: Run a one-time Flask command and exit
+  # Pass Flask command and arguments via container args
+  # Example K8s usage:
+  #   args:
+  #   - create-tenant
+  #   - --email
+  #   - admin@example.com
+  #
+  # Example Docker usage:
+  #   docker run -e MODE=job dify-api:latest create-tenant --email admin@example.com
+
+  if [[ $# -eq 0 ]]; then
+    echo "Error: No command specified for job mode."
+    echo ""
+    echo "Usage examples:"
+    echo "  Kubernetes:"
+    echo "    args: [create-tenant, --email, admin@example.com]"
+    echo ""
+    echo "  Docker:"
+    echo "    docker run -e MODE=job dify-api create-tenant --email admin@example.com"
+    echo ""
+    echo "Available commands:"
+    echo "  create-tenant, reset-password, reset-email, upgrade-db,"
+    echo "  vdb-migrate, install-plugins, and more..."
+    echo ""
+    echo "Run 'flask --help' to see all available commands."
+    exit 1
+  fi
+
+  echo "Running Flask job command: flask $*"
+  
+  # Temporarily disable exit on error to capture exit code
+  set +e
+  flask "$@"
+  JOB_EXIT_CODE=$?
+  set -e
+
+  if [[ ${JOB_EXIT_CODE} -eq 0 ]]; then
+    echo "Job completed successfully."
+  else
+    echo "Job failed with exit code ${JOB_EXIT_CODE}."
+  fi
+
+  exit ${JOB_EXIT_CODE}
+
 else
   if [[ "${DEBUG}" == "true" ]]; then
     exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug

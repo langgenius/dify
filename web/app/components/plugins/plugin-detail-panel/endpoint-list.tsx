@@ -20,7 +20,7 @@ import {
   useInvalidateEndpointList,
 } from '@/service/use-endpoints'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   detail: PluginDetail

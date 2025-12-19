@@ -8,7 +8,7 @@ import {
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Popover from '@/app/components/base/popover'
 import { useBoolean } from 'ahooks'

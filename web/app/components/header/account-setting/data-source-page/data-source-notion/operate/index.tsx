@@ -12,7 +12,7 @@ import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/r
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
 import Toast from '@/app/components/base/toast'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type OperateProps = {
   payload: {

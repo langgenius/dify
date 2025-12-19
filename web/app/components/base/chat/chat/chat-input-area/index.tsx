@@ -16,7 +16,7 @@ import type { InputForm } from '../type'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import {
@@ -79,7 +79,7 @@ const ChatInputArea = ({
     handleDropFile,
     handleClipboardPasteFile,
     isDragActive,
-  } = useFile(visionConfig!)
+  } = useFile(visionConfig!, false)
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)

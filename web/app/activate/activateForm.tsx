@@ -2,7 +2,7 @@
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 import Loading from '@/app/components/base/loading'

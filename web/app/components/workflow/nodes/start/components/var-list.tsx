@@ -7,7 +7,7 @@ import VarItem from './var-item'
 import { ChangeType, type InputVar, type MoreInfo } from '@/app/components/workflow/types'
 import { ReactSortable } from 'react-sortablejs'
 import { RiDraggable } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { hasDuplicateStr } from '@/utils/var'
 import Toast from '@/app/components/base/toast'
 

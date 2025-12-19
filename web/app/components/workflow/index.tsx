@@ -91,7 +91,7 @@ import dynamic from 'next/dynamic'
 import useMatchSchemaType from './nodes/_base/components/variable/use-match-schema-type'
 import type { VarInInspect } from '@/types/workflow'
 import { fetchAllInspectVars } from '@/service/workflow'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
