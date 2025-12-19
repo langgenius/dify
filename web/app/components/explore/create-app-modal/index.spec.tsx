@@ -33,16 +33,6 @@ jest.mock('react-i18next', () => ({
   },
 }))
 
-// ky is an ESM-only package; mock it to keep Jest (CJS) specs running.
-jest.mock('ky', () => ({
-  __esModule: true,
-  default: {
-    create: () => ({
-      extend: () => async () => new Response(),
-    }),
-  },
-}))
-
 // Avoid heavy emoji dataset initialization during unit tests.
 jest.mock('emoji-mart', () => ({
   init: jest.fn(),

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useDebounceFn, useMount } from 'ahooks'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useStore as useTagStore } from './store'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

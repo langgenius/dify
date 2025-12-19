@@ -20,7 +20,7 @@ import type {
   DataSet,
 } from '@/models/datasets'
 import { RerankingModeEnum } from '@/models/datasets'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'

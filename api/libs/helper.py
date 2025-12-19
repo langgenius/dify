@@ -120,9 +120,9 @@ def uuid_value(value: Any) -> str:
         raise ValueError(error)
 
 
-def normalize_uuid(value: str | UUID | None) -> str | None:
+def normalize_uuid(value: str | UUID) -> str:
     if not value:
-        return None
+        return ""
 
     try:
         return uuid_value(value)

@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
 

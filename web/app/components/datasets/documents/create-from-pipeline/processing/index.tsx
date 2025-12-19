@@ -20,7 +20,7 @@ const Processing = ({
   const docLink = useDocLink()
   const datasetId = useDatasetDetailContextWithSelector(s => s.dataset?.id)
   const indexingType = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
-  const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict.search_method)
+  const retrievalMethod = useDatasetDetailContextWithSelector(s => s.dataset?.retrieval_model_dict?.search_method)
 
   return (
     <div className='flex h-full w-full justify-center overflow-hidden'>

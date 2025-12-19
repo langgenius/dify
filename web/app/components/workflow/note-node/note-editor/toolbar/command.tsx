@@ -12,7 +12,7 @@ import {
 } from '@remixicon/react'
 import { useStore } from '../store'
 import { useCommand } from './hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 
 type CommandProps = {

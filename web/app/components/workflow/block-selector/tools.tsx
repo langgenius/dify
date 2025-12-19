@@ -8,7 +8,7 @@ import Empty from '@/app/components/tools/provider/empty'
 import { useGetLanguage } from '@/context/i18n'
 import ToolListTreeView from './tool/tool-list-tree-view/list'
 import ToolListFlatView from './tool/tool-list-flat-view/list'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ToolsProps = {
   onSelect: (type: BlockEnum, tool: ToolDefaultValue) => void
@@ -91,7 +91,7 @@ const Tools = ({
   const toolRefs = useRef({})
 
   return (
-    <div className={classNames('max-w-[100%] p-1', className)}>
+    <div className={cn('max-w-[100%] p-1', className)}>
       {!tools.length && !hasSearchText && (
         <div className='py-10'>
           <Empty type={toolType!} isAgent={isAgent} />

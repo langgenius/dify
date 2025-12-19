@@ -1,5 +1,5 @@
 'use client'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiArrowDropDownLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import type { FC } from 'react'

@@ -4,7 +4,7 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'lodash-es'
 import { memo } from 'react'

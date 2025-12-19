@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
 
 type DialogProps = {

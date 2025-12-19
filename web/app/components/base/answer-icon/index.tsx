@@ -3,7 +3,7 @@
 import type { FC } from 'react'
 import { init } from 'emoji-mart'
 import data from '@emoji-mart/data'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { AppIconType } from '@/types/app'
 
 init({ data })
@@ -21,8 +21,7 @@ const AnswerIcon: FC<AnswerIconProps> = ({
   background,
   imageUrl,
 }) => {
-  const wrapperClassName = classNames(
-    'flex',
+  const wrapperClassName = cn('flex',
     'items-center',
     'justify-center',
     'w-full',
@@ -30,8 +29,7 @@ const AnswerIcon: FC<AnswerIconProps> = ({
     'rounded-full',
     'border-[0.5px]',
     'border-black/5',
-    'text-xl',
-  )
+    'text-xl')
   const isValidImageIcon = iconType === 'image' && imageUrl
   return <div
     className={wrapperClassName}

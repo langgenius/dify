@@ -1,10 +1,9 @@
 import type { FC } from 'react'
-import { useMemo, useRef, useState } from 'react'
-import { useMount } from 'ahooks'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
 import { RiCloseLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -21,10 +20,10 @@ import PermissionSelector from '@/app/components/datasets/settings/permission-se
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { useDocLink } from '@/context/i18n'
+import { useMembers } from '@/service/use-common'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
@@ -63,6 +62,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
+  const { data: membersData } = useMembers()
 
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
@@ -160,17 +160,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
     }
   }
 
-  const getMembers = async () => {
-    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-    if (!accounts)
+  useEffect(() => {
+    if (!membersData?.accounts)
       setMemberList([])
     else
-      setMemberList(accounts)
-  }
-
-  useMount(() => {
-    getMembers()
-  })
+      setMemberList(membersData.accounts)
+  }, [membersData])
 
   const showMultiModalTip = useMemo(() => {
     return checkShowMultiModalTip({

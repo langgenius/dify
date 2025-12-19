@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { createRef } from 'react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { type ReactNode, type RefObject, createRef } from 'react'
 import DebugWithSingleModel from './index'
 import type { DebugWithSingleModelRefType } from './index'
 import type { ChatItem } from '@/app/components/base/chat/types'
@@ -8,7 +8,8 @@ import type { ProviderContextState } from '@/context/provider-context'
 import type { DatasetConfigs, ModelConfig } from '@/models/debug'
 import { PromptMode } from '@/models/debug'
 import { type Collection, CollectionType } from '@/app/components/tools/types'
-import { AgentStrategy, AppModeEnum, ModelModeType } from '@/types/app'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
 
 // ============================================================================
 // Test Data Factories (Following testing.md guidelines)
@@ -65,21 +66,6 @@ function createMockModelConfig(overrides: Partial<ModelConfig> = {}): ModelConfi
     },
     ...overrides,
   }
-}
-
-/**
- * Factory function for creating mock ChatItem list
- * Note: Currently unused but kept for potential future test cases
- */
-// eslint-disable-next-line unused-imports/no-unused-vars
-function createMockChatList(items: Partial<ChatItem>[] = []): ChatItem[] {
-  return items.map((item, index) => ({
-    id: `msg-${index}`,
-    content: 'Test message',
-    isAnswer: false,
-    message_files: [],
-    ...item,
-  }))
 }
 
 /**
@@ -156,9 +142,9 @@ const mockFetchSuggestedQuestions = jest.fn()
 const mockStopChatMessageResponding = jest.fn()
 
 jest.mock('@/service/debug', () => ({
-  fetchConversationMessages: (...args: any[]) => mockFetchConversationMessages(...args),
-  fetchSuggestedQuestions: (...args: any[]) => mockFetchSuggestedQuestions(...args),
-  stopChatMessageResponding: (...args: any[]) => mockStopChatMessageResponding(...args),
+  fetchConversationMessages: (...args: unknown[]) => mockFetchConversationMessages(...args),
+  fetchSuggestedQuestions: (...args: unknown[]) => mockFetchSuggestedQuestions(...args),
+  stopChatMessageResponding: (...args: unknown[]) => mockStopChatMessageResponding(...args),
 }))
 
 jest.mock('next/navigation', () => ({
@@ -255,11 +241,11 @@ const mockDebugConfigContext = {
     score_threshold: 0.7,
     datasets: { datasets: [] },
   } as DatasetConfigs,
-  datasetConfigsRef: { current: null } as any,
+  datasetConfigsRef: createRef<DatasetConfigs>(),
   setDatasetConfigs: jest.fn(),
   hasSetContextVar: false,
   isShowVisionConfig: false,
-  visionConfig: { enabled: false, number_limits: 2, detail: 'low' as any, transfer_methods: [] },
+  visionConfig: { enabled: false, number_limits: 2, detail: Resolution.low, transfer_methods: [] },
   setVisionConfig: jest.fn(),
   isAllowVideoUpload: false,
   isShowDocumentConfig: false,
@@ -295,7 +281,19 @@ jest.mock('@/context/app-context', () => ({
   useAppContext: jest.fn(() => mockAppContext),
 }))
 
-const mockFeatures = {
+type FeatureState = {
+  moreLikeThis: { enabled: boolean }
+  opening: { enabled: boolean; opening_statement: string; suggested_questions: string[] }
+  moderation: { enabled: boolean }
+  speech2text: { enabled: boolean }
+  text2speech: { enabled: boolean }
+  file: { enabled: boolean }
+  suggested: { enabled: boolean }
+  citation: { enabled: boolean }
+  annotationReply: { enabled: boolean }
+}
+
+const defaultFeatures: FeatureState = {
   moreLikeThis: { enabled: false },
   opening: { enabled: false, opening_statement: '', suggested_questions: [] },
   moderation: { enabled: false },
@@ -306,13 +304,11 @@ const mockFeatures = {
   citation: { enabled: false },
   annotationReply: { enabled: false },
 }
+type FeatureSelector = (state: { features: FeatureState }) => unknown
 
+let mockFeaturesState: FeatureState = { ...defaultFeatures }
 jest.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: jest.fn((selector) => {
-    if (typeof selector === 'function')
-      return selector({ features: mockFeatures })
-    return mockFeatures
-  }),
+  useFeatures: jest.fn(),
 }))
 
 const mockConfigFromDebugContext = {
@@ -345,7 +341,7 @@ jest.mock('../hooks', () => ({
 const mockSetShowAppConfigureFeaturesModal = jest.fn()
 
 jest.mock('@/app/components/app/store', () => ({
-  useStore: jest.fn((selector) => {
+  useStore: jest.fn((selector?: (state: { setShowAppConfigureFeaturesModal: typeof mockSetShowAppConfigureFeaturesModal }) => unknown) => {
     if (typeof selector === 'function')
       return selector({ setShowAppConfigureFeaturesModal: mockSetShowAppConfigureFeaturesModal })
     return mockSetShowAppConfigureFeaturesModal
@@ -384,12 +380,31 @@ jest.mock('@/app/components/base/audio-btn/audio.player.manager', () => ({
   },
 }))
 
-// Mock external APIs that might be used
-globalThis.ResizeObserver = jest.fn().mockImplementation(() => ({
-  observe: jest.fn(),
-  unobserve: jest.fn(),
-  disconnect: jest.fn(),
-}))
+type MockChatProps = {
+  chatList?: ChatItem[]
+  isResponding?: boolean
+  onSend?: (message: string, files?: FileEntity[]) => void
+  onRegenerate?: (chatItem: ChatItem, editedQuestion?: { message: string; files?: FileEntity[] }) => void
+  onStopResponding?: () => void
+  suggestedQuestions?: string[]
+  questionIcon?: ReactNode
+  answerIcon?: ReactNode
+  onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string, index: number) => void
+  onAnnotationEdited?: (question: string, answer: string, index: number) => void
+  onAnnotationRemoved?: (index: number) => void
+  switchSibling?: (siblingMessageId: string) => void
+  onFeatureBarClick?: (state: boolean) => void
+}
+
+const mockFile: FileEntity = {
+  id: 'file-1',
+  name: 'test.png',
+  size: 123,
+  type: 'image/png',
+  progress: 100,
+  transferMethod: TransferMethod.local_file,
+  supportFileType: 'image',
+}
 
 // Mock Chat component (complex with many dependencies)
 // This is a pragmatic mock that tests the integration at DebugWithSingleModel level
@@ -408,11 +423,13 @@ jest.mock('@/app/components/base/chat/chat', () => {
     onAnnotationRemoved,
     switchSibling,
     onFeatureBarClick,
-  }: any) {
+  }: MockChatProps) {
+    const items = chatList || []
+    const suggested = suggestedQuestions ?? []
     return (
       <div data-testid="chat-component">
         <div data-testid="chat-list">
-          {chatList?.map((item: any) => (
+          {items.map((item: ChatItem) => (
             <div key={item.id} data-testid={`chat-item-${item.id}`}>
               {item.content}
             </div>
@@ -434,14 +451,21 @@ jest.mock('@/app/components/base/chat/chat', () => {
         >
           Send
         </button>
+        <button
+          data-testid="send-with-files"
+          onClick={() => onSend?.('test message', [mockFile])}
+          disabled={isResponding}
+        >
+          Send With Files
+        </button>
         {isResponding && (
           <button data-testid="stop-button" onClick={onStopResponding}>
             Stop
           </button>
         )}
-        {suggestedQuestions?.length > 0 && (
+        {suggested.length > 0 && (
           <div data-testid="suggested-questions">
-            {suggestedQuestions.map((q: string, i: number) => (
+            {suggested.map((q: string, i: number) => (
               <button key={i} onClick={() => onSend?.(q, [])}>
                 {q}
               </button>
@@ -451,7 +475,13 @@ jest.mock('@/app/components/base/chat/chat', () => {
         {onRegenerate && (
           <button
             data-testid="regenerate-button"
-            onClick={() => onRegenerate({ id: 'msg-1', parentMessageId: 'msg-0' })}
+            onClick={() => onRegenerate({
+              id: 'msg-1',
+              content: 'Question',
+              isAnswer: false,
+              message_files: [],
+              parentMessageId: 'msg-0',
+            })}
           >
             Regenerate
           </button>
@@ -506,11 +536,29 @@ jest.mock('@/app/components/base/chat/chat', () => {
 // ============================================================================
 
 describe('DebugWithSingleModel', () => {
-  let ref: React.RefObject<DebugWithSingleModelRefType | null>
+  let ref: RefObject<DebugWithSingleModelRefType | null>
 
   beforeEach(() => {
     jest.clearAllMocks()
     ref = createRef<DebugWithSingleModelRefType | null>()
+
+    const { useDebugConfigurationContext } = require('@/context/debug-configuration')
+    const { useProviderContext } = require('@/context/provider-context')
+    const { useAppContext } = require('@/context/app-context')
+    const { useConfigFromDebugContext, useFormattingChangedSubscription } = require('../hooks')
+    const { useFeatures } = require('@/app/components/base/features/hooks') as { useFeatures: jest.Mock }
+
+    useDebugConfigurationContext.mockReturnValue(mockDebugConfigContext)
+    useProviderContext.mockReturnValue(mockProviderContext)
+    useAppContext.mockReturnValue(mockAppContext)
+    useConfigFromDebugContext.mockReturnValue(mockConfigFromDebugContext)
+    useFormattingChangedSubscription.mockReturnValue(undefined)
+    mockFeaturesState = { ...defaultFeatures }
+    useFeatures.mockImplementation((selector?: FeatureSelector) => {
+      if (typeof selector === 'function')
+        return selector({ features: mockFeaturesState })
+      return mockFeaturesState
+    })
 
     // Reset mock implementations
     mockFetchConversationMessages.mockResolvedValue({ data: [] })
@@ -521,7 +569,7 @@ describe('DebugWithSingleModel', () => {
   // Rendering Tests
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       // Verify Chat component is rendered
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
@@ -532,7 +580,7 @@ describe('DebugWithSingleModel', () => {
     it('should render with custom checkCanSend prop', () => {
       const checkCanSend = jest.fn(() => true)
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -543,122 +591,88 @@ describe('DebugWithSingleModel', () => {
     it('should respect checkCanSend returning true', async () => {
       const checkCanSend = jest.fn(() => true)
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
 
       const sendButton = screen.getByTestId('send-button')
       fireEvent.click(sendButton)
 
+      const { ssePost } = require('@/service/base') as { ssePost: jest.Mock }
       await waitFor(() => {
         expect(checkCanSend).toHaveBeenCalled()
+        expect(ssePost).toHaveBeenCalled()
       })
+
+      expect(ssePost.mock.calls[0][0]).toBe('apps/test-app-id/chat-messages')
     })
 
     it('should prevent send when checkCanSend returns false', async () => {
       const checkCanSend = jest.fn(() => false)
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} checkCanSend={checkCanSend} />)
 
       const sendButton = screen.getByTestId('send-button')
       fireEvent.click(sendButton)
 
+      const { ssePost } = require('@/service/base') as { ssePost: jest.Mock }
       await waitFor(() => {
         expect(checkCanSend).toHaveBeenCalled()
         expect(checkCanSend).toHaveReturnedWith(false)
       })
+      expect(ssePost).not.toHaveBeenCalled()
     })
   })
 
-  // Context Integration Tests
-  describe('Context Integration', () => {
-    it('should use debug configuration context', () => {
-      const { useDebugConfigurationContext } = require('@/context/debug-configuration')
+  // User Interactions
+  describe('User Interactions', () => {
+    it('should open feature configuration when feature bar is clicked', () => {
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      fireEvent.click(screen.getByTestId('feature-bar-button'))
 
-      expect(useDebugConfigurationContext).toHaveBeenCalled()
-    })
-
-    it('should use provider context for model list', () => {
-      const { useProviderContext } = require('@/context/provider-context')
-
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      expect(useProviderContext).toHaveBeenCalled()
-    })
-
-    it('should use app context for user profile', () => {
-      const { useAppContext } = require('@/context/app-context')
-
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      expect(useAppContext).toHaveBeenCalled()
-    })
-
-    it('should use features from features hook', () => {
-      const { useFeatures } = require('@/app/components/base/features/hooks')
-
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      expect(useFeatures).toHaveBeenCalled()
-    })
-
-    it('should use config from debug context hook', () => {
-      const { useConfigFromDebugContext } = require('../hooks')
-
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      expect(useConfigFromDebugContext).toHaveBeenCalled()
-    })
-
-    it('should subscribe to formatting changes', () => {
-      const { useFormattingChangedSubscription } = require('../hooks')
-
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      expect(useFormattingChangedSubscription).toHaveBeenCalled()
+      expect(mockSetShowAppConfigureFeaturesModal).toHaveBeenCalledWith(true)
     })
   })
 
   // Model Configuration Tests
   describe('Model Configuration', () => {
-    it('should merge features into config correctly when all features enabled', () => {
-      const { useFeatures } = require('@/app/components/base/features/hooks')
+    it('should include opening features in request when enabled', async () => {
+      mockFeaturesState = {
+        ...defaultFeatures,
+        opening: { enabled: true, opening_statement: 'Hello!', suggested_questions: ['Q1'] },
+      }
 
-      useFeatures.mockReturnValue((selector: any) => {
-        const features = {
-          moreLikeThis: { enabled: true },
-          opening: { enabled: true, opening_statement: 'Hello!', suggested_questions: ['Q1'] },
-          moderation: { enabled: true },
-          speech2text: { enabled: true },
-          text2speech: { enabled: true },
-          file: { enabled: true },
-          suggested: { enabled: true },
-          citation: { enabled: true },
-          annotationReply: { enabled: true },
-        }
-        return typeof selector === 'function' ? selector({ features }) : features
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+
+      fireEvent.click(screen.getByTestId('send-button'))
+
+      const { ssePost } = require('@/service/base') as { ssePost: jest.Mock }
+      await waitFor(() => {
+        expect(ssePost).toHaveBeenCalled()
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      const body = ssePost.mock.calls[0][1].body
+      expect(body.model_config.opening_statement).toBe('Hello!')
+      expect(body.model_config.suggested_questions).toEqual(['Q1'])
     })
 
-    it('should handle opening feature disabled correctly', () => {
-      const { useFeatures } = require('@/app/components/base/features/hooks')
+    it('should omit opening statement when feature is disabled', async () => {
+      mockFeaturesState = {
+        ...defaultFeatures,
+        opening: { enabled: false, opening_statement: 'Should not appear', suggested_questions: ['Q1'] },
+      }
 
-      useFeatures.mockReturnValue((selector: any) => {
-        const features = {
-          ...mockFeatures,
-          opening: { enabled: false, opening_statement: 'Should not appear', suggested_questions: ['Q1'] },
-        }
-        return typeof selector === 'function' ? selector({ features }) : features
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+
+      fireEvent.click(screen.getByTestId('send-button'))
+
+      const { ssePost } = require('@/service/base') as { ssePost: jest.Mock }
+      await waitFor(() => {
+        expect(ssePost).toHaveBeenCalled()
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      // When opening is disabled, opening_statement should be empty
-      expect(screen.queryByText('Should not appear')).not.toBeInTheDocument()
+      const body = ssePost.mock.calls[0][1].body
+      expect(body.model_config.opening_statement).toBe('')
+      expect(body.model_config.suggested_questions).toEqual([])
     })
 
     it('should handle model without vision support', () => {
@@ -689,7 +703,7 @@ describe('DebugWithSingleModel', () => {
         ],
       }))
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -710,7 +724,7 @@ describe('DebugWithSingleModel', () => {
         ],
       }))
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -735,7 +749,7 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       // Component should render successfully with filtered variables
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
@@ -754,7 +768,7 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -763,7 +777,7 @@ describe('DebugWithSingleModel', () => {
   // Tool Icons Tests
   describe('Tool Icons', () => {
     it('should map tool icons from collection list', () => {
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -783,7 +797,7 @@ describe('DebugWithSingleModel', () => {
         }),
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -812,7 +826,7 @@ describe('DebugWithSingleModel', () => {
         collectionList: [],
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -828,7 +842,7 @@ describe('DebugWithSingleModel', () => {
         inputs: {},
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -846,7 +860,7 @@ describe('DebugWithSingleModel', () => {
         },
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -859,7 +873,7 @@ describe('DebugWithSingleModel', () => {
         completionParams: {},
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(screen.getByTestId('chat-component')).toBeInTheDocument()
     })
@@ -868,7 +882,7 @@ describe('DebugWithSingleModel', () => {
   // Imperative Handle Tests
   describe('Imperative Handle', () => {
     it('should expose handleRestart method via ref', () => {
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
       expect(ref.current).not.toBeNull()
       expect(ref.current?.handleRestart).toBeDefined()
@@ -876,65 +890,26 @@ describe('DebugWithSingleModel', () => {
     })
 
     it('should call handleRestart when invoked via ref', () => {
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
 
-      expect(() => {
+      act(() => {
         ref.current?.handleRestart()
-      }).not.toThrow()
-    })
-  })
-
-  // Memory and Performance Tests
-  describe('Memory and Performance', () => {
-    it('should properly memoize component', () => {
-      const { rerender } = render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      // Re-render with same props
-      rerender(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
-    })
-
-    it('should have displayName set for debugging', () => {
-      expect(DebugWithSingleModel).toBeDefined()
-      // memo wraps the component
-      expect(typeof DebugWithSingleModel).toBe('object')
-    })
-  })
-
-  // Async Operations Tests
-  describe('Async Operations', () => {
-    it('should handle API calls during message send', async () => {
-      mockFetchConversationMessages.mockResolvedValue({ data: [] })
-
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      const textarea = screen.getByRole('textbox', { hidden: true })
-      fireEvent.change(textarea, { target: { value: 'Test message' } })
-
-      // Component should render without errors during async operations
-      await waitFor(() => {
-        expect(screen.getByTestId('chat-component')).toBeInTheDocument()
-      })
-    })
-
-    it('should handle API errors gracefully', async () => {
-      mockFetchConversationMessages.mockRejectedValue(new Error('API Error'))
-
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      // Component should still render even if API calls fail
-      await waitFor(() => {
-        expect(screen.getByTestId('chat-component')).toBeInTheDocument()
       })
     })
   })
 
   // File Upload Tests
   describe('File Upload', () => {
-    it('should not include files when vision is not supported', () => {
+    it('should not include files when vision is not supported', async () => {
+      const { useDebugConfigurationContext } = require('@/context/debug-configuration')
       const { useProviderContext } = require('@/context/provider-context')
-      const { useFeatures } = require('@/app/components/base/features/hooks')
+
+      useDebugConfigurationContext.mockReturnValue({
+        ...mockDebugConfigContext,
+        modelConfig: createMockModelConfig({
+          model_id: 'gpt-3.5-turbo',
+        }),
+      })
 
       useProviderContext.mockReturnValue(createMockProviderContext({
         textGenerationModelList: [
@@ -961,23 +936,34 @@ describe('DebugWithSingleModel', () => {
         ],
       }))
 
-      useFeatures.mockReturnValue((selector: any) => {
-        const features = {
-          ...mockFeatures,
-          file: { enabled: true }, // File upload enabled
-        }
-        return typeof selector === 'function' ? selector({ features }) : features
+      mockFeaturesState = {
+        ...defaultFeatures,
+        file: { enabled: true },
+      }
+
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+
+      fireEvent.click(screen.getByTestId('send-with-files'))
+
+      const { ssePost } = require('@/service/base') as { ssePost: jest.Mock }
+      await waitFor(() => {
+        expect(ssePost).toHaveBeenCalled()
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      // Should render but not allow file uploads
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      const body = ssePost.mock.calls[0][1].body
+      expect(body.files).toEqual([])
     })
 
-    it('should support files when vision is enabled', () => {
+    it('should support files when vision is enabled', async () => {
+      const { useDebugConfigurationContext } = require('@/context/debug-configuration')
       const { useProviderContext } = require('@/context/provider-context')
-      const { useFeatures } = require('@/app/components/base/features/hooks')
+
+      useDebugConfigurationContext.mockReturnValue({
+        ...mockDebugConfigContext,
+        modelConfig: createMockModelConfig({
+          model_id: 'gpt-4-vision',
+        }),
+      })
 
       useProviderContext.mockReturnValue(createMockProviderContext({
         textGenerationModelList: [
@@ -1004,17 +990,22 @@ describe('DebugWithSingleModel', () => {
         ],
       }))
 
-      useFeatures.mockReturnValue((selector: any) => {
-        const features = {
-          ...mockFeatures,
-          file: { enabled: true },
-        }
-        return typeof selector === 'function' ? selector({ features }) : features
+      mockFeaturesState = {
+        ...defaultFeatures,
+        file: { enabled: true },
+      }
+
+      render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
+
+      fireEvent.click(screen.getByTestId('send-with-files'))
+
+      const { ssePost } = require('@/service/base') as { ssePost: jest.Mock }
+      await waitFor(() => {
+        expect(ssePost).toHaveBeenCalled()
       })
 
-      render(<DebugWithSingleModel ref={ref as React.RefObject<DebugWithSingleModelRefType>} />)
-
-      expect(screen.getByTestId('chat-component')).toBeInTheDocument()
+      const body = ssePost.mock.calls[0][1].body
+      expect(body.files).toHaveLength(1)
     })
   })
 })

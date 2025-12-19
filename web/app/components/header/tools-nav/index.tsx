@@ -7,7 +7,7 @@ import {
   RiHammerFill,
   RiHammerLine,
 } from '@remixicon/react'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 type ToolsNavProps = {
   className?: string
 }
@@ -20,12 +20,10 @@ const ToolsNav = ({
   const activated = selectedSegment === 'tools'
 
   return (
-    <Link href="/tools" className={classNames(
-      'group text-sm font-medium',
+    <Link href="/tools" className={cn('group text-sm font-medium',
       activated && 'hover:bg-components-main-nav-nav-button-bg-active-hover bg-components-main-nav-nav-button-bg-active font-semibold shadow-md',
       activated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text hover:bg-components-main-nav-nav-button-bg-hover',
-      className,
-    )}>
+      className)}>
       {
         activated
           ? <RiHammerFill className='h-4 w-4' />
