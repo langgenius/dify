@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import useSWR from 'swr'
 import { basePath } from '@/utils/var'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -72,7 +71,7 @@ import type { Features as FeaturesData, FileUpload } from '@/app/components/base
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
-import { fetchFileUploadConfig } from '@/service/common'
+import { useFileUploadConfig } from '@/service/use-common'
 import {
   correctModelProvider,
   correctToolProvider,
@@ -101,7 +100,7 @@ const Configuration: FC = () => {
     showAppConfigureFeaturesModal: state.showAppConfigureFeaturesModal,
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const { data: fileUploadConfigResponse } = useFileUploadConfig()
 
   const latestPublishedAt = useMemo(() => appDetail?.model_config?.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)
@@ -307,7 +306,7 @@ const Configuration: FC = () => {
     const oldRetrievalConfig = {
       top_k,
       score_threshold,
-      reranking_model: (reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
+      reranking_model: (reranking_model?.reranking_provider_name && reranking_model?.reranking_model_name) ? {
         provider: reranking_model.reranking_provider_name,
         model: reranking_model.reranking_model_name,
       } : undefined,

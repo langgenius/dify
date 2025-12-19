@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react'
 import React from 'react'
 import { type VariantProps, cva } from 'class-variance-authority'
 import Spinner from '../spinner'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const buttonVariants = cva(
   'btn disabled:btn-disabled',
@@ -42,16 +42,14 @@ const Button = ({ className, variant, size, destructive, loading, styleCss, chil
   return (
     <button
       type='button'
-      className={classNames(
-        buttonVariants({ variant, size, className }),
-        destructive && 'btn-destructive',
-      )}
+      className={cn(buttonVariants({ variant, size, className }),
+        destructive && 'btn-destructive')}
       ref={ref}
       style={styleCss}
       {...props}
     >
       {children}
-      {loading && <Spinner loading={loading} className={classNames('!ml-1 !h-3 !w-3 !border-2 !text-white', spinnerClassName)} />}
+      {loading && <Spinner loading={loading} className={cn('!ml-1 !h-3 !w-3 !border-2 !text-white', spinnerClassName)} />}
     </button>
   )
 }

@@ -5,8 +5,8 @@ const translation = {
   table: {
     header: {
       source: 'स्रोत',
-      text: 'पाठ',
       time: 'समय',
+      queryContent: 'सवाल की सामग्री',
     },
   },
   input: {
@@ -29,6 +29,12 @@ const translation = {
   chunkDetail: 'चंक विवरण',
   open: 'खोलना',
   records: 'रिकॉर्ड',
+  imageUploader: {
+    tip: 'छवियाँ अपलोड करें या ड्रॉप करें (प्रत्येक अधिकतम {{batchCount}}, {{size}}MB)',
+    tooltip: 'छवियां अपलोड करें (अधिकतम {{batchCount}}, प्रत्येक {{size}}MB)',
+    dropZoneTip: 'अपलोड करने के लिए फ़ाइल यहाँ खींचें',
+    singleChunkAttachmentLimitTooltip: 'सिंगल चंक अटैचमेंट की संख्या {{limit}} से अधिक नहीं हो सकती',
+  },
 }
 
 export default translation

@@ -23,7 +23,7 @@ import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use
 import useDocumentTitle from '@/hooks/use-document-title'
 import ExtraInfo from '@/app/components/datasets/extra-info'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -121,7 +121,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     <div
       className={cn(
         'flex grow overflow-hidden',
-        hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl border-t border-effects-highlight',
+        hideHeader && isPipelineCanvas ? '' : 'rounded-t-2xl',
       )}
     >
       <DatasetDetailContext.Provider value={{

@@ -1,38 +1,27 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
-  useState,
 } from 'react'
 import {
   useMarketplacePlugins,
+  useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
-import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
 
 export const useMarketplaceAllPlugins = (providers: any[], searchText: string) => {
   const exclude = useMemo(() => {
     return providers.map(provider => provider.plugin_id)
   }, [providers])
-  const [collectionPlugins, setCollectionPlugins] = useState<Plugin[]>([])
-
+  const {
+    plugins: collectionPlugins = [],
+    isLoading: isCollectionLoading,
+  } = useMarketplacePluginsByCollectionId('__datasource-settings-pinned-datasources')
   const {
     plugins,
     queryPlugins,
     queryPluginsWithDebounced,
-    isLoading,
+    isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
-
-  const getCollectionPlugins = useCallback(async () => {
-    const collectionPlugins = await getMarketplacePluginsByCollectionId('__datasource-settings-pinned-datasources')
-
-    setCollectionPlugins(collectionPlugins)
-  }, [])
-
-  useEffect(() => {
-    getCollectionPlugins()
-  }, [getCollectionPlugins])
 
   useEffect(() => {
     if (searchText) {
@@ -75,6 +64,6 @@ export const useMarketplaceAllPlugins = (providers: any[], searchText: string) =
 
   return {
     plugins: allPlugins,
-    isLoading,
+    isLoading: isCollectionLoading || isPluginsLoading,
   }
 }

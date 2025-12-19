@@ -5,7 +5,7 @@ import { Openai } from '@/app/components/base/icons/src/vender/other'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
 import { renderI18nObject } from '@/i18n-config'
 import { Theme } from '@/types/app'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import useTheme from '@/hooks/use-theme'
 
 type ProviderIconProps = {
@@ -40,7 +40,12 @@ const ProviderIcon: FC<ProviderIconProps> = ({
     <div className={cn('inline-flex items-center gap-2', className)}>
       <img
         alt='provider-icon'
-        src={renderI18nObject(provider.icon_small, language)}
+        src={renderI18nObject(
+          theme === Theme.dark && provider.icon_small_dark
+            ? provider.icon_small_dark
+            : provider.icon_small,
+          language,
+        )}
         className='h-6 w-6'
       />
       <div className='system-md-semibold text-text-primary'>

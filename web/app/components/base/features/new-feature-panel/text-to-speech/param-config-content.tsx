@@ -1,5 +1,4 @@
 'use client'
-import useSWR from 'swr'
 import { produce } from 'immer'
 import React, { Fragment } from 'react'
 import { usePathname } from 'next/navigation'
@@ -9,14 +8,14 @@ import { Listbox, ListboxButton, ListboxOption, ListboxOptions, Transition } fro
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { Item } from '@/app/components/base/select'
-import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import AudioBtn from '@/app/components/base/audio-btn'
 import { languages } from '@/i18n-config/language'
 import { TtsAutoPlay } from '@/types/app'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
+import { useAppVoices } from '@/service/use-apps'
 
 type VoiceParamConfigProps = {
   onClose: () => void
@@ -39,7 +38,7 @@ const VoiceParamConfig = ({
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
 
   const language = languageItem?.value
-  const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
+  const { data: voiceItems } = useAppVoices(appId, language)
   let voiceItem = voiceItems?.find(item => item.value === text2speech?.voice)
   if (voiceItems && !voiceItem)
     voiceItem = voiceItems[0]
@@ -94,7 +93,7 @@ const VoiceParamConfig = ({
           <div className='relative h-8'>
             <ListboxButton
               className={'h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6'}>
-              <span className={classNames('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
+              <span className={cn('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
                 {languageItem?.name ? t(`common.voice.language.${languageItem?.value.replace('-', '')}`) : localLanguagePlaceholder}
               </span>
               <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
@@ -125,12 +124,10 @@ const VoiceParamConfig = ({
                     {({ /* active, */ selected }) => (
                       <>
                         <span
-                          className={classNames('block', selected && 'font-normal')}>{t(`common.voice.language.${(item.value).toString().replace('-', '')}`)}</span>
+                          className={cn('block', selected && 'font-normal')}>{t(`common.voice.language.${(item.value).toString().replace('-', '')}`)}</span>
                         {(selected || item.value === text2speech?.language) && (
                           <span
-                            className={classNames(
-                              'absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',
-                            )}
+                            className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
                           >
                             <CheckIcon className="h-4 w-4" aria-hidden="true" />
                           </span>
@@ -162,7 +159,7 @@ const VoiceParamConfig = ({
               <ListboxButton
                 className={'h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6'}>
                 <span
-                  className={classNames('block truncate text-left text-text-secondary', !voiceItem?.name && 'text-text-tertiary')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
+                  className={cn('block truncate text-left text-text-secondary', !voiceItem?.name && 'text-text-tertiary')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
                 <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                   <ChevronDownIcon
                     className="h-4 w-4 text-text-tertiary"
@@ -190,12 +187,10 @@ const VoiceParamConfig = ({
                     >
                       {({ /* active, */ selected }) => (
                         <>
-                          <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                          <span className={cn('block', selected && 'font-normal')}>{item.name}</span>
                           {(selected || item.value === text2speech?.voice) && (
                             <span
-                              className={classNames(
-                                'absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',
-                              )}
+                              className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
                             >
                               <CheckIcon className="h-4 w-4" aria-hidden="true" />
                             </span>

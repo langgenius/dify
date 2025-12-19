@@ -13,7 +13,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const PARAM_MAP = {
   temperature: 'Temperature',

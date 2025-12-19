@@ -1,10 +1,12 @@
 from typing import Any, Literal, cast
 
 from flask import request
-from flask_restx import marshal, reqparse
+from flask_restx import marshal
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from controllers.common.schema import register_schema_models
 from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError, InvalidActionError
@@ -18,173 +20,83 @@ from core.provider_manager import ProviderManager
 from fields.dataset_fields import dataset_detail_fields
 from fields.tag_fields import build_dataset_tag_fields
 from libs.login import current_user
-from libs.validators import validate_description_length
 from models.account import Account
-from models.dataset import Dataset, DatasetPermissionEnum
+from models.dataset import DatasetPermissionEnum
 from models.provider_ids import ModelProviderID
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import RetrievalModel
 from services.tag_service import TagService
 
 
-def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
-    return name
+class DatasetCreatePayload(BaseModel):
+    name: str = Field(..., min_length=1, max_length=40)
+    description: str = Field(default="", description="Dataset description (max 400 chars)", max_length=400)
+    indexing_technique: Literal["high_quality", "economy"] | None = None
+    permission: DatasetPermissionEnum | None = DatasetPermissionEnum.ONLY_ME
+    external_knowledge_api_id: str | None = None
+    provider: str = "vendor"
+    external_knowledge_id: str | None = None
+    retrieval_model: RetrievalModel | None = None
+    embedding_model: str | None = None
+    embedding_model_provider: str | None = None
 
 
-# Define parsers for dataset operations
-dataset_create_parser = (
-    reqparse.RequestParser()
-    .add_argument(
-        "name",
-        nullable=False,
-        required=True,
-        help="type is required. Name must be between 1 to 40 characters.",
-        type=_validate_name,
-    )
-    .add_argument(
-        "description",
-        type=validate_description_length,
-        nullable=True,
-        required=False,
-        default="",
-    )
-    .add_argument(
-        "indexing_technique",
-        type=str,
-        location="json",
-        choices=Dataset.INDEXING_TECHNIQUE_LIST,
-        help="Invalid indexing technique.",
-    )
-    .add_argument(
-        "permission",
-        type=str,
-        location="json",
-        choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
-        help="Invalid permission.",
-        required=False,
-        nullable=False,
-    )
-    .add_argument(
-        "external_knowledge_api_id",
-        type=str,
-        nullable=True,
-        required=False,
-        default="_validate_name",
-    )
-    .add_argument(
-        "provider",
-        type=str,
-        nullable=True,
-        required=False,
-        default="vendor",
-    )
-    .add_argument(
-        "external_knowledge_id",
-        type=str,
-        nullable=True,
-        required=False,
-    )
-    .add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
-    .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-    .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
-)
+class DatasetUpdatePayload(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=40)
+    description: str | None = Field(default=None, description="Dataset description (max 400 chars)", max_length=400)
+    indexing_technique: Literal["high_quality", "economy"] | None = None
+    permission: DatasetPermissionEnum | None = None
+    embedding_model: str | None = None
+    embedding_model_provider: str | None = None
+    retrieval_model: RetrievalModel | None = None
+    partial_member_list: list[dict[str, str]] | None = None
+    external_retrieval_model: dict[str, Any] | None = None
+    external_knowledge_id: str | None = None
+    external_knowledge_api_id: str | None = None
 
-dataset_update_parser = (
-    reqparse.RequestParser()
-    .add_argument(
-        "name",
-        nullable=False,
-        help="type is required. Name must be between 1 to 40 characters.",
-        type=_validate_name,
-    )
-    .add_argument("description", location="json", store_missing=False, type=validate_description_length)
-    .add_argument(
-        "indexing_technique",
-        type=str,
-        location="json",
-        choices=Dataset.INDEXING_TECHNIQUE_LIST,
-        nullable=True,
-        help="Invalid indexing technique.",
-    )
-    .add_argument(
-        "permission",
-        type=str,
-        location="json",
-        choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
-        help="Invalid permission.",
-    )
-    .add_argument("embedding_model", type=str, location="json", help="Invalid embedding model.")
-    .add_argument("embedding_model_provider", type=str, location="json", help="Invalid embedding model provider.")
-    .add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
-    .add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
-    .add_argument(
-        "external_retrieval_model",
-        type=dict,
-        required=False,
-        nullable=True,
-        location="json",
-        help="Invalid external retrieval model.",
-    )
-    .add_argument(
-        "external_knowledge_id",
-        type=str,
-        required=False,
-        nullable=True,
-        location="json",
-        help="Invalid external knowledge id.",
-    )
-    .add_argument(
-        "external_knowledge_api_id",
-        type=str,
-        required=False,
-        nullable=True,
-        location="json",
-        help="Invalid external knowledge api id.",
-    )
-)
 
-tag_create_parser = reqparse.RequestParser().add_argument(
-    "name",
-    nullable=False,
-    required=True,
-    help="Name must be between 1 to 50 characters.",
-    type=lambda x: x
-    if x and 1 <= len(x) <= 50
-    else (_ for _ in ()).throw(ValueError("Name must be between 1 to 50 characters.")),
-)
+class TagNamePayload(BaseModel):
+    name: str = Field(..., min_length=1, max_length=50)
 
-tag_update_parser = (
-    reqparse.RequestParser()
-    .add_argument(
-        "name",
-        nullable=False,
-        required=True,
-        help="Name must be between 1 to 50 characters.",
-        type=lambda x: x
-        if x and 1 <= len(x) <= 50
-        else (_ for _ in ()).throw(ValueError("Name must be between 1 to 50 characters.")),
-    )
-    .add_argument("tag_id", nullable=False, required=True, help="Id of a tag.", type=str)
-)
 
-tag_delete_parser = reqparse.RequestParser().add_argument(
-    "tag_id", nullable=False, required=True, help="Id of a tag.", type=str
-)
+class TagCreatePayload(TagNamePayload):
+    pass
 
-tag_binding_parser = (
-    reqparse.RequestParser()
-    .add_argument("tag_ids", type=list, nullable=False, required=True, location="json", help="Tag IDs is required.")
-    .add_argument(
-        "target_id", type=str, nullable=False, required=True, location="json", help="Target Dataset ID is required."
-    )
-)
 
-tag_unbinding_parser = (
-    reqparse.RequestParser()
-    .add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
-    .add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
+class TagUpdatePayload(TagNamePayload):
+    tag_id: str
+
+
+class TagDeletePayload(BaseModel):
+    tag_id: str
+
+
+class TagBindingPayload(BaseModel):
+    tag_ids: list[str]
+    target_id: str
+
+    @field_validator("tag_ids")
+    @classmethod
+    def validate_tag_ids(cls, value: list[str]) -> list[str]:
+        if not value:
+            raise ValueError("Tag IDs is required.")
+        return value
+
+
+class TagUnbindingPayload(BaseModel):
+    tag_id: str
+    target_id: str
+
+
+register_schema_models(
+    service_api_ns,
+    DatasetCreatePayload,
+    DatasetUpdatePayload,
+    TagCreatePayload,
+    TagUpdatePayload,
+    TagDeletePayload,
+    TagBindingPayload,
+    TagUnbindingPayload,
 )
 
 
@@ -239,7 +151,7 @@ class DatasetListApi(DatasetApiResource):
         response = {"data": data, "has_more": len(datasets) == limit, "limit": limit, "total": total, "page": page}
         return response, 200
 
-    @service_api_ns.expect(dataset_create_parser)
+    @service_api_ns.expect(service_api_ns.models[DatasetCreatePayload.__name__])
     @service_api_ns.doc("create_dataset")
     @service_api_ns.doc(description="Create a new dataset")
     @service_api_ns.doc(
@@ -252,42 +164,41 @@ class DatasetListApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id):
         """Resource for creating datasets."""
-        args = dataset_create_parser.parse_args()
+        payload = DatasetCreatePayload.model_validate(service_api_ns.payload or {})
 
-        embedding_model_provider = args.get("embedding_model_provider")
-        embedding_model = args.get("embedding_model")
+        embedding_model_provider = payload.embedding_model_provider
+        embedding_model = payload.embedding_model
         if embedding_model_provider and embedding_model:
             DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
 
-        retrieval_model = args.get("retrieval_model")
+        retrieval_model = payload.retrieval_model
         if (
             retrieval_model
-            and retrieval_model.get("reranking_model")
-            and retrieval_model.get("reranking_model").get("reranking_provider_name")
+            and retrieval_model.reranking_model
+            and retrieval_model.reranking_model.reranking_provider_name
+            and retrieval_model.reranking_model.reranking_model_name
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                retrieval_model.get("reranking_model").get("reranking_provider_name"),
-                retrieval_model.get("reranking_model").get("reranking_model_name"),
+                retrieval_model.reranking_model.reranking_provider_name,
+                retrieval_model.reranking_model.reranking_model_name,
             )
 
         try:
             assert isinstance(current_user, Account)
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=tenant_id,
-                name=args["name"],
-                description=args["description"],
-                indexing_technique=args["indexing_technique"],
+                name=payload.name,
+                description=payload.description,
+                indexing_technique=payload.indexing_technique,
                 account=current_user,
-                permission=args["permission"],
-                provider=args["provider"],
-                external_knowledge_api_id=args["external_knowledge_api_id"],
-                external_knowledge_id=args["external_knowledge_id"],
-                embedding_model_provider=args["embedding_model_provider"],
-                embedding_model_name=args["embedding_model"],
-                retrieval_model=RetrievalModel.model_validate(args["retrieval_model"])
-                if args["retrieval_model"] is not None
-                else None,
+                permission=str(payload.permission) if payload.permission else None,
+                provider=payload.provider,
+                external_knowledge_api_id=payload.external_knowledge_api_id,
+                external_knowledge_id=payload.external_knowledge_id,
+                embedding_model_provider=payload.embedding_model_provider,
+                embedding_model_name=payload.embedding_model,
+                retrieval_model=payload.retrieval_model,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -353,7 +264,7 @@ class DatasetApi(DatasetApiResource):
 
         return data, 200
 
-    @service_api_ns.expect(dataset_update_parser)
+    @service_api_ns.expect(service_api_ns.models[DatasetUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset")
     @service_api_ns.doc(description="Update an existing dataset")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -372,36 +283,45 @@ class DatasetApi(DatasetApiResource):
         if dataset is None:
             raise NotFound("Dataset not found.")
 
-        args = dataset_update_parser.parse_args()
-        data = request.get_json()
+        payload_dict = service_api_ns.payload or {}
+        payload = DatasetUpdatePayload.model_validate(payload_dict)
+        update_data = payload.model_dump(exclude_unset=True)
+        if payload.permission is not None:
+            update_data["permission"] = str(payload.permission)
+        if payload.retrieval_model is not None:
+            update_data["retrieval_model"] = payload.retrieval_model.model_dump()
 
         # check embedding model setting
-        embedding_model_provider = data.get("embedding_model_provider")
-        embedding_model = data.get("embedding_model")
-        if data.get("indexing_technique") == "high_quality" or embedding_model_provider:
+        embedding_model_provider = payload.embedding_model_provider
+        embedding_model = payload.embedding_model
+        if payload.indexing_technique == "high_quality" or embedding_model_provider:
             if embedding_model_provider and embedding_model:
                 DatasetService.check_embedding_model_setting(
                     dataset.tenant_id, embedding_model_provider, embedding_model
                 )
 
-        retrieval_model = data.get("retrieval_model")
+        retrieval_model = payload.retrieval_model
         if (
             retrieval_model
-            and retrieval_model.get("reranking_model")
-            and retrieval_model.get("reranking_model").get("reranking_provider_name")
+            and retrieval_model.reranking_model
+            and retrieval_model.reranking_model.reranking_provider_name
+            and retrieval_model.reranking_model.reranking_model_name
         ):
             DatasetService.check_reranking_model_setting(
                 dataset.tenant_id,
-                retrieval_model.get("reranking_model").get("reranking_provider_name"),
-                retrieval_model.get("reranking_model").get("reranking_model_name"),
+                retrieval_model.reranking_model.reranking_provider_name,
+                retrieval_model.reranking_model.reranking_model_name,
             )
 
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
-            current_user, dataset, data.get("permission"), data.get("partial_member_list")
+            current_user,
+            dataset,
+            str(payload.permission) if payload.permission else None,
+            payload.partial_member_list,
         )
 
-        dataset = DatasetService.update_dataset(dataset_id_str, args, current_user)
+        dataset = DatasetService.update_dataset(dataset_id_str, update_data, current_user)
 
         if dataset is None:
             raise NotFound("Dataset not found.")
@@ -410,15 +330,10 @@ class DatasetApi(DatasetApiResource):
         assert isinstance(current_user, Account)
         tenant_id = current_user.current_tenant_id
 
-        if data.get("partial_member_list") and data.get("permission") == "partial_members":
-            DatasetPermissionService.update_partial_member_list(
-                tenant_id, dataset_id_str, data.get("partial_member_list")
-            )
+        if payload.partial_member_list and payload.permission == DatasetPermissionEnum.PARTIAL_TEAM:
+            DatasetPermissionService.update_partial_member_list(tenant_id, dataset_id_str, payload.partial_member_list)
         # clear partial member list when permission is only_me or all_team_members
-        elif (
-            data.get("permission") == DatasetPermissionEnum.ONLY_ME
-            or data.get("permission") == DatasetPermissionEnum.ALL_TEAM
-        ):
+        elif payload.permission in {DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM}:
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
 
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
@@ -556,7 +471,7 @@ class DatasetTagsApi(DatasetApiResource):
 
         return tags, 200
 
-    @service_api_ns.expect(tag_create_parser)
+    @service_api_ns.expect(service_api_ns.models[TagCreatePayload.__name__])
     @service_api_ns.doc("create_dataset_tag")
     @service_api_ns.doc(description="Add a knowledge type tag")
     @service_api_ns.doc(
@@ -574,14 +489,13 @@ class DatasetTagsApi(DatasetApiResource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = tag_create_parser.parse_args()
-        args["type"] = "knowledge"
-        tag = TagService.save_tags(args)
+        payload = TagCreatePayload.model_validate(service_api_ns.payload or {})
+        tag = TagService.save_tags({"name": payload.name, "type": "knowledge"})
 
         response = {"id": tag.id, "name": tag.name, "type": tag.type, "binding_count": 0}
         return response, 200
 
-    @service_api_ns.expect(tag_update_parser)
+    @service_api_ns.expect(service_api_ns.models[TagUpdatePayload.__name__])
     @service_api_ns.doc("update_dataset_tag")
     @service_api_ns.doc(description="Update a knowledge type tag")
     @service_api_ns.doc(
@@ -598,10 +512,10 @@ class DatasetTagsApi(DatasetApiResource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = tag_update_parser.parse_args()
-        args["type"] = "knowledge"
-        tag_id = args["tag_id"]
-        tag = TagService.update_tags(args, tag_id)
+        payload = TagUpdatePayload.model_validate(service_api_ns.payload or {})
+        params = {"name": payload.name, "type": "knowledge"}
+        tag_id = payload.tag_id
+        tag = TagService.update_tags(params, tag_id)
 
         binding_count = TagService.get_tag_binding_count(tag_id)
 
@@ -609,7 +523,7 @@ class DatasetTagsApi(DatasetApiResource):
 
         return response, 200
 
-    @service_api_ns.expect(tag_delete_parser)
+    @service_api_ns.expect(service_api_ns.models[TagDeletePayload.__name__])
     @service_api_ns.doc("delete_dataset_tag")
     @service_api_ns.doc(description="Delete a knowledge type tag")
     @service_api_ns.doc(
@@ -623,15 +537,15 @@ class DatasetTagsApi(DatasetApiResource):
     @edit_permission_required
     def delete(self, _, dataset_id):
         """Delete a knowledge type tag."""
-        args = tag_delete_parser.parse_args()
-        TagService.delete_tag(args["tag_id"])
+        payload = TagDeletePayload.model_validate(service_api_ns.payload or {})
+        TagService.delete_tag(payload.tag_id)
 
         return 204
 
 
 @service_api_ns.route("/datasets/tags/binding")
 class DatasetTagBindingApi(DatasetApiResource):
-    @service_api_ns.expect(tag_binding_parser)
+    @service_api_ns.expect(service_api_ns.models[TagBindingPayload.__name__])
     @service_api_ns.doc("bind_dataset_tags")
     @service_api_ns.doc(description="Bind tags to a dataset")
     @service_api_ns.doc(
@@ -648,16 +562,15 @@ class DatasetTagBindingApi(DatasetApiResource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = tag_binding_parser.parse_args()
-        args["type"] = "knowledge"
-        TagService.save_tag_binding(args)
+        payload = TagBindingPayload.model_validate(service_api_ns.payload or {})
+        TagService.save_tag_binding({"tag_ids": payload.tag_ids, "target_id": payload.target_id, "type": "knowledge"})
 
         return 204
 
 
 @service_api_ns.route("/datasets/tags/unbinding")
 class DatasetTagUnbindingApi(DatasetApiResource):
-    @service_api_ns.expect(tag_unbinding_parser)
+    @service_api_ns.expect(service_api_ns.models[TagUnbindingPayload.__name__])
     @service_api_ns.doc("unbind_dataset_tag")
     @service_api_ns.doc(description="Unbind a tag from a dataset")
     @service_api_ns.doc(
@@ -674,9 +587,8 @@ class DatasetTagUnbindingApi(DatasetApiResource):
         if not (current_user.has_edit_permission or current_user.is_dataset_editor):
             raise Forbidden()
 
-        args = tag_unbinding_parser.parse_args()
-        args["type"] = "knowledge"
-        TagService.delete_tag_binding(args)
+        payload = TagUnbindingPayload.model_validate(service_api_ns.payload or {})
+        TagService.delete_tag_binding({"tag_id": payload.tag_id, "target_id": payload.target_id, "type": "knowledge"})
 
         return 204
 

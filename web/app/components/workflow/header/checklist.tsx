@@ -19,7 +19,7 @@ import type { ChecklistItem } from '../hooks/use-checklist'
 import type {
   CommonEdgeType,
 } from '../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -37,9 +37,13 @@ import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 
 type WorkflowChecklistProps = {
   disabled: boolean
+  showGoTo?: boolean
+  onItemClick?: (item: ChecklistItem) => void
 }
 const WorkflowChecklist = ({
   disabled,
+  showGoTo = true,
+  onItemClick,
 }: WorkflowChecklistProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -49,9 +53,13 @@ const WorkflowChecklist = ({
   const { handleNodeSelect } = useNodesInteractions()
 
   const handleChecklistItemClick = (item: ChecklistItem) => {
-    if (!item.canNavigate)
+    const goToEnabled = showGoTo && item.canNavigate && !item.disableGoTo
+    if (!goToEnabled)
       return
-    handleNodeSelect(item.id)
+    if (onItemClick)
+      onItemClick(item)
+    else
+      handleNodeSelect(item.id)
     setOpen(false)
   }
 
@@ -116,7 +124,7 @@ const WorkflowChecklist = ({
                           key={node.id}
                           className={cn(
                             'group mb-2 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xs last-of-type:mb-0',
-                            node.canNavigate ? 'cursor-pointer' : 'cursor-default opacity-80',
+                            showGoTo && node.canNavigate && !node.disableGoTo ? 'cursor-pointer' : 'cursor-default opacity-80',
                           )}
                           onClick={() => handleChecklistItemClick(node)}
                         >
@@ -130,7 +138,7 @@ const WorkflowChecklist = ({
                               {node.title}
                             </span>
                             {
-                              node.canNavigate && (
+                              (showGoTo && node.canNavigate && !node.disableGoTo) && (
                                 <div className='flex h-4 w-[60px] shrink-0 items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100'>
                                   <span className='whitespace-nowrap text-xs font-medium leading-4 text-primary-600'>
                                     {t('workflow.panel.goTo')}

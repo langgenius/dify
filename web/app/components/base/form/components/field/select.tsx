@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import type { Option, PureSelectProps } from '../../../select/pure'
 import PureSelect from '../../../select/pure'

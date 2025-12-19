@@ -2,7 +2,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import type { ReactNode } from 'react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { Strategy } from './agent-strategy'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiArrowDownSLine, RiErrorWarningFill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import Link from 'next/link'
@@ -162,7 +162,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
           alt='icon'
         /></div>}
         <p
-          className={classNames(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
+          className={cn(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
         >
           {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
         </p>
@@ -231,6 +231,7 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
             list={notInstalledPlugins}
             searchText={query}
             tags={DEFAULT_TAGS}
+            category={PluginCategoryEnum.agent}
             disableMaxWidth
           />}
         </main>

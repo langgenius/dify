@@ -10,7 +10,7 @@ import {
 } from '@/app/components/workflow/note-node/note-editor'
 import { THEME_MAP } from '@/app/components/workflow/note-node/constants'
 import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const NoteNode = ({
   data,

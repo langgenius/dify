@@ -9,7 +9,7 @@ import {
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
 import TracingPanel from './tracing-panel'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { NodeTracing } from '@/types/workflow'
 
 const i18nPrefix = 'workflow.singleRun'

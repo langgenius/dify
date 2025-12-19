@@ -30,7 +30,7 @@ import type { SiteInfo } from '@/models/share'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import NewAudioButton from '@/app/components/base/new-audio-button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const MAX_DEPTH = 3
 

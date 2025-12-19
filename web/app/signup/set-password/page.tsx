@@ -2,13 +2,14 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import Input from '@/app/components/base/input'
 import { validPassword } from '@/config'
 import type { MailRegisterResponse } from '@/service/use-common'
 import { useMailRegister } from '@/service/use-common'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
@@ -54,6 +55,11 @@ const ChangePasswordForm = () => {
       })
       const { result } = res as MailRegisterResponse
       if (result === 'success') {
+        // Track registration success event
+        trackEvent('user_registration_success', {
+          method: 'email',
+        })
+
         Toast.notify({
           type: 'success',
           message: t('common.api.actionSuccess'),

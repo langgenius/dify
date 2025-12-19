@@ -24,7 +24,7 @@ import {
   useUpdateMCPServer,
 } from '@/service/use-tools'
 import { BlockEnum } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { fetchAppDetail } from '@/service/apps'
 import { useDocLink } from '@/context/i18n'
 

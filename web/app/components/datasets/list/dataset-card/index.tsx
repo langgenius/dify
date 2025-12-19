@@ -7,7 +7,7 @@ import { useKnowledge } from '@/hooks/use-knowledge'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useHover } from 'ahooks'
 import { RiFileTextFill, RiMoreFill, RiRobot2Fill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
@@ -156,7 +156,7 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group relative col-span-1 flex h-[166px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-all duration-200 ease-in-out hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5'
+        className='group relative col-span-1 flex h-[190px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-all duration-200 ease-in-out hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
@@ -170,7 +170,13 @@ const DatasetCard = ({
       >
         {!dataset.embedding_available && (
           <CornerLabel
-            label='Unavailable'
+            label={t('dataset.cornerLabel.unavailable')}
+            className='absolute right-0 top-0 z-10'
+            labelClassName='rounded-tr-xl' />
+        )}
+        {dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline' && (
+          <CornerLabel
+            label={t('dataset.cornerLabel.pipeline')}
             className='absolute right-0 top-0 z-10'
             labelClassName='rounded-tr-xl' />
         )}
@@ -205,8 +211,30 @@ const DatasetCard = ({
               {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
               {!isExternalProvider && isShowDocModeInfo && (
                 <>
-                  {dataset.doc_form && <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>}
-                  {dataset.indexing_technique && <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>}
+                  {dataset.doc_form && (
+                    <span
+                      className='min-w-0 max-w-full truncate'
+                      title={t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                    >
+                      {t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                    </span>
+                  )}
+                  {dataset.indexing_technique && (
+                    <span
+                      className='min-w-0 max-w-full truncate'
+                      title={formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                    >
+                      {formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                    </span>
+                  )}
+                  {dataset.is_multimodal && (
+                    <span
+                      className='min-w-0 max-w-full truncate'
+                      title={t('dataset.multimodal')}
+                    >
+                      {t('dataset.multimodal')}
+                    </span>
+                  )}
                 </>
               )}
             </div>
@@ -273,7 +301,7 @@ const DatasetCard = ({
           <span className='system-xs-regular text-divider-deep'>/</span>
           <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
         </div>
-        <div className='absolute right-2 top-2 z-[5] hidden group-hover:block'>
+        <div className='absolute right-2 top-2 z-[15] hidden group-hover:block'>
           <CustomPopover
             htmlContent={
               <Operations

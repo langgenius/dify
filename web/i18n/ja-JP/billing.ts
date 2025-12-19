@@ -24,6 +24,9 @@ const translation = {
     encourageShort: 'アップグレード',
   },
   viewBilling: '請求とサブスクリプションの管理',
+  viewBillingTitle: '請求とサブスクリプション',
+  viewBillingDescription: '支払い方法、請求書、サブスクリプションの変更の管理。',
+  viewBillingAction: '管理',
   buyPermissionDeniedTip: 'サブスクリプションするには、エンタープライズ管理者に連絡してください',
   plansCommon: {
     title: {
@@ -74,6 +77,7 @@ const translation = {
     unlimitedApiRate: '無制限の API コール',
     apiRateLimitTooltip: 'API レート制限は、テキスト生成、チャットボット、ワークフロー、ドキュメント処理など、Dify API 経由のすべてのリクエストに適用されます。',
     documentProcessingPriority: '文書処理',
+    documentProcessingPriorityTip: 'より高い文書処理優先度が必要な場合は、プランをアップグレードしてください。',
     documentProcessingPriorityUpgrade: 'より高い精度と高速な速度でデータを処理します。',
     priority: {
       'standard': '標準',
@@ -157,7 +161,7 @@ const translation = {
       price: '無料',
       btnText: 'コミュニティ版を始めましょう',
       includesTitle: '無料機能：',
-      features: ['パブリックリポジトリで公開されているすべてのコア機能', '単一ワークスペース', 'Dify オープンソースライセンスに準拠'],
+      features: ['すべてのコア機能がパブリックリポジトリで公開されました', '単一ワークスペース', 'Difyオープンソースライセンスに準拠'],
     },
     premium: {
       name: 'プレミアム',
@@ -168,7 +172,7 @@ const translation = {
       btnText: 'プレミアム版を取得',
       includesTitle: 'コミュニティ版機能に加えて：',
       comingSoon: 'Microsoft Azure & Google Cloud 近日対応',
-      features: ['複数のクラウドプロバイダーでのセルフマネージド導入', '単一ワークスペース', 'Webアプリのロゴとブランディングをカスタマイズ', '優先メール/チャットサポート'],
+      features: ['さまざまなクラウドプロバイダーによる自己管理型の信頼性', '単一ワークスペース', 'Webアプリのロゴとブランドカスタマイズ', '優先メール＆チャットサポート'],
     },
     enterprise: {
       name: 'エンタープライズ',
@@ -178,7 +182,7 @@ const translation = {
       priceTip: '年間契約専用',
       btnText: '営業に相談',
       includesTitle: '<highlight>プレミアム</highlight>版機能に加えて：',
-      features: ['エンタープライズ向けのスケーラブルなデプロイソリューション', '商用ライセンス認可', 'エンタープライズ専用機能', '複数ワークスペースとエンタープライズ管理', 'シングルサインオン（SSO）', 'Dify パートナーによる交渉済み SLA', '高度なセキュリティと制御', 'Dify 公式による更新とメンテナンス', 'プロフェッショナルな技術サポート'],
+      features: ['エンタープライズ向けスケーラブルな展開ソリューション', '商用ライセンス認可', 'エンタープライズ専用機能', '複数ワークスペースとエンタープライズ管理', 'シングルサインオン', 'Difyパートナーによる交渉済みSLA', '高度なセキュリティと制御', 'Dify公式による更新とメンテナンス', 'プロフェッショナル技術サポート'],
     },
   },
   vectorSpace: {
@@ -198,6 +202,20 @@ const translation = {
     quotaTitle: '注釈返信クォータ',
   },
   teamMembers: 'チームメンバー',
+  upgrade: {
+    uploadMultiplePages: {
+      title: '複数ドキュメントを一度にアップロードするにはアップグレード',
+      description: '現在のプランではアップロード上限に達しています。1回の操作で選択・アップロードできるドキュメントは1つのみです。',
+    },
+    uploadMultipleFiles: {
+      title: '一括ドキュメントアップロード機能を解放するにはアップグレードが必要です',
+      description: '複数のドキュメントを一度にバッチアップロードすることで、時間を節約し、作業効率を向上できます。',
+    },
+    addChunks: {
+      title: 'アップグレードして、チャンクを引き続き追加できるようにしてください。',
+      description: 'このプランでは、チャンク追加の上限に達しています。',
+    },
+  },
 }
 
 export default translation

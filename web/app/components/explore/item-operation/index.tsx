@@ -10,7 +10,7 @@ import { useBoolean } from 'ahooks'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 
 import s from './style.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 export type IItemOperationProps = {

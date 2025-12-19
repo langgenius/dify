@@ -14,6 +14,7 @@ from configs import dify_config
 from core.workflow.graph import Graph
 from core.workflow.graph_events import GraphNodeEventBase
 
+from ..layers.base import GraphEngineLayer
 from ..ready_queue import ReadyQueue
 from ..worker import Worker
 
@@ -39,6 +40,7 @@ class WorkerPool:
         ready_queue: ReadyQueue,
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
+        layers: list[GraphEngineLayer],
         flask_app: "Flask | None" = None,
         context_vars: "Context | None" = None,
         min_workers: int | None = None,
@@ -53,6 +55,7 @@ class WorkerPool:
             ready_queue: Ready queue for nodes ready for execution
             event_queue: Queue for worker events
             graph: The workflow graph
+            layers: Graph engine layers for node execution hooks
             flask_app: Optional Flask app for context preservation
             context_vars: Optional context variables
             min_workers: Minimum number of workers
@@ -65,6 +68,7 @@ class WorkerPool:
         self._graph = graph
         self._flask_app = flask_app
         self._context_vars = context_vars
+        self._layers = layers
 
         # Scaling parameters with defaults
         self._min_workers = min_workers or dify_config.GRAPH_ENGINE_MIN_WORKERS
@@ -144,6 +148,7 @@ class WorkerPool:
             ready_queue=self._ready_queue,
             event_queue=self._event_queue,
             graph=self._graph,
+            layers=self._layers,
             worker_id=worker_id,
             flask_app=self._flask_app,
             context_vars=self._context_vars,

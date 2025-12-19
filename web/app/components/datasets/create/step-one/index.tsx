@@ -9,7 +9,6 @@ import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import Website from '../website'
 import WebsitePreview from '../website/preview'
 import s from './index.module.css'
-import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
@@ -18,10 +17,14 @@ import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import NotionConnector from '@/app/components/base/notion-connector'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { useBoolean } from 'ahooks'
+import { Plan } from '@/app/components/billing/type'
+import UpgradeCard from './upgrade-card'
 
 type IStepOneProps = {
   datasetId?: string
@@ -52,7 +55,7 @@ const StepOne = ({
   dataSourceTypeDisable,
   changeType,
   onSetting,
-  onStepChange,
+  onStepChange: doOnStepChange,
   files,
   updateFileList,
   updateFile,
@@ -110,7 +113,33 @@ const StepOne = ({
   const hasNotin = notionPages.length > 0
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
   const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && enableBilling
-  const notSupportBatchUpload = enableBilling && plan.type === 'sandbox'
+  const supportBatchUpload = !enableBilling || plan.type !== Plan.sandbox
+  const notSupportBatchUpload = !supportBatchUpload
+
+  const [isShowPlanUpgradeModal, {
+    setTrue: showPlanUpgradeModal,
+    setFalse: hidePlanUpgradeModal,
+  }] = useBoolean(false)
+  const onStepChange = useCallback(() => {
+    if (notSupportBatchUpload) {
+      let isMultiple = false
+      if (dataSourceType === DataSourceType.FILE && files.length > 1)
+        isMultiple = true
+
+      if (dataSourceType === DataSourceType.NOTION && notionPages.length > 1)
+        isMultiple = true
+
+      if (dataSourceType === DataSourceType.WEB && websitePages.length > 1)
+        isMultiple = true
+
+      if (isMultiple) {
+        showPlanUpgradeModal()
+        return
+      }
+    }
+    doOnStepChange()
+  }, [dataSourceType, doOnStepChange, files.length, notSupportBatchUpload, notionPages.length, showPlanUpgradeModal, websitePages.length])
+
   const nextDisabled = useMemo(() => {
     if (!files.length)
       return true
@@ -135,10 +164,10 @@ const StepOne = ({
       <div className='flex h-full w-full min-w-[1440px]'>
         <div className='relative h-full w-1/2 overflow-y-auto'>
           <div className='flex justify-end'>
-            <div className={classNames(s.form)}>
+            <div className={cn(s.form)}>
               {
                 shouldShowDataSourceTypeList && (
-                  <div className={classNames(s.stepHeader, 'system-md-semibold text-text-secondary')}>
+                  <div className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}>
                     {t('datasetCreation.steps.one')}
                   </div>
                 )
@@ -229,7 +258,7 @@ const StepOne = ({
                     onFileListUpdate={updateFileList}
                     onFileUpdate={updateFile}
                     onPreview={updateCurrentFile}
-                    notSupportBatchUpload={notSupportBatchUpload}
+                    supportBatchUpload={supportBatchUpload}
                   />
                   {isShowVectorSpaceFull && (
                     <div className='mb-4 max-w-[640px]'>
@@ -244,6 +273,14 @@ const StepOne = ({
                       </span>
                     </Button>
                   </div>
+                  {
+                    enableBilling && plan.type === Plan.sandbox && files.length > 0 && (
+                      <div className='mt-5'>
+                        <div className='mb-4 h-px bg-divider-subtle'></div>
+                        <UpgradeCard />
+                      </div>
+                    )
+                  }
                 </>
               )}
               {dataSourceType === DataSourceType.NOTION && (
@@ -330,6 +367,14 @@ const StepOne = ({
             />
           )}
           {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
+          {isShowPlanUpgradeModal && (
+            <PlanUpgradeModal
+              show
+              onClose={hidePlanUpgradeModal}
+              title={t('billing.upgrade.uploadMultiplePages.title')!}
+              description={t('billing.upgrade.uploadMultiplePages.description')!}
+            />
+          )}
         </div>
       </div>
     </div>

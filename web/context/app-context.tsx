@@ -1,16 +1,21 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import useSWR from 'swr'
+import { useCallback, useEffect, useMemo } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import type { FC, ReactNode } from 'react'
-import { fetchCurrentWorkspace, fetchLangGeniusVersion, fetchUserProfile } from '@/service/common'
+import { useQueryClient } from '@tanstack/react-query'
+import {
+  useCurrentWorkspace,
+  useLangGeniusVersion,
+  useUserProfile,
+} from '@/service/use-common'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import { noop } from 'lodash-es'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 import { useGlobalPublicStore } from './global-public-context'
+import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 
 export type AppContextValue = {
   userProfile: UserProfileResponse
@@ -78,48 +83,44 @@ export type AppContextProviderProps = {
 }
 
 export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) => {
+  const queryClient = useQueryClient()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const { data: userProfileResponse, mutate: mutateUserProfile, error: userProfileError } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
-  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace, isLoading: isLoadingCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
+  const { data: userProfileResp } = useUserProfile()
+  const { data: currentWorkspaceResp, isPending: isLoadingCurrentWorkspace } = useCurrentWorkspace()
+  const langGeniusVersionQuery = useLangGeniusVersion(
+    userProfileResp?.meta.currentVersion,
+    !systemFeatures.branding.enabled,
+  )
 
-  const [userProfile, setUserProfile] = useState<UserProfileResponse>(userProfilePlaceholder)
-  const [langGeniusVersionInfo, setLangGeniusVersionInfo] = useState<LangGeniusVersionResponse>(initialLangGeniusVersionInfo)
-  const [currentWorkspace, setCurrentWorkspace] = useState<ICurrentWorkspace>(initialWorkspaceInfo)
+  const userProfile = useMemo<UserProfileResponse>(() => userProfileResp?.profile || userProfilePlaceholder, [userProfileResp?.profile])
+  const currentWorkspace = useMemo<ICurrentWorkspace>(() => currentWorkspaceResp || initialWorkspaceInfo, [currentWorkspaceResp])
+  const langGeniusVersionInfo = useMemo<LangGeniusVersionResponse>(() => {
+    if (!userProfileResp?.meta?.currentVersion || !langGeniusVersionQuery.data)
+      return initialLangGeniusVersionInfo
+
+    const current_version = userProfileResp.meta.currentVersion
+    const current_env = userProfileResp.meta.currentEnv || ''
+    const versionData = langGeniusVersionQuery.data
+    return {
+      ...versionData,
+      current_version,
+      latest_version: versionData.version,
+      current_env,
+    }
+  }, [langGeniusVersionQuery.data, userProfileResp?.meta])
+
   const isCurrentWorkspaceManager = useMemo(() => ['owner', 'admin'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceOwner = useMemo(() => currentWorkspace.role === 'owner', [currentWorkspace.role])
   const isCurrentWorkspaceEditor = useMemo(() => ['owner', 'admin', 'editor'].includes(currentWorkspace.role), [currentWorkspace.role])
   const isCurrentWorkspaceDatasetOperator = useMemo(() => currentWorkspace.role === 'dataset_operator', [currentWorkspace.role])
-  const updateUserProfileAndVersion = useCallback(async () => {
-    if (userProfileResponse && !userProfileResponse.bodyUsed) {
-      try {
-        const result = await userProfileResponse.json()
-        setUserProfile(result)
-        if (!systemFeatures.branding.enabled) {
-          const current_version = userProfileResponse.headers.get('x-version')
-          const current_env = process.env.NODE_ENV === 'development' ? 'DEVELOPMENT' : userProfileResponse.headers.get('x-env')
-          const versionData = await fetchLangGeniusVersion({ url: '/version', params: { current_version } })
-          setLangGeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
-        }
-      }
-      catch (error) {
-        console.error('Failed to update user profile:', error)
-        if (userProfile.id === '')
-          setUserProfile(userProfilePlaceholder)
-      }
-    }
-    else if (userProfileError && userProfile.id === '') {
-      setUserProfile(userProfilePlaceholder)
-    }
-  }, [userProfileResponse, userProfileError, userProfile.id])
 
-  useEffect(() => {
-    updateUserProfileAndVersion()
-  }, [updateUserProfileAndVersion, userProfileResponse])
+  const mutateUserProfile = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['common', 'user-profile'] })
+  }, [queryClient])
 
-  useEffect(() => {
-    if (currentWorkspaceResponse)
-      setCurrentWorkspace(currentWorkspaceResponse)
-  }, [currentWorkspaceResponse])
+  const mutateCurrentWorkspace = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['common', 'current-workspace'] })
+  }, [queryClient])
 
   // #region Zendesk conversation fields
   useEffect(() => {
@@ -158,6 +159,28 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     }
   }, [currentWorkspace?.id])
   // #endregion Zendesk conversation fields
+
+  useEffect(() => {
+    // Report user and workspace info to Amplitude when loaded
+    if (userProfile?.id) {
+      setUserId(userProfile.email)
+      const properties: Record<string, any> = {
+        email: userProfile.email,
+        name: userProfile.name,
+        has_password: userProfile.is_password_set,
+      }
+
+      if (currentWorkspace?.id) {
+        properties.workspace_id = currentWorkspace.id
+        properties.workspace_name = currentWorkspace.name
+        properties.workspace_plan = currentWorkspace.plan
+        properties.workspace_status = currentWorkspace.status
+        properties.workspace_role = currentWorkspace.role
+      }
+
+      setUserProperties(properties)
+    }
+  }, [userProfile, currentWorkspace])
 
   return (
     <AppContext.Provider value={{

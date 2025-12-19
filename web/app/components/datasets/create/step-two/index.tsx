@@ -1,6 +1,6 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
@@ -28,7 +28,7 @@ import escape from './escape'
 import { OptionCard } from './option-card'
 import LanguageSelect from './language-select'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DocumentItem, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
 
@@ -63,6 +63,8 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { checkShowMultiModalTip } from '../../settings/utils'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
@@ -495,12 +497,6 @@ const StepTwo = ({
       setDefaultConfig(data.rules)
       setLimitMaxChunkLength(data.limits.indexing_max_segmentation_tokens_length)
     },
-    onError(error) {
-      Toast.notify({
-        type: 'error',
-        message: `${error}`,
-      })
-    },
   })
 
   const getRulesFromDetail = () => {
@@ -538,22 +534,8 @@ const StepTwo = ({
       setSegmentationType(documentDetail.dataset_process_rule.mode)
   }
 
-  const createFirstDocumentMutation = useCreateFirstDocument({
-    onError(error) {
-      Toast.notify({
-        type: 'error',
-        message: `${error}`,
-      })
-    },
-  })
-  const createDocumentMutation = useCreateDocument(datasetId!, {
-    onError(error) {
-      Toast.notify({
-        type: 'error',
-        message: `${error}`,
-      })
-    },
-  })
+  const createFirstDocumentMutation = useCreateFirstDocument()
+  const createDocumentMutation = useCreateDocument(datasetId!)
 
   const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
   const invalidDatasetList = useInvalidDatasetList()
@@ -587,6 +569,10 @@ const StepTwo = ({
     if (mutateDatasetRes)
       mutateDatasetRes()
     invalidDatasetList()
+    trackEvent('create_datasets', {
+      data_source_type: dataSourceType,
+      indexing_technique: getIndexing_technique(),
+    })
     onStepChange?.(+1)
     if (isSetting)
       onSave?.()
@@ -612,6 +598,20 @@ const StepTwo = ({
   }, [isAPIKeySet, indexingType, datasetId])
 
   const isModelAndRetrievalConfigDisabled = !!datasetId && !!currentDataset?.data_source_type
+
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel,
+      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+      },
+      indexMethod: indexType,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [embeddingModel, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, indexType, embeddingModelList, rerankModelList])
 
   return (
     <div className='flex h-full w-full'>
@@ -1012,6 +1012,7 @@ const StepTwo = ({
                     disabled={isModelAndRetrievalConfigDisabled}
                     value={retrievalConfig}
                     onChange={setRetrievalConfig}
+                    showMultiModalTip={showMultiModalTip}
                   />
                 )
                 : (

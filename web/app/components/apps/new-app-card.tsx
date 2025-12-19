@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import { useProviderContext } from '@/context/provider-context'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import dynamic from 'next/dynamic'
 
 const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {

@@ -1,18 +1,20 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef, useState } from 'react'
-import { useGetState, useInfiniteScroll } from 'ahooks'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useInfiniteScroll } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
-import { fetchDatasets } from '@/service/datasets'
 import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
+import { useInfiniteDatasets } from '@/service/knowledge/use-dataset'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -28,51 +30,70 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [selected, setSelected] = React.useState<DataSet[]>([])
-  const [loaded, setLoaded] = React.useState(false)
-  const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
-  const [hasInitialized, setHasInitialized] = React.useState(false)
-  const hasNoData = !datasets || datasets?.length === 0
+  const [selected, setSelected] = useState<DataSet[]>([])
   const canSelectMulti = true
+  const { formatIndexingTechniqueAndMethod } = useKnowledge()
+  const { data, isLoading, isFetchingNextPage, fetchNextPage, hasNextPage } = useInfiniteDatasets(
+    { page: 1 },
+    { enabled: isShow, staleTime: 0, refetchOnMount: 'always' },
+  )
+  const pages = data?.pages || []
+  const datasets = useMemo(() => {
+    return pages.flatMap(page => page.data.filter(item => item.indexing_technique || item.provider === 'external'))
+  }, [pages])
+  const hasNoData = !isLoading && datasets.length === 0
 
   const listRef = useRef<HTMLDivElement>(null)
-  const [page, setPage, getPage] = useGetState(1)
-  const [isNoMore, setIsNoMore] = useState(false)
-  const { formatIndexingTechniqueAndMethod } = useKnowledge()
+  const isNoMore = hasNextPage === false
 
   useInfiniteScroll(
     async () => {
-      if (!isNoMore) {
-        const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
-        setPage(getPage() + 1)
-        setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
-        setDataSets(newList)
-        setLoaded(true)
-
-        // Initialize selected datasets based on selectedIds and available datasets
-        if (!hasInitialized) {
-          if (selectedIds.length > 0) {
-            const validSelectedDatasets = selectedIds
-              .map(id => newList.find(item => item.id === id))
-              .filter(Boolean) as DataSet[]
-            setSelected(validSelectedDatasets)
-          }
-          setHasInitialized(true)
-        }
-      }
+      if (!hasNextPage || isFetchingNextPage)
+        return { list: [] }
+      await fetchNextPage()
       return { list: [] }
     },
     {
       target: listRef,
-      isNoMore: () => {
-        return isNoMore
-      },
-      reloadDeps: [isNoMore],
+      isNoMore: () => isNoMore,
+      reloadDeps: [isNoMore, isFetchingNextPage],
     },
   )
 
+  const prevSelectedIdsRef = useRef<string[]>([])
+  const hasUserModifiedSelectionRef = useRef(false)
+  useEffect(() => {
+    if (isShow)
+      hasUserModifiedSelectionRef.current = false
+  }, [isShow])
+  useEffect(() => {
+    const prevSelectedIds = prevSelectedIdsRef.current
+    const idsChanged = selectedIds.length !== prevSelectedIds.length
+      || selectedIds.some((id, idx) => id !== prevSelectedIds[idx])
+
+    if (!selectedIds.length && (!hasUserModifiedSelectionRef.current || idsChanged)) {
+      setSelected([])
+      prevSelectedIdsRef.current = selectedIds
+      hasUserModifiedSelectionRef.current = false
+      return
+    }
+
+    if (!idsChanged && hasUserModifiedSelectionRef.current)
+      return
+
+    setSelected((prev) => {
+      const prevMap = new Map(prev.map(item => [item.id, item]))
+      const nextSelected = selectedIds
+        .map(id => datasets.find(item => item.id === id) || prevMap.get(id))
+        .filter(Boolean) as DataSet[]
+      return nextSelected
+    })
+    prevSelectedIdsRef.current = selectedIds
+    hasUserModifiedSelectionRef.current = false
+  }, [datasets, selectedIds])
+
   const toggleSelect = (dataSet: DataSet) => {
+    hasUserModifiedSelectionRef.current = true
     const isSelected = selected.some(item => item.id === dataSet.id)
     if (isSelected) {
       setSelected(selected.filter(item => item.id !== dataSet.id))
@@ -96,13 +117,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       className='w-[400px]'
       title={t('appDebug.feature.dataSet.selectTitle')}
     >
-      {!loaded && (
+      {(isLoading && datasets.length === 0) && (
         <div className='flex h-[200px]'>
           <Loading type='area' />
         </div>
       )}
 
-      {(loaded && hasNoData) && (
+      {hasNoData && (
         <div className='mt-6 flex h-[128px] items-center justify-center space-x-1  rounded-lg border text-[13px]'
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
@@ -114,14 +135,14 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         </div>
       )}
 
-      {datasets && datasets?.length > 0 && (
+      {datasets.length > 0 && (
         <>
           <div ref={listRef} className='mt-7 max-h-[286px] space-y-1 overflow-y-auto'>
             {datasets.map(item => (
               <div
                 key={item.id}
                 className={cn(
-                  'flex h-10 cursor-pointer items-center justify-between rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 shadow-xs hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
+                  'flex h-10 cursor-pointer items-center rounded-lg border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg px-2 shadow-xs hover:border-components-panel-border hover:bg-components-panel-on-panel-item-bg-hover hover:shadow-sm',
                   selected.some(i => i.id === item.id) && 'border-[1.5px] border-components-option-card-option-selected-border bg-state-accent-hover shadow-xs hover:border-components-option-card-option-selected-border hover:bg-state-accent-hover hover:shadow-xs',
                   !item.embedding_available && 'hover:border-components-panel-border-subtle hover:bg-components-panel-on-panel-item-bg hover:shadow-xs',
                 )}
@@ -131,7 +152,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   toggleSelect(item)
                 }}
               >
-                <div className='mr-1 flex items-center overflow-hidden'>
+                <div className='mr-1 flex grow items-center overflow-hidden'>
                   <div className={cn('mr-2', !item.embedding_available && 'opacity-30')}>
                     <AppIcon
                       size='tiny'
@@ -146,6 +167,11 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     <span className='ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs font-normal leading-[18px] text-text-tertiary'>{t('dataset.unavailable')}</span>
                   )}
                 </div>
+                {item.is_multimodal && (
+                  <div className='mr-1 shrink-0'>
+                    <FeatureIcon feature={ModelFeatureEnum.vision} />
+                  </div>
+                )}
                 {
                   item.indexing_technique && (
                     <Badge
@@ -164,7 +190,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
           </div>
         </>
       )}
-      {loaded && (
+      {!isLoading && (
         <div className='mt-8 flex items-center justify-between'>
           <div className='text-sm  font-medium text-text-secondary'>
             {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}

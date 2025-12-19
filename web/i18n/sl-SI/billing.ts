@@ -30,6 +30,7 @@ const translation = {
     vectorSpace: 'Prostor za vektorje',
     vectorSpaceTooltip: 'Prostor za vektorje je dolgoročni pomnilniški sistem, potreben za to, da LLM-ji razumejo vaše podatke.',
     documentProcessingPriority: 'Prioriteta obdelave dokumentov',
+    documentProcessingPriorityTip: 'Za višjo prednost obdelave dokumentov nadgradite svoj načrt.',
     documentProcessingPriorityUpgrade: 'Obdelujte več podatkov z večjo natančnostjo in hitrostjo.',
     priority: {
       'standard': 'Standard',
@@ -136,7 +137,7 @@ const translation = {
       name: 'Podjetje',
       description: 'Pridobite vse zmogljivosti in podporo za velike sisteme kritične za misijo.',
       includesTitle: 'Vse v načrtu Ekipa, plus:',
-      features: ['Razširljive rešitve za uvajanje na ravni podjetja', 'Pooblastilo za komercialno licenco', 'Ekskluzivne funkcije za podjetja', 'Več delovnih prostorov in upravljanje podjetja', 'SSO', 'Pogajani SLA-ji s strani partnerjev Dify', 'Napredna varnost in nadzor', 'Posodobitve in vzdrževanje uradno s strani Dify', 'Strokovna tehnična podpora'],
+      features: ['Razširljive rešitve za uvajanje na ravni podjetja', 'Pooblastilo za komercialno licenco', 'Ekskluzivne funkcije za podjetja', 'Več delovnih prostorov in upravljanje podjetja', 'SSO', 'Pogajani SLA-ji s strani partnerjev Dify', 'Napredna varnost in nadzor', 'Posodobitve in vzdrževanje s strani Dify uradno', 'Strokovna tehnična podpora'],
       priceTip: 'Letno zaračunavanje samo',
       price: 'Po meri',
       btnText: 'Kontaktirajte prodajo',
@@ -197,6 +198,23 @@ const translation = {
     description: 'Dosegli ste omejitev sprožilcev dogodkov delovnega toka za ta načrt.',
     title: 'Nadgradite za odklep več sprožilnih dogodkov',
     upgrade: 'Nadgradnja',
+  },
+  viewBillingTitle: 'Fakturiranje in naročnine',
+  viewBillingDescription: 'Upravljajte načine plačila, račune in spremembe naročnin',
+  viewBillingAction: 'Upravljaj',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Nadgradite za nalaganje več dokumentov hkrati',
+      description: 'Dosegli ste omejitev nalaganja — na vašem trenutnem načrtu je mogoče izbrati in naložiti le en dokument naenkrat.',
+    },
+    uploadMultipleFiles: {
+      title: 'Nadgradite za odklep nalaganja dokumentov v skupkih',
+      description: 'Naložite več dokumentov hkrati, da prihranite čas in izboljšate učinkovitost.',
+    },
+    addChunks: {
+      title: 'Nadgradite, da nadaljujete z dodajanjem delov',
+      description: 'Dosegli ste omejitev dodajanja delov za ta načrt.',
+    },
   },
 }
 

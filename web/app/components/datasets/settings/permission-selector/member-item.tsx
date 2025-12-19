@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiCheckLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'

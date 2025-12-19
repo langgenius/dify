@@ -132,7 +132,7 @@ const WaterCrawl: FC<Props> = ({
         },
       }
     }
-  }, [crawlOptions.limit])
+  }, [crawlOptions.limit, onCheckedCrawlResultChange])
 
   const handleRun = useCallback(async (url: string) => {
     const { isValid, errorMsg } = checkValid(url)
@@ -174,7 +174,7 @@ const WaterCrawl: FC<Props> = ({
     finally {
       setStep(Step.finished)
     }
-  }, [checkValid, crawlOptions, onJobIdChange, t, waitForCrawlFinished])
+  }, [checkValid, crawlOptions, onCheckedCrawlResultChange, onJobIdChange, t, waitForCrawlFinished])
 
   return (
     <div>

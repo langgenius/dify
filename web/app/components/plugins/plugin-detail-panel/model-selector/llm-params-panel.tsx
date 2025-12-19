@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
 import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
@@ -9,9 +8,9 @@ import type {
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
-import { fetchModelParameterRules } from '@/service/common'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
+import { useModelParameterRules } from '@/service/use-common'
 
 type Props = {
   isAdvancedMode: boolean
@@ -29,11 +28,7 @@ const LLMParamsPanel = ({
   onCompletionParamsChange,
 }: Props) => {
   const { t } = useTranslation()
-  const { data: parameterRulesData, isLoading } = useSWR(
-    (provider && modelId)
-      ? `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
-      : null, fetchModelParameterRules,
-  )
+  const { data: parameterRulesData, isPending: isLoading } = useModelParameterRules(provider, modelId)
 
   const parameterRules: ModelParameterRule[] = useMemo(() => {
     return parameterRulesData?.data || []

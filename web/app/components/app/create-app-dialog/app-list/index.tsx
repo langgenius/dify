@@ -11,7 +11,7 @@ import AppCard from '../app-card'
 import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 import Toast from '@/app/components/base/toast'
 import Divider from '@/app/components/base/divider'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ExploreContext from '@/context/explore-context'
 import type { App } from '@/models/explore'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
@@ -28,6 +28,7 @@ import Input from '@/app/components/base/input'
 import { AppModeEnum } from '@/types/app'
 import { DSLImportMode } from '@/models/app'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -141,6 +142,15 @@ const Apps = ({
         icon_background,
         description,
       })
+
+      // Track app creation from template
+      trackEvent('create_app_with_template', {
+        app_mode: mode,
+        template_id: currApp?.app.id,
+        template_name: currApp?.app.name,
+        description,
+      })
+
       setIsShowCreateModal(false)
       Toast.notify({
         type: 'success',

@@ -25,9 +25,10 @@ import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { noop } from 'lodash-es'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -112,6 +113,13 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         return
       const { id, status, app_id, app_mode, imported_dsl_version, current_dsl_version } = response
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
+        // Track app creation from DSL import
+        trackEvent('create_app_with_dsl', {
+          app_mode,
+          creation_method: currentTab === CreateFromDSLModalTab.FROM_FILE ? 'dsl_file' : 'dsl_url',
+          has_warnings: status === DSLImportStatus.COMPLETED_WITH_WARNINGS,
+        })
+
         if (onSuccess)
           onSuccess()
         if (onClose)

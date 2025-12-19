@@ -6,8 +6,22 @@
 
 * @crazywoola @laipz8200 @Yeuoly
 
+# CODEOWNERS file
+.github/CODEOWNERS @laipz8200 @crazywoola
+
+# Docs
+docs/ @crazywoola
+
 # Backend (default owner, more specific rules below will override)
 api/ @QuantumGhost
+
+# Backend - MCP
+api/core/mcp/ @Nov1c444
+api/core/entities/mcp_provider.py @Nov1c444
+api/services/tools/mcp_tools_manage_service.py @Nov1c444
+api/controllers/mcp/ @Nov1c444
+api/controllers/console/app/mcp_server.py @Nov1c444
+api/tests/**/*mcp* @Nov1c444
 
 # Backend - Workflow - Engine (Core graph execution engine)
 api/core/workflow/graph_engine/ @laipz8200 @QuantumGhost
@@ -108,7 +122,7 @@ api/controllers/console/feature.py @GarfieldDai @GareArc
 api/controllers/web/feature.py @GarfieldDai @GareArc
 
 # Backend - Database Migrations
-api/migrations/ @snakevash @laipz8200
+api/migrations/ @snakevash @laipz8200 @MRZHUH
 
 # Frontend
 web/ @iamjoel

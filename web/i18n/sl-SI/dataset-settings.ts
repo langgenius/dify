@@ -28,6 +28,7 @@ const translation = {
       description: ' o metodi pridobivanja.',
       longDescription: ' o metodi pridobivanja, to lahko kadar koli spremenite v nastavitvah znanja.',
       method: 'Metoda pridobivanja',
+      multiModalTip: 'Ko vgrajeni model podpira več modalnosti, izberite model za ponovno razvrščanje z več modalnostmi za boljše delovanje.',
     },
     externalKnowledgeAPI: 'Zunanji API za znanje',
     externalKnowledgeID: 'ID zunanjega znanja',

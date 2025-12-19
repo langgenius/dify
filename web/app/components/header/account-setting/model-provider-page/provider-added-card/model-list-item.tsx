@@ -5,7 +5,8 @@ import type { ModelItem, ModelProvider } from '../declarations'
 import { ModelStatusEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
-import classNames from '@/utils/classnames'
+import { useUpdateModelList } from '../hooks'
+import { cn } from '@/utils/classnames'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
@@ -20,21 +21,25 @@ export type ModelListItemProps = {
   model: ModelItem
   provider: ModelProvider
   isConfigurable: boolean
+  onChange?: (provider: string) => void
   onModifyLoadBalancing?: (model: ModelItem) => void
 }
 
-const ModelListItem = ({ model, provider, isConfigurable, onModifyLoadBalancing }: ModelListItemProps) => {
+const ModelListItem = ({ model, provider, isConfigurable, onChange, onModifyLoadBalancing }: ModelListItemProps) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
   const { isCurrentWorkspaceManager } = useAppContext()
+  const updateModelList = useUpdateModelList()
 
   const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
     if (enabled)
       await enableModel(`/workspaces/current/model-providers/${provider.provider}/models/enable`, { model: model.model, model_type: model.model_type })
     else
       await disableModel(`/workspaces/current/model-providers/${provider.provider}/models/disable`, { model: model.model, model_type: model.model_type })
-  }, [model.model, model.model_type, provider.provider])
+    updateModelList(model.model_type)
+    onChange?.(provider.provider)
+  }, [model.model, model.model_type, onChange, provider.provider, updateModelList])
 
   const { run: debouncedToggleModelEnablingStatus } = useDebounceFn(toggleModelEnablingStatus, { wait: 500 })
 
@@ -45,11 +50,9 @@ const ModelListItem = ({ model, provider, isConfigurable, onModifyLoadBalancing 
   return (
     <div
       key={`${model.model}-${model.fetch_from}`}
-      className={classNames(
-        'group flex h-8 items-center rounded-lg pl-2 pr-2.5',
+      className={cn('group flex h-8 items-center rounded-lg pl-2 pr-2.5',
         isConfigurable && 'hover:bg-components-panel-on-panel-item-bg-hover',
-        model.deprecated && 'opacity-60',
-      )}
+        model.deprecated && 'opacity-60')}
     >
       <ModelIcon
         className='mr-2 shrink-0'
@@ -62,6 +65,8 @@ const ModelListItem = ({ model, provider, isConfigurable, onModifyLoadBalancing 
         showModelType
         showMode
         showContextSize
+        showFeatures
+        showFeaturesLabel
       >
       </ModelName>
       <div className='flex shrink-0 items-center'>

@@ -7,7 +7,7 @@ import Loading from '@/app/components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SSOAuth from './components/sso-auth'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { LicenseStatus } from '@/types/feature'
 import { IS_CE_EDITION } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
@@ -94,8 +94,8 @@ const NormalForm = () => {
     <>
       <div className="mx-auto mt-8 w-full">
         <div className="mx-auto w-full">
-          <h2 className="title-4xl-semi-bold text-text-primary">{t('login.pageTitle')}</h2>
-          {!systemFeatures.branding.enabled && <p className='body-md-regular mt-2 text-text-tertiary'>{t('login.welcome')}</p>}
+          <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('login.pageTitleForE') : t('login.pageTitle')}</h2>
+          <p className='body-md-regular mt-2 text-text-tertiary'>{t('login.welcome')}</p>
         </div>
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">

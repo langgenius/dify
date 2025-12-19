@@ -2,7 +2,7 @@
 import React from 'react'
 import Header from '../signin/_header'
 import InstallForm from './installForm'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const Install = () => {

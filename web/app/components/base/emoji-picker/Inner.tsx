@@ -12,7 +12,7 @@ import {
 import Input from '@/app/components/base/input'
 import Divider from '@/app/components/base/divider'
 import { searchEmoji } from '@/utils/emoji'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 init({ data })
 

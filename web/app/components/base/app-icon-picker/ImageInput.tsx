@@ -3,7 +3,7 @@
 import type { ChangeEvent, FC } from 'react'
 import { createRef, useEffect, useState } from 'react'
 import Cropper, { type Area, type CropperProps } from 'react-easy-crop'
-import classNames from 'classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 
 import { ImagePlus } from '../icons/src/vender/line/images'
@@ -90,10 +90,9 @@ const ImageInput: FC<UploaderProps> = ({
   }
 
   return (
-    <div className={classNames(className, 'w-full px-3 py-1.5')}>
+    <div className={cn(className, 'w-full px-3 py-1.5')}>
       <div
-        className={classNames(
-          isDragActive && 'border-primary-600',
+        className={cn(isDragActive && 'border-primary-600',
           'relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed text-gray-500')}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}

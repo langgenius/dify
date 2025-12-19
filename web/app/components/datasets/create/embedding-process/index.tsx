@@ -1,9 +1,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import { omit } from 'lodash-es'
 import {
   RiArrowRightLine,
   RiCheckboxCircleFill,
@@ -15,7 +13,7 @@ import Image from 'next/image'
 import { indexMethodIcon, retrievalIcon } from '../icons'
 import { IndexingType } from '../step-two'
 import DocumentFileIcon from '../../common/document-file-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
 import Button from '@/app/components/base/button'
 import type {
@@ -25,7 +23,7 @@ import type {
   LegacyDataSourceInfo,
   ProcessRuleResponse,
 } from '@/models/datasets'
-import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchProcessRule } from '@/service/datasets'
+import { fetchIndexingStatusBatch as doFetchIndexingStatus } from '@/service/datasets'
 import { DataSourceType, ProcessMode } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -40,6 +38,7 @@ import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import Divider from '@/app/components/base/divider'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import Link from 'next/link'
+import { useProcessRule } from '@/service/knowledge/use-dataset'
 
 type Props = {
   datasetId: string
@@ -207,12 +206,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   }, [])
 
   // get rule
-  const { data: ruleDetail } = useSWR({
-    action: 'fetchProcessRule',
-    params: { documentId: getFirstDocument.id },
-  }, apiParams => fetchProcessRule(omit(apiParams, 'action')), {
-    revalidateOnFocus: false,
-  })
+  const { data: ruleDetail } = useProcessRule(getFirstDocument?.id)
 
   const router = useRouter()
   const invalidDocumentList = useInvalidDocumentList()
