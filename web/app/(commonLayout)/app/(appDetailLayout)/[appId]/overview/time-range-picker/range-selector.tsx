@@ -6,7 +6,7 @@ import { SimpleSelect } from '@/app/components/base/select'
 import type { Item } from '@/app/components/base/select'
 import dayjs from 'dayjs'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 
 const today = dayjs()

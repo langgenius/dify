@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useBoolean } from 'ahooks'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import type { CodeLanguage } from '../../code/types'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import { ActionButton } from '@/app/components/base/action-button'

@@ -5,6 +5,7 @@ const translation = {
     saved: 'Salvat',
     create: 'Creat',
     remove: 'Eliminat',
+    actionFailed: 'Acțiunea a eșuat',
   },
   operation: {
     create: 'Creează',

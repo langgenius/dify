@@ -22,7 +22,7 @@ import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/node
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
 
 const ChatVariablePanel = () => {

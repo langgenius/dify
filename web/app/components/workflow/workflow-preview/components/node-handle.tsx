@@ -9,7 +9,7 @@ import {
   BlockEnum,
 } from '@/app/components/workflow/types'
 import type { Node } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type NodeHandleProps = {
   handleId: string

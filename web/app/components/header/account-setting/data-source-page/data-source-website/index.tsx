@@ -7,7 +7,7 @@ import { DataSourceType } from '../panel/types'
 import ConfigFirecrawlModal from './config-firecrawl-modal'
 import ConfigWatercrawlModal from './config-watercrawl-modal'
 import ConfigJinaReaderModal from './config-jina-reader-modal'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import s from '@/app/components/datasets/create/website/index.module.css'
 import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
 

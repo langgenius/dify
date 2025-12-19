@@ -18,7 +18,7 @@ import Authorized from './authorized'
 import {
   useCustomModels,
 } from './hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ManageCustomModelCredentialsProps = {
   provider: ModelProvider,

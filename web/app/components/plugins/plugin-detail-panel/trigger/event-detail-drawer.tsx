@@ -9,7 +9,7 @@ import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import { triggerEventParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import Field from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show/field'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   RiArrowLeftLine,
   RiCloseLine,

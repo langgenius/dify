@@ -1,6 +1,6 @@
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { RiCloseLargeLine } from '@remixicon/react'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
 
 type IModal = {
@@ -26,14 +26,12 @@ export default function FullScreenModal({
 }: IModal) {
   return (
     <Transition show={open} appear>
-      <Dialog as="div" className={classNames('modal-dialog', wrapperClassName)} onClose={onClose}>
+      <Dialog as="div" className={cn('modal-dialog', wrapperClassName)} onClose={onClose}>
         <TransitionChild>
-          <div className={classNames(
-            'fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]',
+          <div className={cn('fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]',
             'duration-300 ease-in data-[closed]:opacity-0',
             'data-[enter]:opacity-100',
-            'data-[leave]:opacity-0',
-          )} />
+            'data-[leave]:opacity-0')} />
         </TransitionChild>
 
         <div
@@ -45,14 +43,12 @@ export default function FullScreenModal({
         >
           <div className="relative h-full w-full rounded-2xl border border-effects-highlight bg-background-default-subtle">
             <TransitionChild>
-              <DialogPanel className={classNames(
-                'h-full',
+              <DialogPanel className={cn('h-full',
                 overflowVisible ? 'overflow-visible' : 'overflow-hidden',
                 'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
                 'data-[enter]:scale-100 data-[enter]:opacity-100',
                 'data-[enter]:scale-95 data-[leave]:opacity-0',
-                className,
-              )}>
+                className)}>
                 {closable
                   && <div
                     className='absolute right-3 top-3 z-50 flex h-9 w-9 cursor-pointer items-center justify-center

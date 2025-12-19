@@ -10,7 +10,7 @@ import {
 import type { ViewHistoryProps } from './view-history'
 import ViewHistory from './view-history'
 import Checklist from './checklist'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import RunMode from './run-mode'
 
 const PreviewMode = memo(() => {

@@ -12,7 +12,7 @@ import { convertLocalSecondsToUTCDaySeconds, convertUTCDaySecondsToLocalSeconds,
 import { useAppContext } from '@/context/app-context'
 import type { TriggerParams } from '@/app/components/base/date-and-time-picker/types'
 import { RiTimeLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { convertTimezoneToOffsetStr } from '@/app/components/base/date-and-time-picker/utils/dayjs'
 import { useModalContextSelector } from '@/context/modal-context'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'

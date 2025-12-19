@@ -3,7 +3,7 @@ import { useSearchParams } from 'next/navigation'
 import style from '../page.module.css'
 import Button from '@/app/components/base/button'
 import { API_PREFIX } from '@/config'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { getPurifyHref } from '@/utils'
 
 type SocialAuthProps = {
@@ -30,10 +30,8 @@ export default function SocialAuth(props: SocialAuthProps) {
         >
           <>
             <span className={
-              classNames(
-                style.githubIcon,
-                'mr-2 h-5 w-5',
-              )
+              cn(style.githubIcon,
+                'mr-2 h-5 w-5')
             } />
             <span className="truncate leading-normal">{t('login.withGitHub')}</span>
           </>
@@ -48,10 +46,8 @@ export default function SocialAuth(props: SocialAuthProps) {
         >
           <>
             <span className={
-              classNames(
-                style.googleIcon,
-                'mr-2 h-5 w-5',
-              )
+              cn(style.googleIcon,
+                'mr-2 h-5 w-5')
             } />
             <span className="truncate leading-normal">{t('login.withGoogle')}</span>
           </>

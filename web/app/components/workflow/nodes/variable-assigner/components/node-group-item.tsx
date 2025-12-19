@@ -19,7 +19,7 @@ import {
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import {
   VariableLabelInNode,
