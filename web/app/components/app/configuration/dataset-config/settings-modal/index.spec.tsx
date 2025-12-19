@@ -7,8 +7,9 @@ import { ChunkingMode, DataSourceType, DatasetPermission, RerankingModeEnum } fr
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { updateDatasetSetting } from '@/service/datasets'
-import { fetchMembers } from '@/service/common'
+import { useMembers } from '@/service/use-common'
 import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const mockNotify = jest.fn()
 const mockOnCancel = jest.fn()
@@ -41,8 +42,10 @@ jest.mock('@/service/datasets', () => ({
   updateDatasetSetting: jest.fn(),
 }))
 
-jest.mock('@/service/common', () => ({
-  fetchMembers: jest.fn(),
+jest.mock('@/service/use-common', () => ({
+  __esModule: true,
+  ...jest.requireActual('@/service/use-common'),
+  useMembers: jest.fn(),
 }))
 
 jest.mock('@/context/app-context', () => ({
@@ -103,7 +106,7 @@ jest.mock('@/app/components/datasets/settings/utils', () => ({
 }))
 
 const mockUpdateDatasetSetting = updateDatasetSetting as jest.MockedFunction<typeof updateDatasetSetting>
-const mockFetchMembers = fetchMembers as jest.MockedFunction<typeof fetchMembers>
+const mockUseMembers = useMembers as jest.MockedFunction<typeof useMembers>
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
@@ -192,10 +195,43 @@ const renderWithProviders = (dataset: DataSet) => {
   )
 }
 
+const createMemberList = (): DataSet['partial_member_list'] => ([
+  'member-2',
+])
+
+const renderSettingsModal = async (dataset: DataSet) => {
+  renderWithProviders(dataset)
+  await waitFor(() => expect(mockUseMembers).toHaveBeenCalled())
+}
+
 describe('SettingsModal', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockIsWorkspaceDatasetOperator = false
+    mockUseMembers.mockReturnValue({
+      data: {
+        accounts: [
+          {
+            id: 'user-1',
+            name: 'User One',
+            email: 'user@example.com',
+            avatar: 'avatar.png',
+            avatar_url: 'avatar.png',
+            status: 'active',
+            role: 'owner',
+          },
+          {
+            id: 'member-2',
+            name: 'Member Two',
+            email: 'member@example.com',
+            avatar: 'avatar.png',
+            avatar_url: 'avatar.png',
+            status: 'active',
+            role: 'editor',
+          },
+        ],
+      },
+    } as ReturnType<typeof useMembers>)
     mockUseModelList.mockImplementation((type: ModelTypeEnum) => {
       if (type === ModelTypeEnum.rerank) {
         return {
@@ -213,261 +249,289 @@ describe('SettingsModal', () => {
     mockUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({ defaultModel: null, currentModel: null })
     mockUseCurrentProviderAndModel.mockReturnValue({ currentProvider: null, currentModel: null })
     mockCheckShowMultiModalTip.mockReturnValue(false)
-    mockFetchMembers.mockResolvedValue({
-      accounts: [
-        {
-          id: 'user-1',
-          name: 'User One',
-          email: 'user@example.com',
-          avatar: 'avatar.png',
-          avatar_url: 'avatar.png',
-          status: 'active',
-          role: 'owner',
-        },
-        {
-          id: 'member-2',
-          name: 'Member Two',
-          email: 'member@example.com',
-          avatar: 'avatar.png',
-          avatar_url: 'avatar.png',
-          status: 'active',
-          role: 'editor',
-        },
-      ],
-    })
     mockUpdateDatasetSetting.mockResolvedValue(createDataset())
   })
 
-  it('renders dataset details', async () => {
-    renderWithProviders(createDataset())
+  // Rendering and basic field bindings.
+  describe('Rendering', () => {
+    it('should render dataset details when dataset is provided', async () => {
+      // Arrange
+      const dataset = createDataset()
 
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
+      // Act
+      await renderSettingsModal(dataset)
 
-    expect(screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')).toHaveValue('Test Dataset')
-    expect(screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')).toHaveValue('Description')
-  })
-
-  it('calls onCancel when cancel is clicked', async () => {
-    renderWithProviders(createDataset())
-
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
-
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
-
-    expect(mockOnCancel).toHaveBeenCalledTimes(1)
-  })
-
-  it('shows external knowledge info for external datasets', async () => {
-    const dataset = createDataset({
-      provider: 'external',
-      external_knowledge_info: {
-        external_knowledge_id: 'ext-id-123',
-        external_knowledge_api_id: 'ext-api-id-123',
-        external_knowledge_api_name: 'External Knowledge API',
-        external_knowledge_api_endpoint: 'https://api.external.com',
-      },
+      // Assert
+      expect(screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')).toHaveValue('Test Dataset')
+      expect(screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')).toHaveValue('Description')
     })
 
-    renderWithProviders(dataset)
+    it('should show external knowledge info when dataset is external', async () => {
+      // Arrange
+      const dataset = createDataset({
+        provider: 'external',
+        external_knowledge_info: {
+          external_knowledge_id: 'ext-id-123',
+          external_knowledge_api_id: 'ext-api-id-123',
+          external_knowledge_api_name: 'External Knowledge API',
+          external_knowledge_api_endpoint: 'https://api.external.com',
+        },
+      })
 
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
+      // Act
+      await renderSettingsModal(dataset)
 
-    expect(screen.getByText('External Knowledge API')).toBeInTheDocument()
-    expect(screen.getByText('https://api.external.com')).toBeInTheDocument()
-    expect(screen.getByText('ext-id-123')).toBeInTheDocument()
-  })
-
-  it('updates name when user types', async () => {
-    renderWithProviders(createDataset())
-
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
-
-    const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
-    await userEvent.clear(nameInput)
-    await userEvent.type(nameInput, 'New Dataset Name')
-
-    expect(nameInput).toHaveValue('New Dataset Name')
-  })
-
-  it('updates description when user types', async () => {
-    renderWithProviders(createDataset())
-
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
-
-    const descriptionInput = screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')
-    await userEvent.clear(descriptionInput)
-    await userEvent.type(descriptionInput, 'New description')
-
-    expect(descriptionInput).toHaveValue('New description')
-  })
-
-  it('shows and dismisses retrieval change tip when index method changes', async () => {
-    const dataset = createDataset({ indexing_technique: IndexingType.ECONOMICAL })
-
-    renderWithProviders(dataset)
-
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
-
-    await userEvent.click(screen.getByText('datasetCreation.stepTwo.qualified'))
-
-    expect(await screen.findByText('appDebug.datasetConfig.retrieveChangeTip')).toBeInTheDocument()
-
-    await userEvent.click(screen.getByLabelText('close-retrieval-change-tip'))
-
-    await waitFor(() => {
-      expect(screen.queryByText('appDebug.datasetConfig.retrieveChangeTip')).not.toBeInTheDocument()
+      // Assert
+      expect(screen.getByText('External Knowledge API')).toBeInTheDocument()
+      expect(screen.getByText('https://api.external.com')).toBeInTheDocument()
+      expect(screen.getByText('ext-id-123')).toBeInTheDocument()
     })
   })
 
-  it('requires dataset name before saving', async () => {
-    renderWithProviders(createDataset())
+  // User interactions that update visible state.
+  describe('Interactions', () => {
+    it('should call onCancel when cancel button is clicked', async () => {
+      // Arrange
+      const user = userEvent.setup()
 
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
+      // Act
+      await renderSettingsModal(createDataset())
+      await user.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
 
-    const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
-    await userEvent.clear(nameInput)
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'datasetSettings.form.nameError',
-    }))
-    expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
-  })
-
-  it('requires rerank model when reranking is enabled', async () => {
-    mockUseModelList.mockReturnValue({ data: [] })
-    const dataset = createDataset({}, createRetrievalConfig({
-      reranking_enable: true,
-      reranking_model: {
-        reranking_provider_name: '',
-        reranking_model_name: '',
-      },
-    }))
-
-    renderWithProviders(dataset)
-
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'error',
-      message: 'appDebug.datasetConfig.rerankModelRequired',
-    }))
-    expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
-  })
-
-  it('saves internal dataset changes', async () => {
-    const rerankRetrieval = createRetrievalConfig({
-      reranking_enable: true,
-      reranking_model: {
-        reranking_provider_name: 'rerank-provider',
-        reranking_model_name: 'rerank-model',
-      },
-    })
-    const dataset = createDataset({
-      retrieval_model: rerankRetrieval,
-      retrieval_model_dict: rerankRetrieval,
+      // Assert
+      expect(mockOnCancel).toHaveBeenCalledTimes(1)
     })
 
-    renderWithProviders(dataset)
+    it('should update name input when user types', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      await renderSettingsModal(createDataset())
 
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
+      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
 
-    const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
-    await userEvent.clear(nameInput)
-    await userEvent.type(nameInput, 'Updated Internal Dataset')
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      // Act
+      await user.clear(nameInput)
+      await user.type(nameInput, 'New Dataset Name')
 
-    await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
+      // Assert
+      expect(nameInput).toHaveValue('New Dataset Name')
+    })
 
-    expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(expect.objectContaining({
-      body: expect.objectContaining({
-        name: 'Updated Internal Dataset',
-        permission: DatasetPermission.allTeamMembers,
-      }),
-    }))
-    expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
-      type: 'success',
-      message: 'common.actionMsg.modifiedSuccessfully',
-    }))
-    expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
-      name: 'Updated Internal Dataset',
-      retrieval_model_dict: expect.objectContaining({
+    it('should update description input when user types', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      await renderSettingsModal(createDataset())
+
+      const descriptionInput = screen.getByPlaceholderText('datasetSettings.form.descPlaceholder')
+
+      // Act
+      await user.clear(descriptionInput)
+      await user.type(descriptionInput, 'New description')
+
+      // Assert
+      expect(descriptionInput).toHaveValue('New description')
+    })
+
+    it('should show and dismiss retrieval change tip when indexing method changes', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const dataset = createDataset({ indexing_technique: IndexingType.ECONOMICAL })
+
+      // Act
+      await renderSettingsModal(dataset)
+      await user.click(screen.getByText('datasetCreation.stepTwo.qualified'))
+
+      // Assert
+      expect(await screen.findByText('appDebug.datasetConfig.retrieveChangeTip')).toBeInTheDocument()
+
+      // Act
+      await user.click(screen.getByLabelText('close-retrieval-change-tip'))
+
+      // Assert
+      await waitFor(() => {
+        expect(screen.queryByText('appDebug.datasetConfig.retrieveChangeTip')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should open account setting modal when embedding model tip is clicked', async () => {
+      // Arrange
+      const user = userEvent.setup()
+
+      // Act
+      await renderSettingsModal(createDataset())
+      await user.click(screen.getByText('datasetSettings.form.embeddingModelTipLink'))
+
+      // Assert
+      expect(mockSetShowAccountSettingModal).toHaveBeenCalledWith({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+    })
+  })
+
+  // Validation guardrails before saving.
+  describe('Validation', () => {
+    it('should block save when dataset name is empty', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      await renderSettingsModal(createDataset())
+
+      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+
+      // Act
+      await user.clear(nameInput)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      // Assert
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'error',
+        message: 'datasetSettings.form.nameError',
+      }))
+      expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
+    })
+
+    it('should block save when reranking is enabled without model', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockUseModelList.mockReturnValue({ data: [] })
+      const dataset = createDataset({}, createRetrievalConfig({
         reranking_enable: true,
-      }),
-    }))
+        reranking_model: {
+          reranking_provider_name: '',
+          reranking_model_name: '',
+        },
+      }))
+
+      // Act
+      await renderSettingsModal(dataset)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      // Assert
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'error',
+        message: 'appDebug.datasetConfig.rerankModelRequired',
+      }))
+      expect(mockUpdateDatasetSetting).not.toHaveBeenCalled()
+    })
   })
 
-  it('saves external dataset with partial members and updated retrieval params', async () => {
-    const dataset = createDataset({
-      provider: 'external',
-      permission: DatasetPermission.partialMembers,
-      partial_member_list: ['member-2'],
-      external_retrieval_model: {
-        top_k: 5,
-        score_threshold: 0.3,
-        score_threshold_enabled: true,
-      },
-    }, {
-      score_threshold_enabled: true,
-      score_threshold: 0.8,
+  // Save flows and side effects.
+  describe('Save', () => {
+    it('should save internal dataset changes when form is valid', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const rerankRetrieval = createRetrievalConfig({
+        reranking_enable: true,
+        reranking_model: {
+          reranking_provider_name: 'rerank-provider',
+          reranking_model_name: 'rerank-model',
+        },
+      })
+      const dataset = createDataset({
+        retrieval_model: rerankRetrieval,
+        retrieval_model_dict: rerankRetrieval,
+      })
+
+      // Act
+      await renderSettingsModal(dataset)
+
+      const nameInput = screen.getByPlaceholderText('datasetSettings.form.namePlaceholder')
+      await user.clear(nameInput)
+      await user.type(nameInput, 'Updated Internal Dataset')
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      // Assert
+      await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
+
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(expect.objectContaining({
+        body: expect.objectContaining({
+          name: 'Updated Internal Dataset',
+          permission: DatasetPermission.allTeamMembers,
+        }),
+      }))
+      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({
+        type: 'success',
+        message: 'common.actionMsg.modifiedSuccessfully',
+      }))
+      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
+        name: 'Updated Internal Dataset',
+        retrieval_model_dict: expect.objectContaining({
+          reranking_enable: true,
+        }),
+      }))
     })
 
-    renderWithProviders(dataset)
-
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
-
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
-
-    expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(expect.objectContaining({
-      body: expect.objectContaining({
+    it('should save external dataset changes when partial members configured', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      const dataset = createDataset({
+        provider: 'external',
         permission: DatasetPermission.partialMembers,
-        external_retrieval_model: expect.objectContaining({
+        partial_member_list: createMemberList(),
+        external_retrieval_model: {
           top_k: 5,
-        }),
-        partial_member_list: [
-          {
-            user_id: 'member-2',
-            role: 'editor',
-          },
-        ],
-      }),
-    }))
-    expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
-      retrieval_model_dict: expect.objectContaining({
+          score_threshold: 0.3,
+          score_threshold_enabled: true,
+        },
+      }, {
         score_threshold_enabled: true,
         score_threshold: 0.8,
-      }),
-    }))
-  })
+      })
 
-  it('disables save button while saving', async () => {
-    mockUpdateDatasetSetting.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+      // Act
+      await renderSettingsModal(dataset)
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    renderWithProviders(createDataset())
+      // Assert
+      await waitFor(() => expect(mockUpdateDatasetSetting).toHaveBeenCalled())
 
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
+      expect(mockUpdateDatasetSetting).toHaveBeenCalledWith(expect.objectContaining({
+        body: expect.objectContaining({
+          permission: DatasetPermission.partialMembers,
+          external_retrieval_model: expect.objectContaining({
+            top_k: 5,
+          }),
+          partial_member_list: [
+            {
+              user_id: 'member-2',
+              role: 'editor',
+            },
+          ],
+        }),
+      }))
+      expect(mockOnSave).toHaveBeenCalledWith(expect.objectContaining({
+        retrieval_model_dict: expect.objectContaining({
+          score_threshold_enabled: true,
+          score_threshold: 0.8,
+        }),
+      }))
+    })
 
-    const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
-    await userEvent.click(saveButton)
+    it('should disable save button while saving', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockUpdateDatasetSetting.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
 
-    expect(saveButton).toBeDisabled()
-  })
+      // Act
+      await renderSettingsModal(createDataset())
 
-  it('shows error toast when save fails', async () => {
-    mockUpdateDatasetSetting.mockRejectedValue(new Error('API Error'))
+      const saveButton = screen.getByRole('button', { name: 'common.operation.save' })
+      await user.click(saveButton)
 
-    renderWithProviders(createDataset())
+      // Assert
+      expect(saveButton).toBeDisabled()
+    })
 
-    await waitFor(() => expect(mockFetchMembers).toHaveBeenCalled())
+    it('should show error toast when save fails', async () => {
+      // Arrange
+      const user = userEvent.setup()
+      mockUpdateDatasetSetting.mockRejectedValue(new Error('API Error'))
 
-    await userEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+      // Act
+      await renderSettingsModal(createDataset())
+      await user.click(screen.getByRole('button', { name: 'common.operation.save' }))
 
-    await waitFor(() => {
-      expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      // Assert
+      await waitFor(() => {
+        expect(mockNotify).toHaveBeenCalledWith(expect.objectContaining({ type: 'error' }))
+      })
     })
   })
 })
