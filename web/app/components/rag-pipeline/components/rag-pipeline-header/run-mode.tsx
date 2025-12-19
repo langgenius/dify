@@ -6,7 +6,7 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 

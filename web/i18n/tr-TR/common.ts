@@ -5,6 +5,7 @@ const translation = {
     saved: 'Kaydedildi',
     create: 'Oluşturuldu',
     remove: 'Kaldırıldı',
+    actionFailed: 'İşlem başarısız',
   },
   operation: {
     create: 'Oluştur',

@@ -1,7 +1,7 @@
 import React from 'react'
 import type { DataSourceCredential } from '@/types/pipeline'
 import { RiArrowDownSLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 
 type TriggerProps = {

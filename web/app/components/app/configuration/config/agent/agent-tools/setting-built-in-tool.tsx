@@ -22,7 +22,7 @@ import { CollectionType } from '@/app/components/tools/types'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import {
   AuthCategory,

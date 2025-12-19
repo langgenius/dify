@@ -12,7 +12,7 @@ import './styles/markdown.scss'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { DatasetAttr } from '@/types/feature'
 import { Instrument_Serif } from 'next/font/google'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export const viewport: Viewport = {
   width: 'device-width',

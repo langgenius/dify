@@ -12,7 +12,7 @@ import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import Divider from '@/app/components/base/divider'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const I18N_PREFIX = 'app.tracing'
 

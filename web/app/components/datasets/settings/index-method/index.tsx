@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useRef } from 'react'
 import { useHover } from 'ahooks'
 import { IndexingType } from '../../create/step-two'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -37,7 +37,7 @@ const IndexMethod = ({
   const isEconomyDisabled = currentValue === IndexingType.QUALIFIED
 
   return (
-    <div className={classNames('flex flex-col gap-y-2')}>
+    <div className={cn('flex flex-col gap-y-2')}>
       {/* High Quality */}
       <OptionCard
         id={IndexingType.QUALIFIED}

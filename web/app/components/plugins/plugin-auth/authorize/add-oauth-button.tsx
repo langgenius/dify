@@ -13,7 +13,7 @@ import {
 import Button from '@/app/components/base/button'
 import type { ButtonProps } from '@/app/components/base/button'
 import OAuthClientSettings from './oauth-client-settings'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { PluginPayload } from '../types'
 import { openOAuthPopup } from '@/hooks/use-oauth'
 import Badge from '@/app/components/base/badge'

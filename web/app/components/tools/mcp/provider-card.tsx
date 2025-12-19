@@ -12,7 +12,7 @@ import Confirm from '@/app/components/base/confirm'
 import MCPModal from './modal'
 import OperationDropdown from './detail/operation-dropdown'
 import { useDeleteMCP, useUpdateMCP } from '@/service/use-tools'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   currentProvider?: ToolWithProvider

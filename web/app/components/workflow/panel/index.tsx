@@ -6,7 +6,7 @@ import { useStore as useReactflow } from 'reactflow'
 import { Panel as NodePanel } from '../nodes'
 import { useStore } from '../store'
 import EnvPanel from './env-panel'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import dynamic from 'next/dynamic'
 
 const VersionHistoryPanel = dynamic(() => import('@/app/components/workflow/panel/version-history-panel'), {

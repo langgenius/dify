@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const ListLoading = () => {
   return (

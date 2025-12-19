@@ -4,7 +4,7 @@ import {
   DocumentProcessingPriority,
   Plan,
 } from '../type'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import Tooltip from '@/app/components/base/tooltip'
 import { RiAedFill } from '@remixicon/react'

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type RoleSelectorProps = {
   onChange: (value: string) => void

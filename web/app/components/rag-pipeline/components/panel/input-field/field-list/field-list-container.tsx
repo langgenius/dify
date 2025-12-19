@@ -4,7 +4,7 @@ import {
   useMemo,
 } from 'react'
 import { ReactSortable } from 'react-sortablejs'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { InputVar } from '@/models/pipeline'
 import FieldItem from './field-item'
 import type { SortableItem } from './types'
