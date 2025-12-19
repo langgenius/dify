@@ -5,6 +5,7 @@ const translation = {
     saved: 'บันทึก',
     create: 'สร้าง',
     remove: 'ถูก เอา ออก',
+    actionFailed: 'การดำเนินการล้มเหลว',
   },
   operation: {
     create: 'สร้าง',

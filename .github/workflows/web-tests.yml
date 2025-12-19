@@ -35,6 +35,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: ./web/pnpm-lock.yaml
 
+      - name: Restore Jest cache
+        uses: actions/cache@v4
+        with:
+          path: web/.cache/jest
+          key: ${{ runner.os }}-jest-${{ hashFiles('web/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-jest-
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -45,7 +53,7 @@ jobs:
         run: |
           pnpm exec jest \
             --ci \
-            --runInBand \
+            --maxWorkers=100% \
             --coverage \
             --passWithNoTests
 
