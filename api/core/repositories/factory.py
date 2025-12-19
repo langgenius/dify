@@ -5,8 +5,10 @@ This module provides a Django-like settings system for repository implementation
 allowing users to configure different repository backends through string paths.
 """
 
+import threading
 from typing import Union
 
+from cachetools import LRUCache
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
@@ -32,6 +34,9 @@ class DifyCoreRepositoryFactory:
     This factory supports Django-like settings where repository implementations
     are specified as module paths (e.g., 'module.submodule.ClassName').
     """
+
+    _instances: LRUCache = LRUCache(maxsize=4096)
+    _lock = threading.Lock()
 
     @classmethod
     def create_workflow_execution_repository(
@@ -93,15 +98,21 @@ class DifyCoreRepositoryFactory:
             RepositoryImportError: If the configured repository cannot be created
         """
         class_path = dify_config.CORE_WORKFLOW_NODE_EXECUTION_REPOSITORY
+        cache_key = f"{user.id}:{app_id or 'none'}:{triggered_from.value}"
 
         try:
-            repository_class = import_string(class_path)
-            return repository_class(
-                session_factory=session_factory,
-                user=user,
-                app_id=app_id,
-                triggered_from=triggered_from,
-            )
+            with cls._lock:
+                repository_class = import_string(class_path)
+                if cache_key in cls._instances:
+                    return cls._instances[cache_key]
+                instance = repository_class(
+                    session_factory=session_factory,
+                    user=user,
+                    app_id=app_id,
+                    triggered_from=triggered_from,
+                )
+                cls._instances[cache_key] = instance
+                return instance
         except (ImportError, Exception) as e:
             raise RepositoryImportError(
                 f"Failed to create WorkflowNodeExecutionRepository from '{class_path}': {e}"
