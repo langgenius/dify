@@ -14,7 +14,7 @@ import { getInputKeys } from '@/app/components/base/block-input'
 import type { PromptVariable } from '@/models/debug'
 import type { InputVar } from '@/app/components/workflow/types'
 import { getNewVar } from '@/utils/var'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import { checkKeys } from '@/utils/var'
 

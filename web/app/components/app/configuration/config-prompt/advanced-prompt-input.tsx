@@ -14,7 +14,7 @@ import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import {
   Copy,

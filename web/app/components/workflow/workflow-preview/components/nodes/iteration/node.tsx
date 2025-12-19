@@ -7,7 +7,7 @@ import {
   useViewport,
 } from 'reactflow'
 import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { NodeProps } from '@/app/components/workflow/types'
 
 const Node: FC<NodeProps<IterationNodeType>> = ({

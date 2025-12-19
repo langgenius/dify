@@ -19,7 +19,7 @@ import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import useTheme from '@/hooks/use-theme'
 import { AppModeEnum, Theme } from '@/types/app'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type IDocProps = {
   appDetail: any

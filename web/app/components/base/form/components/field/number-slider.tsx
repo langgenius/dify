@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { LabelProps } from '../label'
 import { useFieldContext } from '../..'
 import Label from '../label'

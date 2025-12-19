@@ -19,7 +19,7 @@ import type { ChecklistItem } from '../hooks/use-checklist'
 import type {
   CommonEdgeType,
 } from '../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

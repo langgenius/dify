@@ -20,7 +20,7 @@ import type { ParameterValue } from './parameter-item'
 import Trigger from './trigger'
 import type { TriggerProps } from './trigger'
 import PresetsParameter from './presets-parameter'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
