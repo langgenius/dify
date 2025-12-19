@@ -1,14 +1,13 @@
-import useSWR from 'swr'
 import { LockClosedIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import SerpapiPlugin from './SerpapiPlugin'
-import { fetchPluginProviders } from '@/service/common'
 import type { PluginProvider } from '@/models/common'
+import { usePluginProviders } from '@/service/use-common'
 
 const PluginPage = () => {
   const { t } = useTranslation()
-  const { data: plugins, mutate } = useSWR('/workspaces/current/tool-providers', fetchPluginProviders)
+  const { data: plugins, refetch: mutate } = usePluginProviders()
 
   const Plugin_MAP: Record<string, (plugin: PluginProvider) => React.JSX.Element> = {
     serpapi: (plugin: PluginProvider) => <SerpapiPlugin key='serpapi' plugin={plugin} onUpdate={() => mutate()} />,
