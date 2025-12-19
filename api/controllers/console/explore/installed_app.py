@@ -119,14 +119,14 @@ class InstalledAppsListApi(Resource):
 
         recommended_app = db.session.query(RecommendedApp).where(RecommendedApp.app_id == payload.app_id).first()
         if recommended_app is None:
-            raise NotFound("App not found")
+            raise NotFound("Recommended app not found")
 
         _, current_tenant_id = current_account_with_tenant()
 
         app = db.session.query(App).where(App.id == payload.app_id).first()
 
         if app is None:
-            raise NotFound("App not found")
+            raise NotFound("App entity not found")
 
         if not app.is_public:
             raise Forbidden("You can't install a non-public app")
