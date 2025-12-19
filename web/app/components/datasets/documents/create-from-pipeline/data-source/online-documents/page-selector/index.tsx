@@ -52,30 +52,6 @@ const PageSelector = ({
   const [dataList, setDataList] = useState<NotionPageItem[]>([])
   const [currentPreviewPageId, setCurrentPreviewPageId] = useState('')
 
-  useEffect(() => {
-    // In tree mode, show only root items, otherwise show all.
-    const initialList = viewMode === OnlineDriveViewMode.tree
-      ? list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id])
-      : list
-
-    setDataList(initialList.map(item => ({
-      ...item,
-      expand: false,
-      depth: 0,
-    })))
-  }, [currentCredentialId, viewMode, list, pagesMap])
-
-  const searchDataList = list.filter((item) => {
-    return item.page_name.includes(searchValue)
-  }).map((item) => {
-    return {
-      ...item,
-      expand: false,
-      depth: 0,
-    }
-  })
-  const currentDataList = searchValue ? searchDataList : dataList
-
   const listMapWithChildrenAndDescendants = useMemo(() => {
     return list.reduce((prev: NotionPageTreeMap, next: DataSourceNotionPage) => {
       const pageId = next.page_id
@@ -86,6 +62,30 @@ const PageSelector = ({
       return prev
     }, {})
   }, [list, pagesMap])
+
+  useEffect(() => {
+    // In tree mode, show only root items, otherwise show all with proper depth.
+    const initialList = viewMode === OnlineDriveViewMode.tree
+      ? list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id])
+      : list
+
+    setDataList(initialList.map(item => ({
+      ...item,
+      expand: false,
+      depth: listMapWithChildrenAndDescendants[item.page_id]?.depth ?? 0,
+    })))
+  }, [currentCredentialId, viewMode, list, pagesMap, listMapWithChildrenAndDescendants])
+
+  const searchDataList = list.filter((item) => {
+    return item.page_name.includes(searchValue)
+  }).map((item) => {
+    return {
+      ...item,
+      expand: false,
+      depth: listMapWithChildrenAndDescendants[item.page_id]?.depth ?? 0,
+    }
+  })
+  const currentDataList = searchValue ? searchDataList : dataList
 
   const handleToggle = useCallback((index: number) => {
     // Disable toggle in flat mode
