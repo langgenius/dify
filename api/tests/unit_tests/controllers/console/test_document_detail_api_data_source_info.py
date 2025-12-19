@@ -52,14 +52,8 @@ AnyCase = Union[LocalFileCase, UploadFileCase, NotionImportCase, WebsiteCrawlCas
 
 case_1: LocalFileCase = {
     "data_source_type": "local_file",
-    "data_source_info": json.dumps({
-        "file_path": "/tmp/test.txt",
-        "size": 1024
-    }),
-    "expected_raw": {
-        "file_path": "/tmp/test.txt",
-        "size": 1024
-    }
+    "data_source_info": json.dumps({"file_path": "/tmp/test.txt", "size": 1024}),
+    "expected_raw": {"file_path": "/tmp/test.txt", "size": 1024},
 }
 
 
@@ -67,10 +61,7 @@ case_1: LocalFileCase = {
 case_2: LocalFileCase = {
     "data_source_type": "local_file",
     "data_source_info": "...",
-    "expected_raw": {
-        "file_path": "https://google.com",
-        "size": 123
-    }
+    "expected_raw": {"file_path": "https://google.com", "size": 123},
 }
 
 cases: list[AnyCase] = [case_1]
