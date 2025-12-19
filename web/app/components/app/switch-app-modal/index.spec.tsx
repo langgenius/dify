@@ -32,7 +32,7 @@ jest.mock('next/navigation', () => ({
 
 const mockSetAppDetail = jest.fn()
 jest.mock('@/app/components/app/store', () => ({
-  useStore: (selector: (state: { setAppDetail: () => void }) => unknown) => selector({ setAppDetail: mockSetAppDetail }),
+  useStore: (selector: (state: any) => unknown) => selector({ setAppDetail: mockSetAppDetail }),
 }))
 
 const mockSwitchApp = jest.fn()
