@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiCheckLine, RiSortAsc, RiSortDesc } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

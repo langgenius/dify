@@ -1,6 +1,6 @@
 import type { ComponentProps, FC, ReactNode } from 'react'
 import Image from 'next/image'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const TriangleArrow: FC<ComponentProps<'svg'>> = props => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="11" viewBox="0 0 24 11" fill="none" {...props}>
@@ -20,11 +20,9 @@ type OptionCardHeaderProps = {
 
 export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   const { icon, title, description, isActive, activeClassName, effectImg, disabled } = props
-  return <div className={classNames(
-    'relative flex h-full overflow-hidden rounded-t-xl',
+  return <div className={cn('relative flex h-full overflow-hidden rounded-t-xl',
     isActive && activeClassName,
-    !disabled && 'cursor-pointer',
-  )}>
+    !disabled && 'cursor-pointer')}>
     <div className='relative flex size-14 items-center justify-center overflow-hidden'>
       {isActive && effectImg && <Image src={effectImg} className='absolute left-0 top-0 h-full w-full' alt='' width={56} height={56} />}
       <div className='p-1'>
@@ -34,7 +32,7 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
       </div>
     </div>
     <TriangleArrow
-      className={classNames('absolute -bottom-1.5 left-4 text-transparent', isActive && 'text-components-panel-bg')}
+      className={cn('absolute -bottom-1.5 left-4 text-transparent', isActive && 'text-components-panel-bg')}
     />
     <div className='flex-1 space-y-0.5 py-3 pr-4'>
       <div className='system-md-semibold text-text-secondary'>{title}</div>
@@ -66,14 +64,12 @@ export const OptionCard: FC<OptionCardProps> = (
   const { icon, className, title, description, isActive, children, actions, activeHeaderClassName, style, effectImg, onSwitched, noHighlight, disabled, ...rest } = props
   return (
     <div
-      className={classNames(
-        'rounded-xl bg-components-option-card-option-bg shadow-xs',
+      className={cn('rounded-xl bg-components-option-card-option-bg shadow-xs',
         (isActive && !noHighlight)
           ? 'border-[1.5px] border-components-option-card-option-selected-border'
           : 'border border-components-option-card-option-border',
         disabled && 'pointer-events-none opacity-50',
-        className,
-      )}
+        className)}
       style={{
         ...style,
       }}

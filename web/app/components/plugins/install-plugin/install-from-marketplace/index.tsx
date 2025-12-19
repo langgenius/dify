@@ -9,7 +9,7 @@ import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import ReadyToInstallBundle from '../install-bundle/ready-to-install'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import useHideLogic from '../hooks/use-hide-logic'
 
 const i18nPrefix = 'plugin.installModal'

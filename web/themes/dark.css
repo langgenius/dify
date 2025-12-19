@@ -6,6 +6,18 @@ html[data-theme="dark"] {
   --color-components-input-bg-active: rgb(255 255 255 / 0.05);
   --color-components-input-border-active: #747481;
   --color-components-input-border-destructive: #f97066;
+
+  /* Sticky header / Monaco editor sticky scroll colors (dark mode) */
+  /* Use solid panel background to ensure visibility when elements become sticky */
+  --color-components-sticky-header-bg: var(--color-components-panel-bg);
+  --color-components-sticky-header-bg-hover: var(--color-components-panel-on-panel-item-bg-hover);
+  --color-components-sticky-header-border: var(--color-components-panel-border);
+
+  /* Override Monaco/VSCode CSS variables for sticky scroll so the sticky header is opaque */
+  --vscode-editorStickyScroll-background: var(--color-components-sticky-header-bg);
+  --vscode-editorStickyScrollHover-background: var(--color-components-sticky-header-bg-hover);
+  --vscode-editorStickyScroll-border: var(--color-components-sticky-header-border);
+  --vscode-editorStickyScroll-shadow: rgba(0, 0, 0, 0.6);
   --color-components-input-text-filled: #f4f4f5;
   --color-components-input-bg-destructive: rgb(255 255 255 / 0.01);
   --color-components-input-bg-disabled: rgb(255 255 255 / 0.03);

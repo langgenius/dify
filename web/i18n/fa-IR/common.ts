@@ -5,6 +5,7 @@ const translation = {
     saved: 'ذخیره شد',
     create: 'ایجاد شد',
     remove: 'حذف شد',
+    actionFailed: 'عمل شکست خورد',
   },
   operation: {
     create: 'ایجاد',

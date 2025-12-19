@@ -27,7 +27,7 @@ import {
   WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
 import AppIcon from '@/app/components/base/app-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type BlockIconProps = {
   type: BlockEnum

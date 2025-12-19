@@ -7,7 +7,7 @@ import type { GlobalVariable } from '../../types'
 import Item from './item'
 import { useStore } from '@/app/components/workflow/store'
 
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import { useIsChatMode } from '../../hooks'
 import { isInWorkflowPage } from '../../constants'

@@ -15,7 +15,7 @@ import {
   NodeTargetHandle,
 } from '@/app/components/workflow/nodes/_base/components/node-handle'
 import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import type {
   NodeProps,

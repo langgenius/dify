@@ -20,7 +20,7 @@ import {
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { ControlMode, WorkflowRunningStatus } from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

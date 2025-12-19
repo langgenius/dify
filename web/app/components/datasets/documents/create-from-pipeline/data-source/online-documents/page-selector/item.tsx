@@ -5,7 +5,7 @@ import type { ListChildComponentProps } from 'react-window'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import Radio from '@/app/components/base/radio/ui'
 

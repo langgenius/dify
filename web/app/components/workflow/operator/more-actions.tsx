@@ -11,7 +11,7 @@ import { RiExportLine, RiMoreFill } from '@remixicon/react'
 import { toJpeg, toPng, toSvg } from 'html-to-image'
 import { useNodesReadOnly } from '../hooks'
 import TipPopup from './tip-popup'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
