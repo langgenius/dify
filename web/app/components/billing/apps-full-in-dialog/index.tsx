@@ -10,7 +10,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
 import { Plan } from '@/app/components/billing/type'
 import s from './style.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const LOW = 50
 const MIDDLE = 80

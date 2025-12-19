@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 
 import * as React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import s from './Minimax.module.css'
 
 const Icon = (

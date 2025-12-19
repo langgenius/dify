@@ -1,5 +1,5 @@
 import { RiFileTextLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { DataSourceNotionPage } from '@/models/common'
 
 type IconTypes = 'workspace' | 'page'

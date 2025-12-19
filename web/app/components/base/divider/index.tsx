@@ -1,7 +1,7 @@
 import type { CSSProperties, FC } from 'react'
 import React from 'react'
 import { type VariantProps, cva } from 'class-variance-authority'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const dividerVariants = cva('',
   {
@@ -29,7 +29,7 @@ export type DividerProps = {
 
 const Divider: FC<DividerProps> = ({ type, bgStyle, className = '', style }) => {
   return (
-    <div className={classNames(dividerVariants({ type, bgStyle }), 'shrink-0', className)} style={style}></div>
+    <div className={cn(dividerVariants({ type, bgStyle }), 'shrink-0', className)} style={style}></div>
   )
 }
 

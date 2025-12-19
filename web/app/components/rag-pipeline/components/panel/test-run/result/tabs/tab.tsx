@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { WorkflowRunningData } from '@/app/components/workflow/types'
 
 type TabProps = {

@@ -16,7 +16,7 @@ import Loaded from './steps/loaded'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useTranslation } from 'react-i18next'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import useHideLogic from '../hooks/use-hide-logic'
 
 const i18nPrefix = 'plugin.installFromGitHub'

@@ -5,7 +5,7 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
 import { useChatWithHistoryContext } from '../context'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   collapsed: boolean

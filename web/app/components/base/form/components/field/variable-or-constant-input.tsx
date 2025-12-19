@@ -1,7 +1,7 @@
 import type { ChangeEvent } from 'react'
 import { useCallback, useState } from 'react'
 import { RiEditLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import SegmentedControl from '@/app/components/base/segmented-control'
 import { VariableX } from '@/app/components/base/icons/src/vender/workflow'
 import Input from '@/app/components/base/input'

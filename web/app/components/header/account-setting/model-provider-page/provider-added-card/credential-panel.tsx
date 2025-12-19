@@ -19,7 +19,7 @@ import Indicator from '@/app/components/header/indicator'
 import { changeModelProviderPriority } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
 import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 

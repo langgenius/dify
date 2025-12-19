@@ -18,7 +18,7 @@ import Options from './options'
 import Header from './header'
 import { useTranslation } from 'react-i18next'
 import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import TimezoneLabel from '@/app/components/base/timezone-label'
 
 const to24Hour = (hour12: string, period: Period) => {
