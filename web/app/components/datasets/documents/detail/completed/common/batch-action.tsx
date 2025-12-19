@@ -3,7 +3,7 @@ import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLin
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Divider from '@/app/components/base/divider'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import Button from '@/app/components/base/button'
 

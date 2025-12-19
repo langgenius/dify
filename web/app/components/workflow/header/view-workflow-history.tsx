@@ -18,14 +18,13 @@ import {
 import TipPopup from '../operator/tip-popup'
 import type { WorkflowHistoryState } from '../workflow-history-store'
 import Divider from '../../base/divider'
-import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ChangeHistoryEntry = {
   label: string
@@ -142,10 +141,9 @@ const ViewWorkflowHistory = () => {
           >
             <div
               className={
-                classNames('flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                cn('flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
                   open && 'bg-state-accent-active text-text-accent',
-                  nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-                )}
+                  nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
               onClick={() => {
                 if (nodesReadOnly)
                   return

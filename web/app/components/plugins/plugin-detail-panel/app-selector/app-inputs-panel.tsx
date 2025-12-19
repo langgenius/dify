@@ -12,7 +12,7 @@ import type { App } from '@/types/app'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { BlockEnum, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   value?: {

@@ -2,7 +2,7 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
 import Button from '@/app/components/base/button'

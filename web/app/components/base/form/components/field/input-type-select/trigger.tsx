@@ -1,6 +1,6 @@
 import React from 'react'
 import Badge from '@/app/components/base/badge'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { FileTypeSelectOption } from './types'

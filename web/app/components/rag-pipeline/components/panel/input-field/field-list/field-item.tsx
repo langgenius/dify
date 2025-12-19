@@ -9,7 +9,7 @@ import {
 } from '@remixicon/react'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import type { InputVar } from '@/models/pipeline'
 import type { InputVarType } from '@/app/components/workflow/types'

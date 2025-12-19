@@ -6,7 +6,7 @@ import { useDebounceFn } from 'ahooks'
 import { Pagination } from './pagination'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type Props = {
   className?: string

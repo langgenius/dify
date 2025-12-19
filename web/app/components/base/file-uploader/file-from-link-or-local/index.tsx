@@ -15,7 +15,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
 import type { FileUpload } from '@/app/components/base/features/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type FileFromLinkOrLocalProps = {
   showFromLink?: boolean

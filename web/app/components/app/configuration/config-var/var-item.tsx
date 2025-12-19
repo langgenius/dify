@@ -10,7 +10,7 @@ import type { IInputTypeIconProps } from './input-type-icon'
 import IconTypeIcon from './input-type-icon'
 import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
 import Badge from '@/app/components/base/badge'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ItemProps = {
   className?: string

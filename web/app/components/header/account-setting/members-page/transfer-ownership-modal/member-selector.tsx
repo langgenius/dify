@@ -10,7 +10,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import Avatar from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'
 import { fetchMembers } from '@/service/common'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   value?: any

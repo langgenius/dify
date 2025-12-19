@@ -3,7 +3,7 @@ import { memo, useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import style from './index.module.css'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type SimplePieChartProps = {
   percentage?: number
@@ -54,7 +54,7 @@ const SimplePieChart = ({ percentage = 80, fill = '#fdb022', stroke = '#f79009',
   return (
     <ReactECharts
       option={option}
-      className={classNames(style.simplePieChart, className)}
+      className={cn(style.simplePieChart, className)}
       style={{
         '--simple-pie-chart-color': fill,
         'width': size,

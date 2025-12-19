@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import React from 'react'
 import { type VariantProps, cva } from 'class-variance-authority'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 enum ActionButtonState {
   Destructive = 'destructive',
@@ -54,10 +54,8 @@ const ActionButton = ({ className, size, state = ActionButtonState.Default, styl
   return (
     <button
       type='button'
-      className={classNames(
-        actionButtonVariants({ className, size }),
-        getActionButtonState(state),
-      )}
+      className={cn(actionButtonVariants({ className, size }),
+        getActionButtonState(state))}
       ref={ref}
       style={styleCss}
       {...props}

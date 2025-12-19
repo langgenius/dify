@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useCallback, useMemo } from 'react'
 import { useStore as useTagStore } from './store'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import CustomPopover from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import { fetchTagList } from '@/service/tag'

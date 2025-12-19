@@ -24,7 +24,7 @@ import { fetchModelProviderModelList } from '@/service/common'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { IS_CE_EDITION } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   AddCustomModel,
   ManageCustomModelCredentials,

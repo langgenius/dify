@@ -39,7 +39,7 @@ describe('ChatVariableTrigger', () => {
       render(<ChatVariableTrigger />)
 
       // Assert
-      expect(screen.queryByTestId('chat-variable-button')).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: 'ChatVariableButton' })).not.toBeInTheDocument()
     })
   })
 
@@ -54,7 +54,7 @@ describe('ChatVariableTrigger', () => {
       render(<ChatVariableTrigger />)
 
       // Assert
-      expect(screen.getByTestId('chat-variable-button')).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'ChatVariableButton' })).toBeEnabled()
     })
 
     it('should render disabled ChatVariableButton when nodes are read-only', () => {
@@ -66,7 +66,7 @@ describe('ChatVariableTrigger', () => {
       render(<ChatVariableTrigger />)
 
       // Assert
-      expect(screen.getByTestId('chat-variable-button')).toBeDisabled()
+      expect(screen.getByRole('button', { name: 'ChatVariableButton' })).toBeDisabled()
     })
   })
 })
