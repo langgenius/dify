@@ -1,7 +1,7 @@
 'use client'
 import Header from '../signin/_header'
 
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 export default function SignInLayout({ children }: any) {

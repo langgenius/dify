@@ -1,5 +1,5 @@
 import { RiCheckLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import IndeterminateIcon from './assets/indeterminate-icon'
 
 type CheckboxProps = {

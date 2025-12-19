@@ -1,7 +1,7 @@
 import React from 'react'
 import { RiArrowDownSLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
 import type { Tag } from '../../../hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useMixedTranslation } from '../../hooks'
 
 type MarketplaceTriggerProps = {

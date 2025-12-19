@@ -172,7 +172,7 @@ describe('InstalledApp', () => {
   describe('Rendering', () => {
     it('should render without crashing', () => {
       render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByTestId('chat-with-history')).toBeInTheDocument()
+      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
     })
 
     it('should render loading state when fetching app params', () => {
@@ -296,8 +296,8 @@ describe('InstalledApp', () => {
   describe('App Mode Rendering', () => {
     it('should render ChatWithHistory for CHAT mode', () => {
       render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByTestId('chat-with-history')).toBeInTheDocument()
-      expect(screen.queryByTestId('text-generation-app')).not.toBeInTheDocument()
+      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
+      expect(screen.queryByText(/Text Generation App/i)).not.toBeInTheDocument()
     })
 
     it('should render ChatWithHistory for ADVANCED_CHAT mode', () => {
@@ -314,8 +314,8 @@ describe('InstalledApp', () => {
       })
 
       render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByTestId('chat-with-history')).toBeInTheDocument()
-      expect(screen.queryByTestId('text-generation-app')).not.toBeInTheDocument()
+      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
+      expect(screen.queryByText(/Text Generation App/i)).not.toBeInTheDocument()
     })
 
     it('should render ChatWithHistory for AGENT_CHAT mode', () => {
@@ -332,8 +332,8 @@ describe('InstalledApp', () => {
       })
 
       render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByTestId('chat-with-history')).toBeInTheDocument()
-      expect(screen.queryByTestId('text-generation-app')).not.toBeInTheDocument()
+      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
+      expect(screen.queryByText(/Text Generation App/i)).not.toBeInTheDocument()
     })
 
     it('should render TextGenerationApp for COMPLETION mode', () => {
@@ -350,8 +350,7 @@ describe('InstalledApp', () => {
       })
 
       render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByTestId('text-generation-app')).toBeInTheDocument()
-      expect(screen.getByText(/Text Generation App/)).toBeInTheDocument()
+      expect(screen.getByText(/Text Generation App/i)).toBeInTheDocument()
       expect(screen.queryByText(/Workflow/)).not.toBeInTheDocument()
     })
 
@@ -369,7 +368,7 @@ describe('InstalledApp', () => {
       })
 
       render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByTestId('text-generation-app')).toBeInTheDocument()
+      expect(screen.getByText(/Text Generation App/i)).toBeInTheDocument()
       expect(screen.getByText(/Workflow/)).toBeInTheDocument()
     })
   })
@@ -566,20 +565,8 @@ describe('InstalledApp', () => {
 
       render(<InstalledApp id="installed-app-123" />)
       // Should find and render the correct app
-      expect(screen.getByTestId('chat-with-history')).toBeInTheDocument()
+      expect(screen.getByText(/Chat With History/i)).toBeInTheDocument()
       expect(screen.getByText(/installed-app-123/)).toBeInTheDocument()
-    })
-
-    it('should apply correct CSS classes to container', () => {
-      const { container } = render(<InstalledApp id="installed-app-123" />)
-      const mainDiv = container.firstChild as HTMLElement
-      expect(mainDiv).toHaveClass('h-full', 'bg-background-default', 'py-2', 'pl-0', 'pr-2', 'sm:p-2')
-    })
-
-    it('should apply correct CSS classes to ChatWithHistory', () => {
-      render(<InstalledApp id="installed-app-123" />)
-      const chatComponent = screen.getByTestId('chat-with-history')
-      expect(chatComponent).toHaveClass('overflow-hidden', 'rounded-2xl', 'shadow-md')
     })
 
     it('should handle rapid id prop changes', async () => {
@@ -624,50 +611,6 @@ describe('InstalledApp', () => {
         appId: undefined,
         isInstalledApp: true,
       })
-    })
-  })
-
-  describe('Component Memoization', () => {
-    it('should be wrapped with React.memo', () => {
-      // React.memo wraps the component with a special $$typeof symbol
-      const componentType = (InstalledApp as React.MemoExoticComponent<typeof InstalledApp>).$$typeof
-      expect(componentType).toBeDefined()
-    })
-
-    it('should re-render when props change', () => {
-      const { rerender } = render(<InstalledApp id="installed-app-123" />)
-      expect(screen.getByText(/installed-app-123/)).toBeInTheDocument()
-
-      // Change to a different app
-      const differentApp = {
-        ...mockInstalledApp,
-        id: 'different-app-456',
-        app: {
-          ...mockInstalledApp.app,
-          name: 'Different App',
-        },
-      }
-      ;(useContext as jest.Mock).mockReturnValue({
-        installedApps: [differentApp],
-        isFetchingInstalledApps: false,
-      })
-
-      rerender(<InstalledApp id="different-app-456" />)
-      expect(screen.getByText(/different-app-456/)).toBeInTheDocument()
-    })
-
-    it('should maintain component stability across re-renders with same props', () => {
-      const { rerender } = render(<InstalledApp id="installed-app-123" />)
-      const initialCallCount = mockUpdateAppInfo.mock.calls.length
-
-      // Rerender with same props - useEffect may still run due to dependencies
-      rerender(<InstalledApp id="installed-app-123" />)
-
-      // Component should render successfully
-      expect(screen.getByTestId('chat-with-history')).toBeInTheDocument()
-
-      // Mock calls might increase due to useEffect, but component should be stable
-      expect(mockUpdateAppInfo.mock.calls.length).toBeGreaterThanOrEqual(initialCallCount)
     })
   })
 

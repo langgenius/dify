@@ -22,7 +22,7 @@ import {
 import ShortcutsName from '../shortcuts-name'
 import Divider from '../../base/divider'
 import TipPopup from './tip-popup'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

@@ -39,7 +39,7 @@ const RuleDetail = ({
   }, [sourceData, t])
 
   return (
-    <div className='flex flex-col gap-1'>
+    <div className='flex flex-col gap-1' data-testid='rule-detail'>
       <FieldInfo
         label={t('datasetDocuments.embedding.mode')}
         displayedValue={getValue('mode')}

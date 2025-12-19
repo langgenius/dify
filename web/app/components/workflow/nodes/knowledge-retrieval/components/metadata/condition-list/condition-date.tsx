@@ -7,7 +7,7 @@ import {
 } from '@remixicon/react'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useAppContext } from '@/context/app-context'
 
 type ConditionDateProps = {

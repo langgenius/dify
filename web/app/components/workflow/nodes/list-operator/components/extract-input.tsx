@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { VarType } from '../../../types'
 import type { Var } from '../../../types'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 
 type Props = {

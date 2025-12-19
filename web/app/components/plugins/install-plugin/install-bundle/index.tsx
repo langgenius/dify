@@ -7,7 +7,7 @@ import type { Dependency } from '../../types'
 import ReadyToInstall from './ready-to-install'
 import { useTranslation } from 'react-i18next'
 import useHideLogic from '../hooks/use-hide-logic'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'plugin.installModal'
 

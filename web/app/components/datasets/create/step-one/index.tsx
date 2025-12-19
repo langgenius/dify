@@ -9,7 +9,6 @@ import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import Website from '../website'
 import WebsitePreview from '../website/preview'
 import s from './index.module.css'
-import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
@@ -18,7 +17,7 @@ import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import NotionConnector from '@/app/components/base/notion-connector'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
@@ -165,10 +164,10 @@ const StepOne = ({
       <div className='flex h-full w-full min-w-[1440px]'>
         <div className='relative h-full w-1/2 overflow-y-auto'>
           <div className='flex justify-end'>
-            <div className={classNames(s.form)}>
+            <div className={cn(s.form)}>
               {
                 shouldShowDataSourceTypeList && (
-                  <div className={classNames(s.stepHeader, 'system-md-semibold text-text-secondary')}>
+                  <div className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}>
                     {t('datasetCreation.steps.one')}
                   </div>
                 )

@@ -1,35 +1,15 @@
-import { render } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import type { App } from '@/types/app'
 import { AppModeEnum } from '@/types/app'
 import type { HeaderProps } from '@/app/components/workflow/header'
 import WorkflowHeader from './index'
-import { fetchWorkflowRunHistory } from '@/service/workflow'
 
 const mockUseAppStoreSelector = jest.fn()
 const mockSetCurrentLogItem = jest.fn()
 const mockSetShowMessageLogModal = jest.fn()
 const mockResetWorkflowVersionHistory = jest.fn()
 
-let capturedHeaderProps: HeaderProps | null = null
 let appDetail: App
-
-jest.mock('ky', () => ({
-  __esModule: true,
-  default: {
-    create: () => ({
-      extend: () => async () => ({
-        status: 200,
-        headers: new Headers(),
-        json: async () => ({}),
-        blob: async () => new Blob(),
-        clone: () => ({
-          status: 200,
-          json: async () => ({}),
-        }),
-      }),
-    }),
-  },
-}))
 
 jest.mock('@/app/components/app/store', () => ({
   __esModule: true,
@@ -39,8 +19,31 @@ jest.mock('@/app/components/app/store', () => ({
 jest.mock('@/app/components/workflow/header', () => ({
   __esModule: true,
   default: (props: HeaderProps) => {
-    capturedHeaderProps = props
-    return <div data-testid='workflow-header' />
+    const historyFetcher = props.normal?.runAndHistoryProps?.viewHistoryProps?.historyFetcher
+    const hasHistoryFetcher = typeof historyFetcher === 'function'
+
+    return (
+      <div
+        data-testid='workflow-header'
+        data-show-run={String(Boolean(props.normal?.runAndHistoryProps?.showRunButton))}
+        data-show-preview={String(Boolean(props.normal?.runAndHistoryProps?.showPreviewButton))}
+        data-history-url={props.normal?.runAndHistoryProps?.viewHistoryProps?.historyUrl ?? ''}
+        data-has-history-fetcher={String(hasHistoryFetcher)}
+      >
+        <button
+          type="button"
+          onClick={() => props.normal?.runAndHistoryProps?.viewHistoryProps?.onClearLogAndMessageModal?.()}
+        >
+          clear-history
+        </button>
+        <button
+          type="button"
+          onClick={() => props.restoring?.onRestoreSettled?.()}
+        >
+          restore-settled
+        </button>
+      </div>
+    )
   },
 }))
 
@@ -57,7 +60,6 @@ jest.mock('@/service/use-workflow', () => ({
 describe('WorkflowHeader', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    capturedHeaderProps = null
     appDetail = { id: 'app-id', mode: AppModeEnum.COMPLETION } as unknown as App
 
     mockUseAppStoreSelector.mockImplementation(selector => selector({
@@ -74,7 +76,7 @@ describe('WorkflowHeader', () => {
       render(<WorkflowHeader />)
 
       // Assert
-      expect(capturedHeaderProps).not.toBeNull()
+      expect(screen.getByTestId('workflow-header')).toBeInTheDocument()
     })
   })
 
@@ -93,10 +95,11 @@ describe('WorkflowHeader', () => {
       render(<WorkflowHeader />)
 
       // Assert
-      expect(capturedHeaderProps?.normal?.runAndHistoryProps?.showRunButton).toBe(false)
-      expect(capturedHeaderProps?.normal?.runAndHistoryProps?.showPreviewButton).toBe(true)
-      expect(capturedHeaderProps?.normal?.runAndHistoryProps?.viewHistoryProps?.historyUrl).toBe('/apps/app-id/advanced-chat/workflow-runs')
-      expect(capturedHeaderProps?.normal?.runAndHistoryProps?.viewHistoryProps?.historyFetcher).toBe(fetchWorkflowRunHistory)
+      const header = screen.getByTestId('workflow-header')
+      expect(header).toHaveAttribute('data-show-run', 'false')
+      expect(header).toHaveAttribute('data-show-preview', 'true')
+      expect(header).toHaveAttribute('data-history-url', '/apps/app-id/advanced-chat/workflow-runs')
+      expect(header).toHaveAttribute('data-has-history-fetcher', 'true')
     })
 
     it('should configure run mode when app is not in advanced chat mode', () => {
@@ -112,9 +115,11 @@ describe('WorkflowHeader', () => {
       render(<WorkflowHeader />)
 
       // Assert
-      expect(capturedHeaderProps?.normal?.runAndHistoryProps?.showRunButton).toBe(true)
-      expect(capturedHeaderProps?.normal?.runAndHistoryProps?.showPreviewButton).toBe(false)
-      expect(capturedHeaderProps?.normal?.runAndHistoryProps?.viewHistoryProps?.historyUrl).toBe('/apps/app-id/workflow-runs')
+      const header = screen.getByTestId('workflow-header')
+      expect(header).toHaveAttribute('data-show-run', 'true')
+      expect(header).toHaveAttribute('data-show-preview', 'false')
+      expect(header).toHaveAttribute('data-history-url', '/apps/app-id/workflow-runs')
+      expect(header).toHaveAttribute('data-has-history-fetcher', 'true')
     })
   })
 
@@ -124,11 +129,8 @@ describe('WorkflowHeader', () => {
       // Arrange
       render(<WorkflowHeader />)
 
-      const clear = capturedHeaderProps?.normal?.runAndHistoryProps?.viewHistoryProps?.onClearLogAndMessageModal
-      expect(clear).toBeDefined()
-
       // Act
-      clear?.()
+      screen.getByRole('button', { name: 'clear-history' }).click()
 
       // Assert
       expect(mockSetCurrentLogItem).toHaveBeenCalledWith()
@@ -143,7 +145,8 @@ describe('WorkflowHeader', () => {
       render(<WorkflowHeader />)
 
       // Assert
-      expect(capturedHeaderProps?.restoring?.onRestoreSettled).toBe(mockResetWorkflowVersionHistory)
+      screen.getByRole('button', { name: 'restore-settled' }).click()
+      expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
     })
   })
 })

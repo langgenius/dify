@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiEqualizer2Line } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 

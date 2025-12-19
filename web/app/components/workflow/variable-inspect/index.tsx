@@ -7,7 +7,7 @@ import { debounce } from 'lodash-es'
 import { useStore } from '../store'
 import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
 import Panel from './panel'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const VariableInspectPanel: FC = () => {
   const showVariableInspectPanel = useStore(s => s.showVariableInspectPanel)

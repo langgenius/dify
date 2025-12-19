@@ -9,7 +9,7 @@ import Indicator from '../../../indicator'
 import Operate from '../data-source-notion/operate'
 import { DataSourceType } from './types'
 import s from './style.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
 
 export type ConfigItemType = {

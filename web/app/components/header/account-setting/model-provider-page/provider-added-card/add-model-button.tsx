@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PlusCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type AddModelButtonProps = {
   className?: string

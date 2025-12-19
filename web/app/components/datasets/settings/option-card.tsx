@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import { useTranslation } from 'react-i18next'
 import { EffectColor } from './chunk-structure/types'

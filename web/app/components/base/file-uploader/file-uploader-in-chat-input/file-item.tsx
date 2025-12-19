@@ -11,7 +11,7 @@ import {
 } from '../utils'
 import FileTypeIcon from '../file-type-icon'
 import type { FileEntity } from '../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'

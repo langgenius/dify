@@ -32,7 +32,7 @@ import type {
   Var,
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import ConditionVarSelector from './condition-var-selector'

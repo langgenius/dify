@@ -1,6 +1,6 @@
 'use client'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreateButtonType, CreateSubscriptionButton } from './create'

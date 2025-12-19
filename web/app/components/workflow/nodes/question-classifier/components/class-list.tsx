@@ -10,7 +10,7 @@ import type { Topic } from '@/app/components/workflow/nodes/question-classifier/
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { ReactSortable } from 'react-sortablejs'
 import { noop } from 'lodash-es'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiDraggable } from '@remixicon/react'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 
