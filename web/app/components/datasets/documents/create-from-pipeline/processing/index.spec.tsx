@@ -17,8 +17,12 @@ jest.mock('react-i18next', () => ({
 }))
 
 // Mock useDocLink - returns a function that generates doc URLs
+// Strips leading slash from path to match actual implementation behavior
 jest.mock('@/context/i18n', () => ({
-  useDocLink: () => (path?: string) => `https://docs.dify.ai/en-US/${path || ''}`,
+  useDocLink: () => (path?: string) => {
+    const normalizedPath = path?.startsWith('/') ? path.slice(1) : (path || '')
+    return `https://docs.dify.ai/en-US/${normalizedPath}`
+  },
 }))
 
 // Mock dataset detail context
