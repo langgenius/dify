@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -15,6 +15,10 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import Tooltip from '@/app/components/base/tooltip'
+import { SimpleSelect } from '@/app/components/base/select'
+import type { Item as SelectItem } from '@/app/components/base/select'
+import useSWR from 'swr'
+import { fetchAvailableCredentials } from '@/service/common'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import StructureOutput from './components/structure-output'
 import ReasoningFormatConfig from './components/reasoning-format-config'
@@ -63,9 +67,33 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     handleStructureOutputChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
+    handleCredentialOverrideChange,
   } = useConfig(id, data)
 
   const model = inputs.model
+
+  // available credentials for override select
+  const providerForCreds = model?.provider
+  const modelNameForCreds = model?.name
+  const { data: availableCreds, isLoading: credsLoading } = useSWR(
+    providerForCreds ? `/workspaces/current/model-providers/${providerForCreds}/available-credentials${modelNameForCreds ? `?model=${encodeURIComponent(modelNameForCreds)}&model_type=llm` : ''}` : null,
+    fetchAvailableCredentials,
+  )
+  const overrideItems: SelectItem[] = useMemo(() => {
+    const list = [
+      ...((availableCreds?.provider_available_credentials || []).map(c => ({ value: c.credential_id, name: c.credential_name || c.credential_id })) as SelectItem[]),
+      ...((availableCreds?.model_available_credentials || []).map(c => ({ value: c.credential_id, name: c.credential_name || c.credential_id })) as SelectItem[]),
+    ]
+    const seen = new Set<string>()
+    const deduped = list.filter((it) => {
+      const v = String(it.value)
+      if (seen.has(v)) return false
+      seen.add(v)
+      return true
+    })
+    // Add explicit option label to allow resetting to default credentials
+    return [{ value: '', name: t('common.label.noOverride') }, ...deduped]
+  }, [availableCreds, t])
 
   const handleModelChange = useCallback((model: {
     provider: string
@@ -135,7 +163,34 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             )}
           </>
         </Field>
-
+        {model?.provider && !readOnly && (
+          <Field
+            title={t('API keys')}
+            tooltip={t(`${i18nPrefix} credential override`)!}
+          >
+            <div className='space-y-2'>
+              <SimpleSelect
+                items={overrideItems}
+                defaultValue={inputs.model?.credential_override?.credential_id || ''}
+                onSelect={(item) => {
+                  const v = String(item.value || '')
+                  handleCredentialOverrideChange(v
+                    ? { credential_id: v, credential_name: undefined }
+                    : undefined,
+                  )
+                }}
+                isLoading={credsLoading}
+                notClearable={false}
+                className="system-sm-regular h-8 w-full items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
+                wrapperClassName="h-8"
+                optionClassName="system-sm-regular"
+              />
+              <div className='text-xs text-text-tertiary'>
+                {t('override the credential')}
+              </div>
+            </div>
+          </Field>
+        )}
         {/* Prompt */}
         {model.name && (
           <ConfigPrompt
