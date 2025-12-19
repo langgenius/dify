@@ -48,7 +48,6 @@ class WorkspaceService:
                 "replace_webapp_logo": replace_webapp_logo,
             }
         if dify_config.EDITION == "CLOUD":
-
             tenant_info["next_credit_reset_date"] = feature.next_credit_reset_date
 
             from services.credit_pool_service import CreditPoolService
