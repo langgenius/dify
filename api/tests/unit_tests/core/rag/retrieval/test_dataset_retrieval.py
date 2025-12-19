@@ -48,11 +48,11 @@ Running Tests:
     # Run all tests in this module
     uv run --project api pytest \
         api/tests/unit_tests/core/rag/retrieval/test_dataset_retrieval.py -v
-    
+
     # Run a specific test class
     uv run --project api pytest \
         api/tests/unit_tests/core/rag/retrieval/test_dataset_retrieval.py::TestRetrievalService -v
-    
+
     # Run a specific test
     uv run --project api pytest \
         api/tests/unit_tests/core/rag/retrieval/test_dataset_retrieval.py::\
@@ -348,80 +348,42 @@ class TestRetrievalService:
     @pytest.fixture(autouse=True)
     def mock_thread_pool(self):
         """
-        Mock ThreadPoolExecutor to run tasks synchronously in tests.
+        Mock gevent Pool to run tasks synchronously in tests.
 
-        The RetrievalService uses ThreadPoolExecutor to run search operations
-        concurrently (embedding_search, keyword_search, full_text_index_search).
-        In tests, we want synchronous execution for:
-        - Deterministic behavior
-        - Easier debugging
-        - Avoiding race conditions
-        - Simpler assertions
+        RetrievalService now uses gevent.pool.Pool and gevent.joinall to run search
+        operations concurrently. For deterministic tests, we execute spawned jobs
+        immediately and make joinall a no-op.
 
         How it works:
         -------------
-        1. Intercepts ThreadPoolExecutor creation
-        2. Replaces submit() to execute functions immediately (synchronously)
+        1. Intercepts Pool creation in retrieval_service
+        2. Replaces spawn() to execute functions immediately (synchronously)
         3. Functions modify shared all_documents list in-place
-        4. Mocks concurrent.futures.wait() since tasks are already done
-
-        Why this approach:
-        ------------------
-        - RetrievalService.retrieve() creates a ThreadPoolExecutor context
-        - It submits search tasks that modify all_documents list
-        - concurrent.futures.wait() waits for all tasks to complete
-        - By executing synchronously, we avoid threading complexity in tests
+        4. Mocks gevent.joinall() since tasks are already done
 
         Returns:
-            Mock: Mocked ThreadPoolExecutor that executes tasks synchronously
+            Mock: Mocked Pool factory
         """
-        with patch("core.rag.datasource.retrieval_service.ThreadPoolExecutor") as mock_executor:
-            # Store futures to track submitted tasks (for debugging if needed)
-            futures_list = []
+        with (
+            patch("core.rag.datasource.retrieval_service.Pool") as mock_pool,
+            patch("core.rag.datasource.retrieval_service.gevent.joinall") as mock_joinall,
+        ):
 
-            def sync_submit(fn, *args, **kwargs):
-                """
-                Synchronous replacement for ThreadPoolExecutor.submit().
+            def sync_spawn(fn, *args, **kwargs):
+                # Execute immediately - this modifies all_documents in place
+                return fn(*args, **kwargs)
 
-                Instead of scheduling the function for async execution,
-                we execute it immediately in the current thread.
+            # Set up the mock pool instance
+            mock_pool_instance = Mock()
+            mock_pool_instance.spawn = sync_spawn
 
-                Args:
-                    fn: The function to execute (e.g., embedding_search)
-                    *args, **kwargs: Arguments to pass to the function
+            # Pool(size=...) should return our instance
+            mock_pool.return_value = mock_pool_instance
 
-                Returns:
-                    Mock: A mock Future object
-                """
-                future = Mock()
-                try:
-                    # Execute immediately - this modifies all_documents in place
-                    # The function signature is: fn(flask_app, dataset_id, query,
-                    #                             top_k, all_documents, exceptions, ...)
-                    fn(*args, **kwargs)
-                    future.result.return_value = None
-                    future.exception.return_value = None
-                except Exception as e:
-                    # If function raises, store exception in future
-                    future.result.return_value = None
-                    future.exception.return_value = e
+            # Make joinall a no-op
+            mock_joinall.return_value = None
 
-                futures_list.append(future)
-                return future
-
-            # Set up the mock executor instance
-            mock_executor_instance = Mock()
-            mock_executor_instance.submit = sync_submit
-
-            # Configure context manager behavior (__enter__ and __exit__)
-            mock_executor.return_value.__enter__.return_value = mock_executor_instance
-            mock_executor.return_value.__exit__.return_value = None
-
-            # Mock concurrent.futures.wait to do nothing since tasks are already done
-            # In real code, this waits for all futures to complete
-            # In tests, futures complete immediately, so wait is a no-op
-            with patch("core.rag.datasource.retrieval_service.concurrent.futures.wait"):
-                yield mock_executor
+            yield mock_pool
 
     # ==================== Vector Search Tests ====================
 
@@ -741,6 +703,7 @@ class TestRetrievalService:
             retrieval_method,
             exceptions,
             document_ids_filter=None,
+            **kwargs,
         ):
             all_documents.extend(sample_documents[:2])
 
@@ -861,6 +824,7 @@ class TestRetrievalService:
             retrieval_method,
             exceptions,
             document_ids_filter=None,
+            **kwargs,
         ):
             """Vector search finds 2 documents including high-score duplicate."""
             all_documents.extend([doc1_high, doc2])
@@ -951,6 +915,7 @@ class TestRetrievalService:
             retrieval_method,
             exceptions,
             document_ids_filter=None,
+            **kwargs,
         ):
             all_documents.extend(sample_documents[:2])
 

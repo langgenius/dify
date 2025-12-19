@@ -151,20 +151,14 @@ class DatasetRetrieval:
             if ModelFeature.TOOL_CALL in features or ModelFeature.MULTI_TOOL_CALL in features:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = []
-        for dataset_id in dataset_ids:
-            # get dataset from dataset id
-            dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
-            dataset = db.session.scalar(dataset_stmt)
 
-            # pass if dataset is not available
-            if not dataset:
+        dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
+        datasets = db.session.execute(dataset_stmt).all()
+        for d in datasets:
+            if d.provider != "external" and d.available_document_count == 0:
                 continue
+            available_datasets.append(d)
 
-            # pass if dataset is not available
-            if dataset and dataset.available_document_count == 0 and dataset.provider != "external":
-                continue
-
-            available_datasets.append(dataset)
         if inputs:
             inputs = {key: str(value) for key, value in inputs.items()}
         else:

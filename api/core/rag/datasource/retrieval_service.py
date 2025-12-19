@@ -1,8 +1,8 @@
-import concurrent.futures
-from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
+import gevent
 from flask import Flask, current_app
+from gevent.pool import Pool
 from sqlalchemy import select
 from sqlalchemy.orm import Session, load_only
 
@@ -61,51 +61,47 @@ class RetrievalService:
         all_documents: list[Document] = []
         exceptions: list[str] = []
 
-        # Optimize multithreading with thread pools
-        with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
-            futures = []
-            retrieval_service = RetrievalService()
-            if query:
-                futures.append(
-                    executor.submit(
-                        retrieval_service._retrieve,
-                        flask_app=current_app._get_current_object(),  # type: ignore
-                        retrieval_method=retrieval_method,
-                        dataset=dataset,
-                        query=query,
-                        top_k=top_k,
-                        score_threshold=score_threshold,
-                        reranking_model=reranking_model,
-                        reranking_mode=reranking_mode,
-                        weights=weights,
-                        document_ids_filter=document_ids_filter,
-                        attachment_id=None,
-                        all_documents=all_documents,
-                        exceptions=exceptions,
-                    )
-                )
-            if attachment_ids:
-                for attachment_id in attachment_ids:
-                    futures.append(
-                        executor.submit(
-                            retrieval_service._retrieve,
-                            flask_app=current_app._get_current_object(),  # type: ignore
-                            retrieval_method=retrieval_method,
-                            dataset=dataset,
-                            query=None,
-                            top_k=top_k,
-                            score_threshold=score_threshold,
-                            reranking_model=reranking_model,
-                            reranking_mode=reranking_mode,
-                            weights=weights,
-                            document_ids_filter=document_ids_filter,
-                            attachment_id=attachment_id,
-                            all_documents=all_documents,
-                            exceptions=exceptions,
-                        )
-                    )
+        retrieval_service = RetrievalService()
+        pool = Pool(size=dify_config.RETRIEVAL_SERVICE_EXECUTORS)
+        jobs = []
+        if query:
+            jobs.append(pool.spawn(
+                retrieval_service._retrieve,
+                flask_app=current_app._get_current_object(),  # type: ignore
+                retrieval_method=retrieval_method,
+                dataset=dataset,
+                query=query,
+                top_k=top_k,
+                score_threshold=score_threshold,
+                reranking_model=reranking_model,
+                reranking_mode=reranking_mode,
+                weights=weights,
+                document_ids_filter=document_ids_filter,
+                attachment_id=None,
+                all_documents=all_documents,
+                exceptions=exceptions,
+            ))
 
-            concurrent.futures.wait(futures, timeout=3600, return_when=concurrent.futures.ALL_COMPLETED)
+        if attachment_ids:
+            for attachment_id in attachment_ids:
+                jobs.append(pool.spawn(
+                    retrieval_service._retrieve,
+                    flask_app=current_app._get_current_object(),  # type: ignore
+                    retrieval_method=retrieval_method,
+                    dataset=dataset,
+                    query=None,
+                    top_k=top_k,
+                    score_threshold=score_threshold,
+                    reranking_model=reranking_model,
+                    reranking_mode=reranking_mode,
+                    weights=weights,
+                    document_ids_filter=document_ids_filter,
+                    attachment_id=attachment_id,
+                    all_documents=all_documents,
+                    exceptions=exceptions,
+                ))
+
+        gevent.joinall(jobs, timeout=3600)
 
         if exceptions:
             raise ValueError(";\n".join(exceptions))
@@ -565,6 +561,8 @@ class RetrievalService:
         flask_app: Flask,
         retrieval_method: RetrievalMethod,
         dataset: Dataset,
+        all_documents: list[Document],
+        exceptions: list[str],
         query: str | None = None,
         top_k: int = 4,
         score_threshold: float | None = 0.0,
@@ -573,68 +571,31 @@ class RetrievalService:
         weights: dict | None = None,
         document_ids_filter: list[str] | None = None,
         attachment_id: str | None = None,
-        all_documents: list[Document] = [],
-        exceptions: list[str] = [],
     ):
         if not query and not attachment_id:
             return
         with flask_app.app_context():
             all_documents_item: list[Document] = []
-            # Optimize multithreading with thread pools
-            with ThreadPoolExecutor(max_workers=dify_config.RETRIEVAL_SERVICE_EXECUTORS) as executor:  # type: ignore
-                futures = []
-                if retrieval_method == RetrievalMethod.KEYWORD_SEARCH and query:
-                    futures.append(
-                        executor.submit(
-                            self.keyword_search,
-                            flask_app=current_app._get_current_object(),  # type: ignore
-                            dataset_id=dataset.id,
-                            query=query,
-                            top_k=top_k,
-                            all_documents=all_documents_item,
-                            exceptions=exceptions,
-                            document_ids_filter=document_ids_filter,
-                        )
+            pool = Pool(size=4)
+            jobs = []
+            if retrieval_method == RetrievalMethod.KEYWORD_SEARCH and query:
+                jobs.append(
+                    pool.spawn(
+                        self.keyword_search,  # type: ignore[arg-type]
+                        flask_app=current_app._get_current_object(),  # type: ignore
+                        dataset_id=dataset.id,
+                        query=query,
+                        top_k=top_k,
+                        all_documents=all_documents_item,
+                        exceptions=exceptions,
+                        document_ids_filter=document_ids_filter,
                     )
-                if RetrievalMethod.is_support_semantic_search(retrieval_method):
-                    if query:
-                        futures.append(
-                            executor.submit(
-                                self.embedding_search,
-                                flask_app=current_app._get_current_object(),  # type: ignore
-                                dataset_id=dataset.id,
-                                query=query,
-                                top_k=top_k,
-                                score_threshold=score_threshold,
-                                reranking_model=reranking_model,
-                                all_documents=all_documents_item,
-                                retrieval_method=retrieval_method,
-                                exceptions=exceptions,
-                                document_ids_filter=document_ids_filter,
-                                query_type=QueryType.TEXT_QUERY,
-                            )
-                        )
-                    if attachment_id:
-                        futures.append(
-                            executor.submit(
-                                self.embedding_search,
-                                flask_app=current_app._get_current_object(),  # type: ignore
-                                dataset_id=dataset.id,
-                                query=attachment_id,
-                                top_k=top_k,
-                                score_threshold=score_threshold,
-                                reranking_model=reranking_model,
-                                all_documents=all_documents_item,
-                                retrieval_method=retrieval_method,
-                                exceptions=exceptions,
-                                document_ids_filter=document_ids_filter,
-                                query_type=QueryType.IMAGE_QUERY,
-                            )
-                        )
-                if RetrievalMethod.is_support_fulltext_search(retrieval_method) and query:
-                    futures.append(
-                        executor.submit(
-                            self.full_text_index_search,
+                )
+            if RetrievalMethod.is_support_semantic_search(retrieval_method):
+                if query:
+                    jobs.append(
+                        pool.spawn(
+                            self.embedding_search,  # type: ignore[arg-type]
                             flask_app=current_app._get_current_object(),  # type: ignore
                             dataset_id=dataset.id,
                             query=query,
@@ -645,9 +606,43 @@ class RetrievalService:
                             retrieval_method=retrieval_method,
                             exceptions=exceptions,
                             document_ids_filter=document_ids_filter,
+                            query_type=QueryType.TEXT_QUERY,
                         )
                     )
-                concurrent.futures.wait(futures, timeout=300, return_when=concurrent.futures.ALL_COMPLETED)
+                if attachment_id:
+                    jobs.append(
+                        pool.spawn(
+                            self.embedding_search,  # type: ignore[arg-type]
+                            flask_app=current_app._get_current_object(),  # type: ignore
+                            dataset_id=dataset.id,
+                            query=attachment_id,
+                            top_k=top_k,
+                            score_threshold=score_threshold,
+                            reranking_model=reranking_model,
+                            all_documents=all_documents_item,
+                            retrieval_method=retrieval_method,
+                            exceptions=exceptions,
+                            document_ids_filter=document_ids_filter,
+                            query_type=QueryType.IMAGE_QUERY,
+                        )
+                    )
+            if RetrievalMethod.is_support_fulltext_search(retrieval_method) and query:
+                jobs.append(
+                    pool.spawn(
+                        self.full_text_index_search,  # type: ignore[arg-type]
+                        flask_app=current_app._get_current_object(),  # type: ignore
+                        dataset_id=dataset.id,
+                        query=query,
+                        top_k=top_k,
+                        score_threshold=score_threshold,
+                        reranking_model=reranking_model,
+                        all_documents=all_documents_item,
+                        retrieval_method=retrieval_method,
+                        exceptions=exceptions,
+                        document_ids_filter=document_ids_filter,
+                    )
+                )
+            gevent.joinall(jobs)
 
             if exceptions:
                 raise ValueError(";\n".join(exceptions))
