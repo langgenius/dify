@@ -9,7 +9,7 @@ import {
   useWorkflowStore,
 } from '../../store'
 import type { StartNodeType } from '../../nodes/start/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const UserInput = () => {
   const workflowStore = useWorkflowStore()

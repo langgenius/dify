@@ -1,7 +1,7 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type IFeaturePanelProps = {
   className?: string

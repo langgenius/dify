@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type InlineDeleteConfirmProps = {
   title?: string

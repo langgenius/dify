@@ -16,7 +16,7 @@ import FileInput from '../file-input'
 import { useFile } from '../hooks'
 import FileItem from './file-item'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { TransferMethod } from '@/types/app'
 

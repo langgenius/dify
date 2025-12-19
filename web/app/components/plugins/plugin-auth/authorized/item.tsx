@@ -16,7 +16,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { Credential } from '../types'
 import { CredentialTypeEnum } from '../types'
 

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useGetLanguage } from '@/context/i18n'
 import type { Tool as ToolType } from '../../../tools/types'

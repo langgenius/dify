@@ -5,6 +5,7 @@ const translation = {
     saved: 'Сохранено',
     create: 'Создано',
     remove: 'Удалено',
+    actionFailed: 'Действие не удалось',
   },
   operation: {
     create: 'Создать',

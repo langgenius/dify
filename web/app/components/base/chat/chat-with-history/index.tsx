@@ -17,7 +17,7 @@ import ChatWrapper from './chat-wrapper'
 import type { InstalledApp } from '@/models/explore'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
 
 type ChatWithHistoryProps = {

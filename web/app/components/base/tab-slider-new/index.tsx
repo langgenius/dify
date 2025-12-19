@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Option = {
   value: string

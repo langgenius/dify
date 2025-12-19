@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatContext } from '../chat/chat/context'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const hasEndThink = (children: any): boolean => {
   if (typeof children === 'string')

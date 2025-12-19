@@ -13,7 +13,7 @@ import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/
 import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   collection: Collection

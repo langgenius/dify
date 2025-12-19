@@ -7,7 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import BlockSelector from '../../../../block-selector'
 import type { Param, ParamType } from '../../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type {
   PluginDefaultValue,
   ToolDefaultValue,

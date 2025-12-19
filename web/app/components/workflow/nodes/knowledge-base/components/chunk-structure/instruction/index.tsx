@@ -1,7 +1,7 @@
 import React from 'react'
 import { AddChunks } from '@/app/components/base/icons/src/vender/knowledge'
 import Line from './line'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
