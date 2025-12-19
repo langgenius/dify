@@ -4,7 +4,7 @@ import React from 'react'
 import { DataType } from '../types'
 import Input from '@/app/components/base/input'
 import { InputNumber } from '@/app/components/base/input-number'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Datepicker from '../base/date-picker'
 
 type Props = {

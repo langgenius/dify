@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
 import { type Field, Type } from '../../../types'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiArrowDropDownLine, RiArrowDropRightLine } from '@remixicon/react'
 import { getFieldType, getHasChildren } from '../../../utils'
 import Divider from '@/app/components/base/divider'
@@ -92,12 +92,10 @@ const SchemaNode: FC<SchemaNodeProps> = ({
 
   return (
     <div className='relative'>
-      <div className={classNames('relative z-10', indentPadding[depth])}>
+      <div className={cn('relative z-10', indentPadding[depth])}>
         {depth > 0 && hasChildren && (
-          <div className={classNames(
-            'absolute top-0 z-10 flex h-7 w-5 items-center bg-background-section-burn px-0.5',
-            indentLeft[depth - 1],
-          )}>
+          <div className={cn('absolute top-0 z-10 flex h-7 w-5 items-center bg-background-section-burn px-0.5',
+            indentLeft[depth - 1])}>
             <button
               type="button"
               onClick={handleExpand}
@@ -140,14 +138,12 @@ const SchemaNode: FC<SchemaNodeProps> = ({
         </div>
       </div>
 
-      <div className={classNames(
-        'absolute z-0 flex w-5 justify-center',
+      <div className={cn('absolute z-0 flex w-5 justify-center',
         schema.description ? 'top-12 h-[calc(100%-3rem)]' : 'top-7 h-[calc(100%-1.75rem)]',
-        indentLeft[depth],
-      )}>
+        indentLeft[depth])}>
         <Divider
           type='vertical'
-          className={classNames('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
+          className={cn('mx-0', isHovering ? 'bg-divider-deep' : 'bg-divider-subtle')}
         />
       </div>
 

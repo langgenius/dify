@@ -14,7 +14,7 @@ import TabSlider from '@/app/components/base/tab-slider-plain'
 import { fetchHitHistoryList } from '@/service/annotation'
 import { APP_PAGE_LIMIT } from '@/config'
 import useTimestamp from '@/hooks/use-timestamp'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   appId: string

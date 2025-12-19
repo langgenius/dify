@@ -11,7 +11,7 @@ import { NodeRunningStatus } from '@/app/components/workflow/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 
 const VariableInspectTrigger: FC = () => {

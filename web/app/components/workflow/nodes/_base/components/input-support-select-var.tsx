@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect } from 'react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type {
   Node,
   NodeOutPutVar,

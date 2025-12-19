@@ -3,7 +3,7 @@ import Authorize from './authorize'
 import Authorized from './authorized'
 import type { PluginPayload } from './types'
 import { usePluginAuth } from './hooks/use-plugin-auth'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type PluginAuthProps = {
   pluginPayload: PluginPayload

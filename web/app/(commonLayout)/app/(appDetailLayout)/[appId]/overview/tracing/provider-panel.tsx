@@ -6,7 +6,7 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { TracingProvider } from './type'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { AliyunIconBig, ArizeIconBig, DatabricksIconBig, LangfuseIconBig, LangsmithIconBig, MlflowIconBig, OpikIconBig, PhoenixIconBig, TencentIconBig, WeaveIconBig } from '@/app/components/base/icons/src/public/tracing'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
 

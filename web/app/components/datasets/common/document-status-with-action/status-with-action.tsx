@@ -2,7 +2,7 @@
 import { RiAlertFill, RiCheckboxCircleFill, RiErrorWarningFill, RiInformation2Fill } from '@remixicon/react'
 import type { FC } from 'react'
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 
 type Status = 'success' | 'error' | 'warning' | 'info'

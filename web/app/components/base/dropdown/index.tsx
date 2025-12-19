@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { useState } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   RiMoreFill,
 } from '@remixicon/react'

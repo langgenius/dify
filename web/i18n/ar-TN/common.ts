@@ -11,6 +11,7 @@ const translation = {
     saved: 'تم الحفظ',
     create: 'تم الإنشاء',
     remove: 'تمت الإزالة',
+    actionFailed: 'فشل الإجراء',
   },
   operation: {
     create: 'إنشاء',

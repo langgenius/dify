@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import React, { useCallback, useMemo, useState } from 'react'
 
 type CredentialIconProps = {

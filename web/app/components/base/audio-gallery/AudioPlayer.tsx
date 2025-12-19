@@ -7,7 +7,7 @@ import {
 import Toast from '@/app/components/base/toast'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type AudioPlayerProps = {
   src?: string // Keep backward compatibility

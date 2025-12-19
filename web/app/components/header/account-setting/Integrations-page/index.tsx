@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import Link from 'next/link'
 import s from './index.module.css'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { fetchAccountIntegrates } from '@/service/common'
 
 const titleClassName = `
@@ -35,7 +35,7 @@ export default function IntegrationsPage() {
         {
           integrates.map(integrate => (
             <div key={integrate.provider} className='mb-2 flex items-center rounded-lg border-[0.5px] border-gray-200 bg-gray-50 px-3 py-2'>
-              <div className={classNames('mr-3 h-8 w-8 rounded-lg border border-gray-100 bg-white', s[`${integrate.provider}-icon`])} />
+              <div className={cn('mr-3 h-8 w-8 rounded-lg border border-gray-100 bg-white', s[`${integrate.provider}-icon`])} />
               <div className='grow'>
                 <div className='text-sm font-medium leading-[21px] text-gray-800'>{integrateMap[integrate.provider].name}</div>
                 <div className='text-xs font-normal leading-[18px] text-gray-500'>{integrateMap[integrate.provider].description}</div>

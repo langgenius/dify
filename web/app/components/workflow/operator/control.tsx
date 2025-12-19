@@ -26,7 +26,7 @@ import AddBlock from './add-block'
 import TipPopup from './tip-popup'
 import MoreActions from './more-actions'
 import { useOperator } from './hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const Control = () => {
   const { t } = useTranslation()

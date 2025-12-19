@@ -5,7 +5,7 @@ import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import {
   RiArrowRightUpLine,

@@ -5,7 +5,7 @@ import {
 import { RiAddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { Authorized } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,

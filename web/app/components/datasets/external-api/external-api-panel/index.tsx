@@ -6,7 +6,7 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'

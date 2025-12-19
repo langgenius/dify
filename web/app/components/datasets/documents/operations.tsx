@@ -22,7 +22,7 @@ import Switch from '../../base/switch'
 import { noop } from 'lodash-es'
 import Tooltip from '../../base/tooltip'
 import Divider from '../../base/divider'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   RiArchive2Line,
   RiDeleteBinLine,
