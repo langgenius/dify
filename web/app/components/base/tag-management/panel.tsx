@@ -97,10 +97,13 @@ const Panel = (props: PanelProps) => {
     const removeTagIDs = value.filter(v => !selectedTagIDs.includes(v))
     const selectedTags = tagList.filter(tag => selectedTagIDs.includes(tag.id))
     onCacheUpdate(selectedTags)
-    Promise.all([
-      ...(addTagIDs.length ? [bind(addTagIDs)] : []),
-      ...[removeTagIDs.length ? removeTagIDs.map(tagID => unbind(tagID)) : []],
-    ]).finally(() => {
+    const operations: Promise<unknown>[] = []
+    if (addTagIDs.length)
+      operations.push(bind(addTagIDs))
+    if (removeTagIDs.length)
+      operations.push(...removeTagIDs.map(tagID => unbind(tagID)))
+
+    Promise.all(operations).finally(() => {
       if (onChange)
         onChange()
     })

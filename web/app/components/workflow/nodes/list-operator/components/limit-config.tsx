@@ -4,7 +4,7 @@ import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Limit } from '../types'
 import InputNumberWithSlider from '../../_base/components/input-number-with-slider'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
 

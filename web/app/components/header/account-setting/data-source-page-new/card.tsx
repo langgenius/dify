@@ -20,6 +20,7 @@ import { useDataSourceAuthUpdate } from './hooks'
 import Confirm from '@/app/components/base/confirm'
 import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
 import { openOAuthPopup } from '@/hooks/use-oauth'
+import { CollectionType } from '@/app/components/tools/types'
 
 type CardProps = {
   item: DataSourceAuth
@@ -42,6 +43,7 @@ const Card = ({
   const pluginPayload = {
     category: AuthCategory.datasource,
     provider: `${item.plugin_id}/${item.name}`,
+    providerType: CollectionType.datasource,
   }
   const { handleAuthUpdate } = useDataSourceAuthUpdate({
     pluginId: item.plugin_id,

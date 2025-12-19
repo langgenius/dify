@@ -1,7 +1,7 @@
 import type { CSSProperties } from 'react'
 import React from 'react'
 import { type VariantProps, cva } from 'class-variance-authority'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const textareaVariants = cva(
   '',
@@ -20,13 +20,13 @@ const textareaVariants = cva(
 )
 
 export type TextareaProps = {
-  value: string
+  value: string | number
   disabled?: boolean
   destructive?: boolean
   styleCss?: CSSProperties
   ref?: React.Ref<HTMLTextAreaElement>
-  onFocus?: () => void
-  onBlur?: () => void
+  onFocus?: React.FocusEventHandler<HTMLTextAreaElement>
+  onBlur?: React.FocusEventHandler<HTMLTextAreaElement>
 } & React.TextareaHTMLAttributes<HTMLTextAreaElement> & VariantProps<typeof textareaVariants>
 
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(

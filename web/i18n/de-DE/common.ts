@@ -5,6 +5,7 @@ const translation = {
     saved: 'Gespeichert',
     create: 'Erstellt',
     remove: 'Entfernt',
+    actionFailed: 'Aktion fehlgeschlagen',
   },
   operation: {
     create: 'Erstellen',
@@ -61,10 +62,21 @@ const translation = {
     selectAll: 'Alles auswählen',
     deSelectAll: 'Alle abwählen',
     config: 'Konfiguration',
+    yes: 'Ja',
+    deleteConfirmTitle: 'Löschen?',
+    no: 'Nein',
+    confirmAction: 'Bitte bestätigen Sie Ihre Aktion.',
+    noSearchResults: 'Es wurden keine {{content}} gefunden',
+    resetKeywords: 'Schlüsselwörter zurücksetzen',
+    selectCount: '{{count}} Ausgewählt',
+    searchCount: 'Finde {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Jetzt',
   },
   placeholder: {
     input: 'Bitte eingeben',
     select: 'Bitte auswählen',
+    search: 'Suchen...',
   },
   voice: {
     language: {
@@ -88,6 +100,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Türkisch',
       faIR: 'Persisch',
+      slSI: 'Slowenisch',
+      arTN: 'Tunesisches Arabisch',
     },
   },
   unit: {
@@ -157,7 +171,6 @@ const translation = {
     workspace: 'Arbeitsbereich',
     createWorkspace: 'Arbeitsbereich erstellen',
     helpCenter: 'Hilfe',
-    communityFeedback: 'Rückmeldung',
     roadmap: 'Fahrplan',
     community: 'Gemeinschaft',
     about: 'Über',
@@ -165,6 +178,8 @@ const translation = {
     compliance: 'Einhaltung',
     support: 'Unterstützung',
     github: 'GitHub',
+    contactUs: 'Kontaktieren Sie uns',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'KONTO',
@@ -501,6 +516,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Anmeldeinformationen werden verwendet und können nicht gelöscht werden',
     },
     parametersInvalidRemoved: 'Einige Parameter sind ungültig und wurden entfernt.',
+    installDataSourceProvider: 'Datenquellenanbieter installieren',
   },
   dataSource: {
     add: 'Eine Datenquelle hinzufügen',
@@ -720,6 +736,8 @@ const translation = {
     uploadFromComputerLimit: 'Datei hochladen darf {{size}} nicht überschreiten',
     uploadFromComputerReadError: 'Lesen der Datei fehlgeschlagen, bitte versuchen Sie es erneut.',
     fileExtensionNotSupport: 'Dateiendung nicht bedient',
+    fileExtensionBlocked: 'Dieser Dateityp ist aus Sicherheitsgründen gesperrt',
+    uploadDisabled: 'Datei-Upload ist deaktiviert',
   },
   license: {
     expiring: 'Läuft an einem Tag ab',
@@ -761,6 +779,13 @@ const translation = {
   },
   label: {
     optional: '(fakultativ)',
+  },
+  noData: 'Keine Daten',
+  dynamicSelect: {
+    error: 'Ladeoptionen konnten nicht geladen werden',
+    noData: 'Keine Optionen verfügbar',
+    loading: 'Optionen werden geladen...',
+    selected: '{{count}} ausgewählt',
   },
 }
 

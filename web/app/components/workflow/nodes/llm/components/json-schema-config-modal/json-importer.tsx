@@ -1,6 +1,6 @@
 import React, { type FC, useCallback, useEffect, useRef, useState } from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
@@ -24,7 +24,7 @@ const JsonImporter: FC<JsonImporterProps> = ({
   const [open, setOpen] = useState(false)
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<any>(null)
-  const importBtnRef = useRef<HTMLButtonElement>(null)
+  const importBtnRef = useRef<HTMLElement>(null)
   const advancedEditing = useVisualEditorStore(state => state.advancedEditing)
   const isAddingNewField = useVisualEditorStore(state => state.isAddingNewField)
   const { emit } = useMittContext()

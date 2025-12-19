@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import s from './index.module.css'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type HeaderWrapperProps = {
   children: React.ReactNode
@@ -27,12 +27,10 @@ const HeaderWrapper = ({
   })
 
   return (
-    <div className={classNames(
-      'sticky left-0 right-0 top-0 z-[15] flex min-h-[56px] shrink-0 grow-0 basis-auto flex-col',
+    <div className={cn('sticky left-0 right-0 top-0 z-[30] flex min-h-[56px] shrink-0 grow-0 basis-auto flex-col',
       s.header,
       isBordered ? 'border-b border-divider-regular' : '',
-      hideHeader && (inWorkflowCanvas || isPipelineCanvas) && 'hidden',
-    )}
+      hideHeader && (inWorkflowCanvas || isPipelineCanvas) && 'hidden')}
     >
       {children}
     </div>

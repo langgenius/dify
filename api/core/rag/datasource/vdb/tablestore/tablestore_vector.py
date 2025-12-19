@@ -55,7 +55,7 @@ class TableStoreVector(BaseVector):
         self._normalize_full_text_bm25_score = config.normalize_full_text_bm25_score
         self._table_name = f"{collection_name}"
         self._index_name = f"{collection_name}_idx"
-        self._tags_field = f"{Field.METADATA_KEY.value}_tags"
+        self._tags_field = f"{Field.METADATA_KEY}_tags"
 
     def create_collection(self, embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
@@ -64,7 +64,7 @@ class TableStoreVector(BaseVector):
     def get_by_ids(self, ids: list[str]) -> list[Document]:
         docs = []
         request = BatchGetRowRequest()
-        columns_to_get = [Field.METADATA_KEY.value, Field.CONTENT_KEY.value]
+        columns_to_get = [Field.METADATA_KEY, Field.CONTENT_KEY]
         rows_to_get = [[("id", _id)] for _id in ids]
         request.add(TableInBatchGetRowItem(self._table_name, rows_to_get, columns_to_get, None, 1))
 
@@ -73,11 +73,7 @@ class TableStoreVector(BaseVector):
         for item in table_result:
             if item.is_ok and item.row:
                 kv = {k: v for k, v, _ in item.row.attribute_columns}
-                docs.append(
-                    Document(
-                        page_content=kv[Field.CONTENT_KEY.value], metadata=json.loads(kv[Field.METADATA_KEY.value])
-                    )
-                )
+                docs.append(Document(page_content=kv[Field.CONTENT_KEY], metadata=json.loads(kv[Field.METADATA_KEY])))
         return docs
 
     def get_type(self) -> str:
@@ -95,9 +91,9 @@ class TableStoreVector(BaseVector):
             self._write_row(
                 primary_key=uuids[i],
                 attributes={
-                    Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i],
-                    Field.METADATA_KEY.value: documents[i].metadata,
+                    Field.CONTENT_KEY: documents[i].page_content,
+                    Field.VECTOR: embeddings[i],
+                    Field.METADATA_KEY: documents[i].metadata,
                 },
             )
         return uuids
@@ -180,7 +176,7 @@ class TableStoreVector(BaseVector):
 
         field_schemas = [
             tablestore.FieldSchema(
-                Field.CONTENT_KEY.value,
+                Field.CONTENT_KEY,
                 tablestore.FieldType.TEXT,
                 analyzer=tablestore.AnalyzerType.MAXWORD,
                 index=True,
@@ -188,7 +184,7 @@ class TableStoreVector(BaseVector):
                 store=False,
             ),
             tablestore.FieldSchema(
-                Field.VECTOR.value,
+                Field.VECTOR,
                 tablestore.FieldType.VECTOR,
                 vector_options=tablestore.VectorOptions(
                     data_type=tablestore.VectorDataType.VD_FLOAT_32,
@@ -197,7 +193,7 @@ class TableStoreVector(BaseVector):
                 ),
             ),
             tablestore.FieldSchema(
-                Field.METADATA_KEY.value,
+                Field.METADATA_KEY,
                 tablestore.FieldType.KEYWORD,
                 index=True,
                 store=False,
@@ -233,15 +229,15 @@ class TableStoreVector(BaseVector):
         pk = [("id", primary_key)]
 
         tags = []
-        for key, value in attributes[Field.METADATA_KEY.value].items():
+        for key, value in attributes[Field.METADATA_KEY].items():
             tags.append(str(key) + "=" + str(value))
 
         attribute_columns = [
-            (Field.CONTENT_KEY.value, attributes[Field.CONTENT_KEY.value]),
-            (Field.VECTOR.value, json.dumps(attributes[Field.VECTOR.value])),
+            (Field.CONTENT_KEY, attributes[Field.CONTENT_KEY]),
+            (Field.VECTOR, json.dumps(attributes[Field.VECTOR])),
             (
-                Field.METADATA_KEY.value,
-                json.dumps(attributes[Field.METADATA_KEY.value]),
+                Field.METADATA_KEY,
+                json.dumps(attributes[Field.METADATA_KEY]),
             ),
             (self._tags_field, json.dumps(tags)),
         ]
@@ -270,7 +266,7 @@ class TableStoreVector(BaseVector):
                 index_name=self._index_name,
                 search_query=query,
                 columns_to_get=tablestore.ColumnsToGet(
-                    column_names=[Field.PRIMARY_KEY.value], return_type=tablestore.ColumnReturnType.SPECIFIED
+                    column_names=[Field.PRIMARY_KEY], return_type=tablestore.ColumnReturnType.SPECIFIED
                 ),
             )
 
@@ -288,7 +284,7 @@ class TableStoreVector(BaseVector):
         self, query_vector: list[float], document_ids_filter: list[str] | None, top_k: int, score_threshold: float
     ) -> list[Document]:
         knn_vector_query = tablestore.KnnVectorQuery(
-            field_name=Field.VECTOR.value,
+            field_name=Field.VECTOR,
             top_k=top_k,
             float32_query_vector=query_vector,
         )
@@ -311,8 +307,8 @@ class TableStoreVector(BaseVector):
                 for col in search_hit.row[1]:
                     ots_column_map[col[0]] = col[1]
 
-                vector_str = ots_column_map.get(Field.VECTOR.value)
-                metadata_str = ots_column_map.get(Field.METADATA_KEY.value)
+                vector_str = ots_column_map.get(Field.VECTOR)
+                metadata_str = ots_column_map.get(Field.METADATA_KEY)
 
                 vector = json.loads(vector_str) if vector_str else None
                 metadata = json.loads(metadata_str) if metadata_str else {}
@@ -321,7 +317,7 @@ class TableStoreVector(BaseVector):
 
                 documents.append(
                     Document(
-                        page_content=ots_column_map.get(Field.CONTENT_KEY.value) or "",
+                        page_content=ots_column_map.get(Field.CONTENT_KEY) or "",
                         vector=vector,
                         metadata=metadata,
                     )
@@ -343,7 +339,7 @@ class TableStoreVector(BaseVector):
         self, query: str, document_ids_filter: list[str] | None, top_k: int, score_threshold: float
     ) -> list[Document]:
         bool_query = tablestore.BoolQuery(must_queries=[], filter_queries=[], should_queries=[], must_not_queries=[])
-        bool_query.must_queries.append(tablestore.MatchQuery(text=query, field_name=Field.CONTENT_KEY.value))
+        bool_query.must_queries.append(tablestore.MatchQuery(text=query, field_name=Field.CONTENT_KEY))
 
         if document_ids_filter:
             bool_query.filter_queries.append(tablestore.TermsQuery(self._tags_field, document_ids_filter))
@@ -374,10 +370,10 @@ class TableStoreVector(BaseVector):
             for col in search_hit.row[1]:
                 ots_column_map[col[0]] = col[1]
 
-            metadata_str = ots_column_map.get(Field.METADATA_KEY.value)
+            metadata_str = ots_column_map.get(Field.METADATA_KEY)
             metadata = json.loads(metadata_str) if metadata_str else {}
 
-            vector_str = ots_column_map.get(Field.VECTOR.value)
+            vector_str = ots_column_map.get(Field.VECTOR)
             vector = json.loads(vector_str) if vector_str else None
 
             if score:
@@ -385,7 +381,7 @@ class TableStoreVector(BaseVector):
 
             documents.append(
                 Document(
-                    page_content=ots_column_map.get(Field.CONTENT_KEY.value) or "",
+                    page_content=ots_column_map.get(Field.CONTENT_KEY) or "",
                     vector=vector,
                     metadata=metadata,
                 )

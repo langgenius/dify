@@ -1,3 +1,4 @@
+import type { FC, Ref } from 'react'
 import { memo } from 'react'
 import {
   RiMicLine,
@@ -11,27 +12,24 @@ import Button from '@/app/components/base/button'
 import ActionButton from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 import type { FileUpload } from '@/app/components/base/features/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type OperationProps = {
   fileConfig?: FileUpload
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
   onSend: () => void
-  theme?: Theme | null
+  theme?: Theme | null,
+  ref?: Ref<HTMLDivElement>;
 }
-const Operation = (
-  {
-    ref,
-    fileConfig,
-    speechToTextConfig,
-    onShowVoiceInput,
-    onSend,
-    theme,
-  }: OperationProps & {
-    ref: React.RefObject<HTMLDivElement>;
-  },
-) => {
+const Operation: FC<OperationProps> = ({
+  ref,
+  fileConfig,
+  speechToTextConfig,
+  onShowVoiceInput,
+  onSend,
+  theme,
+}) => {
   return (
     <div
       className={cn(

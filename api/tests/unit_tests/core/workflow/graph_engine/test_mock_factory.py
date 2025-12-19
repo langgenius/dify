@@ -27,7 +27,8 @@ from .test_mock_nodes import (
 )
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -109,9 +110,6 @@ class MockNodeFactory(DifyNodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 mock_config=self.mock_config,
             )
-
-            # Initialize node with provided data
-            mock_instance.init_node_data(node_data)
 
             return mock_instance
 

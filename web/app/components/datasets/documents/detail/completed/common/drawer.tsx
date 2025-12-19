@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useKeyPress } from 'ahooks'
 import { useSegmentListContext } from '..'
 
@@ -42,6 +42,7 @@ const Drawer = ({
     if (!panelContent) return false
     const chunks = document.querySelectorAll('.chunk-card')
     const childChunks = document.querySelectorAll('.child-chunk')
+    const imagePreviewer = document.querySelector('.image-previewer')
     const isClickOnChunk = Array.from(chunks).some((chunk) => {
       return chunk && chunk.contains(target)
     })
@@ -50,7 +51,8 @@ const Drawer = ({
     })
     const reopenChunkDetail = (currSegment.showModal && isClickOnChildChunk)
       || (currChildChunk.showModal && isClickOnChunk && !isClickOnChildChunk) || (!isClickOnChunk && !isClickOnChildChunk)
-    return target && !panelContent.contains(target) && (!needCheckChunks || reopenChunkDetail)
+    const isClickOnImagePreviewer = imagePreviewer && imagePreviewer.contains(target)
+    return target && !panelContent.contains(target) && (!needCheckChunks || reopenChunkDetail) && !isClickOnImagePreviewer
   }, [currSegment, currChildChunk, needCheckChunks])
 
   const onDownCapture = useCallback((e: PointerEvent) => {

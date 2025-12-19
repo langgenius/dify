@@ -18,7 +18,7 @@ import { BlockEnum } from '../../types'
 import type { StartNodeType } from '../../nodes/start/types'
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
 import ChatWrapper from './chat-wrapper'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import Tooltip from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
@@ -39,7 +39,7 @@ const DebugAndPreview = () => {
   const selectedNode = nodes.find(node => node.data.selected)
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
-  const visibleVariables = variables.filter(v => v.hide !== true)
+  const visibleVariables = variables
 
   const [showConversationVariableModal, setShowConversationVariableModal] = useState(false)
 

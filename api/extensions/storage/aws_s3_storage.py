@@ -39,10 +39,10 @@ class AwsS3Storage(BaseStorage):
             self.client.head_bucket(Bucket=self.bucket_name)
         except ClientError as e:
             # if bucket not exists, create it
-            if e.response["Error"]["Code"] == "404":
+            if e.response.get("Error", {}).get("Code") == "404":
                 self.client.create_bucket(Bucket=self.bucket_name)
             # if bucket is not accessible, pass, maybe the bucket is existing but not accessible
-            elif e.response["Error"]["Code"] == "403":
+            elif e.response.get("Error", {}).get("Code") == "403":
                 pass
             else:
                 # other error, raise exception
@@ -55,7 +55,7 @@ class AwsS3Storage(BaseStorage):
         try:
             data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchKey":
+            if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
                 raise FileNotFoundError("File not found")
             else:
                 raise
@@ -66,7 +66,7 @@ class AwsS3Storage(BaseStorage):
             response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
             yield from response["Body"].iter_chunks()
         except ClientError as ex:
-            if ex.response["Error"]["Code"] == "NoSuchKey":
+            if ex.response.get("Error", {}).get("Code") == "NoSuchKey":
                 raise FileNotFoundError("file not found")
             elif "reached max retries" in str(ex):
                 raise ValueError("please do not request the same file too frequently")

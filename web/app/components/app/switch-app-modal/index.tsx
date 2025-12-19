@@ -6,7 +6,7 @@ import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import AppIconPicker from '../../base/app-icon-picker'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Checkbox from '@/app/components/base/checkbox'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -24,6 +24,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import AppIcon from '@/app/components/base/app-icon'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { noop } from 'lodash-es'
+import { AppModeEnum } from '@/types/app'
 
 type SwitchAppModalProps = {
   show: boolean
@@ -77,7 +78,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         isCurrentWorkspaceEditor,
         {
           id: newAppID,
-          mode: appDetail.mode === 'completion' ? 'workflow' : 'advanced-chat',
+          mode: appDetail.mode === AppModeEnum.COMPLETION ? AppModeEnum.WORKFLOW : AppModeEnum.ADVANCED_CHAT,
         },
         removeOriginal ? replace : push,
       )

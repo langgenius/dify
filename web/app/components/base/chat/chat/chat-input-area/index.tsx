@@ -6,6 +6,7 @@ import {
 import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
 import Recorder from 'js-audio-recorder'
+import { decode } from 'html-entities'
 import type {
   EnableType,
   OnSend,
@@ -15,7 +16,7 @@ import type { InputForm } from '../type'
 import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import {
@@ -78,11 +79,20 @@ const ChatInputArea = ({
     handleDropFile,
     handleClipboardPasteFile,
     isDragActive,
-  } = useFile(visionConfig!)
+  } = useFile(visionConfig!, false)
   const { checkInputsForm } = useCheckInputsForms()
   const historyRef = useRef([''])
   const [currentIndex, setCurrentIndex] = useState(-1)
   const isComposingRef = useRef(false)
+
+  const handleQueryChange = useCallback(
+    (value: string) => {
+      setQuery(value)
+      setTimeout(handleTextareaResize, 0)
+    },
+    [handleTextareaResize],
+  )
+
   const handleSend = () => {
     if (isResponding) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -101,7 +111,7 @@ const ChatInputArea = ({
       }
       if (checkInputsForm(inputs, inputsForm)) {
         onSend(query, files)
-        setQuery('')
+        handleQueryChange('')
         setFiles([])
       }
     }
@@ -131,19 +141,19 @@ const ChatInputArea = ({
       // When the cmd + up key is pressed, output the previous element
       if (currentIndex > 0) {
         setCurrentIndex(currentIndex - 1)
-        setQuery(historyRef.current[currentIndex - 1])
+        handleQueryChange(historyRef.current[currentIndex - 1])
       }
     }
     else if (e.key === 'ArrowDown' && !e.shiftKey && !e.nativeEvent.isComposing && e.metaKey) {
       // When the cmd + down key is pressed, output the next element
       if (currentIndex < historyRef.current.length - 1) {
         setCurrentIndex(currentIndex + 1)
-        setQuery(historyRef.current[currentIndex + 1])
+        handleQueryChange(historyRef.current[currentIndex + 1])
       }
       else if (currentIndex === historyRef.current.length - 1) {
         // If it is the last element, clear the input box
         setCurrentIndex(historyRef.current.length)
-        setQuery('')
+        handleQueryChange('')
       }
     }
   }
@@ -171,7 +181,7 @@ const ChatInputArea = ({
     <>
       <div
         className={cn(
-          'relative z-10 rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
+          'relative z-10 overflow-hidden rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur pb-[9px] shadow-md',
           isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
@@ -194,15 +204,11 @@ const ChatInputArea = ({
                 className={cn(
                   'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
                 )}
-                placeholder={t('common.chat.inputPlaceholder', { botName }) || ''}
+                placeholder={decode(t('common.chat.inputPlaceholder', { botName }) || '')}
                 autoFocus
                 minRows={1}
-                onResize={handleTextareaResize}
                 value={query}
-                onChange={(e) => {
-                  setQuery(e.target.value)
-                  setTimeout(handleTextareaResize, 0)
-                }}
+                onChange={e => handleQueryChange(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onCompositionStart={handleCompositionStart}
                 onCompositionEnd={handleCompositionEnd}
@@ -221,7 +227,7 @@ const ChatInputArea = ({
             showVoiceInput && (
               <VoiceInput
                 onCancel={() => setShowVoiceInput(false)}
-                onConverted={text => setQuery(text)}
+                onConverted={text => handleQueryChange(text)}
               />
             )
           }

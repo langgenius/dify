@@ -15,7 +15,7 @@ from core.file import file_manager
 from core.file.enums import FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
-from core.workflow.entities import VariablePool
+from core.workflow.runtime import VariablePool
 
 from .entities import (
     HttpRequestNodeAuthorization,
@@ -87,7 +87,7 @@ class Executor:
                 node_data.authorization.config.api_key
             ).text
 
-        self.url: str = node_data.url
+        self.url = node_data.url
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
@@ -349,11 +349,10 @@ class Executor:
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
             "ssl_verify": self.ssl_verify,
             "follow_redirects": True,
-            "max_retries": self.max_retries,
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response: httpx.Response = _METHOD_MAP[method_lc](**request_args)
+            response: httpx.Response = _METHOD_MAP[method_lc](**request_args, max_retries=self.max_retries)
         except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
@@ -413,16 +412,20 @@ class Executor:
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
                 # decode content safely
-                try:
-                    body_string += content.decode("utf-8")
-                except UnicodeDecodeError:
-                    body_string += content.decode("utf-8", errors="replace")
-                body_string += "\r\n"
+                # Do not decode binary content; use a placeholder with file metadata instead.
+                # Includes filename, size, and MIME type for better logging context.
+                body_string += (
+                    f"<file_content_binary: '{file_entry[1][0] or 'unknown'}', "
+                    f"type='{file_entry[1][2] if len(file_entry[1]) > 2 else 'unknown'}', "
+                    f"size={len(content)} bytes>\r\n"
+                )
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
+                # If content is bytes, do not decode it; show a placeholder with size.
+                # Provides content size information for binary data without exposing the raw bytes.
                 if isinstance(self.content, bytes):
-                    body_string = self.content.decode("utf-8", errors="replace")
+                    body_string = f"<binary_content: size={len(self.content)} bytes>"
                 else:
                     body_string = self.content
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":

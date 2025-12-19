@@ -232,10 +232,14 @@ export type PluginProvider = {
 export type FileUploadConfigResponse = {
   batch_count_limit: number
   image_file_size_limit?: number | string // default is 10MB
+  image_file_batch_limit: number // default is 10, for dataset attachment upload only
+  single_chunk_attachment_limit: number // default is 10, for dataset attachment upload only
+  attachment_image_file_size_limit: number // default is 2MB, for dataset attachment upload only
   file_size_limit: number // default is 15MB
   audio_file_size_limit?: number // default is 50MB
   video_file_size_limit?: number // default is 100MB
   workflow_file_upload_limit?: number // default is 10
+  file_upload_limit: number // default is 5
 }
 
 export type InvitationResult = {
@@ -302,7 +306,7 @@ export type ModerationService = (
   body: {
     app_id: string
     text: string
-  }
+  },
 ) => Promise<ModerateResponse>
 
 export type StructuredOutputRulesRequestBody = {

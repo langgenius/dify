@@ -1,6 +1,5 @@
 import {
   memo,
-  useCallback,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -21,7 +20,7 @@ import {
 import { THEME_MAP } from './constants'
 import { useNote } from './hooks'
 import type { NoteNodeType } from './types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const Icon = () => {
   return (
@@ -50,10 +49,6 @@ const NoteNode = ({
     handleNodeDelete,
   } = useNodesInteractions()
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
-
-  const handleDeleteNode = useCallback(() => {
-    handleNodeDelete(id)
-  }, [id, handleNodeDelete])
 
   useClickAway(() => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { selected: false } })
@@ -102,9 +97,9 @@ const NoteNode = ({
                 <NoteEditorToolbar
                   theme={theme}
                   onThemeChange={handleThemeChange}
-                  onCopy={handleNodesCopy}
-                  onDuplicate={handleNodesDuplicate}
-                  onDelete={handleDeleteNode}
+                  onCopy={() => handleNodesCopy(id)}
+                  onDuplicate={() => handleNodesDuplicate(id)}
+                  onDelete={() => handleNodeDelete(id)}
                   showAuthor={data.showAuthor}
                   onShowAuthorChange={handleShowAuthorChange}
                 />

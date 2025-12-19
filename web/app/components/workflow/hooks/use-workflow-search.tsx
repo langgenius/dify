@@ -8,11 +8,16 @@ import { workflowNodesAction } from '@/app/components/goto-anything/actions/work
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { setupNodeSelectionListener } from '../utils/node-navigation'
 import { BlockEnum } from '../types'
-import { useStore } from '../store'
 import type { Emoji } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { canFindTool } from '@/utils'
 import type { LLMNodeType } from '../nodes/llm/types'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
 
 /**
  * Hook to register workflow nodes search functionality
@@ -22,23 +27,23 @@ export const useWorkflowSearch = () => {
   const { handleNodeSelect } = useNodesInteractions()
 
   // Filter and process nodes for search
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
 
   // Extract tool icon logic - clean separation of concerns
   const getToolIcon = useCallback((nodeData: CommonNodeType): string | Emoji | undefined => {
     if (nodeData?.type !== BlockEnum.Tool) return undefined
 
     const toolCollections: Record<string, any[]> = {
-      [CollectionType.builtIn]: buildInTools,
-      [CollectionType.custom]: customTools,
-      [CollectionType.mcp]: mcpTools,
+      [CollectionType.builtIn]: buildInTools || [],
+      [CollectionType.custom]: customTools || [],
+      [CollectionType.mcp]: mcpTools || [],
     }
 
     const targetTools = (nodeData.provider_type && toolCollections[nodeData.provider_type]) || workflowTools
-    return targetTools.find((tool: any) => canFindTool(tool.id, nodeData.provider_id))?.icon
+    return targetTools?.find((tool: any) => canFindTool(tool.id, nodeData.provider_id))?.icon
   }, [buildInTools, customTools, workflowTools, mcpTools])
 
   // Extract model info logic - clean extraction

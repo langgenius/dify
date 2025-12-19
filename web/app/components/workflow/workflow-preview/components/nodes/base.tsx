@@ -6,7 +6,7 @@ import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import type {
   NodeProps,
@@ -23,8 +23,10 @@ import {
 } from '../node-handle'
 import ErrorHandleOnNode from '../error-handle-on-node'
 
+type NodeChildElement = ReactElement<Partial<NodeProps>>
+
 type NodeCardProps = NodeProps & {
-  children?: ReactElement
+  children?: NodeChildElement
 }
 
 const BaseCard = ({

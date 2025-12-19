@@ -5,6 +5,7 @@ const translation = {
     saved: 'Salvat',
     create: 'Creat',
     remove: 'Eliminat',
+    actionFailed: 'Acțiunea a eșuat',
   },
   operation: {
     create: 'Creează',
@@ -61,10 +62,21 @@ const translation = {
     deSelectAll: 'Deselectați tot',
     selectAll: 'Selectați tot',
     config: 'Configurație',
+    yes: 'Da',
+    deleteConfirmTitle: 'Ștergere?',
+    no: 'Nu',
+    confirmAction: 'Vă rugăm să confirmați acțiunea dumneavoastră.',
+    noSearchResults: 'Nu au fost găsite {{content}}',
+    resetKeywords: 'Resetează cuvintele cheie',
+    selectCount: '{{count}} Selectat',
+    searchCount: 'Găsește {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Acum',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
     select: 'Vă rugăm să selectați',
+    search: 'Caută...',
   },
   voice: {
     language: {
@@ -87,6 +99,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turcă',
       faIR: 'Persană',
+      slSI: 'Slovenă',
+      arTN: 'Arabă tunisiană',
       plPL: 'Poloneză',
     },
   },
@@ -157,7 +171,6 @@ const translation = {
     workspace: 'Spațiu de lucru',
     createWorkspace: 'Creează Spațiu de lucru',
     helpCenter: 'Ajutor',
-    communityFeedback: 'Feedback',
     roadmap: 'Plan de acțiune',
     community: 'Comunitate',
     about: 'Despre',
@@ -165,6 +178,8 @@ const translation = {
     github: 'GitHub',
     support: 'Suport',
     compliance: 'Conformitate',
+    contactUs: 'Contactați-ne',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'CONT',
@@ -501,6 +516,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Acreditarea este în uz și nu poate fi ștearsă',
     },
     parametersInvalidRemoved: 'Unele parametrii sunt invalizi și au fost eliminați.',
+    installDataSourceProvider: 'Instalați furnizorii de surse de date',
   },
   dataSource: {
     add: 'Adăugați o sursă de date',
@@ -720,6 +736,8 @@ const translation = {
     pasteFileLinkInvalid: 'Link fișier nevalid',
     uploadFromComputerLimit: 'Încărcarea fișierului nu poate depăși {{size}}',
     pasteFileLink: 'Lipiți linkul fișierului',
+    fileExtensionBlocked: 'Acest tip de fișier este blocat din motive de securitate',
+    uploadDisabled: 'Încărcarea fișierelor este dezactivată',
   },
   license: {
     expiring: 'Expiră într-o zi',
@@ -761,6 +779,13 @@ const translation = {
   },
   label: {
     optional: '(opțional)',
+  },
+  noData: 'Fără date',
+  dynamicSelect: {
+    error: 'Încărcarea opțiunilor a eșuat',
+    noData: 'Nicio opțiune disponibilă',
+    loading: 'Se încarcă opțiuni...',
+    selected: '{{count}} selectat',
   },
 }
 

@@ -5,6 +5,7 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
+import type { ModelFeatureEnum } from '../declarations'
 import { useCurrentProviderAndModel } from '../hooks'
 import ModelTrigger from './model-trigger'
 import EmptyTrigger from './empty-trigger'
@@ -15,7 +16,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
@@ -24,7 +25,7 @@ type ModelSelectorProps = {
   popupClassName?: string
   onSelect?: (model: DefaultModel) => void
   readonly?: boolean
-  scopeFeatures?: string[]
+  scopeFeatures?: ModelFeatureEnum[]
   deprecatedClassName?: string
   showDeprecatedWarnIcon?: boolean
 }
@@ -69,7 +70,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
       placement='bottom-start'
       offset={4}
     >
-      <div className={classNames('relative')}>
+      <div className={cn('relative')}>
         <PortalToFollowElemTrigger
           onClick={handleToggle}
           className='block'

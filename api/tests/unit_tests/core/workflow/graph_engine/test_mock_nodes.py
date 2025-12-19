@@ -24,7 +24,8 @@ from core.workflow.nodes.template_transform import TemplateTransformNode
 from core.workflow.nodes.tool import ToolNode
 
 if TYPE_CHECKING:
-    from core.workflow.entities import GraphInitParams, GraphRuntimeState
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
 
     from .test_mock_config import MockConfig
 
@@ -91,7 +92,7 @@ class MockLLMNode(MockNodeMixin, LLMNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock LLM node."""
@@ -188,7 +189,7 @@ class MockAgentNode(MockNodeMixin, AgentNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock agent node."""
@@ -240,7 +241,7 @@ class MockToolNode(MockNodeMixin, ToolNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock tool node."""
@@ -293,7 +294,7 @@ class MockKnowledgeRetrievalNode(MockNodeMixin, KnowledgeRetrievalNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock knowledge retrieval node."""
@@ -350,7 +351,7 @@ class MockHttpRequestNode(MockNodeMixin, HttpRequestNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock HTTP request node."""
@@ -403,7 +404,7 @@ class MockQuestionClassifierNode(MockNodeMixin, QuestionClassifierNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock question classifier node."""
@@ -451,7 +452,7 @@ class MockParameterExtractorNode(MockNodeMixin, ParameterExtractorNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock parameter extractor node."""
@@ -501,7 +502,7 @@ class MockDocumentExtractorNode(MockNodeMixin, DocumentExtractorNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> Generator:
         """Execute mock document extractor node."""
@@ -556,15 +557,16 @@ class MockIterationNode(MockNodeMixin, IterationNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _create_graph_engine(self, index: int, item: Any):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
+        from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
         from core.workflow.graph_engine import GraphEngine
         from core.workflow.graph_engine.command_channels import InMemoryChannel
+        from core.workflow.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
@@ -630,15 +632,16 @@ class MockLoopNode(MockNodeMixin, LoopNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _create_graph_engine(self, start_at, root_node_id: str):
         """Create a graph engine with MockNodeFactory instead of DifyNodeFactory."""
         # Import dependencies
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
+        from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
         from core.workflow.graph_engine import GraphEngine
         from core.workflow.graph_engine.command_channels import InMemoryChannel
+        from core.workflow.runtime import GraphRuntimeState
 
         # Import our MockNodeFactory instead of DifyNodeFactory
         from .test_mock_factory import MockNodeFactory
@@ -691,7 +694,7 @@ class MockTemplateTransformNode(MockNodeMixin, TemplateTransformNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """Execute mock template transform node."""
@@ -777,7 +780,7 @@ class MockCodeNode(MockNodeMixin, CodeNode):
     @classmethod
     def version(cls) -> str:
         """Return the version of this mock node."""
-        return "mock-1"
+        return "1"
 
     def _run(self) -> NodeRunResult:
         """Execute mock code node."""

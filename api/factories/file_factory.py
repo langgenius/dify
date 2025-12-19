@@ -1,5 +1,7 @@
+import logging
 import mimetypes
 import os
+import re
 import urllib.parse
 import uuid
 from collections.abc import Callable, Mapping, Sequence
@@ -16,12 +18,14 @@ from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
 
+logger = logging.getLogger(__name__)
+
 
 def build_from_message_files(
     *,
     message_files: Sequence["MessageFile"],
     tenant_id: str,
-    config: FileUploadConfig,
+    config: FileUploadConfig | None = None,
 ) -> Sequence[File]:
     results = [
         build_from_message_file(message_file=file, tenant_id=tenant_id, config=config)
@@ -35,17 +39,20 @@ def build_from_message_file(
     *,
     message_file: "MessageFile",
     tenant_id: str,
-    config: FileUploadConfig,
+    config: FileUploadConfig | None,
 ):
     mapping = {
         "transfer_method": message_file.transfer_method,
         "url": message_file.url,
-        "id": message_file.id,
         "type": message_file.type,
     }
 
+    # Only include id if it exists (message_file has been committed to DB)
+    if message_file.id:
+        mapping["id"] = message_file.id
+
     # Set the correct ID field based on transfer method
-    if message_file.transfer_method == FileTransferMethod.TOOL_FILE.value:
+    if message_file.transfer_method == FileTransferMethod.TOOL_FILE:
         mapping["tool_file_id"] = message_file.upload_file_id
     else:
         mapping["upload_file_id"] = message_file.upload_file_id
@@ -64,7 +71,10 @@ def build_from_mapping(
     config: FileUploadConfig | None = None,
     strict_type_validation: bool = False,
 ) -> File:
-    transfer_method = FileTransferMethod.value_of(mapping.get("transfer_method"))
+    transfer_method_value = mapping.get("transfer_method")
+    if not transfer_method_value:
+        raise ValueError("transfer_method is required in file mapping")
+    transfer_method = FileTransferMethod.value_of(transfer_method_value)
 
     build_functions: dict[FileTransferMethod, Callable] = {
         FileTransferMethod.LOCAL_FILE: _build_from_local_file,
@@ -104,6 +114,8 @@ def build_from_mappings(
 ) -> Sequence[File]:
     # TODO(QuantumGhost): Performance concern - each mapping triggers a separate database query.
     # Implement batch processing to reduce database load when handling multiple files.
+    # Filter out None/empty mappings to avoid errors
+    valid_mappings = [m for m in mappings if m and m.get("transfer_method")]
     files = [
         build_from_mapping(
             mapping=mapping,
@@ -111,7 +123,7 @@ def build_from_mappings(
             config=config,
             strict_type_validation=strict_type_validation,
         )
-        for mapping in mappings
+        for mapping in valid_mappings
     ]
 
     if (
@@ -158,7 +170,10 @@ def _build_from_local_file(
     if strict_type_validation and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -206,9 +221,10 @@ def _build_from_remote_url(
         if strict_type_validation and specified_type and detected_file_type.value != specified_type:
             raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-        file_type = (
-            FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
-        )
+        if specified_type and specified_type != "custom":
+            file_type = FileType(specified_type)
+        else:
+            file_type = detected_file_type
 
         return File(
             id=mapping.get("id"),
@@ -230,9 +246,16 @@ def _build_from_remote_url(
     mime_type, filename, file_size = _get_remote_file_info(url)
     extension = mimetypes.guess_extension(mime_type) or ("." + filename.split(".")[-1] if "." in filename else ".bin")
 
-    file_type = _standardize_file_type(extension=extension, mime_type=mime_type)
-    if file_type.value != mapping.get("type", "custom"):
+    detected_file_type = _standardize_file_type(extension=extension, mime_type=mime_type)
+    specified_type = mapping.get("type")
+
+    if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
+
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -249,15 +272,47 @@ def _build_from_remote_url(
 
 
 def _extract_filename(url_path: str, content_disposition: str | None) -> str | None:
-    filename = None
+    filename: str | None = None
     # Try to extract from Content-Disposition header first
     if content_disposition:
-        _, params = parse_options_header(content_disposition)
-        # RFC 5987 https://datatracker.ietf.org/doc/html/rfc5987: filename* takes precedence over filename
-        filename = params.get("filename*") or params.get("filename")
+        # Manually extract filename* parameter since parse_options_header doesn't support it
+        filename_star_match = re.search(r"filename\*=([^;]+)", content_disposition)
+        if filename_star_match:
+            raw_star = filename_star_match.group(1).strip()
+            # Remove trailing quotes if present
+            raw_star = raw_star.removesuffix('"')
+            # format: charset'lang'value
+            try:
+                parts = raw_star.split("'", 2)
+                charset = (parts[0] or "utf-8").lower() if len(parts) >= 1 else "utf-8"
+                value = parts[2] if len(parts) == 3 else parts[-1]
+                filename = urllib.parse.unquote(value, encoding=charset, errors="replace")
+            except Exception:
+                # Fallback: try to extract value after the last single quote
+                if "''" in raw_star:
+                    filename = urllib.parse.unquote(raw_star.split("''")[-1])
+                else:
+                    filename = urllib.parse.unquote(raw_star)
+
+        if not filename:
+            # Fallback to regular filename parameter
+            _, params = parse_options_header(content_disposition)
+            raw = params.get("filename")
+            if raw:
+                # Strip surrounding quotes and percent-decode if present
+                if len(raw) >= 2 and raw[0] == raw[-1] == '"':
+                    raw = raw[1:-1]
+                filename = urllib.parse.unquote(raw)
     # Fallback to URL path if no filename from header
     if not filename:
-        filename = os.path.basename(url_path)
+        candidate = os.path.basename(url_path)
+        filename = urllib.parse.unquote(candidate) if candidate else None
+    # Defense-in-depth: ensure basename only
+    if filename:
+        filename = os.path.basename(filename)
+        # Return None if filename is empty or only whitespace
+        if not filename or not filename.strip():
+            filename = None
     return filename or None
 
 
@@ -304,15 +359,20 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
+    # Backward/interop compatibility: allow tool_file_id to come from related_id or URL
+    tool_file_id = mapping.get("tool_file_id")
+
+    if not tool_file_id:
+        raise ValueError(f"ToolFile {tool_file_id} not found")
     tool_file = db.session.scalar(
         select(ToolFile).where(
-            ToolFile.id == mapping.get("tool_file_id"),
+            ToolFile.id == tool_file_id,
             ToolFile.tenant_id == tenant_id,
         )
     )
 
     if tool_file is None:
-        raise ValueError(f"ToolFile {mapping.get('tool_file_id')} not found")
+        raise ValueError(f"ToolFile {tool_file_id} not found")
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
@@ -323,7 +383,10 @@ def _build_from_tool_file(
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM else detected_file_type
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("id"),
@@ -347,10 +410,13 @@ def _build_from_datasource_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
+    datasource_file_id = mapping.get("datasource_file_id")
+    if not datasource_file_id:
+        raise ValueError(f"DatasourceFile {datasource_file_id} not found")
     datasource_file = (
         db.session.query(UploadFile)
         .where(
-            UploadFile.id == mapping.get("datasource_file_id"),
+            UploadFile.id == datasource_file_id,
             UploadFile.tenant_id == tenant_id,
         )
         .first()
@@ -368,9 +434,10 @@ def _build_from_datasource_file(
     if strict_type_validation and specified_type and detected_file_type.value != specified_type:
         raise ValueError("Detected file type does not match the specified type. Please verify the file.")
 
-    file_type = (
-        FileType(specified_type) if specified_type and specified_type != FileType.CUSTOM.value else detected_file_type
-    )
+    if specified_type and specified_type != "custom":
+        file_type = FileType(specified_type)
+    else:
+        file_type = detected_file_type
 
     return File(
         id=mapping.get("datasource_file_id"),

@@ -1,5 +1,5 @@
 import React from 'react'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import usePagination from './hook'
 import type {
   ButtonProps,
@@ -30,7 +30,7 @@ export const PrevButton = ({
   className,
   children,
   dataTestId,
-  as = <button />,
+  as = <button type="button" />,
   ...buttonProps
 }: ButtonProps) => {
   const pagination = React.useContext(PaginationContext)
@@ -65,7 +65,7 @@ export const NextButton = ({
   className,
   children,
   dataTestId,
-  as = <button />,
+  as = <button type="button" />,
   ...buttonProps
 }: ButtonProps) => {
   const pagination = React.useContext(PaginationContext)

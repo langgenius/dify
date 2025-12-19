@@ -51,7 +51,7 @@ export const useFieldList = ({
 
   const handleListSortChange = useCallback((list: SortableItem[]) => {
     const newInputFields = list.map((item) => {
-      const { id, chosen, selected, ...filed } = item
+      const { id: _id, chosen: _chosen, selected: _selected, ...filed } = item
       return filed
     })
     handleInputFieldsChange(newInputFields)

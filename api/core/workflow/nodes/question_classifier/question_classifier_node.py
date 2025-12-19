@@ -1,4 +1,5 @@
 import json
+import re
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -12,14 +13,13 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities import GraphInitParams
 from core.workflow.enums import (
-    ErrorStrategy,
     NodeExecutionType,
     NodeType,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.node_events import ModelInvokeCompletedEvent, NodeRunResult
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig, VariableSelector
+from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from core.workflow.nodes.llm import LLMNode, LLMNodeChatModelMessage, LLMNodeCompletionModelPromptTemplate, llm_utils
@@ -40,14 +40,12 @@ from .template_prompts import (
 
 if TYPE_CHECKING:
     from core.file.models import File
-    from core.workflow.entities import GraphRuntimeState
+    from core.workflow.runtime import GraphRuntimeState
 
 
-class QuestionClassifierNode(Node):
+class QuestionClassifierNode(Node[QuestionClassifierNodeData]):
     node_type = NodeType.QUESTION_CLASSIFIER
     execution_type = NodeExecutionType.BRANCH
-
-    _node_data: QuestionClassifierNodeData
 
     _file_outputs: list["File"]
     _llm_file_saver: LLMFileSaver
@@ -68,7 +66,7 @@ class QuestionClassifierNode(Node):
             graph_runtime_state=graph_runtime_state,
         )
         # LLM file outputs, used for MultiModal outputs.
-        self._file_outputs: list[File] = []
+        self._file_outputs = []
 
         if llm_file_saver is None:
             llm_file_saver = FileSaverImpl(
@@ -77,33 +75,12 @@ class QuestionClassifierNode(Node):
             )
         self._llm_file_saver = llm_file_saver
 
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = QuestionClassifierNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
-
     @classmethod
     def version(cls):
         return "1"
 
     def _run(self):
-        node_data = self._node_data
+        node_data = self.node_data
         variable_pool = self.graph_runtime_state.variable_pool
 
         # extract variables
@@ -111,9 +88,9 @@ class QuestionClassifierNode(Node):
         query = variable.value if variable else None
         variables = {"query": query}
         # fetch model config
-        model_instance, model_config = LLMNode._fetch_model_config(
-            node_data_model=node_data.model,
+        model_instance, model_config = llm_utils.fetch_model_config(
             tenant_id=self.tenant_id,
+            node_data_model=node_data.model,
         )
         # fetch memory
         memory = llm_utils.fetch_memory(
@@ -192,13 +169,19 @@ class QuestionClassifierNode(Node):
                     finish_reason = event.finish_reason
                     break
 
-            category_name = node_data.classes[0].name
-            category_id = node_data.classes[0].id
+            rendered_classes = [
+                c.model_copy(update={"name": variable_pool.convert_template(c.name).text}) for c in node_data.classes
+            ]
+
+            category_name = rendered_classes[0].name
+            category_id = rendered_classes[0].id
+            if "<think>" in result_text:
+                result_text = re.sub(r"<think[^>]*>[\s\S]*?</think>", "", result_text, flags=re.IGNORECASE)
             result_text_json = parse_and_check_json_markdown(result_text, [])
             # result_text_json = json.loads(result_text.strip('```JSON\n'))
             if "category_name" in result_text_json and "category_id" in result_text_json:
                 category_id_result = result_text_json["category_id"]
-                classes = node_data.classes
+                classes = rendered_classes
                 classes_map = {class_.id: class_.name for class_ in classes}
                 category_ids = [_class.id for _class in classes]
                 if category_id_result in category_ids:
@@ -238,6 +221,7 @@ class QuestionClassifierNode(Node):
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
                 error=str(e),
+                error_type=type(e).__name__,
                 metadata={
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: usage.total_price,

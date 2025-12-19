@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import type { FC } from 'react'
 import { useDebounceFn } from 'ahooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -25,7 +25,7 @@ const PromptEditorHeightResizeWrap: FC<Props> = ({
 }) => {
   const [clientY, setClientY] = useState(0)
   const [isResizing, setIsResizing] = useState(false)
-  const [prevUserSelectStyle, setPrevUserSelectStyle] = useState(getComputedStyle(document.body).userSelect)
+  const [prevUserSelectStyle, setPrevUserSelectStyle] = useState(() => getComputedStyle(document.body).userSelect)
   const [oldHeight, setOldHeight] = useState(height)
 
   const handleStartResize = useCallback((e: React.MouseEvent<HTMLElement>) => {

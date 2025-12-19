@@ -9,7 +9,7 @@ import Actions from './actions'
 import AdvancedActions from './advanced-actions'
 import AdvancedOptions, { type AdvancedOptionsType } from './advanced-options'
 import { useTranslation } from 'react-i18next'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useVisualEditorStore } from '../store'
 import { useMittContext } from '../context'
 import { useUnmount } from 'ahooks'
@@ -87,8 +87,10 @@ const EditCard: FC<EditCardProps> = ({
   })
 
   useSubscribe('fieldChangeSuccess', () => {
-    isAddingNewField && setIsAddingNewField(false)
-    advancedEditing && setAdvancedEditing(false)
+    if (isAddingNewField)
+      setIsAddingNewField(false)
+    if (advancedEditing)
+      setAdvancedEditing(false)
   })
 
   const emitPropertyNameChange = useCallback(() => {
@@ -120,7 +122,8 @@ const EditCard: FC<EditCardProps> = ({
   }, [emit, path, parentPath, fields, currentFields])
 
   const handlePropertyNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setCurrentFields(prev => ({ ...prev, name: e.target.value }))
+    // fix: when user add name contains space, the variable reference will not work
+    setCurrentFields(prev => ({ ...prev, name: e.target.value?.trim() }))
   }, [])
 
   const handlePropertyNameBlur = useCallback(() => {
@@ -150,14 +153,16 @@ const EditCard: FC<EditCardProps> = ({
   }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
 
   const handleAdvancedOptionsChange = useCallback((options: AdvancedOptionsType) => {
-    let enumValue: any = options.enum
-    if (enumValue === '') {
+    let enumValue: SchemaEnumType | undefined
+    if (options.enum === '') {
       enumValue = undefined
     }
     else {
-      enumValue = options.enum.replace(/\s/g, '').split(',')
+      const stringArray = options.enum.replace(/\s/g, '').split(',')
       if (currentFields.type === Type.number)
-        enumValue = (enumValue as SchemaEnumType).map(value => Number(value)).filter(num => !Number.isNaN(num))
+        enumValue = stringArray.map(value => Number(value)).filter(num => !Number.isNaN(num))
+      else
+        enumValue = stringArray
     }
     setCurrentFields(prev => ({ ...prev, enum: enumValue }))
     if (isAdvancedEditing) return
@@ -250,7 +255,7 @@ const EditCard: FC<EditCardProps> = ({
       </div>
 
       {(fields.description || isAdvancedEditing) && (
-        <div className={classNames('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
+        <div className={cn('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
             value={currentFields.description}
             className='system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-none placeholder:text-text-placeholder'

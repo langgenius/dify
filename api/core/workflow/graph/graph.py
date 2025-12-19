@@ -3,11 +3,12 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Protocol, cast, final
 
-from core.workflow.enums import NodeExecutionType, NodeState, NodeType
+from core.workflow.enums import ErrorStrategy, NodeExecutionType, NodeState, NodeType
 from core.workflow.nodes.base.node import Node
 from libs.typing import is_str, is_str_dict
 
 from .edge import Edge
+from .validation import get_graph_validator
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +117,7 @@ class Graph:
             node_type = node_data.get("type")
             if not isinstance(node_type, str):
                 continue
-            if node_type in [NodeType.START, NodeType.DATASOURCE]:
+            if NodeType(node_type).is_start_node:
                 start_node_id = nid
                 break
 
@@ -194,6 +195,23 @@ class Graph:
             nodes[node_id] = node_instance
 
         return nodes
+
+    @classmethod
+    def new(cls) -> "GraphBuilder":
+        """Create a fluent builder for assembling a graph programmatically."""
+
+        return GraphBuilder(graph_cls=cls)
+
+    @classmethod
+    def _promote_fail_branch_nodes(cls, nodes: dict[str, Node]) -> None:
+        """
+        Promote nodes configured with FAIL_BRANCH error strategy to branch execution type.
+
+        :param nodes: mapping of node ID to node instance
+        """
+        for node in nodes.values():
+            if node.error_strategy == ErrorStrategy.FAIL_BRANCH:
+                node.execution_type = NodeExecutionType.BRANCH
 
     @classmethod
     def _mark_inactive_root_branches(
@@ -301,6 +319,9 @@ class Graph:
         # Create node instances
         nodes = cls._create_node_instances(node_configs_map, node_factory)
 
+        # Promote fail-branch nodes to branch execution type at graph level
+        cls._promote_fail_branch_nodes(nodes)
+
         # Get root node instance
         root_node = nodes[root_node_id]
 
@@ -308,13 +329,18 @@ class Graph:
         cls._mark_inactive_root_branches(nodes, edges, in_edges, out_edges, root_node_id)
 
         # Create and return the graph
-        return cls(
+        graph = cls(
             nodes=nodes,
             edges=edges,
             in_edges=in_edges,
             out_edges=out_edges,
             root_node=root_node,
         )
+
+        # Validate the graph structure using built-in validators
+        get_graph_validator().validate(graph)
+
+        return graph
 
     @property
     def node_ids(self) -> list[str]:
@@ -344,3 +370,96 @@ class Graph:
         """
         edge_ids = self.in_edges.get(node_id, [])
         return [self.edges[eid] for eid in edge_ids if eid in self.edges]
+
+
+@final
+class GraphBuilder:
+    """Fluent helper for constructing simple graphs, primarily for tests."""
+
+    def __init__(self, *, graph_cls: type[Graph]):
+        self._graph_cls = graph_cls
+        self._nodes: list[Node] = []
+        self._nodes_by_id: dict[str, Node] = {}
+        self._edges: list[Edge] = []
+        self._edge_counter = 0
+
+    def add_root(self, node: Node) -> "GraphBuilder":
+        """Register the root node. Must be called exactly once."""
+
+        if self._nodes:
+            raise ValueError("Root node has already been added")
+        self._register_node(node)
+        self._nodes.append(node)
+        return self
+
+    def add_node(
+        self,
+        node: Node,
+        *,
+        from_node_id: str | None = None,
+        source_handle: str = "source",
+    ) -> "GraphBuilder":
+        """Append a node and connect it from the specified predecessor."""
+
+        if not self._nodes:
+            raise ValueError("Root node must be added before adding other nodes")
+
+        predecessor_id = from_node_id or self._nodes[-1].id
+        if predecessor_id not in self._nodes_by_id:
+            raise ValueError(f"Predecessor node '{predecessor_id}' not found")
+
+        predecessor = self._nodes_by_id[predecessor_id]
+        self._register_node(node)
+        self._nodes.append(node)
+
+        edge_id = f"edge_{self._edge_counter}"
+        self._edge_counter += 1
+        edge = Edge(id=edge_id, tail=predecessor.id, head=node.id, source_handle=source_handle)
+        self._edges.append(edge)
+
+        return self
+
+    def connect(self, *, tail: str, head: str, source_handle: str = "source") -> "GraphBuilder":
+        """Connect two existing nodes without adding a new node."""
+
+        if tail not in self._nodes_by_id:
+            raise ValueError(f"Tail node '{tail}' not found")
+        if head not in self._nodes_by_id:
+            raise ValueError(f"Head node '{head}' not found")
+
+        edge_id = f"edge_{self._edge_counter}"
+        self._edge_counter += 1
+        edge = Edge(id=edge_id, tail=tail, head=head, source_handle=source_handle)
+        self._edges.append(edge)
+
+        return self
+
+    def build(self) -> Graph:
+        """Materialize the graph instance from the accumulated nodes and edges."""
+
+        if not self._nodes:
+            raise ValueError("Cannot build an empty graph")
+
+        nodes = {node.id: node for node in self._nodes}
+        edges = {edge.id: edge for edge in self._edges}
+        in_edges: dict[str, list[str]] = defaultdict(list)
+        out_edges: dict[str, list[str]] = defaultdict(list)
+
+        for edge in self._edges:
+            out_edges[edge.tail].append(edge.id)
+            in_edges[edge.head].append(edge.id)
+
+        return self._graph_cls(
+            nodes=nodes,
+            edges=edges,
+            in_edges=dict(in_edges),
+            out_edges=dict(out_edges),
+            root_node=self._nodes[0],
+        )
+
+    def _register_node(self, node: Node) -> None:
+        if not node.id:
+            raise ValueError("Node must have a non-empty id")
+        if node.id in self._nodes_by_id:
+            raise ValueError(f"Duplicate node id detected: {node.id}")
+        self._nodes_by_id[node.id] = node

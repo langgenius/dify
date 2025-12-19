@@ -90,10 +90,9 @@ const translation = {
   intro2: 'as a context',
   intro3: ',',
   intro4: 'or it ',
-  intro5: 'can be created',
-  intro6: ' as a standalone ChatGPT index plug-in to publish',
+  intro5: 'can be published',
+  intro6: ' as an independent service.',
   unavailable: 'Unavailable',
-  unavailableTip: 'Embedding model is not available, the default embedding model needs to be configured',
   datasets: 'KNOWLEDGE',
   datasetsApi: 'API ACCESS',
   externalKnowledgeForm: {
@@ -236,6 +235,16 @@ const translation = {
       apiKey: 'API Key',
       apiReference: 'API Reference',
     },
+  },
+  cornerLabel: {
+    unavailable: 'Unavailable',
+    pipeline: 'Pipeline',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Drag and drop file or folder, or',
+    browse: 'Browse',
+    tip: '{{supportTypes}} (Max {{batchCount}}, {{size}}MB each)',
   },
 }
 

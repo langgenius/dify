@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { sleep } from '@/utils'
 
 type IProps = {
@@ -31,7 +31,7 @@ const AutoHeightTextarea = (
     onKeyDown,
     onKeyUp,
   }: IProps & {
-    ref: React.RefObject<unknown>;
+    ref?: React.RefObject<HTMLTextAreaElement>;
   },
 ) => {
   // eslint-disable-next-line react-hooks/rules-of-hooks

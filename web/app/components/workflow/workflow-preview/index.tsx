@@ -28,7 +28,7 @@ import {
   CUSTOM_NODE,
   ITERATION_CHILDREN_Z_INDEX,
 } from '@/app/components/workflow/constants'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   initialEdges,
   initialNodes,
@@ -68,8 +68,8 @@ const WorkflowPreview = ({
   viewport,
   className,
 }: WorkflowPreviewProps) => {
-  const [nodesData, setNodesData] = useState(initialNodes(nodes, edges))
-  const [edgesData, setEdgesData] = useState(initialEdges(edges, nodes))
+  const [nodesData, setNodesData] = useState(() => initialNodes(nodes, edges))
+  const [edgesData, setEdgesData] = useState(() => initialEdges(edges, nodes))
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => setNodesData(nds => applyNodeChanges(changes, nds)),

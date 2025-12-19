@@ -39,11 +39,11 @@ export default function LocaleSigninSelect({
             <div className="max-h-96 overflow-y-auto px-1 py-1 [mask-image:linear-gradient(to_bottom,transparent_0px,black_8px,black_calc(100%-8px),transparent_100%)]">
               {items.map((item) => {
                 return <MenuItem key={item.value}>
-                  <button
+                  <button type="button"
                     className={'group flex w-full items-center rounded-lg px-3 py-2 text-sm text-text-secondary data-[active]:bg-state-base-hover'}
                     onClick={(evt) => {
                       evt.preventDefault()
-                      onChange && onChange(item.value)
+                      onChange?.(item.value)
                     }}
                   >
                     {item.name}

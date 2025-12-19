@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Bağlam',
       noData: 'Bağlam olarak Bilgi\'yi içe aktarabilirsiniz',
-      words: 'Kelimeler',
-      textBlocks: 'Metin Blokları',
       selectTitle: 'Referans Bilgi\'yi seçin',
       selected: 'Bilgi seçildi',
       noDataSet: 'Bilgi bulunamadı',
@@ -327,7 +325,6 @@ const translation = {
   variableTable: {
     key: 'Değişken Anahtarı',
     name: 'Kullanıcı Giriş Alanı Adı',
-    optional: 'İsteğe Bağlı',
     type: 'Giriş Tipi',
     action: 'Aksiyonlar',
     typeString: 'Metin',
@@ -351,7 +348,6 @@ const translation = {
     'description': 'Değişken ayarı {{varName}}',
     'fieldType': 'Alan türü',
     'string': 'Kısa Metin',
-    'textInput': 'Kısa Metin',
     'paragraph': 'Paragraf',
     'select': 'Seçim',
     'number': 'Numara',
@@ -367,7 +363,6 @@ const translation = {
     'content': 'İçerik',
     'required': 'Gerekli',
     'errorMsg': {
-      varNameRequired: 'Değişken adı gereklidir',
       labelNameRequired: 'Etiket adı gereklidir',
       varNameCanBeRepeat: 'Değişken adı tekrar edemez',
       atLeastOneOption: 'En az bir seçenek gereklidir',
@@ -421,6 +416,7 @@ const translation = {
     'placeholder': 'Yer tutucu',
     'placeholderPlaceholder': 'Alan boş olduğunda görüntülenecek metni girin',
     'defaultValuePlaceholder': 'Alanı önceden doldurmak için varsayılan değeri girin',
+    'maxNumberTip': 'Belge < {{docLimit}}, resim < {{imgLimit}}, ses < {{audioLimit}}, video < {{videoLimit}}',
   },
   vision: {
     name: 'Görüş',

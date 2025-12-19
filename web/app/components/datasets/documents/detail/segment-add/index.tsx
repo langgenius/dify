@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
@@ -8,9 +8,13 @@ import {
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Popover from '@/app/components/base/popover'
+import { useBoolean } from 'ahooks'
+import { useProviderContext } from '@/context/provider-context'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
 
 export type ISegmentAddProps = {
   importStatus: ProcessStatus | string | undefined
@@ -35,6 +39,23 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
   embedding,
 }) => {
   const { t } = useTranslation()
+  const [isShowPlanUpgradeModal, {
+    setTrue: showPlanUpgradeModal,
+    setFalse: hidePlanUpgradeModal,
+  }] = useBoolean(false)
+  const { plan, enableBilling } = useProviderContext()
+  const { type } = plan
+  const canAdd = enableBilling ? type !== Plan.sandbox : true
+
+  const withNeedUpgradeCheck = useCallback((fn: () => void) => {
+    return () => {
+      if (!canAdd) {
+        showPlanUpgradeModal()
+        return
+      }
+      fn()
+    }
+  }, [canAdd, showPlanUpgradeModal])
   const textColor = useMemo(() => {
     return embedding
       ? 'text-components-button-secondary-accent-text-disabled'
@@ -90,7 +111,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         type='button'
         className={`inline-flex items-center rounded-l-lg border-r-[1px] border-r-divider-subtle px-2.5 py-2
           hover:bg-state-base-hover disabled:cursor-not-allowed disabled:hover:bg-transparent`}
-        onClick={showNewSegmentModal}
+        onClick={withNeedUpgradeCheck(showNewSegmentModal)}
         disabled={embedding}
       >
         <RiAddLine className={cn('h-4 w-4', textColor)} />
@@ -108,7 +129,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
             <button
               type='button'
               className='system-md-regular flex w-full items-center rounded-lg px-2 py-1.5 text-text-secondary'
-              onClick={showBatchModal}
+              onClick={withNeedUpgradeCheck(showBatchModal)}
             >
               {t('datasetDocuments.list.action.batchAdd')}
             </button>
@@ -116,7 +137,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         }
         btnElement={
           <div className='flex items-center justify-center' >
-            <RiArrowDownSLine className={cn('h-4 w-4', textColor)}/>
+            <RiArrowDownSLine className={cn('h-4 w-4', textColor)} />
           </div>
         }
         btnClassName={open => cn(
@@ -129,7 +150,16 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         className='h-fit min-w-[128px]'
         disabled={embedding}
       />
+      {isShowPlanUpgradeModal && (
+        <PlanUpgradeModal
+          show
+          onClose={hidePlanUpgradeModal}
+          title={t('billing.upgrade.addChunks.title')!}
+          description={t('billing.upgrade.addChunks.description')!}
+        />
+      )}
     </div>
+
   )
 }
 export default React.memo(SegmentAdd)

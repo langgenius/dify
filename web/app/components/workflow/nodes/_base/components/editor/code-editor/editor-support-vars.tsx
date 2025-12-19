@@ -5,7 +5,7 @@ import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import type { Props as EditorProps } from '.'
 import Editor from '.'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
 
@@ -84,7 +84,8 @@ const CodeEditor: FC<Props> = ({
 
   const getUniqVarName = (varName: string) => {
     if (varList.find(v => v.variable === varName)) {
-      const match = varName.match(/_(\d+)$/)
+      const varNameRegex = /_(\d+)$/
+      const match = varNameRegex.exec(varName)
 
       const index = (() => {
         if (match)

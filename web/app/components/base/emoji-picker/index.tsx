@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EmojiPickerInner from './Inner'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
@@ -45,7 +45,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
       <Divider className='mb-0 mt-3' />
       <div className='flex w-full items-center justify-center gap-2 p-3'>
         <Button className='w-full' onClick={() => {
-          onClose && onClose()
+          onClose?.()
         }}>
           {t('app.iconPicker.cancel')}
         </Button>
@@ -54,7 +54,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
           variant="primary"
           className='w-full'
           onClick={() => {
-            onSelect && onSelect(selectedEmoji, selectedBackground!)
+            onSelect?.(selectedEmoji, selectedBackground!)
           }}>
           {t('app.iconPicker.ok')}
         </Button>

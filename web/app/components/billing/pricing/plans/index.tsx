@@ -6,7 +6,7 @@ import SelfHostedPlanItem from './self-hosted-plan-item'
 
 type PlansProps = {
   plan: {
-    type: BasicPlan
+    type: Plan
     usage: UsagePlanInfo
     total: UsagePlanInfo
   }
@@ -21,6 +21,7 @@ const Plans = ({
   planRange,
   canPay,
 }: PlansProps) => {
+  const currentPlanType: BasicPlan = plan.type === Plan.enterprise ? Plan.team : plan.type
   return (
     <div className='flex w-full justify-center border-t border-divider-accent px-10'>
       <div className='flex max-w-[1680px] grow border-x border-divider-accent'>
@@ -28,21 +29,21 @@ const Plans = ({
           currentPlan === 'cloud' && (
             <>
               <CloudPlanItem
-                currentPlan={plan.type}
+                currentPlan={currentPlanType}
                 plan={Plan.sandbox}
                 planRange={planRange}
                 canPay={canPay}
               />
               <Divider type='vertical' className='mx-0 shrink-0 bg-divider-accent' />
               <CloudPlanItem
-                currentPlan={plan.type}
+                currentPlan={currentPlanType}
                 plan={Plan.professional}
                 planRange={planRange}
                 canPay={canPay}
               />
               <Divider type='vertical' className='mx-0 shrink-0 bg-divider-accent' />
               <CloudPlanItem
-                currentPlan={plan.type}
+                currentPlan={currentPlanType}
                 plan={Plan.team}
                 planRange={planRange}
                 canPay={canPay}

@@ -9,7 +9,7 @@ import FullDocListSkeleton from './skeleton/full-doc-list-skeleton'
 import { useSegmentListContext } from './index'
 import type { ChildChunkDetail } from '@/models/datasets'
 import Input from '@/app/components/base/input'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { formatNumber } from '@/utils/format'
 

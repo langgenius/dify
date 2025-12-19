@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: '컨텍스트',
       noData: '지식을 컨텍스트로 가져올 수 있습니다',
-      words: '단어',
-      textBlocks: '텍스트 블록',
       selectTitle: '참조할 지식 선택',
       selected: '선택한 지식',
       noDataSet: '지식이 없습니다',
@@ -255,7 +253,6 @@ const translation = {
   variableTable: {
     key: '변수 키',
     name: '사용자 입력 필드명',
-    optional: '옵션',
     type: '입력 타입',
     action: '액션',
     typeString: '문자열',
@@ -329,6 +326,7 @@ const translation = {
     'multi-files': '파일 목록',
     'uploadFileTypes': '파일 형식 업로드',
     'maxNumberOfUploads': '최대 업로드 수',
+    'maxNumberTip': '문서 < {{docLimit}}, 이미지 < {{imgLimit}}, 오디오 < {{audioLimit}}, 비디오 < {{videoLimit}}',
     'localUpload': '로컬 업로드',
     'json': 'JSON 코드',
     'jsonSchema': 'JSON 스키마',

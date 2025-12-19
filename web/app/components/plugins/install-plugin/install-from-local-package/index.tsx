@@ -10,7 +10,7 @@ import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-ico
 import ReadyToInstallPackage from './ready-to-install'
 import ReadyToInstallBundle from '../install-bundle/ready-to-install'
 import useHideLogic from '../hooks/use-hide-logic'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -64,10 +64,12 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       uniqueIdentifier,
     } = result
     const icon = await getIconUrl(manifest!.icon)
+    const iconDark = manifest.icon_dark ? await getIconUrl(manifest.icon_dark) : undefined
     setUniqueIdentifier(uniqueIdentifier)
     setManifest({
       ...manifest,
       icon,
+      icon_dark: iconDark,
     })
     setStep(InstallStep.readyToInstall)
   }, [getIconUrl])

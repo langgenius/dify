@@ -18,7 +18,7 @@ import Loading from '@/app/components/base/loading'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import List from '@/app/components/plugins/marketplace/list'
 import type { Plugin } from '@/app/components/plugins/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { getLocaleOnClient } from '@/i18n-config'
 import { getMarketplaceUrl } from '@/utils/var'
 
@@ -52,7 +52,7 @@ const InstallFromMarketplace = ({
       <div className='flex items-center justify-between'>
         <div className='system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary' onClick={() => setCollapse(!collapse)}>
           <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
-          {t('common.modelProvider.installProvider')}
+          {t('common.modelProvider.installDataSourceProvider')}
         </div>
         <div className='mb-2 flex items-center pt-2'>
           <span className='system-sm-regular pr-1 text-text-tertiary'>{t('common.modelProvider.discoverMore')}</span>

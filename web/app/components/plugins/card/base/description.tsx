@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import React, { useMemo } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string

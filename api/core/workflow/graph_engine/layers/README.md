@@ -30,7 +30,7 @@ debug_layer = DebugLoggingLayer(
 )
 
 engine = GraphEngine(graph)
-engine.add_layer(debug_layer)
+engine.layer(debug_layer)
 engine.run()
 ```
 

@@ -1,6 +1,6 @@
 'use client'
 import React, { useCallback } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Button from '@/app/components/base/button'
@@ -46,6 +46,7 @@ const CrawledResultItem = ({
           />
         ) : (
           <Radio
+            className='shrink-0'
             isChecked={isChecked}
             onCheck={handleCheckChange}
           />

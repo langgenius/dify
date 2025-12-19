@@ -54,7 +54,7 @@ const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string; d
 
   return (
     <div data-testid="document-detail-fixed">
-      <button data-testid="back-button-fixed" onClick={backToPrev}>
+      <button type="button" data-testid="back-button-fixed" onClick={backToPrev}>
         Back to Documents
       </button>
       <div data-testid="document-info">

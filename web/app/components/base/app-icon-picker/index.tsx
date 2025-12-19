@@ -12,7 +12,7 @@ import ImageInput from './ImageInput'
 import s from './style.module.css'
 import getCroppedImg from './utils'
 import type { AppIconType, ImageFile } from '@/types/app'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 import { noop } from 'lodash-es'
 import { RiImageCircleAiLine } from '@remixicon/react'
@@ -117,7 +117,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
     {!DISABLE_UPLOAD_IMAGE_AS_ICON && <div className="w-full p-2 pb-0">
       <div className='flex items-center justify-center gap-2 rounded-xl bg-background-body p-1 text-text-primary'>
         {tabs.map(tab => (
-          <button
+          <button type="button"
             key={tab.key}
             className={cn(
               'system-sm-medium flex h-8 flex-1 shrink-0 items-center justify-center rounded-lg p-2 text-text-tertiary',

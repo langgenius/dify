@@ -38,7 +38,7 @@ const translation = {
       button: '拖拽文件或文件夹至此，或者',
       buttonSingleFile: '拖拽文件至此，或者',
       browse: '选择文件',
-      tip: '已支持 {{supportTypes}}，每批最多 {{batchCount}} 个文件，每个文件不超过 {{size}} MB。',
+      tip: '已支持 {{supportTypes}}，每批最多 {{batchCount}} 个文件，每个文件不超过 {{size}} MB ，总数不超过 {{totalCount}} 个文件。',
       validation: {
         typeError: '文件类型不支持',
         size: '文件太大了，不能超过 {{size}}MB',

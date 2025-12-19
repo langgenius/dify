@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   isActive?: boolean

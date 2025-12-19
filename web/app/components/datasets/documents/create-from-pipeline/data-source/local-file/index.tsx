@@ -4,11 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { RiDeleteBinLine, RiErrorWarningFill, RiUploadCloud2Line } from '@remixicon/react'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
-import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { upload } from '@/service/base'
+import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { IS_CE_EDITION } from '@/config'
@@ -16,18 +16,19 @@ import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
 import { useFileUploadConfig } from '@/service/use-common'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
-import produce from 'immer'
+import { produce } from 'immer'
+import dynamic from 'next/dynamic'
 
-const FILES_NUMBER_LIMIT = 20
+const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-chart'), { ssr: false })
 
 export type LocalFileProps = {
   allowedExtensions: string[]
-  notSupportBatchUpload?: boolean
+  supportBatchUpload?: boolean
 }
 
 const LocalFile = ({
   allowedExtensions,
-  notSupportBatchUpload,
+  supportBatchUpload = true,
 }: LocalFileProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -41,7 +42,7 @@ const LocalFile = ({
   const fileUploader = useRef<HTMLInputElement>(null)
   const fileListRef = useRef<FileItem[]>([])
 
-  const hideUpload = notSupportBatchUpload && localFileList.length > 0
+  const hideUpload = !supportBatchUpload && localFileList.length > 0
 
   const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const supportTypesShowNames = useMemo(() => {
@@ -61,10 +62,11 @@ const LocalFile = ({
       .join(locale !== LanguagesSupported[1] ? ', ' : '、 ')
   }, [locale, allowedExtensions])
   const ACCEPTS = allowedExtensions.map((ext: string) => `.${ext}`)
-  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
-    file_size_limit: 15,
-    batch_count_limit: 5,
-  }, [fileUploadConfigResponse])
+  const fileUploadConfig = useMemo(() => ({
+    file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
+    batch_count_limit: supportBatchUpload ? (fileUploadConfigResponse?.batch_count_limit ?? 5) : 1,
+    file_upload_limit: supportBatchUpload ? (fileUploadConfigResponse?.file_upload_limit ?? 5) : 1,
+  }), [fileUploadConfigResponse, supportBatchUpload])
 
   const updateFile = useCallback((fileItem: FileItem, progress: number, list: FileItem[]) => {
     const { setLocalFileList } = dataSourceStore.getState()
@@ -117,7 +119,9 @@ const LocalFile = ({
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
-  }, [fileUploadConfig, notify, t, ACCEPTS])
+  }, [notify, t, ACCEPTS, fileUploadConfig.file_size_limit])
+
+  type UploadResult = Awaited<ReturnType<typeof upload>>
 
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
@@ -134,10 +138,14 @@ const LocalFile = ({
       data: formData,
       onprogress: onProgress,
     }, false, undefined, '?source=datasets')
-      .then((res: File) => {
-        const completeFile = {
+      .then((res: UploadResult) => {
+        const updatedFile = Object.assign({}, fileItem.file, {
+          id: res.id,
+          ...(res as Partial<File>),
+        }) as File
+        const completeFile: FileItem = {
           fileID: fileItem.fileID,
-          file: res,
+          file: updatedFile,
           progress: -1,
         }
         const index = fileListRef.current.findIndex(item => item.fileID === fileItem.fileID)
@@ -146,7 +154,8 @@ const LocalFile = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        notify({ type: 'error', message: e?.response?.code === 'forbidden' ? e?.response?.message : t('datasetCreation.stepOne.uploader.failed') })
+        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        notify({ type: 'error', message: errorMessage })
         updateFile(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
       })
@@ -176,11 +185,12 @@ const LocalFile = ({
   }, [fileUploadConfig, uploadBatchFiles])
 
   const initialUpload = useCallback((files: File[]) => {
+    const filesCountLimit = fileUploadConfig.file_upload_limit
     if (!files.length)
       return false
 
-    if (files.length + localFileList.length > FILES_NUMBER_LIMIT && !IS_CE_EDITION) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: FILES_NUMBER_LIMIT }) })
+    if (files.length + localFileList.length > filesCountLimit && !IS_CE_EDITION) {
+      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: filesCountLimit }) })
       return false
     }
 
@@ -193,12 +203,13 @@ const LocalFile = ({
     updateFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }, [updateFileList, uploadMultipleFiles, notify, t, localFileList])
+  }, [fileUploadConfig.file_upload_limit, localFileList.length, updateFileList, uploadMultipleFiles, notify, t])
 
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    e.target !== dragRef.current && setDragging(true)
+    if (e.target !== dragRef.current)
+      setDragging(true)
   }
   const handleDragOver = (e: DragEvent) => {
     e.preventDefault()
@@ -207,7 +218,8 @@ const LocalFile = ({
   const handleDragLeave = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    e.target === dragRef.current && setDragging(false)
+    if (e.target === dragRef.current)
+      setDragging(false)
   }
 
   const handleDrop = useCallback((e: DragEvent) => {
@@ -218,12 +230,12 @@ const LocalFile = ({
       return
 
     let files = [...e.dataTransfer.files] as File[]
-    if (notSupportBatchUpload)
+    if (!supportBatchUpload)
       files = files.slice(0, 1)
 
     const validFiles = files.filter(isValid)
     initialUpload(validFiles)
-  }, [initialUpload, isValid, notSupportBatchUpload])
+  }, [initialUpload, isValid, supportBatchUpload])
 
   const selectHandle = useCallback(() => {
     if (fileUploader.current)
@@ -238,9 +250,10 @@ const LocalFile = ({
     updateFileList([...fileListRef.current])
   }
   const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = [...(e.target.files ?? [])] as File[]
+    let files = [...(e.target.files ?? [])] as File[]
+    files = files.slice(0, fileUploadConfig.batch_count_limit)
     initialUpload(files.filter(isValid))
-  }, [isValid, initialUpload])
+  }, [isValid, initialUpload, fileUploadConfig.batch_count_limit])
 
   const { theme } = useTheme()
   const chartColor = useMemo(() => theme === Theme.dark ? '#5289ff' : '#296dff', [theme])
@@ -267,7 +280,7 @@ const LocalFile = ({
           id='fileUploader'
           className='hidden'
           type='file'
-          multiple={!notSupportBatchUpload}
+          multiple={supportBatchUpload}
           accept={ACCEPTS.join(',')}
           onChange={fileChangeHandle}
         />
@@ -283,7 +296,7 @@ const LocalFile = ({
             <RiUploadCloud2Line className='mr-2 size-5' />
 
             <span>
-              {t('datasetCreation.stepOne.uploader.button')}
+              {supportBatchUpload ? t('datasetCreation.stepOne.uploader.button') : t('datasetCreation.stepOne.uploader.buttonSingleFile')}
               {allowedExtensions.length > 0 && (
                 <label className='ml-1 cursor-pointer text-text-accent' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
               )}
@@ -293,6 +306,7 @@ const LocalFile = ({
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
             batchCount: fileUploadConfig.batch_count_limit,
+            totalCount: fileUploadConfig.file_upload_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
         </div>

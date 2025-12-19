@@ -23,7 +23,7 @@ import PluginTasks from './plugin-tasks'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal/modal'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import {
@@ -72,6 +72,8 @@ const PluginPage = ({
     }
   }, [searchParams])
 
+  const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
+
   const [dependencies, setDependencies] = useState<Dependency[]>([])
   const bundleInfo = useMemo(() => {
     const info = searchParams.get(BUNDLE_INFO_KEY)
@@ -99,6 +101,7 @@ const PluginPage = ({
 
   useEffect(() => {
     (async () => {
+      setUniqueIdentifier(null)
       await sleep(100)
       if (packageId) {
         const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
@@ -108,6 +111,7 @@ const PluginPage = ({
           version: version.version,
           icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
         })
+        setUniqueIdentifier(packageId)
         showInstallFromMarketplace()
         return
       }
@@ -283,10 +287,10 @@ const PluginPage = ({
       )}
 
       {
-        isShowInstallFromMarketplace && (
+        isShowInstallFromMarketplace && uniqueIdentifier && (
           <InstallFromMarketplace
             manifest={manifest! as PluginManifestInMarket}
-            uniqueIdentifier={packageId}
+            uniqueIdentifier={uniqueIdentifier}
             isBundle={!!bundleInfo}
             dependencies={dependencies}
             onClose={hideInstallFromMarketplace}

@@ -11,7 +11,7 @@ import { NodeRunningStatus } from '@/app/components/workflow/types'
 import type { CommonNodeType } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useNodesReadOnly } from '../hooks/use-workflow'
 
 const VariableInspectTrigger: FC = () => {
@@ -95,7 +95,11 @@ const VariableInspectTrigger: FC = () => {
             className={cn('system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent hover:text-text-accent',
               nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
             )}
-            onClick={handleClearAll}
+            onClick={() => {
+              if (getNodesReadOnly())
+                return
+              handleClearAll()
+            }}
           >
             {t('workflow.debug.variableInspect.trigger.clear')}
           </div>

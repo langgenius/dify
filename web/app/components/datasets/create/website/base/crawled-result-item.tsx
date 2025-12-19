@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Button from '@/app/components/base/button'
@@ -13,6 +13,7 @@ type Props = {
   isPreview: boolean
   onCheckChange: (checked: boolean) => void
   onPreview: () => void
+  testId?: string
 }
 
 const CrawledResultItem: FC<Props> = ({
@@ -21,6 +22,7 @@ const CrawledResultItem: FC<Props> = ({
   isChecked,
   onCheckChange,
   onPreview,
+  testId,
 }) => {
   const { t } = useTranslation()
 
@@ -31,7 +33,7 @@ const CrawledResultItem: FC<Props> = ({
     <div className={cn(isPreview ? 'bg-state-base-active' : 'group hover:bg-state-base-hover', 'cursor-pointer rounded-lg p-2')}>
       <div className='relative flex'>
         <div className='flex h-5 items-center'>
-          <Checkbox className='mr-2 shrink-0' checked={isChecked} onCheck={handleCheckChange} />
+          <Checkbox className='mr-2 shrink-0' checked={isChecked} onCheck={handleCheckChange} id={testId} />
         </div>
         <div className='flex min-w-0 grow flex-col'>
           <div

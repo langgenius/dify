@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type Options = string[]
 export type IConfigSelectProps = {
@@ -71,6 +71,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
                   className='absolute right-1.5 top-1/2 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
                   onClick={() => {
                     onChange(options.filter((_, i) => index !== i))
+                    setDeletingID(null)
                   }}
                   onMouseEnter={() => setDeletingID(index)}
                   onMouseLeave={() => setDeletingID(null)}

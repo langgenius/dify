@@ -8,6 +8,7 @@ export type MessageMore = {
   time: string
   tokens: number
   latency: number | string
+  tokens_per_second?: number | string
 }
 
 export type FeedbackType = {
@@ -17,11 +18,11 @@ export type FeedbackType = {
 
 export type FeedbackFunc = (
   messageId: string,
-  feedback: FeedbackType
+  feedback: FeedbackType,
 ) => Promise<any>
 export type SubmitAnnotationFunc = (
   messageId: string,
-  content: string
+  content: string,
 ) => Promise<any>
 
 export type DisplayScene = 'web' | 'console'

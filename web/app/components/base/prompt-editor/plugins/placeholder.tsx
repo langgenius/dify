@@ -1,6 +1,7 @@
 import { memo } from 'react'
+import type { ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const Placeholder = ({
   compact,
@@ -8,7 +9,7 @@ const Placeholder = ({
   className,
 }: {
   compact?: boolean
-  value?: string | JSX.Element
+  value?: ReactNode
   className?: string
 }) => {
   const { t } = useTranslation()

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import Confirm from '@/app/components/base/confirm'
 import AppPublisher from '@/app/components/app/app-publisher'
@@ -22,37 +22,39 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
   const features = useFeatures(s => s.features)
   const featuresStore = useFeaturesStore()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
+  const { more_like_this, opening_statement, suggested_questions, sensitive_word_avoidance, speech_to_text, text_to_speech, suggested_questions_after_answer, retriever_resource, annotation_reply, file_upload, resetAppConfig } = props.publishedConfig.modelConfig
+
   const handleConfirm = useCallback(() => {
-    props.resetAppConfig?.()
+    resetAppConfig?.()
     const {
       features,
       setFeatures,
     } = featuresStore!.getState()
     const newFeatures = produce(features, (draft) => {
-      draft.moreLikeThis = props.publishedConfig.modelConfig.more_like_this || { enabled: false }
+      draft.moreLikeThis = more_like_this || { enabled: false }
       draft.opening = {
-        enabled: !!props.publishedConfig.modelConfig.opening_statement,
-        opening_statement: props.publishedConfig.modelConfig.opening_statement || '',
-        suggested_questions: props.publishedConfig.modelConfig.suggested_questions || [],
+        enabled: !!opening_statement,
+        opening_statement: opening_statement || '',
+        suggested_questions: suggested_questions || [],
       }
-      draft.moderation = props.publishedConfig.modelConfig.sensitive_word_avoidance || { enabled: false }
-      draft.speech2text = props.publishedConfig.modelConfig.speech_to_text || { enabled: false }
-      draft.text2speech = props.publishedConfig.modelConfig.text_to_speech || { enabled: false }
-      draft.suggested = props.publishedConfig.modelConfig.suggested_questions_after_answer || { enabled: false }
-      draft.citation = props.publishedConfig.modelConfig.retriever_resource || { enabled: false }
-      draft.annotationReply = props.publishedConfig.modelConfig.annotation_reply || { enabled: false }
+      draft.moderation = sensitive_word_avoidance || { enabled: false }
+      draft.speech2text = speech_to_text || { enabled: false }
+      draft.text2speech = text_to_speech || { enabled: false }
+      draft.suggested = suggested_questions_after_answer || { enabled: false }
+      draft.citation = retriever_resource || { enabled: false }
+      draft.annotationReply = annotation_reply || { enabled: false }
       draft.file = {
         image: {
-          detail: props.publishedConfig.modelConfig.file_upload?.image?.detail || Resolution.high,
-          enabled: !!props.publishedConfig.modelConfig.file_upload?.image?.enabled,
-          number_limits: props.publishedConfig.modelConfig.file_upload?.image?.number_limits || 3,
-          transfer_methods: props.publishedConfig.modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+          detail: file_upload?.image?.detail || Resolution.high,
+          enabled: !!file_upload?.image?.enabled,
+          number_limits: file_upload?.image?.number_limits || 3,
+          transfer_methods: file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         },
-        enabled: !!(props.publishedConfig.modelConfig.file_upload?.enabled || props.publishedConfig.modelConfig.file_upload?.image?.enabled),
-        allowed_file_types: props.publishedConfig.modelConfig.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions: props.publishedConfig.modelConfig.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-        allowed_file_upload_methods: props.publishedConfig.modelConfig.file_upload?.allowed_file_upload_methods || props.publishedConfig.modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
-        number_limits: props.publishedConfig.modelConfig.file_upload?.number_limits || props.publishedConfig.modelConfig.file_upload?.image?.number_limits || 3,
+        enabled: !!(file_upload?.enabled || file_upload?.image?.enabled),
+        allowed_file_types: file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
+        allowed_file_extensions: file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
+        allowed_file_upload_methods: file_upload?.allowed_file_upload_methods || file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+        number_limits: file_upload?.number_limits || file_upload?.image?.number_limits || 3,
       } as FileUpload
     })
     setFeatures(newFeatures)
@@ -69,7 +71,7 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
         ...props,
         onPublish: handlePublish,
         onRestore: () => setRestoreConfirmOpen(true),
-      }}/>
+      }} />
       {restoreConfirmOpen && (
         <Confirm
           title={t('appDebug.resetConfig.title')}

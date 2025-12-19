@@ -4,19 +4,13 @@ import '@testing-library/jest-dom'
 import CommandSelector from '../../app/components/goto-anything/command-selector'
 import type { ActionItem } from '../../app/components/goto-anything/actions/types'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('cmdk', () => ({
   Command: {
     Group: ({ children, className }: any) => <div className={className}>{children}</div>,
     Item: ({ children, onSelect, value, className }: any) => (
       <div
         className={className}
-        onClick={() => onSelect && onSelect()}
+        onClick={() => onSelect?.()}
         data-value={value}
         data-testid={`command-item-${value}`}
       >

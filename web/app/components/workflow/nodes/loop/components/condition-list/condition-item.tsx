@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
-import produce from 'immer'
+import { produce } from 'immer'
 import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
@@ -32,7 +32,7 @@ import type {
   Var,
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import ConditionVarSelector from './condition-var-selector'
@@ -196,6 +196,9 @@ const ConditionItem = ({
       draft.varType = varItem.type
       draft.value = ''
       draft.comparison_operator = getOperators(varItem.type)[0]
+      delete draft.key
+      delete draft.sub_variable_condition
+      delete draft.numberVarType
     })
     doUpdateCondition(newCondition)
     setOpen(false)

@@ -19,7 +19,7 @@ import {
 } from './hooks'
 import InstallFromMarketplace from './install-from-marketplace'
 import { useProviderContext } from '@/context/provider-context'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {
@@ -93,7 +93,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           {defaultModelNotConfigured && (
             <div className='system-xs-medium flex items-center gap-1 text-text-primary'>
               <RiAlertFill className='h-4 w-4 text-text-warning-secondary' />
-              {t('common.modelProvider.notConfigured')}
+              <span className='max-w-[460px] truncate' title={t('common.modelProvider.notConfigured')}>{t('common.modelProvider.notConfigured')}</span>
             </div>
           )}
           <SystemModelSelector

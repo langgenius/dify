@@ -1,6 +1,6 @@
 import type { FC, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { useInstalledPluginList } from '@/service/use-plugins'
 type Option = {
@@ -11,17 +11,19 @@ type Option = {
 type TabSliderProps = {
   className?: string
   value: string
+  itemClassName?: string | ((active: boolean) => string)
   onChange: (v: string) => void
   options: Option[]
 }
 
 const TabSlider: FC<TabSliderProps> = ({
   className,
+  itemClassName,
   value,
   onChange,
   options,
 }) => {
-  const [activeIndex, setActiveIndex] = useState(options.findIndex(option => option.value === value))
+  const [activeIndex, setActiveIndex] = useState(() => options.findIndex(option => option.value === value))
   const [sliderStyle, setSliderStyle] = useState({})
   const { data: pluginList } = useInstalledPluginList()
 
@@ -58,6 +60,7 @@ const TabSlider: FC<TabSliderProps> = ({
             index === activeIndex
               ? 'text-text-primary'
               : 'text-text-tertiary',
+            typeof itemClassName === 'function' ? itemClassName(index === activeIndex) : itemClassName,
           )}
           onClick={() => {
             if (index !== activeIndex) {

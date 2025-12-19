@@ -12,17 +12,7 @@ import {
 import Input from '@/app/components/base/input'
 import Divider from '@/app/components/base/divider'
 import { searchEmoji } from '@/utils/emoji'
-import cn from '@/utils/classnames'
-
-declare global {
-  // eslint-disable-next-line ts/no-namespace
-  namespace JSX {
-    // eslint-disable-next-line ts/consistent-type-definitions
-    interface IntrinsicElements {
-      'em-emoji': React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>
-    }
-  }
-}
+import { cn } from '@/utils/classnames'
 
 init({ data })
 

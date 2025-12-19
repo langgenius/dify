@@ -1,5 +1,5 @@
 import React, { type FC, useEffect, useRef } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type OptionListItemProps = {
   isSelected: boolean

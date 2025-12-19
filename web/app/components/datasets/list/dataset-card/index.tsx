@@ -7,13 +7,10 @@ import { useKnowledge } from '@/hooks/use-knowledge'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useHover } from 'ahooks'
 import { RiFileTextFill, RiMoreFill, RiRobot2Fill } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
-import { useGetLanguage } from '@/context/i18n'
-import dayjs from 'dayjs'
-import relativeTime from 'dayjs/plugin/relativeTime'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import RenameDatasetModal from '../../rename-modal'
 import Confirm from '@/app/components/base/confirm'
@@ -24,7 +21,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import CornerLabel from '@/app/components/base/corner-label'
 import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
-dayjs.extend(relativeTime)
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -87,10 +84,10 @@ const DatasetCard = ({
       return t('dataset.partialEnabled', { count: dataset.document_count, num: availableDocCount })
   }, [t, dataset.document_count, dataset.total_available_documents])
 
-  const language = useGetLanguage()
-  const formatTimeFromNow = useCallback((time: number) => {
-    return dayjs(time * 1_000).locale(language === 'zh_Hans' ? 'zh-cn' : language.replace('_', '-')).fromNow()
-  }, [language])
+  const { formatTimeFromNow } = useFormatTimeFromNow()
+  const editTimeText = useMemo(() => {
+    return `${t('datasetDocuments.segment.editedAt')} ${formatTimeFromNow(dataset.updated_at * 1000)}`
+  }, [t, dataset.updated_at, formatTimeFromNow])
 
   const openRenameModal = useCallback(() => {
     setShowRenameModal(true)
@@ -159,21 +156,27 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group relative col-span-1 flex h-[166px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-all duration-200 ease-in-out hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5'
+        className='group relative col-span-1 flex h-[190px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-all duration-200 ease-in-out hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
-          isExternalProvider
-            ? push(`/datasets/${dataset.id}/hitTesting`)
-            // eslint-disable-next-line sonarjs/no-nested-conditional
-            : isPipelineUnpublished
-              ? push(`/datasets/${dataset.id}/pipeline`)
-              : push(`/datasets/${dataset.id}/documents`)
+          if (isExternalProvider)
+            push(`/datasets/${dataset.id}/hitTesting`)
+          else if (isPipelineUnpublished)
+            push(`/datasets/${dataset.id}/pipeline`)
+          else
+            push(`/datasets/${dataset.id}/documents`)
         }}
       >
         {!dataset.embedding_available && (
           <CornerLabel
-            label='Unavailable'
+            label={t('dataset.cornerLabel.unavailable')}
+            className='absolute right-0 top-0 z-10'
+            labelClassName='rounded-tr-xl' />
+        )}
+        {dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline' && (
+          <CornerLabel
+            label={t('dataset.cornerLabel.pipeline')}
             className='absolute right-0 top-0 z-10'
             labelClassName='rounded-tr-xl' />
         )}
@@ -199,12 +202,39 @@ const DatasetCard = ({
             >
               {dataset.name}
             </div>
+            <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
+              <div className='truncate' title={dataset.author_name}>{dataset.author_name}</div>
+              <div>·</div>
+              <div className='truncate' title={editTimeText}>{editTimeText}</div>
+            </div>
             <div className='system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary'>
               {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
               {!isExternalProvider && isShowDocModeInfo && (
                 <>
-                  {dataset.doc_form && <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>}
-                  {dataset.indexing_technique && <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>}
+                  {dataset.doc_form && (
+                    <span
+                      className='min-w-0 max-w-full truncate'
+                      title={t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                    >
+                      {t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                    </span>
+                  )}
+                  {dataset.indexing_technique && (
+                    <span
+                      className='min-w-0 max-w-full truncate'
+                      title={formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                    >
+                      {formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                    </span>
+                  )}
+                  {dataset.is_multimodal && (
+                    <span
+                      className='min-w-0 max-w-full truncate'
+                      title={t('dataset.multimodal')}
+                    >
+                      {t('dataset.multimodal')}
+                    </span>
+                  )}
                 </>
               )}
             </div>
@@ -269,9 +299,9 @@ const DatasetCard = ({
             </Tooltip>
           )}
           <span className='system-xs-regular text-divider-deep'>/</span>
-          <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at)}`}</span>
+          <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
         </div>
-        <div className='absolute right-2 top-2 z-[5] hidden group-hover:block'>
+        <div className='absolute right-2 top-2 z-[15] hidden group-hover:block'>
           <CustomPopover
             htmlContent={
               <Operations

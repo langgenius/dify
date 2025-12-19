@@ -60,8 +60,8 @@ Extensible middleware for cross-cutting concerns:
 
 ```python
 engine = GraphEngine(graph)
-engine.add_layer(DebugLoggingLayer(level="INFO"))
-engine.add_layer(ExecutionLimitsLayer(max_nodes=100))
+engine.layer(DebugLoggingLayer(level="INFO"))
+engine.layer(ExecutionLimitsLayer(max_nodes=100))
 ```
 
 ### Event-Driven Architecture
@@ -117,7 +117,7 @@ The codebase enforces strict layering via import-linter:
 
 1. Create class inheriting from `Layer` base
 1. Override lifecycle methods: `on_graph_start()`, `on_event()`, `on_graph_end()`
-1. Add to engine via `engine.add_layer()`
+1. Add to engine via `engine.layer()`
 
 ### Debugging Workflow Execution
 

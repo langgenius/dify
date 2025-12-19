@@ -1,0 +1,134 @@
+"""Primarily used for testing merged cell scenarios"""
+
+from types import SimpleNamespace
+
+from docx import Document
+
+import core.rag.extractor.word_extractor as we
+from core.rag.extractor.word_extractor import WordExtractor
+
+
+def _generate_table_with_merged_cells():
+    doc = Document()
+
+    """
+    The table looks like this:
+    +-----+-----+-----+
+    | 1-1 & 1-2 | 1-3 |
+    +-----+-----+-----+
+    | 2-1 | 2-2 | 2-3 |
+    |  &  |-----+-----+
+    | 3-1 | 3-2 | 3-3 |
+    +-----+-----+-----+
+    """
+    table = doc.add_table(rows=3, cols=3)
+    table.style = "Table Grid"
+
+    for i in range(3):
+        for j in range(3):
+            cell = table.cell(i, j)
+            cell.text = f"{i + 1}-{j + 1}"
+
+    # Merge cells
+    cell_0_0 = table.cell(0, 0)
+    cell_0_1 = table.cell(0, 1)
+    merged_cell_1 = cell_0_0.merge(cell_0_1)
+    merged_cell_1.text = "1-1 & 1-2"
+
+    cell_1_0 = table.cell(1, 0)
+    cell_2_0 = table.cell(2, 0)
+    merged_cell_2 = cell_1_0.merge(cell_2_0)
+    merged_cell_2.text = "2-1 & 3-1"
+
+    ground_truth = [["1-1 & 1-2", "", "1-3"], ["2-1 & 3-1", "2-2", "2-3"], ["2-1 & 3-1", "3-2", "3-3"]]
+
+    return doc.tables[0], ground_truth
+
+
+def test_parse_row():
+    table, gt = _generate_table_with_merged_cells()
+    extractor = object.__new__(WordExtractor)
+    for idx, row in enumerate(table.rows):
+        assert extractor._parse_row(row, {}, 3) == gt[idx]
+
+
+def test_extract_images_from_docx(monkeypatch):
+    external_bytes = b"ext-bytes"
+    internal_bytes = b"int-bytes"
+
+    # Patch storage.save to capture writes
+    saves: list[tuple[str, bytes]] = []
+
+    def save(key: str, data: bytes):
+        saves.append((key, data))
+
+    monkeypatch.setattr(we, "storage", SimpleNamespace(save=save))
+
+    # Patch db.session to record adds/commit
+    class DummySession:
+        def __init__(self):
+            self.added = []
+            self.committed = False
+
+        def add(self, obj):
+            self.added.append(obj)
+
+        def commit(self):
+            self.committed = True
+
+    db_stub = SimpleNamespace(session=DummySession())
+    monkeypatch.setattr(we, "db", db_stub)
+
+    # Patch config values used for URL composition and storage type
+    monkeypatch.setattr(we.dify_config, "FILES_URL", "http://files.local", raising=False)
+    monkeypatch.setattr(we.dify_config, "STORAGE_TYPE", "local", raising=False)
+
+    # Patch UploadFile to avoid real DB models
+    class FakeUploadFile:
+        _i = 0
+
+        def __init__(self, **kwargs):  # kwargs match the real signature fields
+            type(self)._i += 1
+            self.id = f"u{self._i}"
+
+    monkeypatch.setattr(we, "UploadFile", FakeUploadFile)
+
+    # Patch external image fetcher
+    def fake_get(url: str):
+        assert url == "https://example.com/image.png"
+        return SimpleNamespace(status_code=200, headers={"Content-Type": "image/png"}, content=external_bytes)
+
+    monkeypatch.setattr(we, "ssrf_proxy", SimpleNamespace(get=fake_get))
+
+    # A hashable internal part object with a blob attribute
+    class HashablePart:
+        def __init__(self, blob: bytes):
+            self.blob = blob
+
+        def __hash__(self) -> int:  # ensure it can be used as a dict key like real docx parts
+            return id(self)
+
+    # Build a minimal doc object with both external and internal image rels
+    internal_part = HashablePart(blob=internal_bytes)
+    rel_ext = SimpleNamespace(is_external=True, target_ref="https://example.com/image.png")
+    rel_int = SimpleNamespace(is_external=False, target_ref="word/media/image1.png", target_part=internal_part)
+    doc = SimpleNamespace(part=SimpleNamespace(rels={"rId1": rel_ext, "rId2": rel_int}))
+
+    extractor = object.__new__(WordExtractor)
+    extractor.tenant_id = "t1"
+    extractor.user_id = "u1"
+
+    image_map = extractor._extract_images_from_docx(doc)
+
+    # Returned map should contain entries for external (keyed by rId) and internal (keyed by target_part)
+    assert set(image_map.keys()) == {"rId1", internal_part}
+    assert all(v.startswith("![image](") and v.endswith("/file-preview)") for v in image_map.values())
+
+    # Storage should receive both payloads
+    payloads = {data for _, data in saves}
+    assert external_bytes in payloads
+    assert internal_bytes in payloads
+
+    # DB interactions should be recorded
+    assert len(db_stub.session.added) == 2
+    assert db_stub.session.committed is True

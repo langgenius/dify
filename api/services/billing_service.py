@@ -1,13 +1,28 @@
+import logging
 import os
+from collections.abc import Sequence
 from typing import Literal
 
 import httpx
+from pydantic import TypeAdapter
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+from typing_extensions import TypedDict
+from werkzeug.exceptions import InternalServerError
 
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
-from models.account import Account, TenantAccountJoin, TenantAccountRole
+from models import Account, TenantAccountJoin, TenantAccountRole
+
+logger = logging.getLogger(__name__)
+
+
+class SubscriptionPlan(TypedDict):
+    """Tenant subscriptionplan information."""
+
+    plan: str
+    expiration_date: int
 
 
 class BillingService:
@@ -24,6 +39,13 @@ class BillingService:
         return billing_info
 
     @classmethod
+    def get_tenant_feature_plan_usage_info(cls, tenant_id: str):
+        params = {"tenant_id": tenant_id}
+
+        usage_info = cls._send_request("GET", "/tenant-feature-usage/info", params=params)
+        return usage_info
+
+    @classmethod
     def get_knowledge_rate_limit(cls, tenant_id: str):
         params = {"tenant_id": tenant_id}
 
@@ -31,7 +53,7 @@ class BillingService:
 
         return {
             "limit": knowledge_rate_limit.get("limit", 10),
-            "subscription_plan": knowledge_rate_limit.get("subscription_plan", "sandbox"),
+            "subscription_plan": knowledge_rate_limit.get("subscription_plan", CloudPlan.SANDBOX),
         }
 
     @classmethod
@@ -55,19 +77,66 @@ class BillingService:
         return cls._send_request("GET", "/invoices", params=params)
 
     @classmethod
+    def update_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str, delta: int) -> dict:
+        """
+        Update tenant feature plan usage.
+
+        Args:
+            tenant_id: Tenant identifier
+            feature_key: Feature key (e.g., 'trigger', 'workflow')
+            delta: Usage delta (positive to add, negative to consume)
+
+        Returns:
+            Response dict with 'result' and 'history_id'
+            Example: {"result": "success", "history_id": "uuid"}
+        """
+        return cls._send_request(
+            "POST",
+            "/tenant-feature-usage/usage",
+            params={"tenant_id": tenant_id, "feature_key": feature_key, "delta": delta},
+        )
+
+    @classmethod
+    def refund_tenant_feature_plan_usage(cls, history_id: str) -> dict:
+        """
+        Refund a previous usage charge.
+
+        Args:
+            history_id: The history_id returned from update_tenant_feature_plan_usage
+
+        Returns:
+            Response dict with 'result' and 'history_id'
+        """
+        return cls._send_request("POST", "/tenant-feature-usage/refund", params={"quota_usage_history_id": history_id})
+
+    @classmethod
+    def get_tenant_feature_plan_usage(cls, tenant_id: str, feature_key: str):
+        params = {"tenant_id": tenant_id, "feature_key": feature_key}
+        return cls._send_request("GET", "/billing/tenant_feature_plan/usage", params=params)
+
+    @classmethod
     @retry(
         wait=wait_fixed(2),
         stop=stop_before_delay(10),
         retry=retry_if_exception_type(httpx.RequestError),
         reraise=True,
     )
-    def _send_request(cls, method: Literal["GET", "POST", "DELETE"], endpoint: str, json=None, params=None):
+    def _send_request(cls, method: Literal["GET", "POST", "DELETE", "PUT"], endpoint: str, json=None, params=None):
         headers = {"Content-Type": "application/json", "Billing-Api-Secret-Key": cls.secret_key}
 
         url = f"{cls.base_url}{endpoint}"
         response = httpx.request(method, url, json=json, params=params, headers=headers)
         if method == "GET" and response.status_code != httpx.codes.OK:
             raise ValueError("Unable to retrieve billing information. Please try again later or contact support.")
+        if method == "PUT":
+            if response.status_code == httpx.codes.INTERNAL_SERVER_ERROR:
+                raise InternalServerError(
+                    "Unable to process billing request. Please try again later or contact support."
+                )
+            if response.status_code != httpx.codes.OK:
+                raise ValueError("Invalid arguments.")
+        if method == "POST" and response.status_code != httpx.codes.OK:
+            raise ValueError(f"Unable to send request to {url}. Please try again later or contact support.")
         return response.json()
 
     @staticmethod
@@ -178,3 +247,44 @@ class BillingService:
     @classmethod
     def clean_billing_info_cache(cls, tenant_id: str):
         redis_client.delete(f"tenant:{tenant_id}:billing_info")
+
+    @classmethod
+    def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str):
+        payload = {"account_id": account_id, "click_id": click_id}
+        return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)
+
+    @classmethod
+    def get_plan_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
+        """
+        Bulk fetch billing subscription plan via billing API.
+        Payload: {"tenant_ids": ["t1", "t2", ...]} (max 200 per request)
+        Returns:
+            Mapping of tenant_id -> {plan: str, expiration_date: int}
+        """
+        results: dict[str, SubscriptionPlan] = {}
+        subscription_adapter = TypeAdapter(SubscriptionPlan)
+
+        chunk_size = 200
+        for i in range(0, len(tenant_ids), chunk_size):
+            chunk = tenant_ids[i : i + chunk_size]
+            try:
+                resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
+                data = resp.get("data", {})
+
+                for tenant_id, plan in data.items():
+                    subscription_plan = subscription_adapter.validate_python(plan)
+                    results[tenant_id] = subscription_plan
+            except Exception:
+                logger.exception("Failed to fetch billing info batch for tenants: %s", chunk)
+                continue
+
+        return results
+
+    @classmethod
+    def get_expired_subscription_cleanup_whitelist(cls) -> Sequence[str]:
+        resp = cls._send_request("GET", "/subscription/cleanup/whitelist")
+        data = resp.get("data", [])
+        tenant_whitelist = []
+        for item in data:
+            tenant_whitelist.append(item["tenant_id"])
+        return tenant_whitelist

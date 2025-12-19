@@ -114,6 +114,11 @@ const translation = {
         },
       },
       launch: 'เรือยนต์',
+      enableTooltip: {
+        description: 'เพื่อเปิดใช้งานฟีเจอร์นี้ โปรดเพิ่มโหนดการป้อนข้อมูลผู้ใช้ไปยังแคนวาส (อาจมีอยู่แล้วในร่าง ใช้งานได้หลังจากเผยแพร่)',
+        learnMore: 'เรียนรู้เพิ่มเติม',
+      },
+      title: 'เว็บแอป',
     },
     apiInfo: {
       title: 'API บริการแบ็กเอนด์',
@@ -124,6 +129,17 @@ const translation = {
     status: {
       running: 'ให้บริการ',
       disable: 'พิการ',
+    },
+    triggerInfo: {
+      title: 'สิ่งกระตุ้น',
+      explanation: 'การจัดการทริกเกอร์เวิร์กโฟลว์',
+      triggersAdded: 'เพิ่มทริกเกอร์เรียบร้อยแล้ว',
+      noTriggerAdded: 'ยังไม่ได้เพิ่มทริกเกอร์',
+      triggerStatusDescription: 'สถานะของโหนดตัวเรียกปรากฏที่นี่ (อาจมีอยู่แล้วในร่าง และจะมีผลหลังจากเผยแพร่)',
+      learnAboutTriggers: 'เรียนรู้เกี่ยวกับทริกเกอร์',
+    },
+    disableTooltip: {
+      triggerMode: 'โหมดโหนดทริกเกอร์ไม่รองรับฟีเจอร์ {{feature}}.',
     },
   },
   analysis: {

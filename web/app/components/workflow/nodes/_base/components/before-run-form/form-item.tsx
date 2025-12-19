@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
@@ -22,7 +22,7 @@ import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import BoolInput from './bool-input'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
@@ -118,8 +118,20 @@ const FormItem: FC<Props> = ({
     <div className={cn(className)}>
       {!isArrayLikeType && !isBooleanType && (
         <div className='system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary'>
-          <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
-          {!payload.required && <span className='system-xs-regular text-text-tertiary'>{t('workflow.panel.optional')}</span>}
+          <div className='truncate'>
+            {typeof payload.label === 'object' ? nodeKey : payload.label}
+          </div>
+          {payload.hide === true ? (
+            <span className='system-xs-regular text-text-tertiary'>
+              {t('workflow.panel.optional_and_hidden')}
+            </span>
+          ) : (
+            !payload.required && (
+              <span className='system-xs-regular text-text-tertiary'>
+                {t('workflow.panel.optional')}
+              </span>
+            )
+          )}
         </div>
       )}
       <div className='grow'>
@@ -128,7 +140,7 @@ const FormItem: FC<Props> = ({
             <Input
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
               autoFocus={autoFocus}
             />
           )
@@ -140,7 +152,7 @@ const FormItem: FC<Props> = ({
               type="number"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
               autoFocus={autoFocus}
             />
           )
@@ -151,7 +163,7 @@ const FormItem: FC<Props> = ({
             <Textarea
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
+              placeholder={typeof payload.label === 'object' ? payload.label.variable : payload.label}
               autoFocus={autoFocus}
             />
           )

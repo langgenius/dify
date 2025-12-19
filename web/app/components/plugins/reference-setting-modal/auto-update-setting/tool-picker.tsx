@@ -10,7 +10,7 @@ import { useInstalledPluginList } from '@/service/use-plugins'
 import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/plugin-type-switch'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ToolItem from './tool-item'
 import Loading from '@/app/components/base/loading'
 import NoDataPlaceholder from './no-data-placeholder'
@@ -57,6 +57,14 @@ const ToolPicker: FC<Props> = ({
     {
       key: PLUGIN_TYPE_SEARCH_MAP.extension,
       name: t('plugin.category.extensions'),
+    },
+    {
+      key: PLUGIN_TYPE_SEARCH_MAP.datasource,
+      name: t('plugin.category.datasources'),
+    },
+    {
+      key: PLUGIN_TYPE_SEARCH_MAP.trigger,
+      name: t('plugin.category.triggers'),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.bundle,
@@ -119,12 +127,13 @@ const ToolPicker: FC<Props> = ({
       onOpenChange={onShowChange}
     >
       <PortalToFollowElemTrigger
+        className='block w-full'
         onClick={toggleShowPopup}
       >
         {trigger}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className={cn('relative min-h-20 w-[436px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
+        <div className={cn('relative min-h-20 w-full rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-2 shadow-lg backdrop-blur-sm')}>
           <div className='p-2 pb-1'>
             <SearchBox
               search={query}

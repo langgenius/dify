@@ -15,7 +15,7 @@ import {
 import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type Option = {
   label: string
@@ -58,6 +58,7 @@ const CustomSelect = <T extends Option>({
     onOpenChange,
     placement,
     offset,
+    triggerPopupSameWidth = true,
   } = containerProps || {}
   const {
     className: triggerClassName,
@@ -85,6 +86,7 @@ const CustomSelect = <T extends Option>({
       offset={offset || 4}
       open={mergedOpen}
       onOpenChange={handleOpenChange}
+      triggerPopupSameWidth={triggerPopupSameWidth}
     >
       <PortalToFollowElemTrigger
         onClick={() => handleOpenChange(!mergedOpen)}

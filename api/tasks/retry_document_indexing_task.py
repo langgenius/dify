@@ -10,7 +10,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
-from models.account import Account, Tenant
+from models import Account, Tenant
 from models.dataset import Dataset, Document, DocumentSegment
 from services.feature_service import FeatureService
 from services.rag_pipeline.rag_pipeline import RagPipelineService

@@ -19,7 +19,7 @@ import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import LargeDataAlert from './large-data-alert'
 import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import { useStore } from '@/app/components/workflow/store'
@@ -69,7 +69,7 @@ const ValueContent = ({
   const [json, setJson] = useState('')
   const [parseError, setParseError] = useState<Error | null>(null)
   const [validationError, setValidationError] = useState<string>('')
-  const [fileValue, setFileValue] = useState<any>(formatFileValue(currentVar))
+  const [fileValue, setFileValue] = useState<any>(() => formatFileValue(currentVar))
 
   const { run: debounceValueChange } = useDebounceFn(handleValueChange, { wait: 500 })
 

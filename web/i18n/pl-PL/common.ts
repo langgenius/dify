@@ -5,6 +5,7 @@ const translation = {
     saved: 'Zapisane',
     create: 'Utworzono',
     remove: 'Usunięto',
+    actionFailed: 'Akcja nie powiodła się',
   },
   operation: {
     create: 'Utwórz',
@@ -61,10 +62,21 @@ const translation = {
     deSelectAll: 'Odznacz wszystkie',
     selectAll: 'Zaznacz wszystkie',
     config: 'Konfiguracja',
+    yes: 'Tak',
+    no: 'Nie',
+    deleteConfirmTitle: 'Usunąć?',
+    confirmAction: 'Proszę potwierdzić swoją akcję.',
+    noSearchResults: 'Nie znaleziono {{content}}',
+    resetKeywords: 'Resetuj słowa kluczowe',
+    selectCount: '{{count}} Wybrane',
+    searchCount: 'Znajdź {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Teraz',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
     select: 'Proszę wybrać',
+    search: 'Szukaj...',
   },
   voice: {
     language: {
@@ -88,6 +100,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turecki',
       faIR: 'Perski',
+      slSI: 'Słoweński',
+      arTN: 'Arabski tunezyjski',
     },
   },
   unit: {
@@ -162,7 +176,6 @@ const translation = {
     workspace: 'Przestrzeń robocza',
     createWorkspace: 'Utwórz przestrzeń roboczą',
     helpCenter: 'Pomoc',
-    communityFeedback: 'Opinie',
     roadmap: 'Plan działania',
     community: 'Społeczność',
     about: 'O',
@@ -170,6 +183,8 @@ const translation = {
     support: 'Wsparcie',
     github: 'GitHub',
     compliance: 'Zgodność',
+    contactUs: 'Skontaktuj się z nami',
+    forum: 'Forum',
   },
   settings: {
     accountGroup: 'KONTO',
@@ -514,6 +529,7 @@ const translation = {
       editModelCredential: 'Edytowanie poświadczeń modelu',
     },
     parametersInvalidRemoved: 'Niektóre parametry są nieprawidłowe i zostały usunięte.',
+    installDataSourceProvider: 'Zainstaluj dostawców źródeł danych',
   },
   dataSource: {
     add: 'Dodaj źródło danych',
@@ -738,6 +754,8 @@ const translation = {
     uploadFromComputerReadError: 'Odczyt pliku nie powiódł się, spróbuj ponownie.',
     fileExtensionNotSupport: 'Rozszerzenie pliku nie jest obsługiwane',
     uploadFromComputer: 'Przesyłanie lokalne',
+    fileExtensionBlocked: 'Ten typ pliku jest zablokowany ze względów bezpieczeństwa',
+    uploadDisabled: 'Przesyłanie plików jest wyłączone',
   },
   license: {
     expiring_plural: 'Wygasa za {{count}} dni',
@@ -779,6 +797,13 @@ const translation = {
   },
   label: {
     optional: '(Opcjonalnie)',
+  },
+  noData: 'Brak danych',
+  dynamicSelect: {
+    error: 'Nie udało się załadować opcji',
+    noData: 'Brak dostępnych opcji',
+    loading: 'Ładowanie opcji...',
+    selected: '{{count}} wybrano',
   },
 }
 

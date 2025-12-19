@@ -14,6 +14,7 @@ import Toast from '@/app/components/base/toast'
 import { checkFirecrawlTaskStatus, createFirecrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
 import Header from '../base/header'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 const ERROR_I18N_PREFIX = 'common.errorMsg'
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
@@ -51,7 +52,7 @@ const FireCrawl: FC<Props> = ({
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const handleSetting = useCallback(() => {
     setShowAccountSettingModal({
-      payload: 'data-source',
+      payload: ACCOUNT_SETTING_TAB.DATA_SOURCE,
     })
   }, [setShowAccountSettingModal])
 
@@ -165,10 +166,6 @@ const FireCrawl: FC<Props> = ({
         setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`))
       }
       else {
-        data.data = data.data.map((item: any) => ({
-          ...item,
-          content: item.markdown,
-        }))
         setCrawlResult(data)
         onCheckedCrawlResultChange(data.data || []) // default select the crawl result
         setCrawlErrorMessage('')

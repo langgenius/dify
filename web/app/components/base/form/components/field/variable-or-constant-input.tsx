@@ -1,7 +1,7 @@
 import type { ChangeEvent } from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { RiEditLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import SegmentedControl from '@/app/components/base/segmented-control'
 import { VariableX } from '@/app/components/base/icons/src/vender/workflow'
 import Input from '@/app/components/base/input'
@@ -33,9 +33,9 @@ const VariableOrConstantInputField = ({
     },
   ]
 
-  const handleVariableOrConstantChange = (value: string) => {
+  const handleVariableOrConstantChange = useCallback((value: string) => {
     setVariableType(value)
-  }
+  }, [setVariableType])
 
   const handleVariableValueChange = () => {
     console.log('Variable value changed')

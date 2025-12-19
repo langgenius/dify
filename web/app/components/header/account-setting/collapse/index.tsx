@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type IItem = {
   key: string
@@ -25,7 +25,7 @@ const Collapse = ({
   const toggle = () => setOpen(!open)
 
   return (
-    <div className={classNames('overflow-hidden rounded-xl bg-background-section-burn', wrapperClassName)}>
+    <div className={cn('overflow-hidden rounded-xl bg-background-section-burn', wrapperClassName)}>
       <div className='flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium leading-[18px] text-text-secondary' onClick={toggle}>
         {title}
         {
@@ -39,7 +39,7 @@ const Collapse = ({
           <div className='mx-1 mb-1 rounded-lg border-t border-divider-subtle bg-components-panel-on-panel-item-bg py-1'>
             {
               items.map(item => (
-                <div key={item.key} onClick={() => onSelect && onSelect(item)}>
+                <div key={item.key} onClick={() => onSelect?.(item)}>
                   {renderItem(item)}
                 </div>
               ))

@@ -70,14 +70,18 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
   })
 
   describe('Fallback Logic (from layout-main.tsx)', () => {
+    type Tag = { id: string; name: string }
+    type AppDetail = { tags: Tag[] }
+    type FallbackResult = { tags?: Tag[] } | null
+    // no-op
     it('should trigger fallback when tags are missing or empty', () => {
-      const appDetailWithoutTags = { tags: [] }
-      const appDetailWithTags = { tags: [{ id: 'tag1' }] }
-      const appDetailWithUndefinedTags = { tags: undefined as any }
+      const appDetailWithoutTags: AppDetail = { tags: [] }
+      const appDetailWithTags: AppDetail = { tags: [{ id: 'tag1', name: 't' }] }
+      const appDetailWithUndefinedTags: { tags: Tag[] | undefined } = { tags: undefined }
 
       // This simulates the condition in layout-main.tsx
-      const shouldFallback1 = !appDetailWithoutTags.tags || appDetailWithoutTags.tags.length === 0
-      const shouldFallback2 = !appDetailWithTags.tags || appDetailWithTags.tags.length === 0
+      const shouldFallback1 = appDetailWithoutTags.tags.length === 0
+      const shouldFallback2 = appDetailWithTags.tags.length === 0
       const shouldFallback3 = !appDetailWithUndefinedTags.tags || appDetailWithUndefinedTags.tags.length === 0
 
       expect(shouldFallback1).toBe(true) // Empty array should trigger fallback
@@ -86,24 +90,26 @@ describe('Unified Tags Editing - Pure Logic Tests', () => {
     })
 
     it('should preserve tags when fallback succeeds', () => {
-      const originalAppDetail = { tags: [] as any[] }
-      const fallbackResult = { tags: [{ id: 'tag1', name: 'fallback-tag' }] }
+      const originalAppDetail: AppDetail = { tags: [] }
+      const fallbackResult: { tags?: Tag[] } = { tags: [{ id: 'tag1', name: 'fallback-tag' }] }
 
       // This simulates the successful fallback in layout-main.tsx
-      if (fallbackResult?.tags)
-        originalAppDetail.tags = fallbackResult.tags
+      const tags = fallbackResult.tags
+      if (tags)
+        originalAppDetail.tags = tags
 
       expect(originalAppDetail.tags).toEqual(fallbackResult.tags)
       expect(originalAppDetail.tags.length).toBe(1)
     })
 
     it('should continue with empty tags when fallback fails', () => {
-      const originalAppDetail: { tags: any[] } = { tags: [] }
-      const fallbackResult: { tags?: any[] } | null = null
+      const originalAppDetail: AppDetail = { tags: [] }
+      const fallbackResult = null as FallbackResult
 
       // This simulates fallback failure in layout-main.tsx
-      if (fallbackResult?.tags)
-        originalAppDetail.tags = fallbackResult.tags
+      const tags: Tag[] | undefined = fallbackResult && 'tags' in fallbackResult ? fallbackResult.tags : undefined
+      if (tags)
+        originalAppDetail.tags = tags
 
       expect(originalAppDetail.tags).toEqual([])
     })

@@ -20,7 +20,7 @@ import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 const InputFieldPanel = () => {
@@ -102,7 +102,7 @@ const InputFieldPanel = () => {
   return (
     <div className='mr-1 flex h-full w-[400px] flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5'>
       <div className='flex shrink-0 items-center p-4 pb-0'>
-        <div className='system-xl-semibold grow'>
+        <div className='system-xl-semibold grow text-text-primary'>
           {t('datasetPipeline.inputFieldPanel.title')}
         </div>
         <Button

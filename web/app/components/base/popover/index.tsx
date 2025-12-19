@@ -1,6 +1,6 @@
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
-import { Fragment, cloneElement, useRef } from 'react'
-import cn from '@/utils/classnames'
+import { Fragment, cloneElement, isValidElement, useRef } from 'react'
+import { cn } from '@/utils/classnames'
 
 export type HtmlContentProps = {
   open?: boolean
@@ -37,13 +37,16 @@ export default function CustomPopover({
   const timeOutRef = useRef<number | null>(null)
 
   const onMouseEnter = (isOpen: boolean) => {
-    timeOutRef.current && window.clearTimeout(timeOutRef.current)
-    !isOpen && buttonRef.current?.click()
+    if (timeOutRef.current != null)
+      window.clearTimeout(timeOutRef.current)
+    if (!isOpen)
+      buttonRef.current?.click()
   }
 
   const onMouseLeave = (isOpen: boolean) => {
     timeOutRef.current = window.setTimeout(() => {
-      isOpen && buttonRef.current?.click()
+      if (isOpen)
+        buttonRef.current?.click()
     }, timeoutDuration)
   }
 
@@ -100,15 +103,17 @@ export default function CustomPopover({
                         })
                       }
                     >
-                      {cloneElement(htmlContent as React.ReactElement, {
-                        open,
-                        onClose: close,
-                        ...(manualClose
-                          ? {
-                            onClick: close,
-                          }
-                          : {}),
-                      })}
+                      {isValidElement(htmlContent)
+                        ? cloneElement(htmlContent as React.ReactElement<HtmlContentProps>, {
+                          open,
+                          onClose: close,
+                          ...(manualClose
+                            ? {
+                              onClick: close,
+                            }
+                            : {}),
+                        })
+                        : htmlContent}
                     </div>
                   )}
                 </PopoverPanel>

@@ -5,9 +5,9 @@ from collections.abc import Callable, Generator, Mapping, Sequence
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Literal, cast
 
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.variables import Segment, SegmentType
 from core.workflow.enums import (
-    ErrorStrategy,
     NodeExecutionType,
     NodeType,
     WorkflowNodeExecutionMetadataKey,
@@ -27,7 +27,7 @@ from core.workflow.node_events import (
     NodeRunResult,
     StreamCompletedEvent,
 )
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
+from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.loop.entities import LoopNodeData, LoopVariableData
 from core.workflow.utils.condition.processor import ConditionProcessor
@@ -40,35 +40,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class LoopNode(Node):
+class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
     """
     Loop Node.
     """
 
     node_type = NodeType.LOOP
-    _node_data: LoopNodeData
     execution_type = NodeExecutionType.CONTAINER
-
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = LoopNodeData.model_validate(data)
-
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
 
     @classmethod
     def version(cls) -> str:
@@ -77,27 +55,27 @@ class LoopNode(Node):
     def _run(self) -> Generator:
         """Run the node."""
         # Get inputs
-        loop_count = self._node_data.loop_count
-        break_conditions = self._node_data.break_conditions
-        logical_operator = self._node_data.logical_operator
+        loop_count = self.node_data.loop_count
+        break_conditions = self.node_data.break_conditions
+        logical_operator = self.node_data.logical_operator
 
         inputs = {"loop_count": loop_count}
 
-        if not self._node_data.start_node_id:
+        if not self.node_data.start_node_id:
             raise ValueError(f"field start_node_id in loop {self._node_id} not found")
 
-        root_node_id = self._node_data.start_node_id
+        root_node_id = self.node_data.start_node_id
 
         # Initialize loop variables in the original variable pool
         loop_variable_selectors = {}
-        if self._node_data.loop_variables:
+        if self.node_data.loop_variables:
             value_processor: dict[Literal["constant", "variable"], Callable[[LoopVariableData], Segment | None]] = {
                 "constant": lambda var: self._get_segment_for_constant(var.var_type, var.value),
                 "variable": lambda var: self.graph_runtime_state.variable_pool.get(var.value)
                 if isinstance(var.value, list)
                 else None,
             }
-            for loop_variable in self._node_data.loop_variables:
+            for loop_variable in self.node_data.loop_variables:
                 if loop_variable.value_type not in value_processor:
                     raise ValueError(
                         f"Invalid value type '{loop_variable.value_type}' for loop variable {loop_variable.label}"
@@ -108,7 +86,7 @@ class LoopNode(Node):
                     raise ValueError(f"Invalid value for loop variable {loop_variable.label}")
                 variable_selector = [self._node_id, loop_variable.label]
                 variable = segment_to_variable(segment=processed_segment, selector=variable_selector)
-                self.graph_runtime_state.variable_pool.add(variable_selector, variable)
+                self.graph_runtime_state.variable_pool.add(variable_selector, variable.value)
                 loop_variable_selectors[loop_variable.label] = variable_selector
                 inputs[loop_variable.label] = processed_segment.value
 
@@ -117,6 +95,7 @@ class LoopNode(Node):
 
         loop_duration_map: dict[str, float] = {}
         single_loop_variable_map: dict[str, dict[str, Any]] = {}  # single loop variable output
+        loop_usage = LLMUsage.empty_usage()
 
         # Start Loop event
         yield LoopStartedEvent(
@@ -137,7 +116,6 @@ class LoopNode(Node):
 
             if reach_break_condition:
                 loop_count = 0
-            cost_tokens = 0
 
             for i in range(loop_count):
                 graph_engine = self._create_graph_engine(start_at=start_at, root_node_id=root_node_id)
@@ -160,8 +138,8 @@ class LoopNode(Node):
                         # For other outputs, just update
                         self.graph_runtime_state.set_output(key, value)
 
-                # Update the total tokens from this iteration
-                cost_tokens += graph_engine.graph_runtime_state.total_tokens
+                # Accumulate usage from the sub-graph execution
+                loop_usage = self._merge_usage(loop_usage, graph_engine.graph_runtime_state.llm_usage)
 
                 # Collect loop variable values after iteration
                 single_loop_variable = {}
@@ -185,18 +163,20 @@ class LoopNode(Node):
 
                 yield LoopNextEvent(
                     index=i + 1,
-                    pre_loop_output=self._node_data.outputs,
+                    pre_loop_output=self.node_data.outputs,
                 )
 
-            self.graph_runtime_state.total_tokens += cost_tokens
+            self._accumulate_usage(loop_usage)
             # Loop completed successfully
             yield LoopSucceededEvent(
                 start_at=start_at,
                 inputs=inputs,
-                outputs=self._node_data.outputs,
+                outputs=self.node_data.outputs,
                 steps=loop_count,
                 metadata={
-                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: cost_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: loop_usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: loop_usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: loop_usage.currency,
                     "completed_reason": "loop_break" if reach_break_condition else "loop_completed",
                     WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
                     WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
@@ -207,22 +187,28 @@ class LoopNode(Node):
                 node_run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     metadata={
-                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: loop_usage.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: loop_usage.total_price,
+                        WorkflowNodeExecutionMetadataKey.CURRENCY: loop_usage.currency,
                         WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
                         WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                     },
-                    outputs=self._node_data.outputs,
+                    outputs=self.node_data.outputs,
                     inputs=inputs,
+                    llm_usage=loop_usage,
                 )
             )
 
         except Exception as e:
+            self._accumulate_usage(loop_usage)
             yield LoopFailedEvent(
                 start_at=start_at,
                 inputs=inputs,
                 steps=loop_count,
                 metadata={
-                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: loop_usage.total_tokens,
+                    WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: loop_usage.total_price,
+                    WorkflowNodeExecutionMetadataKey.CURRENCY: loop_usage.currency,
                     "completed_reason": "error",
                     WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
                     WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
@@ -235,10 +221,13 @@ class LoopNode(Node):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
                     metadata={
-                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: self.graph_runtime_state.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: loop_usage.total_tokens,
+                        WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: loop_usage.total_price,
+                        WorkflowNodeExecutionMetadataKey.CURRENCY: loop_usage.currency,
                         WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
                         WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                     },
+                    llm_usage=loop_usage,
                 )
             )
 
@@ -262,11 +251,11 @@ class LoopNode(Node):
             if isinstance(event, GraphRunFailedEvent):
                 raise Exception(event.error)
 
-        for loop_var in self._node_data.loop_variables or []:
+        for loop_var in self.node_data.loop_variables or []:
             key, sel = loop_var.label, [self._node_id, loop_var.label]
             segment = self.graph_runtime_state.variable_pool.get(sel)
-            self._node_data.outputs[key] = segment.value if segment else None
-        self._node_data.outputs["loop_round"] = current_index + 1
+            self.node_data.outputs[key] = segment.value if segment else None
+        self.node_data.outputs["loop_round"] = current_index + 1
 
         return reach_break_node
 
@@ -406,11 +395,12 @@ class LoopNode(Node):
 
     def _create_graph_engine(self, start_at: datetime, root_node_id: str):
         # Import dependencies
-        from core.workflow.entities import GraphInitParams, GraphRuntimeState
+        from core.workflow.entities import GraphInitParams
         from core.workflow.graph import Graph
         from core.workflow.graph_engine import GraphEngine
         from core.workflow.graph_engine.command_channels import InMemoryChannel
         from core.workflow.nodes.node_factory import DifyNodeFactory
+        from core.workflow.runtime import GraphRuntimeState
 
         # Create GraphInitParams from node attributes
         graph_init_params = GraphInitParams(

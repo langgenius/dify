@@ -12,7 +12,7 @@ import {
   useNodesReadOnly,
 } from '../../hooks'
 import type { LoopNodeType } from './types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BlockSelector from '@/app/components/workflow/block-selector'
 
 import type {
@@ -34,11 +34,11 @@ const AddBlock = ({
   const { handleNodeAdd } = useNodesInteractions()
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, true)
 
-  const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
+  const handleSelect = useCallback<OnSelectBlock>((type, pluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType: type,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         prevNodeId: loopNodeData.start_node_id,

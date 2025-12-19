@@ -1,8 +1,7 @@
 'use client'
-import React, { type Reducer, useEffect, useReducer } from 'react'
+import React, { type Reducer, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
@@ -10,12 +9,11 @@ import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
 import { LanguagesSupported, languages } from '@/i18n-config/language'
-import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import { useDocLink } from '@/context/i18n'
+import { useOneMoreStep } from '@/service/use-common'
 
 type IState = {
-  formState: 'processing' | 'error' | 'success' | 'initial'
   invitation_code: string
   interface_language: string
   timezone: string
@@ -26,7 +24,6 @@ type IAction
   | { type: 'invitation_code', value: string }
   | { type: 'interface_language', value: string }
   | { type: 'timezone', value: string }
-  | { type: 'formState', value: 'processing' }
 
 const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
@@ -36,11 +33,8 @@ const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
       return { ...state, interface_language: action.value }
     case 'timezone':
       return { ...state, timezone: action.value }
-    case 'formState':
-      return { ...state, formState: action.value }
     case 'failed':
       return {
-        formState: 'initial',
         invitation_code: '',
         interface_language: 'en-US',
         timezone: 'Asia/Shanghai',
@@ -57,30 +51,29 @@ const OneMoreStep = () => {
   const searchParams = useSearchParams()
 
   const [state, dispatch] = useReducer(reducer, {
-    formState: 'initial',
     invitation_code: searchParams.get('invitation_code') || '',
     interface_language: 'en-US',
     timezone: 'Asia/Shanghai',
   })
-  const { data, error } = useSWR(state.formState === 'processing'
-    ? {
-      url: '/account/init',
-      body: {
+  const { mutateAsync: submitOneMoreStep, isPending } = useOneMoreStep()
+
+  const handleSubmit = async () => {
+    if (isPending)
+      return
+    try {
+      await submitOneMoreStep({
         invitation_code: state.invitation_code,
         interface_language: state.interface_language,
         timezone: state.timezone,
-      },
+      })
+      router.push('/apps')
     }
-    : null, oneMoreStep)
-
-  useEffect(() => {
-    if (error && error.status === 400) {
-      Toast.notify({ type: 'error', message: t('login.invalidInvitationCode') })
+    catch (error: any) {
+      if (error && error.status === 400)
+        Toast.notify({ type: 'error', message: t('login.invalidInvitationCode') })
       dispatch({ type: 'failed', payload: null })
     }
-    if (data)
-      router.push('/apps')
-  }, [data, error])
+  }
 
   return (
     <>
@@ -151,10 +144,8 @@ const OneMoreStep = () => {
             <Button
               variant='primary'
               className='w-full'
-              disabled={state.formState === 'processing'}
-              onClick={() => {
-                dispatch({ type: 'formState', value: 'processing' })
-              }}
+              disabled={isPending}
+              onClick={handleSubmit}
             >
               {t('login.go')}
             </Button>

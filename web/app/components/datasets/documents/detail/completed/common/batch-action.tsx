@@ -3,7 +3,7 @@ import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLin
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import Divider from '@/app/components/base/divider'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import Button from '@/app/components/base/button'
 
@@ -44,8 +44,8 @@ const BatchAction: FC<IBatchActionProps> = ({
     hideDeleteConfirm()
   }
   return (
-    <div className={cn('flex w-full justify-center gap-x-2', className)}>
-      <div className='flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5'>
+    <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
+      <div className='pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5'>
         <div className='inline-flex items-center gap-x-2 py-1 pl-2 pr-3'>
           <span className='system-xs-medium flex h-5 w-5 items-center justify-center rounded-md bg-text-accent text-text-primary-on-surface'>
             {selectedIds.length}

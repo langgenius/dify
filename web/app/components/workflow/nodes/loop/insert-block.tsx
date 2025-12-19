@@ -3,7 +3,7 @@ import {
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import { useNodesInteractions } from '../../hooks'
 import type {
   BlockEnum,
@@ -25,11 +25,11 @@ const InsertBlock = ({
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
   }, [])
-  const handleInsert = useCallback<OnSelectBlock>((nodeType, toolDefaultValue) => {
+  const handleInsert = useCallback<OnSelectBlock>((nodeType, pluginDefaultValue) => {
     handleNodeAdd(
       {
         nodeType,
-        toolDefaultValue,
+        pluginDefaultValue,
       },
       {
         nextNodeId: startNodeId,

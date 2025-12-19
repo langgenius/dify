@@ -9,15 +9,16 @@ import {
   useWorkflowStore,
 } from '../../store'
 import type { StartNodeType } from '../../nodes/start/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const UserInput = () => {
   const workflowStore = useWorkflowStore()
   const inputs = useStore(s => s.inputs)
+  const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const variables = startNode?.data.variables || []
-  const visibleVariables = variables.filter(v => v.hide !== true)
+  const visibleVariables = showDebugAndPreviewPanel ? variables : variables.filter(v => v.hide !== true)
 
   const handleValueChange = (variable: string, v: string) => {
     const {

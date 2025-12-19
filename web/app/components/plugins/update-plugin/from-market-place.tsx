@@ -15,13 +15,13 @@ import { usePluginTaskList } from '@/service/use-plugins'
 import Toast from '../../base/toast'
 import DowngradeWarningModal from './downgrade-warning'
 import { useInvalidateReferenceSettings, useRemoveAutoUpgrade } from '@/service/use-plugins'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'plugin.upgrade'
 
 type Props = {
   payload: UpdateFromMarketPlacePayload
-  pluginId: string
+  pluginId?: string
   onSave: () => void
   onCancel: () => void
   isShowDowngradeWarningModal?: boolean
@@ -113,9 +113,11 @@ const UpdatePluginModal: FC<Props> = ({
   const { mutateAsync } = useRemoveAutoUpgrade()
   const invalidateReferenceSettings = useInvalidateReferenceSettings()
   const handleExcludeAndDownload = async () => {
-    await mutateAsync({
-      plugin_id: pluginId,
-    })
+    if (pluginId) {
+      await mutateAsync({
+        plugin_id: pluginId,
+      })
+    }
     invalidateReferenceSettings()
     handleConfirm()
   }

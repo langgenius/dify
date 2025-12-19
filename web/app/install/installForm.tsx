@@ -11,7 +11,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Loading from '../components/base/loading'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
@@ -35,7 +35,7 @@ type AccountFormValues = z.infer<typeof accountFormSchema>
 
 const InstallForm = () => {
   useDocumentTitle('')
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const docLink = useDocLink()
   const router = useRouter()
   const [showPassword, setShowPassword] = React.useState(false)
@@ -58,6 +58,7 @@ const InstallForm = () => {
     await setup({
       body: {
         ...data,
+        language: i18n.language,
       },
     })
 
@@ -72,8 +73,6 @@ const InstallForm = () => {
 
     // Store tokens and redirect to apps if login successful
     if (loginRes.result === 'success') {
-      localStorage.setItem('console_token', loginRes.data.access_token)
-      localStorage.setItem('refresh_token', loginRes.data.refresh_token)
       router.replace('/apps')
     }
     else {
@@ -178,7 +177,7 @@ const InstallForm = () => {
                   </div>
                 </div>
 
-                <div className={classNames('mt-1 text-xs text-text-secondary', {
+                <div className={cn('mt-1 text-xs text-text-secondary', {
                   'text-red-400 !text-sm': errors.password,
                 })}>{t('login.error.passwordInvalid')}</div>
               </div>

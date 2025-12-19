@@ -20,7 +20,7 @@ const config: Config = {
   // bail: 0,
 
   // The directory where Jest should store its cached dependency information
-  // cacheDirectory: "/private/var/folders/9c/7gly5yl90qxdjljqsvkk758h0000gn/T/jest_dx",
+  cacheDirectory: '<rootDir>/.cache/jest',
 
   // Automatically clear mock calls, instances, contexts and results before every test
   clearMocks: true,
@@ -44,6 +44,7 @@ const config: Config = {
 
   // A list of reporter names that Jest uses when writing coverage reports
   coverageReporters: [
+    'json-summary',
     'json',
     'text',
     'text-summary',
@@ -100,7 +101,11 @@ const config: Config = {
   // A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
+    // Map lodash-es to lodash (CommonJS version)
     '^lodash-es$': 'lodash',
+    '^lodash-es/(.*)$': 'lodash/$1',
+    // Mock ky ESM module to avoid ESM issues in Jest
+    '^ky$': '<rootDir>/__mocks__/ky.ts',
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
@@ -160,7 +165,11 @@ const config: Config = {
   testEnvironment: '@happy-dom/jest-environment',
 
   // Options that will be passed to the testEnvironment
-  // testEnvironmentOptions: {},
+  testEnvironmentOptions: {
+    // Match happy-dom's default to ensure Node.js environment resolution
+    // This prevents ESM packages like uuid from using browser exports
+    customExportConditions: ['node', 'node-addons'],
+  },
 
   // Adds a location field to test results
   // testLocationInResults: false,
@@ -189,10 +198,10 @@ const config: Config = {
   // transform: undefined,
 
   // An array of regexp pattern strings that are matched against all source file paths, matched files will skip transformation
-  // transformIgnorePatterns: [
-  //   "/node_modules/",
-  //   "\\.pnp\\.[^\\/]+$"
-  // ],
+  // For pnpm: allow transforming uuid ESM package
+  transformIgnorePatterns: [
+    'node_modules/(?!(.pnpm|uuid))',
+  ],
 
   // An array of regexp pattern strings that are matched against all modules before the module loader will automatically return a mock for them
   // unmockedModulePathPatterns: undefined,

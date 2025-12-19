@@ -140,7 +140,7 @@ class TestCeleryWorkflowExecutionRepository:
         assert call_args["execution_data"] == sample_workflow_execution.model_dump()
         assert call_args["tenant_id"] == mock_account.current_tenant_id
         assert call_args["app_id"] == "test-app"
-        assert call_args["triggered_from"] == WorkflowRunTriggeredFrom.APP_RUN.value
+        assert call_args["triggered_from"] == WorkflowRunTriggeredFrom.APP_RUN
         assert call_args["creator_user_id"] == mock_account.id
 
         # Verify no task tracking occurs (no _pending_saves attribute)

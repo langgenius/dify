@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { useState } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
@@ -15,7 +14,8 @@ import {
   ArrowUpRight,
 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useModalContext } from '@/context/modal-context'
-import { fetchApiBasedExtensionList } from '@/service/common'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useApiBasedExtensions } from '@/service/use-common'
 
 type ApiBasedExtensionSelectorProps = {
   value: string
@@ -32,10 +32,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
     setShowAccountSettingModal,
     setShowApiBasedExtensionModal,
   } = useModalContext()
-  const { data, mutate } = useSWR(
-    '/api-based-extension',
-    fetchApiBasedExtensionList,
-  )
+  const { data, refetch: mutate } = useApiBasedExtensions()
   const handleSelect = (id: string) => {
     onChange(id)
     setOpen(false)
@@ -83,7 +80,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
                 className='flex cursor-pointer items-center text-xs text-text-accent'
                 onClick={() => {
                   setOpen(false)
-                  setShowAccountSettingModal({ payload: 'api-based-extension' })
+                  setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.API_BASED_EXTENSION })
                 }}
               >
                 {t('common.apiBasedExtension.selector.manage')}

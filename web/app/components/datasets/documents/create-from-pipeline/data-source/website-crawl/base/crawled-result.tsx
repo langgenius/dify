@@ -1,7 +1,7 @@
 'use client'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CrawlResultItem } from '@/models/datasets'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
@@ -45,10 +45,13 @@ const CrawledResult = ({
 
   const handleItemCheckChange = useCallback((item: CrawlResultItem) => {
     return (checked: boolean) => {
-      if (checked)
-        isMultipleChoice ? onSelectedChange([...checkedList, item]) : onSelectedChange([item])
-      else
-        onSelectedChange(checkedList.filter(checkedItem => checkedItem.source_url !== item.source_url))
+      if (checked) {
+        if (isMultipleChoice)
+          onSelectedChange([...checkedList, item])
+        else
+          onSelectedChange([item])
+      }
+      else { onSelectedChange(checkedList.filter(checkedItem => checkedItem.source_url !== item.source_url)) }
     }
   }, [checkedList, onSelectedChange, isMultipleChoice])
 

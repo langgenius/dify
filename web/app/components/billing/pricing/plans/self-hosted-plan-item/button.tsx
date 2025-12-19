@@ -2,7 +2,7 @@ import React, { useMemo } from 'react'
 import { SelfHostedPlan } from '../../../type'
 import { AwsMarketplaceDark, AwsMarketplaceLight } from '@/app/components/base/icons/src/public/billing'
 import { RiArrowRightLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
@@ -31,7 +31,7 @@ const Button = ({
   }, [theme])
 
   return (
-    <button
+    <button type="button"
       className={cn(
         'system-xl-semibold flex items-center gap-x-2 py-3 pl-5 pr-4',
         BUTTON_CLASSNAME[plan],

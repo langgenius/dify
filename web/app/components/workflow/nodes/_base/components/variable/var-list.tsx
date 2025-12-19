@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
+import { produce } from 'immer'
 import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
 import Input from '@/app/components/base/input'
@@ -14,7 +14,7 @@ import Toast from '@/app/components/base/toast'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import { RiDraggable } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useDebounceFn } from 'ahooks'
 
 type Props = {
@@ -61,7 +61,6 @@ const VarList: FC<Props> = ({
       return
     }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
-      console.log('new key', newKey.trim())
       setToastHandle(Toast.notify({
         type: 'error',
         message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),

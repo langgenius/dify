@@ -1,6 +1,6 @@
 'use client'
 import type { PropsWithChildren } from 'react'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type IChildrenProps = {
   children: React.ReactNode
@@ -71,10 +71,8 @@ type IColProps = IChildrenProps & {
 export function Col({ children, sticky = false }: IColProps) {
   return (
     <div
-      className={classNames(
-        '[&>:first-child]:mt-0 [&>:last-child]:mb-0',
-        sticky && 'xl:sticky xl:top-24',
-      )}
+      className={cn('[&>:first-child]:mt-0 [&>:last-child]:mb-0',
+        sticky && 'xl:sticky xl:top-24')}
     >
       {children}
     </div>
@@ -144,7 +142,7 @@ export function SubProperty({ name, type, children }: ISubProperty) {
   )
 }
 
-export function PropertyInstruction({ children }: PropsWithChildren<{}>) {
+export function PropertyInstruction({ children }: PropsWithChildren<{ }>) {
   return (
     <li className="m-0 px-0 py-4 italic first:pt-0">{children}</li>
   )

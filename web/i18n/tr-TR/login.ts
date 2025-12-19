@@ -120,6 +120,7 @@ const translation = {
     haveAccount: 'Zaten bir hesabınız var mı?',
     welcome: '👋 Hoş geldiniz! Başlamak için lütfen detayları doldurun.',
   },
+  pageTitleForE: 'Hey, haydi başlayalım!',
 }
 
 export default translation
