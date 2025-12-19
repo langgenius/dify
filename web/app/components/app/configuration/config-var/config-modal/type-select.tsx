@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

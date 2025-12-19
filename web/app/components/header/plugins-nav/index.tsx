@@ -26,12 +26,14 @@ const PluginsNav = ({
   } = usePluginTaskStatus()
 
   return (
-    <Link href="/plugins" className={cn(className, 'group', 'plugins-nav-button', // used for use-fold-anim-into.ts)}>
+    <Link href="/plugins" className={cn(className, 'group', 'plugins-nav-button',
+       // used for use-fold-anim-into.ts
+    )}>
       <div
         className={cn('system-sm-medium relative flex h-8 flex-row items-center justify-center gap-0.5 rounded-xl border border-transparent p-1.5',
-        activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text shadow-md',
-        !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-        (isInstallingWithError || isFailed) && !activated && 'border-components-panel-border-subtle',)}
+          activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text shadow-md',
+          !activated && 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+          (isInstallingWithError || isFailed) && !activated && 'border-components-panel-border-subtle')}
       >
         {
           (isFailed || isInstallingWithError) && !activated && (
