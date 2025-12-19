@@ -11,7 +11,7 @@ import {
 import Indicator from '@/app/components/header/indicator'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { Credential } from '../../declarations'
 import Badge from '@/app/components/base/badge'
 

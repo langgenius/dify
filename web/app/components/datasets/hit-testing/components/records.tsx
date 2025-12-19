@@ -4,7 +4,7 @@ import type { Attachment, HitTestingRecord, Query } from '@/models/datasets'
 import { RiApps2Line, RiArrowDownLine, RiFocus2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import ImageList from '../../common/image-list'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type RecordsProps = {
   records: HitTestingRecord[]

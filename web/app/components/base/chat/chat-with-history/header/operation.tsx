@@ -7,7 +7,7 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   title: string

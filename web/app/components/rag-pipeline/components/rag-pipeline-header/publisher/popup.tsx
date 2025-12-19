@@ -40,7 +40,7 @@ import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline
 import type { IconInfo } from '@/models/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useProviderContext } from '@/context/provider-context'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContextSelector } from '@/context/modal-context'
@@ -221,10 +221,8 @@ const Popup = () => {
   }, [isAllowPublishAsCustomKnowledgePipelineTemplate, setShowPublishAsKnowledgePipelineModal, setShowPricingModal])
 
   return (
-    <div className={classNames(
-      'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
-      isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]',
-    )}>
+    <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
+      isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className='p-4 pt-3'>
         <div className='system-xs-medium-uppercase flex h-6 items-center text-text-tertiary'>
           {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}

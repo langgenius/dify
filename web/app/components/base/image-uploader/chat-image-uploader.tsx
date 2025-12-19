@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from './uploader'
 import ImageLinkInput from './image-link-input'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import { TransferMethod } from '@/types/app'
 import {

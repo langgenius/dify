@@ -1,6 +1,6 @@
 import React from 'react'
 import Drawer from './drawer'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
 
 type IFullScreenDrawerProps = {

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import Loading from '@/app/components/base/loading'
 import s from './index.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CustomFile as File } from '@/models/datasets'
 import { fetchFilePreview } from '@/service/common'
 
