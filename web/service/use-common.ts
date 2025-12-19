@@ -42,7 +42,13 @@ export const commonQueryKeys = {
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   apiBasedExtensions: [NAME_SPACE, 'api-based-extensions'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
-  invitationCheck: (params: Record<string, any>) => [NAME_SPACE, 'invitation-check', params] as const,
+  invitationCheck: (params?: { workspace_id?: string; email?: string; token?: string }) => [
+    NAME_SPACE,
+    'invitation-check',
+    params?.workspace_id ?? '',
+    params?.email ?? '',
+    params?.token ?? '',
+  ] as const,
   notionBinding: (code?: string | null) => [NAME_SPACE, 'notion-binding', code] as const,
   modelParameterRules: (provider?: string, model?: string) => [NAME_SPACE, 'model-parameter-rules', provider, model] as const,
   langGeniusVersion: (currentVersion?: string | null) => [NAME_SPACE, 'lang-genius-version', currentVersion] as const,
@@ -320,7 +326,7 @@ export const useApiBasedExtensions = () => {
 
 export const useInvitationCheck = (params?: { workspace_id?: string; email?: string; token?: string }, enabled?: boolean) => {
   return useQuery({
-    queryKey: commonQueryKeys.invitationCheck(params || {}),
+    queryKey: commonQueryKeys.invitationCheck(params),
     queryFn: () => get<{
       is_valid: boolean
       data: { workspace_name: string; email: string; workspace_id: string }

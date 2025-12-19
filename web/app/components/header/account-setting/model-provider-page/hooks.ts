@@ -94,7 +94,7 @@ export const useProviderCredentialsAndLoadBalancing = (
   )
   const { data: customFormSchemasValue, isPending: isCustomizedLoading } = useQuery(
     {
-      queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_name, credentialId],
+      queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId],
       queryFn: () => fetchModelProviderCredentials(`/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}${credentialId ? `&credential_id=${credentialId}` : ''}`),
       enabled: customEnabled,
     },
@@ -121,8 +121,8 @@ export const useProviderCredentialsAndLoadBalancing = (
     if (predefinedEnabled)
       queryClient.invalidateQueries({ queryKey: ['model-providers', 'credentials', provider, credentialId] })
     if (customEnabled)
-      queryClient.invalidateQueries({ queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_name, credentialId] })
-  }, [customEnabled, credentialId, currentCustomConfigurationModelFixedFields?.__model_name, predefinedEnabled, provider, queryClient])
+      queryClient.invalidateQueries({ queryKey: ['model-providers', 'models', 'credentials', provider, currentCustomConfigurationModelFixedFields?.__model_type, currentCustomConfigurationModelFixedFields?.__model_name, credentialId] })
+  }, [customEnabled, credentialId, currentCustomConfigurationModelFixedFields?.__model_name, currentCustomConfigurationModelFixedFields?.__model_type, predefinedEnabled, provider, queryClient])
 
   return {
     credentials,
@@ -151,7 +151,7 @@ export const useModelList = (type: ModelTypeEnum) => {
 
 export const useDefaultModel = (type: ModelTypeEnum) => {
   const { data, refetch, isPending } = useQuery({
-    queryKey: ['default-model', type],
+    queryKey: commonQueryKeys.defaultModel(type),
     queryFn: () => fetchDefaultModal(`/workspaces/current/default-model?model_type=${type}`),
   })
 

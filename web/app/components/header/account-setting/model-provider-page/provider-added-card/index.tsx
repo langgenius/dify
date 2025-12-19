@@ -52,15 +52,14 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider) && !IS_CE_EDITION
   const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
 
-  const getModelList = async (providerName: string, options: { expand?: boolean } = {}) => {
+  const getModelList = async (providerName: string) => {
     if (loading)
       return
     try {
       setLoading(true)
-      if (options.expand)
-        setCollapsed(false)
       const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${providerName}/models`)
       setModelList(modelsData.data)
+      setCollapsed(false)
       setFetched(true)
     }
     finally {
@@ -73,7 +72,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       return
     }
 
-    getModelList(provider.provider, { expand: true })
+    getModelList(provider.provider)
   }
 
   eventEmitter?.useSubscription((v: any) => {
@@ -181,7 +180,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             provider={provider}
             models={modelList}
             onCollapse={() => setCollapsed(true)}
-            onChange={(provider: string) => getModelList(provider, { expand: false })}
+            onChange={(provider: string) => getModelList(provider)}
           />
         )
       }
