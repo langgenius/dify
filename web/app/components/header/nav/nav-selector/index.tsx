@@ -9,7 +9,7 @@ import {
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppTypeIcon } from '@/app/components/app/type-selector'
 import { useAppContext } from '@/context/app-context'

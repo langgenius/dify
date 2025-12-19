@@ -6,7 +6,7 @@ import {
   RiErrorWarningLine,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'

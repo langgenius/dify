@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useSearchParams, useSelectedLayoutSegment } from 'next/navigation'
 import type { INavSelectorProps } from './nav-selector'
 import NavSelector from './nav-selector'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
@@ -58,11 +58,9 @@ const Nav = ({
               return
             setAppDetail()
           }}
-          className={classNames(
-            'flex h-7 cursor-pointer items-center rounded-[10px] px-2.5',
+          className={cn('flex h-7 cursor-pointer items-center rounded-[10px] px-2.5',
             isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text',
-            curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover',
-          )}
+            curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover')}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
         >

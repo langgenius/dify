@@ -7,7 +7,7 @@ import Action from './action'
 import type { Plugin } from '@/app/components/plugins/types.ts'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import I18n from '@/context/i18n'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 import { formatNumber } from '@/utils/format'
 import { useBoolean } from 'ahooks'

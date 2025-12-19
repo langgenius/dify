@@ -6,7 +6,7 @@ import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 import Textarea from '@/app/components/base/textarea'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export enum EditItemType {
   Query = 'query',

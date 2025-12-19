@@ -15,7 +15,7 @@ import { useStore } from '@/app/components/workflow/store'
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BoolValue from './bool-value'
 import ArrayBoolList from './array-bool-list'
 import {

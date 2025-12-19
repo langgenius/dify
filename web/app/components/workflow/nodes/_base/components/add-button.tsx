@@ -4,7 +4,7 @@ import React from 'react'
 import {
   RiAddLine,
 } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 type Props = {

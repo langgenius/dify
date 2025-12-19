@@ -1,7 +1,7 @@
 import React from 'react'
 import Button from '../base/button'
 import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Tooltip from '../base/tooltip'
 import { useTranslation } from 'react-i18next'
 import { getKeyboardKeyNameBySystem } from '../workflow/utils'

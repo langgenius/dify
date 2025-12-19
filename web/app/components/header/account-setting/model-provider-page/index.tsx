@@ -19,7 +19,7 @@ import {
 } from './hooks'
 import InstallFromMarketplace from './install-from-marketplace'
 import { useProviderContext } from '@/context/provider-context'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {

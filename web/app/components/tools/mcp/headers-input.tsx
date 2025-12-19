@@ -6,7 +6,7 @@ import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import ActionButton from '@/app/components/base/action-button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type HeaderItem = {
   id: string
