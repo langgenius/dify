@@ -60,8 +60,10 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
         if not credential:
             logger.error(
-                f"Datasource credential not found for document {document_id}, "
-                f"tenant_id: {document.tenant_id}, credential_id: {credential_id}"
+                "Datasource credential not found for document %s, tenant_id: %s, credential_id: %s",
+                document_id,
+                document.tenant_id,
+                credential_id,
             )
             document.indexing_status = "error"
             document.error = "Datasource credential not found. Please reconnect your Notion workspace."
