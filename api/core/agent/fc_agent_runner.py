@@ -289,18 +289,16 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             )
                         )
                 # save agent thought
+                tool_invoke_meta = self._aggregate_by_tool_name(tool_responses, "meta")
+                observation = self._aggregate_by_tool_name(tool_responses, "tool_response")
+
                 self.save_agent_thought(
                     agent_thought_id=agent_thought_id,
                     tool_name="",
                     tool_input="",
                     thought="",
-                    tool_invoke_meta={
-                        tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
-                    },
-                    observation={
-                        tool_response["tool_call_name"]: tool_response["tool_response"]
-                        for tool_response in tool_responses
-                    },
+                    tool_invoke_meta=tool_invoke_meta,
+                    observation=observation,
                     answer="",
                     messages_ids=message_file_ids,
                 )
@@ -434,6 +432,24 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         }
 
     @staticmethod
+    def _aggregate_by_tool_name(
+        tool_responses: list[dict[str, Any]], value_key: str, default: Any = None
+    ) -> dict[str, Any]:
+        """
+        Aggregate tool response values by tool name.
+
+        :param tool_responses: The list of tool responses.
+        :param value_key: The key to retrieve the value from the tool response.
+        :param default: The default value if the key is missing.
+        :return: A dictionary of aggregated values.
+        """
+        agg = defaultdict(list)
+        for tr in tool_responses:
+            if "tool_call_name" in tr:
+                agg[tr["tool_call_name"]].append(tr.get(value_key, default))
+        return FunctionCallAgentRunner._flatten(agg)
+
+    @staticmethod
     def _flatten(agg_dict: dict[str, list[Any]]) -> dict[str, Any]:
         """
         Flatten a dictionary of lists into a dictionary of single values.
@@ -518,16 +534,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         final_answer = "\n".join(
             [str(tr["tool_response"]) for tr in tool_responses if tr.get("tool_response") is not None]
         )
-        tool_invoke_meta_agg = defaultdict(list)
-        observation_agg = defaultdict(list)
-        tool_input_agg = defaultdict(list)
-        for tr in tool_responses:
-            tool_invoke_meta_agg[tr["tool_call_name"]].append(tr["meta"])
-            observation_agg[tr["tool_call_name"]].append(tr["tool_response"])
-            tool_input_agg[tr["tool_call_name"]].append(tr.get("tool_call_args", {}))
-        tool_invoke_meta = self._flatten(tool_invoke_meta_agg)
-        observation = self._flatten(observation_agg)
-        tool_input = self._flatten(tool_input_agg)
+        tool_invoke_meta = self._aggregate_by_tool_name(tool_responses, "meta")
+        observation = self._aggregate_by_tool_name(tool_responses, "tool_response")
+        tool_input = self._aggregate_by_tool_name(tool_responses, "tool_call_args", default={})
         tool_name = ";".join(sorted({tr["tool_call_name"] for tr in tool_responses}))
 
         self._save_and_publish_thought(
