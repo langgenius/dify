@@ -232,6 +232,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 variant={isRunning ? 'secondary' : 'primary'}
                 disabled={isRunning && runControl?.isStopping}
                 onClick={handlePrimaryClick}
+                data-testid={isRunning ? 'stop-button' : 'run-button'}
               >
                 {isRunning ? (
                   <>
