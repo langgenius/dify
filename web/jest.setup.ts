@@ -42,6 +42,22 @@ if (typeof window !== 'undefined') {
   ensureWritable(HTMLElement.prototype, 'focus')
 }
 
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class {
+    observe() {
+      return undefined
+    }
+
+    unobserve() {
+      return undefined
+    }
+
+    disconnect() {
+      return undefined
+    }
+  }
+}
+
 afterEach(() => {
   cleanup()
 })
