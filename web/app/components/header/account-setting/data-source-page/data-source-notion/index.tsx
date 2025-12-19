@@ -9,7 +9,7 @@ import NotionIcon from '@/app/components/base/notion-icon'
 import { noop } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
-import { useNotionConnection } from '@/service/use-common'
+import { useDataSourceIntegrates, useNotionConnection } from '@/service/use-common'
 
 const Icon: FC<{
   src: string
@@ -25,7 +25,7 @@ const Icon: FC<{
   )
 }
 type Props = {
-  workspaces: TDataSourceNotion[]
+  workspaces?: TDataSourceNotion[]
 }
 
 const DataSourceNotion: FC<Props> = ({
@@ -33,10 +33,14 @@ const DataSourceNotion: FC<Props> = ({
 }) => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const [canConnectNotion, setCanConnectNotion] = useState(false)
+  const { data: integrates } = useDataSourceIntegrates({
+    initialData: workspaces ? { data: workspaces } : undefined,
+  })
   const { data } = useNotionConnection(canConnectNotion)
   const { t } = useTranslation()
 
-  const connected = !!workspaces.length
+  const resolvedWorkspaces = integrates?.data ?? []
+  const connected = !!resolvedWorkspaces.length
 
   const handleConnectNotion = () => {
     if (!isCurrentWorkspaceManager)
@@ -73,7 +77,7 @@ const DataSourceNotion: FC<Props> = ({
       onConfigure={handleConnectNotion}
       readOnly={!isCurrentWorkspaceManager}
       isSupportList
-      configuredList={workspaces.map(workspace => ({
+      configuredList={resolvedWorkspaces.map(workspace => ({
         id: workspace.id,
         logo: ({ className }: { className: string }) => (
           <Icon

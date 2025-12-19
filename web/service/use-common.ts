@@ -2,6 +2,7 @@ import { get, post } from './base'
 import type {
   AccountIntegrate,
   CommonResponse,
+  DataSourceNotion,
   FileUploadConfigResponse,
   Member,
   StructuredOutputRulesRequestBody,
@@ -21,6 +22,7 @@ import type { PluginProvider } from '@/models/common'
 import type { ApiBasedExtension } from '@/models/common'
 import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CodeBasedExtension } from '@/models/common'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'common'
 
@@ -293,6 +295,25 @@ export const useAccountIntegrates = () => {
     queryKey: commonQueryKeys.accountIntegrates,
     queryFn: () => get<{ data: AccountIntegrate[] | null }>('/account/integrates'),
   })
+}
+
+type DataSourceIntegratesOptions = {
+  enabled?: boolean
+  initialData?: { data: DataSourceNotion[] }
+}
+
+export const useDataSourceIntegrates = (options: DataSourceIntegratesOptions = {}) => {
+  const { enabled = true, initialData } = options
+  return useQuery<{ data: DataSourceNotion[] }>({
+    queryKey: commonQueryKeys.dataSourceIntegrates,
+    queryFn: () => get<{ data: DataSourceNotion[] }>('/data-source/integrates'),
+    enabled,
+    initialData,
+  })
+}
+
+export const useInvalidDataSourceIntegrates = () => {
+  return useInvalid(commonQueryKeys.dataSourceIntegrates)
 }
 
 export const usePluginProviders = () => {
