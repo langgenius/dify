@@ -130,6 +130,20 @@ class TestActivateCheckApi:
         assert response["is_valid"] is True
         mock_get_invitation.assert_called_once_with("workspace-123", None, "valid_token")
 
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    def test_check_token_normalizes_email_to_lowercase(self, mock_get_invitation, app, mock_invitation):
+        """Ensure token validation uses lowercase emails."""
+        mock_get_invitation.return_value = mock_invitation
+
+        with app.test_request_context(
+            "/activate/check?workspace_id=workspace-123&email=Invitee@Example.com&token=valid_token"
+        ):
+            api = ActivateCheckApi()
+            response = api.get()
+
+        assert response["is_valid"] is True
+        mock_get_invitation.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+
 
 class TestActivateApi:
     """Test cases for account activation endpoint."""
@@ -454,3 +468,41 @@ class TestActivateApi:
         # Assert
         assert response["result"] == "success"
         mock_revoke_token.assert_called_once_with(None, "invitee@example.com", "valid_token")
+
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.revoke_token")
+    @patch("controllers.console.auth.activate.db")
+    @patch("controllers.console.auth.activate.AccountService.login")
+    def test_activation_normalizes_email_before_lookup(
+        self,
+        mock_login,
+        mock_db,
+        mock_revoke_token,
+        mock_get_invitation,
+        app,
+        mock_invitation,
+        mock_account,
+        mock_token_pair,
+    ):
+        """Ensure uppercase emails are normalized before lookup and revocation."""
+        mock_get_invitation.return_value = mock_invitation
+        mock_login.return_value = mock_token_pair
+
+        with app.test_request_context(
+            "/activate",
+            method="POST",
+            json={
+                "workspace_id": "workspace-123",
+                "email": "Invitee@Example.com",
+                "token": "valid_token",
+                "name": "John Doe",
+                "interface_language": "en-US",
+                "timezone": "UTC",
+            },
+        ):
+            api = ActivateApi()
+            response = api.post()
+
+        assert response["result"] == "success"
+        mock_get_invitation.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+        mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")

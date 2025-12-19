@@ -63,7 +63,7 @@ class ActivateCheckApi(Resource):
         args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         workspaceId = args.workspace_id
-        reg_email = args.email
+        reg_email = args.email.lower() if args.email else None
         token = args.token
 
         invitation = RegisterService.get_invitation_if_token_valid(workspaceId, reg_email, token)
@@ -101,11 +101,12 @@ class ActivateApi(Resource):
     def post(self):
         args = ActivatePayload.model_validate(console_ns.payload)
 
-        invitation = RegisterService.get_invitation_if_token_valid(args.workspace_id, args.email, args.token)
+        normalized_email = args.email.lower() if args.email else None
+        invitation = RegisterService.get_invitation_if_token_valid(args.workspace_id, normalized_email, args.token)
         if invitation is None:
             raise AlreadyActivateError()
 
-        RegisterService.revoke_token(args.workspace_id, args.email, args.token)
+        RegisterService.revoke_token(args.workspace_id, normalized_email, args.token)
 
         account = invitation["account"]
         account.name = args.name
