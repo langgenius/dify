@@ -289,7 +289,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             )
                         )
                 # save agent thought
-                tool_invoke_meta = self._aggregate_by_tool_name(tool_responses, "meta")
+                tool_invoke_meta_dict = self._aggregate_by_tool_name(tool_responses, "meta")
                 observation = self._aggregate_by_tool_name(tool_responses, "tool_response")
 
                 self.save_agent_thought(
@@ -297,7 +297,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     tool_name="",
                     tool_input="",
                     thought="",
-                    tool_invoke_meta=tool_invoke_meta,
+                    tool_invoke_meta=tool_invoke_meta_dict,
                     observation=observation,
                     answer="",
                     messages_ids=message_file_ids,
