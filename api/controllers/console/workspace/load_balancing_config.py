@@ -25,6 +25,7 @@ register_schema_models(console_ns, LoadBalancingCredentialPayload)
     "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/credentials-validate"
 )
 class LoadBalancingCredentialsValidateApi(Resource):
+    @console_ns.expect(console_ns.models[LoadBalancingCredentialPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
@@ -67,6 +68,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
     "/workspaces/current/model-providers/<path:provider>/models/load-balancing-configs/<string:config_id>/credentials-validate"
 )
 class LoadBalancingConfigCredentialsValidateApi(Resource):
+    @console_ns.expect(console_ns.models[LoadBalancingCredentialPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
