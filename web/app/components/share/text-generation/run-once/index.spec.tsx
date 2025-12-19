@@ -6,12 +6,6 @@ import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, opts?: { defaultValue?: string }) => opts?.defaultValue || key,
-  }),
-}))
-
 jest.mock('@/hooks/use-breakpoints', () => {
   const MediaType = {
     pc: 'pc',
@@ -23,19 +17,6 @@ jest.mock('@/hooks/use-breakpoints', () => {
     __esModule: true,
     default: mockUseBreakpoints,
     MediaType,
-  }
-})
-
-jest.mock('ky', () => {
-  const kyInstance = {
-    extend: () => kyInstance,
-    create: () => kyInstance,
-    get: jest.fn(),
-    post: jest.fn(),
-  }
-  return {
-    __esModule: true,
-    default: kyInstance,
   }
 })
 

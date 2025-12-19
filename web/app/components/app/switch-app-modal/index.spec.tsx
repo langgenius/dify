@@ -8,19 +8,6 @@ import { AppModeEnum } from '@/types/app'
 import { Plan } from '@/app/components/billing/type'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 
-jest.mock('ky', () => {
-  const kyInstance = {
-    extend: () => kyInstance,
-    create: () => kyInstance,
-    get: jest.fn(),
-    post: jest.fn(),
-  }
-  return {
-    __esModule: true,
-    default: kyInstance,
-  }
-})
-
 const mockPush = jest.fn()
 const mockReplace = jest.fn()
 jest.mock('next/navigation', () => ({
@@ -87,12 +74,6 @@ jest.mock('@/context/provider-context', () => ({
 jest.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   __esModule: true,
   default: ({ loc }: { loc: string }) => <div data-testid="apps-full">AppsFull {loc}</div>,
-}))
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { defaultValue?: string }) => options?.defaultValue || key,
-  }),
 }))
 
 const createMockApp = (overrides: Partial<App> = {}): App => ({

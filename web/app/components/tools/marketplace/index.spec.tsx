@@ -10,19 +10,6 @@ import type { Collection } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import type { Plugin } from '@/app/components/plugins/types'
 
-jest.mock('ky', () => {
-  const kyInstance = {
-    extend: () => kyInstance,
-    create: () => kyInstance,
-    get: jest.fn(),
-    post: jest.fn(),
-  }
-  return {
-    __esModule: true,
-    default: kyInstance,
-  }
-})
-
 const listRenderSpy = jest.fn()
 jest.mock('@/app/components/plugins/marketplace/list', () => ({
   __esModule: true,
@@ -61,12 +48,6 @@ jest.mock('@/i18n-config', () => ({
 
 jest.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
-}))
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
 }))
 
 const { getMarketplaceUrl: mockGetMarketplaceUrl } = jest.requireMock('@/utils/var') as {
