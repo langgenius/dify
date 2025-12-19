@@ -118,7 +118,10 @@ class OAuthCallback(Resource):
             invitation = RegisterService.get_invitation_by_token(token=invite_token)
             if invitation:
                 invitation_email = invitation.get("email", None)
-                if invitation_email != user_info.email:
+                invitation_email_normalized = (
+                    invitation_email.lower() if isinstance(invitation_email, str) else invitation_email
+                )
+                if invitation_email_normalized != user_info.email.lower():
                     return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Invalid invitation token.")
 
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
@@ -172,7 +175,7 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
 
     if not account:
         with Session(db.engine) as session:
-            account = session.execute(select(Account).filter_by(email=user_info.email)).scalar_one_or_none()
+            account = _fetch_account_by_email(session, user_info.email)
 
     return account
 
@@ -193,8 +196,9 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
                 tenant_was_created.send(new_tenant)
 
     if not account:
+        normalized_email = user_info.email.lower()
         if not FeatureService.get_system_features().is_allow_register:
-            if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(user_info.email):
+            if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(normalized_email):
                 raise AccountRegisterError(
                     description=(
                         "This email account has been deleted within the past "
@@ -205,7 +209,11 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
                 raise AccountRegisterError(description=("Invalid email or password"))
         account_name = user_info.name or "Dify"
         account = RegisterService.register(
-            email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
+            email=normalized_email,
+            name=account_name,
+            password=None,
+            open_id=user_info.id,
+            provider=provider,
         )
 
         # Set interface language
@@ -221,3 +229,10 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     AccountService.link_account_integrate(provider, user_info.id, account)
 
     return account
+
+
+def _fetch_account_by_email(session: Session, email: str) -> Account | None:
+    account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+    if account or email == email.lower():
+        return account
+    return session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
