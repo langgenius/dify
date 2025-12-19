@@ -65,41 +65,45 @@ class RetrievalService:
         pool = Pool(size=dify_config.RETRIEVAL_SERVICE_EXECUTORS)
         jobs = []
         if query:
-            jobs.append(pool.spawn(
-                retrieval_service._retrieve,
-                flask_app=current_app._get_current_object(),  # type: ignore
-                retrieval_method=retrieval_method,
-                dataset=dataset,
-                query=query,
-                top_k=top_k,
-                score_threshold=score_threshold,
-                reranking_model=reranking_model,
-                reranking_mode=reranking_mode,
-                weights=weights,
-                document_ids_filter=document_ids_filter,
-                attachment_id=None,
-                all_documents=all_documents,
-                exceptions=exceptions,
-            ))
-
-        if attachment_ids:
-            for attachment_id in attachment_ids:
-                jobs.append(pool.spawn(
+            jobs.append(
+                pool.spawn(
                     retrieval_service._retrieve,
                     flask_app=current_app._get_current_object(),  # type: ignore
                     retrieval_method=retrieval_method,
                     dataset=dataset,
-                    query=None,
+                    query=query,
                     top_k=top_k,
                     score_threshold=score_threshold,
                     reranking_model=reranking_model,
                     reranking_mode=reranking_mode,
                     weights=weights,
                     document_ids_filter=document_ids_filter,
-                    attachment_id=attachment_id,
+                    attachment_id=None,
                     all_documents=all_documents,
                     exceptions=exceptions,
-                ))
+                )
+            )
+
+        if attachment_ids:
+            for attachment_id in attachment_ids:
+                jobs.append(
+                    pool.spawn(
+                        retrieval_service._retrieve,
+                        flask_app=current_app._get_current_object(),  # type: ignore
+                        retrieval_method=retrieval_method,
+                        dataset=dataset,
+                        query=None,
+                        top_k=top_k,
+                        score_threshold=score_threshold,
+                        reranking_model=reranking_model,
+                        reranking_mode=reranking_mode,
+                        weights=weights,
+                        document_ids_filter=document_ids_filter,
+                        attachment_id=attachment_id,
+                        all_documents=all_documents,
+                        exceptions=exceptions,
+                    )
+                )
 
         gevent.joinall(jobs, timeout=3600)
 
