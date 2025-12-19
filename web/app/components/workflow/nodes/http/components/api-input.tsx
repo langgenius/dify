@@ -8,7 +8,7 @@ import Selector from '../../_base/components/selector'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import { VarType } from '../../../types'
 import type { Var } from '../../../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 
 const MethodOptions = [

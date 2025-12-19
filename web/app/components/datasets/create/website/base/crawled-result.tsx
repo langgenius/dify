@@ -4,7 +4,7 @@ import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CrawlResultItem } from '@/models/datasets'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
@@ -61,8 +61,10 @@ const CrawledResult: FC<Props> = ({
       <div className='flex h-[34px] items-center justify-between px-4'>
         <CheckboxWithLabel
           isChecked={isCheckAll}
-          onChange={handleCheckedAll} label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
+          onChange={handleCheckedAll}
+          label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
           labelClassName='system-[13px] leading-[16px] font-medium text-text-secondary'
+          testId='select-all'
         />
         <div className='text-xs text-text-tertiary'>
           {t(`${I18N_PREFIX}.scrapTimeInfo`, {
@@ -80,6 +82,7 @@ const CrawledResult: FC<Props> = ({
             payload={item}
             isChecked={checkedList.some(checkedItem => checkedItem.source_url === item.source_url)}
             onCheckChange={handleItemCheckChange(item)}
+            testId={`item-${index}`}
           />
         ))}
       </div>

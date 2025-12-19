@@ -7,7 +7,7 @@ import { useLanguage } from '../hooks'
 import type { ModelItem } from '../declarations'
 import ModelBadge from '../model-badge'
 import FeatureIcon from '../model-selector/feature-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ModelNameProps = PropsWithChildren<{
   modelItem: ModelItem

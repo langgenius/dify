@@ -6,7 +6,7 @@ import Input from '@/app/components/base/input'
 import Checkbox from '@/app/components/base/checkbox'
 import { SimpleSelect } from '@/app/components/base/select'
 import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 // Tiny utility to judge whether a cell value is effectively present
 const isPresent = (v: unknown): boolean => {

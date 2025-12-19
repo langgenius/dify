@@ -6,7 +6,7 @@ import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 import Textarea from '@/app/components/base/textarea'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export enum EditItemType {
   Query = 'query',
@@ -52,8 +52,14 @@ const EditItem: FC<Props> = ({
   }, [content])
 
   const handleSave = async () => {
-    await onSave(newContent)
-    setIsEdit(false)
+    try {
+      await onSave(newContent)
+      setIsEdit(false)
+    }
+    catch {
+      // Keep edit mode open when save fails
+      // Error notification is handled by the parent component
+    }
   }
 
   const handleCancel = () => {
@@ -96,9 +102,16 @@ const EditItem: FC<Props> = ({
                     <div className='mr-2'>·</div>
                     <div
                       className='flex cursor-pointer items-center space-x-1'
-                      onClick={() => {
-                        setNewContent(content)
-                        onSave(content)
+                      onClick={async () => {
+                        try {
+                          await onSave(content)
+                          // Only update UI state after successful delete
+                          setNewContent(content)
+                        }
+                        catch {
+                          // Delete action failed - error is already handled by parent
+                          // UI state remains unchanged, user can retry
+                        }
                       }}
                     >
                       <div className='h-3.5 w-3.5'>

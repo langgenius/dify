@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowLeftIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { AppDetailResponse } from '@/models/app'
 
 type IAppBackProps = {
@@ -16,7 +16,7 @@ export default function AppBack({ curApp }: IAppBackProps) {
 
   return (
     <div
-      className={classNames(`
+      className={cn(`
         flex h-7 cursor-pointer items-center rounded-[10px]
         pl-2.5 pr-2 font-semibold
         text-[#1C64F2]

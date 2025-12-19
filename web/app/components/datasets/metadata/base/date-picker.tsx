@@ -5,7 +5,7 @@ import {
   RiCloseCircleFill,
 } from '@remixicon/react'
 import DatePicker from '@/app/components/base/date-and-time-picker/date-picker'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { useTranslation } from 'react-i18next'

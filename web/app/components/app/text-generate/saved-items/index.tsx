@@ -8,7 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import copy from 'copy-to-clipboard'
 import NoData from './no-data'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { SavedMessage } from '@/models/debug'
 import { Markdown } from '@/app/components/base/markdown'
 import Toast from '@/app/components/base/toast'

@@ -93,4 +93,12 @@ jobs:
           # Create a detailed coverage summary
           echo "### Test Coverage Summary :test_tube:" >> $GITHUB_STEP_SUMMARY
           echo "Total Coverage: ${TOTAL_COVERAGE}%" >> $GITHUB_STEP_SUMMARY
-          uv run --project api coverage report --format=markdown >> $GITHUB_STEP_SUMMARY
+          {
+            echo ""
+            echo "<details><summary>File-level coverage (click to expand)</summary>"
+            echo ""
+            echo '```'
+            uv run --project api coverage report -m
+            echo '```'
+            echo "</details>"
+          } >> $GITHUB_STEP_SUMMARY

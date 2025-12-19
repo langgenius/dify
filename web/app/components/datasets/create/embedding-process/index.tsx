@@ -13,7 +13,7 @@ import Image from 'next/image'
 import { indexMethodIcon, retrievalIcon } from '../icons'
 import { IndexingType } from '../step-two'
 import DocumentFileIcon from '../../common/document-file-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
 import Button from '@/app/components/base/button'
 import type {

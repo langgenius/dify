@@ -3,7 +3,7 @@ import { RiArrowRightSLine, RiArrowRightUpLine, RiChatSmile2Line, RiDiscordLine,
 import { Fragment } from 'react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import { toggleZendeskWindow } from '@/app/components/base/zendesk/utils'

@@ -101,7 +101,7 @@ const AddAnnotationModal: FC<Props> = ({
                 <div
                   className='flex items-center space-x-2'
                 >
-                  <Checkbox checked={isCreateNext} onCheck={() => setIsCreateNext(!isCreateNext)} />
+                  <Checkbox id='create-next-checkbox' checked={isCreateNext} onCheck={() => setIsCreateNext(!isCreateNext)} />
                   <div>{t('appAnnotation.addModal.createNext')}</div>
                 </div>
                 <div className='mt-2 flex space-x-2'>

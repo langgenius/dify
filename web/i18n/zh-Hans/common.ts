@@ -11,6 +11,7 @@ const translation = {
     saved: '已保存',
     create: '已创建',
     remove: '已移除',
+    actionFailed: '操作失败',
   },
   operation: {
     create: '创建',
@@ -113,6 +114,8 @@ const translation = {
       hiIN: '印地语',
       trTR: '土耳其语',
       faIR: '波斯语',
+      slSI: '斯洛文尼亚语',
+      arTN: '突尼斯阿拉伯语',
     },
   },
   unit: {

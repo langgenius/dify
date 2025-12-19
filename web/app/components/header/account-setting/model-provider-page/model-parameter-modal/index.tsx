@@ -3,7 +3,6 @@ import type {
   ReactNode,
 } from 'react'
 import { useMemo, useState } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
   DefaultModel,
@@ -20,17 +19,17 @@ import type { ParameterValue } from './parameter-item'
 import Trigger from './trigger'
 import type { TriggerProps } from './trigger'
 import PresetsParameter from './presets-parameter'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { fetchModelParameterRules } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import { useProviderContext } from '@/context/provider-context'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
 import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useModelParameterRules } from '@/service/use-common'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
@@ -69,7 +68,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { t } = useTranslation()
   const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
-  const { data: parameterRulesData, isLoading } = useSWR((provider && modelId) ? `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}` : null, fetchModelParameterRules)
+  const { data: parameterRulesData, isPending: isLoading } = useModelParameterRules(provider, modelId)
   const {
     currentProvider,
     currentModel,

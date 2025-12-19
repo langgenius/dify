@@ -16,7 +16,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
 
 const EnvPanel = () => {

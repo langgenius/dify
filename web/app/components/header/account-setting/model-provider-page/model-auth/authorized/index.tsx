@@ -17,7 +17,7 @@ import type {
   PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import type {
   ConfigurationMethodEnum,

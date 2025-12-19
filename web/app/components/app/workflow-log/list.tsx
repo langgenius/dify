@@ -12,7 +12,7 @@ import Drawer from '@/app/components/base/drawer'
 import Indicator from '@/app/components/header/indicator'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { WorkflowRunTriggeredFrom } from '@/models/log'
 
 type ILogs = {

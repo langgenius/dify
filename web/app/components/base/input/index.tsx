@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
 import { type VariantProps, cva } from 'class-variance-authority'
 import { noop } from 'lodash-es'

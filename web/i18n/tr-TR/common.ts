@@ -5,6 +5,7 @@ const translation = {
     saved: 'Kaydedildi',
     create: 'Oluşturuldu',
     remove: 'Kaldırıldı',
+    actionFailed: 'İşlem başarısız',
   },
   operation: {
     create: 'Oluştur',
@@ -103,6 +104,8 @@ const translation = {
       hiIN: 'Hintçe',
       trTR: 'Türkçe',
       faIR: 'Farsça',
+      slSI: 'Slovence',
+      arTN: 'Tunus Arapçası',
     },
   },
   unit: {
