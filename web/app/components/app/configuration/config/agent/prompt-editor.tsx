@@ -4,7 +4,7 @@ import React from 'react'
 import copy from 'copy-to-clipboard'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   Copy,
   CopyCheck,

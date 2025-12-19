@@ -35,7 +35,7 @@ import {
 } from '@/service/use-tools'
 import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   panelClassName?: string

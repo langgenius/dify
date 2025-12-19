@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 import { invitationCheck } from '@/service/common'

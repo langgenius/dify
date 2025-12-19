@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { type Category, CategoryEnum } from '.'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type FooterProps = {
   pricingPageURL: string

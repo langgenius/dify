@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { RiArrowDownSLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

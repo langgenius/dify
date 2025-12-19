@@ -9,7 +9,7 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useStore } from '@/app/components/workflow/store'
 
 type MixedVariableTextInputProps = {

@@ -11,7 +11,7 @@ import {
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import Toast from '@/app/components/base/toast'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type OperateProps = {
   payload: {

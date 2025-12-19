@@ -12,7 +12,7 @@ import {
   RiImageCircleAiLine,
   RiVoiceAiFill,
 } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type FeatureIconProps = {
   feature: ModelFeatureEnum

@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import { useSearchParams } from 'next/navigation'
 import Header from '../signin/_header'
 import ForgotPasswordForm from './ForgotPasswordForm'

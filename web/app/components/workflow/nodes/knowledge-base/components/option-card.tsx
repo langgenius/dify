@@ -4,7 +4,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import {
   OptionCardEffectBlue,

@@ -20,7 +20,7 @@ import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 const InputFieldPanel = () => {
