@@ -27,7 +27,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../../../store'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type NodeHandleProps = {
   handleId: string

@@ -17,7 +17,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
 import type { SiteInfo } from '@/models/share'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { AccessMode } from '@/models/access-control'
 import { useWebAppStore } from '@/context/web-app-context'
 import { webAppLogout } from '@/service/webapp-auth'

@@ -8,7 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type IResDownloadProps = {
   isMobile: boolean

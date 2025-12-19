@@ -11,7 +11,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Loading from '../components/base/loading'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
@@ -177,7 +177,7 @@ const InstallForm = () => {
                   </div>
                 </div>
 
-                <div className={classNames('mt-1 text-xs text-text-secondary', {
+                <div className={cn('mt-1 text-xs text-text-secondary', {
                   'text-red-400 !text-sm': errors.password,
                 })}>{t('login.error.passwordInvalid')}</div>
               </div>

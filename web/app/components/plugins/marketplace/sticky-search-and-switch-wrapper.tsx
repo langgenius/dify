@@ -2,7 +2,7 @@
 
 import SearchBoxWrapper from './search-box/search-box-wrapper'
 import PluginTypeSwitch from './plugin-type-switch'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type StickySearchAndSwitchWrapperProps = {
   locale?: string

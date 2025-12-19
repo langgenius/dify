@@ -19,7 +19,7 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { uninstallPlugin } from '@/service/plugins'
 import { useAllToolProviders, useInvalidateAllToolProviders } from '@/service/use-tools'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
 import {
   RiArrowLeftRightLine,

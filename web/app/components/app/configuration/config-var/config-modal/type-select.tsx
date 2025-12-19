@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import classNames from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -10,7 +9,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import type { InputVarType } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
@@ -47,7 +46,7 @@ const TypeSelector: FC<Props> = ({
     >
       <PortalToFollowElemTrigger onClick={() => !readonly && setOpen(v => !v)} className='w-full'>
         <div
-          className={classNames(`group flex h-9 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2 text-sm hover:bg-state-base-hover-alt ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`)}
+          className={cn(`group flex h-9 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2 text-sm hover:bg-state-base-hover-alt ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}`)}
           title={selectedItem?.name}
         >
           <div className='flex items-center'>
@@ -69,7 +68,7 @@ const TypeSelector: FC<Props> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[61]'>
         <div
-          className={classNames('w-[432px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
+          className={cn('w-[432px] rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div

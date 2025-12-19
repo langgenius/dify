@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'

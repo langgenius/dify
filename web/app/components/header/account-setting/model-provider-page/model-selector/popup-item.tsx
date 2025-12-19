@@ -30,7 +30,7 @@ import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import FeatureIcon from './feature-icon'
 
 type PopupItemProps = {

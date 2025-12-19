@@ -11,6 +11,7 @@ const translation = {
     saved: '保存済み',
     create: '作成済み',
     remove: '削除済み',
+    actionFailed: 'アクションに失敗しました',
   },
   operation: {
     create: '作成',
@@ -109,6 +110,8 @@ const translation = {
       hiIN: 'ヒンディー語',
       trTR: 'トルコ語',
       faIR: 'ペルシア語',
+      slSI: 'スロベニア語',
+      arTN: 'チュニジア・アラビア語',
     },
   },
   unit: {

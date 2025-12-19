@@ -6,6 +6,12 @@
 
 * @crazywoola @laipz8200 @Yeuoly
 
+# CODEOWNERS file
+.github/CODEOWNERS @laipz8200 @crazywoola
+
+# Docs
+docs/ @crazywoola
+
 # Backend (default owner, more specific rules below will override)
 api/ @QuantumGhost
 
@@ -116,7 +122,7 @@ api/controllers/console/feature.py @GarfieldDai @GareArc
 api/controllers/web/feature.py @GarfieldDai @GareArc
 
 # Backend - Database Migrations
-api/migrations/ @snakevash @laipz8200
+api/migrations/ @snakevash @laipz8200 @MRZHUH
 
 # Frontend
 web/ @iamjoel
