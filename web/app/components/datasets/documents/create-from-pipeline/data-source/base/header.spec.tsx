@@ -268,10 +268,12 @@ describe('Header', () => {
         // Arrange
         const mockOnClick = jest.fn()
         const props = createDefaultProps({ onClickConfiguration: mockOnClick })
-        const { container } = render(<Header {...props} />)
+        render(<Header {...props} />)
 
-        // Act - Click on the configuration icon (RiEqualizer2Line)
-        const configIcon = container.querySelector('.h-4.w-4')
+        // Act - Find the configuration button and click the icon inside
+        // The button contains the RiEqualizer2Line icon with onClick handler
+        const configButton = screen.getByRole('button')
+        const configIcon = configButton.querySelector('svg')
         expect(configIcon).toBeInTheDocument()
         fireEvent.click(configIcon!)
 
@@ -282,10 +284,11 @@ describe('Header', () => {
       it('should not crash when onClickConfiguration is undefined', () => {
         // Arrange
         const props = createDefaultProps({ onClickConfiguration: undefined })
-        const { container } = render(<Header {...props} />)
+        render(<Header {...props} />)
 
-        // Act - Click on the configuration icon
-        const configIcon = container.querySelector('.h-4.w-4')
+        // Act - Find the configuration button and click the icon inside
+        const configButton = screen.getByRole('button')
+        const configIcon = configButton.querySelector('svg')
         expect(configIcon).toBeInTheDocument()
         fireEvent.click(configIcon!)
 

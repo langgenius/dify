@@ -676,12 +676,15 @@ describe('OptionCard', () => {
       it('should call onClick when card is clicked', () => {
         // Arrange
         const mockOnClick = jest.fn()
-        const { container } = renderWithProviders(
+        renderWithProviders(
           <OptionCard {...defaultProps} onClick={mockOnClick} />,
         )
 
-        // Act
-        fireEvent.click(container.firstChild!)
+        // Act - Click on the label text's parent card
+        const labelElement = screen.getByText('Test Option')
+        const card = labelElement.closest('[class*="cursor-pointer"]')
+        expect(card).toBeInTheDocument()
+        fireEvent.click(card!)
 
         // Assert
         expect(mockOnClick).toHaveBeenCalledTimes(1)
@@ -689,15 +692,18 @@ describe('OptionCard', () => {
 
       it('should not crash when onClick is not provided', () => {
         // Arrange & Act
-        const { container } = renderWithProviders(
+        renderWithProviders(
           <OptionCard {...defaultProps} onClick={undefined} />,
         )
 
-        // Act - Click should not throw
-        fireEvent.click(container.firstChild!)
+        // Act - Click on the label text's parent card should not throw
+        const labelElement = screen.getByText('Test Option')
+        const card = labelElement.closest('[class*="cursor-pointer"]')
+        expect(card).toBeInTheDocument()
+        fireEvent.click(card!)
 
-        // Assert
-        expect(container.firstChild).toBeInTheDocument()
+        // Assert - Component should still be rendered
+        expect(screen.getByText('Test Option')).toBeInTheDocument()
       })
     })
 

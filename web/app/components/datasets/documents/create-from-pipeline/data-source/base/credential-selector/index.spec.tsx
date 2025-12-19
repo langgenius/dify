@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import React from 'react'
 import CredentialSelector from './index'
 import type { CredentialSelectorProps } from './index'
@@ -306,10 +306,9 @@ describe('CredentialSelector', () => {
         const trigger = screen.getByTestId('portal-trigger')
         fireEvent.click(trigger)
 
-        // Get the dropdown item (not the trigger text)
+        // Get the dropdown item using within() to scope query to portal content
         const portalContent = screen.getByTestId('portal-content')
-        const credentialOption = portalContent.querySelector(`span:contains("${credentialName}")`) as HTMLElement
-          || screen.getByText(credentialName)
+        const credentialOption = within(portalContent).getByText(credentialName)
         fireEvent.click(credentialOption)
 
         // Assert
