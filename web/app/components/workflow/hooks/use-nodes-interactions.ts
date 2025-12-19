@@ -44,6 +44,7 @@ import type { LoopNodeType } from '../nodes/loop/types'
 import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
 import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
 import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
+import type { GroupHandler, GroupMember, GroupNodeData } from '../nodes/group/types'
 import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
@@ -2024,6 +2025,159 @@ export const useNodesInteractions = () => {
     return canMakeGroup
   }, [store])
 
+  const handleMakeGroup = useCallback(() => {
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const nodes = getNodes()
+    const bundledNodes = nodes.filter(node => node.data._isBundled)
+    const bundledNodeIds = bundledNodes.map(node => node.id)
+
+    if (bundledNodeIds.length <= 1)
+      return
+
+    const minimalEdges = edges.map(edge => ({
+      id: edge.id,
+      source: edge.source,
+      sourceHandle: edge.sourceHandle || 'source',
+      target: edge.target,
+    }))
+
+    const { canMakeGroup } = checkMakeGroupAvailability(bundledNodeIds, minimalEdges)
+    if (!canMakeGroup)
+      return
+
+    const bundledNodeIdSet = new Set(bundledNodeIds)
+    const bundledNodeIdIsLeaf = new Set<string>()
+    const inboundEdges = edges.filter(edge => !bundledNodeIdSet.has(edge.source) && bundledNodeIdSet.has(edge.target))
+    const outboundEdges = edges.filter(edge => bundledNodeIdSet.has(edge.source) && !bundledNodeIdSet.has(edge.target))
+
+    // leaf node: no outbound edges to other nodes in the selection
+    const leafNodeIds = bundledNodes
+      .filter(node => !edges.some(edge => edge.source === node.id && bundledNodeIdSet.has(edge.target)))
+      .map(node => node.id)
+    leafNodeIds.forEach(id => bundledNodeIdIsLeaf.add(id))
+
+    const members: GroupMember[] = bundledNodes.map((node) => {
+      return {
+        id: node.id,
+        type: node.data.type,
+        label: node.data.title,
+      }
+    })
+    const handlers: GroupHandler[] = leafNodeIds.map((nodeId) => {
+      const node = bundledNodes.find(n => n.id === nodeId)
+      return {
+        id: nodeId,
+        label: node?.data.title || nodeId,
+      }
+    })
+
+    // put the group node at the top-left corner of the selection, slightly offset
+    const { x: minX, y: minY } = getTopLeftNodePosition(bundledNodes)
+
+    const groupNodeData: GroupNodeData = {
+      title: t('workflow.operator.makeGroup'),
+      desc: '',
+      type: BlockEnum.Group,
+      members,
+      handlers,
+      selected: true,
+    }
+
+    const { newNode: groupNode } = generateNewNode({
+      data: groupNodeData,
+      position: {
+        x: minX - 20,
+        y: minY - 20,
+      },
+    })
+
+    const nodeTypeMap = new Map(nodes.map(node => [node.id, node.data.type]))
+
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        if (bundledNodeIdSet.has(node.id)) {
+          node.data._isBundled = false
+          node.selected = false
+          node.hidden = true
+          node.data._hiddenInGroupId = groupNode.id
+        }
+        else {
+          node.data._isBundled = false
+        }
+      })
+      draft.push(groupNode)
+    })
+
+    const newEdges = produce(edges, (draft) => {
+      draft.forEach((edge) => {
+        if (bundledNodeIdSet.has(edge.source) || bundledNodeIdSet.has(edge.target)) {
+          edge.hidden = true
+          edge.data = {
+            ...edge.data,
+            _hiddenInGroupId: groupNode.id,
+            _isBundled: false,
+          }
+        }
+        else if (edge.data?._isBundled) {
+          edge.data._isBundled = false
+        }
+      })
+
+      // re-add the external inbound edges to the group node (previous order is not lost)
+      inboundEdges.forEach((edge) => {
+        draft.push({
+          id: `${edge.id}__to-${groupNode.id}`,
+          type: edge.type || CUSTOM_EDGE,
+          source: edge.source,
+          target: groupNode.id,
+          sourceHandle: edge.sourceHandle,
+          targetHandle: 'target',
+          data: {
+            ...edge.data,
+            sourceType: nodeTypeMap.get(edge.source)!,
+            targetType: BlockEnum.Group,
+            _hiddenInGroupId: undefined,
+            _isBundled: false,
+          },
+          zIndex: edge.zIndex,
+        })
+      })
+
+      // outbound edges of the group node: only map the outbound edges of the leaf nodes to the corresponding handlers
+      outboundEdges.forEach((edge) => {
+        if (!bundledNodeIdIsLeaf.has(edge.source))
+          return
+
+        draft.push({
+          id: `${groupNode.id}-${edge.target}-${edge.targetHandle || 'target'}-${edge.source}`,
+          type: edge.type || CUSTOM_EDGE,
+          source: groupNode.id,
+          target: edge.target,
+          sourceHandle: edge.source, // handler id corresponds to the leaf node id
+          targetHandle: edge.targetHandle,
+          data: {
+            ...edge.data,
+            sourceType: BlockEnum.Group,
+            targetType: nodeTypeMap.get(edge.target)!,
+            _hiddenInGroupId: undefined,
+            _isBundled: false,
+          },
+          zIndex: edge.zIndex,
+        })
+      })
+    })
+
+    setNodes(newNodes)
+    setEdges(newEdges)
+    workflowStore.setState({
+      selectionMenu: undefined,
+    })
+    handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.NodeAdd, {
+      nodeId: groupNode.id,
+    })
+  }, [handleSyncWorkflowDraft, saveStateToHistory, store, t, workflowStore])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -2044,6 +2198,7 @@ export const useNodesInteractions = () => {
     handleNodesPaste,
     handleNodesDuplicate,
     handleNodesDelete,
+    handleMakeGroup,
     handleNodeResize,
     handleNodeDisconnect,
     handleHistoryBack,

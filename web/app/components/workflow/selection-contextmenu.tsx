@@ -24,7 +24,7 @@ import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hoo
 import { produce } from 'immer'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './hooks/use-workflow-history'
 import { useStore } from './store'
-import { useSelectionInteractions } from './hooks/use-selection-interactions'
+import { useSelectionInteractions } from '@/app/components/workflow/hooks'
 import { useMakeGroupAvailability } from './hooks/use-make-group'
 import { useWorkflowStore } from './store'
 
@@ -84,6 +84,7 @@ const SelectionContextmenu = () => {
     handleNodesCopy,
     handleNodesDuplicate,
     handleNodesDelete,
+    handleMakeGroup,
   } = useNodesInteractions()
   const selectionMenu = useStore(s => s.selectionMenu)
 
@@ -439,8 +440,7 @@ const SelectionContextmenu = () => {
                 onClick={() => {
                   if (!canMakeGroup)
                     return
-                  console.log('make group')
-                  // TODO: Make group functionality
+                  handleMakeGroup()
                   handleSelectionContextmenuCancel()
                 }}
               >

@@ -29,6 +29,7 @@ export const useShortcuts = (): void => {
     undimAllNodes,
     hasBundledNodes,
     getCanMakeGroup,
+    handleMakeGroup,
   } = useNodesInteractions()
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -103,8 +104,7 @@ export const useShortcuts = (): void => {
       e.preventDefault()
       // Close selection context menu if open
       workflowStore.setState({ selectionMenu: undefined })
-      // TODO: handleMakeGroup() - Make group functionality to be implemented
-      console.info('make group')
+      handleMakeGroup()
     }
   }, { exactMatch: true, useCapture: true })
 

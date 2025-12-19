@@ -48,6 +48,8 @@ import TriggerWebhookNode from './trigger-webhook/node'
 import TriggerWebhookPanel from './trigger-webhook/panel'
 import TriggerPluginNode from './trigger-plugin/node'
 import TriggerPluginPanel from './trigger-plugin/panel'
+import GroupNode from './group/node'
+import GroupPanel from './group/panel'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
@@ -75,6 +77,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
   [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,
+  [BlockEnum.Group]: GroupNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -103,4 +106,5 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerSchedule]: TriggerSchedulePanel,
   [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
   [BlockEnum.TriggerPlugin]: TriggerPluginPanel,
+  [BlockEnum.Group]: GroupPanel,
 }
