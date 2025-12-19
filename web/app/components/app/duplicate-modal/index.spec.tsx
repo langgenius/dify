@@ -7,19 +7,6 @@ import type { ProviderContextState } from '@/context/provider-context'
 import { baseProviderContextValue } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 
-jest.mock('ky', () => {
-  const kyInstance = {
-    extend: () => kyInstance,
-    create: () => kyInstance,
-    get: jest.fn(),
-    post: jest.fn(),
-  }
-  return {
-    __esModule: true,
-    default: kyInstance,
-  }
-})
-
 const appsFullRenderSpy = jest.fn()
 jest.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   __esModule: true,
