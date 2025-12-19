@@ -2,7 +2,6 @@ import logging
 import time
 
 import click
-import sqlalchemy as sa
 from celery import shared_task
 from sqlalchemy import select
 
