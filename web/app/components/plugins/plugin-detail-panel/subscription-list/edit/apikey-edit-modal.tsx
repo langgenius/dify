@@ -57,24 +57,44 @@ const areAllCredentialsHidden = (credentials: Record<string, any>): boolean => {
   return Object.values(credentials).every(value => value === HIDDEN_SECRET_VALUE)
 }
 
-const StatusStep = ({ isActive, text }: { isActive: boolean, text: string }) => {
-  return <div className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
-    ? 'text-state-accent-solid'
-    : 'text-text-tertiary'}`}>
-    {isActive && (
-      <div className='h-1 w-1 rounded-full bg-state-accent-solid'></div>
-    )}
-    {text}
-  </div>
+const StatusStep = ({ isActive, text, onClick, clickable }: {
+  isActive: boolean
+  text: string
+  onClick?: () => void
+  clickable?: boolean
+}) => {
+  return (
+    <div
+      className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
+        ? 'text-state-accent-solid'
+        : 'text-text-tertiary'} ${clickable ? 'cursor-pointer hover:text-text-secondary' : ''}`}
+      onClick={clickable ? onClick : undefined}
+    >
+      {isActive && (
+        <div className='h-1 w-1 rounded-full bg-state-accent-solid'></div>
+      )}
+      {text}
+    </div>
+  )
 }
 
-const MultiSteps = ({ currentStep }: { currentStep: EditStep }) => {
+const MultiSteps = ({ currentStep, onStepClick }: { currentStep: EditStep; onStepClick?: (step: EditStep) => void }) => {
   const { t } = useTranslation()
-  return <div className='mb-6 flex w-1/3 items-center gap-2'>
-    <StatusStep isActive={currentStep === EditStep.EditCredentials} text={t('pluginTrigger.modal.steps.verify')} />
-    <div className='h-px w-3 shrink-0 bg-divider-deep'></div>
-    <StatusStep isActive={currentStep === EditStep.EditConfiguration} text={t('pluginTrigger.modal.steps.configuration')} />
-  </div>
+  return (
+    <div className='mb-6 flex w-1/3 items-center gap-2'>
+      <StatusStep
+        isActive={currentStep === EditStep.EditCredentials}
+        text={t('pluginTrigger.modal.steps.verify')}
+        onClick={() => onStepClick?.(EditStep.EditCredentials)}
+        clickable={currentStep === EditStep.EditConfiguration}
+      />
+      <div className='h-px w-3 shrink-0 bg-divider-deep'></div>
+      <StatusStep
+        isActive={currentStep === EditStep.EditConfiguration}
+        text={t('pluginTrigger.modal.steps.configuration')}
+      />
+    </div>
+  )
 }
 
 export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) => {
@@ -277,6 +297,11 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
     return isUpdating ? t('common.operation.saving') : t('common.operation.save')
   }
 
+  const handleBack = () => {
+    setCurrentStep(EditStep.EditCredentials)
+    setVerifiedCredentials(null)
+  }
+
   return (
     <Modal
       title={t('pluginTrigger.subscription.list.item.actions.edit.title')}
@@ -285,6 +310,10 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       onCancel={onClose}
       onConfirm={handleConfirm}
       disabled={isUpdating || isVerifying}
+      showExtraButton={currentStep === EditStep.EditConfiguration}
+      extraButtonText={t('pluginTrigger.modal.common.back')}
+      extraButtonVariant='secondary'
+      onExtraButtonClick={handleBack}
       clickOutsideNotClose
       wrapperClassName='!z-[101]'
       bottomSlot={currentStep === EditStep.EditCredentials ? <EncryptedBottom /> : null}
@@ -294,7 +323,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       )}
 
       {/* Multi-step indicator */}
-      <MultiSteps currentStep={currentStep} />
+      <MultiSteps currentStep={currentStep} onStepClick={handleBack} />
 
       {/* Step 1: Edit Credentials */}
       {currentStep === EditStep.EditCredentials && (
