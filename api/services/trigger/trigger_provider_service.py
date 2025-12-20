@@ -895,7 +895,10 @@ class TriggerProviderService:
             credentials=encrypter.decrypt(subscription.credentials),
             credential_type=credential_type,
         )
-        new_credentials = credentials or subscription.credentials
+        new_credentials: dict[str, Any] = {
+            key: value if value != HIDDEN_VALUE else subscription.credentials.get(key, UNKNOWN_VALUE)
+            for key, value in credentials.items()
+        }
         # Create a new subscription with the same subscription_id and endpoint_id
         new_subscription: TriggerSubscriptionEntity = TriggerManager.subscribe_trigger(
             tenant_id=tenant_id,

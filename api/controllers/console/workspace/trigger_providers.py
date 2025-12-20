@@ -38,19 +38,15 @@ logger = logging.getLogger(__name__)
 class TriggerSubscriptionUpdateRequest(BaseModel):
     """Request payload for updating a trigger subscription"""
 
-    name: str | None = Field(default=None, description="Subscription instance name")
-    properties: dict[str, Any] | None = Field(default=None, description="Subscription properties")
-
-
-class SubscriptionRebuildRequest(BaseModel):
-    """Request payload for rebuilding an existing subscription."""
-
     name: str | None = Field(default=None, description="The name for the subscription")
     credentials: Mapping[str, Any] | None = Field(default=None, description="The credentials for the subscription")
-    parameters: Mapping[str, Any] = Field(default_factory=dict, description="The parameters for the subscription")
+    parameters: Mapping[str, Any] | None = Field(
+        default_factory=dict, description="The parameters for the subscription"
+    )
+    properties: Mapping[str, Any] | None = Field(default=None, description="The properties for the subscription")
 
 
-class SubscriptionVerifyRequest(BaseModel):
+class TriggerSubscriptionVerifyRequest(BaseModel):
     """Request payload for verifying subscription credentials."""
 
     credentials: Mapping[str, Any] = Field(description="The credentials to verify")
@@ -62,13 +58,8 @@ console_ns.schema_model(
 )
 
 console_ns.schema_model(
-    SubscriptionRebuildRequest.__name__,
-    SubscriptionRebuildRequest.model_json_schema(ref_template="#/definitions/{model}"),
-)
-
-console_ns.schema_model(
-    SubscriptionVerifyRequest.__name__,
-    SubscriptionVerifyRequest.model_json_schema(ref_template="#/definitions/{model}"),
+    TriggerSubscriptionVerifyRequest.__name__,
+    TriggerSubscriptionVerifyRequest.model_json_schema(ref_template="#/definitions/{model}"),
 )
 
 
@@ -352,17 +343,44 @@ class TriggerSubscriptionUpdateApi(Resource):
         if not subscription:
             raise NotFoundError(f"Subscription {subscription_id} not found")
 
-        if subscription.credential_type is not CredentialType.UNAUTHORIZED:
-            raise Forbidden("Only unauthorized subscriptions can be update directly")
+        provider_id = TriggerProviderID(subscription.provider_id)
 
         try:
-            TriggerProviderService.update_trigger_subscription(
-                tenant_id=user.current_tenant_id,
-                subscription_id=subscription_id,
-                name=args.name,
-                properties=args.properties,
-            )
-            return 200
+            # rename only for update name
+            is_rename_only = args.name is not None and args.credentials is None and args.parameters is None
+            if is_rename_only:
+                TriggerProviderService.update_trigger_subscription(
+                    tenant_id=user.current_tenant_id,
+                    subscription_id=subscription_id,
+                    name=args.name,
+                )
+                return 200
+
+            # rebuild for create automatically by the provider
+            match subscription.credential_type:
+                case CredentialType.UNAUTHORIZED:
+                    TriggerProviderService.update_trigger_subscription(
+                        tenant_id=user.current_tenant_id,
+                        subscription_id=subscription_id,
+                        name=args.name,
+                        properties=args.properties,
+                    )
+                    return 200
+                case CredentialType.API_KEY | CredentialType.OAUTH2:
+                    if not args.credentials or not args.parameters:
+                        raise BadRequest("Credentials and parameters are required for rebuild")
+
+                    TriggerProviderService.rebuild_trigger_subscription(
+                        tenant_id=user.current_tenant_id,
+                        name=args.name,
+                        provider_id=provider_id,
+                        subscription_id=subscription_id,
+                        credentials=args.credentials,
+                        parameters=args.parameters,
+                    )
+                    return 200
+                case _:
+                    raise BadRequest("Invalid credential type")
         except ValueError as e:
             raise BadRequest(str(e))
         except Exception as e:
@@ -403,48 +421,6 @@ class TriggerSubscriptionDeleteApi(Resource):
             raise BadRequest(str(e))
         except Exception as e:
             logger.exception("Error deleting provider credential", exc_info=e)
-            raise
-
-
-@console_ns.route(
-    "/workspaces/current/trigger-provider/<path:provider>/subscriptions/<path:subscription_id>/rebuild",
-)
-class TriggerSubscriptionRebuildApi(Resource):
-    @console_ns.expect(console_ns.models[SubscriptionRebuildRequest.__name__])
-    @setup_required
-    @login_required
-    @edit_permission_required
-    @account_initialization_required
-    def post(self, provider: str, subscription_id: str):
-        """
-        Rebuild an existing subscription instance.
-
-        This will:
-        1. Unsubscribe from the provider (delete webhook on provider side)
-        2. Create a new subscription with the request data and keep the same subscription_id and endpoint_id
-
-        The user can then go through the normal build flow to re-create the webhook.
-        """
-        user = current_user
-        assert user.current_tenant_id is not None
-
-        rebuild_request: SubscriptionRebuildRequest = SubscriptionRebuildRequest.model_validate(console_ns.payload)
-
-        try:
-            TriggerProviderService.rebuild_trigger_subscription(
-                tenant_id=user.current_tenant_id,
-                name=rebuild_request.name,
-                provider_id=TriggerProviderID(provider),
-                subscription_id=subscription_id,
-                credentials=rebuild_request.credentials or {},
-                parameters=rebuild_request.parameters,
-            )
-
-            return 200
-        except ValueError as e:
-            raise BadRequest(str(e))
-        except Exception as e:
-            logger.exception("Error rebuilding subscription", exc_info=e)
             raise
 
 
@@ -705,7 +681,7 @@ class TriggerOAuthClientManageApi(Resource):
     "/workspaces/current/trigger-provider/<path:provider>/subscriptions/verify/<path:subscription_id>",
 )
 class TriggerSubscriptionVerifyApi(Resource):
-    @console_ns.expect(console_ns.models[SubscriptionVerifyRequest.__name__])
+    @console_ns.expect(console_ns.models[TriggerSubscriptionVerifyRequest.__name__])
     @setup_required
     @login_required
     @edit_permission_required
@@ -715,7 +691,9 @@ class TriggerSubscriptionVerifyApi(Resource):
         user = current_user
         assert user.current_tenant_id is not None
 
-        verify_request: SubscriptionVerifyRequest = SubscriptionVerifyRequest.model_validate(console_ns.payload)
+        verify_request: TriggerSubscriptionVerifyRequest = TriggerSubscriptionVerifyRequest.model_validate(
+            console_ns.payload
+        )
 
         try:
             result = TriggerProviderService.verify_subscription_credentials(
