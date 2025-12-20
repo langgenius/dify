@@ -1373,16 +1373,22 @@ class RegisterService:
         if not inviter:
             raise ValueError("Inviter is required")
 
+        normalized_email = email.lower()
+
         """Invite new member"""
         with Session(db.engine) as session:
-            account = session.query(Account).filter_by(email=email).first()
+            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")
-            name = email.split("@")[0]
+            name = normalized_email.split("@")[0]
 
             account = cls.register(
-                email=email, name=name, language=language, status=AccountStatus.PENDING, is_setup=True
+                email=normalized_email,
+                name=name,
+                language=language,
+                status=AccountStatus.PENDING,
+                is_setup=True,
             )
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)
@@ -1404,7 +1410,7 @@ class RegisterService:
         # send email
         send_invite_member_mail_task.delay(
             language=language,
-            to=email,
+            to=account.email,
             token=token,
             inviter_name=inviter.name if inviter else "Dify",
             workspace_name=tenant.name,
