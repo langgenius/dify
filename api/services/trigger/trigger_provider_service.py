@@ -829,8 +829,12 @@ class TriggerProviderService:
 
         # For API Key, validate the new credentials
         if credential_type == CredentialType.API_KEY:
+            new_credentials: dict[str, Any] = {
+                key: value if value != HIDDEN_VALUE else subscription.credentials.get(key, UNKNOWN_VALUE)
+                for key, value in credentials.items()
+            }
             try:
-                provider_controller.validate_credentials(user_id, credentials)
+                provider_controller.validate_credentials(user_id, credentials=new_credentials)
                 return {"verified": True}
             except Exception as e:
                 raise ValueError(f"Invalid credentials: {e}") from e
@@ -895,10 +899,7 @@ class TriggerProviderService:
             credentials=encrypter.decrypt(subscription.credentials),
             credential_type=credential_type,
         )
-        new_credentials: dict[str, Any] = {
-            key: value if value != HIDDEN_VALUE else subscription.credentials.get(key, UNKNOWN_VALUE)
-            for key, value in credentials.items()
-        }
+
         # Create a new subscription with the same subscription_id and endpoint_id
         new_subscription: TriggerSubscriptionEntity = TriggerManager.subscribe_trigger(
             tenant_id=tenant_id,
@@ -906,7 +907,7 @@ class TriggerProviderService:
             provider_id=provider_id,
             endpoint=generate_plugin_trigger_endpoint_url(subscription.endpoint_id),
             parameters=parameters,
-            credentials=new_credentials,
+            credentials=credentials,
             credential_type=credential_type,
         )
         TriggerProviderService.update_trigger_subscription(
@@ -914,7 +915,7 @@ class TriggerProviderService:
             subscription_id=subscription.id,
             name=name,
             parameters=parameters,
-            credentials=new_credentials,
+            credentials=credentials,
             properties=new_subscription.properties,
             expires_at=new_subscription.expires_at,
         )

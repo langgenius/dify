@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
+from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from controllers.web.error import NotFoundError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -40,9 +41,7 @@ class TriggerSubscriptionUpdateRequest(BaseModel):
 
     name: str | None = Field(default=None, description="The name for the subscription")
     credentials: Mapping[str, Any] | None = Field(default=None, description="The credentials for the subscription")
-    parameters: Mapping[str, Any] | None = Field(
-        default_factory=dict, description="The parameters for the subscription"
-    )
+    parameters: Mapping[str, Any] | None = Field(default=None, description="The parameters for the subscription")
     properties: Mapping[str, Any] | None = Field(default=None, description="The properties for the subscription")
 
 
@@ -346,16 +345,6 @@ class TriggerSubscriptionUpdateApi(Resource):
         provider_id = TriggerProviderID(subscription.provider_id)
 
         try:
-            # rename only for update name
-            is_rename_only = args.name is not None and args.credentials is None and args.parameters is None
-            if is_rename_only:
-                TriggerProviderService.update_trigger_subscription(
-                    tenant_id=user.current_tenant_id,
-                    subscription_id=subscription_id,
-                    name=args.name,
-                )
-                return 200
-
             # rebuild for create automatically by the provider
             match subscription.credential_type:
                 case CredentialType.UNAUTHORIZED:
@@ -367,15 +356,23 @@ class TriggerSubscriptionUpdateApi(Resource):
                     )
                     return 200
                 case CredentialType.API_KEY | CredentialType.OAUTH2:
-                    if not args.credentials or not args.parameters:
+                    if not args.parameters:
                         raise BadRequest("Credentials and parameters are required for rebuild")
+
+                    if args.credentials:
+                        new_credentials: dict[str, Any] = {
+                            key: value if value != HIDDEN_VALUE else subscription.credentials.get(key, UNKNOWN_VALUE)
+                            for key, value in args.credentials.items()
+                        }
+                    else:
+                        new_credentials = subscription.credentials
 
                     TriggerProviderService.rebuild_trigger_subscription(
                         tenant_id=user.current_tenant_id,
                         name=args.name,
                         provider_id=provider_id,
                         subscription_id=subscription_id,
-                        credentials=args.credentials,
+                        credentials=new_credentials,
                         parameters=args.parameters,
                     )
                     return 200
