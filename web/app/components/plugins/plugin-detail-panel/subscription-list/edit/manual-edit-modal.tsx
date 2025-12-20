@@ -10,9 +10,9 @@ import type { TriggerSubscription } from '@/app/components/workflow/block-select
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginStore } from '../store'
-import { useSubscriptionList } from './use-subscription-list'
-import { ReadmeShowType } from '../../readme-panel/store'
+import { usePluginStore } from '../../store'
+import { useSubscriptionList } from '../use-subscription-list'
+import { ReadmeShowType } from '../../../readme-panel/store'
 
 type Props = {
   onClose: () => void
@@ -20,7 +20,6 @@ type Props = {
   pluginDetail?: PluginDetail
 }
 
-// Normalize backend type to FormTypeEnum
 const normalizeFormType = (type: string): FormTypeEnum => {
   switch (type) {
     case 'string':
@@ -43,7 +42,7 @@ const normalizeFormType = (type: string): FormTypeEnum => {
   }
 }
 
-export const EditModal = ({ onClose, subscription, pluginDetail }: Props) => {
+export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) => {
   const { t } = useTranslation()
   const detail = usePluginStore(state => state.detail)
   const { refetch } = useSubscriptionList()
@@ -54,12 +53,10 @@ export const EditModal = ({ onClose, subscription, pluginDetail }: Props) => {
     () => detail?.declaration?.trigger?.subscription_schema || [],
     [detail?.declaration?.trigger?.subscription_schema],
   )
+
   const formRef = useRef<FormRefObject>(null)
 
   const handleConfirm = () => {
-    // Use needTransformWhenSecretFieldIsPristine to handle secret fields
-    // When secret field is not modified, it will be transformed to '[__HIDDEN__]'
-    // Backend will preserve original value when receiving '[__HIDDEN__]'
     const formValues = formRef.current?.getFormValues({
       needTransformWhenSecretFieldIsPristine: true,
     })
@@ -68,7 +65,7 @@ export const EditModal = ({ onClose, subscription, pluginDetail }: Props) => {
 
     const name = formValues.values.subscription_name as string
 
-    // Extract properties values (exclude subscription_name and callback_url)
+    // Extract properties (exclude subscription_name and callback_url)
     const properties = { ...formValues.values }
     delete properties.subscription_name
     delete properties.callback_url

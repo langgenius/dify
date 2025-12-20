@@ -12,7 +12,7 @@ import {
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { DeleteConfirm } from './delete-confirm'
-import { EditModal } from './edit-modal'
+import { EditModal } from './edit'
 
 type Props = {
   data: TriggerSubscription

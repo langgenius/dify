@@ -1,0 +1,162 @@
+'use client'
+import { BaseForm } from '@/app/components/base/form/components/base'
+import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
+import { FormTypeEnum } from '@/app/components/base/form/types'
+import Modal from '@/app/components/base/modal/modal'
+import Toast from '@/app/components/base/toast'
+import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
+import { useUpdateTriggerSubscription } from '@/service/use-triggers'
+import { useMemo, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { usePluginStore } from '../../store'
+import { useSubscriptionList } from '../use-subscription-list'
+import { ReadmeShowType } from '../../../readme-panel/store'
+
+type Props = {
+  onClose: () => void
+  subscription: TriggerSubscription
+  pluginDetail?: PluginDetail
+}
+
+const normalizeFormType = (type: string): FormTypeEnum => {
+  switch (type) {
+    case 'string':
+    case 'text':
+      return FormTypeEnum.textInput
+    case 'password':
+    case 'secret':
+      return FormTypeEnum.secretInput
+    case 'number':
+    case 'integer':
+      return FormTypeEnum.textNumber
+    case 'boolean':
+      return FormTypeEnum.boolean
+    case 'select':
+      return FormTypeEnum.select
+    default:
+      if (Object.values(FormTypeEnum).includes(type as FormTypeEnum))
+        return type as FormTypeEnum
+      return FormTypeEnum.textInput
+  }
+}
+
+export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) => {
+  const { t } = useTranslation()
+  const detail = usePluginStore(state => state.detail)
+  const { refetch } = useSubscriptionList()
+
+  const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
+
+  const parametersSchema = useMemo<ParametersSchema[]>(
+    () => detail?.declaration?.trigger?.subscription_constructor?.parameters || [],
+    [detail?.declaration?.trigger?.subscription_constructor?.parameters],
+  )
+
+  const formRef = useRef<FormRefObject>(null)
+
+  const handleConfirm = () => {
+    const formValues = formRef.current?.getFormValues({
+      needTransformWhenSecretFieldIsPristine: true,
+    })
+    if (!formValues?.isCheckValidated)
+      return
+
+    const name = formValues.values.subscription_name as string
+
+    // Extract parameters (exclude subscription_name and callback_url)
+    const parameters = { ...formValues.values }
+    delete parameters.subscription_name
+    delete parameters.callback_url
+
+    updateSubscription(
+      {
+        subscriptionId: subscription.id,
+        name,
+        parameters: Object.keys(parameters).length > 0 ? parameters : undefined,
+      },
+      {
+        onSuccess: () => {
+          Toast.notify({
+            type: 'success',
+            message: t('pluginTrigger.subscription.list.item.actions.edit.success'),
+          })
+          refetch?.()
+          onClose()
+        },
+        onError: (error: any) => {
+          Toast.notify({
+            type: 'error',
+            message: error?.message || t('pluginTrigger.subscription.list.item.actions.edit.error'),
+          })
+        },
+      },
+    )
+  }
+
+  const formSchemas: FormSchema[] = useMemo(() => [
+    {
+      name: 'subscription_name',
+      label: t('pluginTrigger.modal.form.subscriptionName.label'),
+      placeholder: t('pluginTrigger.modal.form.subscriptionName.placeholder'),
+      type: FormTypeEnum.textInput,
+      required: true,
+      default: subscription.name,
+    },
+    {
+      name: 'callback_url',
+      label: t('pluginTrigger.modal.form.callbackUrl.label'),
+      placeholder: t('pluginTrigger.modal.form.callbackUrl.placeholder'),
+      type: FormTypeEnum.textInput,
+      required: false,
+      default: subscription.endpoint || '',
+      disabled: true,
+      tooltip: t('pluginTrigger.modal.form.callbackUrl.tooltip'),
+      showCopy: true,
+    },
+    ...parametersSchema.map((schema: ParametersSchema) => {
+      const normalizedType = normalizeFormType(schema.type as string)
+      return {
+        ...schema,
+        type: normalizedType,
+        tooltip: schema.description,
+        default: subscription.parameters?.[schema.name] || schema.default,
+        dynamicSelectParams: normalizedType === FormTypeEnum.dynamicSelect
+          ? {
+            plugin_id: detail?.plugin_id || '',
+            provider: detail?.provider || '',
+            action: 'provider',
+            parameter: schema.name,
+            credential_id: subscription.id,
+          }
+          : undefined,
+        fieldClassName: schema.type === FormTypeEnum.boolean ? 'flex items-center justify-between' : undefined,
+        labelClassName: schema.type === FormTypeEnum.boolean ? 'mb-0' : undefined,
+      }
+    }),
+  ], [t, subscription.name, subscription.endpoint, subscription.parameters, subscription.id, parametersSchema, detail?.plugin_id, detail?.provider])
+
+  return (
+    <Modal
+      title={t('pluginTrigger.subscription.list.item.actions.edit.title')}
+      confirmButtonText={isUpdating ? t('common.operation.saving') : t('common.operation.save')}
+      onClose={onClose}
+      onCancel={onClose}
+      onConfirm={handleConfirm}
+      disabled={isUpdating}
+      clickOutsideNotClose
+      wrapperClassName='!z-[101]'
+    >
+      {pluginDetail && (
+        <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />
+      )}
+      <BaseForm
+        formSchemas={formSchemas}
+        ref={formRef}
+        labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
+        formClassName='space-y-4'
+      />
+    </Modal>
+  )
+}
