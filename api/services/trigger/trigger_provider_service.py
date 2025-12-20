@@ -885,18 +885,13 @@ class TriggerProviderService:
         # FALLBACK: If the update api is not implemented, delete the previous subscription and create a new one
 
         # Delete the previous subscription
-        encrypter, _ = create_trigger_provider_encrypter_for_subscription(
-            tenant_id=tenant_id,
-            controller=provider_controller,
-            subscription=subscription,
-        )
         user_id = subscription.user_id
         TriggerManager.unsubscribe_trigger(
             tenant_id=tenant_id,
             user_id=user_id,
             provider_id=provider_id,
             subscription=subscription.to_entity(),
-            credentials=encrypter.decrypt(subscription.credentials),
+            credentials=subscription.credentials,
             credential_type=credential_type,
         )
 

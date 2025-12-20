@@ -9,6 +9,7 @@ import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { useUpdateTriggerSubscription, useVerifyTriggerSubscription } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
+import { isEqual } from 'lodash-es'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginStore } from '../../store'
@@ -49,6 +50,13 @@ const normalizeFormType = (type: string): FormTypeEnum => {
   }
 }
 
+const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
+
+// Check if all credential values are hidden (meaning nothing was changed)
+const areAllCredentialsHidden = (credentials: Record<string, any>): boolean => {
+  return Object.values(credentials).every(value => value === HIDDEN_SECRET_VALUE)
+}
+
 const StatusStep = ({ isActive, text }: { isActive: boolean, text: string }) => {
   return <div className={`system-2xs-semibold-uppercase flex items-center gap-1 ${isActive
     ? 'text-state-accent-solid'
@@ -75,6 +83,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   const { refetch } = useSubscriptionList()
 
   const [currentStep, setCurrentStep] = useState<EditStep>(EditStep.EditCredentials)
+  const [verifiedCredentials, setVerifiedCredentials] = useState<Record<string, any> | null>(null)
 
   const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
   const { mutate: verifyCredentials, isPending: isVerifying } = useVerifyTriggerSubscription()
@@ -126,6 +135,8 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
             type: 'success',
             message: t('pluginTrigger.modal.apiKey.verify.success'),
           })
+          // Only save credentials if any field was modified (not all hidden)
+          setVerifiedCredentials(areAllCredentialsHidden(credentials) ? null : credentials)
           setCurrentStep(EditStep.EditConfiguration)
         },
         onError: async (error: any) => {
@@ -156,7 +167,10 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       })
       if (!paramsFormValues?.isCheckValidated)
         return
-      parameters = Object.keys(paramsFormValues.values).length > 0 ? paramsFormValues.values : undefined
+
+      // Only send parameters if changed
+      const hasChanged = !isEqual(paramsFormValues.values, subscription.parameters || {})
+      parameters = hasChanged ? paramsFormValues.values : undefined
     }
 
     updateSubscription(
@@ -164,6 +178,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         subscriptionId: subscription.id,
         name,
         parameters,
+        credentials: verifiedCredentials || undefined,
       },
       {
         onSuccess: () => {

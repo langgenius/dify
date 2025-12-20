@@ -8,6 +8,7 @@ import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/ty
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
+import { isEqual } from 'lodash-es'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginStore } from '../../store'
@@ -66,15 +67,19 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
     const name = formValues.values.subscription_name as string
 
     // Extract properties (exclude subscription_name and callback_url)
-    const properties = { ...formValues.values }
-    delete properties.subscription_name
-    delete properties.callback_url
+    const newProperties = { ...formValues.values }
+    delete newProperties.subscription_name
+    delete newProperties.callback_url
+
+    // Only send properties if changed
+    const hasChanged = !isEqual(newProperties, subscription.properties || {})
+    const properties = hasChanged ? newProperties : undefined
 
     updateSubscription(
       {
         subscriptionId: subscription.id,
         name,
-        properties: Object.keys(properties).length > 0 ? properties : undefined,
+        properties,
       },
       {
         onSuccess: () => {

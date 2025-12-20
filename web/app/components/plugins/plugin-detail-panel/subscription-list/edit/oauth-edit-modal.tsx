@@ -8,6 +8,7 @@ import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/ty
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { useUpdateTriggerSubscription } from '@/service/use-triggers'
+import { isEqual } from 'lodash-es'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { usePluginStore } from '../../store'
@@ -66,15 +67,19 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
     const name = formValues.values.subscription_name as string
 
     // Extract parameters (exclude subscription_name and callback_url)
-    const parameters = { ...formValues.values }
-    delete parameters.subscription_name
-    delete parameters.callback_url
+    const newParameters = { ...formValues.values }
+    delete newParameters.subscription_name
+    delete newParameters.callback_url
+
+    // Only send parameters if changed
+    const hasChanged = !isEqual(newParameters, subscription.parameters || {})
+    const parameters = hasChanged ? newParameters : undefined
 
     updateSubscription(
       {
         subscriptionId: subscription.id,
         name,
-        parameters: Object.keys(parameters).length > 0 ? parameters : undefined,
+        parameters,
       },
       {
         onSuccess: () => {

@@ -234,6 +234,7 @@ export type UpdateTriggerSubscriptionPayload = {
   name?: string
   properties?: Record<string, any>
   parameters?: Record<string, any>
+  credentials?: Record<string, any>
 }
 
 export const useUpdateTriggerSubscription = () => {

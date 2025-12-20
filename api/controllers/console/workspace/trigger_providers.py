@@ -345,6 +345,15 @@ class TriggerSubscriptionUpdateApi(Resource):
         provider_id = TriggerProviderID(subscription.provider_id)
 
         try:
+            # rename only
+            if args.name is not None and args.credentials is None and args.parameters is None:
+                TriggerProviderService.update_trigger_subscription(
+                    tenant_id=user.current_tenant_id,
+                    subscription_id=subscription_id,
+                    name=args.name,
+                )
+                return 200
+
             # rebuild for create automatically by the provider
             match subscription.credential_type:
                 case CredentialType.UNAUTHORIZED:
@@ -356,9 +365,6 @@ class TriggerSubscriptionUpdateApi(Resource):
                     )
                     return 200
                 case CredentialType.API_KEY | CredentialType.OAUTH2:
-                    if not args.parameters:
-                        raise BadRequest("Credentials and parameters are required for rebuild")
-
                     if args.credentials:
                         new_credentials: dict[str, Any] = {
                             key: value if value != HIDDEN_VALUE else subscription.credentials.get(key, UNKNOWN_VALUE)
@@ -373,7 +379,7 @@ class TriggerSubscriptionUpdateApi(Resource):
                         provider_id=provider_id,
                         subscription_id=subscription_id,
                         credentials=new_credentials,
-                        parameters=args.parameters,
+                        parameters=args.parameters or subscription.parameters,
                     )
                     return 200
                 case _:
