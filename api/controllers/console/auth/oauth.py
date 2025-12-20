@@ -3,7 +3,6 @@ import logging
 import httpx
 from flask import current_app, redirect, request
 from flask_restx import Resource
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
@@ -175,7 +174,7 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
 
     if not account:
         with Session(db.engine) as session:
-            account = _fetch_account_by_email(session, user_info.email)
+            account = AccountService.get_account_by_email_with_case_fallback(user_info.email, session=session)
 
     return account
 
@@ -229,10 +228,3 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     AccountService.link_account_integrate(provider, user_info.id, account)
 
     return account
-
-
-def _fetch_account_by_email(session: Session, email: str) -> Account | None:
-    account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
-    if account or email == email.lower():
-        return account
-    return session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()

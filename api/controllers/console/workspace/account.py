@@ -39,7 +39,7 @@ from fields.member_fields import account_fields
 from libs.datetime_utils import naive_utc_now
 from libs.helper import EmailStr, TimestampField, extract_remote_ip, timezone
 from libs.login import current_account_with_tenant, login_required
-from models import Account, AccountIntegrate, InvitationCode
+from models import AccountIntegrate, InvitationCode
 from services.account_service import AccountService
 from services.billing_service import BillingService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
@@ -551,7 +551,7 @@ class ChangeEmailSendEmailApi(Resource):
             user_email = current_user.email
         else:
             with Session(db.engine) as session:
-                account = _fetch_account_by_email(session, args.email)
+                account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
             if account is None:
                 raise AccountNotFound()
             email_for_sending = account.email
@@ -661,10 +661,3 @@ class CheckEmailUnique(Resource):
         if not AccountService.check_email_unique(normalized_email):
             raise EmailAlreadyInUseError()
         return {"result": "success"}
-
-
-def _fetch_account_by_email(session: Session, email: str) -> Account | None:
-    account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
-    if account or email == email.lower():
-        return account
-    return session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()

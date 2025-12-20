@@ -1,7 +1,6 @@
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from configs import dify_config
@@ -75,7 +74,7 @@ class EmailRegisterSendEmailApi(Resource):
             raise AccountInFreezeError()
 
         with Session(db.engine) as session:
-            account = _fetch_account_by_email(session, args.email)
+            account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
         token = AccountService.send_email_register_email(email=normalized_email, account=account, language=language)
         return {"result": "success", "data": token}
 
@@ -147,7 +146,7 @@ class EmailRegisterResetApi(Resource):
         normalized_email = email.lower()
 
         with Session(db.engine) as session:
-            account = _fetch_account_by_email(session, email)
+            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
             if account:
                 raise EmailAlreadyInUseError()
@@ -174,16 +173,3 @@ class EmailRegisterResetApi(Resource):
             raise AccountInFreezeError()
 
         return account
-
-
-def _fetch_account_by_email(session: Session, email: str) -> Account | None:
-    """
-    Retrieve account by email with lowercase fallback for backward compatibility.
-    To prevent user register with Uppercase email success get a lowercase email account,
-    but already exist the Uppercase email account.
-    """
-    account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
-    if account or email == email.lower():
-        return account
-
-    return session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()

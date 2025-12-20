@@ -4,7 +4,6 @@ import secrets
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.console import console_ns
@@ -21,7 +20,6 @@ from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import EmailStr, extract_remote_ip
 from libs.password import hash_password, valid_password
-from models import Account
 from services.account_service import AccountService, TenantService
 from services.feature_service import FeatureService
 
@@ -88,7 +86,7 @@ class ForgotPasswordSendEmailApi(Resource):
             language = "en-US"
 
         with Session(db.engine) as session:
-            account = _fetch_account_by_email(session, args.email)
+            account = AccountService.get_account_by_email_with_case_fallback(args.email, session=session)
 
         token = AccountService.send_reset_password_email(
             account=account,
@@ -192,7 +190,7 @@ class ForgotPasswordResetApi(Resource):
 
         email = reset_data.get("email", "")
         with Session(db.engine) as session:
-            account = _fetch_account_by_email(session, email)
+            account = AccountService.get_account_by_email_with_case_fallback(email, session=session)
 
             if account:
                 self._update_existing_account(account, password_hashed, salt, session)
@@ -216,12 +214,3 @@ class ForgotPasswordResetApi(Resource):
             TenantService.create_tenant_member(tenant, account, role="owner")
             account.current_tenant = tenant
             tenant_was_created.send(tenant)
-
-
-def _fetch_account_by_email(session: Session, email: str) -> Account | None:
-    """Retrieve account by email with lowercase fallback for backward compatibility."""
-    account = session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
-    if account or email == email.lower():
-        return account
-
-    return session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()

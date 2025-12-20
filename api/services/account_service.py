@@ -8,7 +8,7 @@ from hashlib import sha256
 from typing import Any, cast
 
 from pydantic import BaseModel
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
@@ -747,6 +747,21 @@ class AccountService:
         )
         cls.email_code_login_rate_limiter.increment_rate_limit(email)
         return token
+
+    @staticmethod
+    def get_account_by_email_with_case_fallback(email: str, session: Session | None = None) -> Account | None:
+        """
+        Retrieve an account by email and fall back to the lowercase email if the original lookup fails.
+
+        This keeps backward compatibility for older records that stored uppercase emails while the
+        rest of the system gradually normalizes new inputs.
+        """
+        query_session = session or db.session
+        account = query_session.execute(select(Account).filter_by(email=email)).scalar_one_or_none()
+        if account or email == email.lower():
+            return account
+
+        return query_session.execute(select(Account).filter_by(email=email.lower())).scalar_one_or_none()
 
     @classmethod
     def get_email_code_login_data(cls, token: str) -> dict[str, Any] | None:

@@ -6,13 +6,13 @@ from flask import Flask
 from controllers.console.auth.oauth import (
     OAuthCallback,
     OAuthLogin,
-    _fetch_account_by_email,
     _generate_account,
     _get_account_by_openid_or_email,
     get_oauth_providers,
 )
 from libs.oauth import OAuthUserInfo
 from models.account import AccountStatus
+from services.account_service import AccountService
 from services.errors.account import AccountRegisterError
 
 
@@ -424,12 +424,12 @@ class TestAccountGeneration:
         account.name = "Test User"
         return account
 
-    @patch("controllers.console.auth.oauth.db")
-    @patch("controllers.console.auth.oauth.Account")
+    @patch("controllers.console.auth.oauth.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.oauth.Session")
-    @patch("controllers.console.auth.oauth.select")
+    @patch("controllers.console.auth.oauth.Account")
+    @patch("controllers.console.auth.oauth.db")
     def test_should_get_account_by_openid_or_email(
-        self, mock_select, mock_session, mock_account_model, mock_db, user_info, mock_account
+        self, mock_db, mock_account_model, mock_session, mock_get_account, user_info, mock_account
     ):
         # Mock db.engine for Session creation
         mock_db.engine = MagicMock()
@@ -439,17 +439,19 @@ class TestAccountGeneration:
         result = _get_account_by_openid_or_email("github", user_info)
         assert result == mock_account
         mock_account_model.get_by_openid.assert_called_once_with("github", "123")
+        mock_get_account.assert_not_called()
 
         # Test fallback to email lookup
         mock_account_model.get_by_openid.return_value = None
         mock_session_instance = MagicMock()
-        mock_session_instance.execute.return_value.scalar_one_or_none.return_value = mock_account
         mock_session.return_value.__enter__.return_value = mock_session_instance
+        mock_get_account.return_value = mock_account
 
         result = _get_account_by_openid_or_email("github", user_info)
         assert result == mock_account
+        mock_get_account.assert_called_once_with(user_info.email, session=mock_session_instance)
 
-    def test_fetch_account_by_email_fallback(self):
+    def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup(self):
         mock_session = MagicMock()
         first_result = MagicMock()
         first_result.scalar_one_or_none.return_value = None
@@ -458,7 +460,7 @@ class TestAccountGeneration:
         second_result.scalar_one_or_none.return_value = expected_account
         mock_session.execute.side_effect = [first_result, second_result]
 
-        result = _fetch_account_by_email(mock_session, "Case@Test.com")
+        result = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
 
         assert result == expected_account
         assert mock_session.execute.call_count == 2

@@ -8,8 +8,8 @@ from controllers.console.auth.email_register import (
     EmailRegisterCheckApi,
     EmailRegisterResetApi,
     EmailRegisterSendEmailApi,
-    _fetch_account_by_email,
 )
+from services.account_service import AccountService
 
 
 @pytest.fixture
@@ -21,6 +21,7 @@ def app():
 
 class TestEmailRegisterSendEmailApi:
     @patch("controllers.console.auth.email_register.Session")
+    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.email_register.AccountService.send_email_register_email")
     @patch("controllers.console.auth.email_register.BillingService.is_email_in_freeze")
     @patch("controllers.console.auth.email_register.AccountService.is_email_send_ip_limit", return_value=False)
@@ -31,6 +32,7 @@ class TestEmailRegisterSendEmailApi:
         mock_is_email_send_ip_limit,
         mock_is_freeze,
         mock_send_mail,
+        mock_get_account,
         mock_session_cls,
         app,
     ):
@@ -38,14 +40,9 @@ class TestEmailRegisterSendEmailApi:
         mock_is_freeze.return_value = False
         mock_account = MagicMock()
 
-        first_query = MagicMock()
-        first_query.scalar_one_or_none.return_value = None
-        second_query = MagicMock()
-        second_query.scalar_one_or_none.return_value = mock_account
-
         mock_session = MagicMock()
-        mock_session.execute.side_effect = [first_query, second_query]
         mock_session_cls.return_value.__enter__.return_value = mock_session
+        mock_get_account.return_value = mock_account
 
         feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
         with patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")), patch(
@@ -65,7 +62,7 @@ class TestEmailRegisterSendEmailApi:
         assert response == {"result": "success", "data": "token-123"}
         mock_is_freeze.assert_called_once_with("invitee@example.com")
         mock_send_mail.assert_called_once_with(email="invitee@example.com", account=mock_account, language="en-US")
-        assert mock_session.execute.call_count == 2
+        mock_get_account.assert_called_once_with("Invitee@Example.com", session=mock_session)
         mock_extract_ip.assert_called_once()
         mock_is_email_send_ip_limit.assert_called_once_with("127.0.0.1")
 
@@ -119,6 +116,7 @@ class TestEmailRegisterResetApi:
     @patch("controllers.console.auth.email_register.AccountService.login")
     @patch("controllers.console.auth.email_register.EmailRegisterResetApi._create_new_account")
     @patch("controllers.console.auth.email_register.Session")
+    @patch("controllers.console.auth.email_register.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.email_register.AccountService.revoke_email_register_token")
     @patch("controllers.console.auth.email_register.AccountService.get_email_register_data")
     @patch("controllers.console.auth.email_register.extract_remote_ip", return_value="127.0.0.1")
@@ -127,6 +125,7 @@ class TestEmailRegisterResetApi:
         mock_extract_ip,
         mock_get_data,
         mock_revoke_token,
+        mock_get_account,
         mock_session_cls,
         mock_create_account,
         mock_login,
@@ -139,14 +138,9 @@ class TestEmailRegisterResetApi:
         token_pair.model_dump.return_value = {"access_token": "a", "refresh_token": "r"}
         mock_login.return_value = token_pair
 
-        first_query = MagicMock()
-        first_query.scalar_one_or_none.return_value = None
-        second_query = MagicMock()
-        second_query.scalar_one_or_none.return_value = None
-
         mock_session = MagicMock()
-        mock_session.execute.side_effect = [first_query, second_query]
         mock_session_cls.return_value.__enter__.return_value = mock_session
+        mock_get_account.return_value = None
 
         feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
         with patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")), patch(
@@ -166,10 +160,10 @@ class TestEmailRegisterResetApi:
         mock_reset_login_rate.assert_called_once_with("invitee@example.com")
         mock_revoke_token.assert_called_once_with("token-123")
         mock_extract_ip.assert_called_once()
-        assert mock_session.execute.call_count == 2
+        mock_get_account.assert_called_once_with("Invitee@Example.com", session=mock_session)
 
 
-def test_fetch_account_by_email_fallback():
+def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
     mock_session = MagicMock()
     first_query = MagicMock()
     first_query.scalar_one_or_none.return_value = None
@@ -178,7 +172,7 @@ def test_fetch_account_by_email_fallback():
     second_query.scalar_one_or_none.return_value = expected_account
     mock_session.execute.side_effect = [first_query, second_query]
 
-    account = _fetch_account_by_email(mock_session, "Case@Test.com")
+    account = AccountService.get_account_by_email_with_case_fallback("Case@Test.com", session=mock_session)
 
     assert account is expected_account
     assert mock_session.execute.call_count == 2

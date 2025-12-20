@@ -8,8 +8,8 @@ from controllers.console.auth.forgot_password import (
     ForgotPasswordCheckApi,
     ForgotPasswordResetApi,
     ForgotPasswordSendEmailApi,
-    _fetch_account_by_email,
 )
+from services.account_service import AccountService
 
 
 @pytest.fixture
@@ -21,7 +21,7 @@ def app():
 
 class TestForgotPasswordSendEmailApi:
     @patch("controllers.console.auth.forgot_password.Session")
-    @patch("controllers.console.auth.forgot_password._fetch_account_by_email")
+    @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.forgot_password.AccountService.send_reset_password_email")
     @patch("controllers.console.auth.forgot_password.AccountService.is_email_send_ip_limit", return_value=False)
     @patch("controllers.console.auth.forgot_password.extract_remote_ip", return_value="127.0.0.1")
@@ -30,12 +30,12 @@ class TestForgotPasswordSendEmailApi:
         mock_extract_ip,
         mock_is_ip_limit,
         mock_send_email,
-        mock_fetch_account,
+        mock_get_account,
         mock_session_cls,
         app,
     ):
         mock_account = MagicMock()
-        mock_fetch_account.return_value = mock_account
+        mock_get_account.return_value = mock_account
         mock_send_email.return_value = "token-123"
         mock_session = MagicMock()
         mock_session_cls.return_value.__enter__.return_value = mock_session
@@ -56,7 +56,7 @@ class TestForgotPasswordSendEmailApi:
                 response = ForgotPasswordSendEmailApi().post()
 
         assert response == {"result": "success", "data": "token-123"}
-        mock_fetch_account.assert_called_once_with(mock_session, "User@Example.com")
+        mock_get_account.assert_called_once_with("User@Example.com", session=mock_session)
         mock_send_email.assert_called_once_with(
             account=mock_account,
             email="user@example.com",
@@ -114,21 +114,21 @@ class TestForgotPasswordCheckApi:
 class TestForgotPasswordResetApi:
     @patch("controllers.console.auth.forgot_password.ForgotPasswordResetApi._update_existing_account")
     @patch("controllers.console.auth.forgot_password.Session")
-    @patch("controllers.console.auth.forgot_password._fetch_account_by_email")
+    @patch("controllers.console.auth.forgot_password.AccountService.get_account_by_email_with_case_fallback")
     @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
     @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
     def test_reset_fetches_account_with_original_email(
         self,
         mock_get_reset_data,
         mock_revoke_token,
-        mock_fetch_account,
+        mock_get_account,
         mock_session_cls,
         mock_update_account,
         app,
     ):
         mock_get_reset_data.return_value = {"phase": "reset", "email": "User@Example.com"}
         mock_account = MagicMock()
-        mock_fetch_account.return_value = mock_account
+        mock_get_account.return_value = mock_account
 
         mock_session = MagicMock()
         mock_session_cls.return_value.__enter__.return_value = mock_session
@@ -153,11 +153,11 @@ class TestForgotPasswordResetApi:
         assert response == {"result": "success"}
         mock_get_reset_data.assert_called_once_with("token-123")
         mock_revoke_token.assert_called_once_with("token-123")
-        mock_fetch_account.assert_called_once_with(mock_session, "User@Example.com")
+        mock_get_account.assert_called_once_with("User@Example.com", session=mock_session)
         mock_update_account.assert_called_once()
 
 
-def test_fetch_account_by_email_fallback():
+def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
     mock_session = MagicMock()
     first_query = MagicMock()
     first_query.scalar_one_or_none.return_value = None
@@ -166,7 +166,7 @@ def test_fetch_account_by_email_fallback():
     second_query.scalar_one_or_none.return_value = expected_account
     mock_session.execute.side_effect = [first_query, second_query]
 
-    account = _fetch_account_by_email(mock_session, "Mixed@Test.com")
+    account = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=mock_session)
 
     assert account is expected_account
     assert mock_session.execute.call_count == 2

@@ -10,9 +10,9 @@ from controllers.console.workspace.account import (
     ChangeEmailResetApi,
     ChangeEmailSendEmailApi,
     CheckEmailUnique,
-    _fetch_account_by_email,
 )
 from models import Account
+from services.account_service import AccountService
 
 
 @pytest.fixture
@@ -223,7 +223,7 @@ class TestCheckEmailUnique:
         mock_check_unique.assert_called_once_with("case@test.com")
 
 
-def test_fetch_account_by_email_fallback():
+def test_get_account_by_email_with_case_fallback_uses_lowercase_lookup():
     session = MagicMock()
     first = MagicMock()
     first.scalar_one_or_none.return_value = None
@@ -232,7 +232,7 @@ def test_fetch_account_by_email_fallback():
     second.scalar_one_or_none.return_value = expected_account
     session.execute.side_effect = [first, second]
 
-    result = _fetch_account_by_email(session, "Mixed@Test.com")
+    result = AccountService.get_account_by_email_with_case_fallback("Mixed@Test.com", session=session)
 
     assert result is expected_account
     assert session.execute.call_count == 2
