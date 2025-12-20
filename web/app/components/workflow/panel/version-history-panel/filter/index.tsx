@@ -10,7 +10,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Divider from '@/app/components/base/divider'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type FilterProps = {
   filterValue: WorkflowVersionFilterOptions

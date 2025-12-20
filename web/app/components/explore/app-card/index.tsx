@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import Button from '../../base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
 import { AppTypeIcon } from '../../app/type-selector'

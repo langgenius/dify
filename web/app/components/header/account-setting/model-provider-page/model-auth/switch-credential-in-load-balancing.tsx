@@ -14,7 +14,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import Badge from '@/app/components/base/badge'
 

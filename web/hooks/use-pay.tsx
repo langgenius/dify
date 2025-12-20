@@ -3,12 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
-import {
-  fetchDataSourceNotionBinding,
-} from '@/service/common'
 import type { IConfirm } from '@/app/components/base/confirm'
 import Confirm from '@/app/components/base/confirm'
+import { useNotionBinding } from '@/service/use-common'
 
 export type ConfirmType = Pick<IConfirm, 'type' | 'title' | 'content'>
 
@@ -58,12 +55,7 @@ export const useCheckNotion = () => {
   const type = searchParams.get('type')
   const notionCode = searchParams.get('code')
   const notionError = searchParams.get('error')
-  const { data } = useSWR(
-    (canBinding && notionCode)
-      ? `/oauth/data-source/binding/notion?code=${notionCode}`
-      : null,
-    fetchDataSourceNotionBinding,
-  )
+  const { data } = useNotionBinding(notionCode, canBinding)
 
   useEffect(() => {
     if (data)

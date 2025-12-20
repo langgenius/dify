@@ -9,7 +9,7 @@ import { useVarColor } from '../hooks'
 import VariableNodeLabel from './variable-node-label'
 import VariableIcon from './variable-icon'
 import VariableName from './variable-name'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
 

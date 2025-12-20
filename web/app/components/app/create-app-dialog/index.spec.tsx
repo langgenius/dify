@@ -26,7 +26,7 @@ jest.mock('./app-list', () => {
 })
 
 jest.mock('ahooks', () => ({
-  useKeyPress: jest.fn((key: string, callback: () => void) => {
+  useKeyPress: jest.fn((_key: string, _callback: () => void) => {
     // Mock implementation for testing
     return jest.fn()
   }),
@@ -67,7 +67,7 @@ describe('CreateAppTemplateDialog', () => {
     })
 
     it('should not render create from blank button when onCreateFromBlank is not provided', () => {
-      const { onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
+      const { onCreateFromBlank: _onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
 
       render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)
 
@@ -259,7 +259,7 @@ describe('CreateAppTemplateDialog', () => {
     })
 
     it('should handle missing optional onCreateFromBlank prop', () => {
-      const { onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
+      const { onCreateFromBlank: _onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
 
       expect(() => {
         render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)

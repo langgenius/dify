@@ -1,13 +1,13 @@
 'use client'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
-import { invitationCheck } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useInvitationCheck } from '@/service/use-common'
 
 const ActivateForm = () => {
   useDocumentTitle('')
@@ -26,19 +26,21 @@ const ActivateForm = () => {
       token,
     },
   }
-  const { data: checkRes } = useSWR(checkParams, invitationCheck, {
-    revalidateOnFocus: false,
-    onSuccess(data) {
-      if (data.is_valid) {
-        const params = new URLSearchParams(searchParams)
-        const { email, workspace_id } = data.data
-        params.set('email', encodeURIComponent(email))
-        params.set('workspace_id', encodeURIComponent(workspace_id))
-        params.set('invite_token', encodeURIComponent(token as string))
-        router.replace(`/signin?${params.toString()}`)
-      }
-    },
-  })
+  const { data: checkRes } = useInvitationCheck({
+    ...checkParams.params,
+    token: token || undefined,
+  }, true)
+
+  useEffect(() => {
+    if (checkRes?.is_valid) {
+      const params = new URLSearchParams(searchParams)
+      const { email, workspace_id } = checkRes.data
+      params.set('email', encodeURIComponent(email))
+      params.set('workspace_id', encodeURIComponent(workspace_id))
+      params.set('invite_token', encodeURIComponent(token as string))
+      router.replace(`/signin?${params.toString()}`)
+    }
+  }, [checkRes, router, searchParams, token])
 
   return (
     <div className={

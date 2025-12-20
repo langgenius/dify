@@ -8,7 +8,7 @@ import {
   RiErrorWarningFill,
   RiFileCopyLine,
 } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'

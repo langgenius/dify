@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import type { DocumentItem } from '@/models/datasets'
 import PreviewDocumentPicker from './preview-document-picker'
 
-// Mock react-i18next
+// Override shared i18n mock for custom translations
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, unknown>) => {

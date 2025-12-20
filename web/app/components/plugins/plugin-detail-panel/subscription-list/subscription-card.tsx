@@ -3,7 +3,7 @@ import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   RiDeleteBinLine,
   RiEditLine,

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { RiRefreshLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import TooltipPlus from '@/app/components/base/tooltip'
 
 type Props = {

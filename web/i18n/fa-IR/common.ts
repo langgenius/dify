@@ -5,6 +5,7 @@ const translation = {
     saved: 'ذخیره شد',
     create: 'ایجاد شد',
     remove: 'حذف شد',
+    actionFailed: 'عمل شکست خورد',
   },
   operation: {
     create: 'ایجاد',
@@ -103,6 +104,8 @@ const translation = {
       hiIN: 'هندی',
       trTR: 'ترکی',
       faIR: 'فارسی',
+      slSI: 'اسلوونیایی',
+      arTN: 'عربی تونسی',
     },
   },
   unit: {

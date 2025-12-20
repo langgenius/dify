@@ -15,7 +15,7 @@ import {
   useInvalidateMCPServerDetail,
   useUpdateMCPServer,
 } from '@/service/use-tools'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type ModalProps = {
   appID: string
