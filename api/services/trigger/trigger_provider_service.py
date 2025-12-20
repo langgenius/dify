@@ -880,7 +880,7 @@ class TriggerProviderService:
         if credential_type not in [CredentialType.OAUTH2, CredentialType.API_KEY]:
             raise ValueError("Credential type not supported for rebuild")
 
-        # TODO: Tring to invoke update api of the plugin trigger provider
+        # TODO: Trying to invoke update api of the plugin trigger provider
 
         # FALLBACK: If the update api is not implemented, delete the previous subscription and create a new one
 

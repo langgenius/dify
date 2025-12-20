@@ -346,7 +346,12 @@ class TriggerSubscriptionUpdateApi(Resource):
 
         try:
             # rename only
-            if args.name is not None and args.credentials is None and args.parameters is None:
+            if (
+                args.name is not None
+                and args.credentials is None
+                and args.parameters is None
+                and args.properties is None
+            ):
                 TriggerProviderService.update_trigger_subscription(
                     tenant_id=user.current_tenant_id,
                     subscription_id=subscription_id,

@@ -135,14 +135,6 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
     const credentials = credentialsFormValues.values
 
-    // Clear previous errors
-    if (Object.keys(credentials).length > 0) {
-      credentialsFormRef.current?.setFields([{
-        name: Object.keys(credentials)[0],
-        errors: [],
-      }])
-    }
-
     verifyCredentials(
       {
         provider: subscription.provider,
@@ -161,12 +153,10 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         },
         onError: async (error: any) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.apiKey.verify.error')
-          if (Object.keys(credentials).length > 0) {
-            credentialsFormRef.current?.setFields([{
-              name: Object.keys(credentials)[0],
-              errors: [errorMessage],
-            }])
-          }
+          Toast.notify({
+            type: 'error',
+            message: errorMessage,
+          })
         },
       },
     )
@@ -224,15 +214,6 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       handleVerifyCredentials()
     else
       handleUpdate()
-  }
-
-  const handleCredentialsChange = () => {
-    if (apiKeyCredentialsSchema.length > 0) {
-      credentialsFormRef.current?.setFields([{
-        name: apiKeyCredentialsSchema[0].name,
-        errors: [],
-      }])
-    }
   }
 
   const basicFormSchemas: FormSchema[] = useMemo(() => [
@@ -335,7 +316,6 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
               labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
               formClassName='space-y-4'
               preventDefaultSubmit={true}
-              onChange={handleCredentialsChange}
             />
           )}
         </div>
