@@ -329,20 +329,45 @@ export const useTriggerPluginDynamicOptions = (payload: {
   action: string
   parameter: string
   credential_id: string
+  credentials?: Record<string, any>
   extra?: Record<string, any>
 }, enabled = true) => {
   return useQuery<{ options: Array<{ value: string; label: any }> }>({
-    queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.extra],
-    queryFn: () => get<{ options: Array<{ value: string; label: any }> }>(
-      '/workspaces/current/plugin/parameters/dynamic-options',
-      {
-        params: {
-          ...payload,
-          provider_type: 'trigger', // Add required provider_type parameter
+    queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.credentials, payload.extra],
+    queryFn: () => {
+      // Use new endpoint with POST when credentials provided (for edit mode)
+      if (payload.credentials) {
+        return post<{ options: Array<{ value: string; label: any }> }>(
+          '/workspaces/current/plugin/parameters/dynamic-options-with-credentials',
+          {
+            body: {
+              plugin_id: payload.plugin_id,
+              provider: payload.provider,
+              action: payload.action,
+              parameter: payload.parameter,
+              credential_id: payload.credential_id,
+              credentials: payload.credentials,
+            },
+          },
+          { silent: true },
+        )
+      }
+      // Use original GET endpoint for normal cases
+      return get<{ options: Array<{ value: string; label: any }> }>(
+        '/workspaces/current/plugin/parameters/dynamic-options',
+        {
+          params: {
+            plugin_id: payload.plugin_id,
+            provider: payload.provider,
+            action: payload.action,
+            parameter: payload.parameter,
+            credential_id: payload.credential_id,
+            provider_type: 'trigger',
+          },
         },
-      },
-      { silent: true },
-    ),
+        { silent: true },
+      )
+    },
     enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter && !!payload.credential_id,
     retry: 0,
   })

@@ -261,13 +261,14 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
             action: 'provider',
             parameter: schema.name,
             credential_id: subscription.id,
+            credentials: verifiedCredentials || undefined,
           }
           : undefined,
         fieldClassName: schema.type === FormTypeEnum.boolean ? 'flex items-center justify-between' : undefined,
         labelClassName: schema.type === FormTypeEnum.boolean ? 'mb-0' : undefined,
       }
     })
-  }, [parametersSchema, subscription.parameters, subscription.id, detail?.plugin_id, detail?.provider])
+  }, [parametersSchema, subscription.parameters, subscription.id, detail?.plugin_id, detail?.provider, verifiedCredentials])
 
   const getConfirmButtonText = () => {
     if (currentStep === EditStep.EditCredentials)
