@@ -213,7 +213,9 @@ def test_custom_auth_with_empty_api_key_raises_error(setup_http_mock):
     # Create executor should raise AuthorizationConfigError
     with pytest.raises(AuthorizationConfigError, match="API key is required"):
         Executor(
-            node_data=node_data, timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10), variable_pool=variable_pool
+            node_data=node_data,
+            timeout=HttpRequestNodeTimeout(connect=10, read=30, write=10),
+            variable_pool=variable_pool,
         )
 
 
@@ -305,7 +307,6 @@ def test_custom_authorization_with_empty_api_key(setup_http_mock):
     Test that custom authorization raises error when api_key is empty.
     This test verifies the fix for issue #21830.
     """
-    from core.workflow.nodes.http_request.exc import AuthorizationConfigError
 
     node = init_http_node(
         config={
