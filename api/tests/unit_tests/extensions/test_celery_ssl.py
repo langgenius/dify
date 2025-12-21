@@ -10,6 +10,7 @@ class TestCelerySSLConfiguration:
     def test_get_celery_ssl_options_when_ssl_disabled(self):
         """Test SSL options when BROKER_USE_SSL is False."""
         from configs import DifyConfig
+
         dify_config = DifyConfig(CELERY_BROKER_URL="redis://localhost:6379/0")
 
         with patch("extensions.ext_celery.dify_config", dify_config):
