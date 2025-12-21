@@ -1308,7 +1308,7 @@ class TestMCPToolManageService:
             type("MockTool", (), {"model_dump": lambda self: {"name": "test_tool_2", "description": "Test tool 2"}})(),
         ]
 
-        with patch("services.tools.mcp_tools_manage_service.MCPClient") as mock_mcp_client:
+        with patch("core.mcp.mcp_client.MCPClient") as mock_mcp_client:
             # Setup mock client
             mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
             mock_client_instance.list_tools.return_value = mock_tools
@@ -1364,7 +1364,7 @@ class TestMCPToolManageService:
         )
 
         # Mock MCPClient to raise authentication error
-        with patch("services.tools.mcp_tools_manage_service.MCPClient") as mock_mcp_client:
+        with patch("core.mcp.mcp_client.MCPClient") as mock_mcp_client:
             from core.mcp.error import MCPAuthError
 
             mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
@@ -1406,7 +1406,7 @@ class TestMCPToolManageService:
         )
 
         # Mock MCPClient to raise connection error
-        with patch("services.tools.mcp_tools_manage_service.MCPClient") as mock_mcp_client:
+        with patch("core.mcp.mcp_client.MCPClient") as mock_mcp_client:
             from core.mcp.error import MCPError
 
             mock_client_instance = mock_mcp_client.return_value.__enter__.return_value
