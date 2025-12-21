@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Tooltip from '../../tooltip'
 import { useTranslation } from 'react-i18next'
 

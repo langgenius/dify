@@ -1,6 +1,6 @@
 import React from 'react'
 import type { Tag } from '../../../hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiCloseCircleFill, RiPriceTag3Line } from '@remixicon/react'
 
 type ToolSelectorTriggerProps = {

@@ -12,6 +12,7 @@ import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import I18NContext from '@/context/i18n'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
 import { trackEvent } from '@/app/components/base/amplitude'
+import { encryptVerificationCode } from '@/utils/encryption'
 
 export default function CheckCode() {
   const { t, i18n } = useTranslation()
@@ -43,7 +44,7 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const ret = await emailLoginWithCode({ email, code, token, language })
+      const ret = await emailLoginWithCode({ email, code: encryptVerificationCode(code), token, language })
       if (ret.result === 'success') {
         // Track login success event
         trackEvent('user_login_success', {

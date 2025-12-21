@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
 import Dot from '../../documents/detail/completed/common/dot'
 import Score from './score'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   labelPrefix: string

@@ -5,6 +5,7 @@ const translation = {
     saved: 'Salvato',
     create: 'Creato',
     remove: 'Rimosso',
+    actionFailed: 'Azione non riuscita',
   },
   operation: {
     create: 'Crea',
@@ -103,6 +104,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turco',
       faIR: 'Persiano',
+      slSI: 'Sloveno',
+      arTN: 'Arabo tunisino',
     },
   },
   unit: {

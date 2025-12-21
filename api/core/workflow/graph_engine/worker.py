@@ -9,6 +9,7 @@ import contextvars
 import queue
 import threading
 import time
+from collections.abc import Sequence
 from datetime import datetime
 from typing import final
 from uuid import uuid4
@@ -17,6 +18,7 @@ from flask import Flask
 from typing_extensions import override
 
 from core.workflow.graph import Graph
+from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent
 from core.workflow.nodes.base.node import Node
 from libs.flask_utils import preserve_flask_contexts
@@ -39,6 +41,7 @@ class Worker(threading.Thread):
         ready_queue: ReadyQueue,
         event_queue: queue.Queue[GraphNodeEventBase],
         graph: Graph,
+        layers: Sequence[GraphEngineLayer],
         worker_id: int = 0,
         flask_app: Flask | None = None,
         context_vars: contextvars.Context | None = None,
@@ -50,6 +53,7 @@ class Worker(threading.Thread):
             ready_queue: Ready queue containing node IDs ready for execution
             event_queue: Queue for pushing execution events
             graph: Graph containing nodes to execute
+            layers: Graph engine layers for node execution hooks
             worker_id: Unique identifier for this worker
             flask_app: Optional Flask application for context preservation
             context_vars: Optional context variables to preserve in worker thread
@@ -63,6 +67,7 @@ class Worker(threading.Thread):
         self._context_vars = context_vars
         self._stop_event = threading.Event()
         self._last_task_time = time.time()
+        self._layers = layers if layers is not None else []
 
     def stop(self) -> None:
         """Signal the worker to stop processing."""
@@ -122,20 +127,51 @@ class Worker(threading.Thread):
         Args:
             node: The node instance to execute
         """
-        # Execute the node with preserved context if Flask app is provided
+        node.ensure_execution_id()
+
+        error: Exception | None = None
+
         if self._flask_app and self._context_vars:
             with preserve_flask_contexts(
                 flask_app=self._flask_app,
                 context_vars=self._context_vars,
             ):
-                # Execute the node
+                self._invoke_node_run_start_hooks(node)
+                try:
+                    node_events = node.run()
+                    for event in node_events:
+                        self._event_queue.put(event)
+                except Exception as exc:
+                    error = exc
+                    raise
+                finally:
+                    self._invoke_node_run_end_hooks(node, error)
+        else:
+            self._invoke_node_run_start_hooks(node)
+            try:
                 node_events = node.run()
                 for event in node_events:
-                    # Forward event to dispatcher immediately for streaming
                     self._event_queue.put(event)
-        else:
-            # Execute without context preservation
-            node_events = node.run()
-            for event in node_events:
-                # Forward event to dispatcher immediately for streaming
-                self._event_queue.put(event)
+            except Exception as exc:
+                error = exc
+                raise
+            finally:
+                self._invoke_node_run_end_hooks(node, error)
+
+    def _invoke_node_run_start_hooks(self, node: Node) -> None:
+        """Invoke on_node_run_start hooks for all layers."""
+        for layer in self._layers:
+            try:
+                layer.on_node_run_start(node)
+            except Exception:
+                # Silently ignore layer errors to prevent disrupting node execution
+                continue
+
+    def _invoke_node_run_end_hooks(self, node: Node, error: Exception | None) -> None:
+        """Invoke on_node_run_end hooks for all layers."""
+        for layer in self._layers:
+            try:
+                layer.on_node_run_end(node, error)
+            except Exception:
+                # Silently ignore layer errors to prevent disrupting node execution
+                continue

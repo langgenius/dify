@@ -13,7 +13,7 @@ import Drawer from '@/app/components/base/drawer'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
 
 type ItemProps = {

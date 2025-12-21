@@ -1,7 +1,7 @@
 'use client'
 import Drawer from '@/app/components/base/drawer'
 import { PluginCategoryEnum, type PluginDetail } from '@/app/components/plugins/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FC } from 'react'
 import { useCallback, useEffect } from 'react'
 import ActionList from './action-list'

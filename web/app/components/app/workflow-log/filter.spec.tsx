@@ -7,6 +7,7 @@
  * - Keyword search
  */
 
+import { useState } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
@@ -15,12 +16,6 @@ import type { QueryParam } from './index'
 // ============================================================================
 // Mocks
 // ============================================================================
-
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
 
 const mockTrackEvent = jest.fn()
 jest.mock('@/app/components/base/amplitude/utils', () => ({
@@ -299,12 +294,21 @@ describe('Filter', () => {
       const user = userEvent.setup()
       const setQueryParams = jest.fn()
 
-      render(
-        <Filter
-          queryParams={createDefaultQueryParams()}
-          setQueryParams={setQueryParams}
-        />,
-      )
+      const Wrapper = () => {
+        const [queryParams, updateQueryParams] = useState<QueryParam>(createDefaultQueryParams())
+        const handleSetQueryParams = (next: QueryParam) => {
+          updateQueryParams(next)
+          setQueryParams(next)
+        }
+        return (
+          <Filter
+            queryParams={queryParams}
+            setQueryParams={handleSetQueryParams}
+          />
+        )
+      }
+
+      render(<Wrapper />)
 
       const input = screen.getByPlaceholderText('common.operation.search')
       await user.type(input, 'workflow')

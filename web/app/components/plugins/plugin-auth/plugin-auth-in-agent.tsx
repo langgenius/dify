@@ -14,7 +14,7 @@ import type {
 import { usePluginAuth } from './hooks/use-plugin-auth'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type PluginAuthInAgentProps = {
   pluginPayload: PluginPayload

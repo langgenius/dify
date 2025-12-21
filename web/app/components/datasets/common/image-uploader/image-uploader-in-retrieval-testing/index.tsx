@@ -8,7 +8,7 @@ import {
 import type { FileEntity } from '../types'
 import { useUpload } from '../hooks/use-upload'
 import ImageInput from './image-input'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import { useFileStoreWithSelector } from '../store'
 import ImageItem from './image-item'

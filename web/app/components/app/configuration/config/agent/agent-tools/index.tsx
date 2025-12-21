@@ -25,7 +25,7 @@ import { MAX_TOOLS_NUM } from '@/config'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
 import { canFindTool } from '@/utils'
@@ -217,7 +217,7 @@ const AgentTools: FC = () => {
                       }
                     >
                       <div className='h-4 w-4'>
-                        <div className='ml-0.5 hidden group-hover:inline-block'>
+                        <div className='ml-0.5 hidden group-hover:inline-block' data-testid='tool-info-tooltip'>
                           <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
                         </div>
                       </div>
@@ -277,6 +277,7 @@ const AgentTools: FC = () => {
                       }}
                       onMouseOver={() => setIsDeleting(index)}
                       onMouseLeave={() => setIsDeleting(-1)}
+                      data-testid='delete-removed-tool'
                     >
                       <RiDeleteBinLine className='h-4 w-4' />
                     </div>

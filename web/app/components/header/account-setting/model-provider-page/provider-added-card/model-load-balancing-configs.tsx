@@ -16,7 +16,7 @@ import type {
 import { ConfigurationMethodEnum } from '../declarations'
 import Indicator from '../../../indicator'
 import CooldownTimer from './cooldown-timer'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
@@ -146,12 +146,10 @@ const ModelLoadBalancingConfigs = ({
   return (
     <>
       <div
-        className={classNames(
-          'min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
+        className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
           (withSwitch || !draftConfig.enabled) ? 'border-components-panel-border' : 'border-util-colors-blue-blue-600',
           (withSwitch || draftConfig.enabled) ? 'cursor-default' : 'cursor-pointer',
-          className,
-        )}
+          className)}
         onClick={(!withSwitch && !draftConfig.enabled) ? () => toggleModalBalancing(true) : undefined}
       >
         <div className='flex select-none items-center gap-2 px-[15px] py-3'>
@@ -270,7 +268,7 @@ const ModelLoadBalancingConfigs = ({
         <GridMask canvasClassName='!rounded-xl'>
           <div className='mt-2 flex h-14 items-center justify-between rounded-xl border-[0.5px] border-components-panel-border px-4 shadow-md'>
             <div
-              className={classNames('text-gradient text-sm font-semibold leading-tight', s.textGradient)}
+              className={cn('text-gradient text-sm font-semibold leading-tight', s.textGradient)}
             >
               {t('common.modelProvider.upgradeForLoadBalancing')}
             </div>

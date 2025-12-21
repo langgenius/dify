@@ -5,6 +5,7 @@ const translation = {
     saved: 'Đã lưu',
     create: 'Tạo',
     remove: 'Xóa',
+    actionFailed: 'Thao tác thất bại',
   },
   operation: {
     create: 'Tạo mới',
@@ -99,6 +100,8 @@ const translation = {
       hiIN: 'Tiếng Hindi',
       trTR: 'Tiếng Thổ Nhĩ Kỳ',
       faIR: 'Tiếng Ba Tư',
+      slSI: 'Tiếng Slovenia',
+      arTN: 'Tiếng Ả Rập Tunisia',
     },
   },
   unit: {

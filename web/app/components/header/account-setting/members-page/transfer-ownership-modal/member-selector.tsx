@@ -2,15 +2,14 @@
 import type { FC } from 'react'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import Avatar from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'
-import { fetchMembers } from '@/service/common'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
+import { useMembers } from '@/service/use-common'
 
 type Props = {
   value?: any
@@ -27,13 +26,7 @@ const MemberSelector: FC<Props> = ({
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
 
-  const { data } = useSWR(
-    {
-      url: '/workspaces/current/members',
-      params: {},
-    },
-    fetchMembers,
-  )
+  const { data } = useMembers()
 
   const currentValue = useMemo(() => {
     if (!data?.accounts) return null

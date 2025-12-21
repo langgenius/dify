@@ -1,8 +1,6 @@
+import { type ClassValue, clsx } from 'clsx'
 import { twMerge } from 'tailwind-merge'
-import cn from 'classnames'
 
-const classNames = (...cls: cn.ArgumentArray) => {
-  return twMerge(cn(cls))
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs))
 }
-
-export default classNames

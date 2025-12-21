@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Checkbox from '@/app/components/base/checkbox'
 import Tooltip from '@/app/components/base/tooltip'
 
@@ -12,6 +12,7 @@ type Props = {
   label: string
   labelClassName?: string
   tooltip?: string
+  testId?: string
 }
 
 const CheckboxWithLabel: FC<Props> = ({
@@ -21,10 +22,11 @@ const CheckboxWithLabel: FC<Props> = ({
   label,
   labelClassName,
   tooltip,
+  testId,
 }) => {
   return (
     <label className={cn(className, 'flex h-7 items-center space-x-2')}>
-      <Checkbox checked={isChecked} onCheck={() => onChange(!isChecked)} />
+      <Checkbox checked={isChecked} onCheck={() => onChange(!isChecked)} id={testId} />
       <div className={cn('text-sm font-normal text-text-secondary', labelClassName)}>{label}</div>
       {tooltip && (
         <Tooltip

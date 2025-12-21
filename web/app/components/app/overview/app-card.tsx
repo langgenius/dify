@@ -401,7 +401,6 @@ function AppCard({
             />
             <CustomizeModal
               isShow={showCustomizeModal}
-              linkUrl=""
               onClose={() => setShowCustomizeModal(false)}
               appId={appInfo.id}
               api_base_url={appInfo.api_base_url}

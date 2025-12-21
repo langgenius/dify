@@ -3,13 +3,6 @@ import { render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { OpikIconBig } from '@/app/components/base/icons/src/public/tracing'
 
-// Mock dependencies to isolate the SVG rendering issue
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 describe('SVG Attribute Error Reproduction', () => {
   // Capture console errors
   const originalError = console.error

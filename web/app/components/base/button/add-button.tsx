@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { RiAddLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
