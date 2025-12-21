@@ -240,7 +240,7 @@ class CeleryConfig(DatabaseConfig):
     )
 
     CELERY_BROKER_URL: str | None = Field(
-        description="URL of the message broker for Celery tasks. It starts with redis://, rediss://, or sentinel://.",
+        description="URL of the message broker for Celery tasks.If using Redis, it starts with redis://, rediss://, or sentinel://.",
         default=None,
     )
 
