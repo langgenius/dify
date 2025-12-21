@@ -91,6 +91,7 @@ const ModelList: FC<ModelListProps> = ({
                 model,
                 provider,
                 isConfigurable,
+                onChange,
                 onModifyLoadBalancing,
               }}
             />

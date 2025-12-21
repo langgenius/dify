@@ -51,12 +51,6 @@ const mockFiles: FileEntity[] = [
   },
 ]
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('@/context/debug-configuration', () => ({
   __esModule: true,
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),

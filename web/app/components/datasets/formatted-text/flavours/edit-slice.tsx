@@ -6,7 +6,7 @@ import { RiDeleteBinLine } from '@remixicon/react'
 import lineClamp from 'line-clamp'
 import type { SliceProps } from './type'
 import { SliceContainer, SliceContent, SliceDivider, SliceLabel } from './shared'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 
 type EditSliceProps = SliceProps<{
@@ -56,7 +56,7 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
   return (
     <>
       <SliceContainer {...rest}
-        className={classNames('mr-0 block', className)}
+        className={cn('mr-0 block', className)}
         ref={(ref) => {
           refs.setReference(ref)
           if (ref)
@@ -65,26 +65,20 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
         {...getReferenceProps()}
       >
         <SliceLabel
-          className={classNames(
-            isDestructive && '!bg-state-destructive-solid !text-text-primary-on-surface',
-            labelClassName,
-          )}
+          className={cn(isDestructive && '!bg-state-destructive-solid !text-text-primary-on-surface',
+            labelClassName)}
           labelInnerClassName={labelInnerClassName}
         >
           {label}
         </SliceLabel>
         <SliceContent
-          className={classNames(
-            isDestructive && '!bg-state-destructive-hover-alt',
-            contentClassName,
-          )}
+          className={cn(isDestructive && '!bg-state-destructive-hover-alt',
+            contentClassName)}
         >
           {text}
         </SliceContent>
         {showDivider && <SliceDivider
-          className={classNames(
-            isDestructive && '!bg-state-destructive-hover-alt',
-          )}
+          className={cn(isDestructive && '!bg-state-destructive-hover-alt')}
         />}
         {delBtnShow && <FloatingFocusManager
           context={context}

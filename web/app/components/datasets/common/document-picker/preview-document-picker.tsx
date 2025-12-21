@@ -11,7 +11,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
 import type { DocumentItem } from '@/models/datasets'
 

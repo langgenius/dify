@@ -2,7 +2,7 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import Input from '@/app/components/base/input'

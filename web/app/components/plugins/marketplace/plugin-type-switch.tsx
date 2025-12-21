@@ -1,6 +1,6 @@
 'use client'
 import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   RiArchive2Line,
   RiBrain2Line,

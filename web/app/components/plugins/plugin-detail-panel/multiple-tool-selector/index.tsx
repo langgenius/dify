@@ -11,7 +11,7 @@ import Divider from '@/app/components/base/divider'
 import type { ToolValue } from '@/app/components/workflow/block-selector/types'
 import type { Node } from 'reactflow'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import { useAllMCPTools } from '@/service/use-tools'
 

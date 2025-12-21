@@ -65,7 +65,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         wrapperClassName='w-[200px]'
         showLeftIcon
         showClearIcon
-        value={queryParams.keyword}
+        value={queryParams.keyword ?? ''}
         placeholder={t('common.operation.search')!}
         onChange={(e) => {
           setQueryParams({ ...queryParams, keyword: e.target.value })

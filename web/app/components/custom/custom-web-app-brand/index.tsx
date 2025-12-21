@@ -23,7 +23,7 @@ import {
   updateCurrentWorkspace,
 } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
