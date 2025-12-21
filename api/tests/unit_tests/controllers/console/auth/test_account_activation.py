@@ -8,7 +8,7 @@ This module tests the account activation mechanism including:
 - Initial login after activation
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from flask import Flask
@@ -142,7 +142,10 @@ class TestActivateCheckApi:
             response = api.get()
 
         assert response["is_valid"] is True
-        mock_get_invitation.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+        assert mock_get_invitation.call_args_list == [
+            call("workspace-123", "Invitee@Example.com", "valid_token"),
+            call("workspace-123", "invitee@example.com", "valid_token"),
+        ]
 
 
 class TestActivateApi:
@@ -504,5 +507,8 @@ class TestActivateApi:
             response = api.post()
 
         assert response["result"] == "success"
-        mock_get_invitation.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
+        assert mock_get_invitation.call_args_list == [
+            call("workspace-123", "Invitee@Example.com", "valid_token"),
+            call("workspace-123", "invitee@example.com", "valid_token"),
+        ]
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")

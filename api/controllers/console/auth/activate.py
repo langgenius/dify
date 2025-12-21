@@ -1,3 +1,5 @@
+from typing import Any
+
 from flask import request
 from flask_restx import Resource, fields
 from pydantic import BaseModel, Field, field_validator
@@ -63,10 +65,9 @@ class ActivateCheckApi(Resource):
         args = ActivateCheckQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
         workspaceId = args.workspace_id
-        reg_email = args.email.lower() if args.email else None
         token = args.token
 
-        invitation = RegisterService.get_invitation_if_token_valid(workspaceId, reg_email, token)
+        invitation = _get_invitation_with_case_fallback(workspaceId, args.email, token)
         if invitation:
             data = invitation.get("data", {})
             tenant = invitation.get("tenant", None)
@@ -101,12 +102,12 @@ class ActivateApi(Resource):
     def post(self):
         args = ActivatePayload.model_validate(console_ns.payload)
 
-        normalized_email = args.email.lower() if args.email else None
-        invitation = RegisterService.get_invitation_if_token_valid(args.workspace_id, normalized_email, args.token)
+        normalized_request_email = args.email.lower() if args.email else None
+        invitation = _get_invitation_with_case_fallback(args.workspace_id, args.email, args.token)
         if invitation is None:
             raise AlreadyActivateError()
 
-        RegisterService.revoke_token(args.workspace_id, normalized_email, args.token)
+        RegisterService.revoke_token(args.workspace_id, normalized_request_email, args.token)
 
         account = invitation["account"]
         account.name = args.name
@@ -121,3 +122,13 @@ class ActivateApi(Resource):
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
 
         return {"result": "success", "data": token_pair.model_dump()}
+
+
+def _get_invitation_with_case_fallback(
+    workspace_id: str | None, email: str | None, token: str
+) -> dict[str, Any] | None:
+    invitation = RegisterService.get_invitation_if_token_valid(workspace_id, email, token)
+    if invitation or not email or email == email.lower():
+        return invitation
+    normalized_email = email.lower()
+    return RegisterService.get_invitation_if_token_valid(workspace_id, normalized_email, token)
