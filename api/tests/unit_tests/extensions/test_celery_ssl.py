@@ -9,9 +9,10 @@ class TestCelerySSLConfiguration:
 
     def test_get_celery_ssl_options_when_ssl_disabled(self):
         """Test SSL options when BROKER_USE_SSL is False."""
-        mock_config = MagicMock()
+        from configs import DifyConfig
+        dify_config = DifyConfig(CELERY_BROKER_URL="redis://localhost:6379/0")
 
-        with patch("extensions.ext_celery.dify_config", mock_config):
+        with patch("extensions.ext_celery.dify_config", dify_config):
             from extensions.ext_celery import _get_celery_ssl_options
 
             result = _get_celery_ssl_options()
