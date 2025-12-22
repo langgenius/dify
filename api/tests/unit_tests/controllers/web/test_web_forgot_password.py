@@ -100,11 +100,45 @@ class TestForgotPasswordCheckApi:
         mock_add_rate.assert_not_called()
         mock_revoke_token.assert_called_once_with("token-123")
         mock_generate_token.assert_called_once_with(
-            "user@example.com",
+            "User@Example.com",
             code="1234",
             additional_data={"phase": "reset"},
         )
         mock_reset_rate.assert_called_once_with("user@example.com")
+
+    @patch("controllers.web.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
+    @patch("controllers.web.forgot_password.AccountService.generate_reset_password_token")
+    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
+    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
+    @patch("controllers.web.forgot_password.AccountService.is_forgot_password_error_rate_limit")
+    def test_should_preserve_token_email_case(
+        self,
+        mock_is_rate_limit,
+        mock_get_data,
+        mock_revoke_token,
+        mock_generate_token,
+        mock_reset_rate,
+        app,
+    ):
+        mock_is_rate_limit.return_value = False
+        mock_get_data.return_value = {"email": "MixedCase@Example.com", "code": "5678"}
+        mock_generate_token.return_value = (None, "fresh-token")
+
+        with app.test_request_context(
+            "/web/forgot-password/validity",
+            method="POST",
+            json={"email": "mixedcase@example.com", "code": "5678", "token": "token-upper"},
+        ):
+            response = ForgotPasswordCheckApi().post()
+
+        assert response == {"is_valid": True, "email": "mixedcase@example.com", "token": "fresh-token"}
+        mock_generate_token.assert_called_once_with(
+            "MixedCase@Example.com",
+            code="5678",
+            additional_data={"phase": "reset"},
+        )
+        mock_revoke_token.assert_called_once_with("token-upper")
+        mock_reset_rate.assert_called_once_with("mixedcase@example.com")
 
 
 class TestForgotPasswordResetApi:

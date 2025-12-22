@@ -98,7 +98,10 @@ class ForgotPasswordCheckApi(Resource):
             raise InvalidTokenError()
 
         token_email = token_data.get("email")
-        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
+        if not isinstance(token_email, str):
+            raise InvalidEmailError()
+        normalized_token_email = token_email.lower()
+        
         if user_email != normalized_token_email:
             raise InvalidEmailError()
 
@@ -111,7 +114,7 @@ class ForgotPasswordCheckApi(Resource):
 
         # Refresh token data by generating a new token
         _, new_token = AccountService.generate_reset_password_token(
-            user_email, code=args["code"], additional_data={"phase": "reset"}
+            token_email, code=args["code"], additional_data={"phase": "reset"}
         )
 
         AccountService.reset_forgot_password_error_rate_limit(user_email)
