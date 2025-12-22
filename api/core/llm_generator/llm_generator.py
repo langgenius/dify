@@ -61,25 +61,33 @@ class LLMGenerator:
         prompt = CONVERSATION_TITLE_PROMPT
 
         def _contains_persian(text: str) -> bool:
-            # Detect presence of Persian-specific characters (پ چ ژ گ ک and persian ye U+06CC)
-            if bool(re.search(r"[پچژگک\u06CC]", text or "")):
-                return True
-            # Fallback: use language detection to catch Persian text without special chars
-            try:
-                from langdetect import DetectorFactory, detect
+            # Normalize input once
+            text = text or ""
 
-                DetectorFactory.seed = 0
-                lang = detect(text or "")
-                if lang == "fa":
-                    return True
-            except Exception as exc:
-                # langdetect may fail on very short texts; ignore failures.
-                # Log at debug level to aid debugging without failing the linter S110.
-                logger.debug("langdetect detection failed: %s", exc)
-            # Also check for some common Persian words as an additional heuristic
-            # Use precompiled regex for clarity and performance.
-            if _PERSIAN_HEURISTIC.search(text or ""):
+            # 1) Quick check: Persian-specific letters (پ چ ژ گ ک and persian ye U+06CC)
+            if bool(re.search(r"[پچژگک\u06CC]", text)):
                 return True
+
+            # 2) Heuristic check for common Persian words (fast, precompiled)
+            if _PERSIAN_HEURISTIC.search(text):
+                return True
+
+            # 3) Fallback: language detection (more expensive) — only run if langdetect is available
+            try:
+                import importlib
+
+                if importlib.util.find_spec("langdetect") is not None:
+                    langdetect = importlib.import_module("langdetect")
+                    DetectorFactory = langdetect.DetectorFactory
+                    detect = langdetect.detect
+
+                    DetectorFactory.seed = 0
+                    if detect(text) == "fa":
+                        return True
+            except Exception as exc:
+                # langdetect may fail on short/ambiguous texts; log debug and continue
+                logger.debug("langdetect detection failed: %s", exc)
+
             return False
 
         if len(query) > 2000:
@@ -133,6 +141,7 @@ class LLMGenerator:
 
                 # Parse JSON, try to repair malformed JSON if necessary
                 candidate = ""
+                result_dict = None
                 try:
                     result_dict = json.loads(cleaned_answer)
                 except json.JSONDecodeError:
@@ -142,9 +151,9 @@ class LLMGenerator:
                         logger.exception(
                             "Failed to parse LLM JSON when generating conversation name; using raw query as fallback"
                         )
-                        candidate = query
-                    else:
-                        candidate = result_dict.get("Your Output", "")
+
+                if not isinstance(result_dict, dict):
+                    candidate = query
                 else:
                     candidate = result_dict.get("Your Output", "")
 
@@ -181,16 +190,18 @@ class LLMGenerator:
                         f"{name}"
                     )
                 )
-                response: LLMResult = model_instance.invoke_llm(
+                translate_response: LLMResult = model_instance.invoke_llm(
                     prompt_messages=[translate_prompt],
                     model_parameters={"max_tokens": 200, "temperature": 0},
                     stream=False,
                 )
-                translation = cast(str, response.message.content).strip()
+                translation = cast(str, translate_response.message.content).strip()
                 if _contains_persian(translation):
                     name = translation
-            except Exception:
+            except InvokeError:
                 logger.exception("Failed to obtain Persian translation for the conversation title")
+            except Exception:
+                logger.exception("Unexpected error obtaining Persian translation for the conversation title")
 
         if len(name) > 75:
             name = name[:75] + "..."

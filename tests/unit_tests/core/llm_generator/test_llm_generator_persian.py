@@ -174,4 +174,4 @@ def test_generate_conversation_name_persian(monkeypatch):
     name = LLMGenerator.generate_conversation_name("tenant1", query)
 
     # Assert: title should be the Persian string we returned
-    assert "عنوان" in name or "تستی" in name
+    assert name == "عنوان تستی"
