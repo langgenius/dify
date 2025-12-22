@@ -43,13 +43,6 @@ vi.mock('../../assets', () => ({
   EnterpriseNoise: () => <div>EnterpriseNoise</div>,
 }))
 
-vi.mock('@/app/components/base/icons/src/public/billing', () => ({
-  Azure: () => <div>Azure</div>,
-  GoogleCloud: () => <div>Google Cloud</div>,
-  AwsMarketplaceDark: () => <div>AwsMarketplaceDark</div>,
-  AwsMarketplaceLight: () => <div>AwsMarketplaceLight</div>,
-}))
-
 const mockUseAppContext = useAppContext as Mock
 const mockToastNotify = Toast.notify as Mock
 
@@ -97,12 +90,12 @@ describe('SelfHostedPlanItem', () => {
     })
 
     test('should show premium extras such as cloud provider notice', () => {
-      render(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
+      const { container } = render(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
 
       expect(screen.getByText('billing.plans.premium.price')).toBeInTheDocument()
       expect(screen.getByText('billing.plans.premium.comingSoon')).toBeInTheDocument()
-      expect(screen.getByText('Azure')).toBeInTheDocument()
-      expect(screen.getByText('Google Cloud')).toBeInTheDocument()
+      expect(container.querySelector('[data-icon="Azure"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-icon="GoogleCloud"]')).toBeInTheDocument()
     })
   })
 

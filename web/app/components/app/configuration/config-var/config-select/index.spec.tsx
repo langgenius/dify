@@ -11,7 +11,7 @@ describe('ConfigSelect Component', () => {
     onChange: vi.fn(),
   }
 
-  afterEach(() => {
+  beforeEach(() => {
     vi.clearAllMocks()
   })
 

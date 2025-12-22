@@ -71,12 +71,6 @@ vi.mock('@remixicon/react', () => ({
   RiCloseLine: () => <span data-testid="close-icon">✕</span>,
 }))
 
-vi.mock('@/app/components/base/icons/src/vender/knowledge', () => ({
-  GeneralChunk: () => <span data-testid="general-chunk-icon">General</span>,
-  ParentChildChunk: () => <span data-testid="parent-child-chunk-icon">ParentChild</span>,
-  QuestionAndAnswer: () => <span data-testid="qa-chunk-icon">QA</span>,
-}))
-
 // Factory function to create mock SimpleDocumentDetail
 const createMockDocument = (overrides: Partial<SimpleDocumentDetail> = {}): SimpleDocumentDetail => ({
   id: `doc-${Math.random().toString(36).substr(2, 9)}`,
@@ -225,7 +219,7 @@ describe('DocumentPicker', () => {
     })
 
     it('should render GeneralChunk icon for text mode', () => {
-      renderComponent({
+      const { container } = renderComponent({
         value: {
           name: 'Test',
           extension: 'txt',
@@ -233,11 +227,11 @@ describe('DocumentPicker', () => {
         },
       })
 
-      expect(screen.getByTestId('general-chunk-icon')).toBeInTheDocument()
+      expect(container.querySelector('[data-icon="GeneralChunk"]')).toBeInTheDocument()
     })
 
     it('should render ParentChildChunk icon for parentChild mode', () => {
-      renderComponent({
+      const { container } = renderComponent({
         value: {
           name: 'Test',
           extension: 'txt',
@@ -245,11 +239,11 @@ describe('DocumentPicker', () => {
         },
       })
 
-      expect(screen.getByTestId('parent-child-chunk-icon')).toBeInTheDocument()
+      expect(container.querySelector('[data-icon="ParentChildChunk"]')).toBeInTheDocument()
     })
 
     it('should render GeneralChunk icon for QA mode', () => {
-      renderComponent({
+      const { container } = renderComponent({
         value: {
           name: 'Test',
           extension: 'txt',
@@ -257,7 +251,7 @@ describe('DocumentPicker', () => {
         },
       })
 
-      expect(screen.getByTestId('general-chunk-icon')).toBeInTheDocument()
+      expect(container.querySelector('[data-icon="GeneralChunk"]')).toBeInTheDocument()
     })
 
     it('should render general mode label', () => {

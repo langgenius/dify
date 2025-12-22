@@ -11,13 +11,6 @@ import { OnlineDriveFileType } from '@/models/pipeline'
 
 // Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
 
-// Mock Loading component - base component with simple render
-vi.mock('@/app/components/base/loading', () => ({
-  default: ({ type }: { type?: string }) => (
-    <div data-testid="loading" data-type={type}>Loading...</div>
-  ),
-}))
-
 // Mock Item component for List tests - child component with complex behavior
 vi.mock('./item', () => ({
   default: ({ file, isSelected, onSelect, onOpen, isMultipleChoice }: {
@@ -108,6 +101,10 @@ const createDefaultProps = (overrides?: Partial<ListProps>): ListProps => ({
   handleOpenFolder: vi.fn(),
   ...overrides,
 })
+
+const queryFullLoadingSpinner = () => document.querySelector<SVGElement>('.spin-animation')
+
+const queryFullLoadingContainer = () => queryFullLoadingSpinner()?.closest('div') as HTMLDivElement | null
 
 // ==========================================
 // Mock IntersectionObserver
@@ -215,8 +212,8 @@ describe('List', () => {
       render(<List {...props} />)
 
       // Assert
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
-      expect(screen.getByTestId('loading')).toHaveAttribute('data-type', 'app')
+      expect(queryFullLoadingSpinner()).toBeInTheDocument()
+      expect(queryFullLoadingContainer()).toHaveClass('h-full')
     })
 
     it('should render EmptyFolder when folder is empty and not loading', () => {
@@ -291,7 +288,7 @@ describe('List', () => {
       render(<List {...props} />)
 
       // Assert - Full page loading should not appear
-      expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+      expect(queryFullLoadingSpinner()).not.toBeInTheDocument()
     })
 
     it('should render anchor div for infinite scroll', () => {
@@ -464,7 +461,7 @@ describe('List', () => {
         // Assert
         switch (expected) {
           case 'isAllLoading':
-            expect(screen.getByTestId('loading')).toBeInTheDocument()
+            expect(queryFullLoadingSpinner()).toBeInTheDocument()
             break
           case 'isPartialLoading':
             expect(container.querySelector('.animation-spin')).toBeInTheDocument()
@@ -1000,13 +997,13 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(screen.getByTestId('loading')).toBeInTheDocument()
+        expect(queryFullLoadingSpinner()).toBeInTheDocument()
 
         // Act
         rerender(<List {...props2} />)
 
         // Assert
-        expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+        expect(queryFullLoadingSpinner()).not.toBeInTheDocument()
         expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
       })
 
@@ -1019,13 +1016,13 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(screen.getByTestId('loading')).toBeInTheDocument()
+        expect(queryFullLoadingSpinner()).toBeInTheDocument()
 
         // Act
         rerender(<List {...props2} />)
 
         // Assert
-        expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+        expect(queryFullLoadingSpinner()).not.toBeInTheDocument()
         expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
       })
 
@@ -1132,7 +1129,7 @@ describe('List', () => {
         // Assert
         switch (expectedState) {
           case 'all-loading':
-            expect(screen.getByTestId('loading')).toBeInTheDocument()
+            expect(queryFullLoadingSpinner()).toBeInTheDocument()
             break
           case 'partial-loading':
             expect(container.querySelector('.animation-spin')).toBeInTheDocument()

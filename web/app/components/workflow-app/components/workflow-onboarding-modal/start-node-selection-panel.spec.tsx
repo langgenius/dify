@@ -45,12 +45,6 @@ vi.mock('@/app/components/workflow/block-selector', () => ({
   },
 }))
 
-// Mock icons
-vi.mock('@/app/components/base/icons/src/vender/workflow', () => ({
-  Home: () => <div data-testid="home-icon">Home</div>,
-  TriggerAll: () => <div data-testid="trigger-all-icon">TriggerAll</div>,
-}))
-
 describe('StartNodeSelectionPanel', () => {
   const mockOnSelectUserInput = vi.fn()
   const mockOnSelectTrigger = vi.fn()
@@ -81,22 +75,22 @@ describe('StartNodeSelectionPanel', () => {
 
     it('should render user input option', () => {
       // Arrange & Act
-      renderComponent()
+      const { container } = renderComponent()
 
       // Assert
       expect(screen.getByText('workflow.onboarding.userInputFull')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.userInputDescription')).toBeInTheDocument()
-      expect(screen.getByTestId('home-icon')).toBeInTheDocument()
+      expect(container.querySelector('[data-icon="Home"]')).toBeInTheDocument()
     })
 
     it('should render trigger option', () => {
       // Arrange & Act
-      renderComponent()
+      const { container } = renderComponent()
 
       // Assert
       expect(screen.getByText('workflow.onboarding.trigger')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.triggerDescription')).toBeInTheDocument()
-      expect(screen.getByTestId('trigger-all-icon')).toBeInTheDocument()
+      expect(container.querySelector('[data-icon="TriggerAll"]')).toBeInTheDocument()
     })
 
     it('should render node selector component', () => {
@@ -513,11 +507,11 @@ describe('StartNodeSelectionPanel', () => {
 
     it('should have icons for visual identification', () => {
       // Arrange & Act
-      renderComponent()
+      const { container } = renderComponent()
 
       // Assert
-      expect(screen.getByTestId('home-icon')).toBeInTheDocument()
-      expect(screen.getByTestId('trigger-all-icon')).toBeInTheDocument()
+      expect(container.querySelector('[data-icon="Home"]')).toBeInTheDocument()
+      expect(container.querySelector('[data-icon="TriggerAll"]')).toBeInTheDocument()
     })
 
     it('should maintain focus after interactions', async () => {

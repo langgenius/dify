@@ -96,53 +96,10 @@ vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/switch', () => ({
-  default: function MockSwitch({ defaultValue }: { defaultValue: boolean }) {
-    return <input type="checkbox" defaultChecked={defaultValue} data-testid="switch" />
-  },
-}))
-
-vi.mock('@/app/components/base/select', () => ({
-  default: function MockSelect() {
-    return <select data-testid="select">Select</select>
-  },
-}))
-
-// Use defaultValue to avoid controlled input warnings
-vi.mock('@/app/components/base/slider', () => ({
-  default: function MockSlider({ value, max, min }: { value: number, max: number, min: number }) {
-    return (
-      <input
-        type="range"
-        defaultValue={value}
-        max={max}
-        min={min}
-        data-testid="slider"
-        data-max={max}
-        data-min={min}
-        readOnly
-      />
-    )
-  },
-}))
-
-// Use defaultValue to avoid controlled input warnings
-vi.mock('@/app/components/base/input', () => ({
-  default: function MockInput({ type, max, min, value }: { type: string, max: number, min: number, value: number }) {
-    return (
-      <input
-        type={type}
-        defaultValue={value}
-        max={max}
-        min={min}
-        data-testid="number-input"
-        data-max={max}
-        data-min={min}
-        readOnly
-      />
-    )
-  },
-}))
+const getParallelControls = () => ({
+  numberInput: screen.getByRole('spinbutton'),
+  slider: screen.getByRole('slider'),
+})
 
 describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
   const mockNodeData = {
@@ -237,16 +194,14 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
       )
 
       // Behavior-focused assertion: UI max should equal MAX_PARALLEL_LIMIT
-      const numberInput = screen.getByTestId('number-input')
-      expect(numberInput).toHaveAttribute('data-max', String(MAX_PARALLEL_LIMIT))
-
-      const slider = screen.getByTestId('slider')
-      expect(slider).toHaveAttribute('data-max', String(MAX_PARALLEL_LIMIT))
+      const { numberInput, slider } = getParallelControls()
+      expect(numberInput).toHaveAttribute('max', String(MAX_PARALLEL_LIMIT))
+      expect(slider).toHaveAttribute('aria-valuemax', String(MAX_PARALLEL_LIMIT))
 
       // Verify the actual values
       expect(MAX_PARALLEL_LIMIT).toBe(30)
-      expect(numberInput.getAttribute('data-max')).toBe('30')
-      expect(slider.getAttribute('data-max')).toBe('30')
+      expect(numberInput.getAttribute('max')).toBe('30')
+      expect(slider.getAttribute('aria-valuemax')).toBe('30')
     })
 
     it('should maintain UI consistency with different environment values', async () => {
@@ -263,11 +218,10 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
       )
 
       // Both input and slider should use the same max value from MAX_PARALLEL_LIMIT
-      const numberInput = screen.getByTestId('number-input')
-      const slider = screen.getByTestId('slider')
+      const { numberInput, slider } = getParallelControls()
 
-      expect(numberInput.getAttribute('data-max')).toBe(slider.getAttribute('data-max'))
-      expect(numberInput.getAttribute('data-max')).toBe(String(MAX_PARALLEL_LIMIT))
+      expect(numberInput.getAttribute('max')).toBe(slider.getAttribute('aria-valuemax'))
+      expect(numberInput.getAttribute('max')).toBe(String(MAX_PARALLEL_LIMIT))
     })
   })
 

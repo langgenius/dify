@@ -145,13 +145,6 @@ vi.mock('./title', () => ({
   ),
 }))
 
-// Mock Loading component
-vi.mock('@/app/components/base/loading', () => ({
-  default: ({ type }: { type: string }) => (
-    <div data-testid="loading" data-type={type}>Loading...</div>
-  ),
-}))
-
 // ==========================================
 // Test Data Builders
 // ==========================================
@@ -206,6 +199,10 @@ const createDefaultProps = (overrides?: Partial<OnlineDocumentsProps>): OnlineDo
   supportBatchUpload: true,
   ...overrides,
 })
+
+const queryLoadingSpinner = () => document.querySelector<SVGElement>('.spin-animation')
+
+const queryLoadingContainer = () => queryLoadingSpinner()?.closest('div') as HTMLDivElement | null
 
 // ==========================================
 // Test Suites
@@ -277,8 +274,8 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
-      expect(screen.getByTestId('loading')).toHaveAttribute('data-type', 'app')
+      expect(queryLoadingSpinner()).toBeInTheDocument()
+      expect(queryLoadingContainer()).toHaveClass('h-full')
     })
 
     it('should render PageSelector when documentsData has content', () => {
@@ -291,7 +288,7 @@ describe('OnlineDocuments', () => {
 
       // Assert
       expect(screen.getByTestId('page-selector')).toBeInTheDocument()
-      expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+      expect(queryLoadingSpinner()).not.toBeInTheDocument()
     })
 
     it('should render Title with datasource_label', () => {
@@ -765,7 +762,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading instead of PageSelector
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
+      expect(queryLoadingSpinner()).toBeInTheDocument()
     })
   })
 
@@ -1036,7 +1033,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading when documentsData is undefined
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
+      expect(queryLoadingSpinner()).toBeInTheDocument()
     })
 
     it('should handle undefined datasource_parameters (line 79 branch)', () => {
@@ -1307,7 +1304,7 @@ describe('OnlineDocuments', () => {
       })
 
       // Should still show loading since documentsData is empty
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
+      expect(queryLoadingSpinner()).toBeInTheDocument()
     })
 
     it('should handle credential change and refetch documents', () => {

@@ -48,15 +48,12 @@ describe('Debug and Preview Panel Width Persistence', () => {
   let mockLocalStorage: ReturnType<typeof createMockLocalStorage>
 
   beforeEach(() => {
+    vi.clearAllMocks()
     mockLocalStorage = createMockLocalStorage()
     Object.defineProperty(globalThis, 'localStorage', {
       value: mockLocalStorage,
       writable: true,
     })
-  })
-
-  afterEach(() => {
-    vi.clearAllMocks()
   })
 
   describe('Preview Panel Width Management', () => {

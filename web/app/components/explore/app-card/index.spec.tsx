@@ -4,11 +4,6 @@ import AppCard, { type AppCardProps } from './index'
 import type { App } from '@/models/explore'
 import { AppModeEnum } from '@/types/app'
 
-vi.mock('@/app/components/base/app-icon', () => ({
-  __esModule: true,
-  default: ({ children }: any) => <div data-testid="app-icon">{children}</div>,
-}))
-
 vi.mock('../../app/type-selector', () => ({
   AppTypeIcon: ({ type }: any) => <div data-testid="app-type-icon">{type}</div>,
 }))

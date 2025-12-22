@@ -8,11 +8,6 @@ import { Theme } from '@/types/app'
 
 vi.mock('@/hooks/use-theme')
 
-vi.mock('@/app/components/base/icons/src/public/billing', () => ({
-  AwsMarketplaceLight: () => <div>AwsMarketplaceLight</div>,
-  AwsMarketplaceDark: () => <div>AwsMarketplaceDark</div>,
-}))
-
 const mockUseTheme = useTheme as MockedFunction<typeof useTheme>
 
 beforeEach(() => {
@@ -37,26 +32,26 @@ describe('SelfHostedPlanButton', () => {
   test('should render AWS marketplace badge for premium plan in light theme', () => {
     const handleGetPayUrl = vi.fn()
 
-    render(
+    const { container } = render(
       <Button
         plan={SelfHostedPlan.premium}
         handleGetPayUrl={handleGetPayUrl}
       />,
     )
 
-    expect(screen.getByText('AwsMarketplaceLight')).toBeInTheDocument()
+    expect(container.querySelector('[data-icon="AwsMarketplaceLight"]')).toBeInTheDocument()
   })
 
   test('should switch to dark AWS badge in dark theme', () => {
     mockUseTheme.mockReturnValue({ theme: Theme.dark } as unknown as ReturnType<typeof useTheme>)
 
-    render(
+    const { container } = render(
       <Button
         plan={SelfHostedPlan.premium}
         handleGetPayUrl={vi.fn()}
       />,
     )
 
-    expect(screen.getByText('AwsMarketplaceDark')).toBeInTheDocument()
+    expect(container.querySelector('[data-icon="AwsMarketplaceDark"]')).toBeInTheDocument()
   })
 })

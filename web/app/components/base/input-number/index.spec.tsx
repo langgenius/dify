@@ -6,7 +6,7 @@ describe('InputNumber Component', () => {
     onChange: vi.fn(),
   }
 
-  afterEach(() => {
+  beforeEach(() => {
     vi.clearAllMocks()
   })
 

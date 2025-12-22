@@ -4,9 +4,6 @@ import { act, render, screen, waitFor } from '@testing-library/react'
 import Toast, { ToastProvider, useToastContext } from '.'
 import { noop } from 'lodash-es'
 
-// Mock timers for testing timeouts
-vi.useFakeTimers({ shouldAdvanceTime: true })
-
 const TestComponent = () => {
   const { notify, close } = useToastContext()
 
@@ -21,6 +18,15 @@ const TestComponent = () => {
 }
 
 describe('Toast', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+  })
+
+  afterEach(() => {
+    vi.runOnlyPendingTimers()
+    vi.useRealTimers()
+  })
+
   describe('Toast Component', () => {
     test('renders toast with correct type and message', () => {
       render(

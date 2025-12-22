@@ -142,14 +142,11 @@ const createMockLocalStorage = () => {
 let mockLocalStorage: ReturnType<typeof createMockLocalStorage>
 
 beforeEach(() => {
+  vi.clearAllMocks()
   mockLocalStorage = createMockLocalStorage()
   Object.defineProperty(globalThis, 'localStorage', {
     value: mockLocalStorage,
     writable: true,
     configurable: true,
   })
-})
-
-afterEach(() => {
-  vi.clearAllMocks()
 })

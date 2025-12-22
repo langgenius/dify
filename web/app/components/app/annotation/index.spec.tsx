@@ -92,8 +92,6 @@ vi.mock('./view-annotation-modal', () => ({
   },
 }))
 
-vi.mock('@/app/components/base/pagination', () => ({ default: () => <div data-testid="pagination" /> }))
-vi.mock('@/app/components/base/loading', () => ({ default: () => <div data-testid="loading" /> }))
 vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal', () => ({ default: (props: any) => props.isShow ? <div data-testid="config-modal" /> : null }))
 vi.mock('@/app/components/billing/annotation-full/modal', () => ({ default: (props: any) => props.show ? <div data-testid="annotation-full-modal" /> : null }))
 
