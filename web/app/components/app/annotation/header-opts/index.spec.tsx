@@ -364,8 +364,24 @@ describe('HeaderOptions', () => {
     expect(clickSpy).toHaveBeenCalled()
     expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
 
-    // Verify the blob was created
+    // Verify the blob was created with correct content
     expect(capturedBlob).toBeInstanceOf(Blob)
+    expect(capturedBlob!.type).toBe('application/jsonl')
+
+    const blobContent = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsText(capturedBlob!)
+    })
+    const lines = blobContent.trim().split('\n')
+    expect(lines).toHaveLength(1)
+    expect(JSON.parse(lines[0])).toEqual({
+      messages: [
+        { role: 'system', content: '' },
+        { role: 'user', content: 'Question 1' },
+        { role: 'assistant', content: 'Answer 1' },
+      ],
+    })
 
     clickSpy.mockRestore()
     createElementSpy.mockRestore()
