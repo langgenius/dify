@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render } from '@testing-library/react'
 import InlineDeleteConfirm from './index'
 
 // Mock react-i18next
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
@@ -22,8 +22,8 @@ afterEach(cleanup)
 describe('InlineDeleteConfirm', () => {
   describe('Rendering', () => {
     test('should render with default text', () => {
-      const onConfirm = jest.fn()
-      const onCancel = jest.fn()
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
       const { getByText } = render(
         <InlineDeleteConfirm onConfirm={onConfirm} onCancel={onCancel} />,
       )
@@ -34,8 +34,8 @@ describe('InlineDeleteConfirm', () => {
     })
 
     test('should render with custom text', () => {
-      const onConfirm = jest.fn()
-      const onCancel = jest.fn()
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
       const { getByText } = render(
         <InlineDeleteConfirm
           title="Remove?"
@@ -52,8 +52,8 @@ describe('InlineDeleteConfirm', () => {
     })
 
     test('should have proper ARIA attributes', () => {
-      const onConfirm = jest.fn()
-      const onCancel = jest.fn()
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
       const { container } = render(
         <InlineDeleteConfirm onConfirm={onConfirm} onCancel={onCancel} />,
       )
@@ -66,8 +66,8 @@ describe('InlineDeleteConfirm', () => {
 
   describe('Button interactions', () => {
     test('should call onCancel when cancel button is clicked', () => {
-      const onConfirm = jest.fn()
-      const onCancel = jest.fn()
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
       const { getByText } = render(
         <InlineDeleteConfirm onConfirm={onConfirm} onCancel={onCancel} />,
       )
@@ -78,8 +78,8 @@ describe('InlineDeleteConfirm', () => {
     })
 
     test('should call onConfirm when confirm button is clicked', () => {
-      const onConfirm = jest.fn()
-      const onCancel = jest.fn()
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
       const { getByText } = render(
         <InlineDeleteConfirm onConfirm={onConfirm} onCancel={onCancel} />,
       )
@@ -92,8 +92,8 @@ describe('InlineDeleteConfirm', () => {
 
   describe('Variant prop', () => {
     test('should render with delete variant by default', () => {
-      const onConfirm = jest.fn()
-      const onCancel = jest.fn()
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
       const { getByText } = render(
         <InlineDeleteConfirm onConfirm={onConfirm} onCancel={onCancel} />,
       )
@@ -103,8 +103,8 @@ describe('InlineDeleteConfirm', () => {
     })
 
     test('should render without destructive class for warning variant', () => {
-      const onConfirm = jest.fn()
-      const onCancel = jest.fn()
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
       const { getByText } = render(
         <InlineDeleteConfirm
           variant="warning"
@@ -118,8 +118,8 @@ describe('InlineDeleteConfirm', () => {
     })
 
     test('should render without destructive class for info variant', () => {
-      const onConfirm = jest.fn()
-      const onCancel = jest.fn()
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
       const { getByText } = render(
         <InlineDeleteConfirm
           variant="info"
@@ -135,8 +135,8 @@ describe('InlineDeleteConfirm', () => {
 
   describe('Custom className', () => {
     test('should apply custom className to wrapper', () => {
-      const onConfirm = jest.fn()
-      const onCancel = jest.fn()
+      const onConfirm = vi.fn()
+      const onCancel = vi.fn()
       const { container } = render(
         <InlineDeleteConfirm
           className="custom-class"

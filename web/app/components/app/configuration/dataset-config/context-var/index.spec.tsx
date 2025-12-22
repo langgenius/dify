@@ -5,8 +5,8 @@ import ContextVar from './index'
 import type { Props } from './var-picker'
 
 // Mock external dependencies only
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))
 
@@ -18,7 +18,7 @@ type PortalToFollowElemProps = {
 type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode; asChild?: boolean }
 type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
 
-jest.mock('@/app/components/base/portal-to-follow-elem', () => {
+vi.mock('@/app/components/base/portal-to-follow-elem', () => {
   const PortalContext = React.createContext({ open: false })
 
   const PortalToFollowElem = ({ children, open }: PortalToFollowElemProps) => {
@@ -69,11 +69,11 @@ describe('ContextVar', () => {
   const defaultProps: Props = {
     value: 'var1',
     options: mockOptions,
-    onChange: jest.fn(),
+    onChange: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering tests (REQUIRED)
@@ -165,7 +165,7 @@ describe('ContextVar', () => {
   describe('User Interactions', () => {
     it('should call onChange when user selects a different variable', async () => {
       // Arrange
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const props = { ...defaultProps, onChange }
       const user = userEvent.setup()
 

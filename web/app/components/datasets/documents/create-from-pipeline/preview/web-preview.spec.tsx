@@ -3,7 +3,7 @@ import React from 'react'
 import WebsitePreview from './web-preview'
 import type { CrawlResultItem } from '@/models/datasets'
 
-// Uses __mocks__/react-i18next.ts automatically
+// Uses global react-i18next mock from web/vitest.setup.ts
 
 // Test data factory
 const createMockCrawlResult = (overrides?: Partial<CrawlResultItem>): CrawlResultItem => ({
@@ -16,12 +16,12 @@ const createMockCrawlResult = (overrides?: Partial<CrawlResultItem>): CrawlResul
 
 const defaultProps = {
   currentWebsite: createMockCrawlResult(),
-  hidePreview: jest.fn(),
+  hidePreview: vi.fn(),
 }
 
 describe('WebsitePreview', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -92,7 +92,7 @@ describe('WebsitePreview', () => {
 
   describe('User Interactions', () => {
     it('should call hidePreview when close button is clicked', () => {
-      const hidePreview = jest.fn()
+      const hidePreview = vi.fn()
 
       render(<WebsitePreview {...defaultProps} hidePreview={hidePreview} />)
 
@@ -237,8 +237,8 @@ describe('WebsitePreview', () => {
     })
 
     it('should call new hidePreview when prop changes', () => {
-      const hidePreview1 = jest.fn()
-      const hidePreview2 = jest.fn()
+      const hidePreview1 = vi.fn()
+      const hidePreview2 = vi.fn()
 
       const { rerender } = render(<WebsitePreview {...defaultProps} hidePreview={hidePreview1} />)
 

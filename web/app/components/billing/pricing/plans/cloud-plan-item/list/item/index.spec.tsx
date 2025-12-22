@@ -3,7 +3,7 @@ import Item from './index'
 
 describe('Item', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering the plan item row

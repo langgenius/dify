@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 /**
  * Document Detail Navigation Fix Verification Test
  *
@@ -10,32 +11,32 @@ import { useRouter } from 'next/navigation'
 import { useDocumentDetail, useDocumentMetadata } from '@/service/knowledge/use-document'
 
 // Mock Next.js router
-const mockPush = jest.fn()
-jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(() => ({
+const mockPush = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: vi.fn(() => ({
     push: mockPush,
   })),
 }))
 
 // Mock the document service hooks
-jest.mock('@/service/knowledge/use-document', () => ({
-  useDocumentDetail: jest.fn(),
-  useDocumentMetadata: jest.fn(),
-  useInvalidDocumentList: jest.fn(() => jest.fn()),
+vi.mock('@/service/knowledge/use-document', () => ({
+  useDocumentDetail: vi.fn(),
+  useDocumentMetadata: vi.fn(),
+  useInvalidDocumentList: vi.fn(() => vi.fn()),
 }))
 
 // Mock other dependencies
-jest.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContext: jest.fn(() => [null]),
+vi.mock('@/context/dataset-detail', () => ({
+  useDatasetDetailContext: vi.fn(() => [null]),
 }))
 
-jest.mock('@/service/use-base', () => ({
-  useInvalid: jest.fn(() => jest.fn()),
+vi.mock('@/service/use-base', () => ({
+  useInvalid: vi.fn(() => vi.fn()),
 }))
 
-jest.mock('@/service/knowledge/use-segment', () => ({
-  useSegmentListKey: jest.fn(),
-  useChildSegmentListKey: jest.fn(),
+vi.mock('@/service/knowledge/use-segment', () => ({
+  useSegmentListKey: vi.fn(),
+  useChildSegmentListKey: vi.fn(),
 }))
 
 // Create a minimal version of the DocumentDetail component that includes our fix
@@ -66,10 +67,10 @@ const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string; d
 
 describe('Document Detail Navigation Fix Verification', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Mock successful API responses
-    ;(useDocumentDetail as jest.Mock).mockReturnValue({
+    ;(useDocumentDetail as Mock).mockReturnValue({
       data: {
         id: 'doc-123',
         name: 'Test Document',
@@ -80,7 +81,7 @@ describe('Document Detail Navigation Fix Verification', () => {
       error: null,
     })
 
-    ;(useDocumentMetadata as jest.Mock).mockReturnValue({
+    ;(useDocumentMetadata as Mock).mockReturnValue({
       data: null,
       error: null,
     })

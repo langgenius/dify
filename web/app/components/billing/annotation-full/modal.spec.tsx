@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import AnnotationFullModal from './modal'
 
-jest.mock('./usage', () => ({
+vi.mock('./usage', () => ({
   __esModule: true,
   default: (props: { className?: string }) => {
     return (
@@ -13,7 +13,7 @@ jest.mock('./usage', () => ({
 }))
 
 let mockUpgradeBtnProps: { loc?: string } | null = null
-jest.mock('../upgrade-btn', () => ({
+vi.mock('../upgrade-btn', () => ({
   __esModule: true,
   default: (props: { loc?: string }) => {
     mockUpgradeBtnProps = props
@@ -31,7 +31,7 @@ type ModalSnapshot = {
   className?: string
 }
 let mockModalProps: ModalSnapshot | null = null
-jest.mock('../../base/modal', () => ({
+vi.mock('../../base/modal', () => ({
   __esModule: true,
   default: ({ isShow, children, onClose, closable, className }: { isShow: boolean; children: React.ReactNode; onClose: () => void; closable?: boolean; className?: string }) => {
     mockModalProps = {
@@ -56,7 +56,7 @@ jest.mock('../../base/modal', () => ({
 
 describe('AnnotationFullModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUpgradeBtnProps = null
     mockModalProps = null
   })
@@ -65,7 +65,7 @@ describe('AnnotationFullModal', () => {
   describe('Rendering', () => {
     it('should display main info when visible', () => {
       // Act
-      render(<AnnotationFullModal show onHide={jest.fn()} />)
+      render(<AnnotationFullModal show onHide={vi.fn()} />)
 
       // Assert
       expect(screen.getByText('billing.annotatedResponse.fullTipLine1')).toBeInTheDocument()
@@ -85,7 +85,7 @@ describe('AnnotationFullModal', () => {
   describe('Visibility', () => {
     it('should not render content when hidden', () => {
       // Act
-      const { container } = render(<AnnotationFullModal show={false} onHide={jest.fn()} />)
+      const { container } = render(<AnnotationFullModal show={false} onHide={vi.fn()} />)
 
       // Assert
       expect(container).toBeEmptyDOMElement()
@@ -97,7 +97,7 @@ describe('AnnotationFullModal', () => {
   describe('Close handling', () => {
     it('should trigger onHide when close control is clicked', () => {
       // Arrange
-      const onHide = jest.fn()
+      const onHide = vi.fn()
 
       // Act
       render(<AnnotationFullModal show onHide={onHide} />)

@@ -16,13 +16,13 @@ import { Theme } from '@/types/app'
 // ============================================================================
 
 let mockTheme = Theme.light
-jest.mock('@/hooks/use-theme', () => ({
+vi.mock('@/hooks/use-theme', () => ({
   __esModule: true,
   default: () => ({ theme: mockTheme }),
 }))
 
 // Mock BlockIcon as it has complex dependencies
-jest.mock('@/app/components/workflow/block-icon', () => ({
+vi.mock('@/app/components/workflow/block-icon', () => ({
   __esModule: true,
   default: ({ type, toolIcon }: { type: string; toolIcon?: string }) => (
     <div data-testid="block-icon" data-type={type} data-tool-icon={toolIcon || ''}>
@@ -45,7 +45,7 @@ const createTriggerMetadata = (overrides: Partial<TriggerMetadata> = {}): Trigge
 
 describe('TriggerByDisplay', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockTheme = Theme.light
   })
 

@@ -6,7 +6,7 @@ import { Plan } from '../../../type'
 describe('CloudPlanButton', () => {
   describe('Disabled state', () => {
     test('should disable button and hide arrow when plan is not available', () => {
-      const handleGetPayUrl = jest.fn()
+      const handleGetPayUrl = vi.fn()
       // Arrange
       render(
         <Button
@@ -27,7 +27,7 @@ describe('CloudPlanButton', () => {
 
   describe('Enabled state', () => {
     test('should invoke handler and render arrow when plan is available', () => {
-      const handleGetPayUrl = jest.fn()
+      const handleGetPayUrl = vi.fn()
       // Arrange
       render(
         <Button

@@ -1,42 +1,42 @@
 import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import { AccessMode } from '@/models/access-control'
 
 import WebAppStoreProvider, { useWebAppStore } from '@/context/web-app-context'
 
-jest.mock('next/navigation', () => ({
-  usePathname: jest.fn(() => '/chatbot/sample-app'),
-  useSearchParams: jest.fn(() => {
+vi.mock('next/navigation', () => ({
+  usePathname: vi.fn(() => '/chatbot/sample-app'),
+  useSearchParams: vi.fn(() => {
     const params = new URLSearchParams()
     return params
   }),
 }))
 
-jest.mock('@/service/use-share', () => {
-  const { AccessMode } = jest.requireActual('@/models/access-control')
-  return {
-    useGetWebAppAccessModeByCode: jest.fn(() => ({
-      isLoading: false,
-      data: { accessMode: AccessMode.PUBLIC },
-    })),
-  }
-})
-
-jest.mock('@/app/components/base/chat/utils', () => ({
-  getProcessedSystemVariablesFromUrlParams: jest.fn(),
+vi.mock('@/service/use-share', () => ({
+  useGetWebAppAccessModeByCode: vi.fn(() => ({
+    isLoading: false,
+    data: { accessMode: AccessMode.PUBLIC },
+  })),
 }))
 
-const { getProcessedSystemVariablesFromUrlParams: mockGetProcessedSystemVariablesFromUrlParams }
-  = jest.requireMock('@/app/components/base/chat/utils') as {
-    getProcessedSystemVariablesFromUrlParams: jest.Mock
-  }
+// Store the mock implementation in a way that survives hoisting
+const mockGetProcessedSystemVariablesFromUrlParams = vi.fn()
 
-jest.mock('@/context/global-public-context', () => {
-  const mockGlobalStoreState = {
+vi.mock('@/app/components/base/chat/utils', () => ({
+  getProcessedSystemVariablesFromUrlParams: (...args: any[]) => mockGetProcessedSystemVariablesFromUrlParams(...args),
+}))
+
+// Use vi.hoisted to define mock state before vi.mock hoisting
+const { mockGlobalStoreState } = vi.hoisted(() => ({
+  mockGlobalStoreState: {
     isGlobalPending: false,
-    setIsGlobalPending: jest.fn(),
+    setIsGlobalPending: vi.fn(),
     systemFeatures: {},
-    setSystemFeatures: jest.fn(),
-  }
+    setSystemFeatures: vi.fn(),
+  },
+}))
+
+vi.mock('@/context/global-public-context', () => {
   const useGlobalPublicStore = Object.assign(
     (selector?: (state: typeof mockGlobalStoreState) => any) =>
       selector ? selector(mockGlobalStoreState) : mockGlobalStoreState,
@@ -55,21 +55,6 @@ jest.mock('@/context/global-public-context', () => {
     useGlobalPublicStore,
   }
 })
-
-const {
-  useGlobalPublicStore: useGlobalPublicStoreMock,
-} = jest.requireMock('@/context/global-public-context') as {
-  useGlobalPublicStore: ((selector?: (state: any) => any) => any) & {
-    setState: (updater: any) => void
-    __mockState: {
-      isGlobalPending: boolean
-      setIsGlobalPending: jest.Mock
-      systemFeatures: Record<string, unknown>
-      setSystemFeatures: jest.Mock
-    }
-  }
-}
-const mockGlobalStoreState = useGlobalPublicStoreMock.__mockState
 
 const TestConsumer = () => {
   const embeddedUserId = useWebAppStore(state => state.embeddedUserId)

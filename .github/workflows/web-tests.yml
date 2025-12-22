@@ -35,14 +35,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: ./web/pnpm-lock.yaml
 
-      - name: Restore Jest cache
-        uses: actions/cache@v4
-        with:
-          path: web/.cache/jest
-          key: ${{ runner.os }}-jest-${{ hashFiles('web/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-jest-
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
@@ -50,12 +42,7 @@ jobs:
         run: pnpm run check:i18n-types
 
       - name: Run tests
-        run: |
-          pnpm exec jest \
-            --ci \
-            --maxWorkers=100% \
-            --coverage \
-            --passWithNoTests
+        run: pnpm test --coverage
 
       - name: Coverage Summary
         if: always()
@@ -69,7 +56,7 @@ jobs:
           if [ ! -f "$COVERAGE_FILE" ] && [ ! -f "$COVERAGE_SUMMARY_FILE" ]; then
             echo "has_coverage=false" >> "$GITHUB_OUTPUT"
             echo "### 🚨 Test Coverage Report :test_tube:" >> "$GITHUB_STEP_SUMMARY"
-            echo "Coverage data not found. Ensure Jest runs with coverage enabled." >> "$GITHUB_STEP_SUMMARY"
+            echo "Coverage data not found. Ensure Vitest runs with coverage enabled." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
 
@@ -365,7 +352,7 @@ jobs:
               .join(' | ')} |`;
 
             console.log('');
-            console.log('<details><summary>Jest coverage table</summary>');
+            console.log('<details><summary>Vitest coverage table</summary>');
             console.log('');
             console.log(headerRow);
             console.log(dividerRow);
