@@ -5,7 +5,7 @@ import type { ListChildComponentProps } from 'react-window'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import Checkbox from '../../checkbox'
 import NotionIcon from '../../notion-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 
 type PageSelectorProps = {
@@ -18,6 +18,7 @@ type PageSelectorProps = {
   canPreview?: boolean
   previewPageId?: string
   onPreview?: (selectedPageId: string) => void
+  isMultipleChoice?: boolean
 }
 type NotionPageTreeItem = {
   children: Set<string>
@@ -139,8 +140,6 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
         checked={checkedIds.has(current.page_id)}
         disabled={disabled}
         onCheck={() => {
-          if (disabled)
-            return
           handleCheck(index)
         }}
       />

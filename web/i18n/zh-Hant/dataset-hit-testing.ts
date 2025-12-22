@@ -5,8 +5,8 @@ const translation = {
   table: {
     header: {
       source: '資料來源',
-      text: '文字',
       time: '時間',
+      queryContent: '查詢內容',
     },
   },
   input: {
@@ -29,6 +29,12 @@ const translation = {
   chunkDetail: '資料區塊詳細資訊',
   hitChunks: '命中 {{num}} 個子區塊',
   keyword: '關鍵字',
+  imageUploader: {
+    tip: '上傳或拖曳圖片（每張最多 {{batchCount}}，{{size}}MB）',
+    tooltip: '上傳圖片（每張最大 {{batchCount}}，{{size}}MB）',
+    dropZoneTip: '將檔案拖曳到此上傳',
+    singleChunkAttachmentLimitTooltip: '單個區塊附件的數量不能超過 {{limit}}',
+  },
 }
 
 export default translation

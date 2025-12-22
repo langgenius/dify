@@ -11,8 +11,8 @@ type FileListProps = {
   fileList: OnlineDriveFile[]
   selectedFileIds: string[]
   keywords: string
-  isInPipeline: boolean
   isLoading: boolean
+  supportBatchUpload: boolean
   handleResetKeywords: () => void
   handleSelectFile: (file: OnlineDriveFile) => void
   handleOpenFolder: (file: OnlineDriveFile) => void
@@ -25,8 +25,8 @@ const List = ({
   handleResetKeywords,
   handleSelectFile,
   handleOpenFolder,
-  isInPipeline,
   isLoading,
+  supportBatchUpload,
 }: FileListProps) => {
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
@@ -80,7 +80,7 @@ const List = ({
                   isSelected={isSelected}
                   onSelect={handleSelectFile}
                   onOpen={handleOpenFolder}
-                  isMultipleChoice={!isInPipeline}
+                  isMultipleChoice={supportBatchUpload}
                 />
               )
             })

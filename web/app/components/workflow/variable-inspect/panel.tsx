@@ -14,7 +14,7 @@ import ActionButton from '@/app/components/base/action-button'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { NodeProps } from '../types'
 import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
 import { useEventEmitterContextContext } from '@/context/event-emitter'

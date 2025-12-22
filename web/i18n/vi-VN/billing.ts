@@ -153,7 +153,7 @@ const translation = {
       includesTitle: 'Tính năng miễn phí:',
     },
     premium: {
-      features: ['Độ tin cậy tự quản lý bởi các nhà cung cấp đám mây khác nhau', 'Không gian làm việc đơn', 'Tùy chỉnh Logo & Thương hiệu WebApp', 'Hỗ trợ Email & Trò chuyện Ưu tiên'],
+      features: ['Độ tin cậy tự quản lý bởi các nhà cung cấp đám mây khác nhau', 'Không gian làm việc đơn', 'Tùy Chỉnh Logo & Thương Hiệu Ứng Dụng Web', 'Hỗ trợ Email & Trò chuyện Ưu tiên'],
       comingSoon: 'Hỗ trợ Microsoft Azure & Google Cloud Sẽ Đến Sớm',
       priceTip: 'Dựa trên Thị trường Đám mây',
       btnText: 'Nhận Premium trong',
@@ -198,6 +198,23 @@ const translation = {
     usageTitle: 'SỰ KIỆN KÍCH HOẠT',
     description: 'Bạn đã đạt đến giới hạn kích hoạt sự kiện quy trình cho gói này.',
     title: 'Nâng cấp để mở khóa thêm nhiều sự kiện kích hoạt',
+  },
+  viewBillingTitle: 'Thanh toán và Đăng ký',
+  viewBillingDescription: 'Quản lý phương thức thanh toán, hóa đơn và thay đổi đăng ký',
+  viewBillingAction: 'Quản lý',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Nâng cấp để tải lên nhiều tài liệu cùng lúc',
+      description: 'Bạn đã đạt đến giới hạn tải lên — chỉ có thể chọn và tải lên một tài liệu trong một lần với gói hiện tại của bạn.',
+    },
+    uploadMultipleFiles: {
+      title: 'Nâng cấp để mở khóa tải lên nhiều tài liệu',
+      description: 'Tải lên nhiều tài liệu cùng lúc để tiết kiệm thời gian và nâng cao hiệu quả.',
+    },
+    addChunks: {
+      title: 'Nâng cấp để tiếp tục thêm các phần',
+      description: 'Bạn đã đạt đến giới hạn thêm phần cho gói này.',
+    },
   },
 }
 

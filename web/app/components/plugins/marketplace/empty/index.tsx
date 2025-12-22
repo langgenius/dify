@@ -1,7 +1,7 @@
 'use client'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import Line from './line'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 
 type Props = {

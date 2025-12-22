@@ -1,30 +1,39 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
-import { omit } from 'lodash-es'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
-import { RiApps2Line, RiFocus2Line, RiHistoryLine } from '@remixicon/react'
-import Textarea from './textarea'
+import QueryInput from './components/query-input'
 import s from './style.module.css'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import ResultItem from './components/result-item'
 import ResultItemExternal from './components/result-item-external'
-import cn from '@/utils/classnames'
-import type { ExternalKnowledgeBaseHitTesting, ExternalKnowledgeBaseHitTestingResponse, HitTesting, HitTestingResponse } from '@/models/datasets'
+import { cn } from '@/utils/classnames'
+import type {
+  ExternalKnowledgeBaseHitTesting,
+  ExternalKnowledgeBaseHitTestingResponse,
+  HitTesting,
+  HitTestingRecord,
+  HitTestingResponse,
+  Query,
+} from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Pagination from '@/app/components/base/pagination'
 import FloatRightContainer from '@/app/components/base/float-right-container'
-import { fetchTestingRecords } from '@/service/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import useTimestamp from '@/hooks/use-timestamp'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
 import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
+import EmptyRecords from './components/empty-records'
+import Records from './components/records'
+import {
+  useExternalKnowledgeBaseHitTesting,
+  useHitTesting,
+} from '@/service/knowledge/use-hit-testing'
+import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
 
 const limit = 10
 
@@ -32,34 +41,19 @@ type Props = {
   datasetId: string
 }
 
-const RecordsEmpty: FC = () => {
-  const { t } = useTranslation()
-  return <div className='rounded-2xl bg-workflow-process-bg p-5'>
-    <div className='flex h-10 w-10 items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg p-1 shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
-      <RiHistoryLine className='h-5 w-5 text-text-tertiary' />
-    </div>
-    <div className='my-2 text-[13px] font-medium leading-4 text-text-tertiary'>{t('datasetHitTesting.noRecentTip')}</div>
-  </div>
-}
-
 const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation()
-  const { formatTime } = useTimestamp()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
+  const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>()
   const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
-  const [submitLoading, setSubmitLoading] = useState(false)
-  const [text, setText] = useState('')
+  const [queries, setQueries] = useState<Query[]>([])
+  const [queryInputKey, setQueryInputKey] = useState(Date.now())
 
-  const [currPage, setCurrPage] = React.useState<number>(0)
-  const { data: recordsRes, error, mutate: recordsMutate } = useSWR({
-    action: 'fetchTestingRecords',
-    datasetId,
-    params: { limit, page: currPage + 1 },
-  }, apiParams => fetchTestingRecords(omit(apiParams, 'action')))
+  const [currPage, setCurrPage] = useState<number>(0)
+  const { data: recordsRes, refetch: recordsRefetch, isLoading: isRecordsLoading } = useDatasetTestingRecords(datasetId, { limit, page: currPage + 1 })
 
   const total = recordsRes?.total || 0
 
@@ -69,6 +63,15 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
+
+  const { mutateAsync: hitTestingMutation, isPending: isHitTestingPending } = useHitTesting(datasetId)
+  const {
+    mutateAsync: externalKnowledgeBaseHitTestingMutation,
+    isPending: isExternalKnowledgeBaseHitTestingPending,
+  } = useExternalKnowledgeBaseHitTesting(datasetId)
+
+  const isRetrievalLoading = isHitTestingPending || isExternalKnowledgeBaseHitTestingPending
+
   const renderHitResults = (results: HitTesting[] | ExternalKnowledgeBaseHitTesting[]) => (
     <div className='flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3'>
       <div className='mb-2 shrink-0 pl-2 font-semibold leading-6 text-text-primary'>
@@ -101,6 +104,11 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
     </div>
   )
 
+  const handleClickRecord = useCallback((record: HitTestingRecord) => {
+    setQueries(record.queries)
+    setQueryInputKey(Date.now())
+  }, [])
+
   useEffect(() => {
     setShowRightPanel(!isMobile)
   }, [isMobile, setShowRightPanel])
@@ -112,74 +120,48 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           <h1 className='text-base font-semibold text-text-primary'>{t('datasetHitTesting.title')}</h1>
           <p className='mt-0.5 text-[13px] font-normal leading-4 text-text-tertiary'>{t('datasetHitTesting.desc')}</p>
         </div>
-        <Textarea
-          datasetId={datasetId}
+        <QueryInput
+          key={queryInputKey}
           setHitResult={setHitResult}
           setExternalHitResult={setExternalHitResult}
           onSubmit={showRightPanel}
-          onUpdateList={recordsMutate}
-          loading={submitLoading}
-          setLoading={setSubmitLoading}
-          setText={setText}
-          text={text}
+          onUpdateList={recordsRefetch}
+          loading={isRetrievalLoading}
+          queries={queries}
+          setQueries={setQueries}
           isExternal={isExternal}
           onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}
+          hitTestingMutation={hitTestingMutation}
+          externalKnowledgeBaseHitTestingMutation={externalKnowledgeBaseHitTestingMutation}
         />
         <div className='mb-3 mt-6 text-base font-semibold text-text-primary'>{t('datasetHitTesting.records')}</div>
-        {(!recordsRes && !error)
-          ? (
-            <div className='flex-1'><Loading type='app' /></div>
-          )
-          : recordsRes?.data?.length
-            ? (
-              <>
-                <div className='grow overflow-y-auto'>
-                  <table className={'w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary '}>
-                    <thead className='sticky top-0 h-7 text-xs  font-medium uppercase leading-7 text-text-tertiary backdrop-blur-[5px]'>
-                      <tr>
-                        <td className='w-[128px] rounded-l-lg bg-background-section-burn pl-3'>{t('datasetHitTesting.table.header.source')}</td>
-                        <td className='bg-background-section-burn'>{t('datasetHitTesting.table.header.text')}</td>
-                        <td className='w-48 rounded-r-lg bg-background-section-burn pl-2'>{t('datasetHitTesting.table.header.time')}</td>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recordsRes?.data?.map((record) => {
-                        const SourceIcon = record.source === 'app' ? RiApps2Line : RiFocus2Line
-                        return <tr
-                          key={record.id}
-                          className='group h-10 cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover'
-                          onClick={() => setText(record.content)}
-                        >
-                          <td className='w-[128px] pl-3'>
-                            <div className='flex items-center'>
-                              <SourceIcon className='mr-1 size-4 text-text-tertiary' />
-                              <span className='capitalize'>{record.source.replace('_', ' ').replace('hit testing', 'retrieval test')}</span>
-                            </div>
-                          </td>
-                          <td className='max-w-xs py-2'>{record.content}</td>
-                          <td className='w-36 pl-2'>
-                            {formatTime(record.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
-                          </td>
-                        </tr>
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                {(total && total > limit)
-                  ? <Pagination current={currPage} onChange={setCurrPage} total={total} limit={limit} />
-                  : null}
-              </>
-            )
-            : (
-              <RecordsEmpty />
-            )}
+        {isRecordsLoading && (
+          <div className='flex-1'><Loading type='app' /></div>
+        )}
+        {!isRecordsLoading && recordsRes?.data && recordsRes.data.length > 0 && (
+          <>
+            <Records records={recordsRes?.data} onClickRecord={handleClickRecord}/>
+            {(total && total > limit)
+              ? <Pagination current={currPage} onChange={setCurrPage} total={total} limit={limit} />
+              : null}
+          </>
+        )}
+        {!isRecordsLoading && !recordsRes?.data?.length && (
+          <EmptyRecords />
+        )}
       </div>
-      <FloatRightContainer panelClassName='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
+      <FloatRightContainer
+        panelClassName='!justify-start !overflow-y-auto'
+        showClose
+        isMobile={isMobile}
+        isOpen={isShowRightPanel}
+        onClose={hideRightPanel}
+        footer={null}
+      >
         <div className='flex flex-col pt-3'>
-          {/* {renderHitResults(generalResultData)} */}
-          {submitLoading
+          {isRetrievalLoading
             ? <div className='flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3'>
               <CardSkelton />
             </div>
@@ -197,7 +179,14 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
           }
         </div>
       </FloatRightContainer>
-      <Drawer unmount={true} isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+      <Drawer
+        unmount={true}
+        isOpen={isShowModifyRetrievalModal}
+        onClose={() => setIsShowModifyRetrievalModal(false)}
+        footer={null}
+        mask={isMobile}
+        panelClassName='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'
+      >
         <ModifyRetrievalModal
           indexMethod={currentDataset?.indexing_technique || ''}
           value={retrievalConfig}

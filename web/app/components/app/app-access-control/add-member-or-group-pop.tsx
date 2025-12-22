@@ -11,7 +11,7 @@ import Input from '../../base/input'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
 import Loading from '../../base/loading'
 import useAccessControlStore from '../../../../context/access-control-store'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useSearchForWhiteListCandidates } from '@/service/access-control'
 import type { AccessControlAccount, AccessControlGroup, Subject, SubjectAccount, SubjectGroup } from '@/models/access-control'
 import { SubjectType } from '@/models/access-control'
@@ -32,7 +32,7 @@ export default function AddMemberOrGroupDialog() {
 
   const anchorRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
-    const hasMore = data?.pages?.[0].hasMore ?? false
+    const hasMore = data?.pages?.[0]?.hasMore ?? false
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
@@ -106,7 +106,7 @@ function SelectedGroupsBreadCrumb() {
     setSelectedGroupsForBreadcrumb([])
   }, [setSelectedGroupsForBreadcrumb])
   return <div className='flex h-7 items-center gap-x-0.5 px-2 py-0.5'>
-    <span className={classNames('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
+    <span className={cn('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
     {selectedGroupsForBreadcrumb.map((group, index) => {
       return <div key={index} className='system-xs-regular flex items-center gap-x-0.5 text-text-tertiary'>
         <span>/</span>
@@ -198,7 +198,7 @@ type BaseItemProps = {
   children: React.ReactNode
 }
 function BaseItem({ children, className }: BaseItemProps) {
-  return <div className={classNames('flex cursor-pointer items-center space-x-2 p-1 pl-2 hover:rounded-lg hover:bg-state-base-hover', className)}>
+  return <div className={cn('flex cursor-pointer items-center space-x-2 p-1 pl-2 hover:rounded-lg hover:bg-state-base-hover', className)}>
     {children}
   </div>
 }

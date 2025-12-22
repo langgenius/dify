@@ -13,7 +13,7 @@ import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
 import OptionCard from './option-card'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,

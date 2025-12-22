@@ -146,11 +146,12 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = None
-    partial_member_list: list[str] | None = None
+    partial_member_list: list[dict[str, str]] | None = None
     external_retrieval_model: dict[str, Any] | None = None
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
     icon_info: dict[str, Any] | None = None
+    is_multimodal: bool | None = False
 
     @field_validator("indexing_technique")
     @classmethod
@@ -222,6 +223,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.COUCHBASE,
         VectorType.OPENGAUSS,
         VectorType.OCEANBASE,
+        VectorType.SEEKDB,
         VectorType.TABLESTORE,
         VectorType.HUAWEI_CLOUD,
         VectorType.TENCENT,
@@ -229,6 +231,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.CLICKZETTA,
         VectorType.BAIDU,
         VectorType.ALIBABACLOUD_MYSQL,
+        VectorType.IRIS,
     }
 
     semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
@@ -421,19 +424,18 @@ class DatasetApi(Resource):
             raise NotFound("Dataset not found.")
 
         payload = DatasetUpdatePayload.model_validate(console_ns.payload or {})
-        payload_data = payload.model_dump(exclude_unset=True)
         current_user, current_tenant_id = current_account_with_tenant()
-
         # check embedding model setting
         if (
             payload.indexing_technique == "high_quality"
             and payload.embedding_model_provider is not None
             and payload.embedding_model is not None
         ):
-            DatasetService.check_embedding_model_setting(
+            is_multimodal = DatasetService.check_is_multimodal_model(
                 dataset.tenant_id, payload.embedding_model_provider, payload.embedding_model
             )
-
+            payload.is_multimodal = is_multimodal
+        payload_data = payload.model_dump(exclude_unset=True)
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
             current_user, dataset, payload.permission, payload.partial_member_list

@@ -31,6 +31,7 @@ const LeftHeader = ({
         variant='secondary-accent'
         className='absolute -left-11 top-3.5 size-9 rounded-full p-0'
         onClick={navigateBack}
+        aria-label={t('common.operation.back')}
       >
         <RiArrowLeftLine className='size-5 ' />
       </Button>

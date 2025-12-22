@@ -1,7 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
-import { useSWRConfig } from 'swr'
 import {
   RiDeleteBinLine,
   RiLoopLeftLine,
@@ -10,8 +9,9 @@ import {
 } from '@remixicon/react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
+import { useInvalidDataSourceIntegrates } from '@/service/use-common'
 import Toast from '@/app/components/base/toast'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type OperateProps = {
   payload: {
@@ -25,14 +25,14 @@ export default function Operate({
   onAuthAgain,
 }: OperateProps) {
   const { t } = useTranslation()
-  const { mutate } = useSWRConfig()
+  const invalidateDataSourceIntegrates = useInvalidDataSourceIntegrates()
 
   const updateIntegrates = () => {
     Toast.notify({
       type: 'success',
       message: t('common.api.success'),
     })
-    mutate({ url: 'data-source/integrates' })
+    invalidateDataSourceIntegrates()
   }
   const handleSync = async () => {
     await syncDataSourceNotion({ url: `/oauth/data-source/notion/${payload.id}/sync` })

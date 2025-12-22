@@ -20,7 +20,7 @@ import {
 } from '@remixicon/react'
 import { useStore } from '../../store'
 import { useLink } from './hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 type LinkEditorComponentProps = {

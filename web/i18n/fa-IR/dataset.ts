@@ -238,6 +238,16 @@ const translation = {
   docAllEnabled_other: 'تمام اسناد {{count}} فعال شدند',
   partialEnabled_one: 'مجموعاً {{count}} سند، {{num}} موجود',
   partialEnabled_other: 'مجموع {{count}} سند، {{num}} موجود',
+  cornerLabel: {
+    unavailable: 'غیر قابل دسترسی',
+    pipeline: 'خط لوله',
+  },
+  multimodal: 'چندوجهی',
+  imageUploader: {
+    button: 'کشیدن و رها کردن فایل یا پوشه، یا',
+    browse: 'مرور کردن',
+    tip: '{{supportTypes}} (حداکثر {{batchCount}}، هر کدام {{size}} مگابایت)',
+  },
 }
 
 export default translation

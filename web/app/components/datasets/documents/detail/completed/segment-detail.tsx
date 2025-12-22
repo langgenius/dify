@@ -16,14 +16,24 @@ import { useSegmentListContext } from './index'
 import { ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { formatNumber } from '@/utils/format'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { IndexingType } from '../../../create/step-two'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
+import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
+import { v4 as uuid4 } from 'uuid'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
-  onUpdate: (segmentId: string, q: string, a: string, k: string[], needRegenerate?: boolean) => void
+  onUpdate: (
+    segmentId: string,
+    q: string,
+    a: string,
+    k: string[],
+    attachments: FileEntity[],
+    needRegenerate?: boolean,
+  ) => void
   onCancel: () => void
   isEditMode?: boolean
   docForm: ChunkingMode
@@ -44,6 +54,18 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const { t } = useTranslation()
   const [question, setQuestion] = useState(isEditMode ? segInfo?.content || '' : segInfo?.sign_content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
+  const [attachments, setAttachments] = useState<FileEntity[]>(() => {
+    return segInfo?.attachments?.map(item => ({
+      id: uuid4(),
+      name: item.name,
+      size: item.size,
+      mimeType: item.mime_type,
+      extension: item.extension,
+      sourceUrl: item.source_url,
+      uploadedId: item.id,
+      progress: 100,
+    })) || []
+  })
   const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
   const { eventEmitter } = useEventEmitterContextContext()
   const [loading, setLoading] = useState(false)
@@ -52,6 +74,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   const toggleFullScreen = useSegmentListContext(s => s.toggleFullScreen)
   const parentMode = useDocumentContext(s => s.parentMode)
   const indexingTechnique = useDatasetDetailContextWithSelector(s => s.dataset?.indexing_technique)
+  const runtimeMode = useDatasetDetailContextWithSelector(s => s.dataset?.runtime_mode)
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'update-segment')
@@ -65,8 +88,8 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   }, [onCancel])
 
   const handleSave = useCallback(() => {
-    onUpdate(segInfo?.id || '', question, answer, keywords)
-  }, [onUpdate, segInfo?.id, question, answer, keywords])
+    onUpdate(segInfo?.id || '', question, answer, keywords, attachments)
+  }, [onUpdate, segInfo?.id, question, answer, keywords, attachments])
 
   const handleRegeneration = useCallback(() => {
     setShowRegenerationModal(true)
@@ -85,8 +108,12 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
   }, [onCancel, onModalStateChange])
 
   const onConfirmRegeneration = useCallback(() => {
-    onUpdate(segInfo?.id || '', question, answer, keywords, true)
-  }, [onUpdate, segInfo?.id, question, answer, keywords])
+    onUpdate(segInfo?.id || '', question, answer, keywords, attachments, true)
+  }, [onUpdate, segInfo?.id, question, answer, keywords, attachments])
+
+  const onAttachmentsChange = useCallback((attachments: FileEntity[]) => {
+    setAttachments(attachments)
+  }, [])
 
   const wordCountText = useMemo(() => {
     const contentLength = docForm === ChunkingMode.qa ? (question.length + answer.length) : question.length
@@ -102,7 +129,10 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
 
   return (
     <div className={'flex h-full flex-col'}>
-      <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
+      <div className={cn(
+        'flex shrink-0 items-center justify-between',
+        fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3',
+      )}>
         <div className='flex flex-col'>
           <div className='system-xl-semibold text-text-primary'>{titleText}</div>
           <div className='flex items-center gap-x-2'>
@@ -119,12 +149,17 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
                 handleRegeneration={handleRegeneration}
                 handleSave={handleSave}
                 loading={loading}
+                showRegenerationButton={runtimeMode === 'general'}
               />
               <Divider type='vertical' className='ml-4 mr-2 h-3.5 bg-divider-regular' />
             </>
           )}
           <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
-            {fullScreen ? <RiCollapseDiagonalLine className='h-4 w-4 text-text-tertiary' /> : <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />}
+            {
+              fullScreen
+                ? <RiCollapseDiagonalLine className='h-4 w-4 text-text-tertiary' />
+                : <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />
+            }
           </div>
           <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={onCancel}>
             <RiCloseLine className='h-4 w-4 text-text-tertiary' />
@@ -132,11 +167,14 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
         </div>
       </div>
       <div className={cn(
-        'flex grow',
+        'flex h-0 grow',
         fullScreen ? 'w-full flex-row justify-center gap-x-8 px-6 pt-6' : 'flex-col gap-y-1 px-4 py-3',
-        !isEditMode && 'overflow-hidden pb-0',
+        !isEditMode && 'pb-0',
       )}>
-        <div className={cn(isEditMode ? 'overflow-hidden whitespace-pre-line break-all' : 'overflow-y-auto', fullScreen ? 'w-1/2' : 'grow')}>
+        <div className={cn(
+          isEditMode ? 'overflow-hidden whitespace-pre-line break-all' : 'overflow-y-auto',
+          fullScreen ? 'w-1/2' : 'h-0 grow',
+        )}>
           <ChunkContent
             docForm={docForm}
             question={question}
@@ -146,14 +184,24 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             isEditMode={isEditMode}
           />
         </div>
-        {isECOIndexing && <Keywords
-          className={fullScreen ? 'w-1/5' : ''}
-          actionType={isEditMode ? 'edit' : 'view'}
-          segInfo={segInfo}
-          keywords={keywords}
-          isEditMode={isEditMode}
-          onKeywordsChange={keywords => setKeywords(keywords)}
-        />}
+
+        <div className={cn('flex shrink-0 flex-col', fullScreen ? 'w-[320px] gap-y-2' : 'w-full gap-y-1')}>
+          <ImageUploaderInChunk
+            disabled={!isEditMode}
+            value={attachments}
+            onChange={onAttachmentsChange}
+          />
+          {isECOIndexing && (
+            <Keywords
+              className='w-full'
+              actionType={isEditMode ? 'edit' : 'view'}
+              segInfo={segInfo}
+              keywords={keywords}
+              isEditMode={isEditMode}
+              onKeywordsChange={keywords => setKeywords(keywords)}
+            />
+          )}
+        </div>
       </div>
       {isEditMode && !fullScreen && (
         <div className='flex items-center justify-end border-t-[1px] border-t-divider-subtle p-4 pt-3'>
@@ -162,6 +210,7 @@ const SegmentDetail: FC<ISegmentDetailProps> = ({
             handleRegeneration={handleRegeneration}
             handleSave={handleSave}
             loading={loading}
+            showRegenerationButton={runtimeMode === 'general'}
           />
         </div>
       )}

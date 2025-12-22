@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useBoolean } from 'ahooks'
-import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import { pick, uniq } from 'lodash-es'
 import {
+  RiArrowDownLine,
   RiEditLine,
   RiGlobalLine,
 } from '@remixicon/react'
@@ -15,7 +15,7 @@ import FileTypeIcon from '../../base/file-uploader/file-type-icon'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
 import BatchAction from './detail/completed/common/batch-action'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
 import { asyncRunSafe } from '@/utils'
@@ -181,8 +181,8 @@ const DocumentList: FC<IDocumentListProps> = ({
     return (
       <div className='flex cursor-pointer items-center hover:text-text-secondary' onClick={() => handleSort(field)}>
         {label}
-        <ArrowDownIcon
-          className={cn('ml-0.5 h-3 w-3 stroke-current stroke-2 transition-all',
+        <RiArrowDownLine
+          className={cn('ml-0.5 h-3 w-3 transition-all',
             isActive ? 'text-text-tertiary' : 'text-text-disabled',
             isActive && !isDesc ? 'rotate-180' : '',
           )}

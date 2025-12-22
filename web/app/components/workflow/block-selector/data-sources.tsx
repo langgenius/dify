@@ -12,7 +12,7 @@ import type {
 import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
 import Tools from './tools'
 import { ViewType } from './view-type-select'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import PluginList, { type ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
@@ -115,6 +115,7 @@ const DataSources = ({
             list={notInstalledPlugins}
             tags={[]}
             searchText={searchText}
+            category={PluginCategoryEnum.datasource}
             toolContentClassName={toolContentClassName}
           />
         )}

@@ -1,6 +1,5 @@
 'use client'
-import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -9,22 +8,23 @@ import ChunkDetailModal from './chunk-detail-modal'
 import ResultItemMeta from './result-item-meta'
 import ResultItemFooter from './result-item-footer'
 import type { HitTesting } from '@/models/datasets'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Tag from '@/app/components/datasets/documents/detail/completed/common/tag'
 import { extensionToFileType } from '@/app/components/datasets/hit-testing/utils/extension-to-file-type'
 import { Markdown } from '@/app/components/base/markdown'
+import ImageList from '../../common/image-list'
 
 const i18nPrefix = 'datasetHitTesting'
-type Props = {
+type ResultItemProps = {
   payload: HitTesting
 }
 
-const ResultItem: FC<Props> = ({
+const ResultItem = ({
   payload,
-}) => {
+}: ResultItemProps) => {
   const { t } = useTranslation()
-  const { segment, score, child_chunks } = payload
+  const { segment, score, child_chunks, files } = payload
   const data = segment
   const { position, word_count, content, sign_content, keywords, document } = data
   const isParentChildRetrieval = !!(child_chunks && child_chunks.length > 0)
@@ -40,6 +40,17 @@ const ResultItem: FC<Props> = ({
     setFalse: hideDetailModal,
   }] = useBoolean(false)
 
+  const images = useMemo(() => {
+    if (!files) return []
+    return files.map(file => ({
+      name: file.name,
+      mimeType: file.mime_type,
+      sourceUrl: file.source_url,
+      size: file.size,
+      extension: file.extension,
+    }))
+  }, [files])
+
   return (
     <div className={cn('cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 hover:shadow-lg')} onClick={showDetailModal}>
       {/* Meta info */}
@@ -47,11 +58,14 @@ const ResultItem: FC<Props> = ({
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <Markdown
+        {<Markdown
           className='line-clamp-2'
           content={sign_content || content}
           customDisallowedElements={['input']}
-        />
+        />}
+        {images.length > 0 && (
+          <ImageList images={images} size='md' className='py-1' />
+        )}
         {isParentChildRetrieval && (
           <div className='mt-1'>
             <div

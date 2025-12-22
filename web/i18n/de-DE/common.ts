@@ -5,6 +5,7 @@ const translation = {
     saved: 'Gespeichert',
     create: 'Erstellt',
     remove: 'Entfernt',
+    actionFailed: 'Aktion fehlgeschlagen',
   },
   operation: {
     create: 'Erstellen',
@@ -99,6 +100,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Türkisch',
       faIR: 'Persisch',
+      slSI: 'Slowenisch',
+      arTN: 'Tunesisches Arabisch',
     },
   },
   unit: {
@@ -734,6 +737,7 @@ const translation = {
     uploadFromComputerReadError: 'Lesen der Datei fehlgeschlagen, bitte versuchen Sie es erneut.',
     fileExtensionNotSupport: 'Dateiendung nicht bedient',
     fileExtensionBlocked: 'Dieser Dateityp ist aus Sicherheitsgründen gesperrt',
+    uploadDisabled: 'Datei-Upload ist deaktiviert',
   },
   license: {
     expiring: 'Läuft an einem Tag ab',

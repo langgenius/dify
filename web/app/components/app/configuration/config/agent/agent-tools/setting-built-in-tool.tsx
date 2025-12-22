@@ -16,13 +16,13 @@ import Description from '@/app/components/plugins/card/base/description'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import Button from '@/app/components/base/button'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
-import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import {
   AuthCategory,
@@ -92,15 +92,11 @@ const SettingBuiltInTool: FC<Props> = ({
           }())
         })
         setTools(list)
-        const currTool = list.find(tool => tool.name === toolName)
-        if (currTool) {
-          const formSchemas = toolParametersToFormSchemas(currTool.parameters)
-          setTempSetting(addDefaultValue(setting, formSchemas))
-        }
       }
       catch { }
       setIsLoading(false)
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collection?.name, collection?.id, collection?.type])
 
   useEffect(() => {
@@ -249,7 +245,7 @@ const SettingBuiltInTool: FC<Props> = ({
                   {!readonly && !isInfoActive && (
                     <div className='flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2'>
                       <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium ' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                      <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium' variant='primary' disabled={!isValid} onClick={() => onSave?.(addDefaultValue(tempSetting, formSchemas))}>{t('common.operation.save')}</Button>
+                      <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium' variant='primary' disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('common.operation.save')}</Button>
                     </div>
                   )}
                 </div>

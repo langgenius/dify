@@ -2,17 +2,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import useSWR from 'swr'
 import { RiDeleteBinLine, RiUploadCloud2Line } from '@remixicon/react'
 import DocumentFileIcon from '../../common/document-file-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 
 import { upload } from '@/service/base'
-import { fetchFileUploadConfig } from '@/service/common'
-import { fetchSupportFileTypes } from '@/service/datasets'
+import { useFileSupportTypes, useFileUploadConfig } from '@/service/use-common'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { IS_CE_EDITION } from '@/config'
@@ -27,7 +25,7 @@ type IFileUploaderProps = {
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   onFileListUpdate?: (files: FileItem[]) => void
   onPreview: (file: File) => void
-  notSupportBatchUpload?: boolean
+  supportBatchUpload?: boolean
 }
 
 const FileUploader = ({
@@ -37,7 +35,7 @@ const FileUploader = ({
   onFileUpdate,
   onFileListUpdate,
   onPreview,
-  notSupportBatchUpload,
+  supportBatchUpload = false,
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -46,10 +44,10 @@ const FileUploader = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
-  const hideUpload = notSupportBatchUpload && fileList.length > 0
+  const hideUpload = !supportBatchUpload && fileList.length > 0
 
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
-  const { data: supportFileTypesResponse } = useSWR({ url: '/files/support-type' }, fetchSupportFileTypes)
+  const { data: fileUploadConfigResponse } = useFileUploadConfig()
+  const { data: supportFileTypesResponse } = useFileSupportTypes()
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []
   const supportTypesShowNames = (() => {
     const extensionMap: { [key: string]: string } = {
@@ -68,11 +66,11 @@ const FileUploader = ({
       .join(locale !== LanguagesSupported[1] ? ', ' : '、 ')
   })()
   const ACCEPTS = supportTypes.map((ext: string) => `.${ext}`)
-  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
-    file_size_limit: 15,
-    batch_count_limit: 5,
-    file_upload_limit: 5,
-  }, [fileUploadConfigResponse])
+  const fileUploadConfig = useMemo(() => ({
+    file_size_limit: fileUploadConfigResponse?.file_size_limit ?? 15,
+    batch_count_limit: supportBatchUpload ? (fileUploadConfigResponse?.batch_count_limit ?? 5) : 1,
+    file_upload_limit: supportBatchUpload ? (fileUploadConfigResponse?.file_upload_limit ?? 5) : 1,
+  }), [fileUploadConfigResponse, supportBatchUpload])
 
   const fileListRef = useRef<FileItem[]>([])
 
@@ -256,12 +254,12 @@ const FileUploader = ({
         }),
       )
       let files = nested.flat()
-      if (notSupportBatchUpload) files = files.slice(0, 1)
+      if (!supportBatchUpload) files = files.slice(0, 1)
       files = files.slice(0, fileUploadConfig.batch_count_limit)
       const valid = files.filter(isValid)
       initialUpload(valid)
     },
-    [initialUpload, isValid, notSupportBatchUpload, traverseFileEntry, fileUploadConfig],
+    [initialUpload, isValid, supportBatchUpload, traverseFileEntry, fileUploadConfig],
   )
   const selectHandle = () => {
     if (fileUploader.current)
@@ -305,7 +303,7 @@ const FileUploader = ({
           id="fileUploader"
           className="hidden"
           type="file"
-          multiple={!notSupportBatchUpload}
+          multiple={supportBatchUpload}
           accept={ACCEPTS.join(',')}
           onChange={fileChangeHandle}
         />
@@ -319,7 +317,7 @@ const FileUploader = ({
             <RiUploadCloud2Line className='mr-2 size-5' />
 
             <span>
-              {notSupportBatchUpload ? t('datasetCreation.stepOne.uploader.buttonSingleFile') : t('datasetCreation.stepOne.uploader.button')}
+              {supportBatchUpload ? t('datasetCreation.stepOne.uploader.button') : t('datasetCreation.stepOne.uploader.buttonSingleFile')}
               {supportTypes.length > 0 && (
                 <label className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
               )}
@@ -328,7 +326,7 @@ const FileUploader = ({
           <div>{t('datasetCreation.stepOne.uploader.tip', {
             size: fileUploadConfig.file_size_limit,
             supportTypes: supportTypesShowNames,
-            batchCount: notSupportBatchUpload ? 1 : fileUploadConfig.batch_count_limit,
+            batchCount: fileUploadConfig.batch_count_limit,
             totalCount: fileUploadConfig.file_upload_limit,
           })}</div>
           {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}

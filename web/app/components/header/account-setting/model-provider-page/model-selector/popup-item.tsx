@@ -1,11 +1,6 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiFileTextLine,
-  RiFilmAiLine,
-  RiImageCircleAiLine,
-  RiVoiceAiFill,
-} from '@remixicon/react'
+
 import type {
   DefaultModel,
   Model,
@@ -13,7 +8,6 @@ import type {
 } from '../declarations'
 import {
   ModelFeatureEnum,
-  ModelFeatureTextEnum,
   ModelTypeEnum,
 } from '../declarations'
 import {
@@ -36,7 +30,8 @@ import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
+import FeatureIcon from './feature-icon'
 
 type PopupItemProps = {
   defaultModel?: DefaultModel
@@ -119,37 +114,23 @@ const PopupItem: FC<PopupItemProps> = ({
                     </ModelBadge>
                   )}
                 </div>
-                {modelItem.model_type === ModelTypeEnum.textGeneration && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature)) && (
-                  <div className='pt-2'>
-                    <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('common.model.capabilities')}</div>
-                    <div className='flex flex-wrap gap-1'>
-                      {modelItem.features?.includes(ModelFeatureEnum.vision) && (
-                        <ModelBadge>
-                          <RiImageCircleAiLine className='mr-0.5 h-3.5 w-3.5' />
-                          <span>{ModelFeatureTextEnum.vision}</span>
-                        </ModelBadge>
-                      )}
-                      {modelItem.features?.includes(ModelFeatureEnum.audio) && (
-                        <ModelBadge>
-                          <RiVoiceAiFill className='mr-0.5 h-3.5 w-3.5' />
-                          <span>{ModelFeatureTextEnum.audio}</span>
-                        </ModelBadge>
-                      )}
-                      {modelItem.features?.includes(ModelFeatureEnum.video) && (
-                        <ModelBadge>
-                          <RiFilmAiLine className='mr-0.5 h-3.5 w-3.5' />
-                          <span>{ModelFeatureTextEnum.video}</span>
-                        </ModelBadge>
-                      )}
-                      {modelItem.features?.includes(ModelFeatureEnum.document) && (
-                        <ModelBadge>
-                          <RiFileTextLine className='mr-0.5 h-3.5 w-3.5' />
-                          <span>{ModelFeatureTextEnum.document}</span>
-                        </ModelBadge>
-                      )}
+                {[ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank].includes(modelItem.model_type as ModelTypeEnum)
+                  && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
+                  && (
+                    <div className='pt-2'>
+                      <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('common.model.capabilities')}</div>
+                      <div className='flex flex-wrap gap-1'>
+                        {modelItem.features?.map(feature => (
+                          <FeatureIcon
+                            key={feature}
+                            feature={feature}
+                            showFeaturesLabel
+                          />
+                        ))
+                        }
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             }
           >

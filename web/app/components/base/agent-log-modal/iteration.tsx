@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import ToolCall from './tool-call'
 import Divider from '@/app/components/base/divider'
 import type { AgentIteration } from '@/models/log'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   isFinal: boolean

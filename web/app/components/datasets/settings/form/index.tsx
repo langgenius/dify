@@ -1,6 +1,5 @@
 'use client'
-import { useCallback, useRef, useState } from 'react'
-import { useMount } from 'ahooks'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import PermissionSelector from '../permission-selector'
 import IndexMethod from '../index-method'
@@ -20,13 +19,9 @@ import type { AppIconType, RetrievalConfig } from '@/types/app'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import {
-  useModelList,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 import AppIcon from '@/app/components/base/app-icon'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
@@ -37,6 +32,8 @@ import Toast from '@/app/components/base/toast'
 import { RiAlertFill } from '@remixicon/react'
 import { useDocLink } from '@/context/i18n'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useMembers } from '@/service/use-common'
+import { checkShowMultiModalTip } from '../utils'
 
 const rowClass = 'flex gap-x-1'
 const labelClass = 'flex items-center shrink-0 w-[180px] h-7 pt-1'
@@ -79,19 +76,10 @@ const Form = () => {
         model: '',
       },
   )
-  const {
-    modelList: rerankModelList,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: membersData } = useMembers()
   const previousAppIcon = useRef(DEFAULT_APP_ICON)
-
-  const getMembers = async () => {
-    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-    if (!accounts)
-      setMemberList([])
-    else
-      setMemberList(accounts)
-  }
 
   const handleOpenAppIconPicker = useCallback(() => {
     setShowAppIconPicker(true)
@@ -123,9 +111,12 @@ const Form = () => {
       setScoreThresholdEnabled(data.score_threshold_enabled)
   }, [])
 
-  useMount(() => {
-    getMembers()
-  })
+  useEffect(() => {
+    if (!membersData?.accounts)
+      setMemberList([])
+    else
+      setMemberList(membersData.accounts)
+  }, [membersData])
 
   const invalidDatasetList = useInvalidDatasetList()
   const handleSave = async () => {
@@ -202,6 +193,20 @@ const Form = () => {
   }
 
   const isShowIndexMethod = currentDataset && currentDataset.doc_form !== ChunkingMode.parentChild && currentDataset.indexing_technique && indexMethod
+
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel,
+      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+      },
+      indexMethod,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [embeddingModel, rerankModelList, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, embeddingModelList, indexMethod])
 
   return (
     <div className='flex w-full flex-col gap-y-4 px-20 py-8 sm:w-[960px]'>
@@ -434,6 +439,7 @@ const Form = () => {
                       <RetrievalMethodConfig
                         value={retrievalConfig}
                         onChange={setRetrievalConfig}
+                        showMultiModalTip={showMultiModalTip}
                       />
                     )
                     : (

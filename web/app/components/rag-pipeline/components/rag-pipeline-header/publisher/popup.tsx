@@ -40,13 +40,14 @@ import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline
 import type { IconInfo } from '@/models/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useProviderContext } from '@/context/provider-context'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import PremiumBadge from '@/app/components/base/premium-badge'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContextSelector } from '@/context/modal-context'
 import Link from 'next/link'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 
@@ -109,6 +110,7 @@ const Popup = () => {
           releaseNotes: params?.releaseNotes || '',
         })
         setPublished(true)
+        trackEvent('app_published_time', { action_mode: 'pipeline', app_id: datasetId, app_name: params?.title || '' })
         if (res) {
           notify({
             type: 'success',
@@ -219,10 +221,8 @@ const Popup = () => {
   }, [isAllowPublishAsCustomKnowledgePipelineTemplate, setShowPublishAsKnowledgePipelineModal, setShowPricingModal])
 
   return (
-    <div className={classNames(
-      'rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
-      isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]',
-    )}>
+    <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
+      isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className='p-4 pt-3'>
         <div className='system-xs-medium-uppercase flex h-6 items-center text-text-tertiary'>
           {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}

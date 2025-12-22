@@ -5,6 +5,7 @@ const translation = {
     saved: 'Shranjeno',
     create: 'Ustvarjeno',
     remove: 'Odstranjeno',
+    actionFailed: 'Dejanje ni uspelo',
   },
   operation: {
     create: 'Ustvari',
@@ -103,6 +104,8 @@ const translation = {
       hiIN: 'Hindujščina',
       trTR: 'Turščina',
       faIR: 'Farsi',
+      slSI: 'Slovenščina',
+      arTN: 'Tunizijska arabščina',
     },
   },
   unit: {
@@ -719,6 +722,7 @@ const translation = {
     uploadFromComputerLimit: 'Nalaganje {{type}} ne sme presegati {{size}}',
     uploadFromComputerReadError: 'Branje datoteke ni uspelo, poskusite znova.',
     fileExtensionBlocked: 'Ta vrsta datoteke je zaradi varnostnih razlogov blokirana',
+    uploadDisabled: 'Nalaganje datotek je onemogočeno',
   },
   tag: {
     addTag: 'Dodajanje oznak',

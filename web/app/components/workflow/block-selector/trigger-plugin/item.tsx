@@ -1,6 +1,6 @@
 'use client'
 import { useGetLanguage } from '@/context/i18n'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import type { FC } from 'react'
 import React, { useEffect, useMemo, useRef } from 'react'

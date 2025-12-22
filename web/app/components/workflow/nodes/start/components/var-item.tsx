@@ -13,7 +13,7 @@ import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
 import Badge from '@/app/components/base/badge'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import { noop } from 'lodash-es'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string
