@@ -35,14 +35,6 @@ jobs:
           cache: pnpm
           cache-dependency-path: ./web/pnpm-lock.yaml
 
-      - name: Restore Vitest cache
-        uses: actions/cache@v4
-        with:
-          path: web/node_modules/.vitest
-          key: ${{ runner.os }}-vitest-${{ hashFiles('web/pnpm-lock.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-vitest-
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
