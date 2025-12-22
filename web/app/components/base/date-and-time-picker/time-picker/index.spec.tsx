@@ -137,21 +137,7 @@ describe('TimePicker', () => {
 
       const timezoneLabel = screen.getByTitle(/Timezone: Asia\/Shanghai/)
       expect(timezoneLabel).toBeInTheDocument()
-      expect(timezoneLabel).toHaveTextContent(/UTC[+-]\\d+/)
-    })
-
-    test('should pass inline prop to timezone label', () => {
-      render(
-        <TimePicker
-          {...baseProps}
-          value="12:00 AM"
-          timezone="America/New_York"
-          showTimezone={true}
-        />,
-      )
-
-      const timezoneLabel = screen.getByTitle(/Timezone: America\/New_York/)
-      expect(timezoneLabel).toHaveClass('text-text-quaternary')
+      expect(timezoneLabel).toHaveTextContent(/UTC[+-]\d+/)
     })
 
     test('should not display timezone label when showTimezone is true but timezone is not provided', () => {
@@ -164,20 +150,6 @@ describe('TimePicker', () => {
       )
 
       expect(screen.queryByTitle(/Timezone:/)).not.toBeInTheDocument()
-    })
-
-    test('should apply shrink-0 and text-xs classes to timezone label', () => {
-      render(
-        <TimePicker
-          {...baseProps}
-          value="12:00 AM"
-          timezone="Europe/London"
-          showTimezone={true}
-        />,
-      )
-
-      const timezoneLabel = screen.getByTitle(/Timezone: Europe\/London/)
-      expect(timezoneLabel).toHaveClass('shrink-0', 'text-xs')
     })
   })
 })

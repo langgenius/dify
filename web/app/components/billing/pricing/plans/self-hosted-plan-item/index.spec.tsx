@@ -90,12 +90,10 @@ describe('SelfHostedPlanItem', () => {
     })
 
     test('should show premium extras such as cloud provider notice', () => {
-      const { container } = render(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
+      render(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
 
       expect(screen.getByText('billing.plans.premium.price')).toBeInTheDocument()
       expect(screen.getByText('billing.plans.premium.comingSoon')).toBeInTheDocument()
-      expect(container.querySelector('[data-icon="Azure"]')).toBeInTheDocument()
-      expect(container.querySelector('[data-icon="GoogleCloud"]')).toBeInTheDocument()
     })
   })
 

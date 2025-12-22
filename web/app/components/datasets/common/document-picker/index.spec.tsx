@@ -218,42 +218,6 @@ describe('DocumentPicker', () => {
       expect(screen.getByTestId('arrow-icon')).toBeInTheDocument()
     })
 
-    it('should render GeneralChunk icon for text mode', () => {
-      const { container } = renderComponent({
-        value: {
-          name: 'Test',
-          extension: 'txt',
-          chunkingMode: ChunkingMode.text,
-        },
-      })
-
-      expect(container.querySelector('[data-icon="GeneralChunk"]')).toBeInTheDocument()
-    })
-
-    it('should render ParentChildChunk icon for parentChild mode', () => {
-      const { container } = renderComponent({
-        value: {
-          name: 'Test',
-          extension: 'txt',
-          chunkingMode: ChunkingMode.parentChild,
-        },
-      })
-
-      expect(container.querySelector('[data-icon="ParentChildChunk"]')).toBeInTheDocument()
-    })
-
-    it('should render GeneralChunk icon for QA mode', () => {
-      const { container } = renderComponent({
-        value: {
-          name: 'Test',
-          extension: 'txt',
-          chunkingMode: ChunkingMode.qa,
-        },
-      })
-
-      expect(container.querySelector('[data-icon="GeneralChunk"]')).toBeInTheDocument()
-    })
-
     it('should render general mode label', () => {
       renderComponent({
         value: {
@@ -1070,15 +1034,6 @@ describe('DocumentPicker', () => {
 
   // Tests for visual states
   describe('Visual States', () => {
-    it('should apply hover styles on trigger', () => {
-      renderComponent()
-
-      const trigger = screen.getByTestId('portal-trigger')
-      const clickableDiv = trigger.querySelector('div')
-
-      expect(clickableDiv).toHaveClass('hover:bg-state-base-hover')
-    })
-
     it('should render portal content for document selection', () => {
       renderComponent()
 

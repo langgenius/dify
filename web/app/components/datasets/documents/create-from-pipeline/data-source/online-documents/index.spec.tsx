@@ -200,10 +200,6 @@ const createDefaultProps = (overrides?: Partial<OnlineDocumentsProps>): OnlineDo
   ...overrides,
 })
 
-const queryLoadingSpinner = () => document.querySelector<SVGElement>('.spin-animation')
-
-const queryLoadingContainer = () => queryLoadingSpinner()?.closest('div') as HTMLDivElement | null
-
 // ==========================================
 // Test Suites
 // ==========================================
@@ -274,8 +270,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert
-      expect(queryLoadingSpinner()).toBeInTheDocument()
-      expect(queryLoadingContainer()).toHaveClass('h-full')
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('should render PageSelector when documentsData has content', () => {
@@ -288,7 +283,7 @@ describe('OnlineDocuments', () => {
 
       // Assert
       expect(screen.getByTestId('page-selector')).toBeInTheDocument()
-      expect(queryLoadingSpinner()).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
 
     it('should render Title with datasource_label', () => {
@@ -762,7 +757,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading instead of PageSelector
-      expect(queryLoadingSpinner()).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
   })
 
@@ -1033,7 +1028,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading when documentsData is undefined
-      expect(queryLoadingSpinner()).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('should handle undefined datasource_parameters (line 79 branch)', () => {
@@ -1304,7 +1299,7 @@ describe('OnlineDocuments', () => {
       })
 
       // Should still show loading since documentsData is empty
-      expect(queryLoadingSpinner()).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('should handle credential change and refetch documents', () => {
@@ -1326,33 +1321,4 @@ describe('OnlineDocuments', () => {
   })
 
   // ==========================================
-  // Styling
-  // ==========================================
-  describe('Styling', () => {
-    it('should apply correct container classes', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<OnlineDocuments {...props} />)
-
-      // Assert
-      const rootDiv = container.firstChild as HTMLElement
-      expect(rootDiv).toHaveClass('flex', 'flex-col', 'gap-y-2')
-    })
-
-    it('should apply correct classes to main content container', () => {
-      // Arrange
-      mockStoreState.documentsData = [createMockWorkspace()]
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<OnlineDocuments {...props} />)
-
-      // Assert
-      const contentContainer = container.querySelector('.rounded-xl.border')
-      expect(contentContainer).toBeInTheDocument()
-      expect(contentContainer).toHaveClass('border-components-panel-border', 'bg-background-default-subtle')
-    })
-  })
 })

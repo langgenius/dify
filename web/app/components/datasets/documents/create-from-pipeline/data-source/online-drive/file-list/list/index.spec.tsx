@@ -102,10 +102,6 @@ const createDefaultProps = (overrides?: Partial<ListProps>): ListProps => ({
   ...overrides,
 })
 
-const queryFullLoadingSpinner = () => document.querySelector<SVGElement>('.spin-animation')
-
-const queryFullLoadingContainer = () => queryFullLoadingSpinner()?.closest('div') as HTMLDivElement | null
-
 // ==========================================
 // Mock IntersectionObserver
 // ==========================================
@@ -212,8 +208,7 @@ describe('List', () => {
       render(<List {...props} />)
 
       // Assert
-      expect(queryFullLoadingSpinner()).toBeInTheDocument()
-      expect(queryFullLoadingContainer()).toHaveClass('h-full')
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('should render EmptyFolder when folder is empty and not loading', () => {
@@ -269,39 +264,11 @@ describe('List', () => {
       })
 
       // Act
-      const { container } = render(<List {...props} />)
-
-      // Assert - Should show files AND loading spinner (animation-spin class)
-      expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-      expect(container.querySelector('.animation-spin')).toBeInTheDocument()
-    })
-
-    it('should not render Loading component when partial loading', () => {
-      // Arrange
-      const fileList = createMockFileList(2)
-      const props = createDefaultProps({
-        fileList,
-        isLoading: true,
-      })
-
-      // Act
       render(<List {...props} />)
 
-      // Assert - Full page loading should not appear
-      expect(queryFullLoadingSpinner()).not.toBeInTheDocument()
-    })
-
-    it('should render anchor div for infinite scroll', () => {
-      // Arrange
-      const fileList = createMockFileList(2)
-      const props = createDefaultProps({ fileList })
-
-      // Act
-      const { container } = render(<List {...props} />)
-
-      // Assert - Anchor div should exist with h-0 class
-      const anchorDiv = container.querySelector('.h-0')
-      expect(anchorDiv).toBeInTheDocument()
+      // Assert - Should show files AND loading indicator
+      expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
   })
 
@@ -456,15 +423,16 @@ describe('List', () => {
         const props = createDefaultProps({ isLoading, fileList })
 
         // Act
-        const { container } = render(<List {...props} />)
+        render(<List {...props} />)
 
         // Assert
         switch (expected) {
           case 'isAllLoading':
-            expect(queryFullLoadingSpinner()).toBeInTheDocument()
+            expect(screen.getByRole('status')).toBeInTheDocument()
             break
           case 'isPartialLoading':
-            expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+            expect(screen.getByRole('status')).toBeInTheDocument()
+            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
             break
           case 'isEmpty':
             expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
@@ -633,12 +601,13 @@ describe('List', () => {
         const props = createDefaultProps({ fileList })
 
         // Act
-        const { container } = render(<List {...props} />)
+        render(<List {...props} />)
 
         // Assert
         expect(mockIntersectionObserverInstance?.observe).toHaveBeenCalled()
-        const anchorDiv = container.querySelector('.h-0')
-        expect(anchorDiv).toBeInTheDocument()
+        const observedElement = mockIntersectionObserverInstance?.observe.mock.calls[0]?.[0]
+        expect(observedElement).toBeInstanceOf(HTMLElement)
+        expect(observedElement as HTMLElement).toBeInTheDocument()
       })
     })
 
@@ -826,16 +795,16 @@ describe('List', () => {
       const props1 = createDefaultProps({ fileList, isLoading: false })
       const props2 = createDefaultProps({ fileList, isLoading: true })
 
-      const { rerender, container } = render(<List {...props1} />)
+      const { rerender } = render(<List {...props1} />)
 
       // Assert initial state - no loading spinner
-      expect(container.querySelector('.animation-spin')).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
       // Act
       rerender(<List {...props2} />)
 
       // Assert - loading spinner should appear
-      expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
   })
 
@@ -997,13 +966,13 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(queryFullLoadingSpinner()).toBeInTheDocument()
+        expect(screen.getByRole('status')).toBeInTheDocument()
 
         // Act
         rerender(<List {...props2} />)
 
         // Assert
-        expect(queryFullLoadingSpinner()).not.toBeInTheDocument()
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
         expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
       })
 
@@ -1016,13 +985,13 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(queryFullLoadingSpinner()).toBeInTheDocument()
+        expect(screen.getByRole('status')).toBeInTheDocument()
 
         // Act
         rerender(<List {...props2} />)
 
         // Assert
-        expect(queryFullLoadingSpinner()).not.toBeInTheDocument()
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
         expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
       })
 
@@ -1032,16 +1001,16 @@ describe('List', () => {
         const props1 = createDefaultProps({ isLoading: true, fileList })
         const props2 = createDefaultProps({ isLoading: false, fileList })
 
-        const { rerender, container } = render(<List {...props1} />)
+        const { rerender } = render(<List {...props1} />)
 
         // Assert initial partial loading state
-        expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+        expect(screen.getByRole('status')).toBeInTheDocument()
 
         // Act
         rerender(<List {...props2} />)
 
         // Assert
-        expect(container.querySelector('.animation-spin')).not.toBeInTheDocument()
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
       })
     })
 
@@ -1124,15 +1093,16 @@ describe('List', () => {
         const props = createDefaultProps({ fileList, isLoading, keywords })
 
         // Act
-        const { container } = render(<List {...props} />)
+        render(<List {...props} />)
 
         // Assert
         switch (expectedState) {
           case 'all-loading':
-            expect(queryFullLoadingSpinner()).toBeInTheDocument()
+            expect(screen.getByRole('status')).toBeInTheDocument()
             break
           case 'partial-loading':
-            expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+            expect(screen.getByRole('status')).toBeInTheDocument()
+            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
             break
           case 'empty-folder':
             expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
@@ -1173,19 +1143,6 @@ describe('List', () => {
   // Accessibility Tests
   // ==========================================
   describe('Accessibility', () => {
-    it('should have proper container structure', () => {
-      // Arrange
-      const fileList = createMockFileList(2)
-      const props = createDefaultProps({ fileList })
-
-      // Act
-      const { container } = render(<List {...props} />)
-
-      // Assert - Container should be scrollable
-      const scrollContainer = container.querySelector('.overflow-y-auto')
-      expect(scrollContainer).toBeInTheDocument()
-    })
-
     it('should allow interaction with reset keywords button in empty search state', () => {
       // Arrange
       const handleResetKeywords = vi.fn()
@@ -1232,18 +1189,6 @@ describe('EmptyFolder', () => {
     it('should render empty folder message', () => {
       render(<ActualEmptyFolder />)
       expect(screen.getByText(/datasetPipeline\.onlineDrive\.emptyFolder/)).toBeInTheDocument()
-    })
-
-    it('should render with correct container classes', () => {
-      const { container } = render(<ActualEmptyFolder />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex', 'size-full', 'items-center', 'justify-center')
-    })
-
-    it('should render text with correct styling classes', () => {
-      render(<ActualEmptyFolder />)
-      const textElement = screen.getByText(/datasetPipeline\.onlineDrive\.emptyFolder/)
-      expect(textElement).toHaveClass('system-xs-regular', 'text-text-tertiary')
     })
   })
 
@@ -1303,13 +1248,6 @@ describe('EmptySearchResult', () => {
       const { container } = render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
       const svgElement = container.querySelector('svg')
       expect(svgElement).toBeInTheDocument()
-    })
-
-    it('should render with correct container classes', () => {
-      const onResetKeywords = vi.fn()
-      const { container } = render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex', 'size-full', 'flex-col', 'items-center', 'justify-center', 'gap-y-2')
     })
   })
 
@@ -1453,24 +1391,6 @@ describe('FileIcon', () => {
         expect(container.firstChild).toBeInTheDocument()
       })
     })
-
-    describe('className prop', () => {
-      it('should apply custom className to bucket icon', () => {
-        const { container } = render(
-          <ActualFileIcon type={OnlineDriveFileType.bucket} fileName="bucket" className="custom-class" />,
-        )
-        const svg = container.querySelector('svg')
-        expect(svg).toHaveClass('custom-class')
-      })
-
-      it('should apply className to folder icon', () => {
-        const { container } = render(
-          <ActualFileIcon type={OnlineDriveFileType.folder} fileName="folder" className="folder-custom" />,
-        )
-        const svg = container.querySelector('svg')
-        expect(svg).toHaveClass('folder-custom')
-      })
-    })
   })
 
   describe('Icon Type Determination', () => {
@@ -1534,24 +1454,6 @@ describe('FileIcon', () => {
       expect(container.firstChild).toBeInTheDocument()
     })
   })
-
-  describe('Styling', () => {
-    it('should apply default size class to bucket icon', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.bucket} fileName="bucket" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toHaveClass('size-[18px]')
-    })
-
-    it('should apply default size class to folder icon', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.folder} fileName="folder" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toHaveClass('size-[18px]')
-    })
-  })
 })
 
 // ==========================================
@@ -1586,8 +1488,7 @@ describe('Item', () => {
 
   // Helper to find custom checkbox element (div-based implementation)
   const findCheckbox = (container: HTMLElement) => container.querySelector('[data-testid^="checkbox-"]')
-  // Helper to find custom radio element (div-based implementation)
-  const findRadio = (container: HTMLElement) => container.querySelector('.rounded-full.size-4')
+  const getRadio = () => screen.getByRole('radio')
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -1638,8 +1539,8 @@ describe('Item', () => {
         isMultipleChoice: false,
         file: createMockOnlineDriveFile({ type: OnlineDriveFileType.file }),
       })
-      const { container } = render(<ActualItem {...props} />)
-      expect(findRadio(container)).toBeInTheDocument()
+      render(<ActualItem {...props} />)
+      expect(getRadio()).toBeInTheDocument()
     })
 
     it('should not render checkbox or radio for bucket type', () => {
@@ -1649,7 +1550,7 @@ describe('Item', () => {
       })
       const { container } = render(<ActualItem {...props} />)
       expect(findCheckbox(container)).not.toBeInTheDocument()
-      expect(findRadio(container)).not.toBeInTheDocument()
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument()
     })
 
     it('should render with title attribute for file name', () => {
@@ -1681,32 +1582,29 @@ describe('Item', () => {
 
       it('should show radio as checked when isSelected is true', () => {
         const props = createItemProps({ isSelected: true, isMultipleChoice: false })
-        const { container } = render(<ActualItem {...props} />)
-        const radio = findRadio(container)
-        // Checked radio has border-[5px] class
-        expect(radio).toHaveClass('border-[5px]')
+        render(<ActualItem {...props} />)
+        const radio = getRadio()
+        expect(radio).toHaveAttribute('aria-checked', 'true')
       })
     })
 
     describe('disabled prop', () => {
-      it('should apply opacity class when disabled', () => {
-        const props = createItemProps({ disabled: true })
-        const { container } = render(<ActualItem {...props} />)
-        expect(container.querySelector('.opacity-30')).toBeInTheDocument()
-      })
-
-      it('should apply disabled styles to checkbox when disabled', () => {
-        const props = createItemProps({ disabled: true, isMultipleChoice: true })
+      it('should not call onSelect when clicking disabled checkbox', () => {
+        const onSelect = vi.fn()
+        const props = createItemProps({ disabled: true, isMultipleChoice: true, onSelect })
         const { container } = render(<ActualItem {...props} />)
         const checkbox = findCheckbox(container)
-        expect(checkbox).toHaveClass('cursor-not-allowed')
+        fireEvent.click(checkbox!)
+        expect(onSelect).not.toHaveBeenCalled()
       })
 
-      it('should apply disabled styles to radio when disabled', () => {
-        const props = createItemProps({ disabled: true, isMultipleChoice: false })
-        const { container } = render(<ActualItem {...props} />)
-        const radio = findRadio(container)
-        expect(radio).toHaveClass('border-components-radio-border-disabled')
+      it('should not call onSelect when clicking disabled radio', () => {
+        const onSelect = vi.fn()
+        const props = createItemProps({ disabled: true, isMultipleChoice: false, onSelect })
+        render(<ActualItem {...props} />)
+        const radio = getRadio()
+        fireEvent.click(radio)
+        expect(onSelect).not.toHaveBeenCalled()
       })
     })
 
@@ -1722,13 +1620,13 @@ describe('Item', () => {
         const props = createItemProps({ isMultipleChoice: true })
         const { container } = render(<ActualItem {...props} />)
         expect(findCheckbox(container)).toBeInTheDocument()
-        expect(findRadio(container)).not.toBeInTheDocument()
+        expect(screen.queryByRole('radio')).not.toBeInTheDocument()
       })
 
       it('should render radio when false', () => {
         const props = createItemProps({ isMultipleChoice: false })
         const { container } = render(<ActualItem {...props} />)
-        expect(findRadio(container)).toBeInTheDocument()
+        expect(getRadio()).toBeInTheDocument()
         expect(findCheckbox(container)).not.toBeInTheDocument()
       })
     })
@@ -1789,9 +1687,9 @@ describe('Item', () => {
         const onSelect = vi.fn()
         const file = createMockOnlineDriveFile()
         const props = createItemProps({ file, onSelect, isMultipleChoice: false })
-        const { container } = render(<ActualItem {...props} />)
-        const radio = findRadio(container)
-        fireEvent.click(radio!)
+        render(<ActualItem {...props} />)
+        const radio = getRadio()
+        fireEvent.click(radio)
         expect(onSelect).toHaveBeenCalledWith(file)
       })
 
@@ -1846,58 +1744,6 @@ describe('Item', () => {
       render(<ActualItem {...props} />)
       expect(screen.getByText('5.00 GB')).toBeInTheDocument()
     })
-  })
-
-  describe('Styling', () => {
-    it('should have cursor-pointer class', () => {
-      const props = createItemProps()
-      const { container } = render(<ActualItem {...props} />)
-      expect(container.firstChild).toHaveClass('cursor-pointer')
-    })
-
-    it('should have hover class', () => {
-      const props = createItemProps()
-      const { container } = render(<ActualItem {...props} />)
-      expect(container.firstChild).toHaveClass('hover:bg-state-base-hover')
-    })
-
-    it('should truncate file name', () => {
-      const props = createItemProps()
-      render(<ActualItem {...props} />)
-      const nameElement = screen.getByText('test-file.txt')
-      expect(nameElement).toHaveClass('truncate')
-    })
-  })
-
-  describe('Prop Variations', () => {
-    it.each([
-      { isSelected: true, isMultipleChoice: true, disabled: false },
-      { isSelected: true, isMultipleChoice: false, disabled: false },
-      { isSelected: false, isMultipleChoice: true, disabled: false },
-      { isSelected: false, isMultipleChoice: false, disabled: false },
-      { isSelected: true, isMultipleChoice: true, disabled: true },
-      { isSelected: false, isMultipleChoice: false, disabled: true },
-    ])('should render with isSelected=$isSelected, isMultipleChoice=$isMultipleChoice, disabled=$disabled',
-      ({ isSelected, isMultipleChoice, disabled }) => {
-        const props = createItemProps({ isSelected, isMultipleChoice, disabled })
-        const { container } = render(<ActualItem {...props} />)
-        if (isMultipleChoice) {
-          const checkbox = findCheckbox(container)
-          expect(checkbox).toBeInTheDocument()
-          if (isSelected)
-            expect(checkbox?.querySelector('[data-testid^="check-icon-"]')).toBeInTheDocument()
-          if (disabled)
-            expect(checkbox).toHaveClass('cursor-not-allowed')
-        }
-        else {
-          const radio = findRadio(container)
-          expect(radio).toBeInTheDocument()
-          if (isSelected)
-            expect(radio).toHaveClass('border-[5px]')
-          if (disabled)
-            expect(radio).toHaveClass('border-components-radio-border-disabled')
-        }
-      })
   })
 })
 

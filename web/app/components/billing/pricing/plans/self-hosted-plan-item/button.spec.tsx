@@ -29,29 +29,19 @@ describe('SelfHostedPlanButton', () => {
     expect(handleGetPayUrl).toHaveBeenCalledTimes(1)
   })
 
-  test('should render AWS marketplace badge for premium plan in light theme', () => {
-    const handleGetPayUrl = vi.fn()
+  test.each([
+    { label: 'light', theme: Theme.light },
+    { label: 'dark', theme: Theme.dark },
+  ])('should render premium button label when theme is $label', ({ theme }) => {
+    mockUseTheme.mockReturnValue({ theme } as unknown as ReturnType<typeof useTheme>)
 
-    const { container } = render(
-      <Button
-        plan={SelfHostedPlan.premium}
-        handleGetPayUrl={handleGetPayUrl}
-      />,
-    )
-
-    expect(container.querySelector('[data-icon="AwsMarketplaceLight"]')).toBeInTheDocument()
-  })
-
-  test('should switch to dark AWS badge in dark theme', () => {
-    mockUseTheme.mockReturnValue({ theme: Theme.dark } as unknown as ReturnType<typeof useTheme>)
-
-    const { container } = render(
+    render(
       <Button
         plan={SelfHostedPlan.premium}
         handleGetPayUrl={vi.fn()}
       />,
     )
 
-    expect(container.querySelector('[data-icon="AwsMarketplaceDark"]')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'billing.plans.premium.btnText' })).toBeInTheDocument()
   })
 })

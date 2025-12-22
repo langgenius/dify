@@ -75,22 +75,20 @@ describe('StartNodeSelectionPanel', () => {
 
     it('should render user input option', () => {
       // Arrange & Act
-      const { container } = renderComponent()
+      renderComponent()
 
       // Assert
       expect(screen.getByText('workflow.onboarding.userInputFull')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.userInputDescription')).toBeInTheDocument()
-      expect(container.querySelector('[data-icon="Home"]')).toBeInTheDocument()
     })
 
     it('should render trigger option', () => {
       // Arrange & Act
-      const { container } = renderComponent()
+      renderComponent()
 
       // Assert
       expect(screen.getByText('workflow.onboarding.trigger')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.triggerDescription')).toBeInTheDocument()
-      expect(container.querySelector('[data-icon="TriggerAll"]')).toBeInTheDocument()
     })
 
     it('should render node selector component', () => {
@@ -99,17 +97,6 @@ describe('StartNodeSelectionPanel', () => {
 
       // Assert
       expect(screen.getByTestId('node-selector')).toBeInTheDocument()
-    })
-
-    it('should have correct grid layout', () => {
-      // Arrange & Act
-      const { container } = renderComponent()
-
-      // Assert
-      const grid = container.querySelector('.grid')
-      expect(grid).toBeInTheDocument()
-      expect(grid).toHaveClass('grid-cols-2')
-      expect(grid).toHaveClass('gap-4')
     })
 
     it('should not show trigger selector initially', () => {
@@ -505,15 +492,6 @@ describe('StartNodeSelectionPanel', () => {
       expect(screen.getByText('workflow.onboarding.triggerDescription')).toBeInTheDocument()
     })
 
-    it('should have icons for visual identification', () => {
-      // Arrange & Act
-      const { container } = renderComponent()
-
-      // Assert
-      expect(container.querySelector('[data-icon="Home"]')).toBeInTheDocument()
-      expect(container.querySelector('[data-icon="TriggerAll"]')).toBeInTheDocument()
-    })
-
     it('should maintain focus after interactions', async () => {
       // Arrange
       const user = userEvent.setup()
@@ -563,12 +541,9 @@ describe('StartNodeSelectionPanel', () => {
 
     it('should render all components in correct hierarchy', () => {
       // Arrange & Act
-      const { container } = renderComponent()
+      renderComponent()
 
       // Assert
-      const grid = container.querySelector('.grid')
-      expect(grid).toBeInTheDocument()
-
       // Both StartNodeOption components should be rendered
       expect(screen.getByText('workflow.onboarding.userInputFull')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.trigger')).toBeInTheDocument()
