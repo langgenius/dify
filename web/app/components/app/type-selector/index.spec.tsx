@@ -3,8 +3,6 @@ import { fireEvent, render, screen, within } from '@testing-library/react'
 import AppTypeSelector, { AppTypeIcon, AppTypeLabel } from './index'
 import { AppModeEnum } from '@/types/app'
 
-vi.mock('react-i18next')
-
 describe('AppTypeSelector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
