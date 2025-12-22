@@ -6,9 +6,7 @@ import CheckCode from '@/app/(shareLayout)/webapp-signin/check-code/page'
 
 const replaceMock = vi.fn()
 const backMock = vi.fn()
-
-// Store useSearchParams mock return value for tests to configure
-let useSearchParamsReturnValue: URLSearchParams = new URLSearchParams()
+const useSearchParamsMock = vi.fn(() => new URLSearchParams())
 
 vi.mock('next/navigation', () => ({
   usePathname: vi.fn(() => '/chatbot/test-app'),
@@ -16,7 +14,7 @@ vi.mock('next/navigation', () => ({
     replace: replaceMock,
     back: backMock,
   })),
-  useSearchParams: () => useSearchParamsReturnValue,
+  useSearchParams: () => useSearchParamsMock(),
 }))
 
 const mockStoreState = {
@@ -72,7 +70,7 @@ describe('embedded user id propagation in authentication flows', () => {
   it('passes embedded user id when logging in with email and password', async () => {
     const params = new URLSearchParams()
     params.set('redirect_url', encodeURIComponent('/chatbot/test-app'))
-    useSearchParamsReturnValue = params
+    useSearchParamsMock.mockReturnValue(params)
 
     webAppLoginMock.mockResolvedValue({ result: 'success', data: { access_token: 'login-token' } })
     fetchAccessTokenMock.mockResolvedValue({ access_token: 'passport-token' })
@@ -99,7 +97,7 @@ describe('embedded user id propagation in authentication flows', () => {
     params.set('redirect_url', encodeURIComponent('/chatbot/test-app'))
     params.set('email', encodeURIComponent('user@example.com'))
     params.set('token', encodeURIComponent('token-abc'))
-    useSearchParamsReturnValue = params
+    useSearchParamsMock.mockReturnValue(params)
 
     webAppEmailLoginWithCodeMock.mockResolvedValue({ result: 'success', data: { access_token: 'code-token' } })
     fetchAccessTokenMock.mockResolvedValue({ access_token: 'passport-token' })
