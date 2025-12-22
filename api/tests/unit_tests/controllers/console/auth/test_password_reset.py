@@ -231,7 +231,45 @@ class TestForgotPasswordCheckApi:
         assert response["email"] == "test@example.com"
         assert response["token"] == "new_token"
         mock_revoke_token.assert_called_once_with("old_token")
+        mock_generate_token.assert_called_once_with(
+            "test@example.com", code="123456", additional_data={"phase": "reset"}
+        )
         mock_reset_rate_limit.assert_called_once_with("test@example.com")
+
+    @patch("controllers.console.wraps.db")
+    @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
+    @patch("controllers.console.auth.forgot_password.AccountService.get_reset_password_data")
+    @patch("controllers.console.auth.forgot_password.AccountService.revoke_reset_password_token")
+    @patch("controllers.console.auth.forgot_password.AccountService.generate_reset_password_token")
+    @patch("controllers.console.auth.forgot_password.AccountService.reset_forgot_password_error_rate_limit")
+    def test_verify_code_preserves_token_email_case(
+        self,
+        mock_reset_rate_limit,
+        mock_generate_token,
+        mock_revoke_token,
+        mock_get_data,
+        mock_is_rate_limit,
+        mock_db,
+        app,
+    ):
+        mock_db.session.query.return_value.first.return_value = MagicMock()
+        mock_is_rate_limit.return_value = False
+        mock_get_data.return_value = {"email": "User@Example.com", "code": "999888"}
+        mock_generate_token.return_value = (None, "fresh-token")
+
+        with app.test_request_context(
+            "/forgot-password/validity",
+            method="POST",
+            json={"email": "user@example.com", "code": "999888", "token": "upper_token"},
+        ):
+            response = ForgotPasswordCheckApi().post()
+
+        assert response == {"is_valid": True, "email": "user@example.com", "token": "fresh-token"}
+        mock_generate_token.assert_called_once_with(
+            "User@Example.com", code="999888", additional_data={"phase": "reset"}
+        )
+        mock_revoke_token.assert_called_once_with("upper_token")
+        mock_reset_rate_limit.assert_called_once_with("user@example.com")
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.forgot_password.AccountService.is_forgot_password_error_rate_limit")
