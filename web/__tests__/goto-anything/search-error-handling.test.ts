@@ -9,19 +9,6 @@ import type { MockedFunction } from 'vitest'
  * 4. Ensure errors don't propagate to UI layer causing "search failed"
  */
 
-// Mock i18n-config to avoid require() calls during test initialization
-vi.mock('@/i18n-config/i18next-config', () => ({
-  default: {
-    t: (key: string) => key,
-    language: 'en-US',
-    changeLanguage: vi.fn(),
-    use: vi.fn().mockReturnThis(),
-    init: vi.fn(),
-    isInitialized: true,
-  },
-  changeLanguage: vi.fn(),
-}))
-
 import { Actions, searchAnything } from '@/app/components/goto-anything/actions'
 import { postMarketplace } from '@/service/base'
 import { fetchAppList } from '@/service/apps'

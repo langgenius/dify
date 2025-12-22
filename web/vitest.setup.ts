@@ -82,12 +82,6 @@ afterEach(() => {
   cleanup()
 })
 
-// mock i18n-config/i18next-config to avoid require() issues in ESM
-vi.mock('@/i18n-config/i18next-config', () => ({
-  default: {},
-  changeLanguage: vi.fn(),
-}))
-
 // mock next/image to avoid width/height requirements for data URLs
 vi.mock('next/image')
 

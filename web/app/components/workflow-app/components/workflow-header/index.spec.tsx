@@ -1,16 +1,3 @@
-// Mock i18n-config to avoid require() calls during test initialization
-vi.mock('@/i18n-config/i18next-config', () => ({
-  default: {
-    t: (key: string) => key,
-    language: 'en-US',
-    changeLanguage: vi.fn(),
-    use: vi.fn().mockReturnThis(),
-    init: vi.fn(),
-    isInitialized: true,
-  },
-  changeLanguage: vi.fn(),
-}))
-
 import { render, screen } from '@testing-library/react'
 import type { App } from '@/types/app'
 import { AppModeEnum } from '@/types/app'

@@ -1,7 +1,10 @@
 'use client'
+import { createRequire } from 'node:module'
 import i18n from 'i18next'
 import { camelCase } from 'lodash-es'
 import { initReactI18next } from 'react-i18next'
+
+const require = createRequire(import.meta.url)
 
 const requireSilent = async (lang: string, namespace: string) => {
   let res
@@ -62,7 +65,7 @@ export const loadLangResources = async (lang: string) => {
 // Load en-US resources first to make sure fallback works
 const getInitialTranslations = () => {
   const en_USResources = NAMESPACES.reduce((acc, ns, index) => {
-    acc[camelCase(NAMESPACES[index])] = require(`../i18n/en-US/${ns}`).default
+    acc[camelCase(NAMESPACES[index])] = require(`../i18n/en-US/${ns}.ts`).default
     return acc
   }, {} as Record<string, any>)
   return {
