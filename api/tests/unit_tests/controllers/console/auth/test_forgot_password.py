@@ -106,7 +106,7 @@ class TestForgotPasswordCheckApi:
         assert response == {"is_valid": True, "email": "admin@example.com", "token": "new-token"}
         mock_rate_limit_check.assert_called_once_with("admin@example.com")
         mock_generate_token.assert_called_once_with(
-            "admin@example.com",
+            "Admin@Example.com",
             code="4321",
             additional_data={"phase": "reset"},
         )
