@@ -309,10 +309,14 @@ class Graph:
             raise ValueError("Graph must have at least one node")
 
         # Filter out UI-only nodes that should not participate in workflow execution
-        # These include ReactFlow node types (custom-*) and data types that UI-only nodes may use
-        ui_only_node_types = {"custom-note", "custom-group", "custom-group-input", "custom-group-exit-port", "group"}
+        # Check both node.type (ReactFlow type) and node.data.type (business type)
+        ui_only_node_types = {"custom-note"}
+        ui_only_data_types = {"group"}
         node_configs = [
-            node_config for node_config in node_configs if node_config.get("type", "") not in ui_only_node_types
+            node_config
+            for node_config in node_configs
+            if node_config.get("type", "") not in ui_only_node_types
+            and node_config.get("data", {}).get("type", "") not in ui_only_data_types
         ]
 
         # Parse node configurations
