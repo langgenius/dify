@@ -7,8 +7,8 @@ When I ask you to write/refactor/fix tests, follow these rules by default.
 ## Tech Stack
 
 - **Framework**: Next.js 15 + React 19 + TypeScript
-- **Testing Tools**: Jest 29.7 + React Testing Library 16.0
-- **Test Environment**: @happy-dom/jest-environment
+- **Testing Tools**: Vitest 4.0.16 + React Testing Library 16.0
+- **Test Environment**: jsdom
 - **File Naming**: `ComponentName.spec.tsx` (same directory as component)
 
 ## Running Tests
@@ -18,7 +18,7 @@ When I ask you to write/refactor/fix tests, follow these rules by default.
 pnpm test
 
 # Watch mode
-pnpm test -- --watch
+pnpm test:watch
 
 # Generate coverage report
 pnpm test -- --coverage
@@ -29,9 +29,9 @@ pnpm test -- path/to/file.spec.tsx
 
 ## Project Test Setup
 
-- **Configuration**: `jest.config.ts` loads the Testing Library presets, sets the `@happy-dom/jest-environment`, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
-- **Global setup**: `jest.setup.ts` already imports `@testing-library/jest-dom` and runs `cleanup()` after every test. Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
-- **Manual mocks**: Place reusable mocks inside `web/__mocks__/`. Use `jest.mock('module-name')` to point to these helpers rather than redefining mocks in every spec.
+- **Configuration**: `vitest.config.ts` sets the `jsdom` environment, loads the Testing Library presets, and respects our path aliases (`@/...`). Check this file before adding new transformers or module name mappers.
+- **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom` and runs `cleanup()` after every test. Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
+- **Manual mocks**: Place reusable mocks inside `web/__mocks__/`. Use `vi.mock('module-name')` to point to these helpers rather than redefining mocks in every spec.
 - **Script utilities**: `web/testing/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
   - `pnpm analyze-component <path>` - Analyze and generate test prompt
   - `pnpm analyze-component <path> --json` - Output analysis as JSON
@@ -79,7 +79,7 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 - ✅ AAA pattern: Arrange (setup) → Act (execute) → Assert (verify)
 - ✅ Descriptive test names: `"should [behavior] when [condition]"`
 - ✅ TypeScript: No `any` types
-- ✅ **Cleanup**: `jest.clearAllMocks()` should be in `beforeEach()`, not `afterEach()`. This ensures mock call history is reset before each test, preventing test pollution when using assertions like `toHaveBeenCalledWith()` or `toHaveBeenCalledTimes()`.
+- ✅ **Cleanup**: `vi.clearAllMocks()` should be in `beforeEach()`, not `afterEach()`. This ensures mock call history is reset before each test, preventing test pollution when using assertions like `toHaveBeenCalledWith()` or `toHaveBeenCalledTimes()`.
 
 **⚠️ Mock components must accurately reflect actual component behavior**, especially conditional rendering based on props or state.
 
@@ -88,7 +88,7 @@ Use `pnpm analyze-component <path>` to analyze component complexity and adopt di
 1. **Match actual conditional rendering**: If the real component returns `null` or doesn't render under certain conditions, the mock must do the same. Always check the actual component implementation before creating mocks.
 1. **Use shared state variables when needed**: When mocking components that depend on shared context or state (e.g., `PortalToFollowElem` with `PortalToFollowElemContent`), use module-level variables to track state and reset them in `beforeEach`.
 1. **Always reset shared mock state in beforeEach**: Module-level variables used in mocks must be reset in `beforeEach` to ensure test isolation, even if you set default values elsewhere.
-1. **Use fake timers only when needed**: Only use `jest.useFakeTimers()` if:
+1. **Use fake timers only when needed**: Only use `vi.useFakeTimers()` if:
    - Testing components that use real `setTimeout`/`setInterval` (not mocked)
    - Testing time-based behavior (delays, animations)
    - If you mock all time-dependent functions, fake timers are unnecessary
@@ -207,7 +207,7 @@ Simulate the interactions that matter to users—primary clicks, change events, 
 
 **Must Test**:
 
-- ✅ Mock all API calls using `jest.mock`
+- ✅ Mock all API calls using `vi.mock`
 - ✅ Test retry logic (if applicable)
 - ✅ Verify error handling and user feedback
 - ✅ Use `waitFor()` for async operations
@@ -274,9 +274,9 @@ import Component from './index'
 // import { ChildComponent } from './child-component'
 
 // ✅ Mock external dependencies only
-jest.mock('@/service/api')
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+vi.mock('@/service/api')
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))
 
@@ -285,7 +285,7 @@ let mockSharedState = false
 
 describe('ComponentName', () => {
   beforeEach(() => {
-    jest.clearAllMocks()  // ✅ Reset mocks before each test
+    vi.clearAllMocks()  // ✅ Reset mocks before each test
     mockSharedState = false  // ✅ Reset shared state if used in mocks
   })
 
@@ -304,7 +304,7 @@ describe('ComponentName', () => {
 
   describe('User Interactions', () => {
     it('should handle click events', () => {
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       render(<Component onClick={handleClick} />)
       
       fireEvent.click(screen.getByRole('button'))
@@ -326,12 +326,12 @@ describe('ComponentName', () => {
 
 ### General
 
-1. **i18n**: Uses shared mock at `web/__mocks__/react-i18next.ts` (auto-loaded by Jest)
+1. **i18n**: Uses shared mock at `web/__mocks__/react-i18next.ts` (auto-loaded by Vitest setup)
 
    The shared mock returns translation keys as-is. For custom translations, override:
 
    ```typescript
-   jest.mock('react-i18next', () => ({
+   vi.mock('react-i18next', () => ({
      useTranslation: () => ({
        t: (key: string) => {
          const translations: Record<string, string> = {
@@ -351,7 +351,7 @@ describe('ComponentName', () => {
 // ✅ CORRECT: Matches actual component behavior
 let mockPortalOpenState = false
 
-jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
+vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open, ...props }: any) => {
     mockPortalOpenState = open || false  // Update shared state
     return <div data-open={open}>{children}</div>
@@ -365,7 +365,7 @@ jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
 
 describe('Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks()  // ✅ Reset mock call history
+    vi.clearAllMocks()  // ✅ Reset mock call history
     mockPortalOpenState = false  // ✅ Reset shared state
   })
 })
@@ -496,10 +496,10 @@ Test examples in the project:
 
 ## Resources
 
-- [Jest Documentation](https://jestjs.io/docs/getting-started)
+- [Vitest Documentation](https://vitest.dev/guide/)
 - [React Testing Library Documentation](https://testing-library.com/docs/react-testing-library/intro/)
 - [Testing Library Best Practices](https://kentcdodds.com/blog/common-mistakes-with-react-testing-library)
-- [Jest Mock Functions](https://jestjs.io/docs/mock-functions)
+- [Vitest Mocking Guide](https://vitest.dev/guide/mocking.html)
 
 ______________________________________________________________________
 
