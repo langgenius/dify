@@ -36,7 +36,7 @@
 		}
 	},
 	"postStartCommand": "./.devcontainer/post_start_command.sh",
-	"postCreateCommand": "./.devcontainer/post_create_command.sh",
+	"postCreateCommand": "./.devcontainer/post_create_command.sh"
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
@@ -46,5 +46,4 @@
 	// Configure tool-specific properties.
 	// "customizations": {},
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
-	"remoteUser": "vscode"
 }
