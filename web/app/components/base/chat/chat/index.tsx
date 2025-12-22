@@ -222,11 +222,17 @@ const Chat: FC<ChatProps> = ({
     return () => container.removeEventListener('scroll', setUserScrolled)
   }, [])
 
-  // Reset user scroll state when a new chat starts (length <= 1)
+  // Reset user scroll state when conversation changes or a new chat starts
+  // Track the first message ID to detect conversation switches (fixes #29820)
+  const prevFirstMessageIdRef = useRef<string | undefined>(undefined)
   useEffect(() => {
-    if (chatList.length <= 1)
+    const firstMessageId = chatList[0]?.id
+    // Reset when: new chat (length <= 1) OR conversation switched (first message ID changed)
+    if (chatList.length <= 1 || (firstMessageId && prevFirstMessageIdRef.current !== firstMessageId)) {
       userScrolledRef.current = false
-  }, [chatList.length])
+    }
+    prevFirstMessageIdRef.current = firstMessageId
+  }, [chatList])
 
   useEffect(() => {
     if (!sidebarCollapseState)
