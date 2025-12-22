@@ -13,13 +13,7 @@ def _build_response(url: str, status_code: int, content: bytes = b"") -> httpx.R
 
 
 def _pending_yaml_content(version: str = "99.0.0") -> bytes:
-    return (
-        f'version: "{version}"\n'
-        "kind: app\n"
-        "app:\n"
-        "  name: Loop Test\n"
-        "  mode: workflow\n"
-    ).encode()
+    return (f'version: "{version}"\nkind: app\napp:\n  name: Loop Test\n  mode: workflow\n').encode()
 
 
 def _account_mock() -> MagicMock:
