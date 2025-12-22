@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ConfigString, { type IConfigStringProps } from './index'
 
 const renderConfigString = (props?: Partial<IConfigStringProps>) => {
-  const onChange = jest.fn()
+  const onChange = vi.fn()
   const defaultProps: IConfigStringProps = {
     value: 5,
     maxLength: 10,
@@ -17,7 +17,7 @@ const renderConfigString = (props?: Partial<IConfigStringProps>) => {
 
 describe('ConfigString', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -41,7 +41,7 @@ describe('ConfigString', () => {
 
   describe('Effect behavior', () => {
     it('should clamp initial value to maxLength when it exceeds limit', async () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       render(
         <ConfigString
           value={15}
@@ -58,7 +58,7 @@ describe('ConfigString', () => {
     })
 
     it('should clamp when updated prop value exceeds maxLength', async () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const { rerender } = render(
         <ConfigString
           value={4}

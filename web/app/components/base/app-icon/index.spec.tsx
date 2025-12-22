@@ -1,18 +1,20 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import AppIcon from './index'
 
 // Mock emoji-mart initialization
-jest.mock('emoji-mart', () => ({
-  init: jest.fn(),
+vi.mock('emoji-mart', () => ({
+  init: vi.fn(),
 }))
 
 // Mock emoji data
-jest.mock('@emoji-mart/data', () => ({}))
+vi.mock('@emoji-mart/data', () => ({
+  default: {},
+}))
 
-// Mock the ahooks useHover hook
-jest.mock('ahooks', () => ({
-  useHover: jest.fn(() => false),
+// Create a controllable mock for useHover
+let mockHoverValue = false
+vi.mock('ahooks', () => ({
+  useHover: vi.fn(() => mockHoverValue),
 }))
 
 describe('AppIcon', () => {
@@ -31,8 +33,8 @@ describe('AppIcon', () => {
       })
     }
 
-    // Reset mocks
-    require('ahooks').useHover.mockReset().mockReturnValue(false)
+    // Reset mock hover value
+    mockHoverValue = false
   })
 
   it('renders default emoji when no icon or image is provided', () => {
@@ -107,7 +109,7 @@ describe('AppIcon', () => {
   })
 
   it('calls onClick handler when clicked', () => {
-    const handleClick = jest.fn()
+    const handleClick = vi.fn()
     const { container } = render(<AppIcon onClick={handleClick} />)
     fireEvent.click(container.firstChild!)
 
@@ -127,7 +129,7 @@ describe('AppIcon', () => {
 
   it('displays edit icon when showEditIcon=true and hovering', () => {
     // Mock the useHover hook to return true for this test
-    require('ahooks').useHover.mockReturnValue(true)
+    mockHoverValue = true
 
     render(<AppIcon showEditIcon />)
     const editIcon = document.querySelector('svg')
@@ -136,6 +138,7 @@ describe('AppIcon', () => {
 
   it('does not display edit icon when showEditIcon=true but not hovering', () => {
     // useHover returns false by default from our mock setup
+    mockHoverValue = false
     render(<AppIcon showEditIcon />)
     const editIcon = document.querySelector('svg')
     expect(editIcon).not.toBeInTheDocument()

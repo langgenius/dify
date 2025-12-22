@@ -23,14 +23,14 @@ import userEvent from '@testing-library/user-event'
 // ============================================================================
 // Mocks
 // ============================================================================
-// WHY: Mocks must be hoisted to top of file (Jest requirement).
+// WHY: Mocks must be hoisted to top of file (Vitest requirement).
 // They run BEFORE imports, so keep them before component imports.
 
 // i18n (automatically mocked)
-// WHY: Shared mock at web/__mocks__/react-i18next.ts is auto-loaded by Jest
+// WHY: Global mock in web/vitest.setup.ts is auto-loaded by Vitest setup
 // No explicit mock needed - it returns translation keys as-is
 // Override only if custom translations are required:
-// jest.mock('react-i18next', () => ({
+// vi.mock('react-i18next', () => ({
 //   useTranslation: () => ({
 //     t: (key: string) => {
 //       const customTranslations: Record<string, string> = {
@@ -43,17 +43,17 @@ import userEvent from '@testing-library/user-event'
 
 // Router (if component uses useRouter, usePathname, useSearchParams)
 // WHY: Isolates tests from Next.js routing, enables testing navigation behavior
-// const mockPush = jest.fn()
-// jest.mock('next/navigation', () => ({
+// const mockPush = vi.fn()
+// vi.mock('next/navigation', () => ({
 //   useRouter: () => ({ push: mockPush }),
 //   usePathname: () => '/test-path',
 // }))
 
 // API services (if component fetches data)
 // WHY: Prevents real network calls, enables testing all states (loading/success/error)
-// jest.mock('@/service/api')
+// vi.mock('@/service/api')
 // import * as api from '@/service/api'
-// const mockedApi = api as jest.Mocked<typeof api>
+// const mockedApi = vi.mocked(api)
 
 // Shared mock state (for portal/dropdown components)
 // WHY: Portal components like PortalToFollowElem need shared state between
@@ -98,7 +98,7 @@ describe('ComponentName', () => {
   // - Prevents mock call history from leaking between tests
   // - MUST be beforeEach (not afterEach) to reset BEFORE assertions like toHaveBeenCalledTimes
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Reset shared mock state if used (CRITICAL for portal/dropdown tests)
     // mockOpenState = false
   })
@@ -155,7 +155,7 @@ describe('ComponentName', () => {
       // - userEvent simulates real user behavior (focus, hover, then click)
       // - fireEvent is lower-level, doesn't trigger all browser events
       // const user = userEvent.setup()
-      // const handleClick = jest.fn()
+      // const handleClick = vi.fn()
       // render(<ComponentName onClick={handleClick} />)
       //
       // await user.click(screen.getByRole('button'))
@@ -165,7 +165,7 @@ describe('ComponentName', () => {
 
     it('should call onChange when value changes', async () => {
       // const user = userEvent.setup()
-      // const handleChange = jest.fn()
+      // const handleChange = vi.fn()
       // render(<ComponentName onChange={handleChange} />)
       //
       // await user.type(screen.getByRole('textbox'), 'new value')

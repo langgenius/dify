@@ -1,15 +1,16 @@
+import type { Mock } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 // Type for mocked store
 type MockWorkflowStore = {
   showOnboarding: boolean
-  setShowOnboarding: jest.Mock
+  setShowOnboarding: Mock
   hasShownOnboarding: boolean
-  setHasShownOnboarding: jest.Mock
+  setHasShownOnboarding: Mock
   hasSelectedStartNode: boolean
-  setHasSelectedStartNode: jest.Mock
-  setShouldAutoOpenStartNodeSelector: jest.Mock
+  setHasSelectedStartNode: Mock
+  setShouldAutoOpenStartNodeSelector: Mock
   notInitialWorkflow: boolean
 }
 
@@ -20,11 +21,11 @@ type MockNode = {
 }
 
 // Mock zustand store
-jest.mock('@/app/components/workflow/store')
+vi.mock('@/app/components/workflow/store')
 
 // Mock ReactFlow store
-const mockGetNodes = jest.fn()
-jest.mock('reactflow', () => ({
+const mockGetNodes = vi.fn()
+vi.mock('reactflow', () => ({
   useStoreApi: () => ({
     getState: () => ({
       getNodes: mockGetNodes,
@@ -33,16 +34,16 @@ jest.mock('reactflow', () => ({
 }))
 
 describe('Workflow Onboarding Integration Logic', () => {
-  const mockSetShowOnboarding = jest.fn()
-  const mockSetHasSelectedStartNode = jest.fn()
-  const mockSetHasShownOnboarding = jest.fn()
-  const mockSetShouldAutoOpenStartNodeSelector = jest.fn()
+  const mockSetShowOnboarding = vi.fn()
+  const mockSetHasSelectedStartNode = vi.fn()
+  const mockSetHasShownOnboarding = vi.fn()
+  const mockSetShouldAutoOpenStartNodeSelector = vi.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Mock store implementation
-    ;(useWorkflowStore as jest.Mock).mockReturnValue({
+    ;(useWorkflowStore as Mock).mockReturnValue({
       showOnboarding: false,
       setShowOnboarding: mockSetShowOnboarding,
       hasSelectedStartNode: false,
@@ -373,12 +374,12 @@ describe('Workflow Onboarding Integration Logic', () => {
     it('should trigger onboarding for new workflow when draft does not exist', () => {
       // Simulate the error handling logic from use-workflow-init.ts
       const error = {
-        json: jest.fn().mockResolvedValue({ code: 'draft_workflow_not_exist' }),
+        json: vi.fn().mockResolvedValue({ code: 'draft_workflow_not_exist' }),
         bodyUsed: false,
       }
 
       const mockWorkflowStore = {
-        setState: jest.fn(),
+        setState: vi.fn(),
       }
 
       // Simulate error handling
@@ -404,7 +405,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     it('should not trigger onboarding for existing workflows', () => {
       // Simulate successful draft fetch
       const mockWorkflowStore = {
-        setState: jest.fn(),
+        setState: vi.fn(),
       }
 
       // Normal initialization path should not set showOnboarding: true
@@ -419,7 +420,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     })
 
     it('should create empty draft with proper structure', () => {
-      const mockSyncWorkflowDraft = jest.fn()
+      const mockSyncWorkflowDraft = vi.fn()
       const appId = 'test-app-id'
 
       // Simulate the syncWorkflowDraft call from use-workflow-init.ts
@@ -467,7 +468,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       mockGetNodes.mockReturnValue([])
 
       // Mock store with proper state for auto-detection
-      ;(useWorkflowStore as jest.Mock).mockReturnValue({
+      ;(useWorkflowStore as Mock).mockReturnValue({
         showOnboarding: false,
         hasShownOnboarding: false,
         notInitialWorkflow: false,
@@ -550,7 +551,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       mockGetNodes.mockReturnValue([])
 
       // Mock store with hasShownOnboarding = true
-      ;(useWorkflowStore as jest.Mock).mockReturnValue({
+      ;(useWorkflowStore as Mock).mockReturnValue({
         showOnboarding: false,
         hasShownOnboarding: true, // Already shown in this session
         notInitialWorkflow: false,
@@ -584,7 +585,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       mockGetNodes.mockReturnValue([])
 
       // Mock store with notInitialWorkflow = true (initial creation)
-      ;(useWorkflowStore as jest.Mock).mockReturnValue({
+      ;(useWorkflowStore as Mock).mockReturnValue({
         showOnboarding: false,
         hasShownOnboarding: false,
         notInitialWorkflow: true, // Initial workflow creation
