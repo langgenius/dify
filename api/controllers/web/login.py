@@ -197,7 +197,9 @@ class EmailCodeLoginApi(Resource):
             raise InvalidTokenError()
 
         token_email = token_data.get("email")
-        normalized_token_email = token_email.lower() if isinstance(token_email, str) else token_email
+        if not isinstance(token_email, str):
+            raise InvalidEmailError()
+        normalized_token_email = token_email.lower()
         if normalized_token_email != user_email:
             raise InvalidEmailError()
 
