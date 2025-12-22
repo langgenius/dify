@@ -33,16 +33,6 @@ vi.mock('react-i18next', () => ({
   },
 }))
 
-// ky is an ESM-only package; mock it to keep vitest specs running.
-vi.mock('ky', () => ({
-  __esModule: true,
-  default: {
-    create: () => ({
-      extend: () => async () => new Response(),
-    }),
-  },
-}))
-
 // Avoid heavy emoji dataset initialization during unit tests.
 vi.mock('emoji-mart', () => ({
   init: vi.fn(),
@@ -370,8 +360,7 @@ describe('CreateAppModal', () => {
       expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
     })
 
-    test.skip('should update icon payload when selecting emoji and confirming', () => {
-      // This test is skipped because emoji-mart components don't render properly in JSDOM
+    test('should update icon payload when selecting emoji and confirming', () => {
       vi.useFakeTimers()
       try {
         const { onConfirm } = setup({
@@ -382,10 +371,13 @@ describe('CreateAppModal', () => {
 
         fireEvent.click(getAppIconTrigger())
 
-        const emoji = document.querySelector('em-emoji[id="😀"]')
-        if (!(emoji instanceof HTMLElement))
-          throw new Error('Failed to locate emoji option in icon picker')
-        fireEvent.click(emoji)
+        // Find the emoji grid by locating the category label, then find the clickable emoji wrapper
+        const categoryLabel = screen.getByText('people')
+        const emojiGrid = categoryLabel.nextElementSibling
+        const clickableEmojiWrapper = emojiGrid?.firstElementChild
+        if (!(clickableEmojiWrapper instanceof HTMLElement))
+          throw new Error('Failed to locate emoji wrapper')
+        fireEvent.click(clickableEmojiWrapper)
 
         fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
 
@@ -407,33 +399,53 @@ describe('CreateAppModal', () => {
       }
     })
 
-    test.skip('should reset emoji icon to initial props when picker is cancelled', () => {
-      // This test is skipped because emoji-mart components don't render properly in JSDOM
-      setup({
-        appIconType: 'emoji',
-        appIcon: '🤖',
-        appIconBackground: '#FFEAD5',
-      })
+    test('should reset emoji icon to initial props when picker is cancelled', () => {
+      vi.useFakeTimers()
+      try {
+        const { onConfirm } = setup({
+          appIconType: 'emoji',
+          appIcon: '🤖',
+          appIconBackground: '#FFEAD5',
+        })
 
-      expect(document.querySelector('em-emoji[id="🤖"]')).toBeInTheDocument()
+        // Open picker, select a new emoji, and confirm
+        fireEvent.click(getAppIconTrigger())
 
-      fireEvent.click(getAppIconTrigger())
+        // Find the emoji grid by locating the category label, then find the clickable emoji wrapper
+        const categoryLabel = screen.getByText('people')
+        const emojiGrid = categoryLabel.nextElementSibling
+        const clickableEmojiWrapper = emojiGrid?.firstElementChild
+        if (!(clickableEmojiWrapper instanceof HTMLElement))
+          throw new Error('Failed to locate emoji wrapper')
+        fireEvent.click(clickableEmojiWrapper)
 
-      const emoji = document.querySelector('em-emoji[id="😀"]')
-      if (!(emoji instanceof HTMLElement))
-        throw new Error('Failed to locate emoji option in icon picker')
-      fireEvent.click(emoji)
+        fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+        expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
 
-      expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
-      expect(document.querySelector('em-emoji[id="😀"]')).toBeInTheDocument()
+        // Open picker again and cancel - should reset to initial props
+        fireEvent.click(getAppIconTrigger())
+        fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
 
-      fireEvent.click(getAppIconTrigger())
-      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
+        expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
 
-      expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
-      expect(document.querySelector('em-emoji[id="🤖"]')).toBeInTheDocument()
+        // Submit and verify the payload uses the original icon (cancel reverts to props)
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+        act(() => {
+          vi.advanceTimersByTime(300)
+        })
+
+        expect(onConfirm).toHaveBeenCalledTimes(1)
+        const payload = onConfirm.mock.calls[0][0]
+        expect(payload).toMatchObject({
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: '#FFEAD5',
+        })
+      }
+      finally {
+        vi.useRealTimers()
+      }
     })
   })
 
