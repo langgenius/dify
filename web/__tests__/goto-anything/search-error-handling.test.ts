@@ -1,3 +1,4 @@
+import type { MockedFunction } from 'vitest'
 /**
  * Test GotoAnything search error handling mechanisms
  *
@@ -14,33 +15,33 @@ import { fetchAppList } from '@/service/apps'
 import { fetchDatasets } from '@/service/datasets'
 
 // Mock API functions
-jest.mock('@/service/base', () => ({
-  postMarketplace: jest.fn(),
+vi.mock('@/service/base', () => ({
+  postMarketplace: vi.fn(),
 }))
 
-jest.mock('@/service/apps', () => ({
-  fetchAppList: jest.fn(),
+vi.mock('@/service/apps', () => ({
+  fetchAppList: vi.fn(),
 }))
 
-jest.mock('@/service/datasets', () => ({
-  fetchDatasets: jest.fn(),
+vi.mock('@/service/datasets', () => ({
+  fetchDatasets: vi.fn(),
 }))
 
-const mockPostMarketplace = postMarketplace as jest.MockedFunction<typeof postMarketplace>
-const mockFetchAppList = fetchAppList as jest.MockedFunction<typeof fetchAppList>
-const mockFetchDatasets = fetchDatasets as jest.MockedFunction<typeof fetchDatasets>
+const mockPostMarketplace = postMarketplace as MockedFunction<typeof postMarketplace>
+const mockFetchAppList = fetchAppList as MockedFunction<typeof fetchAppList>
+const mockFetchDatasets = fetchDatasets as MockedFunction<typeof fetchDatasets>
 
 describe('GotoAnything Search Error Handling', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Suppress console.warn for clean test output
-    jest.spyOn(console, 'warn').mockImplementation(() => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {
       // Suppress console.warn for clean test output
     })
   })
 
   afterEach(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   describe('@plugin search error handling', () => {

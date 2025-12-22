@@ -8,7 +8,7 @@ import { LanguagesSupported } from '@/i18n-config/language'
 import type { AnnotationItemBasic } from '../type'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
 
-jest.mock('@headlessui/react', () => {
+vi.mock('@headlessui/react', () => {
   type PopoverContextValue = { open: boolean; setOpen: (open: boolean) => void }
   type MenuContextValue = { open: boolean; setOpen: (open: boolean) => void }
   const PopoverContext = React.createContext<PopoverContextValue | null>(null)
@@ -123,7 +123,7 @@ jest.mock('@headlessui/react', () => {
 })
 
 let lastCSVDownloaderProps: Record<string, unknown> | undefined
-const mockCSVDownloader = jest.fn(({ children, ...props }) => {
+const mockCSVDownloader = vi.fn(({ children, ...props }) => {
   lastCSVDownloaderProps = props
   return (
     <div data-testid="csv-downloader">
@@ -132,19 +132,19 @@ const mockCSVDownloader = jest.fn(({ children, ...props }) => {
   )
 })
 
-jest.mock('react-papaparse', () => ({
+vi.mock('react-papaparse', () => ({
   useCSVDownloader: () => ({
     CSVDownloader: (props: any) => mockCSVDownloader(props),
     Type: { Link: 'link' },
   }),
 }))
 
-jest.mock('@/service/annotation', () => ({
-  fetchExportAnnotationList: jest.fn(),
-  clearAllAnnotations: jest.fn(),
+vi.mock('@/service/annotation', () => ({
+  fetchExportAnnotationList: vi.fn(),
+  clearAllAnnotations: vi.fn(),
 }))
 
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: {
       usage: { annotatedResponse: 0 },
@@ -154,7 +154,7 @@ jest.mock('@/context/provider-context', () => ({
   }),
 }))
 
-jest.mock('@/app/components/billing/annotation-full', () => ({
+vi.mock('@/app/components/billing/annotation-full', () => ({
   __esModule: true,
   default: () => <div data-testid="annotation-full" />,
 }))
@@ -167,8 +167,8 @@ const renderComponent = (
 ) => {
   const defaultProps: HeaderOptionsProps = {
     appId: 'test-app-id',
-    onAdd: jest.fn(),
-    onAdded: jest.fn(),
+    onAdd: vi.fn(),
+    onAdded: vi.fn(),
     controlUpdateList: 0,
     ...props,
   }
@@ -178,7 +178,7 @@ const renderComponent = (
       value={{
         locale,
         i18n: {},
-        setLocaleOnClient: jest.fn(),
+        setLocaleOnClient: vi.fn(),
       }}
     >
       <HeaderOptions {...defaultProps} />
@@ -230,13 +230,13 @@ const mockAnnotations: AnnotationItemBasic[] = [
   },
 ]
 
-const mockedFetchAnnotations = jest.mocked(fetchExportAnnotationList)
-const mockedClearAllAnnotations = jest.mocked(clearAllAnnotations)
+const mockedFetchAnnotations = vi.mocked(fetchExportAnnotationList)
+const mockedClearAllAnnotations = vi.mocked(clearAllAnnotations)
 
 describe('HeaderOptions', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    jest.useRealTimers()
+    vi.clearAllMocks()
+    vi.useRealTimers()
     mockCSVDownloader.mockClear()
     lastCSVDownloaderProps = undefined
     mockedFetchAnnotations.mockResolvedValue({ data: [] })
@@ -290,7 +290,7 @@ describe('HeaderOptions', () => {
   it('should open the add annotation modal and forward the onAdd callback', async () => {
     mockedFetchAnnotations.mockResolvedValue({ data: mockAnnotations })
     const user = userEvent.setup()
-    const onAdd = jest.fn().mockResolvedValue(undefined)
+    const onAdd = vi.fn().mockResolvedValue(undefined)
     renderComponent({ onAdd })
 
     await waitFor(() => expect(mockedFetchAnnotations).toHaveBeenCalled())
@@ -317,7 +317,7 @@ describe('HeaderOptions', () => {
 
   it('should allow bulk import through the batch modal', async () => {
     const user = userEvent.setup()
-    const onAdded = jest.fn()
+    const onAdded = vi.fn()
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
@@ -335,18 +335,20 @@ describe('HeaderOptions', () => {
     const user = userEvent.setup()
     const originalCreateElement = document.createElement.bind(document)
     const anchor = originalCreateElement('a') as HTMLAnchorElement
-    const clickSpy = jest.spyOn(anchor, 'click').mockImplementation(jest.fn())
-    const createElementSpy = jest
-      .spyOn(document, 'createElement')
+    const clickSpy = vi.spyOn(anchor, 'click').mockImplementation(vi.fn())
+    const createElementSpy = vi.spyOn(document, 'createElement')
       .mockImplementation((tagName: Parameters<Document['createElement']>[0]) => {
         if (tagName === 'a')
           return anchor
         return originalCreateElement(tagName)
       })
-    const objectURLSpy = jest
-      .spyOn(URL, 'createObjectURL')
-      .mockReturnValue('blob://mock-url')
-    const revokeSpy = jest.spyOn(URL, 'revokeObjectURL').mockImplementation(jest.fn())
+    let capturedBlob: Blob | null = null
+    const objectURLSpy = vi.spyOn(URL, 'createObjectURL')
+      .mockImplementation((blob) => {
+        capturedBlob = blob as Blob
+        return 'blob://mock-url'
+      })
+    const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(vi.fn())
 
     renderComponent({}, LanguagesSupported[1] as string)
 
@@ -362,8 +364,24 @@ describe('HeaderOptions', () => {
     expect(clickSpy).toHaveBeenCalled()
     expect(revokeSpy).toHaveBeenCalledWith('blob://mock-url')
 
-    const blobArg = objectURLSpy.mock.calls[0][0] as Blob
-    await expect(blobArg.text()).resolves.toContain('"Question 1"')
+    // Verify the blob was created with correct content
+    expect(capturedBlob).toBeInstanceOf(Blob)
+    expect(capturedBlob!.type).toBe('application/jsonl')
+
+    const blobContent = await new Promise<string>((resolve) => {
+      const reader = new FileReader()
+      reader.onload = () => resolve(reader.result as string)
+      reader.readAsText(capturedBlob!)
+    })
+    const lines = blobContent.trim().split('\n')
+    expect(lines).toHaveLength(1)
+    expect(JSON.parse(lines[0])).toEqual({
+      messages: [
+        { role: 'system', content: '' },
+        { role: 'user', content: 'Question 1' },
+        { role: 'assistant', content: 'Answer 1' },
+      ],
+    })
 
     clickSpy.mockRestore()
     createElementSpy.mockRestore()
@@ -374,7 +392,7 @@ describe('HeaderOptions', () => {
   it('should clear all annotations when confirmation succeeds', async () => {
     mockedClearAllAnnotations.mockResolvedValue(undefined)
     const user = userEvent.setup()
-    const onAdded = jest.fn()
+    const onAdded = vi.fn()
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
@@ -391,10 +409,10 @@ describe('HeaderOptions', () => {
   })
 
   it('should handle clear all failures gracefully', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(jest.fn())
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn())
     mockedClearAllAnnotations.mockRejectedValue(new Error('network'))
     const user = userEvent.setup()
-    const onAdded = jest.fn()
+    const onAdded = vi.fn()
     renderComponent({ onAdded })
 
     await openOperationsPopover(user)
@@ -422,13 +440,13 @@ describe('HeaderOptions', () => {
         value={{
           locale: LanguagesSupported[0] as string,
           i18n: {},
-          setLocaleOnClient: jest.fn(),
+          setLocaleOnClient: vi.fn(),
         }}
       >
         <HeaderOptions
           appId="test-app-id"
-          onAdd={jest.fn()}
-          onAdded={jest.fn()}
+          onAdd={vi.fn()}
+          onAdded={vi.fn()}
           controlUpdateList={1}
         />
       </I18NContext.Provider>,

@@ -1,7 +1,19 @@
 import React from 'react'
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '.'
+
+const useFloatingMock = vi.fn()
+
+vi.mock('@floating-ui/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@floating-ui/react')>()
+  return {
+    ...actual,
+    useFloating: (...args: Parameters<typeof actual.useFloating>) => {
+      useFloatingMock(...args)
+      return actual.useFloating(...args)
+    },
+  }
+})
 
 afterEach(cleanup)
 
@@ -10,7 +22,7 @@ describe('PortalToFollowElem', () => {
     test('should throw error when using context outside provider', () => {
       // Suppress console.error for this test
       const originalError = console.error
-      console.error = jest.fn()
+      console.error = vi.fn()
 
       expect(() => {
         render(
@@ -81,7 +93,7 @@ describe('PortalToFollowElem', () => {
 
   describe('Controlled behavior', () => {
     test('should call onOpenChange when interaction happens', () => {
-      const handleOpenChange = jest.fn()
+      const handleOpenChange = vi.fn()
 
       const { getByText } = render(
         <PortalToFollowElem onOpenChange={handleOpenChange} >
@@ -100,9 +112,6 @@ describe('PortalToFollowElem', () => {
 
   describe('Configuration options', () => {
     test('should accept placement prop', () => {
-      // Since we can't easily test actual positioning, we'll check if the prop is passed correctly
-      const useFloatingMock = jest.spyOn(require('@floating-ui/react'), 'useFloating')
-
       render(
         <PortalToFollowElem placement='top-start' >
           <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>

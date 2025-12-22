@@ -7,8 +7,8 @@ import type { ProviderContextState } from '@/context/provider-context'
 import { baseProviderContextValue } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 
-const appsFullRenderSpy = jest.fn()
-jest.mock('@/app/components/billing/apps-full-in-dialog', () => ({
+const appsFullRenderSpy = vi.fn()
+vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   __esModule: true,
   default: ({ loc }: { loc: string }) => {
     appsFullRenderSpy(loc)
@@ -16,9 +16,9 @@ jest.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   },
 }))
 
-const useProviderContextMock = jest.fn<ProviderContextState, []>()
-jest.mock('@/context/provider-context', () => {
-  const actual = jest.requireActual('@/context/provider-context')
+const useProviderContextMock = vi.fn<() => ProviderContextState>()
+vi.mock('@/context/provider-context', async () => {
+  const actual = await vi.importActual('@/context/provider-context')
   return {
     ...actual,
     useProviderContext: () => useProviderContextMock(),
@@ -26,8 +26,8 @@ jest.mock('@/context/provider-context', () => {
 })
 
 const renderComponent = (overrides: Partial<React.ComponentProps<typeof DuplicateAppModal>> = {}) => {
-  const onConfirm = jest.fn().mockResolvedValue(undefined)
-  const onHide = jest.fn()
+  const onConfirm = vi.fn().mockResolvedValue(undefined)
+  const onHide = vi.fn()
   const props: React.ComponentProps<typeof DuplicateAppModal> = {
     appName: 'My App',
     icon_type: 'emoji',
@@ -69,7 +69,7 @@ const setupProviderContext = (overrides: Partial<ProviderContextState> = {}) => 
 
 describe('DuplicateAppModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     setupProviderContext()
   })
 
@@ -130,7 +130,7 @@ describe('DuplicateAppModal', () => {
 
     it('should show error toast when name is empty', async () => {
       const user = userEvent.setup()
-      const toastSpy = jest.spyOn(Toast, 'notify')
+      const toastSpy = vi.spyOn(Toast, 'notify')
       // Arrange
       const { onConfirm, onHide } = renderComponent()
 

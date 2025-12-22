@@ -128,7 +128,7 @@ api/migrations/ @snakevash @laipz8200 @MRZHUH
 api/configs/middleware/vdb/* @JohnJyong
 
 # Frontend
-web/ @iamjoel
+/web/ @iamjoel
 
 # Frontend - Web Tests
 .github/workflows/web-tests.yml @iamjoel

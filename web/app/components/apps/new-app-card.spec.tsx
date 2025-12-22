@@ -2,8 +2,8 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 
 // Mock next/navigation
-const mockReplace = jest.fn()
-jest.mock('next/navigation', () => ({
+const mockReplace = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
@@ -11,54 +11,56 @@ jest.mock('next/navigation', () => ({
 }))
 
 // Mock provider context
-const mockOnPlanInfoChanged = jest.fn()
-jest.mock('@/context/provider-context', () => ({
+const mockOnPlanInfoChanged = vi.fn()
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     onPlanInfoChanged: mockOnPlanInfoChanged,
   }),
 }))
 
 // Mock next/dynamic to immediately resolve components
-jest.mock('next/dynamic', () => {
+vi.mock('next/dynamic', () => {
   const React = require('react')
-  return (importFn: () => Promise<any>) => {
-    const fnString = importFn.toString()
+  return {
+    default: (importFn: () => Promise<any>) => {
+      const fnString = importFn.toString()
 
-    if (fnString.includes('create-app-modal') && !fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: any) {
-        if (!show) return null
-        return React.createElement('div', { 'data-testid': 'create-app-modal' },
-          React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-create-modal' }, 'Close'),
-          React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-create-modal' }, 'Success'),
-          React.createElement('button', { 'onClick': onCreateFromTemplate, 'data-testid': 'to-template-modal' }, 'To Template'),
-        )
+      if (fnString.includes('create-app-modal') && !fnString.includes('create-from-dsl-modal')) {
+        return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: any) {
+          if (!show) return null
+          return React.createElement('div', { 'data-testid': 'create-app-modal' },
+            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-create-modal' }, 'Close'),
+            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-create-modal' }, 'Success'),
+            React.createElement('button', { 'onClick': onCreateFromTemplate, 'data-testid': 'to-template-modal' }, 'To Template'),
+          )
+        }
       }
-    }
-    if (fnString.includes('create-app-dialog')) {
-      return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: any) {
-        if (!show) return null
-        return React.createElement('div', { 'data-testid': 'create-template-dialog' },
-          React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-template-dialog' }, 'Close'),
-          React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-template-dialog' }, 'Success'),
-          React.createElement('button', { 'onClick': onCreateFromBlank, 'data-testid': 'to-blank-modal' }, 'To Blank'),
-        )
+      if (fnString.includes('create-app-dialog')) {
+        return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: any) {
+          if (!show) return null
+          return React.createElement('div', { 'data-testid': 'create-template-dialog' },
+            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-template-dialog' }, 'Close'),
+            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-template-dialog' }, 'Success'),
+            React.createElement('button', { 'onClick': onCreateFromBlank, 'data-testid': 'to-blank-modal' }, 'To Blank'),
+          )
+        }
       }
-    }
-    if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
-        if (!show) return null
-        return React.createElement('div', { 'data-testid': 'create-dsl-modal' },
-          React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'),
-          React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'),
-        )
+      if (fnString.includes('create-from-dsl-modal')) {
+        return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
+          if (!show) return null
+          return React.createElement('div', { 'data-testid': 'create-dsl-modal' },
+            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'),
+            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'),
+          )
+        }
       }
-    }
-    return () => null
+      return () => null
+    },
   }
 })
 
 // Mock CreateFromDSLModalTab enum
-jest.mock('@/app/components/app/create-from-dsl-modal', () => ({
+vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
   CreateFromDSLModalTab: {
     FROM_URL: 'from-url',
   },
@@ -71,7 +73,7 @@ describe('CreateAppCard', () => {
   const defaultRef = { current: null } as React.RefObject<HTMLDivElement | null>
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -135,7 +137,7 @@ describe('CreateAppCard', () => {
     })
 
     it('should call onSuccess and onPlanInfoChanged on create app success', () => {
-      const mockOnSuccess = jest.fn()
+      const mockOnSuccess = vi.fn()
       render(<CreateAppCard ref={defaultRef} onSuccess={mockOnSuccess} />)
 
       fireEvent.click(screen.getByText('app.newApp.startFromBlank'))
@@ -178,7 +180,7 @@ describe('CreateAppCard', () => {
     })
 
     it('should call onSuccess and onPlanInfoChanged on template success', () => {
-      const mockOnSuccess = jest.fn()
+      const mockOnSuccess = vi.fn()
       render(<CreateAppCard ref={defaultRef} onSuccess={mockOnSuccess} />)
 
       fireEvent.click(screen.getByText('app.newApp.startFromTemplate'))
@@ -221,7 +223,7 @@ describe('CreateAppCard', () => {
     })
 
     it('should call onSuccess and onPlanInfoChanged on DSL import success', () => {
-      const mockOnSuccess = jest.fn()
+      const mockOnSuccess = vi.fn()
       render(<CreateAppCard ref={defaultRef} onSuccess={mockOnSuccess} />)
 
       fireEvent.click(screen.getByText('app.importDSL'))

@@ -23,7 +23,7 @@ const createQAProps = (overrides?: Partial<IPreviewItemProps>): IPreviewItemProp
 
 describe('PreviewItem', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -346,7 +346,7 @@ describe('PreviewItem', () => {
     it('should not re-render when props remain the same', () => {
       // Arrange
       const props = createDefaultProps()
-      const renderSpy = jest.fn()
+      const renderSpy = vi.fn()
 
       // Create a wrapper component to track renders
       const TrackedPreviewItem: React.FC<IPreviewItemProps> = (trackedProps) => {
