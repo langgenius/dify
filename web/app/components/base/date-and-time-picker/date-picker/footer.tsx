@@ -2,7 +2,7 @@ import React, { type FC } from 'react'
 import Button from '../../button'
 import { type DatePickerFooterProps, ViewType } from '../types'
 import { RiTimeLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 
 const Footer: FC<DatePickerFooterProps> = ({

@@ -6,7 +6,7 @@ import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/s
 import Badge from '../badge/index'
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -101,7 +101,7 @@ const Select: FC<ISelectProps> = ({
           onSelect(value)
         }
       }}>
-      <div className={classNames('relative')}>
+      <div className={cn('relative')}>
         <div className='group text-text-secondary'>
           {allowSearch
             ? <ComboboxInput
@@ -117,7 +117,7 @@ const Select: FC<ISelectProps> = ({
                 if (!disabled)
                   setOpen(!open)
               }
-            } className={classNames(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}>
+            } className={cn(`flex h-9 w-full items-center rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6`, optionClassName)}>
               <div className='w-0 grow truncate text-left' title={selectedItem?.name}>{selectedItem?.name}</div>
             </ComboboxButton>}
           <ComboboxButton className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none" onClick={
@@ -137,11 +137,9 @@ const Select: FC<ISelectProps> = ({
                 key={item.value}
                 value={item}
                 className={({ active }: { active: boolean }) =>
-                  classNames(
-                    'relative cursor-default select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
+                  cn('relative cursor-default select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
                     active ? 'bg-state-base-hover' : '',
-                    optionClassName,
-                  )
+                    optionClassName)
                 }
               >
                 {({ /* active, */ selected }) => (
@@ -150,12 +148,10 @@ const Select: FC<ISelectProps> = ({
                       ? renderOption({ item, selected })
                       : (
                         <>
-                          <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                          <span className={cn('block', selected && 'font-normal')}>{item.name}</span>
                           {selected && (
                             <span
-                              className={classNames(
-                                'absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary',
-                              )}
+                              className={cn('absolute inset-y-0 right-0 flex items-center pr-4 text-text-secondary')}
                             >
                               <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                             </span>
@@ -221,13 +217,13 @@ const SimpleSelect: FC<ISelectProps> = ({
       }}
     >
       {({ open }) => (
-        <div className={classNames('group/simple-select relative h-9', wrapperClassName)}>
+        <div className={cn('group/simple-select relative h-9', wrapperClassName)}>
           {renderTrigger && <ListboxButton className='w-full'>{renderTrigger(selectedItem, open)}</ListboxButton>}
           {!renderTrigger && (
             <ListboxButton onClick={() => {
               onOpenChange?.(open)
-            }} className={classNames(`flex h-full w-full items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
-              <span className={classNames('system-sm-regular block truncate text-left text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
+            }} className={cn(`flex h-full w-full items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
+              <span className={cn('system-sm-regular block truncate text-left text-components-input-text-filled', !selectedItem?.name && 'text-components-input-text-placeholder')}>{selectedItem?.name ?? localPlaceholder}</span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
                 {isLoading ? <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />
                   : (selectedItem && !notClearable)
@@ -260,7 +256,7 @@ const SimpleSelect: FC<ISelectProps> = ({
           )}
 
           {(!disabled) && (
-            <ListboxOptions className={classNames('absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm', optionWrapClassName)}>
+            <ListboxOptions className={cn('absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm', optionWrapClassName)}>
               {items.map((item: Item) =>
                 item.isGroup ? (
                   <div
@@ -273,10 +269,8 @@ const SimpleSelect: FC<ISelectProps> = ({
                   <ListboxOption
                     key={item.value}
                     className={
-                      classNames(
-                        'relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                        optionClassName,
-                      )
+                      cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
+                        optionClassName)
                     }
                     value={item}
                     disabled={item.disabled || disabled}
@@ -286,12 +280,10 @@ const SimpleSelect: FC<ISelectProps> = ({
                         {renderOption
                           ? renderOption({ item, selected })
                           : (<>
-                            <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                            <span className={cn('block', selected && 'font-normal')}>{item.name}</span>
                             {selected && !hideChecked && (
                               <span
-                                className={classNames(
-                                  'absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent',
-                                )}
+                                className={cn('absolute inset-y-0 right-0 flex items-center pr-2 text-text-accent')}
                               >
                                 <RiCheckLine className="h-4 w-4" aria-hidden="true" />
                               </span>
@@ -356,9 +348,9 @@ const PortalSelect: FC<PortalSelectProps> = ({
           ? renderTrigger(selectedItem)
           : (
             <div
-              className={classNames(`
-            group flex h-9 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-sm hover:bg-state-base-hover-alt ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}
-          `, triggerClassName, triggerClassNameFn?.(open))}
+              className={cn(`
+                          group flex h-9 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-sm hover:bg-state-base-hover-alt ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'}
+                        `, triggerClassName, triggerClassNameFn?.(open))}
               title={selectedItem?.name}
             >
               <span
@@ -377,7 +369,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
         <div
-          className={classNames('max-h-60 overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
+          className={cn('max-h-60 overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div

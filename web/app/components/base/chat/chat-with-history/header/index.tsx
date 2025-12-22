@@ -16,7 +16,7 @@ import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/input
 import Confirm from '@/app/components/base/confirm'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import type { ConversationItem } from '@/models/share'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const Header = () => {
   const {

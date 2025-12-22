@@ -7,13 +7,14 @@
 
 import React from 'react'
 import { cleanup, render } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import BlockInput from '../app/components/base/block-input'
 import SupportVarInput from '../app/components/workflow/nodes/_base/components/support-var-input'
 
 // Mock styles
-jest.mock('../app/components/app/configuration/base/var-highlight/style.module.css', () => ({
-  item: 'mock-item-class',
+vi.mock('../app/components/app/configuration/base/var-highlight/style.module.css', () => ({
+  default: {
+    item: 'mock-item-class',
+  },
 }))
 
 describe('XSS Prevention - Block Input and Support Var Input Security', () => {

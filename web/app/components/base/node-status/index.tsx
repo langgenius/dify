@@ -1,6 +1,6 @@
 'use client'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiErrorWarningFill } from '@remixicon/react'
 import { type VariantProps, cva } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
@@ -51,17 +51,13 @@ const NodeStatus = ({
 
   return (
     <div
-      className={classNames(
-        nodeStatusVariants({ status, className }),
-      )}
+      className={cn(nodeStatusVariants({ status, className }))}
       style={styleCss}
       {...props}
     >
       <Icon
-        className={classNames(
-          'h-3.5 w-3.5 shrink-0',
-          iconClassName,
-        )}
+        className={cn('h-3.5 w-3.5 shrink-0',
+          iconClassName)}
       />
       <span>{message ?? defaultMessage}</span>
       {children}

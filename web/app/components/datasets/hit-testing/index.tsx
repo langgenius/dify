@@ -9,7 +9,7 @@ import s from './style.module.css'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import ResultItem from './components/result-item'
 import ResultItemExternal from './components/result-item-external'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type {
   ExternalKnowledgeBaseHitTesting,
   ExternalKnowledgeBaseHitTestingResponse,

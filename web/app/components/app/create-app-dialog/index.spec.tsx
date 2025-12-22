@@ -2,8 +2,8 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import CreateAppTemplateDialog from './index'
 
 // Mock external dependencies (not base components)
-jest.mock('./app-list', () => {
-  return function MockAppList({
+vi.mock('./app-list', () => ({
+  default: function MockAppList({
     onCreateFromBlank,
     onSuccess,
   }: {
@@ -22,26 +22,31 @@ jest.mock('./app-list', () => {
         )}
       </div>
     )
-  }
+  },
+}))
+
+// Store captured callbacks from useKeyPress
+let capturedEscCallback: (() => void) | undefined
+const mockUseKeyPress = vi.fn((key: string, callback: () => void) => {
+  if (key === 'esc')
+    capturedEscCallback = callback
 })
 
-jest.mock('ahooks', () => ({
-  useKeyPress: jest.fn((key: string, callback: () => void) => {
-    // Mock implementation for testing
-    return jest.fn()
-  }),
+vi.mock('ahooks', () => ({
+  useKeyPress: (key: string, callback: () => void) => mockUseKeyPress(key, callback),
 }))
 
 describe('CreateAppTemplateDialog', () => {
   const defaultProps = {
     show: false,
-    onSuccess: jest.fn(),
-    onClose: jest.fn(),
-    onCreateFromBlank: jest.fn(),
+    onSuccess: vi.fn(),
+    onClose: vi.fn(),
+    onCreateFromBlank: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
+    capturedEscCallback = undefined
   })
 
   describe('Rendering', () => {
@@ -67,7 +72,7 @@ describe('CreateAppTemplateDialog', () => {
     })
 
     it('should not render create from blank button when onCreateFromBlank is not provided', () => {
-      const { onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
+      const { onCreateFromBlank: _onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
 
       render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)
 
@@ -99,7 +104,7 @@ describe('CreateAppTemplateDialog', () => {
 
   describe('User Interactions', () => {
     it('should handle close interactions', () => {
-      const mockOnClose = jest.fn()
+      const mockOnClose = vi.fn()
       render(<CreateAppTemplateDialog {...defaultProps} show={true} onClose={mockOnClose} />)
 
       // Test that the modal is rendered
@@ -112,8 +117,8 @@ describe('CreateAppTemplateDialog', () => {
     })
 
     it('should call both onSuccess and onClose when app list success is triggered', () => {
-      const mockOnSuccess = jest.fn()
-      const mockOnClose = jest.fn()
+      const mockOnSuccess = vi.fn()
+      const mockOnClose = vi.fn()
       render(<CreateAppTemplateDialog
         {...defaultProps}
         show={true}
@@ -128,7 +133,7 @@ describe('CreateAppTemplateDialog', () => {
     })
 
     it('should call onCreateFromBlank when create from blank is clicked', () => {
-      const mockOnCreateFromBlank = jest.fn()
+      const mockOnCreateFromBlank = vi.fn()
       render(<CreateAppTemplateDialog
         {...defaultProps}
         show={true}
@@ -143,52 +148,30 @@ describe('CreateAppTemplateDialog', () => {
 
   describe('useKeyPress Integration', () => {
     it('should set up ESC key listener when modal is shown', () => {
-      const { useKeyPress } = require('ahooks')
-
       render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
 
-      expect(useKeyPress).toHaveBeenCalledWith('esc', expect.any(Function))
+      expect(mockUseKeyPress).toHaveBeenCalledWith('esc', expect.any(Function))
     })
 
     it('should handle ESC key press to close modal', () => {
-      const { useKeyPress } = require('ahooks')
-      let capturedCallback: (() => void) | undefined
-
-      useKeyPress.mockImplementation((key: string, callback: () => void) => {
-        if (key === 'esc')
-          capturedCallback = callback
-
-        return jest.fn()
-      })
-
-      const mockOnClose = jest.fn()
+      const mockOnClose = vi.fn()
       render(<CreateAppTemplateDialog
         {...defaultProps}
         show={true}
         onClose={mockOnClose}
       />)
 
-      expect(capturedCallback).toBeDefined()
-      expect(typeof capturedCallback).toBe('function')
+      expect(capturedEscCallback).toBeDefined()
+      expect(typeof capturedEscCallback).toBe('function')
 
       // Simulate ESC key press
-      capturedCallback?.()
+      capturedEscCallback?.()
 
       expect(mockOnClose).toHaveBeenCalledTimes(1)
     })
 
     it('should not call onClose when ESC key is pressed and modal is not shown', () => {
-      const { useKeyPress } = require('ahooks')
-      let capturedCallback: (() => void) | undefined
-
-      useKeyPress.mockImplementation((key: string, callback: () => void) => {
-        if (key === 'esc')
-          capturedCallback = callback
-
-        return jest.fn()
-      })
-
-      const mockOnClose = jest.fn()
+      const mockOnClose = vi.fn()
       render(<CreateAppTemplateDialog
         {...defaultProps}
         show={false} // Modal not shown
@@ -196,10 +179,10 @@ describe('CreateAppTemplateDialog', () => {
       />)
 
       // The callback should still be created but not execute onClose
-      expect(capturedCallback).toBeDefined()
+      expect(capturedEscCallback).toBeDefined()
 
       // Simulate ESC key press
-      capturedCallback?.()
+      capturedEscCallback?.()
 
       // onClose should not be called because modal is not shown
       expect(mockOnClose).not.toHaveBeenCalled()
@@ -208,12 +191,10 @@ describe('CreateAppTemplateDialog', () => {
 
   describe('Callback Dependencies', () => {
     it('should create stable callback reference for ESC key handler', () => {
-      const { useKeyPress } = require('ahooks')
-
       render(<CreateAppTemplateDialog {...defaultProps} show={true} />)
 
       // Verify that useKeyPress was called with a function
-      const calls = useKeyPress.mock.calls
+      const calls = mockUseKeyPress.mock.calls
       expect(calls.length).toBeGreaterThan(0)
       expect(calls[0][0]).toBe('esc')
       expect(typeof calls[0][1]).toBe('function')
@@ -225,8 +206,8 @@ describe('CreateAppTemplateDialog', () => {
       expect(() => {
         render(<CreateAppTemplateDialog
           show={true}
-          onSuccess={jest.fn()}
-          onClose={jest.fn()}
+          onSuccess={vi.fn()}
+          onClose={vi.fn()}
           // onCreateFromBlank is undefined
         />)
       }).not.toThrow()
@@ -236,8 +217,8 @@ describe('CreateAppTemplateDialog', () => {
       expect(() => {
         render(<CreateAppTemplateDialog
           show={true}
-          onSuccess={jest.fn()}
-          onClose={jest.fn()}
+          onSuccess={vi.fn()}
+          onClose={vi.fn()}
           onCreateFromBlank={undefined}
         />)
       }).not.toThrow()
@@ -259,7 +240,7 @@ describe('CreateAppTemplateDialog', () => {
     })
 
     it('should handle missing optional onCreateFromBlank prop', () => {
-      const { onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
+      const { onCreateFromBlank: _onCreateFromBlank, ...propsWithoutOnCreate } = defaultProps
 
       expect(() => {
         render(<CreateAppTemplateDialog {...propsWithoutOnCreate} show={true} />)
@@ -272,8 +253,8 @@ describe('CreateAppTemplateDialog', () => {
     it('should work with all required props only', () => {
       const requiredProps = {
         show: true,
-        onSuccess: jest.fn(),
-        onClose: jest.fn(),
+        onSuccess: vi.fn(),
+        onClose: vi.fn(),
       }
 
       expect(() => {

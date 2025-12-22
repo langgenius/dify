@@ -6,7 +6,7 @@ test('Input renders correctly as password type with no autocomplete', () => {
     <Input
       type="password"
       placeholder="API Key"
-      onChange={jest.fn()}
+      onChange={vi.fn()}
     />,
   )
   const input = getByPlaceholderText('API Key')

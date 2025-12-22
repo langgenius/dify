@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import type { FC } from 'react'
 import Link from 'next/link'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { RiAlertFill } from '@remixicon/react'
 import { Trans } from 'react-i18next'
 import { useMixedTranslation } from '../marketplace/hooks'

@@ -16,7 +16,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 
 type Props = {

@@ -1,6 +1,5 @@
 'use client'
-import { useCallback, useMemo, useRef, useState } from 'react'
-import { useMount } from 'ahooks'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import PermissionSelector from '../permission-selector'
 import IndexMethod from '../index-method'
@@ -23,7 +22,6 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 import AppIcon from '@/app/components/base/app-icon'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
@@ -34,6 +32,7 @@ import Toast from '@/app/components/base/toast'
 import { RiAlertFill } from '@remixicon/react'
 import { useDocLink } from '@/context/i18n'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { useMembers } from '@/service/use-common'
 import { checkShowMultiModalTip } from '../utils'
 
 const rowClass = 'flex gap-x-1'
@@ -79,15 +78,8 @@ const Form = () => {
   )
   const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: membersData } = useMembers()
   const previousAppIcon = useRef(DEFAULT_APP_ICON)
-
-  const getMembers = async () => {
-    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-    if (!accounts)
-      setMemberList([])
-    else
-      setMemberList(accounts)
-  }
 
   const handleOpenAppIconPicker = useCallback(() => {
     setShowAppIconPicker(true)
@@ -119,9 +111,12 @@ const Form = () => {
       setScoreThresholdEnabled(data.score_threshold_enabled)
   }, [])
 
-  useMount(() => {
-    getMembers()
-  })
+  useEffect(() => {
+    if (!membersData?.accounts)
+      setMemberList([])
+    else
+      setMemberList(membersData.accounts)
+  }, [membersData])
 
   const invalidDatasetList = useInvalidDatasetList()
   const handleSave = async () => {

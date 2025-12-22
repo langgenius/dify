@@ -2,7 +2,7 @@ import Button from '@/app/components/base/button'
 import { RiInstallLine, RiLoader2Line } from '@remixicon/react'
 import type { ComponentProps, MouseEventHandler } from 'react'
 import { useState } from 'react'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { TaskStatus } from '@/app/components/plugins/types'
@@ -96,7 +96,7 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
     disabled={isLoading}
     {...rest}
     onClick={handleInstall}
-    className={classNames('flex items-center', className)}
+    className={cn('flex items-center', className)}
   >
     {!isLoading ? t('workflow.nodes.agent.pluginInstaller.install') : t('workflow.nodes.agent.pluginInstaller.installing')}
     {!isLoading ? <RiInstallLine className='ml-1 size-3.5' /> : <RiLoader2Line className='ml-1 size-3.5 animate-spin' />}

@@ -101,7 +101,7 @@ describe('Button', () => {
 
   describe('Button events', () => {
     test('onClick should been call after clicked', async () => {
-      const onClick = jest.fn()
+      const onClick = vi.fn()
       const { getByRole } = render(<Button onClick={onClick}>Click me</Button>)
       fireEvent.click(getByRole('button'))
       expect(onClick).toHaveBeenCalled()

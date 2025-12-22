@@ -28,7 +28,7 @@ import {
 } from '@/app/components/base/icons/src/vender/workflow'
 import { Folder as FolderLine } from '@/app/components/base/icons/src/vender/line/files'
 import AppIcon from '@/app/components/base/app-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type BlockIconProps = {
   type: BlockEnum

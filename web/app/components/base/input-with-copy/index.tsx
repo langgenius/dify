@@ -7,7 +7,7 @@ import copy from 'copy-to-clipboard'
 import type { InputProps } from '../input'
 import Tooltip from '../tooltip'
 import ActionButton from '../action-button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type InputWithCopyProps = {
   showCopyButton?: boolean

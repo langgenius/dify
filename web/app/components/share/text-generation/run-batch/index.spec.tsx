@@ -1,13 +1,14 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import RunBatch from './index'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
-jest.mock('@/hooks/use-breakpoints', () => {
-  const actual = jest.requireActual('@/hooks/use-breakpoints')
+vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
   return {
     __esModule: true,
-    default: jest.fn(),
+    default: vi.fn(),
     MediaType: actual.MediaType,
   }
 })
@@ -15,17 +16,21 @@ jest.mock('@/hooks/use-breakpoints', () => {
 let latestOnParsed: ((data: string[][]) => void) | undefined
 let receivedCSVDownloadProps: Record<string, unknown> | undefined
 
-jest.mock('./csv-reader', () => (props: { onParsed: (data: string[][]) => void }) => {
-  latestOnParsed = props.onParsed
-  return <div data-testid="csv-reader" />
-})
+vi.mock('./csv-reader', () => ({
+  default: (props: { onParsed: (data: string[][]) => void }) => {
+    latestOnParsed = props.onParsed
+    return <div data-testid="csv-reader" />
+  },
+}))
 
-jest.mock('./csv-download', () => (props: { vars: { name: string }[] }) => {
-  receivedCSVDownloadProps = props
-  return <div data-testid="csv-download" />
-})
+vi.mock('./csv-download', () => ({
+  default: (props: { vars: { name: string }[] }) => {
+    receivedCSVDownloadProps = props
+    return <div data-testid="csv-download" />
+  },
+}))
 
-const mockUseBreakpoints = useBreakpoints as jest.Mock
+const mockUseBreakpoints = useBreakpoints as Mock
 
 describe('RunBatch', () => {
   const vars = [{ name: 'prompt' }]
@@ -34,11 +39,11 @@ describe('RunBatch', () => {
     mockUseBreakpoints.mockReturnValue(MediaType.pc)
     latestOnParsed = undefined
     receivedCSVDownloadProps = undefined
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   test('should enable run button after CSV parsed and send data', async () => {
-    const onSend = jest.fn()
+    const onSend = vi.fn()
     render(
       <RunBatch
         vars={vars}
@@ -63,7 +68,7 @@ describe('RunBatch', () => {
 
   test('should keep button disabled and show spinner when results still running on mobile', async () => {
     mockUseBreakpoints.mockReturnValue(MediaType.mobile)
-    const onSend = jest.fn()
+    const onSend = vi.fn()
     const { container } = render(
       <RunBatch
         vars={vars}

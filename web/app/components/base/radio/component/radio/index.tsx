@@ -3,7 +3,7 @@ import { useId } from 'react'
 import { useContext } from 'use-context-selector'
 import RadioGroupContext from '../../context'
 import s from '../../style.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type IRadioProps = {
   className?: string

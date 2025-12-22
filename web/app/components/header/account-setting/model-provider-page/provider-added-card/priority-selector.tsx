@@ -8,7 +8,7 @@ import {
 } from '@remixicon/react'
 import { PreferredProviderTypeEnum } from '../declarations'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type SelectorProps = {
   value?: string

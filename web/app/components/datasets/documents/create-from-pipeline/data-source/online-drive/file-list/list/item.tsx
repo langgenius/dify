@@ -6,7 +6,7 @@ import FileIcon from './file-icon'
 import { formatFileSize } from '@/utils/format'
 import Tooltip from '@/app/components/base/tooltip'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { Placement } from '@floating-ui/react'
 
 type ItemProps = {

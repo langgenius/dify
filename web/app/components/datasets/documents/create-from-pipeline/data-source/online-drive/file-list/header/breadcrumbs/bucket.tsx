@@ -2,7 +2,7 @@ import React, { useCallback } from 'react'
 import { BucketsGray } from '@/app/components/base/icons/src/public/knowledge/online-drive'
 import Tooltip from '@/app/components/base/tooltip'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type BucketProps = {
   bucketName: string
