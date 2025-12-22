@@ -63,7 +63,7 @@ describe('ActionButton', () => {
     const button = screen.getByRole('button', { name: 'Custom Style' })
     expect(button).toHaveStyle({
       color: 'rgb(255, 0, 0)',
-      // backgroundColor: 'blue',
+      backgroundColor: 'rgb(0, 0, 255)',
     })
   })
 
