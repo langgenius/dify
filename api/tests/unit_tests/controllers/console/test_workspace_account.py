@@ -19,6 +19,7 @@ from services.account_service import AccountService
 def app():
     app = Flask(__name__)
     app.config["TESTING"] = True
+    app.config["RESTX_MASK_HEADER"] = "X-Fields"
     app.login_manager = SimpleNamespace(_load_user=lambda: None)
     return app
 
@@ -27,12 +28,19 @@ def _mock_wraps_db(mock_db):
     mock_db.session.query.return_value.first.return_value = MagicMock()
 
 
-def _build_account(email: str, account_id: str = "acc") -> Account:
+def _build_account(email: str, account_id: str = "acc", tenant: object | None = None) -> Account:
+    tenant_obj = tenant if tenant is not None else SimpleNamespace(id="tenant-id")
     account = Account(name=account_id, email=email)
     account.email = email
     account.id = account_id
     account.status = "active"
+    account._current_tenant = tenant_obj
     return account
+
+
+def _set_logged_in_user(account: Account):
+    g._login_user = account
+    g._current_tenant = account.current_tenant
 
 
 class TestChangeEmailSend:
@@ -68,7 +76,7 @@ class TestChangeEmailSend:
             method="POST",
             json={"email": "New@Example.com", "language": "en-US", "phase": "new_email", "token": "token-123"},
         ):
-            g._login_user = SimpleNamespace(is_authenticated=True, id="tester")
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
             response = ChangeEmailSendEmailApi().post()
 
         assert response == {"result": "success", "data": "token-abc"}
@@ -122,7 +130,7 @@ class TestChangeEmailValidity:
             method="POST",
             json={"email": "User@Example.com", "code": "1234", "token": "token-123"},
         ):
-            g._login_user = SimpleNamespace(is_authenticated=True, id="tester")
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
             response = ChangeEmailCheckApi().post()
 
         assert response == {"is_valid": True, "email": "user@example.com", "token": "new-token"}
@@ -168,22 +176,23 @@ class TestChangeEmailReset:
         mock_is_freeze.return_value = False
         mock_check_unique.return_value = True
         mock_get_data.return_value = {"old_email": "OLD@example.com"}
-        mock_update_account.return_value = MagicMock()
+        mock_account_after_update = _build_account("new@example.com", "acc3-updated")
+        mock_update_account.return_value = mock_account_after_update
 
         with app.test_request_context(
             "/account/change-email/reset",
             method="POST",
             json={"new_email": "New@Example.com", "token": "token-123"},
         ):
-            g._login_user = SimpleNamespace(is_authenticated=True, id="tester")
+            _set_logged_in_user(_build_account("tester@example.com", "tester"))
             ChangeEmailResetApi().post()
 
-        mock_is_freeze.assert_called_once_with("new@example.com")
-        mock_check_unique.assert_called_once_with("new@example.com")
-        mock_revoke_token.assert_called_once_with("token-123")
-        mock_update_account.assert_called_once_with(current_user, email="new@example.com")
-        mock_send_notify.assert_called_once_with(email="new@example.com")
-        mock_csrf.assert_called_once()
+            mock_is_freeze.assert_called_once_with("new@example.com")
+            mock_check_unique.assert_called_once_with("new@example.com")
+            mock_revoke_token.assert_called_once_with("token-123")
+            mock_update_account.assert_called_once_with(current_user, email="new@example.com")
+            mock_send_notify.assert_called_once_with(email="new@example.com")
+            mock_csrf.assert_called_once()
 
 
 class TestAccountDeletionFeedback:
@@ -199,7 +208,7 @@ class TestAccountDeletionFeedback:
             response = AccountDeleteUpdateFeedbackApi().post()
 
         assert response == {"result": "success"}
-        mock_update.assert_called_once_with("user@example.com", "test")
+        mock_update.assert_called_once_with("User@Example.com", "test")
 
 
 class TestCheckEmailUnique:

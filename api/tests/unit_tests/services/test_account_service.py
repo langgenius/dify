@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configs import dify_config
-from models.account import Account
+from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -1210,9 +1210,9 @@ class TestRegisterService:
             with patch("services.account_service.RegisterService.register") as mock_register:
                 mock_register.return_value = mock_new_account
                 with (
-                    patch("services.account_service.TenantService.check_member_permission"),
-                    patch("services.account_service.TenantService.create_tenant_member"),
-                    patch("services.account_service.TenantService.switch_tenant"),
+                    patch("services.account_service.TenantService.check_member_permission") as mock_check_permission,
+                    patch("services.account_service.TenantService.create_tenant_member") as mock_create_member,
+                    patch("services.account_service.TenantService.switch_tenant") as mock_switch_tenant,
                     patch("services.account_service.RegisterService.generate_invite_token") as mock_generate_token,
                 ):
                     mock_generate_token.return_value = "invite-token-abc"
@@ -1233,6 +1233,7 @@ class TestRegisterService:
                         is_setup=True,
                     )
                     mock_lookup.assert_called_once_with(mixed_email, session=mock_session)
+                    mock_check_permission.assert_called_once_with(mock_tenant, mock_inviter, None, "add")
                     mock_create_member.assert_called_once_with(mock_tenant, mock_new_account, "normal")
                     mock_switch_tenant.assert_called_once_with(mock_new_account, mock_tenant.id)
                     mock_generate_token.assert_called_once_with(mock_tenant, mock_new_account)

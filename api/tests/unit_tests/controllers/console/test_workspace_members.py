@@ -5,7 +5,7 @@ import pytest
 from flask import Flask, g
 
 from controllers.console.workspace.members import MemberInviteEmailApi
-from models.account import TenantAccountRole
+from models.account import Account, TenantAccountRole
 
 
 @pytest.fixture
@@ -63,16 +63,20 @@ class TestMemberInviteEmailApi:
                 method="POST",
                 json={"emails": ["User@Example.com"], "role": TenantAccountRole.EDITOR.value, "language": "en-US"},
             ):
-                g._login_user = SimpleNamespace(is_authenticated=True, id="tester")
+                account = Account(name="tester", email="tester@example.com")
+                account._current_tenant = tenant
+                g._login_user = account
+                g._current_tenant = tenant
                 response, status_code = MemberInviteEmailApi().post()
 
         assert status_code == 201
         assert response["invitation_results"][0]["email"] == "user@example.com"
-        mock_invite_member.assert_called_once_with(
-            tenant,
-            "User@Example.com",
-            "en-US",
-            role=TenantAccountRole.EDITOR,
-            inviter=inviter,
-        )
+
+        assert mock_invite_member.call_count == 1
+        call_args = mock_invite_member.call_args
+        assert call_args.kwargs["tenant"] == tenant
+        assert call_args.kwargs["email"] == "User@Example.com"
+        assert call_args.kwargs["language"] == "en-US"
+        assert call_args.kwargs["role"] == TenantAccountRole.EDITOR
+        assert call_args.kwargs["inviter"] == inviter
         mock_csrf.assert_called_once()
