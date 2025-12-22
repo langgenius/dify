@@ -4,7 +4,7 @@ import Footer from './footer'
 
 describe('Footer', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {

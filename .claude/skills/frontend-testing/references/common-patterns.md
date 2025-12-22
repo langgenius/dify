@@ -126,7 +126,7 @@ describe('Counter', () => {
 describe('ControlledInput', () => {
   it('should call onChange with new value', async () => {
     const user = userEvent.setup()
-    const handleChange = jest.fn()
+    const handleChange = vi.fn()
     
     render(<ControlledInput value="" onChange={handleChange} />)
     
@@ -136,7 +136,7 @@ describe('ControlledInput', () => {
   })
 
   it('should display controlled value', () => {
-    render(<ControlledInput value="controlled" onChange={jest.fn()} />)
+    render(<ControlledInput value="controlled" onChange={vi.fn()} />)
     
     expect(screen.getByRole('textbox')).toHaveValue('controlled')
   })
@@ -195,7 +195,7 @@ describe('ItemList', () => {
 
   it('should handle item selection', async () => {
     const user = userEvent.setup()
-    const onSelect = jest.fn()
+    const onSelect = vi.fn()
     
     render(<ItemList items={items} onSelect={onSelect} />)
     
@@ -217,20 +217,20 @@ describe('ItemList', () => {
 ```typescript
 describe('Modal', () => {
   it('should not render when closed', () => {
-    render(<Modal isOpen={false} onClose={jest.fn()} />)
+    render(<Modal isOpen={false} onClose={vi.fn()} />)
     
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('should render when open', () => {
-    render(<Modal isOpen={true} onClose={jest.fn()} />)
+    render(<Modal isOpen={true} onClose={vi.fn()} />)
     
     expect(screen.getByRole('dialog')).toBeInTheDocument()
   })
 
   it('should call onClose when clicking overlay', async () => {
     const user = userEvent.setup()
-    const handleClose = jest.fn()
+    const handleClose = vi.fn()
     
     render(<Modal isOpen={true} onClose={handleClose} />)
     
@@ -241,7 +241,7 @@ describe('Modal', () => {
 
   it('should call onClose when pressing Escape', async () => {
     const user = userEvent.setup()
-    const handleClose = jest.fn()
+    const handleClose = vi.fn()
     
     render(<Modal isOpen={true} onClose={handleClose} />)
     
@@ -254,7 +254,7 @@ describe('Modal', () => {
     const user = userEvent.setup()
     
     render(
-      <Modal isOpen={true} onClose={jest.fn()}>
+      <Modal isOpen={true} onClose={vi.fn()}>
         <button>First</button>
         <button>Second</button>
       </Modal>
@@ -279,7 +279,7 @@ describe('Modal', () => {
 describe('LoginForm', () => {
   it('should submit valid form', async () => {
     const user = userEvent.setup()
-    const onSubmit = jest.fn()
+    const onSubmit = vi.fn()
     
     render(<LoginForm onSubmit={onSubmit} />)
     
@@ -296,7 +296,7 @@ describe('LoginForm', () => {
   it('should show validation errors', async () => {
     const user = userEvent.setup()
     
-    render(<LoginForm onSubmit={jest.fn()} />)
+    render(<LoginForm onSubmit={vi.fn()} />)
     
     // Submit empty form
     await user.click(screen.getByRole('button', { name: /sign in/i }))
@@ -308,7 +308,7 @@ describe('LoginForm', () => {
   it('should validate email format', async () => {
     const user = userEvent.setup()
     
-    render(<LoginForm onSubmit={jest.fn()} />)
+    render(<LoginForm onSubmit={vi.fn()} />)
     
     await user.type(screen.getByLabelText(/email/i), 'invalid-email')
     await user.click(screen.getByRole('button', { name: /sign in/i }))
@@ -318,7 +318,7 @@ describe('LoginForm', () => {
 
   it('should disable submit button while submitting', async () => {
     const user = userEvent.setup()
-    const onSubmit = jest.fn(() => new Promise(resolve => setTimeout(resolve, 100)))
+    const onSubmit = vi.fn(() => new Promise(resolve => setTimeout(resolve, 100)))
     
     render(<LoginForm onSubmit={onSubmit} />)
     
@@ -407,7 +407,7 @@ it('test 1', () => {
 
 // Good - cleanup is automatic with RTL, but reset mocks
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 ```
 

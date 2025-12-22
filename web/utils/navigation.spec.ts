@@ -68,7 +68,7 @@ describe('navigation', () => {
      * Tests that the returned function properly navigates with preserved params
      */
     test('returns function that calls router.push with correct path', () => {
-      const mockRouter = { push: jest.fn() }
+      const mockRouter = { push: vi.fn() }
       const backNav = createBackNavigation(mockRouter, '/datasets/123/documents')
 
       backNav()
@@ -77,7 +77,7 @@ describe('navigation', () => {
     })
 
     test('returns function that navigates without params when preserveParams is false', () => {
-      const mockRouter = { push: jest.fn() }
+      const mockRouter = { push: vi.fn() }
       const backNav = createBackNavigation(mockRouter, '/datasets/123/documents', false)
 
       backNav()
@@ -86,7 +86,7 @@ describe('navigation', () => {
     })
 
     test('can be called multiple times', () => {
-      const mockRouter = { push: jest.fn() }
+      const mockRouter = { push: vi.fn() }
       const backNav = createBackNavigation(mockRouter, '/datasets/123/documents')
 
       backNav()
@@ -257,7 +257,7 @@ describe('navigation', () => {
      */
     describe('backToDocuments', () => {
       test('creates navigation function with preserved params', () => {
-        const mockRouter = { push: jest.fn() }
+        const mockRouter = { push: vi.fn() }
         const backNav = datasetNavigation.backToDocuments(mockRouter, 'dataset-123')
 
         backNav()
@@ -271,7 +271,7 @@ describe('navigation', () => {
      */
     describe('toDocumentDetail', () => {
       test('creates navigation function to document detail', () => {
-        const mockRouter = { push: jest.fn() }
+        const mockRouter = { push: vi.fn() }
         const navFunc = datasetNavigation.toDocumentDetail(mockRouter, 'dataset-123', 'doc-456')
 
         navFunc()
@@ -285,7 +285,7 @@ describe('navigation', () => {
      */
     describe('toDocumentSettings', () => {
       test('creates navigation function to document settings', () => {
-        const mockRouter = { push: jest.fn() }
+        const mockRouter = { push: vi.fn() }
         const navFunc = datasetNavigation.toDocumentSettings(mockRouter, 'dataset-123', 'doc-456')
 
         navFunc()

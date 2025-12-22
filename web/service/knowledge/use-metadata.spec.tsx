@@ -5,8 +5,8 @@ import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
 import { useDocumentListKey } from './use-document'
 
 // Mock the post function to avoid real network requests
-jest.mock('@/service/base', () => ({
-  post: jest.fn().mockResolvedValue({ success: true }),
+vi.mock('@/service/base', () => ({
+  post: vi.fn().mockResolvedValue({ success: true }),
 }))
 
 const NAME_SPACE = 'dataset-metadata'
@@ -28,7 +28,7 @@ describe('useBatchUpdateDocMetadata', () => {
     const { result } = renderHook(() => useBatchUpdateDocMetadata(), { wrapper })
 
     // Spy on queryClient.invalidateQueries
-    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries')
+    const invalidateSpy = vi.spyOn(queryClient, 'invalidateQueries')
 
     // Correct payload type: each document has its own metadata_list array
 

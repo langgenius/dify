@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import List from './index'
 import { SelfHostedPlan } from '@/app/components/billing/type'
 
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
       if (options?.returnObjects)

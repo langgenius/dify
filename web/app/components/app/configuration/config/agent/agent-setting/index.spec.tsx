@@ -4,24 +4,26 @@ import AgentSetting from './index'
 import { MAX_ITERATIONS_NUM } from '@/config'
 import type { AgentConfig } from '@/models/debug'
 
-jest.mock('ahooks', () => {
-  const actual = jest.requireActual('ahooks')
+vi.mock('ahooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ahooks')>()
   return {
     ...actual,
-    useClickAway: jest.fn(),
+    useClickAway: vi.fn(),
   }
 })
 
-jest.mock('react-slider', () => (props: { className?: string; min?: number; max?: number; value: number; onChange: (value: number) => void }) => (
-  <input
-    type="range"
-    className={props.className}
-    min={props.min}
-    max={props.max}
-    value={props.value}
-    onChange={e => props.onChange(Number(e.target.value))}
-  />
-))
+vi.mock('react-slider', () => ({
+  default: (props: { className?: string; min?: number; max?: number; value: number; onChange: (value: number) => void }) => (
+    <input
+      type="range"
+      className={props.className}
+      min={props.min}
+      max={props.max}
+      value={props.value}
+      onChange={e => props.onChange(Number(e.target.value))}
+    />
+  ),
+}))
 
 const basePayload = {
   enabled: true,
@@ -31,8 +33,8 @@ const basePayload = {
 }
 
 const renderModal = (props?: Partial<React.ComponentProps<typeof AgentSetting>>) => {
-  const onCancel = jest.fn()
-  const onSave = jest.fn()
+  const onCancel = vi.fn()
+  const onSave = vi.fn()
   const utils = render(
     <AgentSetting
       isChatModel

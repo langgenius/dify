@@ -4,7 +4,7 @@ import Empty from './empty'
 
 describe('Empty', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {

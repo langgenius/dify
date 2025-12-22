@@ -30,7 +30,7 @@ const reset = {
   triggerEvents: 100,
 }
 
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => {
     const withPlan = createMockPlan(mockPlan)
     const withUsage = createMockPlanUsage(usage, withPlan)
@@ -48,7 +48,7 @@ const renderWithPlan = (plan: Plan) => {
 describe('ProviderContextMock', () => {
   beforeEach(() => {
     mockPlan = Plan.sandbox
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
   it('should display sandbox plan type when mocked with sandbox plan', async () => {
     const { getByTestId } = renderWithPlan(Plan.sandbox)

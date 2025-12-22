@@ -2,7 +2,7 @@ import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import ClearAllAnnotationsConfirmModal from './index'
 
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
@@ -16,7 +16,7 @@ jest.mock('react-i18next', () => ({
 }))
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 describe('ClearAllAnnotationsConfirmModal', () => {
@@ -27,8 +27,8 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       render(
         <ClearAllAnnotationsConfirmModal
           isShow
-          onHide={jest.fn()}
-          onConfirm={jest.fn()}
+          onHide={vi.fn()}
+          onConfirm={vi.fn()}
         />,
       )
 
@@ -43,8 +43,8 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       render(
         <ClearAllAnnotationsConfirmModal
           isShow={false}
-          onHide={jest.fn()}
-          onConfirm={jest.fn()}
+          onHide={vi.fn()}
+          onConfirm={vi.fn()}
         />,
       )
 
@@ -56,8 +56,8 @@ describe('ClearAllAnnotationsConfirmModal', () => {
   // User confirms or cancels clearing annotations
   describe('Interactions', () => {
     test('should trigger onHide when cancel is clicked', () => {
-      const onHide = jest.fn()
-      const onConfirm = jest.fn()
+      const onHide = vi.fn()
+      const onConfirm = vi.fn()
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal
@@ -76,8 +76,8 @@ describe('ClearAllAnnotationsConfirmModal', () => {
     })
 
     test('should trigger onConfirm when confirm is clicked', () => {
-      const onHide = jest.fn()
-      const onConfirm = jest.fn()
+      const onHide = vi.fn()
+      const onConfirm = vi.fn()
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal

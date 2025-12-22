@@ -6,7 +6,7 @@ let documentTitleCalls: string[] = []
 let educationInitCalls: number = 0
 
 // Mock useDocumentTitle hook
-jest.mock('@/hooks/use-document-title', () => ({
+vi.mock('@/hooks/use-document-title', () => ({
   __esModule: true,
   default: (title: string) => {
     documentTitleCalls.push(title)
@@ -14,14 +14,14 @@ jest.mock('@/hooks/use-document-title', () => ({
 }))
 
 // Mock useEducationInit hook
-jest.mock('@/app/education-apply/hooks', () => ({
+vi.mock('@/app/education-apply/hooks', () => ({
   useEducationInit: () => {
     educationInitCalls++
   },
 }))
 
 // Mock List component
-jest.mock('./list', () => ({
+vi.mock('./list', () => ({
   __esModule: true,
   default: () => {
     const React = require('react')
@@ -34,7 +34,7 @@ import Apps from './index'
 
 describe('Apps', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     documentTitleCalls = []
     educationInitCalls = 0
   })
