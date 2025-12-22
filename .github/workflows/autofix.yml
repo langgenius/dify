@@ -66,7 +66,7 @@ jobs:
       # mdformat breaks YAML front matter in markdown files. Add --exclude for directories containing YAML front matter.
       - name: mdformat
         run: |
-          uvx --python 3.13 mdformat . --exclude ".claude/skills/**"
+          uvx --python 3.13 mdformat . --exclude ".claude/skills/**/SKILL.md"
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
