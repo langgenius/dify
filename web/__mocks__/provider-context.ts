@@ -3,6 +3,7 @@ import { defaultPlan } from '@/app/components/billing/config'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { Plan, UsagePlanInfo } from '@/app/components/billing/type'
 
+// Avoid being mocked in tests
 export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
   refreshModelProviders: noop,
