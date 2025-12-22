@@ -785,9 +785,9 @@ describe('file-uploader utils', () => {
 
   describe('downloadFile', () => {
     let mockAnchor: HTMLAnchorElement
-    let createElementMock: vi.SpyInstance
-    let appendChildMock: vi.SpyInstance
-    let removeChildMock: vi.SpyInstance
+    let createElementMock: SpyInstance
+    let appendChildMock: SpyInstance
+    let removeChildMock: SpyInstance
 
     beforeEach(() => {
       // Mock createElement and appendChild

@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
 import type { Node } from '@/app/components/workflow/types'
 
@@ -6,7 +7,7 @@ vi.mock('@/app/components/workflow/utils/workflow-entry', () => ({
   getWorkflowEntryNode: vi.fn(),
 }))
 
-const mockGetWorkflowEntryNode = getWorkflowEntryNode as vi.MockedFunction<typeof getWorkflowEntryNode>
+const mockGetWorkflowEntryNode = getWorkflowEntryNode as MockedFunction<typeof getWorkflowEntryNode>
 
 // Mock entry node for testing (truthy value)
 const mockEntryNode = { id: 'start-node', data: { type: 'start' } } as Node

@@ -33,7 +33,7 @@ vi.mock('react-i18next', () => ({
   },
 }))
 
-// ky is an ESM-only package; mock it to keep Jest (CJS) specs running.
+// ky is an ESM-only package; mock it to keep vitest specs running.
 vi.mock('ky', () => ({
   __esModule: true,
   default: {

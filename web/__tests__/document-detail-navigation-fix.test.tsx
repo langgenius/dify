@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 /**
  * Document Detail Navigation Fix Verification Test
  *
@@ -69,7 +70,7 @@ describe('Document Detail Navigation Fix Verification', () => {
     vi.clearAllMocks()
 
     // Mock successful API responses
-    ;(useDocumentDetail as vi.Mock).mockReturnValue({
+    ;(useDocumentDetail as Mock).mockReturnValue({
       data: {
         id: 'doc-123',
         name: 'Test Document',
@@ -80,7 +81,7 @@ describe('Document Detail Navigation Fix Verification', () => {
       error: null,
     })
 
-    ;(useDocumentMetadata as vi.Mock).mockReturnValue({
+    ;(useDocumentMetadata as Mock).mockReturnValue({
       data: null,
       error: null,
     })

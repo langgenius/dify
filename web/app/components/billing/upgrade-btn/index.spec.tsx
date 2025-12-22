@@ -14,7 +14,7 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 // Mock gtag for tracking tests
-let mockGtag: vi.Mock | undefined
+let mockGtag: Mock | undefined
 
 describe('UpgradeBtn', () => {
   beforeEach(() => {

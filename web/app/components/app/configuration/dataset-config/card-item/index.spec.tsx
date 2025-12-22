@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Item from './index'
@@ -29,7 +30,7 @@ vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
   }
 })
 
-const mockedUseBreakpoints = useBreakpoints as vi.MockedFunction<typeof useBreakpoints>
+const mockedUseBreakpoints = useBreakpoints as MockedFunction<typeof useBreakpoints>
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,

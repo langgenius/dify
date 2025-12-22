@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 /**
  * Logs Container Component Tests
  *
@@ -118,7 +119,7 @@ vi.mock('@/app/components/workflow/context', () => ({
   ),
 }))
 
-const mockedUseSWR = useSWR as vi.MockedFunction<typeof useSWR>
+const mockedUseSWR = useSWR as MockedFunction<typeof useSWR>
 
 // ============================================================================
 // Test Data Factories

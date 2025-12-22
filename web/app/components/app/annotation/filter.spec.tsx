@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import Filter, { type QueryParam } from './filter'
@@ -12,7 +13,7 @@ vi.mock('@/service/log', () => ({
   fetchAnnotationsCount: vi.fn(),
 }))
 
-const mockUseSWR = useSWR as unknown as vi.Mock
+const mockUseSWR = useSWR as unknown as Mock
 
 describe('Filter', () => {
   const appId = 'app-1'

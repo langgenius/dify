@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import Config from './index'
@@ -82,10 +83,10 @@ type MockContext = {
     history: boolean
     query: boolean
   }
-  showHistoryModal: vi.Mock
+  showHistoryModal: Mock
   modelConfig: ModelConfig
-  setModelConfig: vi.Mock
-  setPrevPromptConfig: vi.Mock
+  setModelConfig: Mock
+  setPrevPromptConfig: Mock
 }
 
 const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVariable => ({
@@ -150,7 +151,7 @@ const createContextValue = (overrides: Partial<MockContext> = {}): MockContext =
   ...overrides,
 })
 
-const mockUseContext = useContextSelector.useContext as vi.Mock
+const mockUseContext = useContextSelector.useContext as Mock
 
 const renderConfig = (contextOverrides: Partial<MockContext> = {}) => {
   const contextValue = createContextValue(contextOverrides)

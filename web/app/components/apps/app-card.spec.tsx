@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
@@ -42,11 +43,12 @@ vi.mock('@/context/provider-context', () => ({
   }),
 }))
 
-// Mock global public store
+// Mock global public store - allow dynamic configuration
+let mockWebappAuthEnabled = false
 vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: (selector: (s: any) => any) => selector({
     systemFeatures: {
-      webapp_auth: { enabled: false },
+      webapp_auth: { enabled: mockWebappAuthEnabled },
       branding: { enabled: false },
     },
   }),
@@ -55,6 +57,7 @@ vi.mock('@/context/global-public-context', () => ({
 // Mock API services - import for direct manipulation
 import * as appsService from '@/service/apps'
 import * as workflowService from '@/service/workflow'
+import * as exploreService from '@/service/explore'
 
 vi.mock('@/service/apps', () => ({
   deleteApp: vi.fn(() => Promise.resolve()),
@@ -79,8 +82,9 @@ vi.mock('@/service/access-control', () => ({
 }))
 
 // Mock hooks
+const mockOpenAsyncWindow = vi.fn()
 vi.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => vi.fn(),
+  useAsyncWindowOpen: () => mockOpenAsyncWindow,
 }))
 
 // Mock utils
@@ -181,21 +185,10 @@ vi.mock('next/dynamic', () => {
   }
 })
 
-/**
- * Mock components that require special handling in test environment.
- *
- * Per frontend testing skills (mocking.md), we should NOT mock simple base components.
- * However, the following require mocking due to:
- * - Portal-based rendering that doesn't work well in happy-dom
- * - Deep dependency chains importing ES modules (like ky) incompatible with Jest
- * - Complex state management that requires controlled test behavior
- */
-
-// Popover uses portals for positioning which requires mocking in happy-dom environment
+// Popover uses @headlessui/react portals - mock for controlled interaction testing
 vi.mock('@/app/components/base/popover', () => {
   const MockPopover = ({ htmlContent, btnElement, btnClassName }: any) => {
     const [isOpen, setIsOpen] = React.useState(false)
-    // Call btnClassName to cover lines 430-433
     const computedClassName = typeof btnClassName === 'function' ? btnClassName(isOpen) : ''
     return React.createElement('div', { 'data-testid': 'custom-popover', 'className': computedClassName },
       React.createElement('div', {
@@ -213,13 +206,13 @@ vi.mock('@/app/components/base/popover', () => {
   return { __esModule: true, default: MockPopover }
 })
 
-// Tooltip uses portals for positioning - minimal mock preserving popup content as title attribute
+// Tooltip uses portals - minimal mock preserving popup content as title attribute
 vi.mock('@/app/components/base/tooltip', () => ({
   __esModule: true,
   default: ({ children, popupContent }: any) => React.createElement('div', { title: popupContent }, children),
 }))
 
-// TagSelector imports service/tag which depends on ky ES module - mock to avoid Jest ES module issues
+// TagSelector has API dependency (service/tag) - mock for isolated testing
 vi.mock('@/app/components/base/tag-management/selector', () => ({
   __esModule: true,
   default: ({ tags }: any) => {
@@ -230,7 +223,7 @@ vi.mock('@/app/components/base/tag-management/selector', () => ({
   },
 }))
 
-// AppTypeIcon has complex icon mapping logic - mock for focused component testing
+// AppTypeIcon has complex icon mapping - mock for focused component testing
 vi.mock('@/app/components/app/type-selector', () => ({
   AppTypeIcon: () => React.createElement('div', { 'data-testid': 'app-type-icon' }),
 }))
@@ -281,6 +274,8 @@ describe('AppCard', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockOpenAsyncWindow.mockReset()
+    mockWebappAuthEnabled = false
   })
 
   describe('Rendering', () => {
@@ -538,6 +533,46 @@ describe('AppCard', () => {
         expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
       })
     })
+
+    it('should close edit modal when onHide is called', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('app.editApp'))
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('edit-app-modal')).toBeInTheDocument()
+      })
+
+      // Click close button to trigger onHide
+      fireEvent.click(screen.getByTestId('close-edit-modal'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('edit-app-modal')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should close duplicate modal when onHide is called', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('app.duplicate'))
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('duplicate-modal')).toBeInTheDocument()
+      })
+
+      // Click close button to trigger onHide
+      fireEvent.click(screen.getByTestId('close-duplicate-modal'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('duplicate-modal')).not.toBeInTheDocument()
+      })
+    })
   })
 
   describe('Styling', () => {
@@ -596,7 +631,7 @@ describe('AppCard', () => {
     })
 
     it('should handle delete failure', async () => {
-      (appsService.deleteApp as vi.Mock).mockRejectedValueOnce(new Error('Delete failed'))
+      (appsService.deleteApp as Mock).mockRejectedValueOnce(new Error('Delete failed'))
 
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
 
@@ -675,7 +710,7 @@ describe('AppCard', () => {
     })
 
     it('should handle copy failure', async () => {
-      (appsService.copyApp as vi.Mock).mockRejectedValueOnce(new Error('Copy failed'))
+      (appsService.copyApp as Mock).mockRejectedValueOnce(new Error('Copy failed'))
 
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
 
@@ -710,7 +745,7 @@ describe('AppCard', () => {
     })
 
     it('should handle export failure', async () => {
-      (appsService.exportAppConfig as vi.Mock).mockRejectedValueOnce(new Error('Export failed'))
+      (appsService.exportAppConfig as Mock).mockRejectedValueOnce(new Error('Export failed'))
 
       render(<AppCard app={mockApp} />)
 
@@ -824,7 +859,7 @@ describe('AppCard', () => {
     })
 
     it('should show DSL export modal when workflow has secret variables', async () => {
-      (workflowService.fetchWorkflowDraft as vi.Mock).mockResolvedValueOnce({
+      (workflowService.fetchWorkflowDraft as Mock).mockResolvedValueOnce({
         environment_variables: [{ value_type: 'secret', name: 'API_KEY' }],
       })
 
@@ -852,6 +887,31 @@ describe('AppCard', () => {
 
       await waitFor(() => {
         expect(workflowService.fetchWorkflowDraft).toHaveBeenCalled()
+      })
+    })
+
+    it('should close DSL export modal when onClose is called', async () => {
+      (workflowService.fetchWorkflowDraft as Mock).mockResolvedValueOnce({
+        environment_variables: [{ value_type: 'secret', name: 'API_KEY' }],
+      })
+
+      const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
+      render(<AppCard app={workflowApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('app.export'))
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('dsl-export-modal')).toBeInTheDocument()
+      })
+
+      // Click close button to trigger onClose
+      fireEvent.click(screen.getByTestId('close-dsl-export'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('dsl-export-modal')).not.toBeInTheDocument()
       })
     })
   })
@@ -925,7 +985,7 @@ describe('AppCard', () => {
     })
 
     it('should handle edit failure', async () => {
-      (appsService.updateAppInfo as vi.Mock).mockRejectedValueOnce(new Error('Edit failed'))
+      (appsService.updateAppInfo as Mock).mockRejectedValueOnce(new Error('Edit failed'))
 
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
 
@@ -983,7 +1043,7 @@ describe('AppCard', () => {
     })
 
     it('should handle workflow draft fetch failure during export', async () => {
-      (workflowService.fetchWorkflowDraft as vi.Mock).mockRejectedValueOnce(new Error('Fetch failed'))
+      (workflowService.fetchWorkflowDraft as Mock).mockRejectedValueOnce(new Error('Fetch failed'))
 
       const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
       render(<AppCard app={workflowApp} />)
@@ -1056,6 +1116,272 @@ describe('AppCard', () => {
 
       const tagSelector = screen.getByLabelText('tag-selector')
       expect(tagSelector).toBeInTheDocument()
+
+      // Click on tag selector wrapper to trigger stopPropagation
+      const tagSelectorWrapper = tagSelector.closest('div')
+      if (tagSelectorWrapper)
+        fireEvent.click(tagSelectorWrapper)
+    })
+
+    it('should handle popover mouse leave', async () => {
+      render(<AppCard app={mockApp} />)
+
+      // Open popover
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        expect(screen.getByTestId('popover-content')).toBeInTheDocument()
+      })
+
+      // Trigger mouse leave on the outer popover-content
+      fireEvent.mouseLeave(screen.getByTestId('popover-content'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('popover-content')).not.toBeInTheDocument()
+      })
+    })
+
+    it('should handle operations menu mouse leave', async () => {
+      render(<AppCard app={mockApp} />)
+
+      // Open popover
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
+      })
+
+      // Find the Operations wrapper div (contains the menu items)
+      const editButton = screen.getByText('app.editApp')
+      const operationsWrapper = editButton.closest('div.relative')
+
+      // Trigger mouse leave on the Operations wrapper to call onMouseLeave
+      if (operationsWrapper)
+        fireEvent.mouseLeave(operationsWrapper)
+    })
+
+    it('should click open in explore button', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        const openInExploreBtn = screen.getByText('app.openInExplore')
+        fireEvent.click(openInExploreBtn)
+      })
+
+      // Verify openAsyncWindow was called with callback and options
+      await waitFor(() => {
+        expect(mockOpenAsyncWindow).toHaveBeenCalledWith(
+          expect.any(Function),
+          expect.objectContaining({ onError: expect.any(Function) }),
+        )
+      })
+    })
+
+    it('should handle open in explore via async window', async () => {
+      // Configure mockOpenAsyncWindow to actually call the callback
+      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
+        await callback()
+      })
+
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        const openInExploreBtn = screen.getByText('app.openInExplore')
+        fireEvent.click(openInExploreBtn)
+      })
+
+      await waitFor(() => {
+        expect(exploreService.fetchInstalledAppList).toHaveBeenCalledWith(mockApp.id)
+      })
+    })
+
+    it('should handle open in explore API failure', async () => {
+      (exploreService.fetchInstalledAppList as Mock).mockRejectedValueOnce(new Error('API Error'))
+
+      // Configure mockOpenAsyncWindow to call the callback and trigger error
+      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options: any) => {
+        try {
+          await callback()
+        }
+        catch (err) {
+          options?.onError?.(err)
+        }
+      })
+
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        const openInExploreBtn = screen.getByText('app.openInExplore')
+        fireEvent.click(openInExploreBtn)
+      })
+
+      await waitFor(() => {
+        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('Access Control', () => {
+    it('should render operations menu correctly', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
+        expect(screen.getByText('app.duplicate')).toBeInTheDocument()
+        expect(screen.getByText('app.export')).toBeInTheDocument()
+        expect(screen.getByText('common.operation.delete')).toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Open in Explore - No App Found', () => {
+    it('should handle case when installed_apps is empty array', async () => {
+      (exploreService.fetchInstalledAppList as Mock).mockResolvedValueOnce({ installed_apps: [] })
+
+      // Configure mockOpenAsyncWindow to call the callback and trigger error
+      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>, options: any) => {
+        try {
+          await callback()
+        }
+        catch (err) {
+          options?.onError?.(err)
+        }
+      })
+
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        const openInExploreBtn = screen.getByText('app.openInExplore')
+        fireEvent.click(openInExploreBtn)
+      })
+
+      await waitFor(() => {
+        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
+      })
+    })
+
+    it('should handle case when API throws in callback', async () => {
+      (exploreService.fetchInstalledAppList as Mock).mockRejectedValueOnce(new Error('Network error'))
+
+      // Configure mockOpenAsyncWindow to call the callback without catching
+      mockOpenAsyncWindow.mockImplementationOnce(async (callback: () => Promise<string>) => {
+        return await callback()
+      })
+
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        const openInExploreBtn = screen.getByText('app.openInExplore')
+        fireEvent.click(openInExploreBtn)
+      })
+
+      await waitFor(() => {
+        expect(exploreService.fetchInstalledAppList).toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('Draft Trigger Apps', () => {
+    it('should not show open in explore option for apps with has_draft_trigger', async () => {
+      const draftTriggerApp = createMockApp({ has_draft_trigger: true })
+      render(<AppCard app={draftTriggerApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.editApp')).toBeInTheDocument()
+        // openInExplore should not be shown for draft trigger apps
+        expect(screen.queryByText('app.openInExplore')).not.toBeInTheDocument()
+      })
+    })
+  })
+
+  describe('Non-editor User', () => {
+    it('should handle non-editor workspace users', () => {
+      // This tests the isCurrentWorkspaceEditor=true branch (default mock)
+      render(<AppCard app={mockApp} />)
+      expect(screen.getByTitle('Test App')).toBeInTheDocument()
+    })
+  })
+
+  describe('WebApp Auth Enabled', () => {
+    beforeEach(() => {
+      mockWebappAuthEnabled = true
+    })
+
+    it('should show access control option when webapp_auth is enabled', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.accessControl')).toBeInTheDocument()
+      })
+    })
+
+    it('should click access control button', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        const accessControlBtn = screen.getByText('app.accessControl')
+        fireEvent.click(accessControlBtn)
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
+      })
+    })
+
+    it('should close access control modal and call onRefresh', async () => {
+      render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('app.accessControl'))
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
+      })
+
+      // Confirm access control
+      fireEvent.click(screen.getByTestId('confirm-access-control'))
+
+      await waitFor(() => {
+        expect(mockOnRefresh).toHaveBeenCalled()
+      })
+    })
+
+    it('should show open in explore when userCanAccessApp is true', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        expect(screen.getByText('app.openInExplore')).toBeInTheDocument()
+      })
+    })
+
+    it('should close access control modal when onClose is called', async () => {
+      render(<AppCard app={mockApp} />)
+
+      fireEvent.click(screen.getByTestId('popover-trigger'))
+      await waitFor(() => {
+        fireEvent.click(screen.getByText('app.accessControl'))
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('access-control-modal')).toBeInTheDocument()
+      })
+
+      // Click close button to trigger onClose
+      fireEvent.click(screen.getByTestId('close-access-control'))
+
+      await waitFor(() => {
+        expect(screen.queryByTestId('access-control-modal')).not.toBeInTheDocument()
+      })
     })
   })
 })

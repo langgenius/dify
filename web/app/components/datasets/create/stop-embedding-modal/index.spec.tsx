@@ -28,8 +28,8 @@ const renderStopEmbeddingModal = (props: Partial<StopEmbeddingModalProps> = {}) 
 describe('StopEmbeddingModal', () => {
   // Suppress Headless UI warnings in tests
   // These warnings are from the library's internal behavior, not our code
-  let consoleWarnSpy: vi.SpyInstance
-  let consoleErrorSpy: vi.SpyInstance
+  let consoleWarnSpy: SpyInstance
+  let consoleErrorSpy: SpyInstance
 
   beforeAll(() => {
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(vi.fn())

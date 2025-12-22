@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CloudPlanItem from './index'
@@ -35,11 +36,11 @@ vi.mock('../../assets', () => ({
   Team: () => <div>Team Icon</div>,
 }))
 
-const mockUseAppContext = useAppContext as vi.Mock
-const mockUseAsyncWindowOpen = useAsyncWindowOpen as vi.Mock
-const mockFetchBillingUrl = fetchBillingUrl as vi.Mock
-const mockFetchSubscriptionUrls = fetchSubscriptionUrls as vi.Mock
-const mockToastNotify = Toast.notify as vi.Mock
+const mockUseAppContext = useAppContext as Mock
+const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
+const mockFetchBillingUrl = fetchBillingUrl as Mock
+const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
+const mockToastNotify = Toast.notify as Mock
 
 let assignedHref = ''
 const originalLocation = window.location

@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import {
   asyncRunSafe,
   canFindTool,
@@ -266,7 +267,7 @@ describe('removeSpecificQueryParam', () => {
   it('should remove a single query parameter', () => {
     removeSpecificQueryParam('param2')
     expect(window.history.replaceState).toHaveBeenCalledTimes(1)
-    const replaceStateCall = (window.history.replaceState as vi.Mock).mock.calls[0]
+    const replaceStateCall = (window.history.replaceState as Mock).mock.calls[0]
     expect(replaceStateCall[0]).toBe(null)
     expect(replaceStateCall[1]).toBe('')
     expect(replaceStateCall[2]).toMatch(/param1=value1/)
@@ -277,7 +278,7 @@ describe('removeSpecificQueryParam', () => {
   it('should remove multiple query parameters', () => {
     removeSpecificQueryParam(['param1', 'param3'])
     expect(window.history.replaceState).toHaveBeenCalledTimes(1)
-    const replaceStateCall = (window.history.replaceState as vi.Mock).mock.calls[0]
+    const replaceStateCall = (window.history.replaceState as Mock).mock.calls[0]
     expect(replaceStateCall[2]).toMatch(/param2=value2/)
     expect(replaceStateCall[2]).not.toMatch(/param1=value1/)
     expect(replaceStateCall[2]).not.toMatch(/param3=value3/)
@@ -287,7 +288,7 @@ describe('removeSpecificQueryParam', () => {
     removeSpecificQueryParam('nonexistent')
 
     expect(window.history.replaceState).toHaveBeenCalledTimes(1)
-    const replaceStateCall = (window.history.replaceState as vi.Mock).mock.calls[0]
+    const replaceStateCall = (window.history.replaceState as Mock).mock.calls[0]
     expect(replaceStateCall[2]).toMatch(/param1=value1/)
     expect(replaceStateCall[2]).toMatch(/param2=value2/)
     expect(replaceStateCall[2]).toMatch(/param3=value3/)

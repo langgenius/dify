@@ -12,7 +12,7 @@ import { useDSLDragDrop } from './use-dsl-drag-drop'
 
 describe('useDSLDragDrop', () => {
   let container: HTMLDivElement
-  let mockOnDSLFileDropped: vi.Mock
+  let mockOnDSLFileDropped: Mock
 
   beforeEach(() => {
     vi.clearAllMocks()

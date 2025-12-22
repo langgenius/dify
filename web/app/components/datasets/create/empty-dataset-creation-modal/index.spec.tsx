@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 import EmptyDatasetCreationModal from './index'
@@ -32,9 +33,9 @@ vi.mock('use-context-selector', () => ({
 }))
 
 // Type cast mocked functions
-const mockCreateEmptyDataset = createEmptyDataset as vi.MockedFunction<typeof createEmptyDataset>
+const mockCreateEmptyDataset = createEmptyDataset as MockedFunction<typeof createEmptyDataset>
 const mockInvalidDatasetList = vi.fn()
-const mockUseInvalidDatasetList = useInvalidDatasetList as vi.MockedFunction<typeof useInvalidDatasetList>
+const mockUseInvalidDatasetList = useInvalidDatasetList as MockedFunction<typeof useInvalidDatasetList>
 
 // Test data builder for props
 const createDefaultProps = (overrides?: Partial<{ show: boolean; onHide: () => void }>) => ({

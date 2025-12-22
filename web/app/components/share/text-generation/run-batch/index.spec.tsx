@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import RunBatch from './index'
@@ -29,7 +30,7 @@ vi.mock('./csv-download', () => ({
   },
 }))
 
-const mockUseBreakpoints = useBreakpoints as vi.Mock
+const mockUseBreakpoints = useBreakpoints as Mock
 
 describe('RunBatch', () => {
   const vars = [{ name: 'prompt' }]

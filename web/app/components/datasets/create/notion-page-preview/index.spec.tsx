@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import NotionPagePreview from './index'
 import type { NotionPage } from '@/models/common'
@@ -8,7 +9,7 @@ vi.mock('@/service/datasets', () => ({
   fetchNotionPagePreview: vi.fn(),
 }))
 
-const mockFetchNotionPagePreview = fetchNotionPagePreview as vi.MockedFunction<typeof fetchNotionPagePreview>
+const mockFetchNotionPagePreview = fetchNotionPagePreview as MockedFunction<typeof fetchNotionPagePreview>
 
 // Factory function to create mock NotionPage objects
 const createMockNotionPage = (overrides: Partial<NotionPage> = {}): NotionPage => {

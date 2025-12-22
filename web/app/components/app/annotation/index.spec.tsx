@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Annotation from './index'
@@ -96,14 +97,14 @@ vi.mock('@/app/components/base/loading', () => ({ default: () => <div data-testi
 vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal', () => ({ default: (props: any) => props.isShow ? <div data-testid="config-modal" /> : null }))
 vi.mock('@/app/components/billing/annotation-full/modal', () => ({ default: (props: any) => props.show ? <div data-testid="annotation-full-modal" /> : null }))
 
-const mockNotify = Toast.notify as vi.Mock
-const addAnnotationMock = addAnnotation as vi.Mock
-const delAnnotationMock = delAnnotation as vi.Mock
-const delAnnotationsMock = delAnnotations as vi.Mock
-const fetchAnnotationConfigMock = fetchAnnotationConfig as vi.Mock
-const fetchAnnotationListMock = fetchAnnotationList as vi.Mock
-const queryAnnotationJobStatusMock = queryAnnotationJobStatus as vi.Mock
-const useProviderContextMock = useProviderContext as vi.Mock
+const mockNotify = Toast.notify as Mock
+const addAnnotationMock = addAnnotation as Mock
+const delAnnotationMock = delAnnotation as Mock
+const delAnnotationsMock = delAnnotations as Mock
+const fetchAnnotationConfigMock = fetchAnnotationConfig as Mock
+const fetchAnnotationListMock = fetchAnnotationList as Mock
+const queryAnnotationJobStatusMock = queryAnnotationJobStatus as Mock
+const useProviderContextMock = useProviderContext as Mock
 
 const appDetail = {
   id: 'app-id',

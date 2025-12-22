@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -39,7 +40,7 @@ const defaultFile: FileUpload = {
 }
 
 let featureStoreState: FeatureStoreState
-let setFeaturesMock: vi.Mock
+let setFeaturesMock: Mock
 
 const setupFeatureStore = (fileOverrides: Partial<FileUpload> = {}) => {
   const mergedFile: FileUpload = {
@@ -58,7 +59,7 @@ const setupFeatureStore = (fileOverrides: Partial<FileUpload> = {}) => {
     showFeaturesModal: false,
     setShowFeaturesModal: vi.fn(),
   }
-  setFeaturesMock = featureStoreState.setFeatures as vi.Mock
+  setFeaturesMock = featureStoreState.setFeatures as Mock
   mockUseFeaturesStore.mockReturnValue({
     getState: () => featureStoreState,
   })

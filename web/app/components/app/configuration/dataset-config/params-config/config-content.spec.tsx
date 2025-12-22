@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction, SpyInstance } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ConfigContent from './config-content'
@@ -44,10 +45,10 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
   useCurrentProviderAndModel: vi.fn(),
 }))
 
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as vi.MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as vi.MockedFunction<typeof useCurrentProviderAndModel>
+const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
+const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
 
-let toastNotifySpy: vi.SpyInstance
+let toastNotifySpy: SpyInstance
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,

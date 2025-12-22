@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import type {
   PropsWithChildren,
 } from 'react'
@@ -99,7 +100,7 @@ vi.mock('./setting-built-in-tool', () => ({
 
 vi.mock('copy-to-clipboard')
 
-const copyMock = copy as vi.Mock
+const copyMock = copy as Mock
 
 const createToolParameter = (overrides?: Partial<ToolParameter>): ToolParameter => ({
   name: 'api_key',

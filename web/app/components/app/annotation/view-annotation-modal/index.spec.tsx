@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import ViewAnnotationModal from './index'
@@ -34,7 +35,7 @@ vi.mock('../edit-annotation-modal/edit-item', () => {
   }
 })
 
-const fetchHitHistoryListMock = fetchHitHistoryList as vi.Mock
+const fetchHitHistoryListMock = fetchHitHistoryList as Mock
 
 const createAnnotationItem = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
   id: overrides.id ?? 'annotation-id',

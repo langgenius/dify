@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 import React, { useCallback } from 'react'
 import { act, render } from '@testing-library/react'
 import { useTriggerStatusStore } from '../store/trigger-status'
@@ -11,7 +12,7 @@ vi.mock('../types', async (importOriginal) => ({
   isTriggerNode: vi.fn(),
 }))
 
-const mockIsTriggerNode = isTriggerNode as vi.MockedFunction<typeof isTriggerNode>
+const mockIsTriggerNode = isTriggerNode as MockedFunction<typeof isTriggerNode>
 
 // Test component that mimics BaseNode's usage pattern
 const TestTriggerNode: React.FC<{

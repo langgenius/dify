@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import { AccessMode } from '@/models/access-control'
@@ -119,19 +120,19 @@ describe('InstalledApp', () => {
     vi.clearAllMocks()
 
     // Mock useContext
-    ;(useContext as vi.Mock).mockReturnValue({
+    ;(useContext as Mock).mockReturnValue({
       installedApps: [mockInstalledApp],
       isFetchingInstalledApps: false,
     })
 
     // Mock useWebAppStore
-    ;(useWebAppStore as unknown as vi.Mock).mockImplementation((
+    ;(useWebAppStore as unknown as Mock).mockImplementation((
       selector: (state: {
-        updateAppInfo: vi.Mock
-        updateWebAppAccessMode: vi.Mock
-        updateAppParams: vi.Mock
-        updateWebAppMeta: vi.Mock
-        updateUserCanAccessApp: vi.Mock
+        updateAppInfo: Mock
+        updateWebAppAccessMode: Mock
+        updateAppParams: Mock
+        updateWebAppMeta: Mock
+        updateUserCanAccessApp: Mock
       }) => unknown,
     ) => {
       const state = {
@@ -145,25 +146,25 @@ describe('InstalledApp', () => {
     })
 
     // Mock service hooks with default success states
-    ;(useGetInstalledAppAccessModeByAppId as vi.Mock).mockReturnValue({
+    ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
       isFetching: false,
       data: mockWebAppAccessMode,
       error: null,
     })
 
-    ;(useGetInstalledAppParams as vi.Mock).mockReturnValue({
+    ;(useGetInstalledAppParams as Mock).mockReturnValue({
       isFetching: false,
       data: mockAppParams,
       error: null,
     })
 
-    ;(useGetInstalledAppMeta as vi.Mock).mockReturnValue({
+    ;(useGetInstalledAppMeta as Mock).mockReturnValue({
       isFetching: false,
       data: mockAppMeta,
       error: null,
     })
 
-    ;(useGetUserCanAccessApp as vi.Mock).mockReturnValue({
+    ;(useGetUserCanAccessApp as Mock).mockReturnValue({
       data: mockUserCanAccessApp,
       error: null,
     })
@@ -176,7 +177,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching app params', () => {
-      ;(useGetInstalledAppParams as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: null,
@@ -188,7 +189,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching app meta', () => {
-      ;(useGetInstalledAppMeta as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppMeta as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: null,
@@ -200,7 +201,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching web app access mode', () => {
-      ;(useGetInstalledAppAccessModeByAppId as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: null,
@@ -212,7 +213,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching installed apps', () => {
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [mockInstalledApp],
         isFetchingInstalledApps: true,
       })
@@ -223,7 +224,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render app not found (404) when installedApp does not exist', () => {
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
@@ -236,7 +237,7 @@ describe('InstalledApp', () => {
   describe('Error States', () => {
     it('should render error when app params fails to load', () => {
       const error = new Error('Failed to load app params')
-      ;(useGetInstalledAppParams as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error,
@@ -248,7 +249,7 @@ describe('InstalledApp', () => {
 
     it('should render error when app meta fails to load', () => {
       const error = new Error('Failed to load app meta')
-      ;(useGetInstalledAppMeta as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppMeta as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error,
@@ -260,7 +261,7 @@ describe('InstalledApp', () => {
 
     it('should render error when web app access mode fails to load', () => {
       const error = new Error('Failed to load access mode')
-      ;(useGetInstalledAppAccessModeByAppId as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error,
@@ -272,7 +273,7 @@ describe('InstalledApp', () => {
 
     it('should render error when user access check fails', () => {
       const error = new Error('Failed to check user access')
-      ;(useGetUserCanAccessApp as vi.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: null,
         error,
       })
@@ -282,7 +283,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render no permission (403) when user cannot access app', () => {
-      ;(useGetUserCanAccessApp as vi.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: { result: false },
         error: null,
       })
@@ -308,7 +309,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.ADVANCED_CHAT,
         },
       }
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [advancedChatApp],
         isFetchingInstalledApps: false,
       })
@@ -326,7 +327,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.AGENT_CHAT,
         },
       }
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [agentChatApp],
         isFetchingInstalledApps: false,
       })
@@ -344,7 +345,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.COMPLETION,
         },
       }
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [completionApp],
         isFetchingInstalledApps: false,
       })
@@ -362,7 +363,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.WORKFLOW,
         },
       }
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [workflowApp],
         isFetchingInstalledApps: false,
       })
@@ -377,7 +378,7 @@ describe('InstalledApp', () => {
     it('should use id prop to find installed app', () => {
       const app1 = { ...mockInstalledApp, id: 'app-1' }
       const app2 = { ...mockInstalledApp, id: 'app-2' }
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [app1, app2],
         isFetchingInstalledApps: false,
       })
@@ -419,7 +420,7 @@ describe('InstalledApp', () => {
     })
 
     it('should update app info to null when installedApp is not found', async () => {
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
@@ -464,7 +465,7 @@ describe('InstalledApp', () => {
     })
 
     it('should update user can access app to false when result is false', async () => {
-      ;(useGetUserCanAccessApp as vi.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: { result: false },
         error: null,
       })
@@ -477,7 +478,7 @@ describe('InstalledApp', () => {
     })
 
     it('should update user can access app to false when data is null', async () => {
-      ;(useGetUserCanAccessApp as vi.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: null,
         error: null,
       })
@@ -490,7 +491,7 @@ describe('InstalledApp', () => {
     })
 
     it('should not update app params when data is null', async () => {
-      ;(useGetInstalledAppParams as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error: null,
@@ -506,7 +507,7 @@ describe('InstalledApp', () => {
     })
 
     it('should not update app meta when data is null', async () => {
-      ;(useGetInstalledAppMeta as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppMeta as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error: null,
@@ -522,7 +523,7 @@ describe('InstalledApp', () => {
     })
 
     it('should not update access mode when data is null', async () => {
-      ;(useGetInstalledAppAccessModeByAppId as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error: null,
@@ -540,7 +541,7 @@ describe('InstalledApp', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty installedApps array', () => {
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
@@ -558,7 +559,7 @@ describe('InstalledApp', () => {
           name: 'Other App',
         },
       }
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [otherApp, mockInstalledApp],
         isFetchingInstalledApps: false,
       })
@@ -572,7 +573,7 @@ describe('InstalledApp', () => {
     it('should handle rapid id prop changes', async () => {
       const app1 = { ...mockInstalledApp, id: 'app-1' }
       const app2 = { ...mockInstalledApp, id: 'app-2' }
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [app1, app2],
         isFetchingInstalledApps: false,
       })
@@ -597,7 +598,7 @@ describe('InstalledApp', () => {
     })
 
     it('should call service hooks with null when installedApp is not found', () => {
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
@@ -616,7 +617,7 @@ describe('InstalledApp', () => {
 
   describe('Render Priority', () => {
     it('should show error before loading state', () => {
-      ;(useGetInstalledAppParams as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: new Error('Some error'),
@@ -628,12 +629,12 @@ describe('InstalledApp', () => {
     })
 
     it('should show error before permission check', () => {
-      ;(useGetInstalledAppParams as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error: new Error('Params error'),
       })
-      ;(useGetUserCanAccessApp as vi.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: { result: false },
         error: null,
       })
@@ -645,11 +646,11 @@ describe('InstalledApp', () => {
     })
 
     it('should show permission error before 404', () => {
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
-      ;(useGetUserCanAccessApp as vi.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: { result: false },
         error: null,
       })
@@ -661,11 +662,11 @@ describe('InstalledApp', () => {
     })
 
     it('should show loading before 404', () => {
-      ;(useContext as vi.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
-      ;(useGetInstalledAppParams as vi.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: null,

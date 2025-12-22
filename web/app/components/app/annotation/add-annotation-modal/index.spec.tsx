@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import AddAnnotationModal from './index'
@@ -19,7 +20,7 @@ vi.mock('@/app/components/billing/annotation-full', () => ({
   default: () => <div data-testid="annotation-full" />,
 }))
 
-const mockUseProviderContext = useProviderContext as vi.Mock
+const mockUseProviderContext = useProviderContext as Mock
 
 const getProviderContext = ({ usage = 0, total = 10, enableBilling = false } = {}) => ({
   plan: {

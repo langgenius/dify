@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import { searchEmoji } from './emoji'
 import { SearchIndex } from 'emoji-mart'
 
@@ -19,28 +20,28 @@ describe('Emoji Utilities', () => {
         { skins: [{ native: '😃' }] },
         { skins: [{ native: '😄' }] },
       ]
-      ;(SearchIndex.search as vi.Mock).mockResolvedValue(mockEmojis)
+      ;(SearchIndex.search as Mock).mockResolvedValue(mockEmojis)
 
       const result = await searchEmoji('smile')
       expect(result).toEqual(['😀', '😃', '😄'])
     })
 
     it('should return empty array when no results', async () => {
-      ;(SearchIndex.search as vi.Mock).mockResolvedValue([])
+      ;(SearchIndex.search as Mock).mockResolvedValue([])
 
       const result = await searchEmoji('nonexistent')
       expect(result).toEqual([])
     })
 
     it('should return empty array when search returns null', async () => {
-      ;(SearchIndex.search as vi.Mock).mockResolvedValue(null)
+      ;(SearchIndex.search as Mock).mockResolvedValue(null)
 
       const result = await searchEmoji('test')
       expect(result).toEqual([])
     })
 
     it('should handle search with empty string', async () => {
-      ;(SearchIndex.search as vi.Mock).mockResolvedValue([])
+      ;(SearchIndex.search as Mock).mockResolvedValue([])
 
       const result = await searchEmoji('')
       expect(result).toEqual([])
@@ -57,7 +58,7 @@ describe('Emoji Utilities', () => {
           ],
         },
       ]
-      ;(SearchIndex.search as vi.Mock).mockResolvedValue(mockEmojis)
+      ;(SearchIndex.search as Mock).mockResolvedValue(mockEmojis)
 
       const result = await searchEmoji('thumbs')
       expect(result).toEqual(['👍'])
@@ -68,7 +69,7 @@ describe('Emoji Utilities', () => {
         { skins: [{ native: '❤️' }] },
         { skins: [{ native: '💙' }] },
       ]
-      ;(SearchIndex.search as vi.Mock).mockResolvedValue(mockEmojis)
+      ;(SearchIndex.search as Mock).mockResolvedValue(mockEmojis)
 
       const result = await searchEmoji('heart love')
       expect(result).toEqual(['❤️', '💙'])

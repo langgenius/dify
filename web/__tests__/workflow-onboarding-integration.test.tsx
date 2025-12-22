@@ -1,15 +1,16 @@
+import type { Mock } from 'vitest'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 // Type for mocked store
 type MockWorkflowStore = {
   showOnboarding: boolean
-  setShowOnboarding: vi.Mock
+  setShowOnboarding: Mock
   hasShownOnboarding: boolean
-  setHasShownOnboarding: vi.Mock
+  setHasShownOnboarding: Mock
   hasSelectedStartNode: boolean
-  setHasSelectedStartNode: vi.Mock
-  setShouldAutoOpenStartNodeSelector: vi.Mock
+  setHasSelectedStartNode: Mock
+  setShouldAutoOpenStartNodeSelector: Mock
   notInitialWorkflow: boolean
 }
 
@@ -42,7 +43,7 @@ describe('Workflow Onboarding Integration Logic', () => {
     vi.clearAllMocks()
 
     // Mock store implementation
-    ;(useWorkflowStore as vi.Mock).mockReturnValue({
+    ;(useWorkflowStore as Mock).mockReturnValue({
       showOnboarding: false,
       setShowOnboarding: mockSetShowOnboarding,
       hasSelectedStartNode: false,
@@ -467,7 +468,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       mockGetNodes.mockReturnValue([])
 
       // Mock store with proper state for auto-detection
-      ;(useWorkflowStore as vi.Mock).mockReturnValue({
+      ;(useWorkflowStore as Mock).mockReturnValue({
         showOnboarding: false,
         hasShownOnboarding: false,
         notInitialWorkflow: false,
@@ -550,7 +551,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       mockGetNodes.mockReturnValue([])
 
       // Mock store with hasShownOnboarding = true
-      ;(useWorkflowStore as vi.Mock).mockReturnValue({
+      ;(useWorkflowStore as Mock).mockReturnValue({
         showOnboarding: false,
         hasShownOnboarding: true, // Already shown in this session
         notInitialWorkflow: false,
@@ -584,7 +585,7 @@ describe('Workflow Onboarding Integration Logic', () => {
       mockGetNodes.mockReturnValue([])
 
       // Mock store with notInitialWorkflow = true (initial creation)
-      ;(useWorkflowStore as vi.Mock).mockReturnValue({
+      ;(useWorkflowStore as Mock).mockReturnValue({
         showOnboarding: false,
         hasShownOnboarding: false,
         notInitialWorkflow: true, // Initial workflow creation

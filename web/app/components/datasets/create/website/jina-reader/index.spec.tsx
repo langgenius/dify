@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import JinaReader from './index'
@@ -188,7 +189,7 @@ describe('JinaReader', () => {
     it('should execute crawl task when checkedCrawlResult is provided', async () => {
       // Arrange
       const checkedItem = createCrawlResultItem({ source_url: 'https://checked.com' })
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: {
           title: 'Test',
@@ -234,7 +235,7 @@ describe('JinaReader', () => {
   describe('State Management', () => {
     it('should transition from init to running state when run is clicked', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       let resolvePromise: () => void
       mockCreateTask.mockImplementation(() => new Promise((resolve) => {
         resolvePromise = () => resolve({ data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' } })
@@ -262,7 +263,7 @@ describe('JinaReader', () => {
 
     it('should transition to finished state after successful crawl', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: {
           title: 'Test Page',
@@ -288,8 +289,8 @@ describe('JinaReader', () => {
 
     it('should update crawl result state during polling', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job-123' })
       mockCheckStatus
@@ -332,7 +333,7 @@ describe('JinaReader', () => {
 
     it('should fold options when step changes from init', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: {
           title: 'Test',
@@ -367,9 +368,9 @@ describe('JinaReader', () => {
   describe('Side Effects and Cleanup', () => {
     it('should call sleep during polling', async () => {
       // Arrange
-      const mockSleep = sleep as vi.Mock
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockSleep = sleep as Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
       mockCheckStatus
@@ -392,7 +393,7 @@ describe('JinaReader', () => {
 
     it('should update controlFoldOptions when step changes', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockImplementation(() => new Promise((_resolve) => { /* pending */ }))
 
       const props = createDefaultProps()
@@ -439,7 +440,7 @@ describe('JinaReader', () => {
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValue({ data: { title: 'T', content: 'C', description: 'D', url: 'https://a.com' } })
 
       const props = createDefaultProps()
@@ -483,7 +484,7 @@ describe('JinaReader', () => {
 
     it('should handle URL input and run button click', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: {
           title: 'Test',
@@ -512,7 +513,7 @@ describe('JinaReader', () => {
 
     it('should handle preview action on crawled result', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       const onPreview = vi.fn()
       const crawlResultData = {
         title: 'Preview Test',
@@ -593,7 +594,7 @@ describe('JinaReader', () => {
   describe('API Calls', () => {
     it('should call createJinaReaderTask with correct parameters', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'https://api-test.com' },
       })
@@ -618,7 +619,7 @@ describe('JinaReader', () => {
 
     it('should handle direct data response from API', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({
@@ -651,8 +652,8 @@ describe('JinaReader', () => {
 
     it('should handle job_id response and poll for status', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onJobIdChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'poll-job-123' })
@@ -686,8 +687,8 @@ describe('JinaReader', () => {
 
     it('should handle failed status from polling', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'fail-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -713,8 +714,8 @@ describe('JinaReader', () => {
 
     it('should handle API error during status check', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'error-job' })
       mockCheckStatus.mockRejectedValueOnce({
@@ -737,8 +738,8 @@ describe('JinaReader', () => {
 
     it('should limit total to crawlOptions.limit', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'limit-job' })
@@ -832,7 +833,7 @@ describe('JinaReader', () => {
 
     it('should accept URL with http:// protocol', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'http://example.com' },
       })
@@ -907,7 +908,7 @@ describe('JinaReader', () => {
 
     it('should handle API throwing an exception', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockRejectedValueOnce(new Error('Network error'))
       // Suppress console output during test to avoid noisy logs
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(vi.fn())
@@ -930,8 +931,8 @@ describe('JinaReader', () => {
 
     it('should handle status response without status field', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'no-status-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -955,8 +956,8 @@ describe('JinaReader', () => {
 
     it('should show unknown error when error message is empty', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'empty-error-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -980,8 +981,8 @@ describe('JinaReader', () => {
 
     it('should handle empty data array from API', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'empty-data-job' })
@@ -1008,8 +1009,8 @@ describe('JinaReader', () => {
 
     it('should handle null data from running status', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'null-data-job' })
@@ -1043,8 +1044,8 @@ describe('JinaReader', () => {
 
     it('should return empty array when completed job has undefined data', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'undefined-data-job' })
@@ -1071,8 +1072,8 @@ describe('JinaReader', () => {
 
     it('should show zero current progress when crawlResult is not yet available', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-current-job' })
       mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
@@ -1095,8 +1096,8 @@ describe('JinaReader', () => {
 
     it('should show 0/0 progress when limit is zero string', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-total-job' })
       mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
@@ -1119,8 +1120,8 @@ describe('JinaReader', () => {
 
     it('should complete successfully when result data is undefined', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'undefined-result-data-job' })
@@ -1148,8 +1149,8 @@ describe('JinaReader', () => {
 
     it('should use limit as total when crawlResult total is not available', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'no-total-job' })
       mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
@@ -1172,8 +1173,8 @@ describe('JinaReader', () => {
 
     it('should fallback to limit when crawlResult has zero total', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'both-zero-job' })
       mockCheckStatus
@@ -1203,7 +1204,7 @@ describe('JinaReader', () => {
 
     it('should construct result item from direct data response', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({
@@ -1241,7 +1242,7 @@ describe('JinaReader', () => {
   describe('Prop Variations', () => {
     it('should handle different limit values in crawlOptions', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'https://limit.com' },
       })
@@ -1268,7 +1269,7 @@ describe('JinaReader', () => {
 
     it('should handle different max_depth values', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'https://depth.com' },
       })
@@ -1295,7 +1296,7 @@ describe('JinaReader', () => {
 
     it('should handle crawl_sub_pages disabled', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'https://nosub.com' },
       })
@@ -1322,7 +1323,7 @@ describe('JinaReader', () => {
 
     it('should handle use_sitemap enabled', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'https://sitemap.com' },
       })
@@ -1349,7 +1350,7 @@ describe('JinaReader', () => {
 
     it('should handle includes and excludes patterns', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'https://patterns.com' },
       })
@@ -1382,7 +1383,7 @@ describe('JinaReader', () => {
 
     it('should handle pre-selected crawl results', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       const existingResult = createCrawlResultItem({ source_url: 'https://existing.com' })
 
       mockCreateTask.mockResolvedValueOnce({
@@ -1407,7 +1408,7 @@ describe('JinaReader', () => {
 
     it('should handle string type limit value', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'https://string-limit.com' },
       })
@@ -1435,8 +1436,8 @@ describe('JinaReader', () => {
   describe('Display and UI States', () => {
     it('should show crawling progress during running state', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'progress-job' })
       mockCheckStatus.mockImplementation(() => new Promise((_resolve) => { /* pending */ })) // Never resolves
@@ -1459,7 +1460,7 @@ describe('JinaReader', () => {
 
     it('should display time consumed after crawl completion', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
 
       mockCreateTask.mockResolvedValueOnce({
         data: { title: 'T', content: 'C', description: 'D', url: 'https://time.com' },
@@ -1481,7 +1482,7 @@ describe('JinaReader', () => {
 
     it('should display crawled results list after completion', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
 
       mockCreateTask.mockResolvedValueOnce({
         data: {
@@ -1508,7 +1509,7 @@ describe('JinaReader', () => {
 
     it('should show error message component when crawl fails', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
 
       mockCreateTask.mockRejectedValueOnce(new Error('Failed'))
       // Suppress console output during test to avoid noisy logs
@@ -1535,8 +1536,8 @@ describe('JinaReader', () => {
   describe('Integration', () => {
     it('should complete full crawl workflow with job polling', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
-      const mockCheckStatus = checkJinaReaderTaskStatus as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
+      const mockCheckStatus = checkJinaReaderTaskStatus as Mock
       const onCheckedCrawlResultChange = vi.fn()
       const onJobIdChange = vi.fn()
       const onPreview = vi.fn()
@@ -1600,7 +1601,7 @@ describe('JinaReader', () => {
 
     it('should handle select all and deselect all in results', async () => {
       // Arrange
-      const mockCreateTask = createJinaReaderTask as vi.Mock
+      const mockCreateTask = createJinaReaderTask as Mock
       const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({

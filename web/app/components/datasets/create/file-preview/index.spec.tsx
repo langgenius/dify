@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import FilePreview from './index'
 import type { CustomFile as File } from '@/models/datasets'
@@ -8,7 +9,7 @@ vi.mock('@/service/common', () => ({
   fetchFilePreview: vi.fn(),
 }))
 
-const mockFetchFilePreview = fetchFilePreview as vi.MockedFunction<typeof fetchFilePreview>
+const mockFetchFilePreview = fetchFilePreview as MockedFunction<typeof fetchFilePreview>
 
 // Factory function to create mock file objects
 const createMockFile = (overrides: Partial<File> = {}): File => {

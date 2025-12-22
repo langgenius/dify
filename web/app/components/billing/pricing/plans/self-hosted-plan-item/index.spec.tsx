@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import SelfHostedPlanItem from './index'
@@ -49,8 +50,8 @@ vi.mock('@/app/components/base/icons/src/public/billing', () => ({
   AwsMarketplaceLight: () => <div>AwsMarketplaceLight</div>,
 }))
 
-const mockUseAppContext = useAppContext as vi.Mock
-const mockToastNotify = Toast.notify as vi.Mock
+const mockUseAppContext = useAppContext as Mock
+const mockToastNotify = Toast.notify as Mock
 
 let assignedHref = ''
 const originalLocation = window.location

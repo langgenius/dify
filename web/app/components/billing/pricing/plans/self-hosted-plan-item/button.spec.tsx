@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import Button from './button'
@@ -12,7 +13,7 @@ vi.mock('@/app/components/base/icons/src/public/billing', () => ({
   AwsMarketplaceDark: () => <div>AwsMarketplaceDark</div>,
 }))
 
-const mockUseTheme = useTheme as vi.MockedFunction<typeof useTheme>
+const mockUseTheme = useTheme as MockedFunction<typeof useTheme>
 
 beforeEach(() => {
   vi.clearAllMocks()

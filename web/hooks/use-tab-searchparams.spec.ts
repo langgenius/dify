@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 /**
  * Test suite for useTabSearchParams hook
  *
@@ -329,7 +330,7 @@ describe('useTabSearchParams', () => {
      * Should use window.location.pathname as fallback
      */
     it('should fallback to window.location.pathname when hook pathname is null', () => {
-      ;(usePathname as vi.Mock).mockReturnValue(null)
+      ;(usePathname as Mock).mockReturnValue(null)
 
       // Mock window.location.pathname
       Object.defineProperty(window, 'location', {
@@ -349,7 +350,7 @@ describe('useTabSearchParams', () => {
       expect(mockPush).toHaveBeenCalledWith('/fallback-path?category=settings', { scroll: false })
 
       // Restore mock
-      ;(usePathname as vi.Mock).mockReturnValue(mockPathname)
+      ;(usePathname as Mock).mockReturnValue(mockPathname)
     })
   })
 
@@ -421,7 +422,7 @@ describe('useTabSearchParams', () => {
      * Should handle nested routes and existing query params
      */
     it('should work with complex pathnames', () => {
-      ;(usePathname as vi.Mock).mockReturnValue('/app/123/settings')
+      ;(usePathname as Mock).mockReturnValue('/app/123/settings')
 
       const { result } = renderHook(() =>
         useTabSearchParams({ defaultTab: 'overview' }),
@@ -435,7 +436,7 @@ describe('useTabSearchParams', () => {
       expect(mockPush).toHaveBeenCalledWith('/app/123/settings?category=advanced', { scroll: false })
 
       // Restore mock
-      ;(usePathname as vi.Mock).mockReturnValue(mockPathname)
+      ;(usePathname as Mock).mockReturnValue(mockPathname)
     })
   })
 

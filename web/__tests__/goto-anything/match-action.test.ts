@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import type { ActionItem } from '../../app/components/goto-anything/actions/types'
 
 // Mock the entire actions module to avoid import issues
@@ -39,7 +40,7 @@ const actualMatchAction = (query: string, actions: Record<string, ActionItem>) =
 }
 
 // Replace mock with actual implementation
-;(matchAction as vi.Mock).mockImplementation(actualMatchAction)
+;(matchAction as Mock).mockImplementation(actualMatchAction)
 
 describe('matchAction Logic', () => {
   const mockActions: Record<string, ActionItem> = {
@@ -68,7 +69,7 @@ describe('matchAction Logic', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    ;(slashCommandRegistry.getAllCommands as vi.Mock).mockReturnValue([
+    ;(slashCommandRegistry.getAllCommands as Mock).mockReturnValue([
       { name: 'docs', mode: 'direct' },
       { name: 'community', mode: 'direct' },
       { name: 'feedback', mode: 'direct' },
@@ -188,7 +189,7 @@ describe('matchAction Logic', () => {
 
   describe('Mode-based Filtering', () => {
     it('should filter direct mode commands from matching', () => {
-      ;(slashCommandRegistry.getAllCommands as vi.Mock).mockReturnValue([
+      ;(slashCommandRegistry.getAllCommands as Mock).mockReturnValue([
         { name: 'test', mode: 'direct' },
       ])
 
@@ -197,7 +198,7 @@ describe('matchAction Logic', () => {
     })
 
     it('should allow submenu mode commands to match', () => {
-      ;(slashCommandRegistry.getAllCommands as vi.Mock).mockReturnValue([
+      ;(slashCommandRegistry.getAllCommands as Mock).mockReturnValue([
         { name: 'test', mode: 'submenu' },
       ])
 
@@ -206,7 +207,7 @@ describe('matchAction Logic', () => {
     })
 
     it('should treat undefined mode as submenu', () => {
-      ;(slashCommandRegistry.getAllCommands as vi.Mock).mockReturnValue([
+      ;(slashCommandRegistry.getAllCommands as Mock).mockReturnValue([
         { name: 'test' }, // No mode specified
       ])
 
@@ -227,7 +228,7 @@ describe('matchAction Logic', () => {
     })
 
     it('should handle empty command list', () => {
-      ;(slashCommandRegistry.getAllCommands as vi.Mock).mockReturnValue([])
+      ;(slashCommandRegistry.getAllCommands as Mock).mockReturnValue([])
       const result = matchAction('/anything', mockActions)
       expect(result).toBeUndefined()
     })

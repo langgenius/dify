@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 /**
  * Test GotoAnything search error handling mechanisms
  *
@@ -39,9 +40,9 @@ vi.mock('@/service/datasets', () => ({
   fetchDatasets: vi.fn(),
 }))
 
-const mockPostMarketplace = postMarketplace as vi.MockedFunction<typeof postMarketplace>
-const mockFetchAppList = fetchAppList as vi.MockedFunction<typeof fetchAppList>
-const mockFetchDatasets = fetchDatasets as vi.MockedFunction<typeof fetchDatasets>
+const mockPostMarketplace = postMarketplace as MockedFunction<typeof postMarketplace>
+const mockFetchAppList = fetchAppList as MockedFunction<typeof fetchAppList>
+const mockFetchDatasets = fetchDatasets as MockedFunction<typeof fetchDatasets>
 
 describe('GotoAnything Search Error Handling', () => {
   beforeEach(() => {

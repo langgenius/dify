@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ExternalAPIItem } from '@/models/datasets'
@@ -115,7 +116,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockExternalKnowledgeApiList = createDefaultMockApiList()
-    ;(createExternalKnowledgeBase as vi.Mock).mockResolvedValue({ id: 'new-kb-id' })
+    ;(createExternalKnowledgeBase as Mock).mockResolvedValue({ id: 'new-kb-id' })
   })
 
   // Tests for rendering with real ExternalKnowledgeBaseCreate component
@@ -197,7 +198,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
     it('should show error notification when API fails', async () => {
       const user = userEvent.setup()
       const consoleErrorSpy = suppressConsoleError()
-      ;(createExternalKnowledgeBase as vi.Mock).mockRejectedValue(new Error('Network Error'))
+      ;(createExternalKnowledgeBase as Mock).mockRejectedValue(new Error('Network Error'))
 
       render(<ExternalKnowledgeBaseConnector />)
 
@@ -220,7 +221,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
     it('should show error notification when API returns invalid result', async () => {
       const user = userEvent.setup()
       const consoleErrorSpy = suppressConsoleError()
-      ;(createExternalKnowledgeBase as vi.Mock).mockResolvedValue({})
+      ;(createExternalKnowledgeBase as Mock).mockResolvedValue({})
 
       render(<ExternalKnowledgeBaseConnector />)
 
@@ -246,7 +247,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
 
       // Create a promise that won't resolve immediately
       const { promise, resolve: resolvePromise } = createPendingPromise<{ id: string }>()
-      ;(createExternalKnowledgeBase as vi.Mock).mockReturnValue(promise)
+      ;(createExternalKnowledgeBase as Mock).mockReturnValue(promise)
 
       render(<ExternalKnowledgeBaseConnector />)
 
