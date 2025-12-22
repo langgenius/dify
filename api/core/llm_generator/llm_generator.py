@@ -26,7 +26,6 @@ from core.model_runtime.entities.message_entities import PromptMessage, SystemPr
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.entities.trace_entity import TraceTaskName
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
@@ -175,7 +174,14 @@ class LLMGenerator:
                 generated_output = candidate.strip()
                 break
 
-            name = generated_output or (query or "")
+            if generated_output:
+                name = generated_output
+            else:
+                # Use the last non-Persian candidate (if any) so that the translation fallback
+                # can translate the generated candidate into Persian. Otherwise fall back to
+                # the original query.
+                last_candidate = locals().get("candidate", None)
+                name = last_candidate.strip() if isinstance(last_candidate, str) and last_candidate else (query or "")
 
         if is_persian_input and not _contains_persian(name):
             # As a last resort, ask the model to translate the title into Persian directly
@@ -204,6 +210,8 @@ class LLMGenerator:
             name = name[:75] + "..."
 
         # get tracing instance
+        from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
+
         trace_manager = TraceQueueManager(app_id=app_id)
         trace_manager.add_trace_task(
             TraceTask(
