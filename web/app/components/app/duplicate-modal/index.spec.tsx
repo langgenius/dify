@@ -16,9 +16,9 @@ vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   },
 }))
 
-const useProviderContextMock = vi.fn<ProviderContextState, []>()
-vi.mock('@/context/provider-context', () => {
-  const actual = vi.importActual('@/context/provider-context')
+const useProviderContextMock = vi.fn<[], ProviderContextState>()
+vi.mock('@/context/provider-context', async () => {
+  const actual = await vi.importActual('@/context/provider-context')
   return {
     ...actual,
     useProviderContext: () => useProviderContextMock(),

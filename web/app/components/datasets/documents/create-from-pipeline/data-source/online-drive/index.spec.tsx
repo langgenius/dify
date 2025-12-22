@@ -86,8 +86,8 @@ vi.mock('../store', () => ({
 }))
 
 // Mock Header component
-vi.mock('../base/header', () => {
-  const MockHeader = (props: any) => (
+vi.mock('../base/header', () => ({
+  default: (props: any) => (
     <div data-testid="header">
       <span data-testid="header-doc-title">{props.docTitle}</span>
       <span data-testid="header-doc-link">{props.docLink}</span>
@@ -97,13 +97,12 @@ vi.mock('../base/header', () => {
       <button data-testid="header-credential-change" onClick={() => props.onCredentialChange('new-cred-id')}>Change Credential</button>
       <span data-testid="header-credentials-count">{props.credentials?.length || 0}</span>
     </div>
-  )
-  return MockHeader
-})
+  ),
+}))
 
 // Mock FileList component
-vi.mock('./file-list', () => {
-  const MockFileList = (props: any) => (
+vi.mock('./file-list', () => ({
+  default: (props: any) => (
     <div data-testid="file-list">
       <span data-testid="file-list-count">{props.fileList?.length || 0}</span>
       <span data-testid="file-list-selected-count">{props.selectedFileIds?.length || 0}</span>
@@ -164,9 +163,8 @@ vi.mock('./file-list', () => {
         Open File
       </button>
     </div>
-  )
-  return MockFileList
-})
+  ),
+}))
 
 // ==========================================
 // Test Data Builders

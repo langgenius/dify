@@ -20,11 +20,11 @@ vi.mock('next/navigation', () => ({
 }))
 
 // Mock next/link
-vi.mock('next/link', () => {
-  return function MockLink({ children, href, ...props }: { children: React.ReactNode; href: string }) {
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href, ...props }: { children: React.ReactNode; href: string }) {
     return <a href={href} {...props}>{children}</a>
-  }
-})
+  },
+}))
 
 // Mock provider context
 let mockEnableBilling = false
@@ -127,7 +127,7 @@ const createDefaultProps = (overrides: Partial<{
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    vi.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
 
     // Reset deterministic ID counter for reproducible tests
     documentIdCounter = 0

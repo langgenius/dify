@@ -25,6 +25,7 @@ vi.mock('react-window', () => ({
       ))}
     </div>
   ),
+  areEqual: (prevProps: any, nextProps: any) => prevProps === nextProps,
 }))
 
 // Note: NotionIcon from @/app/components/base/ is NOT mocked - using real component per testing guidelines

@@ -38,7 +38,7 @@ vi.mock('@/app/components/base/form/form-scenarios/base/field', () => {
     )
     return MockField
   }
-  return MockBaseFieldFactory
+  return { default: MockBaseFieldFactory }
 })
 
 // Mock useAppForm

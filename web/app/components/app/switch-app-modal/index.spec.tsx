@@ -231,7 +231,6 @@ describe('SwitchAppModal', () => {
       // Arrange
       const { appDetail, notify, onClose, onSuccess } = renderComponent()
       mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-001' })
-      const setItemSpy = vi.spyOn(Storage.prototype, 'setItem')
 
       // Act
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
@@ -245,13 +244,13 @@ describe('SwitchAppModal', () => {
           icon: '🚀',
           icon_background: '#FFEAD5',
         })
+        expect(onSuccess).toHaveBeenCalledTimes(1)
+        expect(onClose).toHaveBeenCalledTimes(1)
+        expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+        expect(localStorage.setItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
+        expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
+        expect(mockReplace).not.toHaveBeenCalled()
       })
-      expect(onSuccess).toHaveBeenCalledTimes(1)
-      expect(onClose).toHaveBeenCalledTimes(1)
-      expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
-      expect(setItemSpy).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
-      expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
-      expect(mockReplace).not.toHaveBeenCalled()
     })
 
     it('should delete the original app and use replace when remove original is confirmed', async () => {

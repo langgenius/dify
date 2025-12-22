@@ -75,8 +75,8 @@ vi.mock('../store', () => ({
 }))
 
 // Mock Header component
-vi.mock('../base/header', () => {
-  const MockHeader = (props: any) => (
+vi.mock('../base/header', () => ({
+  default: (props: any) => (
     <div data-testid="header">
       <span data-testid="header-doc-title">{props.docTitle}</span>
       <span data-testid="header-doc-link">{props.docLink}</span>
@@ -86,14 +86,13 @@ vi.mock('../base/header', () => {
       <button data-testid="header-credential-change" onClick={() => props.onCredentialChange('new-cred-id')}>Change Credential</button>
       <span data-testid="header-credentials-count">{props.credentials?.length || 0}</span>
     </div>
-  )
-  return MockHeader
-})
+  ),
+}))
 
 // Mock Options component
 const mockOptionsSubmit = vi.fn()
-vi.mock('./base/options', () => {
-  const MockOptions = (props: any) => (
+vi.mock('./base/options', () => ({
+  default: (props: any) => (
     <div data-testid="options">
       <span data-testid="options-step">{props.step}</span>
       <span data-testid="options-run-disabled">{String(props.runDisabled)}</span>
@@ -108,35 +107,32 @@ vi.mock('./base/options', () => {
         Submit
       </button>
     </div>
-  )
-  return MockOptions
-})
+  ),
+}))
 
 // Mock Crawling component
-vi.mock('./base/crawling', () => {
-  const MockCrawling = (props: any) => (
+vi.mock('./base/crawling', () => ({
+  default: (props: any) => (
     <div data-testid="crawling">
       <span data-testid="crawling-crawled-num">{props.crawledNum}</span>
       <span data-testid="crawling-total-num">{props.totalNum}</span>
     </div>
-  )
-  return MockCrawling
-})
+  ),
+}))
 
 // Mock ErrorMessage component
-vi.mock('./base/error-message', () => {
-  const MockErrorMessage = (props: any) => (
+vi.mock('./base/error-message', () => ({
+  default: (props: any) => (
     <div data-testid="error-message" className={props.className}>
       <span data-testid="error-title">{props.title}</span>
       <span data-testid="error-msg">{props.errorMsg}</span>
     </div>
-  )
-  return MockErrorMessage
-})
+  ),
+}))
 
 // Mock CrawledResult component
-vi.mock('./base/crawled-result', () => {
-  const MockCrawledResult = (props: any) => (
+vi.mock('./base/crawled-result', () => ({
+  default: (props: any) => (
     <div data-testid="crawled-result" className={props.className}>
       <span data-testid="crawled-result-count">{props.list?.length || 0}</span>
       <span data-testid="crawled-result-checked-count">{props.checkedList?.length || 0}</span>
@@ -157,9 +153,8 @@ vi.mock('./base/crawled-result', () => {
         Preview
       </button>
     </div>
-  )
-  return MockCrawledResult
-})
+  ),
+}))
 
 // ==========================================
 // Test Data Builders

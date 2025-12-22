@@ -74,8 +74,8 @@ vi.mock('../store', () => ({
 }))
 
 // Mock Header component
-vi.mock('../base/header', () => {
-  const MockHeader = (props: any) => (
+vi.mock('../base/header', () => ({
+  default: (props: any) => (
     <div data-testid="header">
       <span data-testid="header-doc-title">{props.docTitle}</span>
       <span data-testid="header-doc-link">{props.docLink}</span>
@@ -85,13 +85,12 @@ vi.mock('../base/header', () => {
       <button data-testid="header-credential-change" onClick={() => props.onCredentialChange('new-cred-id')}>Change Credential</button>
       <span data-testid="header-credentials-count">{props.credentials?.length || 0}</span>
     </div>
-  )
-  return MockHeader
-})
+  ),
+}))
 
 // Mock SearchInput component
-vi.mock('@/app/components/base/notion-page-selector/search-input', () => {
-  const MockSearchInput = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+vi.mock('@/app/components/base/notion-page-selector/search-input', () => ({
+  default: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
     <div data-testid="search-input">
       <input
         data-testid="search-input-field"
@@ -100,13 +99,12 @@ vi.mock('@/app/components/base/notion-page-selector/search-input', () => {
         placeholder="Search"
       />
     </div>
-  )
-  return MockSearchInput
-})
+  ),
+}))
 
 // Mock PageSelector component
-vi.mock('./page-selector', () => {
-  const MockPageSelector = (props: any) => (
+vi.mock('./page-selector', () => ({
+  default: (props: any) => (
     <div data-testid="page-selector">
       <span data-testid="page-selector-checked-count">{props.checkedIds?.size || 0}</span>
       <span data-testid="page-selector-search-value">{props.searchValue}</span>
@@ -126,27 +124,24 @@ vi.mock('./page-selector', () => {
         Preview Page
       </button>
     </div>
-  )
-  return MockPageSelector
-})
+  ),
+}))
 
 // Mock Title component
-vi.mock('./title', () => {
-  const MockTitle = ({ name }: { name: string }) => (
+vi.mock('./title', () => ({
+  default: ({ name }: { name: string }) => (
     <div data-testid="title">
       <span data-testid="title-name">{name}</span>
     </div>
-  )
-  return MockTitle
-})
+  ),
+}))
 
 // Mock Loading component
-vi.mock('@/app/components/base/loading', () => {
-  const MockLoading = ({ type }: { type: string }) => (
+vi.mock('@/app/components/base/loading', () => ({
+  default: ({ type }: { type: string }) => (
     <div data-testid="loading" data-type={type}>Loading...</div>
-  )
-  return MockLoading
-})
+  ),
+}))
 
 // ==========================================
 // Test Data Builders

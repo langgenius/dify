@@ -66,21 +66,30 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
     readonly root: Element | Document | null = null
     readonly rootMargin: string = ''
     readonly thresholds: ReadonlyArray<number> = []
-    constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) {}
-    observe() {}
-    unobserve() {}
-    disconnect() {}
+    constructor(_callback: IntersectionObserverCallback, _options?: IntersectionObserverInit) { /* noop */ }
+    observe() { /* noop */ }
+    unobserve() { /* noop */ }
+    disconnect() { /* noop */ }
     takeRecords(): IntersectionObserverEntry[] { return [] }
   }
 }
 
 // Mock Element.scrollIntoView for tests (not available in happy-dom/jsdom)
 if (typeof Element !== 'undefined' && !Element.prototype.scrollIntoView)
-  Element.prototype.scrollIntoView = function () {}
+  Element.prototype.scrollIntoView = function () { /* noop */ }
 
 afterEach(() => {
   cleanup()
 })
+
+// mock i18n-config/i18next-config to avoid require() issues in ESM
+vi.mock('@/i18n-config/i18next-config', () => ({
+  default: {},
+  changeLanguage: vi.fn(),
+}))
+
+// mock next/image to avoid width/height requirements for data URLs
+vi.mock('next/image')
 
 // mock react-i18next
 vi.mock('react-i18next', async () => {

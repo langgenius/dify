@@ -11,16 +11,15 @@ import { OnlineDriveFileType } from '@/models/pipeline'
 // Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
 
 // Mock Loading component - base component with simple render
-vi.mock('@/app/components/base/loading', () => {
-  const MockLoading = ({ type }: { type?: string }) => (
+vi.mock('@/app/components/base/loading', () => ({
+  default: ({ type }: { type?: string }) => (
     <div data-testid="loading" data-type={type}>Loading...</div>
-  )
-  return MockLoading
-})
+  ),
+}))
 
 // Mock Item component for List tests - child component with complex behavior
-vi.mock('./item', () => {
-  const MockItem = ({ file, isSelected, onSelect, onOpen, isMultipleChoice }: {
+vi.mock('./item', () => ({
+  default: ({ file, isSelected, onSelect, onOpen, isMultipleChoice }: {
     file: OnlineDriveFile
     isSelected: boolean
     onSelect: (file: OnlineDriveFile) => void
@@ -38,28 +37,25 @@ vi.mock('./item', () => {
         <button data-testid={`item-open-${file.id}`} onClick={() => onOpen(file)}>Open</button>
       </div>
     )
-  }
-  return MockItem
-})
+  },
+}))
 
 // Mock EmptyFolder component for List tests
-vi.mock('./empty-folder', () => {
-  const MockEmptyFolder = () => (
+vi.mock('./empty-folder', () => ({
+  default: () => (
     <div data-testid="empty-folder">Empty Folder</div>
-  )
-  return MockEmptyFolder
-})
+  ),
+}))
 
 // Mock EmptySearchResult component for List tests
-vi.mock('./empty-search-result', () => {
-  const MockEmptySearchResult = ({ onResetKeywords }: { onResetKeywords: () => void }) => (
+vi.mock('./empty-search-result', () => ({
+  default: ({ onResetKeywords }: { onResetKeywords: () => void }) => (
     <div data-testid="empty-search-result">
       <span>No results</span>
       <button data-testid="reset-keywords-btn" onClick={onResetKeywords}>Reset</button>
     </div>
-  )
-  return MockEmptySearchResult
-})
+  ),
+}))
 
 // Mock store state and refs
 const mockIsTruncated = { current: false }
@@ -1218,7 +1214,12 @@ describe('List', () => {
 // ==========================================
 describe('EmptyFolder', () => {
   // Get real component for testing
-  const ActualEmptyFolder = vi.importActual('./empty-folder').default
+  let ActualEmptyFolder: React.ComponentType
+
+  beforeAll(async () => {
+    const mod = await vi.importActual<{ default: React.ComponentType }>('./empty-folder')
+    ActualEmptyFolder = mod.default
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -1268,7 +1269,12 @@ describe('EmptyFolder', () => {
 // ==========================================
 describe('EmptySearchResult', () => {
   // Get real component for testing
-  const ActualEmptySearchResult = vi.importActual('./empty-search-result').default
+  let ActualEmptySearchResult: React.ComponentType<{ onResetKeywords: () => void }>
+
+  beforeAll(async () => {
+    const mod = await vi.importActual<{ default: React.ComponentType<{ onResetKeywords: () => void }> }>('./empty-search-result')
+    ActualEmptySearchResult = mod.default
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -1356,7 +1362,12 @@ describe('EmptySearchResult', () => {
 // ==========================================
 describe('FileIcon', () => {
   // Get real component for testing
-  const ActualFileIcon = vi.importActual('./file-icon').default
+  let ActualFileIcon: React.ComponentType<{ type: OnlineDriveFileType; fileName: string }>
+
+  beforeAll(async () => {
+    const mod = await vi.importActual<{ default: React.ComponentType<{ type: OnlineDriveFileType; fileName: string }> }>('./file-icon')
+    ActualFileIcon = mod.default
+  })
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -1549,7 +1560,7 @@ describe('FileIcon', () => {
 // ==========================================
 describe('Item', () => {
   // Get real component for testing
-  const ActualItem = vi.importActual('./item').default
+  let ActualItem: React.ComponentType<ItemProps>
 
   type ItemProps = {
     file: OnlineDriveFile
@@ -1559,6 +1570,11 @@ describe('Item', () => {
     onSelect: (file: OnlineDriveFile) => void
     onOpen: (file: OnlineDriveFile) => void
   }
+
+  beforeAll(async () => {
+    const mod = await vi.importActual<{ default: React.ComponentType<ItemProps> }>('./item')
+    ActualItem = mod.default
+  })
 
   // Reuse createMockOnlineDriveFile from outer scope
   const createItemProps = (overrides?: Partial<ItemProps>): ItemProps => ({
@@ -1891,8 +1907,17 @@ describe('Item', () => {
 // ==========================================
 describe('utils', () => {
   // Import actual utils functions
-  const { getFileExtension, getFileType } = vi.importActual('./utils')
-  const { FileAppearanceTypeEnum } = vi.importActual('@/app/components/base/file-uploader/types')
+  let getFileExtension: (filename: string) => string
+  let getFileType: (filename: string) => string
+  let FileAppearanceTypeEnum: Record<string, string>
+
+  beforeAll(async () => {
+    const utils = await vi.importActual<{ getFileExtension: typeof getFileExtension; getFileType: typeof getFileType }>('./utils')
+    const types = await vi.importActual<{ FileAppearanceTypeEnum: typeof FileAppearanceTypeEnum }>('@/app/components/base/file-uploader/types')
+    getFileExtension = utils.getFileExtension
+    getFileType = utils.getFileType
+    FileAppearanceTypeEnum = types.FileAppearanceTypeEnum
+  })
 
   describe('getFileExtension', () => {
     describe('Basic Functionality', () => {
