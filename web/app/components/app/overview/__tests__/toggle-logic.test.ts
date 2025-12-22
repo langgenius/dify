@@ -1,19 +1,20 @@
+import type { MockedFunction } from 'vitest'
 import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
 import type { Node } from '@/app/components/workflow/types'
 
 // Mock the getWorkflowEntryNode function
-jest.mock('@/app/components/workflow/utils/workflow-entry', () => ({
-  getWorkflowEntryNode: jest.fn(),
+vi.mock('@/app/components/workflow/utils/workflow-entry', () => ({
+  getWorkflowEntryNode: vi.fn(),
 }))
 
-const mockGetWorkflowEntryNode = getWorkflowEntryNode as jest.MockedFunction<typeof getWorkflowEntryNode>
+const mockGetWorkflowEntryNode = getWorkflowEntryNode as MockedFunction<typeof getWorkflowEntryNode>
 
 // Mock entry node for testing (truthy value)
 const mockEntryNode = { id: 'start-node', data: { type: 'start' } } as Node
 
 describe('App Card Toggle Logic', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Helper function that mirrors the actual logic from app-card.tsx

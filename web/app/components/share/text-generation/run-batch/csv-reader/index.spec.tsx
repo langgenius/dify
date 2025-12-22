@@ -5,7 +5,7 @@ import CSVReader from './index'
 let mockAcceptedFile: { name: string } | null = null
 let capturedHandlers: Record<string, (payload: any) => void> = {}
 
-jest.mock('react-papaparse', () => ({
+vi.mock('react-papaparse', () => ({
   useCSVReader: () => ({
     CSVReader: ({ children, ...handlers }: any) => {
       capturedHandlers = handlers
@@ -25,11 +25,11 @@ describe('CSVReader', () => {
   beforeEach(() => {
     mockAcceptedFile = null
     capturedHandlers = {}
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   test('should display upload instructions when no file selected', async () => {
-    const onParsed = jest.fn()
+    const onParsed = vi.fn()
     render(<CSVReader onParsed={onParsed} />)
 
     expect(screen.getByText('share.generation.csvUploadTitle')).toBeInTheDocument()
@@ -43,15 +43,15 @@ describe('CSVReader', () => {
 
   test('should show accepted file name without extension', () => {
     mockAcceptedFile = { name: 'batch.csv' }
-    render(<CSVReader onParsed={jest.fn()} />)
+    render(<CSVReader onParsed={vi.fn()} />)
 
     expect(screen.getByText('batch')).toBeInTheDocument()
     expect(screen.getByText('.csv')).toBeInTheDocument()
   })
 
   test('should toggle hover styling on drag events', async () => {
-    render(<CSVReader onParsed={jest.fn()} />)
-    const dragEvent = { preventDefault: jest.fn() } as unknown as DragEvent
+    render(<CSVReader onParsed={vi.fn()} />)
+    const dragEvent = { preventDefault: vi.fn() } as unknown as DragEvent
 
     await act(async () => {
       capturedHandlers.onDragOver?.(dragEvent)

@@ -1,11 +1,15 @@
-const fs = require('node:fs')
-const path = require('node:path')
-const vm = require('node:vm')
-const transpile = require('typescript').transpile
-const magicast = require('magicast')
-const { parseModule, generateCode, loadFile } = magicast
-const bingTranslate = require('bing-translate-api')
-const { translate } = bingTranslate
+import fs from 'node:fs'
+import path from 'node:path'
+import vm from 'node:vm'
+import { fileURLToPath } from 'node:url'
+import { createRequire } from 'node:module'
+import { transpile } from 'typescript'
+import { parseModule, generateCode, loadFile } from 'magicast'
+import { translate } from 'bing-translate-api'
+
+const require = createRequire(import.meta.url)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 const data = require('./languages.json')
 
 const targetLanguage = 'en-US'

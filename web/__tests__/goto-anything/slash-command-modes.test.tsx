@@ -1,17 +1,16 @@
-import '@testing-library/jest-dom'
 import { slashCommandRegistry } from '../../app/components/goto-anything/actions/commands/registry'
 import type { SlashCommandHandler } from '../../app/components/goto-anything/actions/commands/types'
 
 // Mock the registry
-jest.mock('../../app/components/goto-anything/actions/commands/registry')
+vi.mock('../../app/components/goto-anything/actions/commands/registry')
 
 describe('Slash Command Dual-Mode System', () => {
   const mockDirectCommand: SlashCommandHandler = {
     name: 'docs',
     description: 'Open documentation',
     mode: 'direct',
-    execute: jest.fn(),
-    search: jest.fn().mockResolvedValue([
+    execute: vi.fn(),
+    search: vi.fn().mockResolvedValue([
       {
         id: 'docs',
         title: 'Documentation',
@@ -20,15 +19,15 @@ describe('Slash Command Dual-Mode System', () => {
         data: { command: 'navigation.docs', args: {} },
       },
     ]),
-    register: jest.fn(),
-    unregister: jest.fn(),
+    register: vi.fn(),
+    unregister: vi.fn(),
   }
 
   const mockSubmenuCommand: SlashCommandHandler = {
     name: 'theme',
     description: 'Change theme',
     mode: 'submenu',
-    search: jest.fn().mockResolvedValue([
+    search: vi.fn().mockResolvedValue([
       {
         id: 'theme-light',
         title: 'Light Theme',
@@ -44,18 +43,18 @@ describe('Slash Command Dual-Mode System', () => {
         data: { command: 'theme.set', args: { theme: 'dark' } },
       },
     ]),
-    register: jest.fn(),
-    unregister: jest.fn(),
+    register: vi.fn(),
+    unregister: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
-    ;(slashCommandRegistry as any).findCommand = jest.fn((name: string) => {
+    vi.clearAllMocks()
+    ;(slashCommandRegistry as any).findCommand = vi.fn((name: string) => {
       if (name === 'docs') return mockDirectCommand
       if (name === 'theme') return mockSubmenuCommand
       return null
     })
-    ;(slashCommandRegistry as any).getAllCommands = jest.fn(() => [
+    ;(slashCommandRegistry as any).getAllCommands = vi.fn(() => [
       mockDirectCommand,
       mockSubmenuCommand,
     ])
@@ -63,8 +62,8 @@ describe('Slash Command Dual-Mode System', () => {
 
   describe('Direct Mode Commands', () => {
     it('should execute immediately when selected', () => {
-      const mockSetShow = jest.fn()
-      const mockSetSearchQuery = jest.fn()
+      const mockSetShow = vi.fn()
+      const mockSetSearchQuery = vi.fn()
 
       // Simulate command selection
       const handler = slashCommandRegistry.findCommand('docs')
@@ -88,7 +87,7 @@ describe('Slash Command Dual-Mode System', () => {
     })
 
     it('should close modal after execution', () => {
-      const mockModalClose = jest.fn()
+      const mockModalClose = vi.fn()
 
       const handler = slashCommandRegistry.findCommand('docs')
       if (handler?.mode === 'direct' && handler.execute) {
@@ -118,7 +117,7 @@ describe('Slash Command Dual-Mode System', () => {
     })
 
     it('should keep modal open for selection', () => {
-      const mockModalClose = jest.fn()
+      const mockModalClose = vi.fn()
 
       const handler = slashCommandRegistry.findCommand('theme')
       // For submenu mode, modal should not close immediately
@@ -141,12 +140,12 @@ describe('Slash Command Dual-Mode System', () => {
       const commandWithoutMode: SlashCommandHandler = {
         name: 'test',
         description: 'Test command',
-        search: jest.fn(),
-        register: jest.fn(),
-        unregister: jest.fn(),
+        search: vi.fn(),
+        register: vi.fn(),
+        unregister: vi.fn(),
       }
 
-      ;(slashCommandRegistry as any).findCommand = jest.fn(() => commandWithoutMode)
+      ;(slashCommandRegistry as any).findCommand = vi.fn(() => commandWithoutMode)
 
       const handler = slashCommandRegistry.findCommand('test')
       // Default behavior should be submenu when mode is not specified
@@ -189,7 +188,7 @@ describe('Slash Command Dual-Mode System', () => {
   describe('Command Registration', () => {
     it('should register both direct and submenu commands', () => {
       mockDirectCommand.register?.({})
-      mockSubmenuCommand.register?.({ setTheme: jest.fn() })
+      mockSubmenuCommand.register?.({ setTheme: vi.fn() })
 
       expect(mockDirectCommand.register).toHaveBeenCalled()
       expect(mockSubmenuCommand.register).toHaveBeenCalled()

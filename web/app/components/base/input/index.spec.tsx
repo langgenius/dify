@@ -1,10 +1,9 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import Input, { inputVariants } from './index'
 
 // Mock the i18n hook
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
@@ -71,7 +70,7 @@ describe('Input component', () => {
   })
 
   it('calls onClear when clear icon is clicked', () => {
-    const onClear = jest.fn()
+    const onClear = vi.fn()
     render(<Input showClearIcon value="test" onClear={onClear} />)
     const clearIconContainer = document.querySelector('.group')
     fireEvent.click(clearIconContainer!)
@@ -106,7 +105,7 @@ describe('Input component', () => {
     render(<Input className={customClass} styleCss={customStyle} />)
     const input = screen.getByPlaceholderText('Please input')
     expect(input).toHaveClass(customClass)
-    expect(input).toHaveStyle('color: red')
+    expect(input).toHaveStyle({ color: 'rgb(255, 0, 0)' })
   })
 
   it('applies large size variant correctly', () => {

@@ -5,15 +5,14 @@
 
 import React from 'react'
 import { render } from '@testing-library/react'
-import '@testing-library/jest-dom'
 
 // Mock Next.js navigation
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useSelectedLayoutSegment: () => 'overview',
 }))
 
 // Mock classnames utility
-jest.mock('@/utils/classnames', () => ({
+vi.mock('@/utils/classnames', () => ({
   __esModule: true,
   default: (...classes: any[]) => classes.filter(Boolean).join(' '),
 }))

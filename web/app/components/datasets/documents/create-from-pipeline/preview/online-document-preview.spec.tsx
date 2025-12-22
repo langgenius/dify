@@ -5,32 +5,32 @@ import OnlineDocumentPreview from './online-document-preview'
 import type { NotionPage } from '@/models/common'
 import Toast from '@/app/components/base/toast'
 
-// Uses __mocks__/react-i18next.ts automatically
+// Uses global react-i18next mock from web/vitest.setup.ts
 
 // Spy on Toast.notify
-const toastNotifySpy = jest.spyOn(Toast, 'notify')
+const toastNotifySpy = vi.spyOn(Toast, 'notify')
 
 // Mock dataset-detail context - needs mock to control return values
-const mockPipelineId = jest.fn()
-jest.mock('@/context/dataset-detail', () => ({
+const mockPipelineId = vi.fn()
+vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (_selector: (s: { dataset: { pipeline_id: string } }) => string) => {
     return mockPipelineId()
   },
 }))
 
 // Mock usePreviewOnlineDocument hook - needs mock to control mutation behavior
-const mockMutateAsync = jest.fn()
-const mockUsePreviewOnlineDocument = jest.fn()
-jest.mock('@/service/use-pipeline', () => ({
+const mockMutateAsync = vi.fn()
+const mockUsePreviewOnlineDocument = vi.fn()
+vi.mock('@/service/use-pipeline', () => ({
   usePreviewOnlineDocument: () => mockUsePreviewOnlineDocument(),
 }))
 
 // Mock data source store - needs mock to control store state
 const mockCurrentCredentialId = 'credential-123'
-const mockGetState = jest.fn(() => ({
+const mockGetState = vi.fn(() => ({
   currentCredentialId: mockCurrentCredentialId,
 }))
-jest.mock('../data-source/store', () => ({
+vi.mock('../data-source/store', () => ({
   useDataSourceStore: () => ({
     getState: mockGetState,
   }),
@@ -51,12 +51,12 @@ const createMockNotionPage = (overrides?: Partial<NotionPage>): NotionPage => ({
 const defaultProps = {
   currentPage: createMockNotionPage(),
   datasourceNodeId: 'datasource-node-123',
-  hidePreview: jest.fn(),
+  hidePreview: vi.fn(),
 }
 
 describe('OnlineDocumentPreview', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockPipelineId.mockReturnValue('pipeline-123')
     mockUsePreviewOnlineDocument.mockReturnValue({
       mutateAsync: mockMutateAsync,
@@ -287,7 +287,7 @@ describe('OnlineDocumentPreview', () => {
 
   describe('User Interactions', () => {
     it('should call hidePreview when close button is clicked', () => {
-      const hidePreview = jest.fn()
+      const hidePreview = vi.fn()
 
       render(<OnlineDocumentPreview {...defaultProps} hidePreview={hidePreview} />)
 

@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import OperationBtn from './index'
 
-jest.mock('@remixicon/react', () => ({
+vi.mock('@remixicon/react', () => ({
   RiAddLine: (props: { className?: string }) => (
     <svg data-testid='add-icon' className={props.className} />
   ),
@@ -12,7 +12,7 @@ jest.mock('@remixicon/react', () => ({
 
 describe('OperationBtn', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering icons and translation labels
@@ -29,7 +29,7 @@ describe('OperationBtn', () => {
     })
     it('should render add icon when type is add', () => {
       // Arrange
-      const onClick = jest.fn()
+      const onClick = vi.fn()
 
       // Act
       render(<OperationBtn type='add' onClick={onClick} className='custom-class' />)
@@ -57,7 +57,7 @@ describe('OperationBtn', () => {
   describe('Interactions', () => {
     it('should execute click handler when button is clicked', () => {
       // Arrange
-      const onClick = jest.fn()
+      const onClick = vi.fn()
       render(<OperationBtn type='add' onClick={onClick} />)
 
       // Act

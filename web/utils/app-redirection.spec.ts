@@ -66,7 +66,7 @@ describe('app-redirection', () => {
      */
     test('calls redirection function with correct path for non-editor', () => {
       const app = { id: 'app-123', mode: AppModeEnum.CHAT }
-      const mockRedirect = jest.fn()
+      const mockRedirect = vi.fn()
 
       getRedirection(false, app, mockRedirect)
 
@@ -76,7 +76,7 @@ describe('app-redirection', () => {
 
     test('calls redirection function with workflow path for editor', () => {
       const app = { id: 'app-123', mode: AppModeEnum.WORKFLOW }
-      const mockRedirect = jest.fn()
+      const mockRedirect = vi.fn()
 
       getRedirection(true, app, mockRedirect)
 
@@ -86,7 +86,7 @@ describe('app-redirection', () => {
 
     test('calls redirection function with configuration path for chat mode editor', () => {
       const app = { id: 'app-123', mode: AppModeEnum.CHAT }
-      const mockRedirect = jest.fn()
+      const mockRedirect = vi.fn()
 
       getRedirection(true, app, mockRedirect)
 

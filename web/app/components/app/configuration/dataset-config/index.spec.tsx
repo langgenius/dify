@@ -8,10 +8,13 @@ import { ModelModeType } from '@/types/app'
 import { RETRIEVE_TYPE } from '@/types/app'
 import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { DatasetConfigs } from '@/models/debug'
+import { useContext } from 'use-context-selector'
+import { hasEditPermissionForDataset } from '@/utils/permission'
+import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 
 // Mock external dependencies
-jest.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({
-  getMultipleRetrievalConfig: jest.fn(() => ({
+vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({
+  getMultipleRetrievalConfig: vi.fn(() => ({
     top_k: 4,
     score_threshold: 0.7,
     reranking_enable: false,
@@ -19,7 +22,7 @@ jest.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({
     reranking_mode: 'reranking_model',
     weights: { weight1: 1.0 },
   })),
-  getSelectedDatasetsMode: jest.fn(() => ({
+  getSelectedDatasetsMode: vi.fn(() => ({
     allInternal: true,
     allExternal: false,
     mixtureInternalAndExternal: false,
@@ -28,31 +31,31 @@ jest.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({
   })),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: jest.fn(() => ({
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(() => ({
     currentModel: { model: 'rerank-model' },
     currentProvider: { provider: 'openai' },
   })),
 }))
 
-jest.mock('@/context/app-context', () => ({
-  useSelector: jest.fn((fn: any) => fn({
+vi.mock('@/context/app-context', () => ({
+  useSelector: vi.fn((fn: any) => fn({
     userProfile: {
       id: 'user-123',
     },
   })),
 }))
 
-jest.mock('@/utils/permission', () => ({
-  hasEditPermissionForDataset: jest.fn(() => true),
+vi.mock('@/utils/permission', () => ({
+  hasEditPermissionForDataset: vi.fn(() => true),
 }))
 
-jest.mock('../debug/hooks', () => ({
-  useFormattingChangedDispatcher: jest.fn(() => jest.fn()),
+vi.mock('../debug/hooks', () => ({
+  useFormattingChangedDispatcher: vi.fn(() => vi.fn()),
 }))
 
-jest.mock('lodash-es', () => ({
-  intersectionBy: jest.fn((...arrays) => {
+vi.mock('lodash-es', () => ({
+  intersectionBy: vi.fn((...arrays) => {
     // Mock realistic intersection behavior based on metadata name
     const validArrays = arrays.filter(Array.isArray)
     if (validArrays.length === 0) return []
@@ -71,12 +74,12 @@ jest.mock('lodash-es', () => ({
   }),
 }))
 
-jest.mock('uuid', () => ({
-  v4: jest.fn(() => 'mock-uuid'),
+vi.mock('uuid', () => ({
+  v4: vi.fn(() => 'mock-uuid'),
 }))
 
 // Mock child components
-jest.mock('./card-item', () => ({
+vi.mock('./card-item', () => ({
   __esModule: true,
   default: ({ config, onRemove, onSave, editable }: any) => (
     <div data-testid={`card-item-${config.id}`}>
@@ -87,7 +90,7 @@ jest.mock('./card-item', () => ({
   ),
 }))
 
-jest.mock('./params-config', () => ({
+vi.mock('./params-config', () => ({
   __esModule: true,
   default: ({ disabled, selectedDatasets }: any) => (
     <button data-testid="params-config" disabled={disabled}>
@@ -96,7 +99,7 @@ jest.mock('./params-config', () => ({
   ),
 }))
 
-jest.mock('./context-var', () => ({
+vi.mock('./context-var', () => ({
   __esModule: true,
   default: ({ value, options, onChange }: any) => (
     <select data-testid="context-var" value={value} onChange={e => onChange(e.target.value)}>
@@ -108,7 +111,7 @@ jest.mock('./context-var', () => ({
   ),
 }))
 
-jest.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter', () => ({
+vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter', () => ({
   __esModule: true,
   default: ({
     metadataList,
@@ -148,14 +151,14 @@ const mockConfigContext: any = {
   modelModeType: ModelModeType.chat,
   isAgent: false,
   dataSets: [],
-  setDataSets: jest.fn(),
+  setDataSets: vi.fn(),
   modelConfig: {
     configs: {
       prompt_variables: [],
     },
   },
-  setModelConfig: jest.fn(),
-  showSelectDataSet: jest.fn(),
+  setModelConfig: vi.fn(),
+  showSelectDataSet: vi.fn(),
   datasetConfigs: {
     retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
@@ -188,11 +191,11 @@ const mockConfigContext: any = {
       },
     } as DatasetConfigs,
   },
-  setDatasetConfigs: jest.fn(),
-  setRerankSettingModalOpen: jest.fn(),
+  setDatasetConfigs: vi.fn(),
+  setRerankSettingModalOpen: vi.fn(),
 }
 
-jest.mock('@/context/debug-configuration', () => ({
+vi.mock('@/context/debug-configuration', () => ({
   __esModule: true,
   default: ({ children }: any) => (
     <div data-testid="config-context-provider">
@@ -201,8 +204,8 @@ jest.mock('@/context/debug-configuration', () => ({
   ),
 }))
 
-jest.mock('use-context-selector', () => ({
-  useContext: jest.fn(() => mockConfigContext),
+vi.mock('use-context-selector', () => ({
+  useContext: vi.fn(() => mockConfigContext),
 }))
 
 const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
@@ -285,21 +288,20 @@ const createMockDataset = (overrides: Partial<DataSet> = {}): DataSet => {
 }
 
 const renderDatasetConfig = (contextOverrides: Partial<typeof mockConfigContext> = {}) => {
-  const useContextSelector = require('use-context-selector').useContext
   const mergedContext = { ...mockConfigContext, ...contextOverrides }
-  useContextSelector.mockReturnValue(mergedContext)
+  vi.mocked(useContext).mockReturnValue(mergedContext)
 
   return render(<DatasetConfig />)
 }
 
 describe('DatasetConfig', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockConfigContext.dataSets = []
-    mockConfigContext.setDataSets = jest.fn()
-    mockConfigContext.setModelConfig = jest.fn()
-    mockConfigContext.setDatasetConfigs = jest.fn()
-    mockConfigContext.setRerankSettingModalOpen = jest.fn()
+    mockConfigContext.setDataSets = vi.fn()
+    mockConfigContext.setModelConfig = vi.fn()
+    mockConfigContext.setDatasetConfigs = vi.fn()
+    mockConfigContext.setRerankSettingModalOpen = vi.fn()
   })
 
   describe('Rendering', () => {
@@ -371,10 +373,10 @@ describe('DatasetConfig', () => {
 
     it('should trigger rerank setting modal when removing dataset requires rerank configuration', async () => {
       const user = userEvent.setup()
-      const { getSelectedDatasetsMode } = require('@/app/components/workflow/nodes/knowledge-retrieval/utils')
 
       // Mock scenario that triggers rerank modal
-      getSelectedDatasetsMode.mockReturnValue({
+      // @ts-expect-error - same as above
+      vi.mocked(getSelectedDatasetsMode).mockReturnValue({
         allInternal: false,
         allExternal: true,
         mixtureInternalAndExternal: false,
@@ -700,8 +702,10 @@ describe('DatasetConfig', () => {
     })
 
     it('should handle missing userProfile', () => {
-      const useSelector = require('@/context/app-context').useSelector
-      useSelector.mockImplementation((fn: any) => fn({ userProfile: null }))
+      vi.mocked(useContext).mockReturnValue({
+        ...mockConfigContext,
+        userProfile: null,
+      })
 
       const dataset = createMockDataset()
 
@@ -849,8 +853,7 @@ describe('DatasetConfig', () => {
 
   describe('Permission Handling', () => {
     it('should hide edit options when user lacks permission', () => {
-      const { hasEditPermissionForDataset } = require('@/utils/permission')
-      hasEditPermissionForDataset.mockReturnValue(false)
+      vi.mocked(hasEditPermissionForDataset).mockReturnValue(false)
 
       const dataset = createMockDataset({
         created_by: 'other-user',
@@ -866,8 +869,7 @@ describe('DatasetConfig', () => {
     })
 
     it('should show readonly state for non-editable datasets', () => {
-      const { hasEditPermissionForDataset } = require('@/utils/permission')
-      hasEditPermissionForDataset.mockReturnValue(false)
+      vi.mocked(hasEditPermissionForDataset).mockReturnValue(false)
 
       const dataset = createMockDataset({
         created_by: 'admin',
@@ -882,8 +884,7 @@ describe('DatasetConfig', () => {
     })
 
     it('should allow editing when user has partial member permission', () => {
-      const { hasEditPermissionForDataset } = require('@/utils/permission')
-      hasEditPermissionForDataset.mockReturnValue(true)
+      vi.mocked(hasEditPermissionForDataset).mockReturnValue(true)
 
       const dataset = createMockDataset({
         created_by: 'admin',
