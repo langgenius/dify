@@ -42,11 +42,14 @@ class TestForgotPasswordSendEmailApi:
 
         wraps_features = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
         controller_features = SimpleNamespace(is_allow_register=True)
-        with patch("controllers.console.auth.forgot_password.db", SimpleNamespace(engine="engine")), patch(
-            "controllers.console.auth.forgot_password.FeatureService.get_system_features",
-            return_value=controller_features,
-        ), patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")), patch(
-            "controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features
+        with (
+            patch("controllers.console.auth.forgot_password.db", SimpleNamespace(engine="engine")),
+            patch(
+                "controllers.console.auth.forgot_password.FeatureService.get_system_features",
+                return_value=controller_features,
+            ),
+            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
             with app.test_request_context(
                 "/forgot-password",
@@ -89,8 +92,9 @@ class TestForgotPasswordCheckApi:
         mock_generate_token.return_value = (None, "new-token")
 
         wraps_features = SimpleNamespace(enable_email_password_login=True)
-        with patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")), patch(
-            "controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features
+        with (
+            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
             with app.test_request_context(
                 "/forgot-password/validity",
@@ -134,10 +138,10 @@ class TestForgotPasswordResetApi:
         mock_session_cls.return_value.__enter__.return_value = mock_session
 
         wraps_features = SimpleNamespace(enable_email_password_login=True)
-        with patch("controllers.console.auth.forgot_password.db", SimpleNamespace(engine="engine")), patch(
-            "controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")
-        ), patch(
-            "controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features
+        with (
+            patch("controllers.console.auth.forgot_password.db", SimpleNamespace(engine="engine")),
+            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=wraps_features),
         ):
             with app.test_request_context(
                 "/forgot-password/resets",

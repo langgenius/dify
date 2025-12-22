@@ -45,12 +45,11 @@ class TestEmailRegisterSendEmailApi:
         mock_get_account.return_value = mock_account
 
         feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
-        with patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")), patch(
-            "controllers.console.auth.email_register.dify_config", SimpleNamespace(BILLING_ENABLED=True)
-        ), patch(
-            "controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")
-        ), patch(
-            "controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags
+        with (
+            patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")),
+            patch("controllers.console.auth.email_register.dify_config", SimpleNamespace(BILLING_ENABLED=True)),
+            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
                 "/email-register/send-email",
@@ -89,10 +88,10 @@ class TestEmailRegisterCheckApi:
         mock_generate_token.return_value = (None, "new-token")
 
         feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
-        with patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")), patch(
-            "controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")
-        ), patch(
-            "controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags
+        with (
+            patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")),
+            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
                 "/email-register/validity",
@@ -143,10 +142,10 @@ class TestEmailRegisterResetApi:
         mock_get_account.return_value = None
 
         feature_flags = SimpleNamespace(enable_email_password_login=True, is_allow_register=True)
-        with patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")), patch(
-            "controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")
-        ), patch(
-            "controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags
+        with (
+            patch("controllers.console.auth.email_register.db", SimpleNamespace(engine="engine")),
+            patch("controllers.console.wraps.dify_config", SimpleNamespace(EDITION="CLOUD")),
+            patch("controllers.console.wraps.FeatureService.get_system_features", return_value=feature_flags),
         ):
             with app.test_request_context(
                 "/email-register",
