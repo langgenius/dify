@@ -53,6 +53,27 @@ class LLMGenerator:
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 
+        def _contains_persian(text: str) -> bool:
+            # Detect presence of Persian-specific characters (پ چ ژ گ ک and persian ye U+06CC)
+            if bool(re.search(r"[پچژگک\u06CC]", text or "")):
+                return True
+            # Fallback: use language detection to catch Persian text without special chars
+            try:
+                from langdetect import DetectorFactory, detect
+
+                DetectorFactory.seed = 0
+                lang = detect(text or "")
+                if lang == "fa":
+                    return True
+            except Exception as exc:
+                # langdetect may fail on very short texts; ignore failures.
+                # Log at debug level to aid debugging without failing the linter S110.
+                logger.debug("langdetect detection failed: %s", exc)
+            # Also check for some common Persian words as an additional heuristic
+            if bool(re.search(r"\b(سلام|متشکرم|ممنون|خوب|چطور|سپاس)\b", (text or ""), flags=re.IGNORECASE)):
+                return True
+            return False
+
         if len(query) > 2000:
             query = query[:300] + "...[TRUNCATED]..." + query[-300:]
 
@@ -65,23 +86,96 @@ class LLMGenerator:
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
+
+        # If the input contains Persian characters, add explicit instruction to produce Persian title
+        is_persian_input = _contains_persian(query)
+
+        if is_persian_input:
+            prompt += (
+                "\nIMPORTANT: The user input is Persian (Farsi). "
+                "Only output the final title in Persian (Farsi), use Persian characters "
+                "(پ, چ, ژ, گ, ک, ی) and do NOT use Arabic or any other language.\n"
+            )
+
         prompts = [UserPromptMessage(content=prompt)]
 
         with measure_time() as timer:
-            response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompts), model_parameters={"max_tokens": 500, "temperature": 1}, stream=False
-            )
-        answer = cast(str, response.message.content)
-        cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
-        if cleaned_answer is None:
-            return ""
-        try:
-            result_dict = json.loads(cleaned_answer)
-            answer = result_dict["Your Output"]
-        except json.JSONDecodeError:
-            logger.exception("Failed to generate name after answer, use query instead")
-            answer = query
-        name = answer.strip()
+            # Try generation with up to 2 attempts.
+            # If Persian required but not produced, retry with stronger instruction.
+            attempts = 0
+            max_attempts = 2
+            generated_output = None
+
+            while attempts < max_attempts:
+                attempts += 1
+                try:
+                    response: LLMResult = model_instance.invoke_llm(
+                        prompt_messages=list(prompts),
+                        model_parameters={"max_tokens": 500, "temperature": 0.2},
+                        stream=False,
+                    )
+                except Exception:
+                    logger.exception("Failed to invoke LLM for conversation name generation")
+                    break
+
+                answer = cast(str, response.message.content)
+                cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
+                if cleaned_answer is None:
+                    continue
+
+                try:
+                    result_dict = json.loads(cleaned_answer)
+                    candidate = result_dict.get("Your Output", "")
+                except json.JSONDecodeError:
+                    logger.exception(
+                        "Failed to parse LLM JSON when generating conversation name; "
+                        "using raw query as fallback"
+                    )
+                    candidate = query
+
+                # If input is Persian, ensure candidate contains Persian-specific characters.
+                # Otherwise retry with stronger instruction.
+                if is_persian_input and not _contains_persian(candidate):
+                    logger.info(
+                        "Generated title doesn't appear to be Persian; retrying with stricter instruction"
+                    )
+                    prompts = [
+                        UserPromptMessage(
+                            content=(
+                                prompt
+                                + "\nCRITICAL: You must output the title in Persian (Farsi) "
+                                "using Persian-specific letters (پ, چ, ژ, گ, ک, ی). "
+                                "Output only the JSON as specified earlier."
+                            )
+                        )
+                    ]
+                    continue
+
+                generated_output = candidate.strip()
+                break
+
+            name = generated_output or (query or "")
+
+        if is_persian_input and not _contains_persian(name):
+            # As a last resort, ask the model to translate the title into Persian directly
+            try:
+                translate_prompt = UserPromptMessage(
+                    content=(
+                        "Translate the following short chat title into Persian (Farsi) ONLY. "
+                        "Output the Persian translation only (no JSON):\n\n"
+                        f"{name}"
+                    )
+                )
+                response: LLMResult = model_instance.invoke_llm(
+                    prompt_messages=[translate_prompt],
+                    model_parameters={"max_tokens": 200, "temperature": 0},
+                    stream=False,
+                )
+                translation = cast(str, response.message.content).strip()
+                if _contains_persian(translation):
+                    name = translation
+            except Exception:
+                logger.exception("Failed to obtain Persian translation for the conversation title")
 
         if len(name) > 75:
             name = name[:75] + "..."
