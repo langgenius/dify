@@ -88,7 +88,6 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 1. **Celery Configuration**:
 
    - `CELERY_BROKER_URL`: Configuration for Celery message broker.
-   - `CELERY_BACKEND`: Result backend configuration for Celery. Options are `redis`, `database` or `rabbitmq`.
 
 1. **Storage Configuration**:
 
