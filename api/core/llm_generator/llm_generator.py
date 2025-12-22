@@ -550,6 +550,8 @@ class LLMGenerator:
             if not isinstance(raw_content, str):
                 raise ValueError(f"LLM response content must be a string, got: {type(raw_content)}")
 
+            # Initialize parsed_content to ensure the variable is always bound for type-checkers
+            parsed_content: dict | list | None = None
             try:
                 parsed_content = json.loads(raw_content)
             except json.JSONDecodeError:
