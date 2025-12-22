@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import React from 'react'
 import type { IconData } from './IconBase'
 import IconBase from './IconBase'

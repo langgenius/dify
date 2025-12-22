@@ -3,7 +3,7 @@
  * Tests for GitHub issue #22745: Panel width persistence bug fix
  */
 
-import '@testing-library/jest-dom'
+export {}
 
 type PanelWidthSource = 'user' | 'system'
 

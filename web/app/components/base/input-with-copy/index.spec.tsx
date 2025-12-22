@@ -1,6 +1,5 @@
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import InputWithCopy from './index'
 
 // Create a mock function that we can track using vi.hoisted

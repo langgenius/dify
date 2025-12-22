@@ -1,6 +1,5 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import CommandSelector from '../../app/components/goto-anything/command-selector'
 import type { ActionItem } from '../../app/components/goto-anything/actions/types'
 

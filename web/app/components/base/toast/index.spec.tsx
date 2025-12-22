@@ -2,7 +2,6 @@ import type { ReactNode } from 'react'
 import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import Toast, { ToastProvider, useToastContext } from '.'
-import '@testing-library/jest-dom'
 import { noop } from 'lodash-es'
 
 // Mock timers for testing timeouts

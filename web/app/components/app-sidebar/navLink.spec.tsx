@@ -1,6 +1,5 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import NavLink from './navLink'
 import type { NavLinkProps } from './navLink'
 

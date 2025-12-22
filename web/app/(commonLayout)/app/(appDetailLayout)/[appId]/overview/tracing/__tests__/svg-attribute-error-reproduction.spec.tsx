@@ -1,6 +1,5 @@
 import React from 'react'
 import { render } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import { OpikIconBig } from '@/app/components/base/icons/src/public/tracing'
 import { normalizeAttrs } from '@/app/components/base/icons/utils'
 import iconData from '@/app/components/base/icons/src/public/tracing/OpikIconBig.json'

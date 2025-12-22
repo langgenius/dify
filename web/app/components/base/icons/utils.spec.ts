@@ -1,7 +1,6 @@
 import type { AbstractNode } from './utils'
 import { generate, normalizeAttrs } from './utils'
 import { render } from '@testing-library/react'
-import '@testing-library/jest-dom'
 
 describe('generate icon base utils', () => {
   describe('normalizeAttrs', () => {

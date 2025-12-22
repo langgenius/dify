@@ -1,4 +1,3 @@
-import '@testing-library/jest-dom'
 import type { CSSProperties } from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import DebugWithMultipleModel from './index'
