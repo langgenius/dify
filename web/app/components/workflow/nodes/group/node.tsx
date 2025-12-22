@@ -4,7 +4,7 @@ import BlockIcon from '@/app/components/workflow/block-icon'
 import type { NodeProps } from '@/app/components/workflow/types'
 import type { GroupHandler, GroupMember, GroupNodeData } from './types'
 import type { BlockEnum } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const MAX_MEMBER_ICONS = 12
 

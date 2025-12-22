@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import { Handle, Position } from 'reactflow'
 import type { CustomGroupExitPortNodeData } from './types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type CustomGroupExitPortNodeProps = {
   id: string
