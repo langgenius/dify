@@ -76,7 +76,7 @@ const setupMockEnvironment = (storedTheme: string | null, systemPrefersDark = fa
     return mediaQueryList
   }
 
-  jest.spyOn(window, 'matchMedia').mockImplementation(mockMatchMedia)
+  vi.spyOn(window, 'matchMedia').mockImplementation(mockMatchMedia)
 }
 
 // Helper function to create timing page component
@@ -240,8 +240,8 @@ const TestThemeProvider = ({ children }: { children: React.ReactNode }) => (
 
 describe('Real Browser Environment Dark Mode Flicker Test', () => {
   beforeEach(() => {
-    jest.restoreAllMocks()
-    jest.clearAllMocks()
+    vi.restoreAllMocks()
+    vi.clearAllMocks()
     if (typeof window !== 'undefined') {
       try {
         window.localStorage.clear()
@@ -424,12 +424,12 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       setupMockEnvironment(null)
 
       const mockStorage = {
-        getItem: jest.fn(() => {
+        getItem: vi.fn(() => {
           throw new Error('LocalStorage access denied')
         }),
-        setItem: jest.fn(),
-        removeItem: jest.fn(),
-        clear: jest.fn(),
+        setItem: vi.fn(),
+        removeItem: vi.fn(),
+        clear: vi.fn(),
       }
 
       Object.defineProperty(window, 'localStorage', {

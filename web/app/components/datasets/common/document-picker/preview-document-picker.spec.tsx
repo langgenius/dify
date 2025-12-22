@@ -4,7 +4,7 @@ import type { DocumentItem } from '@/models/datasets'
 import PreviewDocumentPicker from './preview-document-picker'
 
 // Override shared i18n mock for custom translations
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
       if (key === 'dataset.preprocessDocument' && params?.num)
@@ -16,7 +16,7 @@ jest.mock('react-i18next', () => ({
 }))
 
 // Mock portal-to-follow-elem - always render content for testing
-jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
+vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open }: {
     children: React.ReactNode
     open?: boolean
@@ -45,7 +45,7 @@ jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
 }))
 
 // Mock icons
-jest.mock('@remixicon/react', () => ({
+vi.mock('@remixicon/react', () => ({
   RiArrowDownSLine: () => <span data-testid="arrow-icon">↓</span>,
   RiFile3Fill: () => <span data-testid="file-icon">📄</span>,
   RiFileCodeFill: () => <span data-testid="file-code-icon">📄</span>,
@@ -84,7 +84,7 @@ const createMockDocumentList = (count: number): DocumentItem[] => {
 const createDefaultProps = (overrides: Partial<React.ComponentProps<typeof PreviewDocumentPicker>> = {}) => ({
   value: createMockDocumentItem({ id: 'selected-doc', name: 'Selected Document' }),
   files: createMockDocumentList(3),
-  onChange: jest.fn(),
+  onChange: vi.fn(),
   ...overrides,
 })
 
@@ -99,7 +99,7 @@ const renderComponent = (props: Partial<React.ComponentProps<typeof PreviewDocum
 
 describe('PreviewDocumentPicker', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Tests for basic rendering
@@ -238,7 +238,7 @@ describe('PreviewDocumentPicker', () => {
   // Tests for callback stability and memoization
   describe('Callback Stability', () => {
     it('should maintain stable onChange callback when value changes', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const value1 = createMockDocumentItem({ id: 'doc-1', name: 'Doc 1' })
       const value2 = createMockDocumentItem({ id: 'doc-2', name: 'Doc 2' })
 
@@ -262,8 +262,8 @@ describe('PreviewDocumentPicker', () => {
     })
 
     it('should use updated onChange callback after rerender', () => {
-      const onChange1 = jest.fn()
-      const onChange2 = jest.fn()
+      const onChange1 = vi.fn()
+      const onChange2 = vi.fn()
       const value = createMockDocumentItem()
       const files = createMockDocumentList(3)
 
@@ -286,7 +286,7 @@ describe('PreviewDocumentPicker', () => {
     })
 
     it('should not re-render when props are the same', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const value = createMockDocumentItem()
       const files = createMockDocumentList(3)
 
@@ -324,7 +324,7 @@ describe('PreviewDocumentPicker', () => {
     })
 
     it('should call onChange when document is selected', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const files = createMockDocumentList(3)
 
       renderComponent({ files, onChange })
@@ -526,7 +526,7 @@ describe('PreviewDocumentPicker', () => {
     })
 
     it('should pass onChange handler to DocumentList', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const files = createMockDocumentList(3)
 
       renderComponent({ files, onChange })
@@ -543,7 +543,7 @@ describe('PreviewDocumentPicker', () => {
         <PreviewDocumentPicker
           value={createMockDocumentItem()}
           files={[createMockDocumentItem({ name: 'Single File' })]}
-          onChange={jest.fn()}
+          onChange={vi.fn()}
         />,
       )
       expect(screen.queryByText(/files/)).not.toBeInTheDocument()
@@ -553,7 +553,7 @@ describe('PreviewDocumentPicker', () => {
         <PreviewDocumentPicker
           value={createMockDocumentItem()}
           files={createMockDocumentList(3)}
-          onChange={jest.fn()}
+          onChange={vi.fn()}
         />,
       )
       expect(screen.getByText('3 files')).toBeInTheDocument()
@@ -592,7 +592,7 @@ describe('PreviewDocumentPicker', () => {
   // Tests for handleChange callback
   describe('handleChange Callback', () => {
     it('should call onChange with selected document item', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const files = createMockDocumentList(3)
 
       renderComponent({ files, onChange })
@@ -604,7 +604,7 @@ describe('PreviewDocumentPicker', () => {
     })
 
     it('should handle different document items in files', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const customFiles = [
         { id: 'custom-1', name: 'Custom File 1', extension: 'pdf' },
         { id: 'custom-2', name: 'Custom File 2', extension: 'txt' },
@@ -622,7 +622,7 @@ describe('PreviewDocumentPicker', () => {
     })
 
     it('should work with multiple sequential selections', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const files = createMockDocumentList(3)
 
       renderComponent({ files, onChange })

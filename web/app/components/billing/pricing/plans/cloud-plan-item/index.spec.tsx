@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import CloudPlanItem from './index'
@@ -9,37 +10,37 @@ import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
 import Toast from '../../../../base/toast'
 import { ALL_PLANS } from '../../../config'
 
-jest.mock('../../../../base/toast', () => ({
+vi.mock('../../../../base/toast', () => ({
   __esModule: true,
   default: {
-    notify: jest.fn(),
+    notify: vi.fn(),
   },
 }))
 
-jest.mock('@/context/app-context', () => ({
-  useAppContext: jest.fn(),
+vi.mock('@/context/app-context', () => ({
+  useAppContext: vi.fn(),
 }))
 
-jest.mock('@/service/billing', () => ({
-  fetchBillingUrl: jest.fn(),
-  fetchSubscriptionUrls: jest.fn(),
+vi.mock('@/service/billing', () => ({
+  fetchBillingUrl: vi.fn(),
+  fetchSubscriptionUrls: vi.fn(),
 }))
 
-jest.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: jest.fn(),
+vi.mock('@/hooks/use-async-window-open', () => ({
+  useAsyncWindowOpen: vi.fn(),
 }))
 
-jest.mock('../../assets', () => ({
+vi.mock('../../assets', () => ({
   Sandbox: () => <div>Sandbox Icon</div>,
   Professional: () => <div>Professional Icon</div>,
   Team: () => <div>Team Icon</div>,
 }))
 
-const mockUseAppContext = useAppContext as jest.Mock
-const mockUseAsyncWindowOpen = useAsyncWindowOpen as jest.Mock
-const mockFetchBillingUrl = fetchBillingUrl as jest.Mock
-const mockFetchSubscriptionUrls = fetchSubscriptionUrls as jest.Mock
-const mockToastNotify = Toast.notify as jest.Mock
+const mockUseAppContext = useAppContext as Mock
+const mockUseAsyncWindowOpen = useAsyncWindowOpen as Mock
+const mockFetchBillingUrl = fetchBillingUrl as Mock
+const mockFetchSubscriptionUrls = fetchSubscriptionUrls as Mock
+const mockToastNotify = Toast.notify as Mock
 
 let assignedHref = ''
 const originalLocation = window.location
@@ -66,9 +67,9 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
-  mockUseAsyncWindowOpen.mockReturnValue(jest.fn(async open => await open()))
+  mockUseAsyncWindowOpen.mockReturnValue(vi.fn(async open => await open()))
   mockFetchBillingUrl.mockResolvedValue({ url: 'https://billing.example' })
   mockFetchSubscriptionUrls.mockResolvedValue({ url: 'https://subscription.example' })
   assignedHref = ''
@@ -147,7 +148,7 @@ describe('CloudPlanItem', () => {
     })
 
     test('should open billing portal when upgrading current paid plan', async () => {
-      const openWindow = jest.fn(async (cb: () => Promise<string>) => await cb())
+      const openWindow = vi.fn(async (cb: () => Promise<string>) => await cb())
       mockUseAsyncWindowOpen.mockReturnValue(openWindow)
 
       render(

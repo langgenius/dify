@@ -222,7 +222,6 @@ export default combine(
         ...globals.browser,
         ...globals.es2021,
         ...globals.node,
-        ...globals.jest,
       },
     },
   },
