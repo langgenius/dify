@@ -18,7 +18,7 @@ import type {
 import Wrap from '../editor/wrap'
 import { CodeLanguage } from '../../../code/types'
 import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
 import PromptEditor from '@/app/components/base/prompt-editor'

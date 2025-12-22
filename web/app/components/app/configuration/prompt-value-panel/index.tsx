@@ -21,7 +21,7 @@ import FeatureBar from '@/app/components/base/features/new-feature-panel/feature
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 
 export type IPromptValuePanelProps = {

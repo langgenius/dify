@@ -4,22 +4,17 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import MailAndPasswordAuth from '@/app/(shareLayout)/webapp-signin/components/mail-and-password-auth'
 import CheckCode from '@/app/(shareLayout)/webapp-signin/check-code/page'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+const replaceMock = vi.fn()
+const backMock = vi.fn()
+const useSearchParamsMock = vi.fn(() => new URLSearchParams())
 
-const replaceMock = jest.fn()
-const backMock = jest.fn()
-
-jest.mock('next/navigation', () => ({
-  usePathname: jest.fn(() => '/chatbot/test-app'),
-  useRouter: jest.fn(() => ({
+vi.mock('next/navigation', () => ({
+  usePathname: vi.fn(() => '/chatbot/test-app'),
+  useRouter: vi.fn(() => ({
     replace: replaceMock,
     back: backMock,
   })),
-  useSearchParams: jest.fn(),
+  useSearchParams: () => useSearchParamsMock(),
 }))
 
 const mockStoreState = {
@@ -27,59 +22,55 @@ const mockStoreState = {
   shareCode: 'test-app',
 }
 
-const useWebAppStoreMock = jest.fn((selector?: (state: typeof mockStoreState) => any) => {
+const useWebAppStoreMock = vi.fn((selector?: (state: typeof mockStoreState) => any) => {
   return selector ? selector(mockStoreState) : mockStoreState
 })
 
-jest.mock('@/context/web-app-context', () => ({
+vi.mock('@/context/web-app-context', () => ({
   useWebAppStore: (selector?: (state: typeof mockStoreState) => any) => useWebAppStoreMock(selector),
 }))
 
-const webAppLoginMock = jest.fn()
-const webAppEmailLoginWithCodeMock = jest.fn()
-const sendWebAppEMailLoginCodeMock = jest.fn()
+const webAppLoginMock = vi.fn()
+const webAppEmailLoginWithCodeMock = vi.fn()
+const sendWebAppEMailLoginCodeMock = vi.fn()
 
-jest.mock('@/service/common', () => ({
+vi.mock('@/service/common', () => ({
   webAppLogin: (...args: any[]) => webAppLoginMock(...args),
   webAppEmailLoginWithCode: (...args: any[]) => webAppEmailLoginWithCodeMock(...args),
   sendWebAppEMailLoginCode: (...args: any[]) => sendWebAppEMailLoginCodeMock(...args),
 }))
 
-const fetchAccessTokenMock = jest.fn()
+const fetchAccessTokenMock = vi.fn()
 
-jest.mock('@/service/share', () => ({
+vi.mock('@/service/share', () => ({
   fetchAccessToken: (...args: any[]) => fetchAccessTokenMock(...args),
 }))
 
-const setWebAppAccessTokenMock = jest.fn()
-const setWebAppPassportMock = jest.fn()
+const setWebAppAccessTokenMock = vi.fn()
+const setWebAppPassportMock = vi.fn()
 
-jest.mock('@/service/webapp-auth', () => ({
+vi.mock('@/service/webapp-auth', () => ({
   setWebAppAccessToken: (...args: any[]) => setWebAppAccessTokenMock(...args),
   setWebAppPassport: (...args: any[]) => setWebAppPassportMock(...args),
-  webAppLogout: jest.fn(),
+  webAppLogout: vi.fn(),
 }))
 
-jest.mock('@/app/components/signin/countdown', () => () => <div data-testid="countdown" />)
+vi.mock('@/app/components/signin/countdown', () => ({ default: () => <div data-testid="countdown" /> }))
 
-jest.mock('@remixicon/react', () => ({
+vi.mock('@remixicon/react', () => ({
   RiMailSendFill: () => <div data-testid="mail-icon" />,
   RiArrowLeftLine: () => <div data-testid="arrow-icon" />,
 }))
 
-const { useSearchParams } = jest.requireMock('next/navigation') as {
-  useSearchParams: jest.Mock
-}
-
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 describe('embedded user id propagation in authentication flows', () => {
   it('passes embedded user id when logging in with email and password', async () => {
     const params = new URLSearchParams()
     params.set('redirect_url', encodeURIComponent('/chatbot/test-app'))
-    useSearchParams.mockReturnValue(params)
+    useSearchParamsMock.mockReturnValue(params)
 
     webAppLoginMock.mockResolvedValue({ result: 'success', data: { access_token: 'login-token' } })
     fetchAccessTokenMock.mockResolvedValue({ access_token: 'passport-token' })
@@ -106,7 +97,7 @@ describe('embedded user id propagation in authentication flows', () => {
     params.set('redirect_url', encodeURIComponent('/chatbot/test-app'))
     params.set('email', encodeURIComponent('user@example.com'))
     params.set('token', encodeURIComponent('token-abc'))
-    useSearchParams.mockReturnValue(params)
+    useSearchParamsMock.mockReturnValue(params)
 
     webAppEmailLoginWithCodeMock.mockResolvedValue({ result: 'success', data: { access_token: 'code-token' } })
     fetchAccessTokenMock.mockResolvedValue({ access_token: 'passport-token' })

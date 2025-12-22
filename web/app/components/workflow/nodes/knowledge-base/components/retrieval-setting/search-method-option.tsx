@@ -4,7 +4,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
 import Switch from '@/app/components/base/switch'
@@ -25,6 +25,7 @@ import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
 import TopKAndScoreThreshold from './top-k-and-score-threshold'
 import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import RerankingModelSelector from './reranking-model-selector'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 type SearchMethodOptionProps = {
   readonly?: boolean
@@ -38,6 +39,7 @@ type SearchMethodOptionProps = {
   onWeightedScoreChange: (value: { value: number[] }) => void
   rerankingModelEnabled?: boolean
   onRerankingModelEnabledChange?: (value: boolean) => void
+  showMultiModalTip?: boolean
 } & RerankingModelSelectorProps & TopKAndScoreThresholdProps
 const SearchMethodOption = ({
   readonly,
@@ -59,6 +61,7 @@ const SearchMethodOption = ({
   onScoreThresholdChange,
   isScoreThresholdEnabled,
   onScoreThresholdEnabledChange,
+  showMultiModalTip = false,
 }: SearchMethodOptionProps) => {
   const { t } = useTranslation()
   const Icon = option.icon
@@ -183,6 +186,17 @@ const SearchMethodOption = ({
                 onRerankingModelChange={onRerankingModelChange}
                 readonly={readonly}
               />
+              {showMultiModalTip && (
+                <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
+                  <div className='absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40' />
+                  <div className='p-1'>
+                    <AlertTriangle className='size-4 text-text-warning-secondary' />
+                  </div>
+                  <span className='system-xs-medium text-text-primary'>
+                    {t('datasetSettings.form.retrievalSetting.multiModalTip')}
+                  </span>
+                </div>
+              )}
             </div>
           )
         }

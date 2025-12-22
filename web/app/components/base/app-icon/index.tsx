@@ -5,7 +5,7 @@ import { init } from 'emoji-mart'
 import data from '@emoji-mart/data'
 import { cva } from 'class-variance-authority'
 import type { AppIconType } from '@/types/app'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useHover } from 'ahooks'
 import { RiEditLine } from '@remixicon/react'
 
@@ -107,7 +107,7 @@ const AppIcon: FC<AppIconProps> = ({
   return (
     <span
       ref={wrapperRef}
-      className={classNames(appIconVariants({ size, rounded }), className)}
+      className={cn(appIconVariants({ size, rounded }), className)}
       style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
       onClick={onClick}
     >

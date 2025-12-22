@@ -15,7 +15,7 @@ import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import StartBlocks from './start-blocks'
 import TriggerPluginList from './trigger-plugin/list'
 import { ENTRY_NODE_TYPES } from './constants'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Link from 'next/link'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { getMarketplaceUrl } from '@/utils/var'
@@ -176,6 +176,7 @@ const AllStartBlocks = ({
                 wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
                 list={marketplacePlugins}
                 searchText={trimmedSearchText}
+                category={PluginCategoryEnum.trigger}
                 tags={tags}
                 hideFindMoreFooter
               />
@@ -208,7 +209,7 @@ const AllStartBlocks = ({
           // Footer - Same as Tools tab marketplace footer
           <Link
             className={marketplaceFooterClassName}
-            href={getMarketplaceUrl('')}
+            href={getMarketplaceUrl('', { category: PluginCategoryEnum.trigger })}
             target='_blank'
           >
             <span>{t('plugin.findMoreInMarketplace')}</span>

@@ -12,7 +12,6 @@ import Tag from '@/app/components/base/tag'
 type IShareLinkProps = {
   isShow: boolean
   onClose: () => void
-  linkUrl: string
   api_base_url: string
   appId: string
   mode: AppModeEnum

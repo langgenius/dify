@@ -3,7 +3,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import s from '../file-preview/index.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CrawlResultItem } from '@/models/datasets'
 
 type IProps = {
@@ -32,7 +32,7 @@ const WebsitePreview = ({
         <div className='system-xs-medium truncate text-text-tertiary' title={payload.source_url}>{payload.source_url}</div>
       </div>
       <div className={cn(s.previewContent, 'body-md-regular')}>
-        <div className={cn(s.fileContent)}>{payload.content}</div>
+        <div className={cn(s.fileContent)}>{payload.markdown}</div>
       </div>
     </div>
   )

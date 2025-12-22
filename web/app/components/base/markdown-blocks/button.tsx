@@ -1,6 +1,6 @@
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { isValidUrl } from './utils'
 const MarkdownButton = ({ node }: any) => {
   const { onSend } = useChatContext()

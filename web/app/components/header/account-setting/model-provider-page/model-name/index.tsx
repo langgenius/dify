@@ -7,7 +7,7 @@ import { useLanguage } from '../hooks'
 import type { ModelItem } from '../declarations'
 import ModelBadge from '../model-badge'
 import FeatureIcon from '../model-selector/feature-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ModelNameProps = PropsWithChildren<{
   modelItem: ModelItem
@@ -17,6 +17,7 @@ type ModelNameProps = PropsWithChildren<{
   showMode?: boolean
   modeClassName?: string
   showFeatures?: boolean
+  showFeaturesLabel?: boolean
   featuresClassName?: string
   showContextSize?: boolean
 }>
@@ -28,6 +29,7 @@ const ModelName: FC<ModelNameProps> = ({
   showMode,
   modeClassName,
   showFeatures,
+  showFeaturesLabel,
   featuresClassName,
   showContextSize,
   children,
@@ -60,20 +62,21 @@ const ModelName: FC<ModelNameProps> = ({
           )
         }
         {
-          showFeatures && modelItem.features?.map(feature => (
-            <FeatureIcon
-              key={feature}
-              feature={feature}
-              className={featuresClassName}
-            />
-          ))
-        }
-        {
           showContextSize && modelItem.model_properties.context_size && (
             <ModelBadge>
               {sizeFormat(modelItem.model_properties.context_size as number)}
             </ModelBadge>
           )
+        }
+        {
+          showFeatures && modelItem.features?.map(feature => (
+            <FeatureIcon
+              key={feature}
+              feature={feature}
+              className={featuresClassName}
+              showFeaturesLabel={showFeaturesLabel}
+            />
+          ))
         }
       </div>
       {children}

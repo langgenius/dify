@@ -393,6 +393,7 @@ const translation = {
     writeOpener: 'Scrieți deschizătorul',
     placeholder: 'Scrieți aici mesajul de deschidere, puteți utiliza variabile, încercați să tastați {{variable}}.',
     openingQuestion: 'Întrebări de deschidere',
+    openingQuestionPlaceholder: 'Puteți utiliza variabile, încercați să tastați {{variable}}.',
     noDataPlaceHolder:
       'Începerea conversației cu utilizatorul poate ajuta AI să stabilească o conexiune mai strânsă cu ei în aplicațiile conversaționale.',
     varTip: 'Puteți utiliza variabile, încercați să tastați {{variable}}',

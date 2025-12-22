@@ -8,7 +8,7 @@ import { Group } from '@/app/components/base/icons/src/vender/other'
 import { OpenaiBlue, OpenaiTeal, OpenaiViolet, OpenaiYellow } from '@/app/components/base/icons/src/public/llm'
 import { renderI18nObject } from '@/i18n-config'
 import { Theme } from '@/types/app'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import useTheme from '@/hooks/use-theme'
 
 type ModelIconProps = {

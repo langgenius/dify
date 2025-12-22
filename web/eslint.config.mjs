@@ -78,6 +78,7 @@ export default combine(
   },
   {
     ignores: [
+      'storybook-static/**',
       '**/node_modules/*',
       '**/dist/',
       '**/build/',
@@ -94,7 +95,6 @@ export default combine(
       // orignal ts/no-var-requires
       'ts/no-require-imports': 'off',
       'no-console': 'off',
-      'react-hooks/exhaustive-deps': 'warn',
       'react/display-name': 'off',
       'array-callback-return': ['error', {
         allowImplicit: false,
@@ -185,6 +185,14 @@ export default combine(
       sonarjs: sonar,
     },
   },
+  // allow generated i18n files (like i18n/*/workflow.ts) to exceed max-lines
+  {
+    files: ['i18n/**'],
+    rules: {
+      'sonarjs/max-lines': 'off',
+      'max-lines': 'off',
+    },
+  },
   // need further research
   {
     rules: {
@@ -214,7 +222,6 @@ export default combine(
         ...globals.browser,
         ...globals.es2021,
         ...globals.node,
-        ...globals.jest,
       },
     },
   },
@@ -256,5 +263,5 @@ export default combine(
       'tailwindcss/migration-from-tailwind-2': 'warn',
     },
   },
-  oxlint.configs['flat/recommended'],
+  ...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 )

@@ -8,6 +8,7 @@ const translation = {
   api: {
     success: 'Success',
     actionSuccess: 'Action succeeded',
+    actionFailed: 'Action failed',
     saved: 'Saved',
     create: 'Created',
     remove: 'Removed',
@@ -113,6 +114,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Türkçe',
       faIR: 'Farsi',
+      slSI: 'Slovenian',
+      arTN: 'Tunisian Arabic',
     },
   },
   unit: {
@@ -743,6 +746,7 @@ const translation = {
     pasteFileLinkInvalid: 'Invalid file link',
     fileExtensionNotSupport: 'File extension not supported',
     fileExtensionBlocked: 'This file type is blocked for security reasons',
+    uploadDisabled: 'File upload is disabled',
   },
   tag: {
     placeholder: 'All Tags',

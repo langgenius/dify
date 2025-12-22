@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import Item from './item'
 import EmptyFolder from './empty-folder'
@@ -11,8 +12,8 @@ type FileListProps = {
   fileList: OnlineDriveFile[]
   selectedFileIds: string[]
   keywords: string
-  isInPipeline: boolean
   isLoading: boolean
+  supportBatchUpload: boolean
   handleResetKeywords: () => void
   handleSelectFile: (file: OnlineDriveFile) => void
   handleOpenFolder: (file: OnlineDriveFile) => void
@@ -25,9 +26,10 @@ const List = ({
   handleResetKeywords,
   handleSelectFile,
   handleOpenFolder,
-  isInPipeline,
   isLoading,
+  supportBatchUpload,
 }: FileListProps) => {
+  const { t } = useTranslation()
   const anchorRef = useRef<HTMLDivElement>(null)
   const observerRef = useRef<IntersectionObserver>(null)
   const dataSourceStore = useDataSourceStore()
@@ -80,14 +82,19 @@ const List = ({
                   isSelected={isSelected}
                   onSelect={handleSelectFile}
                   onOpen={handleOpenFolder}
-                  isMultipleChoice={!isInPipeline}
+                  isMultipleChoice={supportBatchUpload}
                 />
               )
             })
           }
           {
             isPartialLoading && (
-              <div className='flex items-center justify-center py-2'>
+              <div
+                className='flex items-center justify-center py-2'
+                role='status'
+                aria-live='polite'
+                aria-label={t('appApi.loading')}
+              >
                 <RiLoader2Line className='animation-spin size-4 text-text-tertiary' />
               </div>
             )

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useDebounceFn } from 'ahooks'
 import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'

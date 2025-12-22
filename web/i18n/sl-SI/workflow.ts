@@ -444,6 +444,7 @@ const translation = {
         input: 'Vhodna vrednost',
       },
       inputVars: 'Vhodne spremenljivke',
+      pluginNotInstalled: 'Vtičnik ni nameščen',
     },
     start: {
       outputVars: {
@@ -548,6 +549,7 @@ const translation = {
         content: 'Segmentirana vsebina',
         metadata: 'Drug metapodatki',
         output: 'Podatki o segmentaciji iskanja',
+        files: 'Pridobljene datoteke',
       },
       metadata: {
         options: {
@@ -579,6 +581,8 @@ const translation = {
       },
       queryVariable: 'Vprašanje spremenljivka',
       knowledge: 'Znanje',
+      queryText: 'Besedilo poizvedbe',
+      queryAttachment: 'Poizvedbe slik',
     },
     http: {
       outputVars: {

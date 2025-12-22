@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import TimezoneLabel from '../index'
 
 // Mock the convertTimezoneToOffsetStr function
-jest.mock('@/app/components/base/date-and-time-picker/utils/dayjs', () => ({
+vi.mock('@/app/components/base/date-and-time-picker/utils/dayjs', () => ({
   convertTimezoneToOffsetStr: (timezone?: string) => {
     if (!timezone) return 'UTC+0'
 

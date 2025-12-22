@@ -1,24 +1,23 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import NavLink from './navLink'
 import type { NavLinkProps } from './navLink'
 
 // Mock Next.js navigation
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useSelectedLayoutSegment: () => 'overview',
 }))
 
 // Mock Next.js Link component
-jest.mock('next/link', () => {
-  return function MockLink({ children, href, className, title }: any) {
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href, className, title }: any) {
     return (
       <a href={href} className={className} title={title} data-testid="nav-link">
         {children}
       </a>
     )
-  }
-})
+  },
+}))
 
 // Mock RemixIcon components
 const MockIcon = ({ className }: { className?: string }) => (
@@ -38,7 +37,7 @@ describe('NavLink Animation and Layout Issues', () => {
   beforeEach(() => {
     // Mock getComputedStyle for transition testing
     Object.defineProperty(window, 'getComputedStyle', {
-      value: jest.fn((element) => {
+      value: vi.fn((element) => {
         const isExpanded = element.getAttribute('data-mode') === 'expand'
         return {
           transition: 'all 0.3s ease',

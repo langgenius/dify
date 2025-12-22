@@ -22,7 +22,7 @@ import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
 import Avatar from '../../avatar'
 
@@ -208,7 +208,7 @@ const ChatWrapper = () => {
       )
     }
     return (
-      <div className={cn('flex h-[50vh] flex-col items-center justify-center gap-3 py-12', isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]')}>
+      <div className={cn('flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12', isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]')}>
         <AppIcon
           size='xl'
           iconType={appData?.site.icon_type}
@@ -262,7 +262,6 @@ const ChatWrapper = () => {
       themeBuilder={themeBuilder}
       switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       inputDisabled={inputDisabled}
-      isMobile={isMobile}
       questionIcon={
         initUserVariables?.avatar_url
           ? <Avatar

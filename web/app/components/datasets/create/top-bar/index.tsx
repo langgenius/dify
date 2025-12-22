@@ -3,7 +3,7 @@ import { RiArrowLeftLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import { Stepper, type StepperProps } from '../stepper'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type TopBarProps = Pick<StepperProps, 'activeIndex'> & {
   className?: string
@@ -24,7 +24,7 @@ export const TopBar: FC<TopBarProps> = (props) => {
     return datasetId ? `/datasets/${datasetId}/documents` : '/datasets'
   }, [datasetId])
 
-  return <div className={classNames('relative flex h-[52px] shrink-0 items-center justify-between border-b border-b-divider-subtle', className)}>
+  return <div className={cn('relative flex h-[52px] shrink-0 items-center justify-between border-b border-b-divider-subtle', className)}>
     <Link href={fallbackRoute} replace className="inline-flex h-12 items-center justify-start gap-1 py-2 pl-2 pr-6">
       <div className='p-2'>
         <RiArrowLeftLine className='size-4 text-text-primary' />

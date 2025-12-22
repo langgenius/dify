@@ -1,5 +1,5 @@
 'use client'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +20,7 @@ const AppUnavailable: FC<IAppUnavailableProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className={classNames('flex h-screen w-screen items-center justify-center', className)}>
+    <div className={cn('flex h-screen w-screen items-center justify-center', className)}>
       <h1 className='mr-5 h-[50px] shrink-0 pr-5 text-[24px] font-medium leading-[50px]'
         style={{
           borderRight: '1px solid rgba(0,0,0,.3)',

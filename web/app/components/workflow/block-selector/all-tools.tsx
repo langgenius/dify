@@ -14,7 +14,7 @@ import { ToolTypeEnum } from './types'
 import Tools from './tools'
 import { useToolTabs } from './hooks'
 import ViewTypeSelect, { ViewType } from './view-type-select'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
 import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
@@ -204,7 +204,7 @@ const AllTools = ({
   }, [onSelect])
 
   return (
-    <div className={cn('min-w-[400px] max-w-[500px]', className)}>
+    <div className={cn('max-w-[500px]', className)}>
       <div className='flex items-center justify-between border-b border-divider-subtle px-3'>
         <div className='flex h-8 items-center space-x-1'>
           {
@@ -284,6 +284,7 @@ const AllTools = ({
                 wrapElemRef={wrapElemRef as RefObject<HTMLElement>}
                 list={notInstalledPlugins}
                 searchText={searchText}
+                category={PluginCategoryEnum.tool}
                 toolContentClassName={toolContentClassName}
                 tags={tags}
                 hideFindMoreFooter
@@ -315,7 +316,7 @@ const AllTools = ({
         {shouldShowMarketplaceFooter && (
           <Link
             className={marketplaceFooterClassName}
-            href={getMarketplaceUrl('')}
+            href={getMarketplaceUrl('', { category: PluginCategoryEnum.tool })}
             target='_blank'
           >
             <span>{t('plugin.findMoreInMarketplace')}</span>

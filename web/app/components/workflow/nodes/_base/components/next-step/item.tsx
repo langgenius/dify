@@ -15,7 +15,7 @@ import {
   useToolIcon,
 } from '@/app/components/workflow/hooks'
 import Button from '@/app/components/base/button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ItemProps = {
   nodeId: string

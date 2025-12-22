@@ -3,7 +3,7 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { useNodes } from 'reactflow'
 import { useStore } from '../../../store'
 import { BlockEnum } from '../../../types'
 import type {
@@ -19,7 +19,7 @@ import {
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { isExceptionVariable } from '@/app/components/workflow/utils'
 import {
   VariableLabelInNode,

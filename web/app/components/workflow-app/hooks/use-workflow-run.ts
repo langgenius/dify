@@ -29,6 +29,7 @@ import { post } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { TriggerType } from '@/app/components/workflow/header/test-run-menu'
 import { AppModeEnum } from '@/types/app'
+import { trackEvent } from '@/app/components/base/amplitude'
 
 type HandleRunMode = TriggerType
 type HandleRunOptions = {
@@ -359,6 +360,7 @@ export const useWorkflowRun = () => {
 
       if (onError)
         onError(params)
+      trackEvent('workflow_run_failed', { workflow_id: flowId, reason: params.error, node_type: params.node_type })
     }
 
     const wrappedOnCompleted: IOtherOptions['onCompleted'] = async (hasError?: boolean, errorMessage?: string) => {

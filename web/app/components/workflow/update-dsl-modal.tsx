@@ -158,7 +158,7 @@ const UpdateDSLModal = ({
       }
       return true
     }
-    catch (err: any) {
+    catch {
       notify({ type: 'error', message: t('workflow.common.importFailure') })
       return false
     }

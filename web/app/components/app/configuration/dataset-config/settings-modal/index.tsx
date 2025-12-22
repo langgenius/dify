@@ -1,13 +1,10 @@
 import type { FC } from 'react'
-import { useRef, useState } from 'react'
-import { useMount } from 'ahooks'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
 import { RiCloseLine } from '@remixicon/react'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import IndexMethod from '@/app/components/datasets/settings/index-method'
-import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
@@ -18,22 +15,17 @@ import { useAppContext } from '@/context/app-context'
 import { useModalContext } from '@/context/modal-context'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import type { RetrievalConfig } from '@/types/app'
-import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
-import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import {
-  useModelList,
-  useModelListAndDefaultModelAndCurrentProviderAndModel,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchMembers } from '@/service/common'
 import type { Member } from '@/models/common'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { useDocLink } from '@/context/i18n'
+import { useMembers } from '@/service/use-common'
+import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
+import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
   currentDataset: DataSet
@@ -54,10 +46,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
   onCancel,
   onSave,
 }) => {
-  const { data: embeddingsModelList } = useModelList(ModelTypeEnum.textEmbedding)
-  const {
-    modelList: rerankModelList,
-  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: rerankModelList } = useModelList(ModelTypeEnum.rerank)
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useToastContext()
@@ -72,6 +62,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
+  const { data: membersData } = useMembers()
 
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
@@ -169,17 +160,29 @@ const SettingsModal: FC<SettingsModalProps> = ({
     }
   }
 
-  const getMembers = async () => {
-    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-    if (!accounts)
+  useEffect(() => {
+    if (!membersData?.accounts)
       setMemberList([])
     else
-      setMemberList(accounts)
-  }
+      setMemberList(membersData.accounts)
+  }, [membersData])
 
-  useMount(() => {
-    getMembers()
-  })
+  const showMultiModalTip = useMemo(() => {
+    return checkShowMultiModalTip({
+      embeddingModel: {
+        provider: localeCurrentDataset.embedding_model_provider,
+        model: localeCurrentDataset.embedding_model,
+      },
+      rerankingEnable: retrievalConfig.reranking_enable,
+      rerankModel: {
+        rerankingProviderName: retrievalConfig.reranking_model.reranking_provider_name,
+        rerankingModelName: retrievalConfig.reranking_model.reranking_model_name,
+      },
+      indexMethod,
+      embeddingModelList,
+      rerankModelList,
+    })
+  }, [localeCurrentDataset.embedding_model, localeCurrentDataset.embedding_model_provider, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, indexMethod, embeddingModelList, rerankModelList])
 
   return (
     <div
@@ -273,7 +276,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                     provider: localeCurrentDataset.embedding_model_provider,
                     model: localeCurrentDataset.embedding_model,
                   }}
-                  modelList={embeddingsModelList}
+                  modelList={embeddingModelList}
                 />
               </div>
               <div className='mt-2 w-full text-xs leading-6 text-text-tertiary'>
@@ -285,91 +288,37 @@ const SettingsModal: FC<SettingsModalProps> = ({
         )}
 
         {/* Retrieval Method Config */}
-        {currentDataset?.provider === 'external'
-          ? <>
-            <div className={rowClass}><Divider /></div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-              </div>
-              <RetrievalSettings
-                topK={topK}
-                scoreThreshold={scoreThreshold}
-                scoreThresholdEnabled={scoreThresholdEnabled}
-                onChange={handleSettingsChange}
-                isInRetrievalSetting={true}
-              />
-            </div>
-            <div className={rowClass}><Divider /></div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
-              </div>
-              <div className='w-full max-w-[480px]'>
-                <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
-                  <ApiConnectionMod className='h-4 w-4 text-text-secondary' />
-                  <div className='system-sm-medium overflow-hidden text-ellipsis text-text-secondary'>
-                    {currentDataset?.external_knowledge_info.external_knowledge_api_name}
-                  </div>
-                  <div className='system-xs-regular text-text-tertiary'>·</div>
-                  <div className='system-xs-regular text-text-tertiary'>{currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}</div>
-                </div>
-              </div>
-            </div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeID')}</div>
-              </div>
-              <div className='w-full max-w-[480px]'>
-                <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
-                  <div className='system-xs-regular text-text-tertiary'>{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
-                </div>
-              </div>
-            </div>
-            <div className={rowClass}><Divider /></div>
-          </>
-          : <div className={rowClass}>
-            <div className={cn(labelClass, 'w-auto min-w-[168px]')}>
-              <div>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-                <div className='text-xs font-normal leading-[18px] text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer' href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')} className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-                  {t('datasetSettings.form.retrievalSetting.description')}
-                </div>
-              </div>
-            </div>
-            <div>
-              {indexMethod === IndexingType.QUALIFIED
-                ? (
-                  <RetrievalMethodConfig
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
-                )
-                : (
-                  <EconomicalRetrievalMethodConfig
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
-                )}
-            </div>
-          </div>}
+        {isExternal ? (
+          <RetrievalSection
+            isExternal
+            rowClass={rowClass}
+            labelClass={labelClass}
+            t={t}
+            topK={topK}
+            scoreThreshold={scoreThreshold}
+            scoreThresholdEnabled={scoreThresholdEnabled}
+            onExternalSettingChange={handleSettingsChange}
+            currentDataset={currentDataset}
+          />
+        ) : (
+          <RetrievalSection
+            isExternal={false}
+            rowClass={rowClass}
+            labelClass={labelClass}
+            t={t}
+            indexMethod={indexMethod}
+            retrievalConfig={retrievalConfig}
+            showMultiModalTip={showMultiModalTip}
+            onRetrievalConfigChange={setRetrievalConfig}
+            docLink={docLink}
+          />
+        )}
       </div>
-      {isRetrievalChanged && !isHideChangedTip && (
-        <div className='absolute bottom-[76px] left-[30px] right-[30px] z-10 flex h-10 items-center justify-between rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 shadow-lg'>
-          <div className='flex items-center'>
-            <AlertTriangle className='mr-1 h-3 w-3 text-[#F79009]' />
-            <div className='text-xs font-medium leading-[18px] text-gray-700'>{t('appDebug.datasetConfig.retrieveChangeTip')}</div>
-          </div>
-          <div className='cursor-pointer p-1' onClick={(e) => {
-            setIsHideChangedTip(true)
-            e.stopPropagation()
-            e.nativeEvent.stopImmediatePropagation()
-          }}>
-            <RiCloseLine className='h-4 w-4 text-gray-500' />
-          </div>
-        </div>
-      )}
+      <RetrievalChangeTip
+        visible={isRetrievalChanged && !isHideChangedTip}
+        message={t('appDebug.datasetConfig.retrieveChangeTip')}
+        onDismiss={() => setIsHideChangedTip(true)}
+      />
 
       <div
         className='sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4'

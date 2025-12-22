@@ -19,7 +19,7 @@ from core.rag.pipeline.queue import TenantIsolatedTaskQueue
 from enums.cloud_plan import CloudPlan
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset, Document
-from services.document_indexing_task_proxy import DocumentIndexingTaskProxy
+from services.document_indexing_proxy.document_indexing_task_proxy import DocumentIndexingTaskProxy
 from tasks.document_indexing_task import (
     _document_indexing,
     _document_indexing_with_tenant_queue,
@@ -138,7 +138,9 @@ class TestTaskEnqueuing:
         with patch.object(DocumentIndexingTaskProxy, "features") as mock_features:
             mock_features.billing.enabled = False
 
-            with patch("services.document_indexing_task_proxy.priority_document_indexing_task") as mock_task:
+            # Mock the class variable directly
+            mock_task = Mock()
+            with patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", mock_task):
                 proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
 
                 # Act
@@ -163,7 +165,9 @@ class TestTaskEnqueuing:
             mock_features.billing.enabled = True
             mock_features.billing.subscription.plan = CloudPlan.SANDBOX
 
-            with patch("services.document_indexing_task_proxy.normal_document_indexing_task") as mock_task:
+            # Mock the class variable directly
+            mock_task = Mock()
+            with patch.object(DocumentIndexingTaskProxy, "NORMAL_TASK_FUNC", mock_task):
                 proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
 
                 # Act
@@ -187,7 +191,9 @@ class TestTaskEnqueuing:
             mock_features.billing.enabled = True
             mock_features.billing.subscription.plan = CloudPlan.PROFESSIONAL
 
-            with patch("services.document_indexing_task_proxy.priority_document_indexing_task") as mock_task:
+            # Mock the class variable directly
+            mock_task = Mock()
+            with patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", mock_task):
                 proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
 
                 # Act
@@ -211,7 +217,9 @@ class TestTaskEnqueuing:
             mock_features.billing.enabled = True
             mock_features.billing.subscription.plan = CloudPlan.PROFESSIONAL
 
-            with patch("services.document_indexing_task_proxy.priority_document_indexing_task") as mock_task:
+            # Mock the class variable directly
+            mock_task = Mock()
+            with patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", mock_task):
                 proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, document_ids)
 
                 # Act
@@ -1493,7 +1501,9 @@ class TestEdgeCases:
             mock_features.billing.enabled = True
             mock_features.billing.subscription.plan = CloudPlan.PROFESSIONAL
 
-            with patch("services.document_indexing_task_proxy.priority_document_indexing_task") as mock_task:
+            # Mock the class variable directly
+            mock_task = Mock()
+            with patch.object(DocumentIndexingTaskProxy, "PRIORITY_TASK_FUNC", mock_task):
                 # Act - Enqueue multiple tasks rapidly
                 for doc_ids in document_ids_list:
                     proxy = DocumentIndexingTaskProxy(tenant_id, dataset_id, doc_ids)
@@ -1898,7 +1908,7 @@ class TestRobustness:
         - Error is propagated appropriately
         """
         # Arrange
-        with patch("services.document_indexing_task_proxy.FeatureService.get_features") as mock_get_features:
+        with patch("services.document_indexing_proxy.base.FeatureService.get_features") as mock_get_features:
             # Simulate FeatureService failure
             mock_get_features.side_effect = Exception("Feature service unavailable")
 

@@ -6,18 +6,17 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import type { FileItem } from '@/models/datasets'
 import { upload } from '@/service/base'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import useSWR from 'swr'
-import { fetchFileUploadConfig } from '@/service/common'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { Theme } from '@/types/app'
 import useTheme from '@/hooks/use-theme'
+import { useFileUploadConfig } from '@/service/use-common'
 
 export type Props = {
   file: FileItem | undefined
@@ -34,7 +33,7 @@ const CSVUploader: FC<Props> = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const { data: fileUploadConfigResponse } = useFileUploadConfig()
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
   }, [fileUploadConfigResponse])

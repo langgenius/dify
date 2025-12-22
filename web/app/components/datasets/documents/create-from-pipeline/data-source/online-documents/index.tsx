@@ -19,16 +19,18 @@ import { useDocLink } from '@/context/i18n'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 
 type OnlineDocumentsProps = {
-  isInPipeline?: boolean
   nodeId: string
   nodeData: DataSourceNodeType
   onCredentialChange: (credentialId: string) => void
+  isInPipeline?: boolean
+  supportBatchUpload?: boolean
 }
 
 const OnlineDocuments = ({
   nodeId,
   nodeData,
   isInPipeline = false,
+  supportBatchUpload = true,
   onCredentialChange,
 }: OnlineDocumentsProps) => {
   const docLink = useDocLink()
@@ -73,11 +75,17 @@ const OnlineDocuments = ({
 
   const getOnlineDocuments = useCallback(async () => {
     const { currentCredentialId } = dataSourceStore.getState()
+    // Convert datasource_parameters to inputs format for the API
+    const inputs = Object.entries(nodeData.datasource_parameters || {}).reduce((acc, [key, value]) => {
+      acc[key] = typeof value === 'object' && value !== null && 'value' in value ? value.value : value
+      return acc
+    }, {} as Record<string, any>)
+
     ssePost(
       datasourceNodeRunURL,
       {
         body: {
-          inputs: {},
+          inputs,
           credential_id: currentCredentialId,
           datasource_type: DatasourceType.onlineDocument,
         },
@@ -95,7 +103,7 @@ const OnlineDocuments = ({
         },
       },
     )
-  }, [dataSourceStore, datasourceNodeRunURL])
+  }, [dataSourceStore, datasourceNodeRunURL, nodeData.datasource_parameters])
 
   useEffect(() => {
     if (!currentCredentialId) return
@@ -157,7 +165,7 @@ const OnlineDocuments = ({
               onSelect={handleSelectPages}
               canPreview={!isInPipeline}
               onPreview={handlePreviewPage}
-              isMultipleChoice={!isInPipeline}
+              isMultipleChoice={supportBatchUpload}
               currentCredentialId={currentCredentialId}
             />
           ) : (

@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { useVariableAssigner } from '../../hooks'
 import type { VariableAssignerNodeType } from '../../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

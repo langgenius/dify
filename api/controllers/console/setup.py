@@ -1,8 +1,9 @@
 from flask import request
-from flask_restx import Resource, fields, reqparse
+from flask_restx import Resource, fields
+from pydantic import BaseModel, Field, field_validator
 
 from configs import dify_config
-from libs.helper import StrLen, email, extract_remote_ip
+from libs.helper import EmailStr, extract_remote_ip
 from libs.password import valid_password
 from models.model import DifySetup, db
 from services.account_service import RegisterService, TenantService
@@ -11,6 +12,26 @@ from . import console_ns
 from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
 from .wraps import only_edition_self_hosted
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class SetupRequestPayload(BaseModel):
+    email: EmailStr = Field(..., description="Admin email address")
+    name: str = Field(..., max_length=30, description="Admin name (max 30 characters)")
+    password: str = Field(..., description="Admin password")
+    language: str | None = Field(default=None, description="Admin language")
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str) -> str:
+        return valid_password(value)
+
+
+console_ns.schema_model(
+    SetupRequestPayload.__name__,
+    SetupRequestPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
 
 
 @console_ns.route("/setup")
@@ -42,17 +63,7 @@ class SetupApi(Resource):
 
     @console_ns.doc("setup_system")
     @console_ns.doc(description="Initialize system setup with admin account")
-    @console_ns.expect(
-        console_ns.model(
-            "SetupRequest",
-            {
-                "email": fields.String(required=True, description="Admin email address"),
-                "name": fields.String(required=True, description="Admin name (max 30 characters)"),
-                "password": fields.String(required=True, description="Admin password"),
-                "language": fields.String(required=False, description="Admin language"),
-            },
-        )
-    )
+    @console_ns.expect(console_ns.models[SetupRequestPayload.__name__])
     @console_ns.response(
         201, "Success", console_ns.model("SetupResponse", {"result": fields.String(description="Setup result")})
     )
@@ -72,22 +83,15 @@ class SetupApi(Resource):
         if not get_init_validate_status():
             raise NotInitValidateError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("email", type=email, required=True, location="json")
-            .add_argument("name", type=StrLen(30), required=True, location="json")
-            .add_argument("password", type=valid_password, required=True, location="json")
-            .add_argument("language", type=str, required=False, location="json")
-        )
-        args = parser.parse_args()
+        args = SetupRequestPayload.model_validate(console_ns.payload)
 
         # setup
         RegisterService.setup(
-            email=args["email"],
-            name=args["name"],
-            password=args["password"],
+            email=args.email,
+            name=args.name,
+            password=args.password,
             ip_address=extract_remote_ip(request),
-            language=args["language"],
+            language=args.language,
         )
 
         return {"result": "success"}, 201

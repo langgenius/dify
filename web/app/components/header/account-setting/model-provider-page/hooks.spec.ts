@@ -1,65 +1,78 @@
+import type { Mock } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useLanguage } from './hooks'
 import { useContext } from 'use-context-selector'
-import { after } from 'node:test'
 
-jest.mock('swr', () => ({
-  __esModule: true,
-  default: jest.fn(), // mock useSWR
-  useSWRConfig: jest.fn(),
+vi.mock('@tanstack/react-query', () => ({
+  useQuery: vi.fn(),
+  useQueryClient: vi.fn(() => ({
+    invalidateQueries: vi.fn(),
+  })),
 }))
 
 // mock use-context-selector
-jest.mock('use-context-selector', () => ({
-  useContext: jest.fn(),
+vi.mock('use-context-selector', () => ({
+  useContext: vi.fn(),
+  createContext: () => ({
+    Provider: ({ children }: any) => children,
+    Consumer: ({ children }: any) => children(null),
+  }),
+  useContextSelector: vi.fn(),
 }))
 
 // mock service/common functions
-jest.mock('@/service/common', () => ({
-  fetchDefaultModal: jest.fn(),
-  fetchModelList: jest.fn(),
-  fetchModelProviderCredentials: jest.fn(),
-  fetchModelProviders: jest.fn(),
-  getPayUrl: jest.fn(),
+vi.mock('@/service/common', () => ({
+  fetchDefaultModal: vi.fn(),
+  fetchModelList: vi.fn(),
+  fetchModelProviderCredentials: vi.fn(),
+  getPayUrl: vi.fn(),
+}))
+
+vi.mock('@/service/use-common', () => ({
+  commonQueryKeys: {
+    modelProviders: ['common', 'model-providers'],
+  },
 }))
 
 // mock context hooks
-jest.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', () => ({
   __esModule: true,
-  default: jest.fn(),
+  default: vi.fn(),
 }))
 
-jest.mock('@/context/provider-context', () => ({
-  useProviderContext: jest.fn(),
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(),
 }))
 
-jest.mock('@/context/modal-context', () => ({
-  useModalContextSelector: jest.fn(),
+vi.mock('@/context/modal-context', () => ({
+  useModalContextSelector: vi.fn(),
 }))
 
-jest.mock('@/context/event-emitter', () => ({
-  useEventEmitterContextContext: jest.fn(),
+vi.mock('@/context/event-emitter', () => ({
+  useEventEmitterContextContext: vi.fn(),
 }))
 
 // mock plugins
-jest.mock('@/app/components/plugins/marketplace/hooks', () => ({
-  useMarketplacePlugins: jest.fn(),
+vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
+  useMarketplacePlugins: vi.fn(),
 }))
 
-jest.mock('@/app/components/plugins/marketplace/utils', () => ({
-  getMarketplacePluginsByCollectionId: jest.fn(),
+vi.mock('@/app/components/plugins/marketplace/utils', () => ({
+  getMarketplacePluginsByCollectionId: vi.fn(),
 }))
 
-jest.mock('./provider-added-card', () => jest.fn())
+vi.mock('./provider-added-card', () => ({
+  default: vi.fn(),
+}))
 
-after(() => {
-  jest.resetModules()
-  jest.clearAllMocks()
+afterAll(() => {
+  vi.resetModules()
+  vi.clearAllMocks()
 })
 
 describe('useLanguage', () => {
   it('should replace hyphen with underscore in locale', () => {
-    (useContext as jest.Mock).mockReturnValue({
+    (useContext as Mock).mockReturnValue({
       locale: 'en-US',
     })
     const { result } = renderHook(() => useLanguage())
@@ -67,7 +80,7 @@ describe('useLanguage', () => {
   })
 
   it('should return locale as is if no hyphen exists', () => {
-    (useContext as jest.Mock).mockReturnValue({
+    (useContext as Mock).mockReturnValue({
       locale: 'enUS',
     })
 
@@ -77,7 +90,7 @@ describe('useLanguage', () => {
 
   it('should handle multiple hyphens', () => {
     // Mock the I18n context return value
-    (useContext as jest.Mock).mockReturnValue({
+    (useContext as Mock).mockReturnValue({
       locale: 'zh-Hans-CN',
     })
 

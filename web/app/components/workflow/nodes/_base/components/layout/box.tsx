@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { memo } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type BoxProps = {
   className?: string

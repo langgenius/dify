@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import {
   asyncRunSafe,
   canFindTool,
@@ -50,13 +51,13 @@ describe('getTextWidthWithCanvas', () => {
     originalCreateElement = document.createElement
 
     // Mock canvas and context
-    const measureTextMock = jest.fn().mockReturnValue({ width: 100 })
-    const getContextMock = jest.fn().mockReturnValue({
+    const measureTextMock = vi.fn().mockReturnValue({ width: 100 })
+    const getContextMock = vi.fn().mockReturnValue({
       measureText: measureTextMock,
       font: '',
     })
 
-    document.createElement = jest.fn().mockReturnValue({
+    document.createElement = vi.fn().mockReturnValue({
       getContext: getContextMock,
     })
   })
@@ -73,7 +74,7 @@ describe('getTextWidthWithCanvas', () => {
 
   it('should return 0 if context is not available', () => {
     // Override mock for this test
-    document.createElement = jest.fn().mockReturnValue({
+    document.createElement = vi.fn().mockReturnValue({
       getContext: () => null,
     })
 
@@ -243,6 +244,7 @@ describe('removeSpecificQueryParam', () => {
     // Mock window.location using defineProperty to handle URL properly
     delete (window as any).location
     Object.defineProperty(window, 'location', {
+      configurable: true,
       writable: true,
       value: {
         ...originalLocation,
@@ -252,11 +254,12 @@ describe('removeSpecificQueryParam', () => {
       },
     })
 
-    window.history.replaceState = jest.fn()
+    window.history.replaceState = vi.fn()
   })
 
   afterEach(() => {
     Object.defineProperty(window, 'location', {
+      configurable: true,
       writable: true,
       value: originalLocation,
     })
@@ -266,7 +269,7 @@ describe('removeSpecificQueryParam', () => {
   it('should remove a single query parameter', () => {
     removeSpecificQueryParam('param2')
     expect(window.history.replaceState).toHaveBeenCalledTimes(1)
-    const replaceStateCall = (window.history.replaceState as jest.Mock).mock.calls[0]
+    const replaceStateCall = (window.history.replaceState as Mock).mock.calls[0]
     expect(replaceStateCall[0]).toBe(null)
     expect(replaceStateCall[1]).toBe('')
     expect(replaceStateCall[2]).toMatch(/param1=value1/)
@@ -277,7 +280,7 @@ describe('removeSpecificQueryParam', () => {
   it('should remove multiple query parameters', () => {
     removeSpecificQueryParam(['param1', 'param3'])
     expect(window.history.replaceState).toHaveBeenCalledTimes(1)
-    const replaceStateCall = (window.history.replaceState as jest.Mock).mock.calls[0]
+    const replaceStateCall = (window.history.replaceState as Mock).mock.calls[0]
     expect(replaceStateCall[2]).toMatch(/param2=value2/)
     expect(replaceStateCall[2]).not.toMatch(/param1=value1/)
     expect(replaceStateCall[2]).not.toMatch(/param3=value3/)
@@ -287,7 +290,7 @@ describe('removeSpecificQueryParam', () => {
     removeSpecificQueryParam('nonexistent')
 
     expect(window.history.replaceState).toHaveBeenCalledTimes(1)
-    const replaceStateCall = (window.history.replaceState as jest.Mock).mock.calls[0]
+    const replaceStateCall = (window.history.replaceState as Mock).mock.calls[0]
     expect(replaceStateCall[2]).toMatch(/param1=value1/)
     expect(replaceStateCall[2]).toMatch(/param2=value2/)
     expect(replaceStateCall[2]).toMatch(/param3=value3/)
@@ -344,38 +347,38 @@ describe('asyncRunSafe extended', () => {
 
 describe('getTextWidthWithCanvas', () => {
   it('should return 0 when canvas context is not available', () => {
-    const mockGetContext = jest.fn().mockReturnValue(null)
-    jest.spyOn(document, 'createElement').mockReturnValue({
+    const mockGetContext = vi.fn().mockReturnValue(null)
+    vi.spyOn(document, 'createElement').mockReturnValue({
       getContext: mockGetContext,
     } as any)
 
     const width = getTextWidthWithCanvas('test')
     expect(width).toBe(0)
 
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('should measure text width with custom font', () => {
-    const mockMeasureText = jest.fn().mockReturnValue({ width: 123.456 })
+    const mockMeasureText = vi.fn().mockReturnValue({ width: 123.456 })
     const mockContext = {
       font: '',
       measureText: mockMeasureText,
     }
-    jest.spyOn(document, 'createElement').mockReturnValue({
-      getContext: jest.fn().mockReturnValue(mockContext),
+    vi.spyOn(document, 'createElement').mockReturnValue({
+      getContext: vi.fn().mockReturnValue(mockContext),
     } as any)
 
     const width = getTextWidthWithCanvas('test', '16px Arial')
     expect(mockContext.font).toBe('16px Arial')
     expect(width).toBe(123.46)
 
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('should handle empty string', () => {
-    const mockMeasureText = jest.fn().mockReturnValue({ width: 0 })
-    jest.spyOn(document, 'createElement').mockReturnValue({
-      getContext: jest.fn().mockReturnValue({
+    const mockMeasureText = vi.fn().mockReturnValue({ width: 0 })
+    vi.spyOn(document, 'createElement').mockReturnValue({
+      getContext: vi.fn().mockReturnValue({
         font: '',
         measureText: mockMeasureText,
       }),
@@ -384,7 +387,7 @@ describe('getTextWidthWithCanvas', () => {
     const width = getTextWidthWithCanvas('')
     expect(width).toBe(0)
 
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 })
 
@@ -451,19 +454,20 @@ describe('fetchWithRetry extended', () => {
     expect(result).toBe('success')
   })
 
-  it('should retry specified number of times', async () => {
+  it('should return error when promise rejects', async () => {
     let attempts = 0
     const failingPromise = () => {
       attempts++
       return Promise.reject(new Error('fail'))
     }
 
-    await fetchWithRetry(failingPromise(), 3)
-    // Initial attempt + 3 retries = 4 total attempts
-    // But the function structure means it will try once, then retry 3 times
+    const [error] = await fetchWithRetry(failingPromise(), 3)
+    expect(error).toBeInstanceOf(Error)
+    expect(error?.message).toBe('fail')
+    expect(attempts).toBe(1)
   })
 
-  it('should succeed after retries', async () => {
+  it('should surface rejection from a settled promise', async () => {
     let attempts = 0
     const eventuallySucceed = new Promise((resolve, reject) => {
       attempts++
@@ -473,8 +477,10 @@ describe('fetchWithRetry extended', () => {
         resolve('success')
     })
 
-    await fetchWithRetry(eventuallySucceed, 3)
-    // Note: This test may need adjustment based on actual retry logic
+    const [error] = await fetchWithRetry(eventuallySucceed, 3)
+    expect(error).toBeInstanceOf(Error)
+    expect(error?.message).toBe('not yet')
+    expect(attempts).toBe(1)
   })
 
   /*
@@ -565,7 +571,7 @@ describe('removeSpecificQueryParam extended', () => {
   })
 
   it('should remove single query parameter', () => {
-    const mockReplaceState = jest.fn()
+    const mockReplaceState = vi.fn()
     window.history.replaceState = mockReplaceState
 
     removeSpecificQueryParam('param1')
@@ -576,7 +582,7 @@ describe('removeSpecificQueryParam extended', () => {
   })
 
   it('should remove multiple query parameters', () => {
-    const mockReplaceState = jest.fn()
+    const mockReplaceState = vi.fn()
     window.history.replaceState = mockReplaceState
 
     removeSpecificQueryParam(['param1', 'param2'])
@@ -588,7 +594,7 @@ describe('removeSpecificQueryParam extended', () => {
   })
 
   it('should preserve other parameters', () => {
-    const mockReplaceState = jest.fn()
+    const mockReplaceState = vi.fn()
     window.history.replaceState = mockReplaceState
 
     removeSpecificQueryParam('param1')

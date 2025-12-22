@@ -11,7 +11,7 @@ import {
 } from '@remixicon/react'
 import { createContext, useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
 
 export type IToastProps = {

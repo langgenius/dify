@@ -1,15 +1,15 @@
 'use client'
 
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import dayjs from 'dayjs'
 import { useTranslation } from 'react-i18next'
+import { useQueryClient } from '@tanstack/react-query'
 import {
-  fetchModelList,
-  fetchModelProviders,
-  fetchSupportRetrievalMethods,
-} from '@/service/common'
+  useModelListByType,
+  useModelProviders,
+  useSupportRetrievalMethods,
+} from '@/service/use-common'
 import {
   CurrentSystemQuotaTypeEnum,
   ModelStatusEnum,
@@ -30,7 +30,7 @@ import { noop } from 'lodash-es'
 import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
 import { ZENDESK_FIELD_IDS } from '@/config'
 
-type ProviderContextState = {
+export type ProviderContextState = {
   modelProviders: ModelProvider[]
   refreshModelProviders: () => void
   textGenerationModelList: Model[]
@@ -66,7 +66,8 @@ type ProviderContextState = {
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
 }
-const ProviderContext = createContext<ProviderContextState>({
+
+export const baseProviderContextValue: ProviderContextState = {
   modelProviders: [],
   refreshModelProviders: noop,
   textGenerationModelList: [],
@@ -96,7 +97,9 @@ const ProviderContext = createContext<ProviderContextState>({
   refreshLicenseLimit: noop,
   isAllowTransferWorkspace: false,
   isAllowPublishAsCustomKnowledgePipelineTemplate: false,
-})
+}
+
+const ProviderContext = createContext<ProviderContextState>(baseProviderContextValue)
 
 export const useProviderContext = () => useContext(ProviderContext)
 
@@ -111,10 +114,10 @@ type ProviderContextProviderProps = {
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
-  const { data: providersData, mutate: refreshModelProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
-  const fetchModelListUrlPrefix = '/workspaces/current/models/model-types/'
-  const { data: textGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.textGeneration}`, fetchModelList)
-  const { data: supportRetrievalMethods } = useSWR('/datasets/retrieval-setting', fetchSupportRetrievalMethods)
+  const queryClient = useQueryClient()
+  const { data: providersData } = useModelProviders()
+  const { data: textGenerationModelList } = useModelListByType(ModelTypeEnum.textGeneration)
+  const { data: supportRetrievalMethods } = useSupportRetrievalMethods()
 
   const [plan, setPlan] = useState(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
@@ -135,6 +138,10 @@ export const ProviderContextProvider = ({
   const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
   const [isAllowPublishAsCustomKnowledgePipelineTemplate, setIsAllowPublishAsCustomKnowledgePipelineTemplate] = useState(false)
+
+  const refreshModelProviders = () => {
+    queryClient.invalidateQueries({ queryKey: ['common', 'model-providers'] })
+  }
 
   const fetchPlan = async () => {
     try {
@@ -223,7 +230,7 @@ export const ProviderContextProvider = ({
       modelProviders: providersData?.data || [],
       refreshModelProviders,
       textGenerationModelList: textGenerationModelList?.data || [],
-      isAPIKeySet: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),
+      isAPIKeySet: !!textGenerationModelList?.data?.some(model => model.status === ModelStatusEnum.active),
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
       plan,
       isFetchedPlan,

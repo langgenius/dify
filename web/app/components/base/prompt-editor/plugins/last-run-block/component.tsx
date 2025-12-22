@@ -2,7 +2,7 @@ import { type FC, useEffect } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_LAST_RUN_COMMAND, LastRunBlockNode } from '.'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { Variable02 } from '../../../icons/src/vender/solid/development'
 
 type Props = {

@@ -6,7 +6,7 @@ import type { OnResize } from 'reactflow'
 import { NodeResizeControl } from 'reactflow'
 import { useNodesInteractions } from '../../../hooks'
 import type { CommonNodeType } from '../../../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const Icon = () => {
   return (

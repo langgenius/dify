@@ -90,7 +90,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          cache-dependency-path: ./web/package.json
+          cache-dependency-path: ./web/pnpm-lock.yaml
 
       - name: Web dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
@@ -106,7 +106,7 @@ jobs:
       - name: Web type check
         if: steps.changed-files.outputs.any_changed == 'true'
         working-directory: ./web
-        run: pnpm run type-check
+        run: pnpm run type-check:tsgo
 
   docker-compose-template:
     name: Docker Compose Template

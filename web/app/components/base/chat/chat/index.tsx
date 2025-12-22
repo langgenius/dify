@@ -26,7 +26,7 @@ import ChatInputArea from './chat-input-area'
 import TryToAsk from './try-to-ask'
 import { ChatContextProvider } from './context'
 import type { InputForm } from './type'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { Emoji } from '@/app/components/tools/types'
 import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
@@ -71,7 +71,6 @@ export type ChatProps = {
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
   inputDisabled?: boolean
-  isMobile?: boolean
   sidebarCollapseState?: boolean
 }
 
@@ -110,7 +109,6 @@ const Chat: FC<ChatProps> = ({
   onFeatureBarClick,
   noSpacing,
   inputDisabled,
-  isMobile,
   sidebarCollapseState,
 }) => {
   const { t } = useTranslation()
@@ -321,7 +319,6 @@ const Chat: FC<ChatProps> = ({
                 <TryToAsk
                   suggestedQuestions={suggestedQuestions}
                   onSend={onSend}
-                  isMobile={isMobile}
                 />
               )
             }

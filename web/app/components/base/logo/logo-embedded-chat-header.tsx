@@ -1,4 +1,4 @@
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FC } from 'react'
 import { basePath } from '@/utils/var'
 
@@ -16,7 +16,7 @@ const LogoEmbeddedChatHeader: FC<LogoEmbeddedChatHeaderProps> = ({
     <img
       src={`${basePath}/logo/logo-embedded-chat-header.png`}
       alt='logo'
-      className={classNames('block h-6 w-auto', className)}
+      className={cn('block h-6 w-auto', className)}
     />
   </picture>
 }

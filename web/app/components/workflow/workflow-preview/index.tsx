@@ -28,7 +28,7 @@ import {
   CUSTOM_NODE,
   ITERATION_CHILDREN_Z_INDEX,
 } from '@/app/components/workflow/constants'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   initialEdges,
   initialNodes,

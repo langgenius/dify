@@ -6,7 +6,7 @@ import { useBoolean } from 'ahooks'
 import ResultItemMeta from './result-item-meta'
 import ResultItemFooter from './result-item-footer'
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 
@@ -31,7 +31,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
 
       {/* Main */}
       <div className='mt-1 px-3'>
-        <div className='body-md-regular line-clamp-2 break-all'>{content}</div>
+        <div className='body-md-regular line-clamp-2 break-all text-text-primary'>{content}</div>
       </div>
 
       {/* Foot */}

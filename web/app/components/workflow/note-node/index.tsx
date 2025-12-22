@@ -20,7 +20,7 @@ import {
 import { THEME_MAP } from './constants'
 import { useNote } from './hooks'
 import type { NoteNodeType } from './types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const Icon = () => {
   return (

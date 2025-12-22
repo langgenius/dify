@@ -17,7 +17,7 @@ import TextGenerationImageUploader from '@/app/components/base/image-uploader/te
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
@@ -57,6 +57,8 @@ const RunOnce: FC<IRunOnceProps> = ({
     promptConfig.prompt_variables.forEach((item) => {
       if (item.type === 'string' || item.type === 'paragraph')
         newInputs[item.key] = ''
+      else if (item.type === 'number')
+        newInputs[item.key] = ''
       else if (item.type === 'checkbox')
         newInputs[item.key] = false
       else
@@ -92,7 +94,7 @@ const RunOnce: FC<IRunOnceProps> = ({
       else if (item.type === 'string' || item.type === 'paragraph')
         newInputs[item.key] = item.default || ''
       else if (item.type === 'number')
-        newInputs[item.key] = item.default
+        newInputs[item.key] = item.default ?? ''
       else if (item.type === 'checkbox')
         newInputs[item.key] = item.default || false
       else if (item.type === 'file')
@@ -230,6 +232,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 variant={isRunning ? 'secondary' : 'primary'}
                 disabled={isRunning && runControl?.isStopping}
                 onClick={handlePrimaryClick}
+                data-testid={isRunning ? 'stop-button' : 'run-button'}
               >
                 {isRunning ? (
                   <>

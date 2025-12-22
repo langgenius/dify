@@ -33,14 +33,16 @@ const I18N_PREFIX = 'datasetCreation.stepOne.website'
 export type WebsiteCrawlProps = {
   nodeId: string
   nodeData: DataSourceNodeType
-  isInPipeline?: boolean
   onCredentialChange: (credentialId: string) => void
+  isInPipeline?: boolean
+  supportBatchUpload?: boolean
 }
 
 const WebsiteCrawl = ({
   nodeId,
   nodeData,
   isInPipeline = false,
+  supportBatchUpload = true,
   onCredentialChange,
 }: WebsiteCrawlProps) => {
   const { t } = useTranslation()
@@ -122,7 +124,7 @@ const WebsiteCrawl = ({
             time_consuming: time_consuming ?? 0,
           }
           setCrawlResult(crawlResultData)
-          handleCheckedCrawlResultChange(isInPipeline ? [crawlData[0]] : crawlData) // default select the crawl result
+          handleCheckedCrawlResultChange(supportBatchUpload ? crawlData : crawlData.slice(0, 1)) // default select the crawl result
           setCrawlErrorMessage('')
           setStep(CrawlStep.finished)
         },
@@ -132,7 +134,7 @@ const WebsiteCrawl = ({
         },
       },
     )
-  }, [dataSourceStore, datasourceNodeRunURL, handleCheckedCrawlResultChange, isInPipeline, t])
+  }, [dataSourceStore, datasourceNodeRunURL, handleCheckedCrawlResultChange, supportBatchUpload, t])
 
   const handleSubmit = useCallback((value: Record<string, any>) => {
     handleRun(value)
@@ -149,7 +151,7 @@ const WebsiteCrawl = ({
     setTotalNum(0)
     setCrawlErrorMessage('')
     onCredentialChange(credentialId)
-  }, [dataSourceStore, onCredentialChange])
+  }, [onCredentialChange])
 
   return (
     <div className='flex flex-col'>
@@ -195,7 +197,7 @@ const WebsiteCrawl = ({
               previewIndex={previewIndex}
               onPreview={handlePreview}
               showPreview={!isInPipeline}
-              isMultipleChoice={!isInPipeline} // only support single choice in test run
+              isMultipleChoice={supportBatchUpload} // only support single choice in test run
             />
           )}
         </div>

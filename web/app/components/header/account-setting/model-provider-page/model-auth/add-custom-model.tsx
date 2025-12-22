@@ -17,7 +17,7 @@ import type {
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
