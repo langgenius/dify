@@ -8,7 +8,7 @@ This module tests the account activation mechanism including:
 - Initial login after activation
 """
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -40,7 +40,7 @@ class TestActivateCheckApi:
             "tenant": tenant,
         }
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_check_valid_invitation_token(self, mock_get_invitation, app, mock_invitation):
         """
         Test checking valid invitation token.
@@ -66,7 +66,7 @@ class TestActivateCheckApi:
         assert response["data"]["workspace_id"] == "workspace-123"
         assert response["data"]["email"] == "invitee@example.com"
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_check_invalid_invitation_token(self, mock_get_invitation, app):
         """
         Test checking invalid invitation token.
@@ -88,7 +88,7 @@ class TestActivateCheckApi:
         # Assert
         assert response["is_valid"] is False
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_check_token_without_workspace_id(self, mock_get_invitation, app, mock_invitation):
         """
         Test checking token without workspace ID.
@@ -109,7 +109,7 @@ class TestActivateCheckApi:
         assert response["is_valid"] is True
         mock_get_invitation.assert_called_once_with(None, "invitee@example.com", "valid_token")
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_check_token_without_email(self, mock_get_invitation, app, mock_invitation):
         """
         Test checking token without email parameter.
@@ -130,7 +130,7 @@ class TestActivateCheckApi:
         assert response["is_valid"] is True
         mock_get_invitation.assert_called_once_with("workspace-123", None, "valid_token")
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_check_token_normalizes_email_to_lowercase(self, mock_get_invitation, app, mock_invitation):
         """Ensure token validation uses lowercase emails."""
         mock_get_invitation.return_value = mock_invitation
@@ -142,10 +142,7 @@ class TestActivateCheckApi:
             response = api.get()
 
         assert response["is_valid"] is True
-        assert mock_get_invitation.call_args_list == [
-            call("workspace-123", "Invitee@Example.com", "valid_token"),
-            call("workspace-123", "invitee@example.com", "valid_token"),
-        ]
+        mock_get_invitation.assert_called_once_with("workspace-123", "Invitee@Example.com", "valid_token")
 
 
 class TestActivateApi:
@@ -194,7 +191,7 @@ class TestActivateApi:
         }
         return token_pair
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
     @patch("controllers.console.auth.activate.AccountService.login")
@@ -249,7 +246,7 @@ class TestActivateApi:
         mock_db.session.commit.assert_called_once()
         mock_login.assert_called_once()
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_activation_with_invalid_token(self, mock_get_invitation, app):
         """
         Test account activation with invalid token.
@@ -278,7 +275,7 @@ class TestActivateApi:
             with pytest.raises(AlreadyActivateError):
                 api.post()
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
     @patch("controllers.console.auth.activate.AccountService.login")
@@ -331,7 +328,7 @@ class TestActivateApi:
             ("es-ES", "Europe/Madrid"),
         ],
     )
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
     @patch("controllers.console.auth.activate.AccountService.login")
@@ -381,7 +378,7 @@ class TestActivateApi:
         assert mock_account.interface_language == language
         assert mock_account.timezone == timezone
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
     @patch("controllers.console.auth.activate.AccountService.login")
@@ -428,7 +425,7 @@ class TestActivateApi:
         assert response["data"]["refresh_token"] == "refresh_token"
         assert response["data"]["csrf_token"] == "csrf_token"
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
     @patch("controllers.console.auth.activate.AccountService.login")
@@ -472,7 +469,7 @@ class TestActivateApi:
         assert response["result"] == "success"
         mock_revoke_token.assert_called_once_with(None, "invitee@example.com", "valid_token")
 
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
     @patch("controllers.console.auth.activate.AccountService.login")
@@ -507,8 +504,5 @@ class TestActivateApi:
             response = api.post()
 
         assert response["result"] == "success"
-        assert mock_get_invitation.call_args_list == [
-            call("workspace-123", "Invitee@Example.com", "valid_token"),
-            call("workspace-123", "invitee@example.com", "valid_token"),
-        ]
+        mock_get_invitation.assert_called_once_with("workspace-123", "Invitee@Example.com", "valid_token")
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")

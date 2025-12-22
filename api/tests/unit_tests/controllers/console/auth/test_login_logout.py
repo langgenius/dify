@@ -76,7 +76,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.AccountService.login")
@@ -128,7 +128,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.AccountService.login")
@@ -182,7 +182,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_fails_when_rate_limited(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
         """
         Test login rejection when rate limit is exceeded.
@@ -230,7 +230,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     def test_login_fails_with_invalid_credentials(
@@ -269,7 +269,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     def test_login_fails_for_banned_account(
         self, mock_authenticate, mock_get_invitation, mock_is_rate_limit, mock_db, app
@@ -298,7 +298,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")
     @patch("controllers.console.auth.login.FeatureService.get_system_features")
@@ -343,7 +343,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     def test_login_invitation_email_mismatch(self, mock_get_invitation, mock_is_rate_limit, mock_db, app):
         """
         Test login failure when invitation email doesn't match login email.
@@ -374,7 +374,7 @@ class TestLoginApi:
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.dify_config.BILLING_ENABLED", False)
     @patch("controllers.console.auth.login.AccountService.is_login_error_rate_limit")
-    @patch("controllers.console.auth.login.RegisterService.get_invitation_if_token_valid")
+    @patch("controllers.console.auth.login.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.login.AccountService.authenticate")
     @patch("controllers.console.auth.login.AccountService.add_login_error_rate_limit")
     @patch("controllers.console.auth.login.TenantService.get_join_tenants")

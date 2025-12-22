@@ -1554,6 +1554,30 @@ class TestRegisterService:
         # Verify results
         assert result is None
 
+    def test_get_invitation_with_case_fallback_returns_initial_match(self):
+        """Fallback helper should return the initial invitation when present."""
+        invitation = {"workspace_id": "tenant-456"}
+        with patch(
+            "services.account_service.RegisterService.get_invitation_if_token_valid", return_value=invitation
+        ) as mock_get:
+            result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
+
+        assert result == invitation
+        mock_get.assert_called_once_with("tenant-456", "User@Test.com", "token-123")
+
+    def test_get_invitation_with_case_fallback_retries_with_lowercase(self):
+        """Fallback helper should retry with lowercase email when needed."""
+        invitation = {"workspace_id": "tenant-456"}
+        with patch("services.account_service.RegisterService.get_invitation_if_token_valid") as mock_get:
+            mock_get.side_effect = [None, invitation]
+            result = RegisterService.get_invitation_with_case_fallback("tenant-456", "User@Test.com", "token-123")
+
+        assert result == invitation
+        assert mock_get.call_args_list == [
+            (("tenant-456", "User@Test.com", "token-123"),),
+            (("tenant-456", "user@test.com", "token-123"),),
+        ]
+
     # ==================== Helper Method Tests ====================
 
     def test_get_invitation_token_key(self):

@@ -1509,6 +1509,16 @@ class RegisterService:
             invitation: dict = json.loads(data)
             return invitation
 
+    @classmethod
+    def get_invitation_with_case_fallback(
+        cls, workspace_id: str | None, email: str | None, token: str
+    ) -> dict[str, Any] | None:
+        invitation = cls.get_invitation_if_token_valid(workspace_id, email, token)
+        if invitation or not email or email == email.lower():
+            return invitation
+        normalized_email = email.lower()
+        return cls.get_invitation_if_token_valid(workspace_id, normalized_email, token)
+
 
 def _generate_refresh_token(length: int = 64):
     token = secrets.token_hex(length)

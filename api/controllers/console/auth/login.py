@@ -103,7 +103,7 @@ class LoginApi(Resource):
         invite_token = args.invite_token
         invitation: dict[str, Any] | None = None
         if invite_token:
-            invitation = _get_invitation_with_case_fallback(None, request_email, invite_token)
+            invitation = RegisterService.get_invitation_with_case_fallback(None, request_email, invite_token)
             if invitation is None:
                 invite_token = None
 
@@ -320,17 +320,6 @@ class RefreshTokenApi(Resource):
             return response
         except Exception as e:
             return {"result": "fail", "message": str(e)}, 401
-
-
-def _get_invitation_with_case_fallback(
-    workspace_id: str | None, email: str | None, token: str
-) -> dict[str, Any] | None:
-    invitation = RegisterService.get_invitation_if_token_valid(workspace_id, email, token)
-    if invitation or not email or email == email.lower():
-        return invitation
-
-    normalized_email = email.lower()
-    return RegisterService.get_invitation_if_token_valid(workspace_id, normalized_email, token)
 
 
 def _get_account_with_case_fallback(email: str):
