@@ -131,15 +131,22 @@ class LLMGenerator:
                 if cleaned_answer is None:
                     continue
 
+                # Parse JSON, try to repair malformed JSON if necessary
+                candidate = ""
                 try:
                     result_dict = json.loads(cleaned_answer)
-                    candidate = result_dict.get("Your Output", "")
                 except json.JSONDecodeError:
-                    logger.exception(
-                        "Failed to parse LLM JSON when generating conversation name; "
-                        "using raw query as fallback"
-                    )
-                    candidate = query
+                    try:
+                        result_dict = json_repair.loads(cleaned_answer)
+                    except Exception:
+                        logger.exception(
+                            "Failed to parse LLM JSON when generating conversation name; using raw query as fallback"
+                        )
+                        candidate = query
+                    else:
+                        candidate = result_dict.get("Your Output", "")
+                else:
+                    candidate = result_dict.get("Your Output", "")
 
                 # If input is Persian, ensure candidate contains Persian-specific characters.
                 # Otherwise retry with stronger instruction.
