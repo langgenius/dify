@@ -186,6 +186,7 @@
     "@typescript-eslint/parser": "^8.48.0",
     "@typescript/native-preview": "^7.0.0-dev",
     "@vitejs/plugin-react": "^5.1.2",
+    "@vitest/coverage-v8": "4.0.16",
     "autoprefixer": "^10.4.21",
     "babel-loader": "^10.0.0",
     "bing-translate-api": "^4.1.0",
