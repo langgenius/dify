@@ -162,13 +162,25 @@ class LLMGenerator:
 
                     # Try normal json loads, then attempt to repair malformed JSON
                     try:
-                        return json.loads(candidate_json)
+                        parsed = json.loads(candidate_json)
+                        # Only accept dict results for structured conversation title parsing
+                        return parsed if isinstance(parsed, dict) else None
                     except json.JSONDecodeError:
-                        # Prefer a json_repair.load function if available
+                        # Prefer a json_repair.loads implementation if available
                         json_repair_loads = getattr(json_repair, "loads", None)
                         if callable(json_repair_loads):
                             try:
-                                return json_repair_loads(candidate_json)
+                                repaired_parsed = json_repair_loads(candidate_json)
+                                if isinstance(repaired_parsed, dict):
+                                    return repaired_parsed
+                                # If the repair function returns a string, try parsing it
+                                if isinstance(repaired_parsed, str):
+                                    try:
+                                        parsed2 = json.loads(repaired_parsed)
+                                        return parsed2 if isinstance(parsed2, dict) else None
+                                    except Exception:
+                                        return None
+                                return None
                             except Exception as exc:
                                 logger.debug("json_repair.loads failed: %s", exc)
                                 return None
@@ -178,7 +190,12 @@ class LLMGenerator:
                         if callable(json_repair_repair):
                             try:
                                 repaired = json_repair_repair(candidate_json)
-                                return json.loads(repaired)
+                                if isinstance(repaired, (dict, list)):
+                                    return repaired if isinstance(repaired, dict) else None
+                                if isinstance(repaired, str):
+                                    parsed = json.loads(repaired)
+                                    return parsed if isinstance(parsed, dict) else None
+                                return None
                             except Exception as exc:
                                 logger.debug("json_repair.repair failed: %s", exc)
                                 return None
@@ -540,7 +557,19 @@ class LLMGenerator:
                 json_repair_loads = getattr(json_repair, "loads", None)
                 if callable(json_repair_loads):
                     try:
-                        parsed_content = json_repair_loads(raw_content)
+                        parsed_candidate = json_repair_loads(raw_content)
+                        # Accept dict or list directly
+                        if isinstance(parsed_candidate, (dict, list)):
+                            parsed_content = parsed_candidate
+                        elif isinstance(parsed_candidate, str):
+                            try:
+                                parsed2 = json.loads(parsed_candidate)
+                                parsed_content = parsed2 if isinstance(parsed2, (dict, list)) else None
+                            except Exception as exc:
+                                logger.debug("json_repair.loads returned a string that failed to parse: %s", exc)
+                                parsed_content = None
+                        else:
+                            parsed_content = None
                     except Exception as exc:
                         logger.debug("json_repair.loads failed: %s", exc)
                         parsed_content = None
@@ -550,13 +579,15 @@ class LLMGenerator:
                     if callable(json_repair_repair):
                         try:
                             repaired = json_repair_repair(raw_content)
-                            parsed_content = json.loads(repaired)
+                            if isinstance(repaired, (dict, list)):
+                                parsed_content = repaired
+                            elif isinstance(repaired, str):
+                                parsed_content = json.loads(repaired)
+                            else:
+                                parsed_content = None
                         except Exception as exc:
                             logger.debug("json_repair.repair failed: %s", exc)
                             parsed_content = None
-                    else:
-                        logger.debug("No json_repair functions available; cannot parse structured output")
-                        parsed_content = None
 
             if not isinstance(parsed_content, dict | list):
                 raise ValueError(f"Failed to parse structured output from llm: {raw_content}")
