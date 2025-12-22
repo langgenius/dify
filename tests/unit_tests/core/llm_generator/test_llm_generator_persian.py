@@ -254,4 +254,3 @@ def test_contains_persian_langdetect_fallback(monkeypatch):
     # Reset monkeypatch
     monkeypatch.setattr(lg, "_LANGDETECT_AVAILABLE", False)
     monkeypatch.setattr(lg, "detect", None)
-
