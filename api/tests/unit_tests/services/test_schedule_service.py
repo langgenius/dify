@@ -932,7 +932,8 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             mock_existing_monthly.node_id = "monthly-schedule"
 
             mock_session.execute.return_value.scalars.return_value.all.return_value = [
-                mock_existing_daily, mock_existing_monthly
+                mock_existing_daily,
+                mock_existing_monthly,
             ]
 
             # New configs: daily (update), weekly (add) - monthly is removed
