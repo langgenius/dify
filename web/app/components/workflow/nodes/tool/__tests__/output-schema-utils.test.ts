@@ -6,7 +6,7 @@ import {
 } from '../output-schema-utils'
 
 // Mock the getMatchedSchemaType dependency
-jest.mock('../../_base/components/variable/use-match-schema-type', () => ({
+vi.mock('../../_base/components/variable/use-match-schema-type', () => ({
   getMatchedSchemaType: (schema: any) => {
     // Return schema_type or schemaType if present
     return schema?.schema_type || schema?.schemaType || undefined

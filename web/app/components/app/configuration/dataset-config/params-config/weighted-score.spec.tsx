@@ -4,14 +4,14 @@ import WeightedScore from './weighted-score'
 
 describe('WeightedScore', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering tests (REQUIRED)
   describe('Rendering', () => {
     it('should render semantic and keyword weights', () => {
       // Arrange
-      const onChange = jest.fn<void, [{ value: number[] }]>()
+      const onChange = vi.fn<(arg: { value: number[] }) => void>()
       const value = { value: [0.3, 0.7] }
 
       // Act
@@ -26,7 +26,7 @@ describe('WeightedScore', () => {
 
     it('should format a weight of 1 as 1.0', () => {
       // Arrange
-      const onChange = jest.fn<void, [{ value: number[] }]>()
+      const onChange = vi.fn<(arg: { value: number[] }) => void>()
       const value = { value: [1, 0] }
 
       // Act
@@ -42,7 +42,7 @@ describe('WeightedScore', () => {
   describe('User Interactions', () => {
     it('should emit complementary weights when the slider value changes', async () => {
       // Arrange
-      const onChange = jest.fn<void, [{ value: number[] }]>()
+      const onChange = vi.fn<(arg: { value: number[] }) => void>()
       const value = { value: [0.5, 0.5] }
       const user = userEvent.setup()
       render(<WeightedScore value={value} onChange={onChange} />)
@@ -63,7 +63,7 @@ describe('WeightedScore', () => {
 
     it('should not call onChange when readonly is true', async () => {
       // Arrange
-      const onChange = jest.fn<void, [{ value: number[] }]>()
+      const onChange = vi.fn<(arg: { value: number[] }) => void>()
       const value = { value: [0.5, 0.5] }
       const user = userEvent.setup()
       render(<WeightedScore value={value} onChange={onChange} readonly />)

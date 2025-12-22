@@ -3,12 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
 
 let pathnameMock = '/'
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   usePathname: () => pathnameMock,
 }))
 
 let isWorkflowPageMock = false
-jest.mock('../workflow/constants', () => ({
+vi.mock('../workflow/constants', () => ({
   isInWorkflowPage: () => isWorkflowPageMock,
 }))
 

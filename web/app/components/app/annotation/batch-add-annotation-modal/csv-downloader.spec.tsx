@@ -7,8 +7,8 @@ import type { Locale } from '@/i18n-config'
 
 const downloaderProps: any[] = []
 
-jest.mock('react-papaparse', () => ({
-  useCSVDownloader: jest.fn(() => ({
+vi.mock('react-papaparse', () => ({
+  useCSVDownloader: vi.fn(() => ({
     CSVDownloader: ({ children, ...props }: any) => {
       downloaderProps.push(props)
       return <div data-testid="mock-csv-downloader">{children}</div>
@@ -22,7 +22,7 @@ const renderWithLocale = (locale: Locale) => {
     <I18nContext.Provider value={{
       locale,
       i18n: {},
-      setLocaleOnClient: jest.fn().mockResolvedValue(undefined),
+      setLocaleOnClient: vi.fn().mockResolvedValue(undefined),
     }}
     >
       <CSVDownload />
