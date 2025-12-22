@@ -1,6 +1,19 @@
 import React from 'react'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render } from '@testing-library/react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '.'
+
+const useFloatingMock = vi.fn()
+
+vi.mock('@floating-ui/react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@floating-ui/react')>()
+  return {
+    ...actual,
+    useFloating: (...args: Parameters<typeof actual.useFloating>) => {
+      useFloatingMock(...args)
+      return actual.useFloating(...args)
+    },
+  }
+})
 
 afterEach(cleanup)
 
@@ -99,16 +112,19 @@ describe('PortalToFollowElem', () => {
 
   describe('Configuration options', () => {
     test('should accept placement prop', () => {
-      // Test that the component renders successfully with placement prop
-      // The actual positioning is handled by floating-ui internally
       render(
         <PortalToFollowElem placement='top-start' >
           <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>
         </PortalToFollowElem>,
       )
 
-      // Verify the component renders without crashing
-      expect(screen.getByText('Trigger')).toBeInTheDocument()
+      expect(useFloatingMock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          placement: 'top-start',
+        }),
+      )
+
+      useFloatingMock.mockRestore()
     })
   })
 })
