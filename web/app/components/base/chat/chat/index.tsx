@@ -228,9 +228,8 @@ const Chat: FC<ChatProps> = ({
   useEffect(() => {
     const firstMessageId = chatList[0]?.id
     // Reset when: new chat (length <= 1) OR conversation switched (first message ID changed)
-    if (chatList.length <= 1 || (firstMessageId && prevFirstMessageIdRef.current !== firstMessageId)) {
+    if (chatList.length <= 1 || (firstMessageId && prevFirstMessageIdRef.current !== firstMessageId))
       userScrolledRef.current = false
-    }
     prevFirstMessageIdRef.current = firstMessageId
   }, [chatList])
 
