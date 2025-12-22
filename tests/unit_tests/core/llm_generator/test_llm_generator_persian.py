@@ -233,7 +233,7 @@ def test_generate_conversation_name_persian(monkeypatch):
 
 
 def test_contains_persian_character_and_heuristics(monkeypatch):
-    from core.llm_generator.llm_generator import _contains_persian, _PERSIAN_CHARS_RE, _PERSIAN_HEURISTIC
+    from core.llm_generator.llm_generator import _contains_persian, _persian_chars_re, _PERSIAN_HEURISTIC
 
     # By single Persian-specific character
     assert _contains_persian("این یک تست پ") is True
@@ -246,11 +246,11 @@ def test_contains_persian_langdetect_fallback(monkeypatch):
     import core.llm_generator.llm_generator as lg
 
     # Simulate langdetect being available and detecting Persian
-    monkeypatch.setattr(lg, "_LANGDETECT_AVAILABLE", True)
+    monkeypatch.setattr(lg, "_langdetect_available", True)
     monkeypatch.setattr(lg, "detect", lambda text: "fa")
 
     assert lg._contains_persian("short ambiguous text") is True
 
     # Reset monkeypatch
-    monkeypatch.setattr(lg, "_LANGDETECT_AVAILABLE", False)
+    monkeypatch.setattr(lg, "_langdetect_available", False)
     monkeypatch.setattr(lg, "detect", None)

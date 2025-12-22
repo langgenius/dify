@@ -44,19 +44,19 @@ _PERSIAN_HEURISTIC = re.compile(
 )
 
 # Precompiled regex for Persian-specific characters (including Persian ye U+06CC)
-_PERSIAN_CHARS_RE = re.compile(r"[پچژگک\u06CC]")
+_persian_chars_re = re.compile(r"[پچژگک\u06CC]")
 
 # Optional langdetect import — import once at module import time to avoid repeated lookups
-_LANGDETECT_AVAILABLE = False
+_langdetect_available = False
 try:
     from langdetect import DetectorFactory, detect  # type: ignore
 
     DetectorFactory.seed = 0
-    _LANGDETECT_AVAILABLE = True
+    _langdetect_available = True
 except Exception:
     detect = None
     DetectorFactory = None
-    _LANGDETECT_AVAILABLE = False
+    _langdetect_available = False
 
 
 def _contains_persian(text: str) -> bool:
@@ -68,7 +68,7 @@ def _contains_persian(text: str) -> bool:
     text = text or ""
 
     # 1) Quick check: Persian-specific letters
-    if _PERSIAN_CHARS_RE.search(text):
+    if _persian_chars_re.search(text):
         return True
 
     # 2) Heuristic check for common Persian words (fast, precompiled)
@@ -76,7 +76,7 @@ def _contains_persian(text: str) -> bool:
         return True
 
     # 3) Fallback: language detection (more expensive) — only run if langdetect is available
-    if _LANGDETECT_AVAILABLE and detect is not None:
+    if _langdetect_available and detect is not None:
         try:
             return detect(text) == "fa"
         except Exception as exc:
@@ -84,22 +84,6 @@ def _contains_persian(text: str) -> bool:
             logger.debug("langdetect detection failed: %s", exc)
 
     return False
-
-
-# Precompiled regex for Persian-specific characters (including Persian ye U+06CC)
-_PERSIAN_CHARS_RE = re.compile(r"[پچژگک\u06CC]")
-
-# Optional langdetect import — import once at module import time to avoid repeated lookups
-_LANGDETECT_AVAILABLE = False
-try:
-    from langdetect import DetectorFactory, detect  # type: ignore
-
-    DetectorFactory.seed = 0
-    _LANGDETECT_AVAILABLE = True
-except Exception:
-    detect = None
-    DetectorFactory = None
-    _LANGDETECT_AVAILABLE = False
 
 
 class WorkflowServiceInterface(Protocol):
