@@ -1,5 +1,5 @@
 ---
-name: Dify Frontend Testing
+name: frontend-testing
 description: Generate Jest + React Testing Library tests for Dify frontend components, hooks, and utilities. Triggers on testing, spec files, coverage, Jest, RTL, unit tests, integration tests, or write/review test requests.
 ---
 
@@ -178,7 +178,7 @@ Process in this order for multi-file testing:
 - **500+ lines**: Consider splitting before testing
 - **Many dependencies**: Extract logic into hooks first
 
-> 📖 See `guides/workflow.md` for complete workflow details and todo list format.
+> 📖 See `references/workflow.md` for complete workflow details and todo list format.
 
 ## Testing Strategy
 
@@ -289,17 +289,18 @@ For each test file generated, aim for:
 - ✅ **>95%** branch coverage
 - ✅ **>95%** line coverage
 
-> **Note**: For multi-file directories, process one file at a time with full coverage each. See `guides/workflow.md`.
+> **Note**: For multi-file directories, process one file at a time with full coverage each. See `references/workflow.md`.
 
 ## Detailed Guides
 
 For more detailed information, refer to:
 
-- `guides/workflow.md` - **Incremental testing workflow** (MUST READ for multi-file testing)
-- `guides/mocking.md` - Mock patterns and best practices
-- `guides/async-testing.md` - Async operations and API calls
-- `guides/domain-components.md` - Workflow, Dataset, Configuration testing
-- `guides/common-patterns.md` - Frequently used testing patterns
+- `references/workflow.md` - **Incremental testing workflow** (MUST READ for multi-file testing)
+- `references/mocking.md` - Mock patterns and best practices
+- `references/async-testing.md` - Async operations and API calls
+- `references/domain-components.md` - Workflow, Dataset, Configuration testing
+- `references/common-patterns.md` - Frequently used testing patterns
+- `references/checklist.md` - Test generation checklist and validation steps
 
 ## Authoritative References
 
