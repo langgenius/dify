@@ -1,4 +1,4 @@
-import type { Mock, MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import NotionPagePreview from './index'
 import type { NotionPage } from '@/models/common'

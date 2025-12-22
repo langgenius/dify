@@ -5,7 +5,7 @@ import type { DocumentDisplayStatus } from '@/models/datasets'
 
 // Mock ToastContext - required to verify notifications
 const mockNotify = vi.fn()
-vi.mock('use-context-selector', async (importOriginal) => ({
+vi.mock('use-context-selector', async importOriginal => ({
   ...await importOriginal<typeof import('use-context-selector')>(),
   useContext: () => ({ notify: mockNotify }),
 }))
@@ -22,7 +22,7 @@ vi.mock('@/service/knowledge/use-document', () => ({
 }))
 
 // Mock useDebounceFn to execute immediately for testing
-vi.mock('ahooks', async (importOriginal) => ({
+vi.mock('ahooks', async importOriginal => ({
   ...await importOriginal<typeof import('ahooks')>(),
   useDebounceFn: (fn: (...args: unknown[]) => void) => ({ run: fn }),
 }))

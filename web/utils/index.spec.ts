@@ -242,8 +242,9 @@ describe('removeSpecificQueryParam', () => {
     const mockUrl = new URL('https://example.com?param1=value1&param2=value2&param3=value3')
 
     // Mock window.location using defineProperty to handle URL properly
-    // delete (window as any).location
+    delete (window as any).location
     Object.defineProperty(window, 'location', {
+      configurable: true,
       writable: true,
       value: {
         ...originalLocation,
@@ -258,6 +259,7 @@ describe('removeSpecificQueryParam', () => {
 
   afterEach(() => {
     Object.defineProperty(window, 'location', {
+      configurable: true,
       writable: true,
       value: originalLocation,
     })
@@ -452,19 +454,20 @@ describe('fetchWithRetry extended', () => {
     expect(result).toBe('success')
   })
 
-  it('should retry specified number of times', async () => {
-    let _attempts = 0
+  it('should return error when promise rejects', async () => {
+    let attempts = 0
     const failingPromise = () => {
-      _attempts++
+      attempts++
       return Promise.reject(new Error('fail'))
     }
 
-    await fetchWithRetry(failingPromise(), 3)
-    // Initial attempt + 3 retries = 4 total attempts
-    // But the function structure means it will try once, then retry 3 times
+    const [error] = await fetchWithRetry(failingPromise(), 3)
+    expect(error).toBeInstanceOf(Error)
+    expect(error?.message).toBe('fail')
+    expect(attempts).toBe(1)
   })
 
-  it('should succeed after retries', async () => {
+  it('should surface rejection from a settled promise', async () => {
     let attempts = 0
     const eventuallySucceed = new Promise((resolve, reject) => {
       attempts++
@@ -474,8 +477,10 @@ describe('fetchWithRetry extended', () => {
         resolve('success')
     })
 
-    await fetchWithRetry(eventuallySucceed, 3)
-    // Note: This test may need adjustment based on actual retry logic
+    const [error] = await fetchWithRetry(eventuallySucceed, 3)
+    expect(error).toBeInstanceOf(Error)
+    expect(error?.message).toBe('not yet')
+    expect(attempts).toBe(1)
   })
 
   /*
@@ -559,7 +564,7 @@ describe('canFindTool extended', () => {
 describe('removeSpecificQueryParam extended', () => {
   beforeEach(() => {
     // Reset window.location
-    // delete (window as any).location
+    delete (window as any).location
     window.location = {
       href: 'https://example.com?param1=value1&param2=value2&param3=value3',
     } as any

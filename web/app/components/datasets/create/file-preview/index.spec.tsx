@@ -1,4 +1,4 @@
-import type { Mock, MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import FilePreview from './index'
 import type { CustomFile as File } from '@/models/datasets'

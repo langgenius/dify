@@ -1,4 +1,4 @@
-import type { Mock, MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vitest'
 /**
  * Test GotoAnything search error handling mechanisms
  *

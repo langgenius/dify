@@ -1,4 +1,4 @@
-import type { Mock, MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 import EmptyDatasetCreationModal from './index'

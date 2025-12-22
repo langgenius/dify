@@ -1,4 +1,4 @@
-import type { Mock, MockedFunction } from 'vitest'
+import type { MockedFunction } from 'vitest'
 import React, { useCallback } from 'react'
 import { act, render } from '@testing-library/react'
 import { useTriggerStatusStore } from '../store/trigger-status'
@@ -7,7 +7,7 @@ import type { BlockEnum } from '../types'
 import type { EntryNodeStatus } from '../store/trigger-status'
 
 // Mock the isTriggerNode function while preserving BlockEnum
-vi.mock('../types', async (importOriginal) => ({
+vi.mock('../types', async importOriginal => ({
   ...await importOriginal<typeof import('../types')>(),
   isTriggerNode: vi.fn(),
 }))
