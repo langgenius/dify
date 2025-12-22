@@ -6,6 +6,12 @@
 
 * @crazywoola @laipz8200 @Yeuoly
 
+# CODEOWNERS file
+.github/CODEOWNERS @laipz8200 @crazywoola
+
+# Docs
+docs/ @crazywoola
+
 # Backend (default owner, more specific rules below will override)
 api/ @QuantumGhost
 
@@ -116,10 +122,16 @@ api/controllers/console/feature.py @GarfieldDai @GareArc
 api/controllers/web/feature.py @GarfieldDai @GareArc
 
 # Backend - Database Migrations
-api/migrations/ @snakevash @laipz8200
+api/migrations/ @snakevash @laipz8200 @MRZHUH
+
+# Backend - Vector DB Middleware
+api/configs/middleware/vdb/* @JohnJyong
 
 # Frontend
 web/ @iamjoel
+
+# Frontend - Web Tests
+.github/workflows/web-tests.yml @iamjoel
 
 # Frontend - App - Orchestration
 web/app/components/workflow/ @iamjoel @zxhlyh
@@ -192,6 +204,7 @@ web/app/components/plugins/marketplace/ @iamjoel @Yessenia-d
 web/app/signin/ @douxc @iamjoel
 web/app/signup/ @douxc @iamjoel
 web/app/reset-password/ @douxc @iamjoel
+
 web/app/install/ @douxc @iamjoel
 web/app/init/ @douxc @iamjoel
 web/app/forgot-password/ @douxc @iamjoel
@@ -232,3 +245,6 @@ web/app/education-apply/ @iamjoel @zxhlyh
 
 # Frontend - Workspace
 web/app/components/header/account-dropdown/workplace-selector/ @iamjoel @zxhlyh
+
+# Docker
+docker/* @laipz8200

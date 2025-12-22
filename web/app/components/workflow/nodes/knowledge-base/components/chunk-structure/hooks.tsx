@@ -4,7 +4,7 @@ import {
   ParentChildChunk,
   QuestionAndAnswer,
 } from '@/app/components/base/icons/src/vender/knowledge'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { ChunkStructureEnum } from '../../types'
 import type { Option } from './type'
 

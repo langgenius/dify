@@ -6,13 +6,6 @@ import type { IDrawerProps } from './index'
 // Capture dialog onClose for testing
 let capturedDialogOnClose: (() => void) | null = null
 
-// Mock react-i18next
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock @headlessui/react
 jest.mock('@headlessui/react', () => ({
   Dialog: ({ children, open, onClose, className, unmount }: {

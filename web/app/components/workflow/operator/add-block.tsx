@@ -21,7 +21,7 @@ import {
 import { useHooksStore } from '../hooks-store'
 import { useWorkflowStore } from '../store'
 import TipPopup from './tip-popup'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import type {
   OnSelectBlock,

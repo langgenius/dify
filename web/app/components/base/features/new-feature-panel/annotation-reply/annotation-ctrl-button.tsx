@@ -41,7 +41,7 @@ const AnnotationCtrlButton: FC<Props> = ({
       setShowAnnotationFullModal()
       return
     }
-    const res: any = await addAnnotation(appId, {
+    const res = await addAnnotation(appId, {
       message_id: messageId,
       question: query,
       answer,
@@ -50,7 +50,7 @@ const AnnotationCtrlButton: FC<Props> = ({
       message: t('common.api.actionSuccess') as string,
       type: 'success',
     })
-    onAdded(res.id, res.account?.name)
+    onAdded(res.id, res.account?.name ?? '')
   }
 
   return (

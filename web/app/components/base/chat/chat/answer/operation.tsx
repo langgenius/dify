@@ -26,7 +26,7 @@ import NewAudioButton from '@/app/components/base/new-audio-button'
 import Modal from '@/app/components/base/modal/modal'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type OperationProps = {
   item: ChatItem

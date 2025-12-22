@@ -5,7 +5,7 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
 import type { ModelConfig } from '../../../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

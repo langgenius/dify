@@ -52,7 +52,7 @@ const RAGToolRecommendations = ({
     data: ragRecommendedPlugins,
     isLoading: isLoadingRAGRecommendedPlugins,
     isFetching: isFetchingRAGRecommendedPlugins,
-  } = useRAGRecommendedPlugins()
+  } = useRAGRecommendedPlugins('tool')
 
   const recommendedPlugins = useMemo(() => {
     if (ragRecommendedPlugins)

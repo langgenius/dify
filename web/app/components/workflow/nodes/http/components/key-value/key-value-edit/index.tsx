@@ -5,7 +5,7 @@ import { produce } from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { KeyValue } from '../../../types'
 import KeyValueItem from './item'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.http'
 

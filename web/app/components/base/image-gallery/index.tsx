@@ -1,6 +1,6 @@
 'use client'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import s from './style.module.css'

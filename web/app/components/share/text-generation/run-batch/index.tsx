@@ -10,7 +10,7 @@ import CSVReader from './csv-reader'
 import CSVDownload from './csv-download'
 import Button from '@/app/components/base/button'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 export type IRunBatchProps = {
   vars: { name: string }[]
   onSend: (data: string[][]) => void

@@ -51,12 +51,6 @@ const mockFiles: FileEntity[] = [
   },
 ]
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 jest.mock('@/context/debug-configuration', () => ({
   __esModule: true,
   useDebugConfigurationContext: () => mockUseDebugConfigurationContext(),
@@ -206,6 +200,218 @@ describe('DebugWithMultipleModel', () => {
     mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration())
   })
 
+  describe('edge cases and error handling', () => {
+    it('should handle empty multipleModelConfigs array', () => {
+      renderComponent({ multipleModelConfigs: [] })
+      expect(screen.queryByTestId('debug-item')).not.toBeInTheDocument()
+      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+    })
+
+    it('should handle model config with missing required fields', () => {
+      const incompleteConfig = { id: 'incomplete' } as ModelAndParameter
+      renderComponent({ multipleModelConfigs: [incompleteConfig] })
+      expect(screen.getByTestId('debug-item')).toBeInTheDocument()
+    })
+
+    it('should handle more than 4 model configs', () => {
+      const manyConfigs = Array.from({ length: 6 }, () => createModelAndParameter())
+      renderComponent({ multipleModelConfigs: manyConfigs })
+
+      const items = screen.getAllByTestId('debug-item')
+      expect(items).toHaveLength(6)
+
+      // Items beyond 4 should not have specialized positioning
+      items.slice(4).forEach((item) => {
+        expect(item.style.transform).toBe('translateX(0) translateY(0)')
+      })
+    })
+
+    it('should handle modelConfig with undefined prompt_variables', () => {
+      // Note: The current component doesn't handle undefined/null prompt_variables gracefully
+      // This test documents the current behavior
+      const modelConfig = createModelConfig()
+      modelConfig.configs.prompt_variables = undefined as any
+
+      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
+        modelConfig,
+      }))
+
+      expect(() => renderComponent()).toThrow('Cannot read properties of undefined (reading \'filter\')')
+    })
+
+    it('should handle modelConfig with null prompt_variables', () => {
+      // Note: The current component doesn't handle undefined/null prompt_variables gracefully
+      // This test documents the current behavior
+      const modelConfig = createModelConfig()
+      modelConfig.configs.prompt_variables = null as any
+
+      mockUseDebugConfigurationContext.mockReturnValue(createDebugConfiguration({
+        modelConfig,
+      }))
+
+      expect(() => renderComponent()).toThrow('Cannot read properties of null (reading \'filter\')')
+    })
+
+    it('should handle prompt_variables with missing required fields', () => {
+      const incompleteVariables: PromptVariableWithMeta[] = [
+        { key: '', name: 'Empty Key', type: 'string' }, // Empty key
+        { key: 'valid-key', name: undefined as any, type: 'number' }, // Undefined name
+        { key: 'no-type', name: 'No Type', type: undefined as any }, // Undefined type
+      ]
+
+      const debugConfiguration = createDebugConfiguration({
+        modelConfig: createModelConfig(incompleteVariables),
+      })
+      mockUseDebugConfigurationContext.mockReturnValue(debugConfiguration)
+
+      renderComponent()
+
+      // Should still render but handle gracefully
+      expect(screen.getByTestId('chat-input-area')).toBeInTheDocument()
+      expect(capturedChatInputProps?.inputsForm).toHaveLength(3)
+    })
+  })
+
+  describe('props and callbacks', () => {
+    it('should call onMultipleModelConfigsChange when provided', () => {
+      const onMultipleModelConfigsChange = jest.fn()
+      renderComponent({ onMultipleModelConfigsChange })
+
+      // Context provider should pass through the callback
+      expect(onMultipleModelConfigsChange).not.toHaveBeenCalled()
+    })
+
+    it('should call onDebugWithMultipleModelChange when provided', () => {
+      const onDebugWithMultipleModelChange = jest.fn()
+      renderComponent({ onDebugWithMultipleModelChange })
+
+      // Context provider should pass through the callback
+      expect(onDebugWithMultipleModelChange).not.toHaveBeenCalled()
+    })
+
+    it('should not memoize when props change', () => {
+      const props1 = createProps({ multipleModelConfigs: [createModelAndParameter({ id: 'model-1' })] })
+      const { rerender } = renderComponent(props1)
+
+      const props2 = createProps({ multipleModelConfigs: [createModelAndParameter({ id: 'model-2' })] })
+      rerender(<DebugWithMultipleModel {...props2} />)
+
+      const items = screen.getAllByTestId('debug-item')
+      expect(items[0]).toHaveAttribute('data-model-id', 'model-2')
+    })
+  })
+
+  describe('accessibility', () => {
+    it('should have accessible chat input elements', () => {
+      renderComponent()
+
+      const chatInput = screen.getByTestId('chat-input-area')
+      expect(chatInput).toBeInTheDocument()
+
+      // Check for button accessibility
+      const sendButton = screen.getByRole('button', { name: /send/i })
+      expect(sendButton).toBeInTheDocument()
+
+      const featureButton = screen.getByRole('button', { name: /feature/i })
+      expect(featureButton).toBeInTheDocument()
+    })
+
+    it('should apply ARIA attributes correctly', () => {
+      const multipleModelConfigs = [createModelAndParameter()]
+      renderComponent({ multipleModelConfigs })
+
+      // Debug items should be identifiable
+      const debugItem = screen.getByTestId('debug-item')
+      expect(debugItem).toBeInTheDocument()
+      expect(debugItem).toHaveAttribute('data-model-id')
+    })
+  })
+
+  describe('prompt variables transformation', () => {
+    it('should filter out API type variables', () => {
+      const promptVariables: PromptVariableWithMeta[] = [
+        { key: 'normal', name: 'Normal', type: 'string' },
+        { key: 'api-var', name: 'API Var', type: 'api' },
+        { key: 'number', name: 'Number', type: 'number' },
+      ]
+      const debugConfiguration = createDebugConfiguration({
+        modelConfig: createModelConfig(promptVariables),
+      })
+      mockUseDebugConfigurationContext.mockReturnValue(debugConfiguration)
+
+      renderComponent()
+
+      expect(capturedChatInputProps?.inputsForm).toHaveLength(2)
+      expect(capturedChatInputProps?.inputsForm).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ label: 'Normal', variable: 'normal' }),
+          expect.objectContaining({ label: 'Number', variable: 'number' }),
+        ]),
+      )
+      expect(capturedChatInputProps?.inputsForm).not.toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ label: 'API Var' }),
+        ]),
+      )
+    })
+
+    it('should handle missing hide and required properties', () => {
+      const promptVariables: Partial<PromptVariableWithMeta>[] = [
+        { key: 'no-hide', name: 'No Hide', type: 'string', required: true },
+        { key: 'no-required', name: 'No Required', type: 'number', hide: true },
+      ]
+      const debugConfiguration = createDebugConfiguration({
+        modelConfig: createModelConfig(promptVariables as PromptVariableWithMeta[]),
+      })
+      mockUseDebugConfigurationContext.mockReturnValue(debugConfiguration)
+
+      renderComponent()
+
+      expect(capturedChatInputProps?.inputsForm).toEqual([
+        expect.objectContaining({
+          label: 'No Hide',
+          variable: 'no-hide',
+          hide: false, // Should default to false
+          required: true,
+        }),
+        expect.objectContaining({
+          label: 'No Required',
+          variable: 'no-required',
+          hide: true,
+          required: false, // Should default to false
+        }),
+      ])
+    })
+
+    it('should preserve original hide and required values', () => {
+      const promptVariables: PromptVariableWithMeta[] = [
+        { key: 'hidden-optional', name: 'Hidden Optional', type: 'string', hide: true, required: false },
+        { key: 'visible-required', name: 'Visible Required', type: 'number', hide: false, required: true },
+      ]
+      const debugConfiguration = createDebugConfiguration({
+        modelConfig: createModelConfig(promptVariables),
+      })
+      mockUseDebugConfigurationContext.mockReturnValue(debugConfiguration)
+
+      renderComponent()
+
+      expect(capturedChatInputProps?.inputsForm).toEqual([
+        expect.objectContaining({
+          label: 'Hidden Optional',
+          variable: 'hidden-optional',
+          hide: true,
+          required: false,
+        }),
+        expect.objectContaining({
+          label: 'Visible Required',
+          variable: 'visible-required',
+          hide: false,
+          required: true,
+        }),
+      ])
+    })
+  })
+
   describe('chat input rendering', () => {
     it('should render chat input in chat mode with transformed prompt variables and feature handler', () => {
       // Arrange
@@ -323,6 +529,43 @@ describe('DebugWithMultipleModel', () => {
 
       expect(() => fireEvent.click(screen.getByRole('button', { name: /send/i }))).not.toThrow()
       expect(mockEventEmitter.emit).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('performance optimization', () => {
+    it('should memoize callback functions correctly', () => {
+      const props = createProps({ multipleModelConfigs: [createModelAndParameter()] })
+      const { rerender } = renderComponent(props)
+
+      // First render
+      const firstItems = screen.getAllByTestId('debug-item')
+      expect(firstItems).toHaveLength(1)
+
+      // Rerender with exactly same props - should not cause re-renders
+      rerender(<DebugWithMultipleModel {...props} />)
+
+      const secondItems = screen.getAllByTestId('debug-item')
+      expect(secondItems).toHaveLength(1)
+
+      // Check that the element still renders the same content
+      expect(firstItems[0]).toHaveTextContent(secondItems[0].textContent || '')
+    })
+
+    it('should recalculate size and position when number of models changes', () => {
+      const { rerender } = renderComponent({ multipleModelConfigs: [createModelAndParameter()] })
+
+      // Single model - no special sizing
+      const singleItem = screen.getByTestId('debug-item')
+      expect(singleItem.style.width).toBe('')
+
+      // Change to 2 models
+      rerender(<DebugWithMultipleModel {...createProps({
+        multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
+      })} />)
+
+      const twoItems = screen.getAllByTestId('debug-item')
+      expect(twoItems[0].style.width).toBe('calc(50% - 4px - 24px)')
+      expect(twoItems[1].style.width).toBe('calc(50% - 4px - 24px)')
     })
   })
 

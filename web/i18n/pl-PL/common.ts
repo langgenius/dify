@@ -5,6 +5,7 @@ const translation = {
     saved: 'Zapisane',
     create: 'Utworzono',
     remove: 'Usunięto',
+    actionFailed: 'Akcja nie powiodła się',
   },
   operation: {
     create: 'Utwórz',
@@ -99,6 +100,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turecki',
       faIR: 'Perski',
+      slSI: 'Słoweński',
+      arTN: 'Arabski tunezyjski',
     },
   },
   unit: {
@@ -752,6 +755,7 @@ const translation = {
     fileExtensionNotSupport: 'Rozszerzenie pliku nie jest obsługiwane',
     uploadFromComputer: 'Przesyłanie lokalne',
     fileExtensionBlocked: 'Ten typ pliku jest zablokowany ze względów bezpieczeństwa',
+    uploadDisabled: 'Przesyłanie plików jest wyłączone',
   },
   license: {
     expiring_plural: 'Wygasa za {{count}} dni',

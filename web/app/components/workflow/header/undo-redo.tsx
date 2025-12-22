@@ -10,7 +10,7 @@ import { useWorkflowHistoryStore } from '../workflow-history-store'
 import Divider from '../../base/divider'
 import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import ViewWorkflowHistory from '@/app/components/workflow/header/view-workflow-history'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type UndoRedoProps = { handleUndo: () => void; handleRedo: () => void }
 const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
@@ -36,7 +36,7 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
         <div
           data-tooltip-id='workflow.undo'
           className={
-            classNames('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+            cn('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
               (nodesReadOnly || buttonsDisabled.undo)
               && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
           onClick={() => !nodesReadOnly && !buttonsDisabled.undo && handleUndo()}
@@ -48,10 +48,9 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
         <div
           data-tooltip-id='workflow.redo'
           className={
-            classNames('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+            cn('system-sm-medium flex h-8 w-8 cursor-pointer select-none items-center rounded-md px-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
               (nodesReadOnly || buttonsDisabled.redo)
-              && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled',
-            )}
+              && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
           onClick={() => !nodesReadOnly && !buttonsDisabled.redo && handleRedo()}
         >
           <RiArrowGoForwardFill className='h-4 w-4' />

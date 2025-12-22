@@ -75,6 +75,7 @@ def initialize_extensions(app: DifyApp):
         ext_import_modules,
         ext_logging,
         ext_login,
+        ext_logstore,
         ext_mail,
         ext_migrate,
         ext_orjson,
@@ -83,6 +84,7 @@ def initialize_extensions(app: DifyApp):
         ext_redis,
         ext_request_logging,
         ext_sentry,
+        ext_session_factory,
         ext_set_secretkey,
         ext_storage,
         ext_timezone,
@@ -104,6 +106,7 @@ def initialize_extensions(app: DifyApp):
         ext_migrate,
         ext_redis,
         ext_storage,
+        ext_logstore,  # Initialize logstore after storage, before celery
         ext_celery,
         ext_login,
         ext_mail,
@@ -114,6 +117,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
         ext_otel,
         ext_request_logging,
+        ext_session_factory,
     ]
     for ext in extensions:
         short_name = ext.__name__.split(".")[-1]

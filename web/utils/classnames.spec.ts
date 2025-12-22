@@ -3,7 +3,7 @@
  * This utility combines the classnames library with tailwind-merge
  * to handle conditional CSS classes and merge conflicting Tailwind classes
  */
-import cn from './classnames'
+import { cn } from './classnames'
 
 describe('classnames', () => {
   /**

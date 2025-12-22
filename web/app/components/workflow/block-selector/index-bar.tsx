@@ -2,7 +2,7 @@ import { pinyin } from 'pinyin-pro'
 import type { FC, RefObject } from 'react'
 import type { ToolWithProvider } from '../types'
 import { CollectionType } from '../../tools/types'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export const CUSTOM_GROUP_NAME = '@@@custom@@@'
 export const WORKFLOW_GROUP_NAME = '@@@workflow@@@'
@@ -86,8 +86,8 @@ const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs, className }) => {
       element.scrollIntoView({ behavior: 'smooth' })
   }
   return (
-    <div className={classNames('index-bar sticky top-[20px] flex h-full w-6 flex-col items-center justify-center text-xs font-medium text-text-quaternary', className)}>
-      <div className={classNames('absolute left-0 top-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]')}></div>
+    <div className={cn('index-bar sticky top-[20px] flex h-full w-6 flex-col items-center justify-center text-xs font-medium text-text-quaternary', className)}>
+      <div className={cn('absolute left-0 top-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]')}></div>
       {letters.map(letter => (
         <div className="cursor-pointer hover:text-text-secondary" key={letter} onClick={() => handleIndexClick(letter)}>
           {letter}

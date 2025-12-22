@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import VarHighlight from '@/app/components/app/configuration/base/var-highlight'
 type Props = {
   isFocus?: boolean
@@ -25,7 +25,8 @@ const SupportVarInput: FC<Props> = ({
   const renderSafeContent = (inputValue: string) => {
     const parts = inputValue.split(/(\{\{[^}]+\}\}|\n)/g)
     return parts.map((part, index) => {
-      const variableMatch = part.match(/^\{\{([^}]+)\}\}$/)
+      const variableRegex = /^\{\{([^}]+)\}\}$/
+      const variableMatch = variableRegex.exec(part)
       if (variableMatch) {
         return (
           <VarHighlight

@@ -14,7 +14,7 @@ import { IterationStartNodeDumb } from '../iteration-start'
 import { useNodeIterationInteractions } from './use-interactions'
 import type { IterationNodeType } from './types'
 import AddBlock from './add-block'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { NodeProps } from '@/app/components/workflow/types'
 import Toast from '@/app/components/base/toast'
 
