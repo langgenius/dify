@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import StopEmbeddingModal from './index'
 
@@ -28,8 +29,8 @@ const renderStopEmbeddingModal = (props: Partial<StopEmbeddingModalProps> = {}) 
 describe('StopEmbeddingModal', () => {
   // Suppress Headless UI warnings in tests
   // These warnings are from the library's internal behavior, not our code
-  let consoleWarnSpy: SpyInstance
-  let consoleErrorSpy: SpyInstance
+  let consoleWarnSpy: MockInstance
+  let consoleErrorSpy: MockInstance
 
   beforeAll(() => {
     consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(vi.fn())

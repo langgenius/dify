@@ -7,6 +7,7 @@
  * - Enable/disable toggle for conditional drag-and-drop
  * - Cleanup on unmount (removes event listeners)
  */
+import type { Mock } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useDSLDragDrop } from './use-dsl-drag-drop'
 

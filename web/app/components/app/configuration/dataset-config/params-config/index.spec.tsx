@@ -1,4 +1,4 @@
-import type { Mock, MockedFunction, SpyInstance } from 'vitest'
+import type { MockInstance, MockedFunction } from 'vitest'
 import * as React from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -77,7 +77,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-param
 
 const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
 const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
-let toastNotifySpy: SpyInstance
+let toastNotifySpy: MockInstance
 
 const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetConfigs => {
   return {

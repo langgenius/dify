@@ -38,13 +38,13 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
 let mockDocumentListData: { data: SimpleDocumentDetail[] } | undefined
 let mockDocumentListLoading = false
 
-const mockUseDocumentList = vi.fn(() => ({
+const mockUseDocumentList = vi.fn<(...args: any[]) => { data: typeof mockDocumentListData; isLoading: boolean }>(() => ({
   data: mockDocumentListLoading ? undefined : mockDocumentListData,
   isLoading: mockDocumentListLoading,
 }))
 
 vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentList: (...args: unknown[]) => mockUseDocumentList(...args),
+  useDocumentList: (...args: any[]) => mockUseDocumentList(...args),
 }))
 
 // Mock icons - mock all remixicon components used in the component tree
@@ -366,8 +366,6 @@ describe('DocumentPicker', () => {
     })
 
     it('should pass datasetId to mockUseDocumentList hook', () => {
-      
-
       renderComponent({ datasetId: 'custom-dataset-id' })
 
       expect(mockUseDocumentList).toHaveBeenCalledWith(
@@ -399,8 +397,6 @@ describe('DocumentPicker', () => {
     it('should maintain search query state', async () => {
       renderComponent()
 
-      
-
       // Initial call should have empty keyword
       expect(mockUseDocumentList).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -415,7 +411,7 @@ describe('DocumentPicker', () => {
       renderComponent()
 
       // Verify the component uses mockUseDocumentList with query parameter
-      
+
       expect(mockUseDocumentList).toHaveBeenCalledWith(
         expect.objectContaining({
           query: expect.objectContaining({
@@ -602,7 +598,7 @@ describe('DocumentPicker', () => {
 
       // The handleChange callback should find the document and call onChange
       // We can verify this by checking that mockUseDocumentList was called
-      
+
       expect(mockUseDocumentList).toHaveBeenCalled()
     })
 
@@ -611,7 +607,7 @@ describe('DocumentPicker', () => {
 
       // The search input is only visible when popup is open
       // We verify that the component initializes with empty query
-      
+
       expect(mockUseDocumentList).toHaveBeenCalledWith(
         expect.objectContaining({
           query: expect.objectContaining({
@@ -624,7 +620,6 @@ describe('DocumentPicker', () => {
     it('should initialize with default query parameters', () => {
       renderComponent()
 
-      
       expect(mockUseDocumentList).toHaveBeenCalledWith(
         expect.objectContaining({
           query: {
@@ -640,8 +635,6 @@ describe('DocumentPicker', () => {
   // Tests for API calls
   describe('API Calls', () => {
     it('should call mockUseDocumentList with correct parameters', () => {
-      
-
       renderComponent({ datasetId: 'test-dataset-123' })
 
       expect(mockUseDocumentList).toHaveBeenCalledWith({
@@ -671,7 +664,7 @@ describe('DocumentPicker', () => {
       renderComponent()
 
       // Verify the hook was called
-      
+
       expect(mockUseDocumentList).toHaveBeenCalled()
     })
 
@@ -986,7 +979,7 @@ describe('DocumentPicker', () => {
       renderComponent({ onChange })
 
       // Verify the hook was called
-      
+
       expect(mockUseDocumentList).toHaveBeenCalled()
     })
 
@@ -1028,7 +1021,7 @@ describe('DocumentPicker', () => {
 
       // DocumentList receives mapped documents: { id, name, extension }
       // We verify the data is fetched
-      
+
       expect(mockUseDocumentList).toHaveBeenCalled()
     })
 

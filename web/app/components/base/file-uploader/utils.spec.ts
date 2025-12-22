@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest'
 import mime from 'mime'
 import { upload } from '@/service/base'
 import {
@@ -785,9 +786,9 @@ describe('file-uploader utils', () => {
 
   describe('downloadFile', () => {
     let mockAnchor: HTMLAnchorElement
-    let createElementMock: SpyInstance
-    let appendChildMock: SpyInstance
-    let removeChildMock: SpyInstance
+    let createElementMock: MockInstance
+    let appendChildMock: MockInstance
+    let removeChildMock: MockInstance
 
     beforeEach(() => {
       // Mock createElement and appendChild

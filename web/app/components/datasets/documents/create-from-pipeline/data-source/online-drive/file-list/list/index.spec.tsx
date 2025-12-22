@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
 import List from './index'
@@ -1362,10 +1363,11 @@ describe('EmptySearchResult', () => {
 // ==========================================
 describe('FileIcon', () => {
   // Get real component for testing
-  let ActualFileIcon: React.ComponentType<{ type: OnlineDriveFileType; fileName: string }>
+  type FileIconProps = { type: OnlineDriveFileType; fileName: string; size?: 'sm' | 'md' | 'lg' | 'xl'; className?: string }
+  let ActualFileIcon: React.ComponentType<FileIconProps>
 
   beforeAll(async () => {
-    const mod = await vi.importActual<{ default: React.ComponentType<{ type: OnlineDriveFileType; fileName: string }> }>('./file-icon')
+    const mod = await vi.importActual<{ default: React.ComponentType<FileIconProps> }>('./file-icon')
     ActualFileIcon = mod.default
   })
 

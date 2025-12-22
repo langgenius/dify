@@ -1,3 +1,4 @@
+import type { Mock, MockedFunction } from 'vitest'
 import type { RenderOptions } from '@testing-library/react'
 import { fireEvent, render } from '@testing-library/react'
 import { defaultPlan } from '@/app/components/billing/config'
@@ -18,8 +19,8 @@ import { useProviderContext as actualUseProviderContext } from '@/context/provid
 import { useModalContext as actualUseModalContext } from '@/context/modal-context'
 
 // Type casting for mocks
-const mockUseProviderContext = actualUseProviderContext as vi.MockedFunction<typeof actualUseProviderContext>
-const mockUseModalContext = actualUseModalContext as vi.MockedFunction<typeof actualUseModalContext>
+const mockUseProviderContext = actualUseProviderContext as MockedFunction<typeof actualUseProviderContext>
+const mockUseModalContext = actualUseModalContext as MockedFunction<typeof actualUseModalContext>
 
 // Default mock data
 const defaultProviderContext = {
@@ -122,7 +123,7 @@ export const scenarios = {
     }),
 
   // Render with mock modal function
-  withMockModal: (mockSetShowAccountSettingModal: vi.Mock, overrides: MockOverrides = {}) =>
+  withMockModal: (mockSetShowAccountSettingModal: Mock, overrides: MockOverrides = {}) =>
     renderAPIKeyInfoPanel({
       mockOverrides: {
         modalContext: { setShowAccountSettingModal: mockSetShowAccountSettingModal },

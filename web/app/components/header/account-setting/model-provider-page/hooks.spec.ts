@@ -2,7 +2,6 @@ import type { Mock } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useLanguage } from './hooks'
 import { useContext } from 'use-context-selector'
-import { after } from 'node:test'
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),
@@ -66,7 +65,7 @@ vi.mock('./provider-added-card', () => ({
   default: vi.fn(),
 }))
 
-after(() => {
+afterAll(() => {
   vi.resetModules()
   vi.clearAllMocks()
 })

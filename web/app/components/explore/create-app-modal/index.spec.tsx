@@ -95,8 +95,8 @@ vi.mock('@/context/provider-context', () => ({
 type ConfirmPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
 const setup = (overrides: Partial<CreateAppModalProps> = {}) => {
-  const onConfirm = vi.fn<Promise<void>, [ConfirmPayload]>().mockResolvedValue(undefined)
-  const onHide = vi.fn<void, []>()
+  const onConfirm = vi.fn<(payload: ConfirmPayload) => Promise<void>>().mockResolvedValue(undefined)
+  const onHide = vi.fn()
 
   const props: CreateAppModalProps = {
     show: true,

@@ -124,9 +124,9 @@ function createMockProviderContext(overrides: Partial<ProviderContextState> = {}
 // ============================================================================
 
 // Mock service layer (API calls)
-const mockSsePost = vi.fn(() => Promise.resolve())
+const mockSsePost = vi.fn<(...args: any[]) => Promise<void>>(() => Promise.resolve())
 vi.mock('@/service/base', () => ({
-  ssePost: (...args: unknown[]) => mockSsePost(...args),
+  ssePost: (...args: any[]) => mockSsePost(...args),
   post: vi.fn(() => Promise.resolve({ data: {} })),
   get: vi.fn(() => Promise.resolve({ data: {} })),
   del: vi.fn(() => Promise.resolve({ data: {} })),
@@ -255,14 +255,14 @@ const mockDebugConfigContext = {
   setRerankSettingModalOpen: vi.fn(),
 }
 
-const mockUseDebugConfigurationContext = vi.fn(() => mockDebugConfigContext)
+const mockUseDebugConfigurationContext = vi.fn<(...args: any[]) => typeof mockDebugConfigContext>(() => mockDebugConfigContext)
 
 vi.mock('@/context/debug-configuration', () => ({
   useDebugConfigurationContext: (...args: any[]) => mockUseDebugConfigurationContext(...args),
 }))
 
 const mockProviderContext = createMockProviderContext()
-const mockUseProviderContext = vi.fn(() => mockProviderContext)
+const mockUseProviderContext = vi.fn<(...args: any[]) => typeof mockProviderContext>(() => mockProviderContext)
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: (...args: any[]) => mockUseProviderContext(...args),
@@ -281,7 +281,7 @@ const mockAppContext = {
   mutateUserProfile: vi.fn(),
 }
 
-const mockUseAppContext = vi.fn(() => mockAppContext)
+const mockUseAppContext = vi.fn<(...args: any[]) => typeof mockAppContext>(() => mockAppContext)
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: (...args: any[]) => mockUseAppContext(...args),
@@ -313,7 +313,7 @@ const defaultFeatures: FeatureState = {
 type FeatureSelector = (state: { features: FeatureState }) => unknown
 
 let mockFeaturesState: FeatureState = { ...defaultFeatures }
-const mockUseFeatures = vi.fn()
+const mockUseFeatures = vi.fn<(...args: any[]) => unknown>()
 vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: (...args: any[]) => mockUseFeatures(...args),
 }))
@@ -340,8 +340,8 @@ const mockConfigFromDebugContext = {
   supportCitationHitInfo: true,
 }
 
-const mockUseConfigFromDebugContext = vi.fn(() => mockConfigFromDebugContext)
-const mockUseFormattingChangedSubscription = vi.fn()
+const mockUseConfigFromDebugContext = vi.fn<(...args: any[]) => typeof mockConfigFromDebugContext>(() => mockConfigFromDebugContext)
+const mockUseFormattingChangedSubscription = vi.fn<(...args: any[]) => void>()
 
 vi.mock('../hooks', () => ({
   useConfigFromDebugContext: (...args: any[]) => mockUseConfigFromDebugContext(...args),
@@ -601,7 +601,6 @@ describe('DebugWithSingleModel', () => {
       const sendButton = screen.getByTestId('send-button')
       fireEvent.click(sendButton)
 
-      
       await waitFor(() => {
         expect(checkCanSend).toHaveBeenCalled()
         expect(mockSsePost).toHaveBeenCalled()
@@ -618,7 +617,6 @@ describe('DebugWithSingleModel', () => {
       const sendButton = screen.getByTestId('send-button')
       fireEvent.click(sendButton)
 
-      
       await waitFor(() => {
         expect(checkCanSend).toHaveBeenCalled()
         expect(checkCanSend).toHaveReturnedWith(false)
@@ -650,7 +648,6 @@ describe('DebugWithSingleModel', () => {
 
       fireEvent.click(screen.getByTestId('send-button'))
 
-      
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })
@@ -670,7 +667,6 @@ describe('DebugWithSingleModel', () => {
 
       fireEvent.click(screen.getByTestId('send-button'))
 
-      
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })
@@ -830,7 +826,7 @@ describe('DebugWithSingleModel', () => {
     it('should handle empty inputs', () => {
       mockUseDebugConfigurationContext.mockReturnValue({
         ...mockDebugConfigContext,
-        inputs: {},
+        inputs: {} as any,
       })
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
@@ -857,7 +853,7 @@ describe('DebugWithSingleModel', () => {
     it('should handle null completion params', () => {
       mockUseDebugConfigurationContext.mockReturnValue({
         ...mockDebugConfigContext,
-        completionParams: {},
+        completionParams: {} as any,
       })
 
       render(<DebugWithSingleModel ref={ref as RefObject<DebugWithSingleModelRefType>} />)
@@ -929,7 +925,6 @@ describe('DebugWithSingleModel', () => {
 
       fireEvent.click(screen.getByTestId('send-with-files'))
 
-      
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })
@@ -980,7 +975,6 @@ describe('DebugWithSingleModel', () => {
 
       fireEvent.click(screen.getByTestId('send-with-files'))
 
-      
       await waitFor(() => {
         expect(mockSsePost).toHaveBeenCalled()
       })

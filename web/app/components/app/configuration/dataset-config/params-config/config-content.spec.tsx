@@ -1,4 +1,4 @@
-import type { Mock, MockedFunction, SpyInstance } from 'vitest'
+import type { MockInstance, MockedFunction } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import ConfigContent from './config-content'
@@ -48,7 +48,7 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
 const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
 
-let toastNotifySpy: SpyInstance
+let toastNotifySpy: MockInstance
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -195,7 +195,7 @@ describe('ConfigContent', () => {
   describe('Effects', () => {
     it('should normalize oneWay retrieval mode to multiWay', async () => {
       // Arrange
-      const onChange = vi.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({ retrieval_model: RETRIEVE_TYPE.oneWay })
 
       // Act
@@ -214,7 +214,7 @@ describe('ConfigContent', () => {
   describe('Rendering', () => {
     it('should render weighted score panel when datasets are high-quality and consistent', () => {
       // Arrange
-      const onChange = vi.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_mode: RerankingModeEnum.WeightedScore,
       })
@@ -253,7 +253,7 @@ describe('ConfigContent', () => {
     it('should update weights when user changes weighted score slider', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onChange = vi.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_mode: RerankingModeEnum.WeightedScore,
         weights: {
@@ -307,7 +307,7 @@ describe('ConfigContent', () => {
     it('should warn when switching to rerank model mode without a valid model', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onChange = vi.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_mode: RerankingModeEnum.WeightedScore,
       })
@@ -349,7 +349,7 @@ describe('ConfigContent', () => {
     it('should warn when enabling rerank without a valid model in manual toggle mode', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onChange = vi.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_enable: false,
       })

@@ -36,7 +36,7 @@ type SetupOptions = {
 let mockFeatureStoreState: FeatureStoreState
 let mockSetFeatures: Mock
 const mockStore = {
-  getState: vi.fn<[], FeatureStoreState>(() => mockFeatureStoreState),
+  getState: vi.fn<() => FeatureStoreState>(() => mockFeatureStoreState),
 }
 
 const setupFeatureStore = (allowedTypes: SupportUploadFileTypes[] = []) => {

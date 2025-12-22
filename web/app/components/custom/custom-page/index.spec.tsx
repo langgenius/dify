@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -34,14 +35,14 @@ describe('CustomPage', () => {
     vi.clearAllMocks()
 
     // Default mock setup
-    useModalContext.mockReturnValue({
+    ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
     })
   })
 
   // Helper function to render with different provider contexts
   const renderWithContext = (overrides = {}) => {
-    useProviderContext.mockReturnValue(
+    ;(useProviderContext as Mock).mockReturnValue(
       createMockProviderContextValue(overrides),
     )
     return render(<CustomPage />)

@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import Options from './index'
@@ -114,7 +115,7 @@ const createDefaultProps = (overrides?: Partial<OptionsProps>): OptionsProps => 
 // Test Suites
 // ==========================================
 describe('Options', () => {
-  let toastNotifySpy: SpyInstance
+  let toastNotifySpy: MockInstance
 
   beforeEach(() => {
     vi.clearAllMocks()

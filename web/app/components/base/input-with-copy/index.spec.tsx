@@ -3,12 +3,12 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import InputWithCopy from './index'
 
-// Create a mock function that we can track
-const mockCopyToClipboard = vi.fn(() => true)
+// Create a mock function that we can track using vi.hoisted
+const mockCopyToClipboard = vi.hoisted(() => vi.fn(() => true))
 
 // Mock the copy-to-clipboard library
 vi.mock('copy-to-clipboard', () => ({
-  default: (...args: any[]) => mockCopyToClipboard(...args),
+  default: mockCopyToClipboard,
 }))
 
 // Mock the i18n hook
