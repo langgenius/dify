@@ -17,7 +17,7 @@ describe('navigation', () => {
 
   beforeEach(() => {
     // Mock window.location with sample query parameters
-    // delete (globalThis as any).window
+    delete (globalThis as any).window
     globalThis.window = {
       location: {
         search: '?page=3&limit=10&keyword=test',
