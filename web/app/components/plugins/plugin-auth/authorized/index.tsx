@@ -18,7 +18,7 @@ import type {
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import Authorize from '../authorize'
 import type { Credential } from '../types'

@@ -9,7 +9,7 @@ import {
 } from '@remixicon/react'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   varList: { label: string; value: string }[]

@@ -1,5 +1,5 @@
 'use client'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const variantStyles = {
   medium: 'rounded-lg px-1.5 ring-1 ring-inset',
@@ -53,11 +53,9 @@ export function Tag({
 }: ITagProps) {
   return (
     <span
-      className={classNames(
-        'font-mono text-[0.625rem] font-semibold leading-6',
+      className={cn('font-mono text-[0.625rem] font-semibold leading-6',
         variantStyles[variant],
-        colorStyles[color][variant],
-      )}
+        colorStyles[color][variant])}
     >
       {children}
     </span>

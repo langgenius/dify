@@ -1,7 +1,7 @@
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 import { Fragment } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
 // https://headlessui.com/react/dialog
 
@@ -38,15 +38,13 @@ export default function Modal({
 }: IModal) {
   return (
     <Transition appear show={isShow} as={Fragment}>
-      <Dialog as="div" className={classNames('relative', highPriority ? 'z-[1100]' : 'z-[60]', wrapperClassName)} onClose={clickOutsideNotClose ? noop : onClose}>
+      <Dialog as="div" className={cn('relative', highPriority ? 'z-[1100]' : 'z-[60]', wrapperClassName)} onClose={clickOutsideNotClose ? noop : onClose}>
         <TransitionChild>
-          <div className={classNames(
-            'fixed inset-0',
+          <div className={cn('fixed inset-0',
             overlayOpacity ? 'bg-workflow-canvas-canvas-overlay' : 'bg-background-overlay',
             'duration-300 ease-in data-[closed]:opacity-0',
             'data-[enter]:opacity-100',
-            'data-[leave]:opacity-0',
-          )} />
+            'data-[leave]:opacity-0')} />
         </TransitionChild>
         <div
           className="fixed inset-0 overflow-y-auto"
@@ -55,16 +53,14 @@ export default function Modal({
             e.stopPropagation()
           }}
         >
-          <div className={classNames('flex min-h-full items-center justify-center p-4 text-center', containerClassName)}>
+          <div className={cn('flex min-h-full items-center justify-center p-4 text-center', containerClassName)}>
             <TransitionChild>
-              <DialogPanel className={classNames(
-                'relative w-full max-w-[480px] rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',
+              <DialogPanel className={cn('relative w-full max-w-[480px] rounded-2xl bg-components-panel-bg p-6 text-left align-middle shadow-xl transition-all',
                 overflowVisible ? 'overflow-visible' : 'overflow-hidden',
                 'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
                 'data-[enter]:scale-100 data-[enter]:opacity-100',
                 'data-[enter]:scale-95 data-[leave]:opacity-0',
-                className,
-              )}>
+                className)}>
                 {title && <DialogTitle
                   as="h3"
                   className="title-2xl-semi-bold text-text-primary"

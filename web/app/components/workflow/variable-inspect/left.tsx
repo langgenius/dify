@@ -11,7 +11,7 @@ import { useNodesInteractions } from '../hooks/use-nodes-interactions'
 import type { currentVarType } from './panel'
 import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   currentNodeVar?: currentVarType

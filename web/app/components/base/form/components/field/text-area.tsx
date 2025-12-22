@@ -2,7 +2,7 @@ import React from 'react'
 import { useFieldContext } from '../..'
 import type { LabelProps } from '../label'
 import Label from '../label'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { TextareaProps } from '../../../textarea'
 import Textarea from '../../../textarea'
 

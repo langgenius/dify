@@ -5,7 +5,7 @@ import FileImageItem from './file-image-item'
 import FileItem from './file-item'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type FileListProps = {
   className?: string

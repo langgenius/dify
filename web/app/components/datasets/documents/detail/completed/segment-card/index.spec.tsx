@@ -52,11 +52,10 @@ jest.mock('../index', () => ({
 }))
 
 // ============================================================================
-// Component Mocks - components with complex ESM dependencies (ky, react-pdf-highlighter, etc.)
-// These are mocked to avoid Jest ESM parsing issues, not because they're external
+// Component Mocks - components with complex dependencies
 // ============================================================================
 
-// StatusItem has deep dependency: use-document hooks → service/base → ky (ESM)
+// StatusItem uses React Query hooks which require QueryClientProvider
 jest.mock('../../../status-item', () => ({
   __esModule: true,
   default: ({ status, reverse, textCls }: { status: string; reverse?: boolean; textCls?: string }) => (
@@ -66,7 +65,7 @@ jest.mock('../../../status-item', () => ({
   ),
 }))
 
-// ImageList has deep dependency: FileThumb → file-uploader → ky, react-pdf-highlighter (ESM)
+// ImageList has deep dependency: FileThumb → file-uploader → react-pdf-highlighter (ESM)
 jest.mock('@/app/components/datasets/common/image-list', () => ({
   __esModule: true,
   default: ({ images, size, className }: { images: Array<{ sourceUrl: string; name: string }>; size?: string; className?: string }) => (

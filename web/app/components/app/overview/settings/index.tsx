@@ -25,7 +25,7 @@ import { useModalContext } from '@/context/modal-context'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useDocLink } from '@/context/i18n'
 
 export type ISettingsModalProps = {

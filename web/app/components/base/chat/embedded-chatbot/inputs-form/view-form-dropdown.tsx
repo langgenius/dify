@@ -7,7 +7,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   iconColor?: string

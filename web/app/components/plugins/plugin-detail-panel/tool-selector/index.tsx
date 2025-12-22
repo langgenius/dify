@@ -35,7 +35,7 @@ import type {
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import type { Node } from 'reactflow'
 import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   AuthCategory,
   PluginAuthInAgent,

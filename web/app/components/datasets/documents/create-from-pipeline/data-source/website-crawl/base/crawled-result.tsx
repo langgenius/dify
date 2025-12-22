@@ -1,7 +1,7 @@
 'use client'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { CrawlResultItem } from '@/models/datasets'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'

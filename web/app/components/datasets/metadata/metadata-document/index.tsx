@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import useMetadataDocument from '../hooks/use-metadata-document'
 import type { FullDocumentDetail } from '@/models/datasets'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'dataset.metadata.documentMetadata'
 

@@ -6,7 +6,7 @@ import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { useFeatures } from '@/app/components/base/features/hooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   isChatMode?: boolean
