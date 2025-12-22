@@ -27,7 +27,7 @@ import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import copy from 'copy-to-clipboard'
 import { useBoolean } from 'ahooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useStore } from '@/app/components/workflow/store'
 import FormContentPreview from './components/form-content-preview'
 

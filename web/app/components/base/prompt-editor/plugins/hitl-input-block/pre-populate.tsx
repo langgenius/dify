@@ -7,7 +7,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import Textarea from '../../../textarea'
 import TagLabel from './tag-label'
 import TypeSwitch from './type-switch'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   isVariable?: boolean

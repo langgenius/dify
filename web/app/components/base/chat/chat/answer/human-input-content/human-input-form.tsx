@@ -5,8 +5,6 @@ import Button from '@/app/components/base/button'
 import ContentItem from './content-item'
 import type { GeneratedFormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import { getButtonStyle, initializeInputs, splitByOutputVar } from './utils'
-// import { getHumanInputForm, submitHumanInputForm } from '@/service/share'
-// import cn from '@/utils/classnames'
 
 export type FormData = {
   form_id: string

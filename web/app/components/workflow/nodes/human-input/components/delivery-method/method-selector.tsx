@@ -21,7 +21,7 @@ import type { DeliveryMethod } from '../../types'
 import { DeliveryMethodType } from '../../types'
 import { IS_CE_EDITION } from '@/config'
 import { v4 as uuid4 } from 'uuid'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 

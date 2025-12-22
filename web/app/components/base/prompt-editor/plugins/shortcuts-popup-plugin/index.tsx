@@ -12,7 +12,7 @@ import {
   $getSelection,
   $isRangeSelection,
 } from 'lexical'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   autoUpdate,
   flip,

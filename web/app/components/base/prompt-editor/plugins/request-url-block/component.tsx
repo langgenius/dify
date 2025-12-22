@@ -4,7 +4,7 @@ import { RiGlobalLine } from '@remixicon/react'
 
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_REQUEST_URL_BLOCK_COMMAND } from './index'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type RequestURLBlockComponentProps = {
   nodeKey: string

@@ -8,7 +8,7 @@ import MemberSelector from './member-selector'
 import EmailInput from './email-input'
 import { fetchMembers } from '@/service/common'
 import type { RecipientData, Recipient as RecipientItem } from '../../../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { produce } from 'immer'
 
 const i18nPrefix = 'workflow.nodes.humanInput'

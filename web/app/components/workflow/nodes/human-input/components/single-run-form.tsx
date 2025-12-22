@@ -7,7 +7,6 @@ import Button from '@/app/components/base/button'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import type { GeneratedFormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
-// import cn from '@/utils/classnames'
 
 type Props = {
   nodeName: string

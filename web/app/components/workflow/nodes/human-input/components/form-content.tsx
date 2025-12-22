@@ -12,7 +12,7 @@ import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-ed
 import type { LexicalCommand } from 'lexical'
 import { isMac } from '../../../utils'
 import { useBoolean } from 'ahooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   nodeId: string

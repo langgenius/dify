@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Avatar from '@/app/components/base/avatar'
 import type { Member } from '@/models/common'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 

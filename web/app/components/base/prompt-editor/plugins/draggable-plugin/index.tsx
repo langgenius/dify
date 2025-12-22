@@ -3,7 +3,7 @@ import { DraggableBlockPlugin_EXPERIMENTAL } from '@lexical/react/LexicalDraggab
 import { useEffect, useRef, useState } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { RiDraggable } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const DRAGGABLE_BLOCK_MENU_CLASSNAME = 'draggable-block-menu'
 

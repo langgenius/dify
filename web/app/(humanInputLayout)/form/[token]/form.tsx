@@ -16,7 +16,7 @@ import { UserActionButtonType } from '@/app/components/workflow/nodes/human-inpu
 import type { GeneratedFormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import { getHumanInputForm, submitHumanInputForm } from '@/service/share'
 import { asyncRunSafe } from '@/utils'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type FormData = {
   site: any

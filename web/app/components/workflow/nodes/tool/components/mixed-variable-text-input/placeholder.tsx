@@ -5,7 +5,7 @@ import { FOCUS_COMMAND } from 'lexical'
 import { $insertNodes } from 'lexical'
 import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 import Badge from '@/app/components/base/badge'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type PlaceholderProps = {
   disableVariableInsertion?: boolean

@@ -26,7 +26,7 @@ import { fetchMembers } from '@/service/common'
 import { useTestEmailSender } from '@/service/use-workflow'
 import { noop, unionBy } from 'lodash-es'
 import { isOutput } from '../../utils'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 

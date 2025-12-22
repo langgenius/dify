@@ -3,7 +3,7 @@ import { RiEditLine } from '@remixicon/react'
 import type { FC } from 'react'
 import React from 'react'
 import { Variable02 } from '../../../icons/src/vender/solid/development'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   type: 'edit' | 'variable'

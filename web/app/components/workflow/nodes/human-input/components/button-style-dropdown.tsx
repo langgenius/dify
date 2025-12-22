@@ -11,7 +11,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
 import { UserActionButtonType } from '../types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 

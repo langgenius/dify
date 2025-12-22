@@ -9,7 +9,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import Button from '@/app/components/base/button'
 import MemberList from './member-list'
 import type { Member } from '@/models/common'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
