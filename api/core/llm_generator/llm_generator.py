@@ -164,12 +164,27 @@ class LLMGenerator:
                     try:
                         return json.loads(candidate_json)
                     except json.JSONDecodeError:
-                        try:
-                            repaired = json_repair.repair(candidate_json)
-                            return json.loads(repaired)
-                        except Exception as exc:
-                            logger.debug("JSON parse/repair failed: %s", exc)
-                            return None
+                        # Prefer a json_repair.load function if available
+                        json_repair_loads = getattr(json_repair, "loads", None)
+                        if callable(json_repair_loads):
+                            try:
+                                return json_repair_loads(candidate_json)
+                            except Exception as exc:
+                                logger.debug("json_repair.loads failed: %s", exc)
+                                return None
+
+                        # Otherwise try to call a 'repair' function if present and parse result
+                        json_repair_repair = getattr(json_repair, "repair", None)
+                        if callable(json_repair_repair):
+                            try:
+                                repaired = json_repair_repair(candidate_json)
+                                return json.loads(repaired)
+                            except Exception as exc:
+                                logger.debug("json_repair.repair failed: %s", exc)
+                                return None
+
+                        logger.debug("No suitable json_repair function available to repair JSON")
+                        return None
 
                 result_dict = _extract_and_parse_json(answer)
 
@@ -521,7 +536,27 @@ class LLMGenerator:
             try:
                 parsed_content = json.loads(raw_content)
             except json.JSONDecodeError:
-                parsed_content = json_repair.loads(raw_content)
+                # Prefer a json_repair.loads implementation if available
+                json_repair_loads = getattr(json_repair, "loads", None)
+                if callable(json_repair_loads):
+                    try:
+                        parsed_content = json_repair_loads(raw_content)
+                    except Exception as exc:
+                        logger.debug("json_repair.loads failed: %s", exc)
+                        parsed_content = None
+                else:
+                    # As a fallback, use a 'repair' function followed by json.loads
+                    json_repair_repair = getattr(json_repair, "repair", None)
+                    if callable(json_repair_repair):
+                        try:
+                            repaired = json_repair_repair(raw_content)
+                            parsed_content = json.loads(repaired)
+                        except Exception as exc:
+                            logger.debug("json_repair.repair failed: %s", exc)
+                            parsed_content = None
+                    else:
+                        logger.debug("No json_repair functions available; cannot parse structured output")
+                        parsed_content = None
 
             if not isinstance(parsed_content, dict | list):
                 raise ValueError(f"Failed to parse structured output from llm: {raw_content}")
