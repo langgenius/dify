@@ -43,6 +43,64 @@ _PERSIAN_HEURISTIC = re.compile(
     flags=re.IGNORECASE,
 )
 
+# Precompiled regex for Persian-specific characters (including Persian ye U+06CC)
+_PERSIAN_CHARS_RE = re.compile(r"[پچژگک\u06CC]")
+
+# Optional langdetect import — import once at module import time to avoid repeated lookups
+_LANGDETECT_AVAILABLE = False
+try:
+    from langdetect import DetectorFactory, detect  # type: ignore
+
+    DetectorFactory.seed = 0
+    _LANGDETECT_AVAILABLE = True
+except Exception:
+    detect = None
+    DetectorFactory = None
+    _LANGDETECT_AVAILABLE = False
+
+
+def _contains_persian(text: str) -> bool:
+    """Return True if text appears to be Persian (Farsi).
+
+    Detection is multi-layered: quick character check, word heuristics, and
+    an optional langdetect fallback when available.
+    """
+    text = text or ""
+
+    # 1) Quick check: Persian-specific letters
+    if _PERSIAN_CHARS_RE.search(text):
+        return True
+
+    # 2) Heuristic check for common Persian words (fast, precompiled)
+    if _PERSIAN_HEURISTIC.search(text):
+        return True
+
+    # 3) Fallback: language detection (more expensive) — only run if langdetect is available
+    if _LANGDETECT_AVAILABLE and detect is not None:
+        try:
+            return detect(text) == "fa"
+        except Exception as exc:
+            # langdetect can fail for very short/ambiguous texts; log and continue
+            logger.debug("langdetect detection failed: %s", exc)
+
+    return False
+
+
+# Precompiled regex for Persian-specific characters (including Persian ye U+06CC)
+_PERSIAN_CHARS_RE = re.compile(r"[پچژگک\u06CC]")
+
+# Optional langdetect import — import once at module import time to avoid repeated lookups
+_LANGDETECT_AVAILABLE = False
+try:
+    from langdetect import DetectorFactory, detect  # type: ignore
+
+    DetectorFactory.seed = 0
+    _LANGDETECT_AVAILABLE = True
+except Exception:
+    detect = None
+    DetectorFactory = None
+    _LANGDETECT_AVAILABLE = False
+
 
 class WorkflowServiceInterface(Protocol):
     def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
@@ -59,35 +117,7 @@ class LLMGenerator:
     ):
         prompt = CONVERSATION_TITLE_PROMPT
 
-        def _contains_persian(text: str) -> bool:
-            # Normalize input once
-            text = text or ""
-
-            # 1) Quick check: Persian-specific letters (پ چ ژ گ ک and persian ye U+06CC)
-            if bool(re.search(r"[پچژگک\u06CC]", text)):
-                return True
-
-            # 2) Heuristic check for common Persian words (fast, precompiled)
-            if _PERSIAN_HEURISTIC.search(text):
-                return True
-
-            # 3) Fallback: language detection (more expensive) — only run if langdetect is available
-            try:
-                import importlib
-
-                if importlib.util.find_spec("langdetect") is not None:
-                    langdetect = importlib.import_module("langdetect")
-                    DetectorFactory = langdetect.DetectorFactory
-                    detect = langdetect.detect
-
-                    DetectorFactory.seed = 0
-                    if detect(text) == "fa":
-                        return True
-            except Exception as exc:
-                # langdetect may fail on short/ambiguous texts; log debug and continue
-                logger.debug("langdetect detection failed: %s", exc)
-
-            return False
+        # _contains_persian is implemented at module scope for reuse and testability
 
         if len(query) > 2000:
             query = query[:300] + "...[TRUNCATED]..." + query[-300:]
@@ -129,27 +159,35 @@ class LLMGenerator:
                         model_parameters={"max_tokens": 500, "temperature": 0.2},
                         stream=False,
                     )
-                except Exception:
+                except (InvokeError, InvokeAuthorizationError):
                     logger.exception("Failed to invoke LLM for conversation name generation")
                     break
 
                 answer = cast(str, response.message.content)
-                cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
-                if cleaned_answer is None:
-                    continue
 
-                # Parse JSON, try to repair malformed JSON if necessary
-                candidate = ""
-                result_dict = None
-                try:
-                    result_dict = json.loads(cleaned_answer)
-                except json.JSONDecodeError:
+                def _extract_and_parse_json(raw_text: str) -> dict | None:
+                    if not raw_text:
+                        return None
+                    # Try to extract JSON object by braces
+                    first_brace = raw_text.find("{")
+                    last_brace = raw_text.rfind("}")
+                    if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+                        candidate_json = raw_text[first_brace : last_brace + 1]
+                    else:
+                        candidate_json = raw_text
+
+                    # Try normal json loads, then attempt to repair malformed JSON
                     try:
-                        result_dict = json_repair.loads(cleaned_answer)
-                    except Exception:
-                        logger.exception(
-                            "Failed to parse LLM JSON when generating conversation name; using raw query as fallback"
-                        )
+                        return json.loads(candidate_json)
+                    except json.JSONDecodeError:
+                        try:
+                            repaired = json_repair.repair(candidate_json)
+                            return json.loads(repaired)
+                        except Exception as exc:
+                            logger.debug("JSON parse/repair failed: %s", exc)
+                            return None
+
+                result_dict = _extract_and_parse_json(answer)
 
                 if not isinstance(result_dict, dict):
                     candidate = query
@@ -201,10 +239,8 @@ class LLMGenerator:
                 translation = cast(str, translate_response.message.content).strip()
                 if _contains_persian(translation):
                     name = translation
-            except InvokeError:
+            except (InvokeError, InvokeAuthorizationError):
                 logger.exception("Failed to obtain Persian translation for the conversation title")
-            except Exception:
-                logger.exception("Unexpected error obtaining Persian translation for the conversation title")
 
         if len(name) > 75:
             name = name[:75] + "..."
