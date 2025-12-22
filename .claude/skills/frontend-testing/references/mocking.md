@@ -45,6 +45,8 @@ Only mock these categories:
 | `web/__mocks__/` | Reusable mock factories shared across multiple test files |
 | Test file | Test-specific mocks, inline with `vi.mock()` |
 
+Modules are not mocked automatically. Use `vi.mock` in test files, or add global mocks in `web/vitest.setup.ts`.
+
 ## Essential Mocks
 
 ### 1. i18n (Auto-loaded via Global Mock)

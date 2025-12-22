@@ -7,7 +7,7 @@ description: Generate Vitest + React Testing Library tests for Dify frontend com
 
 This skill enables Claude to generate high-quality, comprehensive frontend tests for the Dify project following established conventions and best practices.
 
-> **⚠️ Authoritative Source**: This skill is derived from `web/testing/testing.md`. If that document still uses Jest syntax, translate mock/timer APIs to Vitest (`vi.*`).
+> **⚠️ Authoritative Source**: This skill is derived from `web/testing/testing.md`. Use Vitest mock/timer APIs (`vi.*`).
 
 ## When to Apply This Skill
 
@@ -319,4 +319,4 @@ For more detailed information, refer to:
 - `web/vitest.config.ts` - Vitest configuration
 - `web/vitest.setup.ts` - Test environment setup
 - `web/testing/analyze-component.js` - Component analysis tool
-- Global mocks live in `web/vitest.setup.ts` (for example `react-i18next`, `next/image`); mock other modules like `ky` or `mime` locally in test files.
+- Modules are not mocked automatically. Global mocks live in `web/vitest.setup.ts` (for example `react-i18next`, `next/image`); mock other modules like `ky` or `mime` locally in test files.

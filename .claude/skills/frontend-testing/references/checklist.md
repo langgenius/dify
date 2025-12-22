@@ -76,7 +76,7 @@ Use this checklist when generating or reviewing tests for Dify frontend componen
 - [ ] **DO NOT mock base components** (`@/app/components/base/*`)
 - [ ] `vi.clearAllMocks()` in `beforeEach` (not `afterEach`)
 - [ ] Shared mock state reset in `beforeEach`
-- [ ] i18n uses shared mock (auto-loaded); only override locally for custom translations
+- [ ] i18n uses global mock (auto-loaded in `web/vitest.setup.ts`); only override locally for custom translations
 - [ ] Router mocks match actual Next.js API
 - [ ] Mocks reflect actual component conditional behavior
 - [ ] Only mock: API services, complex context providers, third-party libs
