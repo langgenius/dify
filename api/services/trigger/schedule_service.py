@@ -206,7 +206,7 @@ class ScheduleService:
     @staticmethod
     def extract_schedule_config(workflow: Workflow) -> ScheduleConfig | None:
         """
-        Extracts schedule configuration from workflow graph.
+        Extracts the first schedule configuration from workflow graph.
 
         Searches for the first schedule trigger node in the workflow and converts
         its configuration (either visual or cron mode) into a unified ScheduleConfig.
@@ -221,8 +221,28 @@ class ScheduleService:
             ScheduleConfigError: If graph parsing fails or schedule configuration is invalid
 
         Note:
-            Currently only returns the first schedule node found.
-            Multiple schedule nodes in the same workflow are not supported.
+            This method only returns the first schedule node found.
+            Use extract_all_schedule_configs() to get all schedule nodes.
+        """
+        configs = ScheduleService.extract_all_schedule_configs(workflow)
+        return configs[0] if configs else None
+
+    @staticmethod
+    def extract_all_schedule_configs(workflow: Workflow) -> list[ScheduleConfig]:
+        """
+        Extracts all schedule configurations from workflow graph.
+
+        Searches for all schedule trigger nodes in the workflow and converts
+        their configurations (either visual or cron mode) into unified ScheduleConfigs.
+
+        Args:
+            workflow: The workflow containing the graph definition
+
+        Returns:
+            List of ScheduleConfig for all schedule nodes found, empty list if none
+
+        Raises:
+            ScheduleConfigError: If graph parsing fails or schedule configuration is invalid
         """
         try:
             graph_data = workflow.graph_dict
@@ -232,6 +252,7 @@ class ScheduleService:
         if not graph_data:
             raise ScheduleConfigError("Workflow graph is empty")
 
+        configs: list[ScheduleConfig] = []
         nodes = graph_data.get("nodes", [])
         for node in nodes:
             node_data = node.get("data", {})
@@ -256,9 +277,9 @@ class ScheduleService:
             else:
                 raise ScheduleConfigError(f"Invalid schedule mode: {mode}")
 
-            return ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone)
+            configs.append(ScheduleConfig(node_id=node_id, cron_expression=cron_expression, timezone=timezone))
 
-        return None
+        return configs
 
     @staticmethod
     def visual_to_cron(frequency: str, visual_config: VisualConfig) -> str:

@@ -572,6 +572,93 @@ class TestExtractScheduleConfig(unittest.TestCase):
         with pytest.raises(ScheduleConfigError, match="Workflow graph is empty"):
             ScheduleService.extract_schedule_config(workflow)
 
+    def test_extract_all_schedule_configs_multiple(self):
+        """Test extracting all schedule configs when multiple exist (issue #29945)."""
+        workflow = Mock(spec=Workflow)
+        workflow.graph_dict = {
+            "nodes": [
+                {
+                    "id": "daily-schedule",
+                    "data": {
+                        "type": "trigger-schedule",
+                        "mode": "visual",
+                        "frequency": "daily",
+                        "visual_config": {"time": "10:00 AM"},
+                        "timezone": "UTC",
+                    },
+                },
+                {
+                    "id": "other-node",
+                    "data": {"type": "llm"},
+                },
+                {
+                    "id": "weekly-schedule",
+                    "data": {
+                        "type": "trigger-schedule",
+                        "mode": "visual",
+                        "frequency": "weekly",
+                        "visual_config": {"time": "2:00 PM", "weekdays": ["mon", "fri"]},
+                        "timezone": "America/New_York",
+                    },
+                },
+            ]
+        }
+
+        configs = ScheduleService.extract_all_schedule_configs(workflow)
+
+        assert len(configs) == 2
+        # First schedule - daily
+        assert configs[0].node_id == "daily-schedule"
+        assert configs[0].cron_expression == "0 10 * * *"
+        assert configs[0].timezone == "UTC"
+        # Second schedule - weekly
+        assert configs[1].node_id == "weekly-schedule"
+        assert configs[1].cron_expression == "0 14 * * 1,5"
+        assert configs[1].timezone == "America/New_York"
+
+    def test_extract_all_schedule_configs_empty(self):
+        """Test extracting all schedule configs when none exist."""
+        workflow = Mock(spec=Workflow)
+        workflow.graph_dict = {
+            "nodes": [
+                {"id": "other-node", "data": {"type": "llm"}},
+            ]
+        }
+
+        configs = ScheduleService.extract_all_schedule_configs(workflow)
+        assert configs == []
+
+    def test_extract_schedule_config_returns_first_when_multiple(self):
+        """Test that extract_schedule_config returns first config when multiple exist."""
+        workflow = Mock(spec=Workflow)
+        workflow.graph_dict = {
+            "nodes": [
+                {
+                    "id": "first-schedule",
+                    "data": {
+                        "type": "trigger-schedule",
+                        "mode": "cron",
+                        "cron_expression": "0 10 * * *",
+                        "timezone": "UTC",
+                    },
+                },
+                {
+                    "id": "second-schedule",
+                    "data": {
+                        "type": "trigger-schedule",
+                        "mode": "cron",
+                        "cron_expression": "0 14 * * *",
+                        "timezone": "America/New_York",
+                    },
+                },
+            ]
+        }
+
+        config = ScheduleService.extract_schedule_config(workflow)
+        assert config is not None
+        assert config.node_id == "first-schedule"
+        assert config.cron_expression == "0 10 * * *"
+
 
 class TestScheduleWithTimezone(unittest.TestCase):
     """Test cases for schedule with timezone handling."""
@@ -687,14 +774,15 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
         mock_session.__exit__ = MagicMock(return_value=None)
         Session = MagicMock(return_value=mock_session)
         with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
-            mock_session.scalar.return_value = None  # No existing plan
+            # Mock execute to return empty list (no existing plans)
+            mock_session.execute.return_value.scalars.return_value.all.return_value = []
 
-            # Mock extract_schedule_config to return a ScheduleConfig object
+            # Mock extract_all_schedule_configs to return a list with one config
             mock_config = Mock(spec=ScheduleConfig)
             mock_config.node_id = "start"
             mock_config.cron_expression = "30 10 * * *"
             mock_config.timezone = "UTC"
-            mock_service.extract_schedule_config.return_value = mock_config
+            mock_service.extract_all_schedule_configs.return_value = [mock_config]
 
             mock_new_plan = Mock(spec=WorkflowSchedulePlan)
             mock_service.create_schedule.return_value = mock_new_plan
@@ -702,7 +790,8 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             workflow = Mock(spec=Workflow)
             result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
 
-            assert result == mock_new_plan
+            assert len(result) == 1
+            assert result[0] == mock_new_plan
             mock_service.create_schedule.assert_called_once()
             mock_session.commit.assert_called_once()
 
@@ -720,14 +809,16 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
         with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
             mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
             mock_existing_plan.id = "existing-plan-id"
-            mock_session.scalar.return_value = mock_existing_plan
+            mock_existing_plan.node_id = "start"
+            # Mock execute to return existing plan
+            mock_session.execute.return_value.scalars.return_value.all.return_value = [mock_existing_plan]
 
-            # Mock extract_schedule_config to return a ScheduleConfig object
+            # Mock extract_all_schedule_configs to return a config with same node_id
             mock_config = Mock(spec=ScheduleConfig)
             mock_config.node_id = "start"
             mock_config.cron_expression = "0 12 * * *"
             mock_config.timezone = "America/New_York"
-            mock_service.extract_schedule_config.return_value = mock_config
+            mock_service.extract_all_schedule_configs.return_value = [mock_config]
 
             mock_updated_plan = Mock(spec=WorkflowSchedulePlan)
             mock_service.update_schedule.return_value = mock_updated_plan
@@ -735,7 +826,8 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             workflow = Mock(spec=Workflow)
             result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
 
-            assert result == mock_updated_plan
+            assert len(result) == 1
+            assert result[0] == mock_updated_plan
             mock_service.update_schedule.assert_called_once()
             # Verify the arguments passed to update_schedule
             call_args = mock_service.update_schedule.call_args
@@ -762,16 +854,118 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
         with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
             mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
             mock_existing_plan.id = "existing-plan-id"
-            mock_session.scalar.return_value = mock_existing_plan
+            mock_existing_plan.node_id = "start"
+            # Mock execute to return existing plan
+            mock_session.execute.return_value.scalars.return_value.all.return_value = [mock_existing_plan]
 
-            mock_service.extract_schedule_config.return_value = None  # No schedule config
+            mock_service.extract_all_schedule_configs.return_value = []  # No schedule configs
 
             workflow = Mock(spec=Workflow)
             result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
 
-            assert result is None
-            # Now using ScheduleService.delete_schedule instead of session.delete
+            assert result == []
+            # Should delete the existing plan since no configs exist
             mock_service.delete_schedule.assert_called_once_with(session=mock_session, schedule_id="existing-plan-id")
+            mock_session.commit.assert_called_once()
+
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
+    def test_sync_multiple_schedules(self, mock_select, mock_service, mock_db):
+        """Test syncing multiple schedule triggers (issue #29945)."""
+        mock_session = MagicMock()
+        mock_db.engine = MagicMock()
+        mock_session.__enter__ = MagicMock(return_value=mock_session)
+        mock_session.__exit__ = MagicMock(return_value=None)
+        Session = MagicMock(return_value=mock_session)
+
+        with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
+            # No existing plans
+            mock_session.execute.return_value.scalars.return_value.all.return_value = []
+
+            # Two schedule configs (daily and weekly)
+            mock_config1 = Mock(spec=ScheduleConfig)
+            mock_config1.node_id = "daily-schedule"
+            mock_config1.cron_expression = "0 10 * * *"
+            mock_config1.timezone = "UTC"
+
+            mock_config2 = Mock(spec=ScheduleConfig)
+            mock_config2.node_id = "weekly-schedule"
+            mock_config2.cron_expression = "0 14 * * 1"
+            mock_config2.timezone = "America/New_York"
+
+            mock_service.extract_all_schedule_configs.return_value = [mock_config1, mock_config2]
+
+            mock_plan1 = Mock(spec=WorkflowSchedulePlan)
+            mock_plan2 = Mock(spec=WorkflowSchedulePlan)
+            mock_service.create_schedule.side_effect = [mock_plan1, mock_plan2]
+
+            workflow = Mock(spec=Workflow)
+            result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
+
+            # Both schedules should be created
+            assert len(result) == 2
+            assert mock_plan1 in result
+            assert mock_plan2 in result
+            assert mock_service.create_schedule.call_count == 2
+            mock_session.commit.assert_called_once()
+
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
+    def test_sync_schedules_add_remove_update(self, mock_select, mock_service, mock_db):
+        """Test syncing schedules with add, remove, and update operations."""
+        mock_session = MagicMock()
+        mock_db.engine = MagicMock()
+        mock_session.__enter__ = MagicMock(return_value=mock_session)
+        mock_session.__exit__ = MagicMock(return_value=None)
+        Session = MagicMock(return_value=mock_session)
+
+        with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
+            # Existing plans: daily (to update), monthly (to remove)
+            mock_existing_daily = Mock(spec=WorkflowSchedulePlan)
+            mock_existing_daily.id = "existing-daily-id"
+            mock_existing_daily.node_id = "daily-schedule"
+
+            mock_existing_monthly = Mock(spec=WorkflowSchedulePlan)
+            mock_existing_monthly.id = "existing-monthly-id"
+            mock_existing_monthly.node_id = "monthly-schedule"
+
+            mock_session.execute.return_value.scalars.return_value.all.return_value = [
+                mock_existing_daily, mock_existing_monthly
+            ]
+
+            # New configs: daily (update), weekly (add) - monthly is removed
+            mock_daily_config = Mock(spec=ScheduleConfig)
+            mock_daily_config.node_id = "daily-schedule"
+            mock_daily_config.cron_expression = "0 11 * * *"  # Changed time
+            mock_daily_config.timezone = "UTC"
+
+            mock_weekly_config = Mock(spec=ScheduleConfig)
+            mock_weekly_config.node_id = "weekly-schedule"
+            mock_weekly_config.cron_expression = "0 14 * * 1"
+            mock_weekly_config.timezone = "America/New_York"
+
+            mock_service.extract_all_schedule_configs.return_value = [mock_daily_config, mock_weekly_config]
+
+            mock_updated_daily = Mock(spec=WorkflowSchedulePlan)
+            mock_new_weekly = Mock(spec=WorkflowSchedulePlan)
+            mock_service.update_schedule.return_value = mock_updated_daily
+            mock_service.create_schedule.return_value = mock_new_weekly
+
+            workflow = Mock(spec=Workflow)
+            result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
+
+            # Should have 2 plans (updated daily, new weekly)
+            assert len(result) == 2
+            # Monthly should be deleted
+            mock_service.delete_schedule.assert_called_once_with(
+                session=mock_session, schedule_id="existing-monthly-id"
+            )
+            # Daily should be updated
+            mock_service.update_schedule.assert_called_once()
+            # Weekly should be created
+            mock_service.create_schedule.assert_called_once()
             mock_session.commit.assert_called_once()
 
 
