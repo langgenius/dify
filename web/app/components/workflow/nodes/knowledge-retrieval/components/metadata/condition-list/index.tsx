@@ -1,6 +1,6 @@
 import { RiLoopLeftLine } from '@remixicon/react'
 import ConditionItem from './condition-item'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 

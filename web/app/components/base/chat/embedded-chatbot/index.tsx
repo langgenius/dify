@@ -17,7 +17,7 @@ import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 

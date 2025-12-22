@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type DatasourceIconProps = {
   size?: string

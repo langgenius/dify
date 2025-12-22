@@ -18,7 +18,7 @@ import Confirm from '@/app/components/base/confirm'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import type { ConversationItem } from '@/models/share'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 
 type Props = {

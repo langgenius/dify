@@ -1,6 +1,6 @@
 import { RiCloseLine } from '@remixicon/react'
 import type { FC } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'

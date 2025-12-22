@@ -8,7 +8,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { CopyCheck } from '../../base/icons/src/vender/line/files'
 import Tooltip from '../../base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ActionButton from '@/app/components/base/action-button'
 
 type Props = {

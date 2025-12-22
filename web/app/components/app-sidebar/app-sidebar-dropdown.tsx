@@ -16,7 +16,7 @@ import AppInfo from './app-info'
 import NavLink from './navLink'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { NavIcon } from './navLink'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { AppModeEnum } from '@/types/app'
 
 type Props = {

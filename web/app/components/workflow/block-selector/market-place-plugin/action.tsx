@@ -11,7 +11,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useDownloadPlugin } from '@/service/use-plugins'
 import { downloadFile } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'

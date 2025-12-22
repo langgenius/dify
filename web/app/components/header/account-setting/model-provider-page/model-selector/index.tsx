@@ -16,7 +16,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
@@ -70,7 +70,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
       placement='bottom-start'
       offset={4}
     >
-      <div className={classNames('relative')}>
+      <div className={cn('relative')}>
         <PortalToFollowElemTrigger
           onClick={handleToggle}
           className='block'

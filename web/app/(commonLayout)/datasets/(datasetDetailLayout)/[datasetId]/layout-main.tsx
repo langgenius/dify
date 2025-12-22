@@ -23,7 +23,7 @@ import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use
 import useDocumentTitle from '@/hooks/use-document-title'
 import ExtraInfo from '@/app/components/datasets/extra-info'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode

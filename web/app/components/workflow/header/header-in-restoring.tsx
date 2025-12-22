@@ -20,7 +20,7 @@ import Button from '@/app/components/base/button'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { useHooksStore } from '../hooks-store'
 import useTheme from '@/hooks/use-theme'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void

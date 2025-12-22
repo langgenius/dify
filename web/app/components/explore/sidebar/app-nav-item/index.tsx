@@ -3,7 +3,7 @@ import React, { useRef } from 'react'
 
 import { useRouter } from 'next/navigation'
 import { useHover } from 'ahooks'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ItemOperation from '@/app/components/explore/item-operation'
 import AppIcon from '@/app/components/base/app-icon'
 import type { AppIconType } from '@/types/app'

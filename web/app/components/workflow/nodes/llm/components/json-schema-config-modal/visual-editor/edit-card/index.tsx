@@ -9,7 +9,7 @@ import Actions from './actions'
 import AdvancedActions from './advanced-actions'
 import AdvancedOptions, { type AdvancedOptionsType } from './advanced-options'
 import { useTranslation } from 'react-i18next'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useVisualEditorStore } from '../store'
 import { useMittContext } from '../context'
 import { useUnmount } from 'ahooks'
@@ -255,7 +255,7 @@ const EditCard: FC<EditCardProps> = ({
       </div>
 
       {(fields.description || isAdvancedEditing) && (
-        <div className={classNames('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
+        <div className={cn('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
             value={currentFields.description}
             className='system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-none placeholder:text-text-placeholder'

@@ -8,7 +8,7 @@ import type { TriggerDefaultValue } from '../types'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 
 type Props = {

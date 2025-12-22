@@ -11,6 +11,7 @@ const translation = {
     remove: 'Dihapus',
     actionSuccess: 'Aksi berhasil',
     create: 'Dibuat',
+    actionFailed: 'Tindakan gagal',
   },
   operation: {
     setup: 'Setup',

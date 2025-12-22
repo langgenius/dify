@@ -9,7 +9,7 @@ import {
   useViewport,
 } from 'reactflow'
 import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { NodeProps } from '@/app/components/workflow/types'
 import { useNodeLoopInteractions } from './hooks'
 

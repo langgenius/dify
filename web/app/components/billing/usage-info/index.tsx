@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import ProgressBar from '../progress-bar'
 import { NUM_INFINITE } from '../config'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string

@@ -5,7 +5,7 @@ import {
 } from 'react'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type FieldTitleProps = {
   title?: string

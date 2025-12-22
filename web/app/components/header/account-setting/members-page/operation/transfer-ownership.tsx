@@ -5,7 +5,7 @@ import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   onOperate: () => void

@@ -3,7 +3,7 @@ import { Dialog, DialogBackdrop, DialogTitle } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import Button from '../button'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type IDrawerProps = {
   title?: string
