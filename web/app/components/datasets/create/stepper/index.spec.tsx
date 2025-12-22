@@ -37,7 +37,7 @@ const renderStepperStep = (props: Partial<StepperStepProps> = {}) => {
 // ============================================================================
 describe('Stepper', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // --------------------------------------------------------------------------
@@ -332,7 +332,7 @@ describe('Stepper', () => {
 // ============================================================================
 describe('StepperStep', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // --------------------------------------------------------------------------
@@ -671,7 +671,7 @@ describe('StepperStep', () => {
 // ============================================================================
 describe('Stepper Integration', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should pass correct props to each StepperStep', () => {

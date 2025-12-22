@@ -1,22 +1,23 @@
+import type { Mock } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import { AccessMode } from '@/models/access-control'
 
 // Mock external dependencies BEFORE imports
-jest.mock('use-context-selector', () => ({
-  useContext: jest.fn(),
-  createContext: jest.fn(() => ({})),
+vi.mock('use-context-selector', () => ({
+  useContext: vi.fn(),
+  createContext: vi.fn(() => ({})),
 }))
-jest.mock('@/context/web-app-context', () => ({
-  useWebAppStore: jest.fn(),
+vi.mock('@/context/web-app-context', () => ({
+  useWebAppStore: vi.fn(),
 }))
-jest.mock('@/service/access-control', () => ({
-  useGetUserCanAccessApp: jest.fn(),
+vi.mock('@/service/access-control', () => ({
+  useGetUserCanAccessApp: vi.fn(),
 }))
-jest.mock('@/service/use-explore', () => ({
-  useGetInstalledAppAccessModeByAppId: jest.fn(),
-  useGetInstalledAppParams: jest.fn(),
-  useGetInstalledAppMeta: jest.fn(),
+vi.mock('@/service/use-explore', () => ({
+  useGetInstalledAppAccessModeByAppId: vi.fn(),
+  useGetInstalledAppParams: vi.fn(),
+  useGetInstalledAppMeta: vi.fn(),
 }))
 
 import { useContext } from 'use-context-selector'
@@ -46,7 +47,7 @@ import type { InstalledApp as InstalledAppType } from '@/models/explore'
  * The internal logic of ChatWithHistory and TextGenerationApp should be tested
  * in their own dedicated test files.
  */
-jest.mock('@/app/components/share/text-generation', () => ({
+vi.mock('@/app/components/share/text-generation', () => ({
   __esModule: true,
   default: ({ isInstalledApp, installedAppInfo, isWorkflow }: {
     isInstalledApp?: boolean
@@ -61,7 +62,7 @@ jest.mock('@/app/components/share/text-generation', () => ({
   ),
 }))
 
-jest.mock('@/app/components/base/chat/chat-with-history', () => ({
+vi.mock('@/app/components/base/chat/chat-with-history', () => ({
   __esModule: true,
   default: ({ installedAppInfo, className }: {
     installedAppInfo?: InstalledAppType
@@ -74,11 +75,11 @@ jest.mock('@/app/components/base/chat/chat-with-history', () => ({
 }))
 
 describe('InstalledApp', () => {
-  const mockUpdateAppInfo = jest.fn()
-  const mockUpdateWebAppAccessMode = jest.fn()
-  const mockUpdateAppParams = jest.fn()
-  const mockUpdateWebAppMeta = jest.fn()
-  const mockUpdateUserCanAccessApp = jest.fn()
+  const mockUpdateAppInfo = vi.fn()
+  const mockUpdateWebAppAccessMode = vi.fn()
+  const mockUpdateAppParams = vi.fn()
+  const mockUpdateWebAppMeta = vi.fn()
+  const mockUpdateUserCanAccessApp = vi.fn()
 
   const mockInstalledApp = {
     id: 'installed-app-123',
@@ -116,22 +117,22 @@ describe('InstalledApp', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Mock useContext
-    ;(useContext as jest.Mock).mockReturnValue({
+    ;(useContext as Mock).mockReturnValue({
       installedApps: [mockInstalledApp],
       isFetchingInstalledApps: false,
     })
 
     // Mock useWebAppStore
-    ;(useWebAppStore as unknown as jest.Mock).mockImplementation((
+    ;(useWebAppStore as unknown as Mock).mockImplementation((
       selector: (state: {
-        updateAppInfo: jest.Mock
-        updateWebAppAccessMode: jest.Mock
-        updateAppParams: jest.Mock
-        updateWebAppMeta: jest.Mock
-        updateUserCanAccessApp: jest.Mock
+        updateAppInfo: Mock
+        updateWebAppAccessMode: Mock
+        updateAppParams: Mock
+        updateWebAppMeta: Mock
+        updateUserCanAccessApp: Mock
       }) => unknown,
     ) => {
       const state = {
@@ -145,25 +146,25 @@ describe('InstalledApp', () => {
     })
 
     // Mock service hooks with default success states
-    ;(useGetInstalledAppAccessModeByAppId as jest.Mock).mockReturnValue({
+    ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
       isFetching: false,
       data: mockWebAppAccessMode,
       error: null,
     })
 
-    ;(useGetInstalledAppParams as jest.Mock).mockReturnValue({
+    ;(useGetInstalledAppParams as Mock).mockReturnValue({
       isFetching: false,
       data: mockAppParams,
       error: null,
     })
 
-    ;(useGetInstalledAppMeta as jest.Mock).mockReturnValue({
+    ;(useGetInstalledAppMeta as Mock).mockReturnValue({
       isFetching: false,
       data: mockAppMeta,
       error: null,
     })
 
-    ;(useGetUserCanAccessApp as jest.Mock).mockReturnValue({
+    ;(useGetUserCanAccessApp as Mock).mockReturnValue({
       data: mockUserCanAccessApp,
       error: null,
     })
@@ -176,7 +177,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching app params', () => {
-      ;(useGetInstalledAppParams as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: null,
@@ -188,7 +189,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching app meta', () => {
-      ;(useGetInstalledAppMeta as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppMeta as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: null,
@@ -200,7 +201,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching web app access mode', () => {
-      ;(useGetInstalledAppAccessModeByAppId as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: null,
@@ -212,7 +213,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render loading state when fetching installed apps', () => {
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [mockInstalledApp],
         isFetchingInstalledApps: true,
       })
@@ -223,7 +224,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render app not found (404) when installedApp does not exist', () => {
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
@@ -236,7 +237,7 @@ describe('InstalledApp', () => {
   describe('Error States', () => {
     it('should render error when app params fails to load', () => {
       const error = new Error('Failed to load app params')
-      ;(useGetInstalledAppParams as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error,
@@ -248,7 +249,7 @@ describe('InstalledApp', () => {
 
     it('should render error when app meta fails to load', () => {
       const error = new Error('Failed to load app meta')
-      ;(useGetInstalledAppMeta as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppMeta as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error,
@@ -260,7 +261,7 @@ describe('InstalledApp', () => {
 
     it('should render error when web app access mode fails to load', () => {
       const error = new Error('Failed to load access mode')
-      ;(useGetInstalledAppAccessModeByAppId as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error,
@@ -272,7 +273,7 @@ describe('InstalledApp', () => {
 
     it('should render error when user access check fails', () => {
       const error = new Error('Failed to check user access')
-      ;(useGetUserCanAccessApp as jest.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: null,
         error,
       })
@@ -282,7 +283,7 @@ describe('InstalledApp', () => {
     })
 
     it('should render no permission (403) when user cannot access app', () => {
-      ;(useGetUserCanAccessApp as jest.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: { result: false },
         error: null,
       })
@@ -308,7 +309,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.ADVANCED_CHAT,
         },
       }
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [advancedChatApp],
         isFetchingInstalledApps: false,
       })
@@ -326,7 +327,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.AGENT_CHAT,
         },
       }
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [agentChatApp],
         isFetchingInstalledApps: false,
       })
@@ -344,7 +345,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.COMPLETION,
         },
       }
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [completionApp],
         isFetchingInstalledApps: false,
       })
@@ -362,7 +363,7 @@ describe('InstalledApp', () => {
           mode: AppModeEnum.WORKFLOW,
         },
       }
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [workflowApp],
         isFetchingInstalledApps: false,
       })
@@ -377,7 +378,7 @@ describe('InstalledApp', () => {
     it('should use id prop to find installed app', () => {
       const app1 = { ...mockInstalledApp, id: 'app-1' }
       const app2 = { ...mockInstalledApp, id: 'app-2' }
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [app1, app2],
         isFetchingInstalledApps: false,
       })
@@ -419,7 +420,7 @@ describe('InstalledApp', () => {
     })
 
     it('should update app info to null when installedApp is not found', async () => {
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
@@ -464,7 +465,7 @@ describe('InstalledApp', () => {
     })
 
     it('should update user can access app to false when result is false', async () => {
-      ;(useGetUserCanAccessApp as jest.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: { result: false },
         error: null,
       })
@@ -477,7 +478,7 @@ describe('InstalledApp', () => {
     })
 
     it('should update user can access app to false when data is null', async () => {
-      ;(useGetUserCanAccessApp as jest.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: null,
         error: null,
       })
@@ -490,7 +491,7 @@ describe('InstalledApp', () => {
     })
 
     it('should not update app params when data is null', async () => {
-      ;(useGetInstalledAppParams as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error: null,
@@ -506,7 +507,7 @@ describe('InstalledApp', () => {
     })
 
     it('should not update app meta when data is null', async () => {
-      ;(useGetInstalledAppMeta as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppMeta as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error: null,
@@ -522,7 +523,7 @@ describe('InstalledApp', () => {
     })
 
     it('should not update access mode when data is null', async () => {
-      ;(useGetInstalledAppAccessModeByAppId as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppAccessModeByAppId as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error: null,
@@ -540,7 +541,7 @@ describe('InstalledApp', () => {
 
   describe('Edge Cases', () => {
     it('should handle empty installedApps array', () => {
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
@@ -558,7 +559,7 @@ describe('InstalledApp', () => {
           name: 'Other App',
         },
       }
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [otherApp, mockInstalledApp],
         isFetchingInstalledApps: false,
       })
@@ -572,7 +573,7 @@ describe('InstalledApp', () => {
     it('should handle rapid id prop changes', async () => {
       const app1 = { ...mockInstalledApp, id: 'app-1' }
       const app2 = { ...mockInstalledApp, id: 'app-2' }
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [app1, app2],
         isFetchingInstalledApps: false,
       })
@@ -597,7 +598,7 @@ describe('InstalledApp', () => {
     })
 
     it('should call service hooks with null when installedApp is not found', () => {
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
@@ -616,7 +617,7 @@ describe('InstalledApp', () => {
 
   describe('Render Priority', () => {
     it('should show error before loading state', () => {
-      ;(useGetInstalledAppParams as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: new Error('Some error'),
@@ -628,12 +629,12 @@ describe('InstalledApp', () => {
     })
 
     it('should show error before permission check', () => {
-      ;(useGetInstalledAppParams as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: false,
         data: null,
         error: new Error('Params error'),
       })
-      ;(useGetUserCanAccessApp as jest.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: { result: false },
         error: null,
       })
@@ -645,11 +646,11 @@ describe('InstalledApp', () => {
     })
 
     it('should show permission error before 404', () => {
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
-      ;(useGetUserCanAccessApp as jest.Mock).mockReturnValue({
+      ;(useGetUserCanAccessApp as Mock).mockReturnValue({
         data: { result: false },
         error: null,
       })
@@ -661,11 +662,11 @@ describe('InstalledApp', () => {
     })
 
     it('should show loading before 404', () => {
-      ;(useContext as jest.Mock).mockReturnValue({
+      ;(useContext as Mock).mockReturnValue({
         installedApps: [],
         isFetchingInstalledApps: false,
       })
-      ;(useGetInstalledAppParams as jest.Mock).mockReturnValue({
+      ;(useGetInstalledAppParams as Mock).mockReturnValue({
         isFetching: true,
         data: null,
         error: null,

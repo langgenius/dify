@@ -1,5 +1,4 @@
 import { render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import { z } from 'zod'
 import withValidation from '.'
 import { noop } from 'lodash-es'
@@ -17,11 +16,11 @@ describe('withValidation HOC', () => {
   const WrappedComponent = withValidation(TestComponent, schema)
 
   beforeAll(() => {
-    jest.spyOn(console, 'error').mockImplementation(noop)
+    vi.spyOn(console, 'error').mockImplementation(noop)
   })
 
   afterAll(() => {
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 
   it('renders the component when validation passes', () => {

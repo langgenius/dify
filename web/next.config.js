@@ -1,8 +1,11 @@
-const { codeInspectorPlugin } = require('code-inspector-plugin')
+import { codeInspectorPlugin } from 'code-inspector-plugin'
+import withBundleAnalyzerInit from '@next/bundle-analyzer'
+import createMDX from '@next/mdx'
+import withPWAInit from 'next-pwa'
 
 const isDev = process.env.NODE_ENV === 'development'
 
-const withPWA = require('next-pwa')({
+const withPWA = withPWAInit({
   dest: 'public',
   register: true,
   skipWaiting: true,
@@ -69,7 +72,7 @@ const withPWA = require('next-pwa')({
     }
   ]
 })
-const withMDX = require('@next/mdx')({
+const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
     // If you use remark-gfm, you'll need to use next.config.mjs
@@ -81,7 +84,7 @@ const withMDX = require('@next/mdx')({
     // providerImportSource: "@mdx-js/react",
   },
 })
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
+const withBundleAnalyzer = withBundleAnalyzerInit({
   enabled: process.env.ANALYZE === 'true',
 })
 
@@ -145,4 +148,4 @@ const nextConfig = {
   }
 }
 
-module.exports = withPWA(withBundleAnalyzer(withMDX(nextConfig)))
+export default withPWA(withBundleAnalyzer(withMDX(nextConfig)))

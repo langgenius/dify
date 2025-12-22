@@ -4,7 +4,7 @@ import NoData from './index'
 
 describe('NoData', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
   it('should render empty state icon and text when mounted', () => {
     const { container } = render(<NoData />)

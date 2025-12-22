@@ -3,19 +3,22 @@ import { render, screen } from '@testing-library/react'
 import Plans from './index'
 import { Plan, type UsagePlanInfo } from '../../type'
 import { PlanRange } from '../plan-switcher/plan-range-switcher'
+import cloudPlanItem from './cloud-plan-item'
+import selfHostedPlanItem from './self-hosted-plan-item'
+import type { Mock } from 'vitest'
 
-jest.mock('./cloud-plan-item', () => ({
+vi.mock('./cloud-plan-item', () => ({
   __esModule: true,
-  default: jest.fn(props => (
+  default: vi.fn(props => (
     <div data-testid={`cloud-plan-${props.plan}`} data-current-plan={props.currentPlan}>
       Cloud {props.plan}
     </div>
   )),
 }))
 
-jest.mock('./self-hosted-plan-item', () => ({
+vi.mock('./self-hosted-plan-item', () => ({
   __esModule: true,
-  default: jest.fn(props => (
+  default: vi.fn(props => (
     <div data-testid={`self-plan-${props.plan}`}>
       Self {props.plan}
     </div>
@@ -56,8 +59,7 @@ describe('Plans', () => {
       expect(screen.getByTestId('cloud-plan-professional')).toBeInTheDocument()
       expect(screen.getByTestId('cloud-plan-team')).toBeInTheDocument()
 
-      const cloudPlanItem = jest.requireMock('./cloud-plan-item').default as jest.Mock
-      const firstCallProps = cloudPlanItem.mock.calls[0][0]
+      const firstCallProps = (cloudPlanItem as unknown as Mock).mock.calls[0][0]
       expect(firstCallProps.plan).toBe(Plan.sandbox)
       // Enterprise should be normalized to team when passed down
       expect(firstCallProps.currentPlan).toBe(Plan.team)
@@ -80,8 +82,7 @@ describe('Plans', () => {
       expect(screen.getByTestId('self-plan-premium')).toBeInTheDocument()
       expect(screen.getByTestId('self-plan-enterprise')).toBeInTheDocument()
 
-      const selfPlanItem = jest.requireMock('./self-hosted-plan-item').default as jest.Mock
-      expect(selfPlanItem).toHaveBeenCalledTimes(3)
+      expect(selfHostedPlanItem).toHaveBeenCalledTimes(3)
     })
   })
 })

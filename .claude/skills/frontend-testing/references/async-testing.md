@@ -49,7 +49,7 @@ import userEvent from '@testing-library/user-event'
 
 it('should submit form', async () => {
   const user = userEvent.setup()
-  const onSubmit = jest.fn()
+  const onSubmit = vi.fn()
   
   render(<Form onSubmit={onSubmit} />)
   
@@ -77,15 +77,15 @@ it('should submit form', async () => {
 ```typescript
 describe('Debounced Search', () => {
   beforeEach(() => {
-    jest.useFakeTimers()
+    vi.useFakeTimers()
   })
 
   afterEach(() => {
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   it('should debounce search input', async () => {
-    const onSearch = jest.fn()
+    const onSearch = vi.fn()
     render(<SearchInput onSearch={onSearch} debounceMs={300} />)
     
     // Type in the input
@@ -95,7 +95,7 @@ describe('Debounced Search', () => {
     expect(onSearch).not.toHaveBeenCalled()
     
     // Advance timers
-    jest.advanceTimersByTime(300)
+    vi.advanceTimersByTime(300)
     
     // Now search is called
     expect(onSearch).toHaveBeenCalledWith('query')
@@ -107,8 +107,8 @@ describe('Debounced Search', () => {
 
 ```typescript
 it('should retry on failure', async () => {
-  jest.useFakeTimers()
-  const fetchData = jest.fn()
+  vi.useFakeTimers()
+  const fetchData = vi.fn()
     .mockRejectedValueOnce(new Error('Network error'))
     .mockResolvedValueOnce({ data: 'success' })
   
@@ -120,7 +120,7 @@ it('should retry on failure', async () => {
   })
   
   // Advance timer for retry
-  jest.advanceTimersByTime(1000)
+  vi.advanceTimersByTime(1000)
   
   // Second call succeeds
   await waitFor(() => {
@@ -128,7 +128,7 @@ it('should retry on failure', async () => {
     expect(screen.getByText('success')).toBeInTheDocument()
   })
   
-  jest.useRealTimers()
+  vi.useRealTimers()
 })
 ```
 
@@ -136,19 +136,19 @@ it('should retry on failure', async () => {
 
 ```typescript
 // Run all pending timers
-jest.runAllTimers()
+vi.runAllTimers()
 
 // Run only pending timers (not new ones created during execution)
-jest.runOnlyPendingTimers()
+vi.runOnlyPendingTimers()
 
 // Advance by specific time
-jest.advanceTimersByTime(1000)
+vi.advanceTimersByTime(1000)
 
 // Get current fake time
-jest.now()
+Date.now()
 
 // Clear all timers
-jest.clearAllTimers()
+vi.clearAllTimers()
 ```
 
 ## API Testing Patterns
@@ -158,7 +158,7 @@ jest.clearAllTimers()
 ```typescript
 describe('DataFetcher', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should show loading state', () => {
@@ -241,7 +241,7 @@ it('should submit form and show success', async () => {
 
 ```typescript
 it('should fetch data on mount', async () => {
-  const fetchData = jest.fn().mockResolvedValue({ data: 'test' })
+  const fetchData = vi.fn().mockResolvedValue({ data: 'test' })
   
   render(<ComponentWithEffect fetchData={fetchData} />)
   
@@ -255,7 +255,7 @@ it('should fetch data on mount', async () => {
 
 ```typescript
 it('should refetch when id changes', async () => {
-  const fetchData = jest.fn().mockResolvedValue({ data: 'test' })
+  const fetchData = vi.fn().mockResolvedValue({ data: 'test' })
   
   const { rerender } = render(<ComponentWithEffect id="1" fetchData={fetchData} />)
   
@@ -276,8 +276,8 @@ it('should refetch when id changes', async () => {
 
 ```typescript
 it('should cleanup subscription on unmount', () => {
-  const subscribe = jest.fn()
-  const unsubscribe = jest.fn()
+  const subscribe = vi.fn()
+  const unsubscribe = vi.fn()
   subscribe.mockReturnValue(unsubscribe)
   
   const { unmount } = render(<SubscriptionComponent subscribe={subscribe} />)
@@ -332,14 +332,14 @@ expect(description).toBeInTheDocument()
 
 ```typescript
 // Bad - fake timers don't work well with real Promises
-jest.useFakeTimers()
+vi.useFakeTimers()
 await waitFor(() => {
   expect(screen.getByText('Data')).toBeInTheDocument()
 }) // May timeout!
 
 // Good - use runAllTimers or advanceTimersByTime
-jest.useFakeTimers()
+vi.useFakeTimers()
 render(<Component />)
-jest.runAllTimers()
+vi.runAllTimers()
 expect(screen.getByText('Data')).toBeInTheDocument()
 ```

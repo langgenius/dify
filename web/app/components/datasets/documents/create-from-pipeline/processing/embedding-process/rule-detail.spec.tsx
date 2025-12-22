@@ -10,7 +10,7 @@ import { IndexingType } from '@/app/components/datasets/create/step-two'
 // ==========================================
 
 // Mock next/image (using img element for simplicity in tests)
-jest.mock('next/image', () => ({
+vi.mock('next/image', () => ({
   __esModule: true,
   default: function MockImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
     // eslint-disable-next-line @next/next/no-img-element
@@ -19,7 +19,7 @@ jest.mock('next/image', () => ({
 }))
 
 // Mock FieldInfo component
-jest.mock('@/app/components/datasets/documents/detail/metadata', () => ({
+vi.mock('@/app/components/datasets/documents/detail/metadata', () => ({
   FieldInfo: ({ label, displayedValue, valueIcon }: { label: string; displayedValue: string; valueIcon?: React.ReactNode }) => (
     <div data-testid="field-info" data-label={label}>
       <span data-testid="field-label">{label}</span>
@@ -30,7 +30,7 @@ jest.mock('@/app/components/datasets/documents/detail/metadata', () => ({
 }))
 
 // Mock icons - provides simple string paths for testing instead of Next.js static import objects
-jest.mock('@/app/components/datasets/create/icons', () => ({
+vi.mock('@/app/components/datasets/create/icons', () => ({
   indexMethodIcon: {
     economical: '/icons/economical.svg',
     high_quality: '/icons/high_quality.svg',
@@ -77,7 +77,7 @@ const createMockProcessRule = (overrides: Partial<ProcessRuleResponse> = {}): Pr
 
 describe('RuleDetail', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================

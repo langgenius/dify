@@ -5,7 +5,7 @@ import ResDownload from './index'
 const mockType = { Link: 'mock-link' }
 let capturedProps: Record<string, unknown> | undefined
 
-jest.mock('react-papaparse', () => ({
+vi.mock('react-papaparse', () => ({
   useCSVDownloader: () => {
     const CSVDownloader = ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
       capturedProps = props
@@ -22,7 +22,7 @@ describe('ResDownload', () => {
   const values = [{ text: 'Hello' }]
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     capturedProps = undefined
   })
 
