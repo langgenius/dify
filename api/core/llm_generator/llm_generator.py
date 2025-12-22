@@ -37,6 +37,13 @@ from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
+# Precompiled heuristic to detect common Persian (Farsi) words in short inputs.
+# Using a compiled regex avoids repeated recompilation on every call.
+_PERSIAN_HEURISTIC = re.compile(
+    r"\b(سلام|متشکرم|ممنون|خوب|چطور|سپاس)\b",
+    flags=re.IGNORECASE,
+)
+
 
 class WorkflowServiceInterface(Protocol):
     def get_draft_workflow(self, app_model: App, workflow_id: str | None = None) -> Workflow | None:
@@ -70,7 +77,8 @@ class LLMGenerator:
                 # Log at debug level to aid debugging without failing the linter S110.
                 logger.debug("langdetect detection failed: %s", exc)
             # Also check for some common Persian words as an additional heuristic
-            if bool(re.search(r"\b(سلام|متشکرم|ممنون|خوب|چطور|سپاس)\b", (text or ""), flags=re.IGNORECASE)):
+            # Use precompiled regex for clarity and performance.
+            if _PERSIAN_HEURISTIC.search(text or ""):
                 return True
             return False
 
