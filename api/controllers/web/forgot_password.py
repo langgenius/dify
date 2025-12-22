@@ -101,7 +101,7 @@ class ForgotPasswordCheckApi(Resource):
         if not isinstance(token_email, str):
             raise InvalidEmailError()
         normalized_token_email = token_email.lower()
-        
+
         if user_email != normalized_token_email:
             raise InvalidEmailError()
 
