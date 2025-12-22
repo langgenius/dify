@@ -3,13 +3,15 @@ import userEvent from '@testing-library/user-event'
 import Toast, { type IToastProps, type ToastHandle } from '@/app/components/base/toast'
 import EditAnnotationModal from './index'
 
-const mockAddAnnotation = vi.fn()
-const mockEditAnnotation = vi.fn()
+const { mockAddAnnotation, mockEditAnnotation } = vi.hoisted(() => ({
+  mockAddAnnotation: vi.fn(),
+  mockEditAnnotation: vi.fn(),
+}))
 
 // Mock only external dependencies
 vi.mock('@/service/annotation', () => ({
-  addAnnotation: (...args: any[]) => mockAddAnnotation(...args),
-  editAnnotation: (...args: any[]) => mockEditAnnotation(...args),
+  addAnnotation: mockAddAnnotation,
+  editAnnotation: mockEditAnnotation,
 }))
 
 vi.mock('@/context/provider-context', () => ({

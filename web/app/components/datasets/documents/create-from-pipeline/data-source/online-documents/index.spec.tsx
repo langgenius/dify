@@ -30,24 +30,33 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 // Mock ssePost - API service requires mocking
-const mockSsePost = vi.fn()
+const { mockSsePost } = vi.hoisted(() => ({
+  mockSsePost: vi.fn(),
+}))
+
 vi.mock('@/service/base', () => ({
-  ssePost: (...args: any[]) => mockSsePost(...args),
+  ssePost: mockSsePost,
 }))
 
 // Mock Toast.notify - static method that manipulates DOM, needs mocking to verify calls
-const mockToastNotify = vi.fn()
+const { mockToastNotify } = vi.hoisted(() => ({
+  mockToastNotify: vi.fn(),
+}))
+
 vi.mock('@/app/components/base/toast', () => ({
   __esModule: true,
   default: {
-    notify: (options: any) => mockToastNotify(options),
+    notify: mockToastNotify,
   },
 }))
 
 // Mock useGetDataSourceAuth - API service hook requires mocking
-const mockUseGetDataSourceAuth = vi.fn()
+const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
+  mockUseGetDataSourceAuth: vi.fn(),
+}))
+
 vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: (params: any) => mockUseGetDataSourceAuth(params),
+  useGetDataSourceAuth: mockUseGetDataSourceAuth,
 }))
 
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)

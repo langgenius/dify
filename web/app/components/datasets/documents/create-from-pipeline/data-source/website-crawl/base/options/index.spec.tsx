@@ -15,11 +15,14 @@ import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/ty
 // Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
 
 // Mock useInitialData and useConfigurations hooks
-const mockUseInitialData = vi.fn()
-const mockUseConfigurations = vi.fn()
+const { mockUseInitialData, mockUseConfigurations } = vi.hoisted(() => ({
+  mockUseInitialData: vi.fn(),
+  mockUseConfigurations: vi.fn(),
+}))
+
 vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
-  useInitialData: (...args: any[]) => mockUseInitialData(...args),
-  useConfigurations: (...args: any[]) => mockUseConfigurations(...args),
+  useInitialData: mockUseInitialData,
+  useConfigurations: mockUseConfigurations,
 }))
 
 // Mock BaseField

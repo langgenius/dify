@@ -88,9 +88,12 @@ vi.mock('@/hooks/use-async-window-open', () => ({
 }))
 
 // Mock utils
-const mockGetRedirection = vi.fn()
+const { mockGetRedirection } = vi.hoisted(() => ({
+  mockGetRedirection: vi.fn(),
+}))
+
 vi.mock('@/utils/app-redirection', () => ({
-  getRedirection: (...args: any[]) => mockGetRedirection(...args),
+  getRedirection: mockGetRedirection,
 }))
 
 vi.mock('@/utils/var', () => ({

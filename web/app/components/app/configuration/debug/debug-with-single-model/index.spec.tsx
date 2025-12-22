@@ -124,9 +124,12 @@ function createMockProviderContext(overrides: Partial<ProviderContextState> = {}
 // ============================================================================
 
 // Mock service layer (API calls)
-const mockSsePost = vi.fn<(...args: any[]) => Promise<void>>(() => Promise.resolve())
+const { mockSsePost } = vi.hoisted(() => ({
+  mockSsePost: vi.fn<(...args: any[]) => Promise<void>>(() => Promise.resolve()),
+}))
+
 vi.mock('@/service/base', () => ({
-  ssePost: (...args: any[]) => mockSsePost(...args),
+  ssePost: mockSsePost,
   post: vi.fn(() => Promise.resolve({ data: {} })),
   get: vi.fn(() => Promise.resolve({ data: {} })),
   del: vi.fn(() => Promise.resolve({ data: {} })),
@@ -138,14 +141,16 @@ vi.mock('@/service/fetch', () => ({
   fetch: vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({}) })),
 }))
 
-const mockFetchConversationMessages = vi.fn()
-const mockFetchSuggestedQuestions = vi.fn()
-const mockStopChatMessageResponding = vi.fn()
+const { mockFetchConversationMessages, mockFetchSuggestedQuestions, mockStopChatMessageResponding } = vi.hoisted(() => ({
+  mockFetchConversationMessages: vi.fn(),
+  mockFetchSuggestedQuestions: vi.fn(),
+  mockStopChatMessageResponding: vi.fn(),
+}))
 
 vi.mock('@/service/debug', () => ({
-  fetchConversationMessages: (...args: unknown[]) => mockFetchConversationMessages(...args),
-  fetchSuggestedQuestions: (...args: unknown[]) => mockFetchSuggestedQuestions(...args),
-  stopChatMessageResponding: (...args: unknown[]) => mockStopChatMessageResponding(...args),
+  fetchConversationMessages: mockFetchConversationMessages,
+  fetchSuggestedQuestions: mockFetchSuggestedQuestions,
+  stopChatMessageResponding: mockStopChatMessageResponding,
 }))
 
 vi.mock('next/navigation', () => ({
@@ -255,17 +260,27 @@ const mockDebugConfigContext = {
   setRerankSettingModalOpen: vi.fn(),
 }
 
-const mockUseDebugConfigurationContext = vi.fn<(...args: any[]) => typeof mockDebugConfigContext>(() => mockDebugConfigContext)
+const { mockUseDebugConfigurationContext } = vi.hoisted(() => ({
+  mockUseDebugConfigurationContext: vi.fn(),
+}))
+
+// Set up the default implementation after mockDebugConfigContext is defined
+mockUseDebugConfigurationContext.mockReturnValue(mockDebugConfigContext)
 
 vi.mock('@/context/debug-configuration', () => ({
-  useDebugConfigurationContext: (...args: any[]) => mockUseDebugConfigurationContext(...args),
+  useDebugConfigurationContext: mockUseDebugConfigurationContext,
 }))
 
 const mockProviderContext = createMockProviderContext()
-const mockUseProviderContext = vi.fn<(...args: any[]) => typeof mockProviderContext>(() => mockProviderContext)
+
+const { mockUseProviderContext } = vi.hoisted(() => ({
+  mockUseProviderContext: vi.fn(),
+}))
+
+mockUseProviderContext.mockReturnValue(mockProviderContext)
 
 vi.mock('@/context/provider-context', () => ({
-  useProviderContext: (...args: any[]) => mockUseProviderContext(...args),
+  useProviderContext: mockUseProviderContext,
 }))
 
 const mockAppContext = {
@@ -281,10 +296,14 @@ const mockAppContext = {
   mutateUserProfile: vi.fn(),
 }
 
-const mockUseAppContext = vi.fn<(...args: any[]) => typeof mockAppContext>(() => mockAppContext)
+const { mockUseAppContext } = vi.hoisted(() => ({
+  mockUseAppContext: vi.fn(),
+}))
+
+mockUseAppContext.mockReturnValue(mockAppContext)
 
 vi.mock('@/context/app-context', () => ({
-  useAppContext: (...args: any[]) => mockUseAppContext(...args),
+  useAppContext: mockUseAppContext,
 }))
 
 type FeatureState = {
@@ -313,9 +332,13 @@ const defaultFeatures: FeatureState = {
 type FeatureSelector = (state: { features: FeatureState }) => unknown
 
 let mockFeaturesState: FeatureState = { ...defaultFeatures }
-const mockUseFeatures = vi.fn<(...args: any[]) => unknown>()
+
+const { mockUseFeatures } = vi.hoisted(() => ({
+  mockUseFeatures: vi.fn(),
+}))
+
 vi.mock('@/app/components/base/features/hooks', () => ({
-  useFeatures: (...args: any[]) => mockUseFeatures(...args),
+  useFeatures: mockUseFeatures,
 }))
 
 const mockConfigFromDebugContext = {
@@ -340,12 +363,16 @@ const mockConfigFromDebugContext = {
   supportCitationHitInfo: true,
 }
 
-const mockUseConfigFromDebugContext = vi.fn<(...args: any[]) => typeof mockConfigFromDebugContext>(() => mockConfigFromDebugContext)
-const mockUseFormattingChangedSubscription = vi.fn<(...args: any[]) => void>()
+const { mockUseConfigFromDebugContext, mockUseFormattingChangedSubscription } = vi.hoisted(() => ({
+  mockUseConfigFromDebugContext: vi.fn(),
+  mockUseFormattingChangedSubscription: vi.fn(),
+}))
+
+mockUseConfigFromDebugContext.mockReturnValue(mockConfigFromDebugContext)
 
 vi.mock('../hooks', () => ({
-  useConfigFromDebugContext: (...args: any[]) => mockUseConfigFromDebugContext(...args),
-  useFormattingChangedSubscription: (...args: any[]) => mockUseFormattingChangedSubscription(...args),
+  useConfigFromDebugContext: mockUseConfigFromDebugContext,
+  useFormattingChangedSubscription: mockUseFormattingChangedSubscription,
 }))
 
 const mockSetShowAppConfigureFeaturesModal = vi.fn()

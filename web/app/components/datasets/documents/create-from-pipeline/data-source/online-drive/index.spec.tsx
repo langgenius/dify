@@ -34,23 +34,32 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 // Mock ssePost - API service requires mocking
-const mockSsePost = vi.fn()
+const { mockSsePost } = vi.hoisted(() => ({
+  mockSsePost: vi.fn(),
+}))
+
 vi.mock('@/service/base', () => ({
-  ssePost: (...args: any[]) => mockSsePost(...args),
+  ssePost: mockSsePost,
 }))
 
 // Mock useGetDataSourceAuth - API service hook requires mocking
-const mockUseGetDataSourceAuth = vi.fn()
+const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
+  mockUseGetDataSourceAuth: vi.fn(),
+}))
+
 vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: (params: any) => mockUseGetDataSourceAuth(params),
+  useGetDataSourceAuth: mockUseGetDataSourceAuth,
 }))
 
 // Mock Toast
-const mockToastNotify = vi.fn()
+const { mockToastNotify } = vi.hoisted(() => ({
+  mockToastNotify: vi.fn(),
+}))
+
 vi.mock('@/app/components/base/toast', () => ({
   __esModule: true,
   default: {
-    notify: (...args: any[]) => mockToastNotify(...args),
+    notify: mockToastNotify,
   },
 }))
 

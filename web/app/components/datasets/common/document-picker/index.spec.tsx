@@ -38,13 +38,18 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
 let mockDocumentListData: { data: SimpleDocumentDetail[] } | undefined
 let mockDocumentListLoading = false
 
-const mockUseDocumentList = vi.fn<(...args: any[]) => { data: typeof mockDocumentListData; isLoading: boolean }>(() => ({
+const { mockUseDocumentList } = vi.hoisted(() => ({
+  mockUseDocumentList: vi.fn(),
+}))
+
+// Set up the implementation after variables are defined
+mockUseDocumentList.mockImplementation(() => ({
   data: mockDocumentListLoading ? undefined : mockDocumentListData,
   isLoading: mockDocumentListLoading,
 }))
 
 vi.mock('@/service/knowledge/use-document', () => ({
-  useDocumentList: (...args: any[]) => mockUseDocumentList(...args),
+  useDocumentList: mockUseDocumentList,
 }))
 
 // Mock icons - mock all remixicon components used in the component tree

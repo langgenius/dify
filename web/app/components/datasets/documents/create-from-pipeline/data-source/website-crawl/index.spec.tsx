@@ -31,23 +31,32 @@ vi.mock('@/context/modal-context', () => ({
 }))
 
 // Mock ssePost - API service requires mocking
-const mockSsePost = vi.fn()
+const { mockSsePost } = vi.hoisted(() => ({
+  mockSsePost: vi.fn(),
+}))
+
 vi.mock('@/service/base', () => ({
-  ssePost: (...args: any[]) => mockSsePost(...args),
+  ssePost: mockSsePost,
 }))
 
 // Mock useGetDataSourceAuth - API service hook requires mocking
-const mockUseGetDataSourceAuth = vi.fn()
+const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
+  mockUseGetDataSourceAuth: vi.fn(),
+}))
+
 vi.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: (params: any) => mockUseGetDataSourceAuth(params),
+  useGetDataSourceAuth: mockUseGetDataSourceAuth,
 }))
 
 // Mock usePipeline hooks - API service hooks require mocking
-const mockUseDraftPipelinePreProcessingParams = vi.fn()
-const mockUsePublishedPipelinePreProcessingParams = vi.fn()
+const { mockUseDraftPipelinePreProcessingParams, mockUsePublishedPipelinePreProcessingParams } = vi.hoisted(() => ({
+  mockUseDraftPipelinePreProcessingParams: vi.fn(),
+  mockUsePublishedPipelinePreProcessingParams: vi.fn(),
+}))
+
 vi.mock('@/service/use-pipeline', () => ({
-  useDraftPipelinePreProcessingParams: (...args: any[]) => mockUseDraftPipelinePreProcessingParams(...args),
-  usePublishedPipelinePreProcessingParams: (...args: any[]) => mockUsePublishedPipelinePreProcessingParams(...args),
+  useDraftPipelinePreProcessingParams: mockUseDraftPipelinePreProcessingParams,
+  usePublishedPipelinePreProcessingParams: mockUsePublishedPipelinePreProcessingParams,
 }))
 
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)
