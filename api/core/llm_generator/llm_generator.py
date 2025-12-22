@@ -160,14 +160,11 @@ class LLMGenerator:
                 # If input is Persian, ensure candidate contains Persian-specific characters.
                 # Otherwise retry with stronger instruction.
                 if is_persian_input and not _contains_persian(candidate):
-                    logger.info(
-                        "Generated title doesn't appear to be Persian; retrying with stricter instruction"
-                    )
+                    logger.info("Generated title doesn't appear to be Persian; retrying with stricter instruction")
                     prompts = [
                         UserPromptMessage(
                             content=(
-                                prompt
-                                + "\nCRITICAL: You must output the title in Persian (Farsi) "
+                                prompt + "\nCRITICAL: You must output the title in Persian (Farsi) "
                                 "using Persian-specific letters (پ, چ, ژ, گ, ک, ی). "
                                 "Output only the JSON as specified earlier."
                             )
