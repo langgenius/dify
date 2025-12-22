@@ -27,7 +27,7 @@ import userEvent from '@testing-library/user-event'
 // They run BEFORE imports, so keep them before component imports.
 
 // i18n (automatically mocked)
-// WHY: Shared mock at web/__mocks__/react-i18next.ts is auto-loaded by Vitest setup
+// WHY: Global mock in web/vitest.setup.ts is auto-loaded by Vitest setup
 // No explicit mock needed - it returns translation keys as-is
 // Override only if custom translations are required:
 // vi.mock('react-i18next', () => ({

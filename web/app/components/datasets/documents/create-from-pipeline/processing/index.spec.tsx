@@ -9,7 +9,7 @@ import type { DocumentIndexingStatus } from '@/models/datasets'
 // Mock External Dependencies
 // ==========================================
 
-// Mock react-i18next (handled by __mocks__/react-i18next.ts but we override for custom messages)
+// Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,

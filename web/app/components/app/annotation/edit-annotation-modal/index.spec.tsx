@@ -31,7 +31,7 @@ vi.mock('@/hooks/use-timestamp', () => ({
   }),
 }))
 
-// Note: i18n is automatically mocked by Jest via __mocks__/react-i18next.ts
+// Note: i18n is automatically mocked by Vitest via web/vitest.setup.ts
 
 vi.mock('@/app/components/billing/annotation-full', () => ({
   __esModule: true,

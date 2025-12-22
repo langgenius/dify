@@ -7,7 +7,7 @@ import type { NotionPage } from '@/models/common'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 
-// Uses __mocks__/react-i18next.ts automatically
+// Uses global react-i18next mock from web/vitest.setup.ts
 
 // Mock dataset-detail context - needs mock to control return values
 const mockDocForm = vi.fn()

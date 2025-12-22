@@ -3,7 +3,7 @@ import React from 'react'
 import FilePreview from './file-preview'
 import type { CustomFile as File } from '@/models/datasets'
 
-// Uses __mocks__/react-i18next.ts automatically
+// Uses global react-i18next mock from web/vitest.setup.ts
 
 // Mock useFilePreview hook - needs to be mocked to control return values
 const mockUseFilePreview = vi.fn()

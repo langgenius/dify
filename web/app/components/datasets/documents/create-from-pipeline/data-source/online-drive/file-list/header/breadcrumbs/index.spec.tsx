@@ -6,7 +6,7 @@ import Breadcrumbs from './index'
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock store - context provider requires mocking
 const mockStoreState = {

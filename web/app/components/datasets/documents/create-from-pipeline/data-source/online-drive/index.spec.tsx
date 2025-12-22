@@ -13,7 +13,7 @@ import type { OnlineDriveData } from '@/types/pipeline'
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock useDocLink - context hook requires mocking
 const mockDocLink = vi.fn((path?: string) => `https://docs.example.com${path || ''}`)

@@ -9,7 +9,7 @@ import { recursivePushInParentDescendants } from './utils'
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock react-window FixedSizeList - renders items directly for testing
 vi.mock('react-window', () => ({

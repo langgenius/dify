@@ -5,7 +5,7 @@ import OnlineDocumentPreview from './online-document-preview'
 import type { NotionPage } from '@/models/common'
 import Toast from '@/app/components/base/toast'
 
-// Uses __mocks__/react-i18next.ts automatically
+// Uses global react-i18next mock from web/vitest.setup.ts
 
 // Spy on Toast.notify
 const toastNotifySpy = vi.spyOn(Toast, 'notify')

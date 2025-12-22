@@ -12,7 +12,7 @@ import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/ty
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock useInitialData and useConfigurations hooks
 const { mockUseInitialData, mockUseConfigurations } = vi.hoisted(() => ({

@@ -6,7 +6,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock useToolIcon - hook has complex dependencies (API calls, stores)
 const mockUseToolIcon = vi.fn()

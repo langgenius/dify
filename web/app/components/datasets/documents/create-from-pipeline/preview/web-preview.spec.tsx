@@ -3,7 +3,7 @@ import React from 'react'
 import WebsitePreview from './web-preview'
 import type { CrawlResultItem } from '@/models/datasets'
 
-// Uses __mocks__/react-i18next.ts automatically
+// Uses global react-i18next mock from web/vitest.setup.ts
 
 // Test data factory
 const createMockCrawlResult = (overrides?: Partial<CrawlResultItem>): CrawlResultItem => ({

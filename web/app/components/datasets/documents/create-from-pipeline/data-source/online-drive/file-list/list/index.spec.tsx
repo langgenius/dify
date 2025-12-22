@@ -9,7 +9,7 @@ import { OnlineDriveFileType } from '@/models/pipeline'
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock Item component for List tests - child component with complex behavior
 vi.mock('./item', () => ({

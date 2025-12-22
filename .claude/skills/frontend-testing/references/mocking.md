@@ -41,14 +41,15 @@ Only mock these categories:
 
 | Location | Purpose |
 |----------|---------|
-| `web/__mocks__/` | Reusable mocks shared across multiple test files |
+| `web/vitest.setup.ts` | Global mocks shared by all tests (for example `react-i18next`, `next/image`) |
+| `web/__mocks__/` | Reusable mock factories shared across multiple test files |
 | Test file | Test-specific mocks, inline with `vi.mock()` |
 
 ## Essential Mocks
 
-### 1. i18n (Auto-loaded via Shared Mock)
+### 1. i18n (Auto-loaded via Global Mock)
 
-A shared mock is available at `web/__mocks__/react-i18next.ts` and is auto-loaded by Vitest setup.
+A global mock is defined in `web/vitest.setup.ts` and is auto-loaded by Vitest setup.
 **No explicit mock needed** for most tests - it returns translation keys as-is.
 
 For tests requiring custom translations, override the mock:

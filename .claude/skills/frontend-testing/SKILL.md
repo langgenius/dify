@@ -319,4 +319,3 @@ For more detailed information, refer to:
 - `web/vitest.config.ts` - Vitest configuration
 - `web/vitest.setup.ts` - Test environment setup
 - `web/testing/analyze-component.js` - Component analysis tool
-- `web/__mocks__/react-i18next.ts` - Shared i18n mock (auto-loaded by Vitest setup, no explicit mock needed; override locally only for custom translations)
