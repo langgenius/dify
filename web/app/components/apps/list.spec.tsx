@@ -3,16 +3,16 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 
 // Mock next/navigation
-const mockReplace = jest.fn()
+const mockReplace = vi.fn()
 const mockRouter = { replace: mockReplace }
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
 }))
 
 // Mock app context
-const mockIsCurrentWorkspaceEditor = jest.fn(() => true)
-const mockIsCurrentWorkspaceDatasetOperator = jest.fn(() => false)
-jest.mock('@/context/app-context', () => ({
+const mockIsCurrentWorkspaceEditor = vi.fn(() => true)
+const mockIsCurrentWorkspaceDatasetOperator = vi.fn(() => false)
+vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsCurrentWorkspaceEditor(),
     isCurrentWorkspaceDatasetOperator: mockIsCurrentWorkspaceDatasetOperator(),
@@ -20,7 +20,7 @@ jest.mock('@/context/app-context', () => ({
 }))
 
 // Mock global public store
-jest.mock('@/context/global-public-context', () => ({
+vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: () => ({
     systemFeatures: {
       branding: { enabled: false },
@@ -29,8 +29,8 @@ jest.mock('@/context/global-public-context', () => ({
 }))
 
 // Mock custom hooks
-const mockSetQuery = jest.fn()
-jest.mock('./hooks/use-apps-query-state', () => ({
+const mockSetQuery = vi.fn()
+vi.mock('./hooks/use-apps-query-state', () => ({
   __esModule: true,
   default: () => ({
     query: { tagIDs: [], keywords: '', isCreatedByMe: false },
@@ -38,20 +38,20 @@ jest.mock('./hooks/use-apps-query-state', () => ({
   }),
 }))
 
-jest.mock('./hooks/use-dsl-drag-drop', () => ({
+vi.mock('./hooks/use-dsl-drag-drop', () => ({
   useDSLDragDrop: () => ({
     dragging: false,
   }),
 }))
 
-const mockSetActiveTab = jest.fn()
-jest.mock('@/hooks/use-tab-searchparams', () => ({
+const mockSetActiveTab = vi.fn()
+vi.mock('@/hooks/use-tab-searchparams', () => ({
   useTabSearchParams: () => ['all', mockSetActiveTab],
 }))
 
 // Mock service hooks
-const mockRefetch = jest.fn()
-jest.mock('@/service/use-apps', () => ({
+const mockRefetch = vi.fn()
+vi.mock('@/service/use-apps', () => ({
   useInfiniteAppList: () => ({
     data: {
       pages: [{
@@ -88,7 +88,7 @@ jest.mock('@/service/use-apps', () => ({
     },
     isLoading: false,
     isFetchingNextPage: false,
-    fetchNextPage: jest.fn(),
+    fetchNextPage: vi.fn(),
     hasNextPage: false,
     error: null,
     refetch: mockRefetch,
@@ -96,45 +96,47 @@ jest.mock('@/service/use-apps', () => ({
 }))
 
 // Mock tag store
-jest.mock('@/app/components/base/tag-management/store', () => ({
+vi.mock('@/app/components/base/tag-management/store', () => ({
   useStore: () => false,
 }))
 
 // Mock config
-jest.mock('@/config', () => ({
+vi.mock('@/config', () => ({
   NEED_REFRESH_APP_LIST_KEY: 'needRefreshAppList',
 }))
 
 // Mock pay hook
-jest.mock('@/hooks/use-pay', () => ({
+vi.mock('@/hooks/use-pay', () => ({
   CheckModal: () => null,
 }))
 
 // Mock debounce hook
-jest.mock('ahooks', () => ({
+vi.mock('ahooks', () => ({
   useDebounceFn: (fn: () => void) => ({ run: fn }),
 }))
 
 // Mock dynamic imports
-jest.mock('next/dynamic', () => {
+vi.mock('next/dynamic', () => {
   const React = require('react')
-  return (importFn: () => Promise<any>) => {
-    const fnString = importFn.toString()
+  return {
+    default: (importFn: () => Promise<any>) => {
+      const fnString = importFn.toString()
 
-    if (fnString.includes('tag-management')) {
-      return function MockTagManagement() {
-        return React.createElement('div', { 'data-testid': 'tag-management-modal' })
+      if (fnString.includes('tag-management')) {
+        return function MockTagManagement() {
+          return React.createElement('div', { 'data-testid': 'tag-management-modal' })
+        }
       }
-    }
-    if (fnString.includes('create-from-dsl-modal')) {
-      return function MockCreateFromDSLModal({ show, onClose }: any) {
-        if (!show) return null
-        return React.createElement('div', { 'data-testid': 'create-dsl-modal' },
-          React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'),
-        )
+      if (fnString.includes('create-from-dsl-modal')) {
+        return function MockCreateFromDSLModal({ show, onClose }: any) {
+          if (!show) return null
+          return React.createElement('div', { 'data-testid': 'create-dsl-modal' },
+            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'),
+          )
+        }
       }
-    }
-    return () => null
+      return () => null
+    },
   }
 })
 
@@ -143,7 +145,7 @@ jest.mock('next/dynamic', () => {
  * These mocks isolate the List component's behavior from its children.
  * Each child component (AppCard, NewAppCard, Empty, Footer) has its own dedicated tests.
  */
-jest.mock('./app-card', () => ({
+vi.mock('./app-card', () => ({
   __esModule: true,
   default: ({ app }: any) => {
     const React = require('react')
@@ -151,14 +153,16 @@ jest.mock('./app-card', () => ({
   },
 }))
 
-jest.mock('./new-app-card', () => {
+vi.mock('./new-app-card', () => {
   const React = require('react')
-  return React.forwardRef((_props: any, _ref: any) => {
-    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
-  })
+  return {
+    default: React.forwardRef((_props: any, _ref: any) => {
+      return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
+    }),
+  }
 })
 
-jest.mock('./empty', () => ({
+vi.mock('./empty', () => ({
   __esModule: true,
   default: () => {
     const React = require('react')
@@ -166,7 +170,7 @@ jest.mock('./empty', () => ({
   },
 }))
 
-jest.mock('./footer', () => ({
+vi.mock('./footer', () => ({
   __esModule: true,
   default: () => {
     const React = require('react')
@@ -185,7 +189,7 @@ jest.mock('./footer', () => ({
  *
  * These mocks preserve the component's props interface to test List's integration correctly.
  */
-jest.mock('@/app/components/base/tab-slider-new', () => ({
+vi.mock('@/app/components/base/tab-slider-new', () => ({
   __esModule: true,
   default: ({ value, onChange, options }: any) => {
     const React = require('react')
@@ -203,7 +207,7 @@ jest.mock('@/app/components/base/tab-slider-new', () => ({
   },
 }))
 
-jest.mock('@/app/components/base/input', () => ({
+vi.mock('@/app/components/base/input', () => ({
   __esModule: true,
   default: ({ value, onChange, onClear }: any) => {
     const React = require('react')
@@ -223,7 +227,7 @@ jest.mock('@/app/components/base/input', () => ({
   },
 }))
 
-jest.mock('@/app/components/base/tag-management/filter', () => ({
+vi.mock('@/app/components/base/tag-management/filter', () => ({
   __esModule: true,
   default: ({ value, onChange }: any) => {
     const React = require('react')
@@ -236,7 +240,7 @@ jest.mock('@/app/components/base/tag-management/filter', () => ({
   },
 }))
 
-jest.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
+vi.mock('@/app/components/datasets/create/website/base/checkbox-with-label', () => ({
   __esModule: true,
   default: ({ label, isChecked, onChange }: any) => {
     const React = require('react')
@@ -259,7 +263,7 @@ import List from './list'
 
 describe('List', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockIsCurrentWorkspaceEditor.mockReturnValue(true)
     mockIsCurrentWorkspaceDatasetOperator.mockReturnValue(false)
     localStorage.clear()

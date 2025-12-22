@@ -15,7 +15,7 @@ describe('SegmentedControl', () => {
     { value: 'option3', text: 'Option 3' },
   ]
 
-  const onSelectMock = jest.fn((value: string | number | symbol) => value)
+  const onSelectMock = vi.fn((value: string | number | symbol) => value)
 
   beforeEach(() => {
     onSelectMock.mockClear()

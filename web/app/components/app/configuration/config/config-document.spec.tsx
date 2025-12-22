@@ -5,18 +5,18 @@ import ConfigDocument from './config-document'
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
-const mockUseContext = jest.fn()
-jest.mock('use-context-selector', () => {
-  const actual = jest.requireActual('use-context-selector')
+const mockUseContext = vi.fn()
+vi.mock('use-context-selector', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('use-context-selector')>()
   return {
     ...actual,
     useContext: (context: unknown) => mockUseContext(context),
   }
 })
 
-const mockUseFeatures = jest.fn()
-const mockUseFeaturesStore = jest.fn()
-jest.mock('@/app/components/base/features/hooks', () => ({
+const mockUseFeatures = vi.fn()
+const mockUseFeaturesStore = vi.fn()
+vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: (selector: (state: FeatureStoreState) => any) => mockUseFeatures(selector),
   useFeaturesStore: () => mockUseFeaturesStore(),
 }))
@@ -27,13 +27,13 @@ type SetupOptions = {
 }
 
 let mockFeatureStoreState: FeatureStoreState
-let mockSetFeatures: jest.Mock
+let mockSetFeatures: vi.Mock
 const mockStore = {
-  getState: jest.fn<FeatureStoreState, []>(() => mockFeatureStoreState),
+  getState: vi.fn<FeatureStoreState, []>(() => mockFeatureStoreState),
 }
 
 const setupFeatureStore = (allowedTypes: SupportUploadFileTypes[] = []) => {
-  mockSetFeatures = jest.fn()
+  mockSetFeatures = vi.fn()
   mockFeatureStoreState = {
     features: {
       file: {
@@ -43,7 +43,7 @@ const setupFeatureStore = (allowedTypes: SupportUploadFileTypes[] = []) => {
     },
     setFeatures: mockSetFeatures,
     showFeaturesModal: false,
-    setShowFeaturesModal: jest.fn(),
+    setShowFeaturesModal: vi.fn(),
   }
   mockStore.getState.mockImplementation(() => mockFeatureStoreState)
   mockUseFeaturesStore.mockReturnValue(mockStore)
@@ -68,7 +68,7 @@ const renderConfigDocument = (options: SetupOptions = {}) => {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 describe('ConfigDocument', () => {

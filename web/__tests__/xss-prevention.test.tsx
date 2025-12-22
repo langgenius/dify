@@ -12,7 +12,10 @@ import BlockInput from '../app/components/base/block-input'
 import SupportVarInput from '../app/components/workflow/nodes/_base/components/support-var-input'
 
 // Mock styles
-jest.mock('../app/components/app/configuration/base/var-highlight/style.module.css', () => ({
+vi.mock('../app/components/app/configuration/base/var-highlight/style.module.css', () => ({
+  default: {
+    item: 'mock-item-class',
+  },
   item: 'mock-item-class',
 }))
 

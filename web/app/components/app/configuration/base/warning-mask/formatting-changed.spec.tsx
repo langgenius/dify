@@ -4,8 +4,8 @@ import FormattingChanged from './formatting-changed'
 
 describe('FormattingChanged WarningMask', () => {
   test('should display translation text and both actions', () => {
-    const onConfirm = jest.fn()
-    const onCancel = jest.fn()
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
 
     render(
       <FormattingChanged
@@ -21,8 +21,8 @@ describe('FormattingChanged WarningMask', () => {
   })
 
   test('should call callbacks when buttons are clicked', () => {
-    const onConfirm = jest.fn()
-    const onCancel = jest.fn()
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
     render(
       <FormattingChanged
         onConfirm={onConfirm}

@@ -4,8 +4,8 @@ import { AppModeEnum } from '@/types/app'
 import { AccessMode } from '@/models/access-control'
 
 // Mock next/navigation
-const mockPush = jest.fn()
-jest.mock('next/navigation', () => ({
+const mockPush = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
@@ -13,8 +13,8 @@ jest.mock('next/navigation', () => ({
 
 // Mock use-context-selector with stable mockNotify reference for tracking calls
 // Include createContext for components that use it (like Toast)
-const mockNotify = jest.fn()
-jest.mock('use-context-selector', () => {
+const mockNotify = vi.fn()
+vi.mock('use-context-selector', () => {
   const React = require('react')
   return {
     createContext: (defaultValue: any) => React.createContext(defaultValue),
@@ -28,22 +28,22 @@ jest.mock('use-context-selector', () => {
 })
 
 // Mock app context
-jest.mock('@/context/app-context', () => ({
+vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: true,
   }),
 }))
 
 // Mock provider context
-const mockOnPlanInfoChanged = jest.fn()
-jest.mock('@/context/provider-context', () => ({
+const mockOnPlanInfoChanged = vi.fn()
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     onPlanInfoChanged: mockOnPlanInfoChanged,
   }),
 }))
 
 // Mock global public store
-jest.mock('@/context/global-public-context', () => ({
+vi.mock('@/context/global-public-context', () => ({
   useGlobalPublicStore: (selector: (s: any) => any) => selector({
     systemFeatures: {
       webapp_auth: { enabled: false },
@@ -56,22 +56,22 @@ jest.mock('@/context/global-public-context', () => ({
 import * as appsService from '@/service/apps'
 import * as workflowService from '@/service/workflow'
 
-jest.mock('@/service/apps', () => ({
-  deleteApp: jest.fn(() => Promise.resolve()),
-  updateAppInfo: jest.fn(() => Promise.resolve()),
-  copyApp: jest.fn(() => Promise.resolve({ id: 'new-app-id' })),
-  exportAppConfig: jest.fn(() => Promise.resolve({ data: 'yaml: content' })),
+vi.mock('@/service/apps', () => ({
+  deleteApp: vi.fn(() => Promise.resolve()),
+  updateAppInfo: vi.fn(() => Promise.resolve()),
+  copyApp: vi.fn(() => Promise.resolve({ id: 'new-app-id' })),
+  exportAppConfig: vi.fn(() => Promise.resolve({ data: 'yaml: content' })),
 }))
 
-jest.mock('@/service/workflow', () => ({
-  fetchWorkflowDraft: jest.fn(() => Promise.resolve({ environment_variables: [] })),
+vi.mock('@/service/workflow', () => ({
+  fetchWorkflowDraft: vi.fn(() => Promise.resolve({ environment_variables: [] })),
 }))
 
-jest.mock('@/service/explore', () => ({
-  fetchInstalledAppList: jest.fn(() => Promise.resolve({ installed_apps: [{ id: 'installed-1' }] })),
+vi.mock('@/service/explore', () => ({
+  fetchInstalledAppList: vi.fn(() => Promise.resolve({ installed_apps: [{ id: 'installed-1' }] })),
 }))
 
-jest.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control', () => ({
   useGetUserCanAccessApp: () => ({
     data: { result: true },
     isLoading: false,
@@ -79,102 +79,105 @@ jest.mock('@/service/access-control', () => ({
 }))
 
 // Mock hooks
-jest.mock('@/hooks/use-async-window-open', () => ({
-  useAsyncWindowOpen: () => jest.fn(),
+vi.mock('@/hooks/use-async-window-open', () => ({
+  useAsyncWindowOpen: () => vi.fn(),
 }))
 
 // Mock utils
-jest.mock('@/utils/app-redirection', () => ({
-  getRedirection: jest.fn(),
+const mockGetRedirection = vi.fn()
+vi.mock('@/utils/app-redirection', () => ({
+  getRedirection: (...args: any[]) => mockGetRedirection(...args),
 }))
 
-jest.mock('@/utils/var', () => ({
+vi.mock('@/utils/var', () => ({
   basePath: '',
 }))
 
-jest.mock('@/utils/time', () => ({
+vi.mock('@/utils/time', () => ({
   formatTime: () => 'Jan 1, 2024',
 }))
 
 // Mock dynamic imports
-jest.mock('next/dynamic', () => {
+vi.mock('next/dynamic', () => {
   const React = require('react')
-  return (importFn: () => Promise<any>) => {
-    const fnString = importFn.toString()
+  return {
+    default: (importFn: () => Promise<any>) => {
+      const fnString = importFn.toString()
 
-    if (fnString.includes('create-app-modal') || fnString.includes('explore/create-app-modal')) {
-      return function MockEditAppModal({ show, onHide, onConfirm }: any) {
-        if (!show) return null
-        return React.createElement('div', { 'data-testid': 'edit-app-modal' },
-          React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-edit-modal' }, 'Close'),
-          React.createElement('button', {
-            'onClick': () => onConfirm?.({
-              name: 'Updated App',
-              icon_type: 'emoji',
-              icon: '🎯',
-              icon_background: '#FFEAD5',
-              description: 'Updated description',
-              use_icon_as_answer_icon: false,
-              max_active_requests: null,
-            }),
-            'data-testid': 'confirm-edit-modal',
-          }, 'Confirm'),
-        )
+      if (fnString.includes('create-app-modal') || fnString.includes('explore/create-app-modal')) {
+        return function MockEditAppModal({ show, onHide, onConfirm }: any) {
+          if (!show) return null
+          return React.createElement('div', { 'data-testid': 'edit-app-modal' },
+            React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-edit-modal' }, 'Close'),
+            React.createElement('button', {
+              'onClick': () => onConfirm?.({
+                name: 'Updated App',
+                icon_type: 'emoji',
+                icon: '🎯',
+                icon_background: '#FFEAD5',
+                description: 'Updated description',
+                use_icon_as_answer_icon: false,
+                max_active_requests: null,
+              }),
+              'data-testid': 'confirm-edit-modal',
+            }, 'Confirm'),
+          )
+        }
       }
-    }
-    if (fnString.includes('duplicate-modal')) {
-      return function MockDuplicateAppModal({ show, onHide, onConfirm }: any) {
-        if (!show) return null
-        return React.createElement('div', { 'data-testid': 'duplicate-modal' },
-          React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-duplicate-modal' }, 'Close'),
-          React.createElement('button', {
-            'onClick': () => onConfirm?.({
-              name: 'Copied App',
-              icon_type: 'emoji',
-              icon: '📋',
-              icon_background: '#E4FBCC',
-            }),
-            'data-testid': 'confirm-duplicate-modal',
-          }, 'Confirm'),
-        )
+      if (fnString.includes('duplicate-modal')) {
+        return function MockDuplicateAppModal({ show, onHide, onConfirm }: any) {
+          if (!show) return null
+          return React.createElement('div', { 'data-testid': 'duplicate-modal' },
+            React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-duplicate-modal' }, 'Close'),
+            React.createElement('button', {
+              'onClick': () => onConfirm?.({
+                name: 'Copied App',
+                icon_type: 'emoji',
+                icon: '📋',
+                icon_background: '#E4FBCC',
+              }),
+              'data-testid': 'confirm-duplicate-modal',
+            }, 'Confirm'),
+          )
+        }
       }
-    }
-    if (fnString.includes('switch-app-modal')) {
-      return function MockSwitchAppModal({ show, onClose, onSuccess }: any) {
-        if (!show) return null
-        return React.createElement('div', { 'data-testid': 'switch-modal' },
-          React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-switch-modal' }, 'Close'),
-          React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'confirm-switch-modal' }, 'Switch'),
-        )
+      if (fnString.includes('switch-app-modal')) {
+        return function MockSwitchAppModal({ show, onClose, onSuccess }: any) {
+          if (!show) return null
+          return React.createElement('div', { 'data-testid': 'switch-modal' },
+            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-switch-modal' }, 'Close'),
+            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'confirm-switch-modal' }, 'Switch'),
+          )
+        }
       }
-    }
-    if (fnString.includes('base/confirm')) {
-      return function MockConfirm({ isShow, onCancel, onConfirm }: any) {
-        if (!isShow) return null
-        return React.createElement('div', { 'data-testid': 'confirm-dialog' },
-          React.createElement('button', { 'onClick': onCancel, 'data-testid': 'cancel-confirm' }, 'Cancel'),
-          React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-confirm' }, 'Confirm'),
-        )
+      if (fnString.includes('base/confirm')) {
+        return function MockConfirm({ isShow, onCancel, onConfirm }: any) {
+          if (!isShow) return null
+          return React.createElement('div', { 'data-testid': 'confirm-dialog' },
+            React.createElement('button', { 'onClick': onCancel, 'data-testid': 'cancel-confirm' }, 'Cancel'),
+            React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-confirm' }, 'Confirm'),
+          )
+        }
       }
-    }
-    if (fnString.includes('dsl-export-confirm-modal')) {
-      return function MockDSLExportModal({ onClose, onConfirm }: any) {
-        return React.createElement('div', { 'data-testid': 'dsl-export-modal' },
-          React.createElement('button', { 'onClick': () => onClose?.(), 'data-testid': 'close-dsl-export' }, 'Close'),
-          React.createElement('button', { 'onClick': () => onConfirm?.(true), 'data-testid': 'confirm-dsl-export' }, 'Export with secrets'),
-          React.createElement('button', { 'onClick': () => onConfirm?.(false), 'data-testid': 'confirm-dsl-export-no-secrets' }, 'Export without secrets'),
-        )
+      if (fnString.includes('dsl-export-confirm-modal')) {
+        return function MockDSLExportModal({ onClose, onConfirm }: any) {
+          return React.createElement('div', { 'data-testid': 'dsl-export-modal' },
+            React.createElement('button', { 'onClick': () => onClose?.(), 'data-testid': 'close-dsl-export' }, 'Close'),
+            React.createElement('button', { 'onClick': () => onConfirm?.(true), 'data-testid': 'confirm-dsl-export' }, 'Export with secrets'),
+            React.createElement('button', { 'onClick': () => onConfirm?.(false), 'data-testid': 'confirm-dsl-export-no-secrets' }, 'Export without secrets'),
+          )
+        }
       }
-    }
-    if (fnString.includes('app-access-control')) {
-      return function MockAccessControl({ onClose, onConfirm }: any) {
-        return React.createElement('div', { 'data-testid': 'access-control-modal' },
-          React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-access-control' }, 'Close'),
-          React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-access-control' }, 'Confirm'),
-        )
+      if (fnString.includes('app-access-control')) {
+        return function MockAccessControl({ onClose, onConfirm }: any) {
+          return React.createElement('div', { 'data-testid': 'access-control-modal' },
+            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-access-control' }, 'Close'),
+            React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-access-control' }, 'Confirm'),
+          )
+        }
       }
-    }
-    return () => null
+      return () => null
+    },
   }
 })
 
@@ -189,7 +192,7 @@ jest.mock('next/dynamic', () => {
  */
 
 // Popover uses portals for positioning which requires mocking in happy-dom environment
-jest.mock('@/app/components/base/popover', () => {
+vi.mock('@/app/components/base/popover', () => {
   const MockPopover = ({ htmlContent, btnElement, btnClassName }: any) => {
     const [isOpen, setIsOpen] = React.useState(false)
     // Call btnClassName to cover lines 430-433
@@ -211,13 +214,13 @@ jest.mock('@/app/components/base/popover', () => {
 })
 
 // Tooltip uses portals for positioning - minimal mock preserving popup content as title attribute
-jest.mock('@/app/components/base/tooltip', () => ({
+vi.mock('@/app/components/base/tooltip', () => ({
   __esModule: true,
   default: ({ children, popupContent }: any) => React.createElement('div', { title: popupContent }, children),
 }))
 
 // TagSelector imports service/tag which depends on ky ES module - mock to avoid Jest ES module issues
-jest.mock('@/app/components/base/tag-management/selector', () => ({
+vi.mock('@/app/components/base/tag-management/selector', () => ({
   __esModule: true,
   default: ({ tags }: any) => {
     const React = require('react')
@@ -228,7 +231,7 @@ jest.mock('@/app/components/base/tag-management/selector', () => ({
 }))
 
 // AppTypeIcon has complex icon mapping logic - mock for focused component testing
-jest.mock('@/app/components/app/type-selector', () => ({
+vi.mock('@/app/components/app/type-selector', () => ({
   AppTypeIcon: () => React.createElement('div', { 'data-testid': 'app-type-icon' }),
 }))
 
@@ -274,10 +277,10 @@ const createMockApp = (overrides: Record<string, any> = {}) => ({
 
 describe('AppCard', () => {
   const mockApp = createMockApp()
-  const mockOnRefresh = jest.fn()
+  const mockOnRefresh = vi.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -382,11 +385,10 @@ describe('AppCard', () => {
     })
 
     it('should call getRedirection on card click', () => {
-      const { getRedirection } = require('@/utils/app-redirection')
       render(<AppCard app={mockApp} />)
       const card = screen.getByTitle('Test App').closest('[class*="cursor-pointer"]')!
       fireEvent.click(card)
-      expect(getRedirection).toHaveBeenCalledWith(true, mockApp, mockPush)
+      expect(mockGetRedirection).toHaveBeenCalledWith(true, mockApp, mockPush)
     })
   })
 
@@ -594,7 +596,7 @@ describe('AppCard', () => {
     })
 
     it('should handle delete failure', async () => {
-      (appsService.deleteApp as jest.Mock).mockRejectedValueOnce(new Error('Delete failed'))
+      (appsService.deleteApp as vi.Mock).mockRejectedValueOnce(new Error('Delete failed'))
 
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
 
@@ -673,7 +675,7 @@ describe('AppCard', () => {
     })
 
     it('should handle copy failure', async () => {
-      (appsService.copyApp as jest.Mock).mockRejectedValueOnce(new Error('Copy failed'))
+      (appsService.copyApp as vi.Mock).mockRejectedValueOnce(new Error('Copy failed'))
 
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
 
@@ -708,7 +710,7 @@ describe('AppCard', () => {
     })
 
     it('should handle export failure', async () => {
-      (appsService.exportAppConfig as jest.Mock).mockRejectedValueOnce(new Error('Export failed'))
+      (appsService.exportAppConfig as vi.Mock).mockRejectedValueOnce(new Error('Export failed'))
 
       render(<AppCard app={mockApp} />)
 
@@ -822,7 +824,7 @@ describe('AppCard', () => {
     })
 
     it('should show DSL export modal when workflow has secret variables', async () => {
-      (workflowService.fetchWorkflowDraft as jest.Mock).mockResolvedValueOnce({
+      (workflowService.fetchWorkflowDraft as vi.Mock).mockResolvedValueOnce({
         environment_variables: [{ value_type: 'secret', name: 'API_KEY' }],
       })
 
@@ -923,7 +925,7 @@ describe('AppCard', () => {
     })
 
     it('should handle edit failure', async () => {
-      (appsService.updateAppInfo as jest.Mock).mockRejectedValueOnce(new Error('Edit failed'))
+      (appsService.updateAppInfo as vi.Mock).mockRejectedValueOnce(new Error('Edit failed'))
 
       render(<AppCard app={mockApp} onRefresh={mockOnRefresh} />)
 
@@ -981,7 +983,7 @@ describe('AppCard', () => {
     })
 
     it('should handle workflow draft fetch failure during export', async () => {
-      (workflowService.fetchWorkflowDraft as jest.Mock).mockRejectedValueOnce(new Error('Fetch failed'))
+      (workflowService.fetchWorkflowDraft as vi.Mock).mockRejectedValueOnce(new Error('Fetch failed'))
 
       const workflowApp = { ...mockApp, mode: AppModeEnum.WORKFLOW }
       render(<AppCard app={workflowApp} />)

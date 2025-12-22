@@ -14,18 +14,18 @@ import { act, renderHook } from '@testing-library/react'
 import { useTabSearchParams } from './use-tab-searchparams'
 
 // Mock Next.js navigation hooks
-const mockPush = jest.fn()
-const mockReplace = jest.fn()
+const mockPush = vi.fn()
+const mockReplace = vi.fn()
 const mockPathname = '/test-path'
 const mockSearchParams = new URLSearchParams()
 
-jest.mock('next/navigation', () => ({
-  usePathname: jest.fn(() => mockPathname),
-  useRouter: jest.fn(() => ({
+vi.mock('next/navigation', () => ({
+  usePathname: vi.fn(() => mockPathname),
+  useRouter: vi.fn(() => ({
     push: mockPush,
     replace: mockReplace,
   })),
-  useSearchParams: jest.fn(() => mockSearchParams),
+  useSearchParams: vi.fn(() => mockSearchParams),
 }))
 
 // Import after mocks
@@ -33,7 +33,7 @@ import { usePathname } from 'next/navigation'
 
 describe('useTabSearchParams', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockSearchParams.delete('category')
     mockSearchParams.delete('tab')
   })
@@ -329,7 +329,7 @@ describe('useTabSearchParams', () => {
      * Should use window.location.pathname as fallback
      */
     it('should fallback to window.location.pathname when hook pathname is null', () => {
-      ;(usePathname as jest.Mock).mockReturnValue(null)
+      ;(usePathname as vi.Mock).mockReturnValue(null)
 
       // Mock window.location.pathname
       Object.defineProperty(window, 'location', {
@@ -349,7 +349,7 @@ describe('useTabSearchParams', () => {
       expect(mockPush).toHaveBeenCalledWith('/fallback-path?category=settings', { scroll: false })
 
       // Restore mock
-      ;(usePathname as jest.Mock).mockReturnValue(mockPathname)
+      ;(usePathname as vi.Mock).mockReturnValue(mockPathname)
     })
   })
 
@@ -421,7 +421,7 @@ describe('useTabSearchParams', () => {
      * Should handle nested routes and existing query params
      */
     it('should work with complex pathnames', () => {
-      ;(usePathname as jest.Mock).mockReturnValue('/app/123/settings')
+      ;(usePathname as vi.Mock).mockReturnValue('/app/123/settings')
 
       const { result } = renderHook(() =>
         useTabSearchParams({ defaultTab: 'overview' }),
@@ -435,7 +435,7 @@ describe('useTabSearchParams', () => {
       expect(mockPush).toHaveBeenCalledWith('/app/123/settings?category=advanced', { scroll: false })
 
       // Restore mock
-      ;(usePathname as jest.Mock).mockReturnValue(mockPathname)
+      ;(usePathname as vi.Mock).mockReturnValue(mockPathname)
     })
   })
 

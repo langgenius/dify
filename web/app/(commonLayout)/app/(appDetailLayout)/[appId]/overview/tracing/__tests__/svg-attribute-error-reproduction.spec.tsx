@@ -2,6 +2,8 @@ import React from 'react'
 import { render } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { OpikIconBig } from '@/app/components/base/icons/src/public/tracing'
+import { normalizeAttrs } from '@/app/components/base/icons/utils'
+import iconData from '@/app/components/base/icons/src/public/tracing/OpikIconBig.json'
 
 describe('SVG Attribute Error Reproduction', () => {
   // Capture console errors
@@ -10,7 +12,7 @@ describe('SVG Attribute Error Reproduction', () => {
 
   beforeEach(() => {
     errorMessages = []
-    console.error = jest.fn((message) => {
+    console.error = vi.fn((message) => {
       errorMessages.push(message)
       originalError(message)
     })
@@ -53,9 +55,6 @@ describe('SVG Attribute Error Reproduction', () => {
 
   it('should analyze the SVG structure causing the errors', () => {
     console.log('\n=== ANALYZING SVG STRUCTURE ===')
-
-    // Import the JSON data directly
-    const iconData = require('@/app/components/base/icons/src/public/tracing/OpikIconBig.json')
 
     console.log('Icon structure analysis:')
     console.log('- Root element:', iconData.icon.name)
@@ -112,8 +111,6 @@ describe('SVG Attribute Error Reproduction', () => {
 
   it('should test the normalizeAttrs function behavior', () => {
     console.log('\n=== TESTING normalizeAttrs FUNCTION ===')
-
-    const { normalizeAttrs } = require('@/app/components/base/icons/utils')
 
     const testAttributes = {
       'inkscape:showpageshadow': '2',

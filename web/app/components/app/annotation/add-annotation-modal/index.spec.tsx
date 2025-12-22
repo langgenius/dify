@@ -3,21 +3,23 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import AddAnnotationModal from './index'
 import { useProviderContext } from '@/context/provider-context'
 
-jest.mock('@/context/provider-context', () => ({
-  useProviderContext: jest.fn(),
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(),
 }))
 
-const mockToastNotify = jest.fn()
-jest.mock('@/app/components/base/toast', () => ({
+const mockToastNotify = vi.fn()
+vi.mock('@/app/components/base/toast', () => ({
   __esModule: true,
   default: {
-    notify: jest.fn(args => mockToastNotify(args)),
+    notify: vi.fn(args => mockToastNotify(args)),
   },
 }))
 
-jest.mock('@/app/components/billing/annotation-full', () => () => <div data-testid="annotation-full" />)
+vi.mock('@/app/components/billing/annotation-full', () => ({
+  default: () => <div data-testid="annotation-full" />,
+}))
 
-const mockUseProviderContext = useProviderContext as jest.Mock
+const mockUseProviderContext = useProviderContext as vi.Mock
 
 const getProviderContext = ({ usage = 0, total = 10, enableBilling = false } = {}) => ({
   plan: {
@@ -30,12 +32,12 @@ const getProviderContext = ({ usage = 0, total = 10, enableBilling = false } = {
 describe('AddAnnotationModal', () => {
   const baseProps = {
     isShow: true,
-    onHide: jest.fn(),
-    onAdd: jest.fn(),
+    onHide: vi.fn(),
+    onAdd: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUseProviderContext.mockReturnValue(getProviderContext())
   })
 
@@ -78,7 +80,7 @@ describe('AddAnnotationModal', () => {
   })
 
   test('should call onAdd with form values when create next enabled', async () => {
-    const onAdd = jest.fn().mockResolvedValue(undefined)
+    const onAdd = vi.fn().mockResolvedValue(undefined)
     render(<AddAnnotationModal {...baseProps} onAdd={onAdd} />)
 
     typeQuestion('Question value')
@@ -93,7 +95,7 @@ describe('AddAnnotationModal', () => {
   })
 
   test('should reset fields after saving when create next enabled', async () => {
-    const onAdd = jest.fn().mockResolvedValue(undefined)
+    const onAdd = vi.fn().mockResolvedValue(undefined)
     render(<AddAnnotationModal {...baseProps} onAdd={onAdd} />)
 
     typeQuestion('Question value')
@@ -133,7 +135,7 @@ describe('AddAnnotationModal', () => {
   })
 
   test('should close modal when save completes and create next unchecked', async () => {
-    const onAdd = jest.fn().mockResolvedValue(undefined)
+    const onAdd = vi.fn().mockResolvedValue(undefined)
     render(<AddAnnotationModal {...baseProps} onAdd={onAdd} />)
 
     typeQuestion('Q')

@@ -9,7 +9,7 @@ import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
-jest.mock('../settings-modal', () => ({
+vi.mock('../settings-modal', () => ({
   __esModule: true,
   default: ({ onSave, onCancel, currentDataset }: any) => (
     <div>
@@ -20,16 +20,16 @@ jest.mock('../settings-modal', () => ({
   ),
 }))
 
-jest.mock('@/hooks/use-breakpoints', () => {
-  const actual = jest.requireActual('@/hooks/use-breakpoints')
+vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
   return {
     __esModule: true,
     ...actual,
-    default: jest.fn(() => actual.MediaType.pc),
+    default: vi.fn(() => actual.MediaType.pc),
   }
 })
 
-const mockedUseBreakpoints = useBreakpoints as jest.MockedFunction<typeof useBreakpoints>
+const mockedUseBreakpoints = useBreakpoints as vi.MockedFunction<typeof useBreakpoints>
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -123,8 +123,8 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => {
 }
 
 const renderItem = (config: DataSet, props?: Partial<React.ComponentProps<typeof Item>>) => {
-  const onSave = jest.fn()
-  const onRemove = jest.fn()
+  const onSave = vi.fn()
+  const onRemove = vi.fn()
 
   render(
     <Item
@@ -140,7 +140,7 @@ const renderItem = (config: DataSet, props?: Partial<React.ComponentProps<typeof
 
 describe('dataset-config/card-item', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockedUseBreakpoints.mockReturnValue(MediaType.pc)
   })
 

@@ -6,8 +6,8 @@ import IconBase from './IconBase'
 import * as utils from './utils'
 
 // Mock the utils module
-jest.mock('./utils', () => ({
-  generate: jest.fn((icon, key, props) => (
+vi.mock('./utils', () => ({
+  generate: vi.fn((icon, key, props) => (
     <svg
       data-testid="mock-svg"
       key={key}
@@ -25,7 +25,7 @@ describe('IconBase Component', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('renders properly with required props', () => {
@@ -48,7 +48,7 @@ describe('IconBase Component', () => {
   })
 
   it('handles onClick events', () => {
-    const handleClick = jest.fn()
+    const handleClick = vi.fn()
     render(<IconBase data={mockData} onClick={handleClick} />)
     const svg = screen.getByTestId('mock-svg')
     fireEvent.click(svg)

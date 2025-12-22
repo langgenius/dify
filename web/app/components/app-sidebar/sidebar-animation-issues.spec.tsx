@@ -108,7 +108,7 @@ const MockAppInfo = ({ expand }: { expand: boolean }) => {
 describe('Sidebar Animation Issues Reproduction', () => {
   beforeEach(() => {
     // Mock getBoundingClientRect for position testing
-    Element.prototype.getBoundingClientRect = jest.fn(() => ({
+    Element.prototype.getBoundingClientRect = vi.fn(() => ({
       width: 200,
       height: 40,
       x: 10,
@@ -117,7 +117,7 @@ describe('Sidebar Animation Issues Reproduction', () => {
       right: 210,
       top: 10,
       bottom: 50,
-      toJSON: jest.fn(),
+      toJSON: vi.fn(),
     }))
   })
 
@@ -152,7 +152,7 @@ describe('Sidebar Animation Issues Reproduction', () => {
     })
 
     it('should verify sidebar width animation is working correctly', () => {
-      const handleToggle = jest.fn()
+      const handleToggle = vi.fn()
       const { rerender } = render(<MockSidebarToggleButton expand={false} onToggle={handleToggle} />)
 
       const container = screen.getByTestId('sidebar-container')

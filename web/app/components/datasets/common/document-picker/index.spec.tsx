@@ -6,7 +6,7 @@ import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import DocumentPicker from './index'
 
 // Mock portal-to-follow-elem - always render content for testing
-jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
+vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open }: {
     children: React.ReactNode
     open?: boolean
@@ -38,15 +38,17 @@ jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
 let mockDocumentListData: { data: SimpleDocumentDetail[] } | undefined
 let mockDocumentListLoading = false
 
-jest.mock('@/service/knowledge/use-document', () => ({
-  useDocumentList: jest.fn(() => ({
-    data: mockDocumentListLoading ? undefined : mockDocumentListData,
-    isLoading: mockDocumentListLoading,
-  })),
+const mockUseDocumentList = vi.fn(() => ({
+  data: mockDocumentListLoading ? undefined : mockDocumentListData,
+  isLoading: mockDocumentListLoading,
+}))
+
+vi.mock('@/service/knowledge/use-document', () => ({
+  useDocumentList: (...args: unknown[]) => mockUseDocumentList(...args),
 }))
 
 // Mock icons - mock all remixicon components used in the component tree
-jest.mock('@remixicon/react', () => ({
+vi.mock('@remixicon/react', () => ({
   RiArrowDownSLine: () => <span data-testid="arrow-icon">↓</span>,
   RiFile3Fill: () => <span data-testid="file-icon">📄</span>,
   RiFileCodeFill: () => <span data-testid="file-code-icon">📄</span>,
@@ -64,9 +66,10 @@ jest.mock('@remixicon/react', () => ({
   RiCloseLine: () => <span data-testid="close-icon">✕</span>,
 }))
 
-jest.mock('@/app/components/base/icons/src/vender/knowledge', () => ({
+vi.mock('@/app/components/base/icons/src/vender/knowledge', () => ({
   GeneralChunk: () => <span data-testid="general-chunk-icon">General</span>,
   ParentChildChunk: () => <span data-testid="parent-child-chunk-icon">ParentChild</span>,
+  QuestionAndAnswer: () => <span data-testid="qa-chunk-icon">QA</span>,
 }))
 
 // Factory function to create mock SimpleDocumentDetail
@@ -138,7 +141,7 @@ const createDefaultProps = (overrides: Partial<React.ComponentProps<typeof Docum
     chunkingMode: ChunkingMode.text,
     parentMode: undefined as ParentMode | undefined,
   },
-  onChange: jest.fn(),
+  onChange: vi.fn(),
   ...overrides,
 })
 
@@ -172,7 +175,7 @@ const renderComponent = (props: Partial<React.ComponentProps<typeof DocumentPick
 
 describe('DocumentPicker', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Reset mock state
     mockDocumentListData = { data: createMockDocumentList(5) }
     mockDocumentListLoading = false
@@ -322,7 +325,7 @@ describe('DocumentPicker', () => {
   // Tests for props handling
   describe('Props', () => {
     it('should accept required props', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         datasetId: 'test-dataset',
         value: {
@@ -362,12 +365,12 @@ describe('DocumentPicker', () => {
       expect(screen.getByText('--')).toBeInTheDocument()
     })
 
-    it('should pass datasetId to useDocumentList hook', () => {
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
+    it('should pass datasetId to mockUseDocumentList hook', () => {
+      
 
       renderComponent({ datasetId: 'custom-dataset-id' })
 
-      expect(useDocumentList).toHaveBeenCalledWith(
+      expect(mockUseDocumentList).toHaveBeenCalledWith(
         expect.objectContaining({
           datasetId: 'custom-dataset-id',
         }),
@@ -396,10 +399,10 @@ describe('DocumentPicker', () => {
     it('should maintain search query state', async () => {
       renderComponent()
 
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
+      
 
       // Initial call should have empty keyword
-      expect(useDocumentList).toHaveBeenCalledWith(
+      expect(mockUseDocumentList).toHaveBeenCalledWith(
         expect.objectContaining({
           query: expect.objectContaining({
             keyword: '',
@@ -411,9 +414,9 @@ describe('DocumentPicker', () => {
     it('should update query when search input changes', () => {
       renderComponent()
 
-      // Verify the component uses useDocumentList with query parameter
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
-      expect(useDocumentList).toHaveBeenCalledWith(
+      // Verify the component uses mockUseDocumentList with query parameter
+      
+      expect(mockUseDocumentList).toHaveBeenCalledWith(
         expect.objectContaining({
           query: expect.objectContaining({
             keyword: '',
@@ -426,7 +429,7 @@ describe('DocumentPicker', () => {
   // Tests for callback stability and memoization
   describe('Callback Stability', () => {
     it('should maintain stable onChange callback when value changes', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const value1 = {
         name: 'Doc 1',
         extension: 'txt',
@@ -464,8 +467,8 @@ describe('DocumentPicker', () => {
     })
 
     it('should use updated onChange callback after rerender', () => {
-      const onChange1 = jest.fn()
-      const onChange2 = jest.fn()
+      const onChange1 = vi.fn()
+      const onChange2 = vi.fn()
       const value = {
         name: 'Test Doc',
         extension: 'txt',
@@ -500,7 +503,7 @@ describe('DocumentPicker', () => {
     it('should memoize handleChange callback with useCallback', () => {
       // The handleChange callback is created with useCallback and depends on
       // documentsList, onChange, and setOpen
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({ onChange })
 
       // Verify component renders correctly, callback memoization is internal
@@ -544,7 +547,7 @@ describe('DocumentPicker', () => {
     })
 
     it('should not re-render when props are the same', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const value = {
         name: 'Stable Doc',
         extension: 'txt',
@@ -591,16 +594,16 @@ describe('DocumentPicker', () => {
 
     it('should handle document selection when popup is open', () => {
       // Test the handleChange callback logic
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const mockDocs = createMockDocumentList(3)
       mockDocumentListData = { data: mockDocs }
 
       renderComponent({ onChange })
 
       // The handleChange callback should find the document and call onChange
-      // We can verify this by checking that useDocumentList was called
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
-      expect(useDocumentList).toHaveBeenCalled()
+      // We can verify this by checking that mockUseDocumentList was called
+      
+      expect(mockUseDocumentList).toHaveBeenCalled()
     })
 
     it('should handle search input change', () => {
@@ -608,8 +611,8 @@ describe('DocumentPicker', () => {
 
       // The search input is only visible when popup is open
       // We verify that the component initializes with empty query
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
-      expect(useDocumentList).toHaveBeenCalledWith(
+      
+      expect(mockUseDocumentList).toHaveBeenCalledWith(
         expect.objectContaining({
           query: expect.objectContaining({
             keyword: '',
@@ -621,8 +624,8 @@ describe('DocumentPicker', () => {
     it('should initialize with default query parameters', () => {
       renderComponent()
 
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
-      expect(useDocumentList).toHaveBeenCalledWith(
+      
+      expect(mockUseDocumentList).toHaveBeenCalledWith(
         expect.objectContaining({
           query: {
             keyword: '',
@@ -636,12 +639,12 @@ describe('DocumentPicker', () => {
 
   // Tests for API calls
   describe('API Calls', () => {
-    it('should call useDocumentList with correct parameters', () => {
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
+    it('should call mockUseDocumentList with correct parameters', () => {
+      
 
       renderComponent({ datasetId: 'test-dataset-123' })
 
-      expect(useDocumentList).toHaveBeenCalledWith({
+      expect(mockUseDocumentList).toHaveBeenCalledWith({
         datasetId: 'test-dataset-123',
         query: {
           keyword: '',
@@ -668,8 +671,8 @@ describe('DocumentPicker', () => {
       renderComponent()
 
       // Verify the hook was called
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
-      expect(useDocumentList).toHaveBeenCalled()
+      
+      expect(mockUseDocumentList).toHaveBeenCalled()
     })
 
     it('should handle empty document list', () => {
@@ -706,7 +709,7 @@ describe('DocumentPicker', () => {
         extension: 'txt',
         chunkingMode: ChunkingMode.text,
       }
-      const onChange = jest.fn()
+      const onChange = vi.fn()
 
       const { rerender } = render(
         <QueryClientProvider client={queryClient}>
@@ -972,25 +975,25 @@ describe('DocumentPicker', () => {
 
   // Tests for document selection
   describe('Document Selection', () => {
-    it('should fetch documents list via useDocumentList', () => {
+    it('should fetch documents list via mockUseDocumentList', () => {
       const mockDoc = createMockDocument({
         id: 'selected-doc',
         name: 'Selected Document',
       })
       mockDocumentListData = { data: [mockDoc] }
-      const onChange = jest.fn()
+      const onChange = vi.fn()
 
       renderComponent({ onChange })
 
       // Verify the hook was called
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
-      expect(useDocumentList).toHaveBeenCalled()
+      
+      expect(mockUseDocumentList).toHaveBeenCalled()
     })
 
     it('should call onChange when document is selected', () => {
       const docs = createMockDocumentList(3)
       mockDocumentListData = { data: docs }
-      const onChange = jest.fn()
+      const onChange = vi.fn()
 
       renderComponent({ onChange })
 
@@ -1025,8 +1028,8 @@ describe('DocumentPicker', () => {
 
       // DocumentList receives mapped documents: { id, name, extension }
       // We verify the data is fetched
-      const { useDocumentList } = jest.requireMock('@/service/knowledge/use-document')
-      expect(useDocumentList).toHaveBeenCalled()
+      
+      expect(mockUseDocumentList).toHaveBeenCalled()
     })
 
     it('should map document data_source_detail_dict extension correctly', () => {

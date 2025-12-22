@@ -6,20 +6,20 @@ import type { ModalContextState } from '@/context/modal-context'
 import APIKeyInfoPanel from './index'
 
 // Mock the modules before importing the functions
-jest.mock('@/context/provider-context', () => ({
-  useProviderContext: jest.fn(),
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(),
 }))
 
-jest.mock('@/context/modal-context', () => ({
-  useModalContext: jest.fn(),
+vi.mock('@/context/modal-context', () => ({
+  useModalContext: vi.fn(),
 }))
 
 import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
 import { useModalContext as actualUseModalContext } from '@/context/modal-context'
 
 // Type casting for mocks
-const mockUseProviderContext = actualUseProviderContext as jest.MockedFunction<typeof actualUseProviderContext>
-const mockUseModalContext = actualUseModalContext as jest.MockedFunction<typeof actualUseModalContext>
+const mockUseProviderContext = actualUseProviderContext as vi.MockedFunction<typeof actualUseProviderContext>
+const mockUseModalContext = actualUseModalContext as vi.MockedFunction<typeof actualUseModalContext>
 
 // Default mock data
 const defaultProviderContext = {
@@ -122,7 +122,7 @@ export const scenarios = {
     }),
 
   // Render with mock modal function
-  withMockModal: (mockSetShowAccountSettingModal: jest.Mock, overrides: MockOverrides = {}) =>
+  withMockModal: (mockSetShowAccountSettingModal: vi.Mock, overrides: MockOverrides = {}) =>
     renderAPIKeyInfoPanel({
       mockOverrides: {
         modalContext: { setShowAccountSettingModal: mockSetShowAccountSettingModal },
@@ -202,7 +202,7 @@ export const textKeys = {
 
 // Setup and cleanup utilities
 export function clearAllMocks() {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 }
 
 // Export mock functions for external access

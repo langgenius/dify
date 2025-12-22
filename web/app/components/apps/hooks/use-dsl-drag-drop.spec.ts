@@ -12,13 +12,13 @@ import { useDSLDragDrop } from './use-dsl-drag-drop'
 
 describe('useDSLDragDrop', () => {
   let container: HTMLDivElement
-  let mockOnDSLFileDropped: jest.Mock
+  let mockOnDSLFileDropped: vi.Mock
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     container = document.createElement('div')
     document.body.appendChild(container)
-    mockOnDSLFileDropped = jest.fn()
+    mockOnDSLFileDropped = vi.fn()
   })
 
   afterEach(() => {
@@ -38,11 +38,11 @@ describe('useDSLDragDrop', () => {
       writable: false,
     })
     Object.defineProperty(event, 'preventDefault', {
-      value: jest.fn(),
+      value: vi.fn(),
       writable: false,
     })
     Object.defineProperty(event, 'stopPropagation', {
-      value: jest.fn(),
+      value: vi.fn(),
       writable: false,
     })
 
@@ -320,11 +320,11 @@ describe('useDSLDragDrop', () => {
         writable: false,
       })
       Object.defineProperty(event, 'preventDefault', {
-        value: jest.fn(),
+        value: vi.fn(),
         writable: false,
       })
       Object.defineProperty(event, 'stopPropagation', {
-        value: jest.fn(),
+        value: vi.fn(),
         writable: false,
       })
 
@@ -442,7 +442,7 @@ describe('useDSLDragDrop', () => {
   describe('Cleanup', () => {
     it('should remove event listeners on unmount', () => {
       const containerRef = { current: container }
-      const removeEventListenerSpy = jest.spyOn(container, 'removeEventListener')
+      const removeEventListenerSpy = vi.spyOn(container, 'removeEventListener')
 
       const { unmount } = renderHook(() =>
         useDSLDragDrop({

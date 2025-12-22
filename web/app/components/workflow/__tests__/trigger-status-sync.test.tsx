@@ -6,12 +6,12 @@ import type { BlockEnum } from '../types'
 import type { EntryNodeStatus } from '../store/trigger-status'
 
 // Mock the isTriggerNode function while preserving BlockEnum
-jest.mock('../types', () => ({
-  ...jest.requireActual('../types'),
-  isTriggerNode: jest.fn(),
+vi.mock('../types', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../types')>(),
+  isTriggerNode: vi.fn(),
 }))
 
-const mockIsTriggerNode = isTriggerNode as jest.MockedFunction<typeof isTriggerNode>
+const mockIsTriggerNode = isTriggerNode as vi.MockedFunction<typeof isTriggerNode>
 
 // Test component that mimics BaseNode's usage pattern
 const TestTriggerNode: React.FC<{
@@ -79,7 +79,7 @@ describe('Trigger Status Synchronization Integration', () => {
     })
 
     // Reset mocks
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Real-time Status Synchronization', () => {

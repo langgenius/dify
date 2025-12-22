@@ -1,0 +1,6 @@
+id: jest-to-vi-tsx
+language: tsx
+rule:
+  pattern: jest
+fix: vi
+message: "Convert jest to vi for Vitest compatibility"

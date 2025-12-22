@@ -5,23 +5,23 @@ import { SelfHostedPlan } from '../../../type'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 
-jest.mock('@/hooks/use-theme')
+vi.mock('@/hooks/use-theme')
 
-jest.mock('@/app/components/base/icons/src/public/billing', () => ({
+vi.mock('@/app/components/base/icons/src/public/billing', () => ({
   AwsMarketplaceLight: () => <div>AwsMarketplaceLight</div>,
   AwsMarketplaceDark: () => <div>AwsMarketplaceDark</div>,
 }))
 
-const mockUseTheme = useTheme as jest.MockedFunction<typeof useTheme>
+const mockUseTheme = useTheme as vi.MockedFunction<typeof useTheme>
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   mockUseTheme.mockReturnValue({ theme: Theme.light } as unknown as ReturnType<typeof useTheme>)
 })
 
 describe('SelfHostedPlanButton', () => {
   test('should invoke handler when clicked', () => {
-    const handleGetPayUrl = jest.fn()
+    const handleGetPayUrl = vi.fn()
     render(
       <Button
         plan={SelfHostedPlan.community}
@@ -34,7 +34,7 @@ describe('SelfHostedPlanButton', () => {
   })
 
   test('should render AWS marketplace badge for premium plan in light theme', () => {
-    const handleGetPayUrl = jest.fn()
+    const handleGetPayUrl = vi.fn()
 
     render(
       <Button
@@ -52,7 +52,7 @@ describe('SelfHostedPlanButton', () => {
     render(
       <Button
         plan={SelfHostedPlan.premium}
-        handleGetPayUrl={jest.fn()}
+        handleGetPayUrl={vi.fn()}
       />,
     )
 

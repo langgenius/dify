@@ -12,7 +12,7 @@ import {
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
-jest.mock('@headlessui/react', () => ({
+vi.mock('@headlessui/react', () => ({
   Dialog: ({ children, className }: { children: React.ReactNode; className?: string }) => (
     <div role="dialog" className={className}>
       {children}
@@ -43,12 +43,12 @@ jest.mock('@headlessui/react', () => ({
   ),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: jest.fn(),
-  useCurrentProviderAndModel: jest.fn(),
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
+  useCurrentProviderAndModel: vi.fn(),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
     defaultModel?: { provider: string; model: string }
     onSelect?: (model: { provider: string; model: string }) => void
@@ -69,14 +69,14 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/model-sel
   }
 })
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
   __esModule: true,
   default: () => <div data-testid="model-parameter-modal" />,
 }))
 
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as jest.MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as jest.MockedFunction<typeof useCurrentProviderAndModel>
-let toastNotifySpy: jest.SpyInstance
+const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as vi.MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
+const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as vi.MockedFunction<typeof useCurrentProviderAndModel>
+let toastNotifySpy: vi.SpyInstance
 
 const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetConfigs => {
   return {
@@ -139,9 +139,9 @@ const renderParamsConfig = ({
 
 describe('dataset-config/params-config', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    jest.useRealTimers()
-    toastNotifySpy = jest.spyOn(Toast, 'notify').mockImplementation(() => ({}))
+    vi.clearAllMocks()
+    vi.useRealTimers()
+    toastNotifySpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
     mockedUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       modelList: [],
       defaultModel: undefined,

@@ -1,14 +1,14 @@
 /**
  * Shared mock for react-i18next
  *
- * Jest automatically uses this mock when react-i18next is imported in tests.
+ * Vitest automatically uses this mock when react-i18next is imported in tests.
  * The default behavior returns the translation key as-is, which is suitable
  * for most test scenarios.
  *
- * For tests that need custom translations, you can override with jest.mock():
+ * For tests that need custom translations, you can override with vi.mock():
  *
  * @example
- * jest.mock('react-i18next', () => ({
+ * vi.mock('react-i18next', () => ({
  *   useTranslation: () => ({
  *     t: (key: string) => {
  *       if (key === 'some.key') return 'Custom translation'
@@ -28,7 +28,7 @@ export const useTranslation = () => ({
   },
   i18n: {
     language: 'en',
-    changeLanguage: jest.fn(),
+    changeLanguage: vi.fn(),
   },
 })
 
@@ -36,5 +36,5 @@ export const Trans = ({ children }: { children?: React.ReactNode }) => children
 
 export const initReactI18next = {
   type: '3rdParty',
-  init: jest.fn(),
+  init: vi.fn(),
 }

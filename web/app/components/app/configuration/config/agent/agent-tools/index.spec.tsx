@@ -25,17 +25,17 @@ import copy from 'copy-to-clipboard'
 import type ToolPickerType from '@/app/components/workflow/block-selector/tool-picker'
 import type SettingBuiltInToolType from './setting-built-in-tool'
 
-const formattingDispatcherMock = jest.fn()
-jest.mock('@/app/components/app/configuration/debug/hooks', () => ({
+const formattingDispatcherMock = vi.fn()
+vi.mock('@/app/components/app/configuration/debug/hooks', () => ({
   useFormattingChangedDispatcher: () => formattingDispatcherMock,
 }))
 
 let pluginInstallHandler: ((names: string[]) => void) | null = null
-const subscribeMock = jest.fn((event: string, handler: any) => {
+const subscribeMock = vi.fn((event: string, handler: any) => {
   if (event === 'plugin:install:success')
     pluginInstallHandler = handler
 })
-jest.mock('@/context/mitt-context', () => ({
+vi.mock('@/context/mitt-context', () => ({
   useMittContextSelector: (selector: any) => selector({
     useSubscribe: subscribeMock,
   }),
@@ -45,7 +45,7 @@ let builtInTools: ToolWithProvider[] = []
 let customTools: ToolWithProvider[] = []
 let workflowTools: ToolWithProvider[] = []
 let mcpTools: ToolWithProvider[] = []
-jest.mock('@/service/use-tools', () => ({
+vi.mock('@/service/use-tools', () => ({
   useAllBuiltInTools: () => ({ data: builtInTools }),
   useAllCustomTools: () => ({ data: customTools }),
   useAllWorkflowTools: () => ({ data: workflowTools }),
@@ -72,7 +72,7 @@ const ToolPickerMock = (props: ToolPickerProps) => (
     </button>
   </div>
 )
-jest.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
+vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
   __esModule: true,
   default: (props: ToolPickerProps) => <ToolPickerMock {...props} />,
 }))
@@ -92,14 +92,14 @@ const SettingBuiltInToolMock = (props: SettingBuiltInToolProps) => {
     </div>
   )
 }
-jest.mock('./setting-built-in-tool', () => ({
+vi.mock('./setting-built-in-tool', () => ({
   __esModule: true,
   default: (props: SettingBuiltInToolProps) => <SettingBuiltInToolMock {...props} />,
 }))
 
-jest.mock('copy-to-clipboard')
+vi.mock('copy-to-clipboard')
 
-const copyMock = copy as jest.Mock
+const copyMock = copy as vi.Mock
 
 const createToolParameter = (overrides?: Partial<ToolParameter>): ToolParameter => ({
   name: 'api_key',
@@ -247,7 +247,7 @@ const hoverInfoIcon = async (rowIndex = 0) => {
 
 describe('AgentTools', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     builtInTools = [
       createCollection(),
       createCollection({

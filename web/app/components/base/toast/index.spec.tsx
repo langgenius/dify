@@ -6,7 +6,7 @@ import '@testing-library/jest-dom'
 import { noop } from 'lodash-es'
 
 // Mock timers for testing timeouts
-jest.useFakeTimers()
+vi.useFakeTimers({ shouldAdvanceTime: true })
 
 const TestComponent = () => {
   const { notify, close } = useToastContext()
@@ -138,7 +138,7 @@ describe('Toast', () => {
 
       // Fast-forward timer
       act(() => {
-        jest.advanceTimersByTime(3000) // Default for info type is 3000ms
+        vi.advanceTimersByTime(3000) // Default for info type is 3000ms
       })
 
       // Toast should be gone
@@ -160,7 +160,7 @@ describe('Toast', () => {
 
       // Fast-forward timer
       act(() => {
-        jest.advanceTimersByTime(6000) // Default for warning type is 6000ms
+        vi.advanceTimersByTime(6000) // Default for warning type is 6000ms
       })
 
       // Toast should be removed
@@ -170,7 +170,7 @@ describe('Toast', () => {
     })
 
     test('calls onClose callback after duration', async () => {
-      const onCloseMock = jest.fn()
+      const onCloseMock = vi.fn()
       act(() => {
         Toast.notify({
           message: 'Closing notification',
@@ -181,7 +181,7 @@ describe('Toast', () => {
 
       // Fast-forward timer
       act(() => {
-        jest.advanceTimersByTime(3000) // Default for success type is 3000ms
+        vi.advanceTimersByTime(3000) // Default for success type is 3000ms
       })
 
       // onClose should be called

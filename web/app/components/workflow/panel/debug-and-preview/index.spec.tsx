@@ -11,14 +11,14 @@ type PanelWidthSource = 'user' | 'system'
 const createMockLocalStorage = () => {
   const storage: Record<string, string> = {}
   return {
-    getItem: jest.fn((key: string) => storage[key] || null),
-    setItem: jest.fn((key: string, value: string) => {
+    getItem: vi.fn((key: string) => storage[key] || null),
+    setItem: vi.fn((key: string, value: string) => {
       storage[key] = value
     }),
-    removeItem: jest.fn((key: string) => {
+    removeItem: vi.fn((key: string) => {
       delete storage[key]
     }),
-    clear: jest.fn(() => {
+    clear: vi.fn(() => {
       Object.keys(storage).forEach(key => delete storage[key])
     }),
     get storage() { return { ...storage } },
@@ -56,7 +56,7 @@ describe('Debug and Preview Panel Width Persistence', () => {
   })
 
   afterEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Preview Panel Width Management', () => {

@@ -1,18 +1,18 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import ConfigSelect from './index'
 
-jest.mock('react-sortablejs', () => ({
+vi.mock('react-sortablejs', () => ({
   ReactSortable: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 
 describe('ConfigSelect Component', () => {
   const defaultProps = {
     options: ['Option 1', 'Option 2'],
-    onChange: jest.fn(),
+    onChange: vi.fn(),
   }
 
   afterEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('renders all options', () => {

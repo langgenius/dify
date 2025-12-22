@@ -5,8 +5,8 @@ import StartNodeSelectionPanel from './start-node-selection-panel'
 import { BlockEnum } from '@/app/components/workflow/types'
 
 // Mock NodeSelector component
-jest.mock('@/app/components/workflow/block-selector', () => {
-  return function MockNodeSelector({
+vi.mock('@/app/components/workflow/block-selector', () => ({
+  default: function MockNodeSelector({
     open,
     onOpenChange,
     onSelect,
@@ -42,18 +42,18 @@ jest.mock('@/app/components/workflow/block-selector', () => {
         )}
       </div>
     )
-  }
-})
+  },
+}))
 
 // Mock icons
-jest.mock('@/app/components/base/icons/src/vender/workflow', () => ({
+vi.mock('@/app/components/base/icons/src/vender/workflow', () => ({
   Home: () => <div data-testid="home-icon">Home</div>,
   TriggerAll: () => <div data-testid="trigger-all-icon">TriggerAll</div>,
 }))
 
 describe('StartNodeSelectionPanel', () => {
-  const mockOnSelectUserInput = jest.fn()
-  const mockOnSelectTrigger = jest.fn()
+  const mockOnSelectUserInput = vi.fn()
+  const mockOnSelectTrigger = vi.fn()
 
   const defaultProps = {
     onSelectUserInput: mockOnSelectUserInput,
@@ -61,7 +61,7 @@ describe('StartNodeSelectionPanel', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Helper function to render component
@@ -131,7 +131,7 @@ describe('StartNodeSelectionPanel', () => {
   describe('Props', () => {
     it('should accept onSelectUserInput prop', () => {
       // Arrange
-      const customHandler = jest.fn()
+      const customHandler = vi.fn()
 
       // Act
       renderComponent({ onSelectUserInput: customHandler })
@@ -142,7 +142,7 @@ describe('StartNodeSelectionPanel', () => {
 
     it('should accept onSelectTrigger prop', () => {
       // Arrange
-      const customHandler = jest.fn()
+      const customHandler = vi.fn()
 
       // Act
       renderComponent({ onSelectTrigger: customHandler })

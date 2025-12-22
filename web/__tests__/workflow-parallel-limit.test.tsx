@@ -19,7 +19,7 @@ function setupEnvironment(value?: string) {
     delete process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
 
   // Clear module cache to force re-evaluation
-  jest.resetModules()
+  vi.resetModules()
 }
 
 function restoreEnvironment() {
@@ -28,11 +28,11 @@ function restoreEnvironment() {
   else
     delete process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
 
-  jest.resetModules()
+  vi.resetModules()
 }
 
 // Mock i18next with proper implementation
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       if (key.includes('MaxParallelismTitle')) return 'Max Parallelism'
@@ -45,20 +45,20 @@ jest.mock('react-i18next', () => ({
   }),
   initReactI18next: {
     type: '3rdParty',
-    init: jest.fn(),
+    init: vi.fn(),
   },
 }))
 
 // Mock i18next module completely to prevent initialization issues
-jest.mock('i18next', () => ({
-  use: jest.fn().mockReturnThis(),
-  init: jest.fn().mockReturnThis(),
-  t: jest.fn(key => key),
+vi.mock('i18next', () => ({
+  use: vi.fn().mockReturnThis(),
+  init: vi.fn().mockReturnThis(),
+  t: vi.fn(key => key),
   isInitialized: true,
 }))
 
 // Mock the useConfig hook
-jest.mock('@/app/components/workflow/nodes/iteration/use-config', () => ({
+vi.mock('@/app/components/workflow/nodes/iteration/use-config', () => ({
   __esModule: true,
   default: () => ({
     inputs: {
@@ -66,51 +66,51 @@ jest.mock('@/app/components/workflow/nodes/iteration/use-config', () => ({
       parallel_nums: 5,
       error_handle_mode: 'terminated',
     },
-    changeParallel: jest.fn(),
-    changeParallelNums: jest.fn(),
-    changeErrorHandleMode: jest.fn(),
+    changeParallel: vi.fn(),
+    changeParallelNums: vi.fn(),
+    changeErrorHandleMode: vi.fn(),
   }),
 }))
 
 // Mock other components
-jest.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => {
-  return function MockVarReferencePicker() {
+vi.mock('@/app/components/workflow/nodes/_base/components/variable/var-reference-picker', () => ({
+  default: function MockVarReferencePicker() {
     return <div data-testid="var-reference-picker">VarReferencePicker</div>
-  }
-})
+  },
+}))
 
-jest.mock('@/app/components/workflow/nodes/_base/components/split', () => {
-  return function MockSplit() {
+vi.mock('@/app/components/workflow/nodes/_base/components/split', () => ({
+  default: function MockSplit() {
     return <div data-testid="split">Split</div>
-  }
-})
+  },
+}))
 
-jest.mock('@/app/components/workflow/nodes/_base/components/field', () => {
-  return function MockField({ title, children }: { title: string, children: React.ReactNode }) {
+vi.mock('@/app/components/workflow/nodes/_base/components/field', () => ({
+  default: function MockField({ title, children }: { title: string, children: React.ReactNode }) {
     return (
       <div data-testid="field">
         <label>{title}</label>
         {children}
       </div>
     )
-  }
-})
+  },
+}))
 
-jest.mock('@/app/components/base/switch', () => {
-  return function MockSwitch({ defaultValue }: { defaultValue: boolean }) {
+vi.mock('@/app/components/base/switch', () => ({
+  default: function MockSwitch({ defaultValue }: { defaultValue: boolean }) {
     return <input type="checkbox" defaultChecked={defaultValue} data-testid="switch" />
-  }
-})
+  },
+}))
 
-jest.mock('@/app/components/base/select', () => {
-  return function MockSelect() {
+vi.mock('@/app/components/base/select', () => ({
+  default: function MockSelect() {
     return <select data-testid="select">Select</select>
-  }
-})
+  },
+}))
 
 // Use defaultValue to avoid controlled input warnings
-jest.mock('@/app/components/base/slider', () => {
-  return function MockSlider({ value, max, min }: { value: number, max: number, min: number }) {
+vi.mock('@/app/components/base/slider', () => ({
+  default: function MockSlider({ value, max, min }: { value: number, max: number, min: number }) {
     return (
       <input
         type="range"
@@ -123,12 +123,12 @@ jest.mock('@/app/components/base/slider', () => {
         readOnly
       />
     )
-  }
-})
+  },
+}))
 
 // Use defaultValue to avoid controlled input warnings
-jest.mock('@/app/components/base/input', () => {
-  return function MockInput({ type, max, min, value }: { type: string, max: number, min: number, value: number }) {
+vi.mock('@/app/components/base/input', () => ({
+  default: function MockInput({ type, max, min, value }: { type: string, max: number, min: number, value: number }) {
     return (
       <input
         type={type}
@@ -141,8 +141,8 @@ jest.mock('@/app/components/base/input', () => {
         readOnly
       />
     )
-  }
-})
+  },
+}))
 
 describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
   const mockNodeData = {
@@ -160,7 +160,7 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   afterEach(() => {
@@ -172,65 +172,66 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
   })
 
   describe('Environment Variable Parsing', () => {
-    it('should parse MAX_PARALLEL_LIMIT from NEXT_PUBLIC_MAX_PARALLEL_LIMIT environment variable', () => {
+    it('should parse MAX_PARALLEL_LIMIT from NEXT_PUBLIC_MAX_PARALLEL_LIMIT environment variable', async () => {
       setupEnvironment('25')
-      const { MAX_PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = await import('@/config')
       expect(MAX_PARALLEL_LIMIT).toBe(25)
     })
 
-    it('should fallback to default when environment variable is not set', () => {
+    it('should fallback to default when environment variable is not set', async () => {
       setupEnvironment() // No environment variable
-      const { MAX_PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = await import('@/config')
       expect(MAX_PARALLEL_LIMIT).toBe(10)
     })
 
-    it('should handle invalid environment variable values', () => {
+    it('should handle invalid environment variable values', async () => {
       setupEnvironment('invalid')
-      const { MAX_PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = await import('@/config')
 
       // Should fall back to default when parsing fails
       expect(MAX_PARALLEL_LIMIT).toBe(10)
     })
 
-    it('should handle empty environment variable', () => {
+    it('should handle empty environment variable', async () => {
       setupEnvironment('')
-      const { MAX_PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = await import('@/config')
 
       // Should fall back to default when empty
       expect(MAX_PARALLEL_LIMIT).toBe(10)
     })
 
     // Edge cases for boundary values
-    it('should clamp MAX_PARALLEL_LIMIT to MIN when env is 0 or negative', () => {
+    it('should clamp MAX_PARALLEL_LIMIT to MIN when env is 0 or negative', async () => {
       setupEnvironment('0')
-      let { MAX_PARALLEL_LIMIT } = require('@/config')
+      let { MAX_PARALLEL_LIMIT } = await import('@/config')
       expect(MAX_PARALLEL_LIMIT).toBe(10) // Falls back to default
 
       setupEnvironment('-5')
-      ;({ MAX_PARALLEL_LIMIT } = require('@/config'))
+      ;({ MAX_PARALLEL_LIMIT } = await import('@/config'))
       expect(MAX_PARALLEL_LIMIT).toBe(10) // Falls back to default
     })
 
-    it('should handle float numbers by parseInt behavior', () => {
+    it('should handle float numbers by parseInt behavior', async () => {
       setupEnvironment('12.7')
-      const { MAX_PARALLEL_LIMIT } = require('@/config')
+      const { MAX_PARALLEL_LIMIT } = await import('@/config')
       // parseInt truncates to integer
       expect(MAX_PARALLEL_LIMIT).toBe(12)
     })
   })
 
   describe('UI Component Integration (Main Fix Verification)', () => {
-    it('should render iteration panel with environment-configured max value', () => {
+    it('should render iteration panel with environment-configured max value', async () => {
       // Set environment variable to a different value
       setupEnvironment('30')
 
       // Import Panel after setting environment
-      const Panel = require('@/app/components/workflow/nodes/iteration/panel').default
-      const { MAX_PARALLEL_LIMIT } = require('@/config')
+      const Panel = await import('@/app/components/workflow/nodes/iteration/panel').then(mod => mod.default)
+      const { MAX_PARALLEL_LIMIT } = await import('@/config')
 
       render(
         <Panel
           id="test-node"
+          // @ts-expect-error  key type mismatch
           data={mockNodeData.data}
         />,
       )
@@ -248,14 +249,15 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
       expect(slider.getAttribute('data-max')).toBe('30')
     })
 
-    it('should maintain UI consistency with different environment values', () => {
+    it('should maintain UI consistency with different environment values', async () => {
       setupEnvironment('15')
-      const Panel = require('@/app/components/workflow/nodes/iteration/panel').default
-      const { MAX_PARALLEL_LIMIT } = require('@/config')
+      const Panel = await import('@/app/components/workflow/nodes/iteration/panel').then(mod => mod.default)
+      const { MAX_PARALLEL_LIMIT } = await import('@/config')
 
       render(
         <Panel
           id="test-node"
+          // @ts-expect-error  key type mismatch
           data={mockNodeData.data}
         />,
       )
@@ -271,16 +273,16 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
 
   describe('Legacy Constant Verification (For Transition Period)', () => {
     // Marked as transition/deprecation tests
-    it('should maintain MAX_ITERATION_PARALLEL_NUM for backward compatibility', () => {
-      const { MAX_ITERATION_PARALLEL_NUM } = require('@/app/components/workflow/constants')
+    it('should maintain MAX_ITERATION_PARALLEL_NUM for backward compatibility', async () => {
+      const { MAX_ITERATION_PARALLEL_NUM } = await import('@/app/components/workflow/constants')
       expect(typeof MAX_ITERATION_PARALLEL_NUM).toBe('number')
       expect(MAX_ITERATION_PARALLEL_NUM).toBe(10) // Hardcoded legacy value
     })
 
-    it('should demonstrate MAX_PARALLEL_LIMIT vs legacy constant difference', () => {
+    it('should demonstrate MAX_PARALLEL_LIMIT vs legacy constant difference', async () => {
       setupEnvironment('50')
-      const { MAX_PARALLEL_LIMIT } = require('@/config')
-      const { MAX_ITERATION_PARALLEL_NUM } = require('@/app/components/workflow/constants')
+      const { MAX_PARALLEL_LIMIT } = await import('@/config')
+      const { MAX_ITERATION_PARALLEL_NUM } = await import('@/app/components/workflow/constants')
 
       // MAX_PARALLEL_LIMIT is configurable, MAX_ITERATION_PARALLEL_NUM is not
       expect(MAX_PARALLEL_LIMIT).toBe(50)
@@ -290,9 +292,9 @@ describe('MAX_PARALLEL_LIMIT Configuration Bug', () => {
   })
 
   describe('Constants Validation', () => {
-    it('should validate that required constants exist and have correct types', () => {
-      const { MAX_PARALLEL_LIMIT } = require('@/config')
-      const { MIN_ITERATION_PARALLEL_NUM } = require('@/app/components/workflow/constants')
+    it('should validate that required constants exist and have correct types', async () => {
+      const { MAX_PARALLEL_LIMIT } = await import('@/config')
+      const { MIN_ITERATION_PARALLEL_NUM } = await import('@/app/components/workflow/constants')
       expect(typeof MAX_PARALLEL_LIMIT).toBe('number')
       expect(typeof MIN_ITERATION_PARALLEL_NUM).toBe('number')
       expect(MAX_PARALLEL_LIMIT).toBeGreaterThanOrEqual(MIN_ITERATION_PARALLEL_NUM)

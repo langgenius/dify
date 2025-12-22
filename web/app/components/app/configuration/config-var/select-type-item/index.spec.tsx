@@ -12,7 +12,7 @@ describe('SelectTypeItem', () => {
         <SelectTypeItem
           type={InputVarType.textInput}
           selected={false}
-          onClick={jest.fn()}
+          onClick={vi.fn()}
         />,
       )
 
@@ -25,7 +25,7 @@ describe('SelectTypeItem', () => {
   // User interaction outcomes
   describe('Interactions', () => {
     test('should trigger onClick when item is pressed', () => {
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       // Arrange
       render(
         <SelectTypeItem
