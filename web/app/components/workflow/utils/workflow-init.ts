@@ -34,6 +34,11 @@ import {
   getLoopStartNode,
 } from '.'
 import { correctModelProvider } from '@/utils'
+import {
+  CUSTOM_GROUP_NODE,
+  GROUP_CHILDREN_Z_INDEX,
+} from '../custom-group-node'
+import type { CustomGroupNodeData } from '../custom-group-node'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
@@ -91,8 +96,9 @@ const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
 export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
   const hasIterationNode = nodes.some(node => node.data.type === BlockEnum.Iteration)
   const hasLoopNode = nodes.some(node => node.data.type === BlockEnum.Loop)
+  const hasGroupNode = nodes.some(node => node.type === CUSTOM_GROUP_NODE)
 
-  if (!hasIterationNode && !hasLoopNode) {
+  if (!hasIterationNode && !hasLoopNode && !hasGroupNode) {
     return {
       nodes,
       edges,
@@ -189,9 +195,67 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
       (node.data as LoopNodeType).start_node_id = newLoopStartNodesMap[node.id].id
   })
 
+  // Derive Group internal edges (input → entries, leaves → exits)
+  const groupInternalEdges: Edge[] = []
+  const groupNodes = nodes.filter(node => node.type === CUSTOM_GROUP_NODE)
+
+  for (const groupNode of groupNodes) {
+    const groupData = groupNode.data as unknown as CustomGroupNodeData
+    const { group } = groupData
+
+    if (!group)
+      continue
+
+    const { inputNodeId, entryNodeIds, exitPorts } = group
+
+    // Derive edges: input → each entry node
+    for (const entryId of entryNodeIds) {
+      const entryNode = nodesMap[entryId]
+      if (entryNode) {
+        groupInternalEdges.push({
+          id: `group-internal-${inputNodeId}-source-${entryId}-target`,
+          type: 'custom',
+          source: inputNodeId,
+          sourceHandle: 'source',
+          target: entryId,
+          targetHandle: 'target',
+          data: {
+            sourceType: '' as any, // Group input has empty type
+            targetType: entryNode.data.type,
+            _isGroupInternal: true,
+            _groupId: groupNode.id,
+          },
+          zIndex: GROUP_CHILDREN_Z_INDEX,
+        } as Edge)
+      }
+    }
+
+    // Derive edges: each leaf node → exit port
+    for (const exitPort of exitPorts) {
+      const leafNode = nodesMap[exitPort.leafNodeId]
+      if (leafNode) {
+        groupInternalEdges.push({
+          id: `group-internal-${exitPort.leafNodeId}-${exitPort.sourceHandle}-${exitPort.portNodeId}-target`,
+          type: 'custom',
+          source: exitPort.leafNodeId,
+          sourceHandle: exitPort.sourceHandle,
+          target: exitPort.portNodeId,
+          targetHandle: 'target',
+          data: {
+            sourceType: leafNode.data.type,
+            targetType: '' as any, // Exit port has empty type
+            _isGroupInternal: true,
+            _groupId: groupNode.id,
+          },
+          zIndex: GROUP_CHILDREN_Z_INDEX,
+        } as Edge)
+      }
+    }
+  }
+
   return {
     nodes: [...nodes, ...newIterationStartNodes, ...newLoopStartNodes],
-    edges: [...edges, ...newEdges],
+    edges: [...edges, ...newEdges, ...groupInternalEdges],
   }
 }
 

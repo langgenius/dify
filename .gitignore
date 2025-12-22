@@ -210,6 +210,7 @@ web/.vscode
 .history
 
 .idea/
+web/migration/
 
 # pnpm
 /.pnpm-store

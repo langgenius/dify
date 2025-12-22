@@ -130,12 +130,15 @@ class Graph:
 
     @classmethod
     def _build_edges(
-        cls, edge_configs: list[dict[str, object]]
+        cls,
+        edge_configs: list[dict[str, object]],
+        valid_node_ids: set[str] | None = None,
     ) -> tuple[dict[str, Edge], dict[str, list[str]], dict[str, list[str]]]:
         """
         Build edge objects and mappings from edge configurations.
 
         :param edge_configs: list of edge configurations
+        :param valid_node_ids: optional set of valid node IDs to filter edges
         :return: tuple of (edges dict, in_edges dict, out_edges dict)
         """
         edges: dict[str, Edge] = {}
@@ -305,7 +308,12 @@ class Graph:
         if not node_configs:
             raise ValueError("Graph must have at least one node")
 
-        node_configs = [node_config for node_config in node_configs if node_config.get("type", "") != "custom-note"]
+        # Filter out UI-only nodes that should not participate in workflow execution
+        # These include ReactFlow node types (custom-*) and data types that UI-only nodes may use
+        ui_only_node_types = {"custom-note", "custom-group", "custom-group-input", "custom-group-exit-port", "group"}
+        node_configs = [
+            node_config for node_config in node_configs if node_config.get("type", "") not in ui_only_node_types
+        ]
 
         # Parse node configurations
         node_configs_map = cls._parse_node_configs(node_configs)

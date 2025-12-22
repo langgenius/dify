@@ -60,6 +60,14 @@ import CustomSimpleNode from './simple-node'
 import { CUSTOM_SIMPLE_NODE } from './simple-node/constants'
 import CustomDataSourceEmptyNode from './nodes/data-source-empty'
 import { CUSTOM_DATA_SOURCE_EMPTY_NODE } from './nodes/data-source-empty/constants'
+import {
+  CUSTOM_GROUP_EXIT_PORT_NODE,
+  CUSTOM_GROUP_INPUT_NODE,
+  CUSTOM_GROUP_NODE,
+  CustomGroupExitPortNode,
+  CustomGroupInputNode,
+  CustomGroupNode,
+} from './custom-group-node'
 import Operator from './operator'
 import { useWorkflowSearch } from './hooks/use-workflow-search'
 import Control from './operator/control'
@@ -111,6 +119,9 @@ const nodeTypes = {
   [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
   [CUSTOM_LOOP_START_NODE]: CustomLoopStartNode,
   [CUSTOM_DATA_SOURCE_EMPTY_NODE]: CustomDataSourceEmptyNode,
+  [CUSTOM_GROUP_NODE]: CustomGroupNode,
+  [CUSTOM_GROUP_INPUT_NODE]: CustomGroupInputNode,
+  [CUSTOM_GROUP_EXIT_PORT_NODE]: CustomGroupExitPortNode,
 }
 const edgeTypes = {
   [CUSTOM_EDGE]: CustomEdge,
