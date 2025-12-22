@@ -10,8 +10,8 @@ import type { Collection } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import type { Plugin } from '@/app/components/plugins/types'
 
-const listRenderSpy = jest.fn()
-jest.mock('@/app/components/plugins/marketplace/list', () => ({
+const listRenderSpy = vi.fn()
+vi.mock('@/app/components/plugins/marketplace/list', () => ({
   __esModule: true,
   default: (props: {
     marketplaceCollections: unknown[]
@@ -25,34 +25,33 @@ jest.mock('@/app/components/plugins/marketplace/list', () => ({
   },
 }))
 
-const mockUseMarketplaceCollectionsAndPlugins = jest.fn()
-const mockUseMarketplacePlugins = jest.fn()
-jest.mock('@/app/components/plugins/marketplace/hooks', () => ({
+const mockUseMarketplaceCollectionsAndPlugins = vi.fn()
+const mockUseMarketplacePlugins = vi.fn()
+vi.mock('@/app/components/plugins/marketplace/hooks', () => ({
   useMarketplaceCollectionsAndPlugins: (...args: unknown[]) => mockUseMarketplaceCollectionsAndPlugins(...args),
   useMarketplacePlugins: (...args: unknown[]) => mockUseMarketplacePlugins(...args),
 }))
 
-const mockUseAllToolProviders = jest.fn()
-jest.mock('@/service/use-tools', () => ({
+const mockUseAllToolProviders = vi.fn()
+vi.mock('@/service/use-tools', () => ({
   useAllToolProviders: (...args: unknown[]) => mockUseAllToolProviders(...args),
 }))
 
-jest.mock('@/utils/var', () => ({
+vi.mock('@/utils/var', () => ({
   __esModule: true,
-  getMarketplaceUrl: jest.fn(() => 'https://marketplace.test/market'),
+  getMarketplaceUrl: vi.fn(() => 'https://marketplace.test/market'),
 }))
 
-jest.mock('@/i18n-config', () => ({
+vi.mock('@/i18n-config', () => ({
   getLocaleOnClient: () => 'en',
 }))
 
-jest.mock('next-themes', () => ({
+vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))
 
-const { getMarketplaceUrl: mockGetMarketplaceUrl } = jest.requireMock('@/utils/var') as {
-  getMarketplaceUrl: jest.Mock
-}
+import { getMarketplaceUrl } from '@/utils/var'
+const mockGetMarketplaceUrl = vi.mocked(getMarketplaceUrl)
 
 const createToolProvider = (overrides: Partial<Collection> = {}): Collection => ({
   id: 'provider-1',
@@ -100,14 +99,14 @@ const createMarketplaceContext = (overrides: Partial<ReturnType<typeof useMarket
   marketplaceCollections: [],
   marketplaceCollectionPluginsMap: {},
   plugins: [],
-  handleScroll: jest.fn(),
+  handleScroll: vi.fn(),
   page: 1,
   ...overrides,
 })
 
 describe('Marketplace', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering the marketplace panel based on loading and visibility state.
@@ -120,7 +119,7 @@ describe('Marketplace', () => {
           searchPluginText=""
           filterPluginTags={[]}
           isMarketplaceArrowVisible={false}
-          showMarketplacePanel={jest.fn()}
+          showMarketplacePanel={vi.fn()}
           marketplaceContext={marketplaceContext}
         />,
       )
@@ -141,7 +140,7 @@ describe('Marketplace', () => {
           searchPluginText=""
           filterPluginTags={[]}
           isMarketplaceArrowVisible={false}
-          showMarketplacePanel={jest.fn()}
+          showMarketplacePanel={vi.fn()}
           marketplaceContext={marketplaceContext}
         />,
       )
@@ -161,7 +160,7 @@ describe('Marketplace', () => {
       const user = userEvent.setup()
       // Arrange
       const marketplaceContext = createMarketplaceContext()
-      const showMarketplacePanel = jest.fn()
+      const showMarketplacePanel = vi.fn()
       const { container } = render(
         <Marketplace
           searchPluginText="vector"
@@ -192,11 +191,11 @@ describe('Marketplace', () => {
 })
 
 describe('useMarketplace', () => {
-  const mockQueryMarketplaceCollectionsAndPlugins = jest.fn()
-  const mockQueryPlugins = jest.fn()
-  const mockQueryPluginsWithDebounced = jest.fn()
-  const mockResetPlugins = jest.fn()
-  const mockFetchNextPage = jest.fn()
+  const mockQueryMarketplaceCollectionsAndPlugins = vi.fn()
+  const mockQueryPlugins = vi.fn()
+  const mockQueryPluginsWithDebounced = vi.fn()
+  const mockResetPlugins = vi.fn()
+  const mockFetchNextPage = vi.fn()
 
   const setupHookMocks = (overrides?: {
     isLoading?: boolean
@@ -224,7 +223,7 @@ describe('useMarketplace', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUseAllToolProviders.mockReturnValue({
       data: [],
       isSuccess: true,

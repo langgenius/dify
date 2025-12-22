@@ -3,8 +3,12 @@
  * Removes unnecessary files like jest-worker that are bundled with Next.js
  */
 
-const fs = require('fs');
-const path = require('path');
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 console.log('🔧 Optimizing standalone output...');
 

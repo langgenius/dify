@@ -1,6 +1,9 @@
-const sharp = require('sharp');
-const fs = require('fs');
-const path = require('path');
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import sharp from 'sharp'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const sizes = [
   { size: 192, name: 'icon-192x192.png' },

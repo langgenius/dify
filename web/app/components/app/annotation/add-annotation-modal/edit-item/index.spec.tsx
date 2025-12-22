@@ -8,7 +8,7 @@ describe('AddAnnotationModal/EditItem', () => {
       <EditItem
         type={EditItemType.Query}
         content="Why?"
-        onChange={jest.fn()}
+        onChange={vi.fn()}
       />,
     )
 
@@ -22,7 +22,7 @@ describe('AddAnnotationModal/EditItem', () => {
       <EditItem
         type={EditItemType.Answer}
         content="Existing answer"
-        onChange={jest.fn()}
+        onChange={vi.fn()}
       />,
     )
 
@@ -32,7 +32,7 @@ describe('AddAnnotationModal/EditItem', () => {
   })
 
   test('should propagate changes when answer content updates', () => {
-    const handleChange = jest.fn()
+    const handleChange = vi.fn()
     render(
       <EditItem
         type={EditItemType.Answer}

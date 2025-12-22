@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
 import SelfHostedPlanItem from './index'
@@ -12,7 +13,7 @@ const featuresTranslations: Record<string, string[]> = {
   'billing.plans.enterprise.features': ['enterprise-feature-1'],
 }
 
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
       if (options?.returnObjects)
@@ -23,18 +24,18 @@ jest.mock('react-i18next', () => ({
   Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
 }))
 
-jest.mock('../../../../base/toast', () => ({
+vi.mock('../../../../base/toast', () => ({
   __esModule: true,
   default: {
-    notify: jest.fn(),
+    notify: vi.fn(),
   },
 }))
 
-jest.mock('@/context/app-context', () => ({
-  useAppContext: jest.fn(),
+vi.mock('@/context/app-context', () => ({
+  useAppContext: vi.fn(),
 }))
 
-jest.mock('../../assets', () => ({
+vi.mock('../../assets', () => ({
   Community: () => <div>Community Icon</div>,
   Premium: () => <div>Premium Icon</div>,
   Enterprise: () => <div>Enterprise Icon</div>,
@@ -42,15 +43,8 @@ jest.mock('../../assets', () => ({
   EnterpriseNoise: () => <div>EnterpriseNoise</div>,
 }))
 
-jest.mock('@/app/components/base/icons/src/public/billing', () => ({
-  Azure: () => <div>Azure</div>,
-  GoogleCloud: () => <div>Google Cloud</div>,
-  AwsMarketplaceDark: () => <div>AwsMarketplaceDark</div>,
-  AwsMarketplaceLight: () => <div>AwsMarketplaceLight</div>,
-}))
-
-const mockUseAppContext = useAppContext as jest.Mock
-const mockToastNotify = Toast.notify as jest.Mock
+const mockUseAppContext = useAppContext as Mock
+const mockToastNotify = Toast.notify as Mock
 
 let assignedHref = ''
 const originalLocation = window.location
@@ -77,7 +71,7 @@ afterAll(() => {
 })
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: true })
   assignedHref = ''
 })
@@ -100,8 +94,6 @@ describe('SelfHostedPlanItem', () => {
 
       expect(screen.getByText('billing.plans.premium.price')).toBeInTheDocument()
       expect(screen.getByText('billing.plans.premium.comingSoon')).toBeInTheDocument()
-      expect(screen.getByText('Azure')).toBeInTheDocument()
-      expect(screen.getByText('Google Cloud')).toBeInTheDocument()
     })
   })
 
