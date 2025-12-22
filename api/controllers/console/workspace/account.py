@@ -429,7 +429,7 @@ class AccountDeleteUpdateFeedbackApi(Resource):
         payload = console_ns.payload or {}
         args = AccountDeletionFeedbackPayload.model_validate(payload)
 
-        BillingService.update_account_deletion_feedback(args.email.lower(), args.feedback)
+        BillingService.update_account_deletion_feedback(args.email, args.feedback)
 
         return {"result": "success"}
 
