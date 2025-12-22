@@ -1,6 +1,0 @@
-id: jest-to-vi
-language: typescript
-rule:
-  pattern: jest
-fix: vi
-message: "Convert jest to vi for Vitest compatibility"
