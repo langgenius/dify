@@ -132,11 +132,11 @@ describe('Zod Features', () => {
     expect(stringArraySchema.parse(['a', 'b', 'c'])).toEqual(['a', 'b', 'c'])
   })
 
-  it('should support promise', () => {
+  it('should support promise', async () => {
     const promiseSchema = z.promise(z.string())
     const validPromise = Promise.resolve('success')
 
-    expect(promiseSchema.parse(validPromise)).resolves.toBe('success')
+    await expect(promiseSchema.parse(validPromise)).resolves.toBe('success')
   })
 
   it('should support unions', () => {

@@ -61,7 +61,7 @@ describe('Context Utilities', () => {
       })
 
       // Suppress console.error for this test
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
 
       expect(() => {
         renderHook(() => useTestContext())
@@ -206,7 +206,7 @@ describe('Context Utilities', () => {
         name: 'SelectorTest',
       })
 
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
 
       expect(() => {
         renderHook(() => useTestContext())
@@ -241,7 +241,7 @@ describe('Context Utilities', () => {
       type TestContextValue = { value: string }
       const [, useTestContext] = createCtx<TestContextValue>()
 
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(() => { /* suppress error */ })
 
       expect(() => {
         renderHook(() => useTestContext())

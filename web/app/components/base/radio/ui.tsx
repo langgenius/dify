@@ -18,6 +18,9 @@ const RadioUI: FC<Props> = ({
 }) => {
   return (
     <div
+      role="radio"
+      aria-checked={isChecked}
+      aria-disabled={disabled}
       className={cn(
         'size-4 rounded-full',
         isChecked && !disabled && 'border-[5px] border-components-radio-border-checked hover:border-components-radio-border-checked-hover',

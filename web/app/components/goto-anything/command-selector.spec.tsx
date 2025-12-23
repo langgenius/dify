@@ -5,7 +5,7 @@ import { Command } from 'cmdk'
 import CommandSelector from './command-selector'
 import type { ActionItem } from './actions/types'
 
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   usePathname: () => '/app',
 }))
 
@@ -16,7 +16,7 @@ const slashCommandsMock = [{
   isAvailable: () => true,
 }]
 
-jest.mock('./actions/commands/registry', () => ({
+vi.mock('./actions/commands/registry', () => ({
   slashCommandRegistry: {
     getAvailableCommands: () => slashCommandsMock,
   },
@@ -27,14 +27,14 @@ const createActions = (): Record<string, ActionItem> => ({
     key: '@app',
     shortcut: '@app',
     title: 'Apps',
-    search: jest.fn(),
+    search: vi.fn(),
     description: '',
   } as ActionItem,
   plugin: {
     key: '@plugin',
     shortcut: '@plugin',
     title: 'Plugins',
-    search: jest.fn(),
+    search: vi.fn(),
     description: '',
   } as ActionItem,
 })
@@ -42,7 +42,7 @@ const createActions = (): Record<string, ActionItem> => ({
 describe('CommandSelector', () => {
   test('should list contextual search actions and notify selection', async () => {
     const actions = createActions()
-    const onSelect = jest.fn()
+    const onSelect = vi.fn()
 
     render(
       <Command>
@@ -63,7 +63,7 @@ describe('CommandSelector', () => {
 
   test('should render slash commands when query starts with slash', async () => {
     const actions = createActions()
-    const onSelect = jest.fn()
+    const onSelect = vi.fn()
 
     render(
       <Command>

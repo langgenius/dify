@@ -10,7 +10,7 @@ enum MockCredentialTypeEnum {
 }
 
 // Mock plugin-auth module to avoid deep import chain issues
-jest.mock('@/app/components/plugins/plugin-auth', () => ({
+vi.mock('@/app/components/plugins/plugin-auth', () => ({
   CredentialTypeEnum: {
     OAUTH2: 'oauth2',
     API_KEY: 'api_key',
@@ -18,7 +18,7 @@ jest.mock('@/app/components/plugins/plugin-auth', () => ({
 }))
 
 // Mock portal-to-follow-elem - required for CredentialSelector
-jest.mock('@/app/components/base/portal-to-follow-elem', () => {
+vi.mock('@/app/components/base/portal-to-follow-elem', () => {
   const MockPortalToFollowElem = ({ children, open }: any) => {
     return (
       <div data-testid="portal-root" data-open={open}>
@@ -84,14 +84,14 @@ const createDefaultProps = (overrides?: Partial<HeaderProps>): HeaderProps => ({
   docLink: 'https://docs.example.com',
   pluginName: 'Test Plugin',
   currentCredentialId: 'cred-1',
-  onCredentialChange: jest.fn(),
+  onCredentialChange: vi.fn(),
   credentials: createMockCredentials(),
   ...overrides,
 })
 
 describe('Header', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -266,7 +266,7 @@ describe('Header', () => {
     describe('onClickConfiguration prop', () => {
       it('should call onClickConfiguration when configuration icon is clicked', () => {
         // Arrange
-        const mockOnClick = jest.fn()
+        const mockOnClick = vi.fn()
         const props = createDefaultProps({ onClickConfiguration: mockOnClick })
         render(<Header {...props} />)
 
@@ -328,7 +328,7 @@ describe('Header', () => {
 
       it('should pass onCredentialChange to CredentialSelector', () => {
         // Arrange
-        const mockOnChange = jest.fn()
+        const mockOnChange = vi.fn()
         const props = createDefaultProps({ onCredentialChange: mockOnChange })
         render(<Header {...props} />)
 
@@ -363,7 +363,7 @@ describe('Header', () => {
 
     it('should allow credential selection through CredentialSelector', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       render(<Header {...props} />)
 
@@ -377,7 +377,7 @@ describe('Header', () => {
 
     it('should trigger configuration callback when clicking config icon', () => {
       // Arrange
-      const mockOnConfig = jest.fn()
+      const mockOnConfig = vi.fn()
       const props = createDefaultProps({ onClickConfiguration: mockOnConfig })
       const { container } = render(<Header {...props} />)
 
@@ -402,7 +402,7 @@ describe('Header', () => {
     it('should not re-render when props remain the same', () => {
       // Arrange
       const props = createDefaultProps()
-      const renderSpy = jest.fn()
+      const renderSpy = vi.fn()
 
       const TrackedHeader: React.FC<HeaderProps> = (trackedProps) => {
         renderSpy()
@@ -573,7 +573,7 @@ describe('Header', () => {
   describe('Integration', () => {
     it('should work with full credential workflow', () => {
       // Arrange
-      const mockOnCredentialChange = jest.fn()
+      const mockOnCredentialChange = vi.fn()
       const props = createDefaultProps({
         onCredentialChange: mockOnCredentialChange,
         currentCredentialId: 'cred-1',
@@ -597,7 +597,7 @@ describe('Header', () => {
 
     it('should display all components together correctly', () => {
       // Arrange
-      const mockOnConfig = jest.fn()
+      const mockOnConfig = vi.fn()
       const props = createDefaultProps({
         docTitle: 'Integration Test Docs',
         docLink: 'https://test.com/docs',

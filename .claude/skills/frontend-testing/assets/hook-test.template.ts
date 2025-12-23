@@ -15,9 +15,9 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 // ============================================================================
 
 // API services (if hook fetches data)
-// jest.mock('@/service/api')
+// vi.mock('@/service/api')
 // import * as api from '@/service/api'
-// const mockedApi = api as jest.Mocked<typeof api>
+// const mockedApi = vi.mocked(api)
 
 // ============================================================================
 // Test Helpers
@@ -38,7 +38,7 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 
 describe('useHookName', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // --------------------------------------------------------------------------
@@ -145,7 +145,7 @@ describe('useHookName', () => {
   // --------------------------------------------------------------------------
   describe('Side Effects', () => {
     it('should call callback when value changes', () => {
-      // const callback = jest.fn()
+      // const callback = vi.fn()
       // const { result } = renderHook(() => useHookName({ onChange: callback }))
       //
       // act(() => {
@@ -156,9 +156,9 @@ describe('useHookName', () => {
     })
 
     it('should cleanup on unmount', () => {
-      // const cleanup = jest.fn()
-      // jest.spyOn(window, 'addEventListener')
-      // jest.spyOn(window, 'removeEventListener')
+      // const cleanup = vi.fn()
+      // vi.spyOn(window, 'addEventListener')
+      // vi.spyOn(window, 'removeEventListener')
       //
       // const { unmount } = renderHook(() => useHookName())
       //

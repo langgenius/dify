@@ -23,7 +23,7 @@ import NodeConfigPanel from './node-config-panel'
 import { createMockNode, createMockWorkflowContext } from '@/__mocks__/workflow'
 
 // Mock workflow context
-jest.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks', () => ({
   useWorkflowStore: () => mockWorkflowStore,
   useNodesInteractions: () => mockNodesInteractions,
 }))
@@ -31,21 +31,21 @@ jest.mock('@/app/components/workflow/hooks', () => ({
 let mockWorkflowStore = {
   nodes: [],
   edges: [],
-  updateNode: jest.fn(),
+  updateNode: vi.fn(),
 }
 
 let mockNodesInteractions = {
-  handleNodeSelect: jest.fn(),
-  handleNodeDelete: jest.fn(),
+  handleNodeSelect: vi.fn(),
+  handleNodeDelete: vi.fn(),
 }
 
 describe('NodeConfigPanel', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockWorkflowStore = {
       nodes: [],
       edges: [],
-      updateNode: jest.fn(),
+      updateNode: vi.fn(),
     }
   })
 
@@ -161,23 +161,23 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import DocumentUploader from './document-uploader'
 
-jest.mock('@/service/datasets', () => ({
-  uploadDocument: jest.fn(),
-  parseDocument: jest.fn(),
+vi.mock('@/service/datasets', () => ({
+  uploadDocument: vi.fn(),
+  parseDocument: vi.fn(),
 }))
 
 import * as datasetService from '@/service/datasets'
-const mockedService = datasetService as jest.Mocked<typeof datasetService>
+const mockedService = vi.mocked(datasetService)
 
 describe('DocumentUploader', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('File Upload', () => {
     it('should accept valid file types', async () => {
       const user = userEvent.setup()
-      const onUpload = jest.fn()
+      const onUpload = vi.fn()
       mockedService.uploadDocument.mockResolvedValue({ id: 'doc-1' })
       
       render(<DocumentUploader onUpload={onUpload} />)
@@ -326,14 +326,14 @@ describe('DocumentList', () => {
   describe('Search & Filtering', () => {
     it('should filter by search query', async () => {
       const user = userEvent.setup()
-      jest.useFakeTimers()
+      vi.useFakeTimers()
       
       render(<DocumentList datasetId="ds-1" />)
       
       await user.type(screen.getByPlaceholderText(/search/i), 'test query')
       
       // Debounce
-      jest.advanceTimersByTime(300)
+      vi.advanceTimersByTime(300)
       
       await waitFor(() => {
         expect(mockedService.getDocuments).toHaveBeenCalledWith(
@@ -342,7 +342,7 @@ describe('DocumentList', () => {
         )
       })
       
-      jest.useRealTimers()
+      vi.useRealTimers()
     })
   })
 })
@@ -367,13 +367,13 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import AppConfigForm from './app-config-form'
 
-jest.mock('@/service/apps', () => ({
-  updateAppConfig: jest.fn(),
-  getAppConfig: jest.fn(),
+vi.mock('@/service/apps', () => ({
+  updateAppConfig: vi.fn(),
+  getAppConfig: vi.fn(),
 }))
 
 import * as appService from '@/service/apps'
-const mockedService = appService as jest.Mocked<typeof appService>
+const mockedService = vi.mocked(appService)
 
 describe('AppConfigForm', () => {
   const defaultConfig = {
@@ -384,7 +384,7 @@ describe('AppConfigForm', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockedService.getAppConfig.mockResolvedValue(defaultConfig)
   })
 

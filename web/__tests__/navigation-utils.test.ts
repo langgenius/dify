@@ -15,12 +15,12 @@ import {
 } from '@/utils/navigation'
 
 // Mock router for testing
-const mockPush = jest.fn()
+const mockPush = vi.fn()
 const mockRouter = { push: mockPush }
 
 describe('Navigation Utilities', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('createNavigationPath', () => {
@@ -63,7 +63,7 @@ describe('Navigation Utilities', () => {
         configurable: true,
       })
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { /* noop */ })
       const path = createNavigationPath('/datasets/123/documents')
 
       expect(path).toBe('/datasets/123/documents')
@@ -134,7 +134,7 @@ describe('Navigation Utilities', () => {
         configurable: true,
       })
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { /* noop */ })
       const params = extractQueryParams(['page', 'limit'])
 
       expect(params).toEqual({})
@@ -169,11 +169,11 @@ describe('Navigation Utilities', () => {
     test('handles errors gracefully', () => {
       // Mock URLSearchParams to throw an error
       const originalURLSearchParams = globalThis.URLSearchParams
-      globalThis.URLSearchParams = jest.fn(() => {
+      globalThis.URLSearchParams = vi.fn(() => {
         throw new Error('URLSearchParams error')
       }) as any
 
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation()
+      const consoleSpy = vi.spyOn(console, 'warn').mockImplementation(() => { /* noop */ })
       const path = createNavigationPathWithParams('/datasets/123/documents', { page: 1 })
 
       expect(path).toBe('/datasets/123/documents')

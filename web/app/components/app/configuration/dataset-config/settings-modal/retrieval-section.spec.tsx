@@ -7,19 +7,19 @@ import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
-const mockUseModelList = jest.fn()
-const mockUseModelListAndDefaultModel = jest.fn()
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = jest.fn()
-const mockUseCurrentProviderAndModel = jest.fn()
+const mockUseModelList = vi.fn()
+const mockUseModelListAndDefaultModel = vi.fn()
+const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.fn()
+const mockUseCurrentProviderAndModel = vi.fn()
 
-jest.mock('ky', () => {
+vi.mock('ky', () => {
   const ky = () => ky
   ky.extend = () => ky
   ky.create = () => ky
   return { __esModule: true, default: ky }
 })
 
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: [],
     textGenerationModelList: [],
@@ -32,7 +32,7 @@ jest.mock('@/context/provider-context', () => ({
   }),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   __esModule: true,
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
     mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
@@ -41,7 +41,7 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', (
   useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   __esModule: true,
   default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
     <div data-testid='model-selector'>
@@ -50,7 +50,7 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/model-sel
   ),
 }))
 
-jest.mock('@/app/components/datasets/create/step-two', () => ({
+vi.mock('@/app/components/datasets/create/step-two', () => ({
   __esModule: true,
   IndexingType: {
     QUALIFIED: 'high_quality',
@@ -137,16 +137,16 @@ describe('RetrievalChangeTip', () => {
   const defaultProps = {
     visible: true,
     message: 'Test message',
-    onDismiss: jest.fn(),
+    onDismiss: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('renders and supports dismiss', async () => {
     // Arrange
-    const onDismiss = jest.fn()
+    const onDismiss = vi.fn()
     render(<RetrievalChangeTip {...defaultProps} onDismiss={onDismiss} />)
 
     // Act
@@ -172,7 +172,7 @@ describe('RetrievalSection', () => {
   const labelClass = 'label'
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUseModelList.mockImplementation((type: ModelTypeEnum) => {
       if (type === ModelTypeEnum.rerank)
         return { data: [{ provider: 'rerank-provider', models: [{ model: 'rerank-model' }] }] }
@@ -194,7 +194,7 @@ describe('RetrievalSection', () => {
         external_knowledge_api_endpoint: 'https://api.external.com',
       },
     })
-    const handleExternalChange = jest.fn()
+    const handleExternalChange = vi.fn()
 
     // Act
     render(
@@ -222,7 +222,7 @@ describe('RetrievalSection', () => {
 
   it('renders internal retrieval config with doc link', () => {
     // Arrange
-    const docLink = jest.fn((path: string) => `https://docs.example${path}`)
+    const docLink = vi.fn((path: string) => `https://docs.example${path}`)
     const retrievalConfig = createRetrievalConfig()
 
     // Act
@@ -235,7 +235,7 @@ describe('RetrievalSection', () => {
         indexMethod={IndexingType.QUALIFIED}
         retrievalConfig={retrievalConfig}
         showMultiModalTip
-        onRetrievalConfigChange={jest.fn()}
+        onRetrievalConfigChange={vi.fn()}
         docLink={docLink}
       />,
     )
@@ -249,7 +249,7 @@ describe('RetrievalSection', () => {
 
   it('propagates retrieval config changes for economical indexing', async () => {
     // Arrange
-    const handleRetrievalChange = jest.fn()
+    const handleRetrievalChange = vi.fn()
 
     // Act
     render(
