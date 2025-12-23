@@ -12,16 +12,7 @@ const typeCheckedRules =
 
 export default [
   {
-    ignores: [
-      "dist",
-      "node_modules",
-      "scripts",
-      "tests",
-      "**/*.test.js",
-      "**/*.spec.js",
-      "**/*.test.jsx",
-      "**/*.spec.jsx",
-    ],
+    ignores: ["dist", "node_modules", "scripts", "tests", "**/*.test.*", "**/*.spec.*"],
   },
   js.configs.recommended,
   {
@@ -47,31 +38,8 @@ export default [
       "@typescript-eslint/no-unsafe-return": "error",
       "@typescript-eslint/consistent-type-imports": [
         "error",
-        {
-          prefer: "type-imports",
-          fixStyle: "separate-type-imports",
-        },
+        { prefer: "type-imports", fixStyle: "separate-type-imports" },
       ],
-    },
-  },
-  {
-    files: ["**/*.js"],
-    ignores: [
-      "**/*.test.js",
-      "**/*.spec.js",
-      "**/*.test.jsx",
-      "**/*.spec.jsx",
-      "**/*.test.ts",
-      "**/*.spec.ts",
-      "**/*.test.tsx",
-      "**/*.spec.tsx",
-      "**/*.jsx",
-      "**/*.ts",
-      "**/*.tsx"
-    ],
-    languageOptions: {
-      ecmaVersion: "latest",
-      sourceType: "module",
     },
   },
 ];
