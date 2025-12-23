@@ -184,24 +184,6 @@ async function getKeysFromLanguage(language) {
   })
 }
 
-function removeKeysFromObject(obj, keysToRemove, prefix = '') {
-  let modified = false
-  for (const key in obj) {
-    const fullKey = prefix ? `${prefix}.${key}` : key
-
-    if (keysToRemove.includes(fullKey)) {
-      delete obj[key]
-      modified = true
-      console.log(`🗑️  Removed key: ${fullKey}`)
-    }
-    else if (typeof obj[key] === 'object' && obj[key] !== null) {
-      const subModified = removeKeysFromObject(obj[key], keysToRemove, fullKey)
-      modified = modified || subModified
-    }
-  }
-  return modified
-}
-
 async function removeExtraKeysFromFile(language, fileName, extraKeys) {
   const filePath = path.resolve(__dirname, '../i18n', language, `${fileName}.ts`)
 
