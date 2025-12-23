@@ -1331,74 +1331,45 @@ export const useNodesInteractions = () => {
 
         // Check if prevNode is a group node - need special handling
         const isPrevNodeGroup = prevNode.data.type === BlockEnum.Group
-        let newPrevEdge: any = null
-        let newPrevUiEdge: any = null
+        let newPrevEdge: Edge | null = null
+        let newPrevUiEdge: Edge | null = null
         const edgesToRemove: string[] = []
 
-        if (isPrevNodeGroup && prevNodeSourceHandle) {
-          // Parse handler id to get original node id and sourceHandle
-          const lastDashIndex = prevNodeSourceHandle.lastIndexOf('-')
-          const originalNodeId = prevNodeSourceHandle.substring(0, lastDashIndex)
-          const originalSourceHandle = prevNodeSourceHandle.substring(lastDashIndex + 1)
-          const originalNode = nodes.find(node => node.id === originalNodeId)
+        if (isPrevNodeGroup && prevNodeSourceHandle && nodeType !== BlockEnum.DataSource) {
+          const { originalNodeId, originalSourceHandle } = parseGroupHandlerId(prevNodeSourceHandle)
 
-          if (originalNode && nodeType !== BlockEnum.DataSource) {
-            // Find edges to remove: both hidden real edge and UI temp edge from group to nextNode
-            const hiddenEdge = edges.find(
-              edge => edge.source === originalNodeId
-                && edge.sourceHandle === originalSourceHandle
-                && edge.target === nextNodeId,
-            )
-            const uiEdge = edges.find(
-              edge => edge.source === prevNodeId
-                && edge.sourceHandle === prevNodeSourceHandle
-                && edge.target === nextNodeId,
-            )
-            if (hiddenEdge) edgesToRemove.push(hiddenEdge.id)
-            if (uiEdge) edgesToRemove.push(uiEdge.id)
+          // Find edges to remove: both hidden real edge and UI temp edge from group to nextNode
+          const hiddenEdge = edges.find(
+            edge => edge.source === originalNodeId
+              && edge.sourceHandle === originalSourceHandle
+              && edge.target === nextNodeId,
+          )
+          const uiTempEdge = edges.find(
+            edge => edge.source === prevNodeId
+              && edge.sourceHandle === prevNodeSourceHandle
+              && edge.target === nextNodeId,
+          )
+          if (hiddenEdge) edgesToRemove.push(hiddenEdge.id)
+          if (uiTempEdge) edgesToRemove.push(uiTempEdge.id)
 
-            // Create the real edge (from original node to new node) - hidden
-            newPrevEdge = {
-              id: `${originalNodeId}-${originalSourceHandle}-${newNode.id}-${targetHandle}`,
-              type: CUSTOM_EDGE,
-              source: originalNodeId,
-              sourceHandle: originalSourceHandle,
-              target: newNode.id,
-              targetHandle,
-              hidden: true,
-              data: {
-                sourceType: originalNode.data.type,
-                targetType: newNode.data.type,
-                isInIteration,
-                isInLoop,
-                iteration_id: isInIteration ? prevNode.parentId : undefined,
-                loop_id: isInLoop ? prevNode.parentId : undefined,
-                _connectedNodeIsSelected: true,
-                _hiddenInGroupId: prevNodeId,
-              },
-              zIndex: 0,
-            }
+          const edgePair = createGroupEdgePair({
+            groupNodeId: prevNodeId,
+            handlerId: prevNodeSourceHandle,
+            targetNodeId: newNode.id,
+            targetHandle,
+            nodes: [...nodes, newNode],
+            baseEdgeData: {
+              isInIteration,
+              isInLoop,
+              iteration_id: isInIteration ? prevNode.parentId : undefined,
+              loop_id: isInLoop ? prevNode.parentId : undefined,
+              _connectedNodeIsSelected: true,
+            },
+          })
 
-            // Create the UI edge (from group to new node) - temporary
-            newPrevUiEdge = {
-              id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
-              type: CUSTOM_EDGE,
-              source: prevNodeId,
-              sourceHandle: prevNodeSourceHandle,
-              target: newNode.id,
-              targetHandle,
-              data: {
-                sourceType: originalNode.data.type,
-                targetType: newNode.data.type,
-                isInIteration,
-                isInLoop,
-                iteration_id: isInIteration ? prevNode.parentId : undefined,
-                loop_id: isInLoop ? prevNode.parentId : undefined,
-                _connectedNodeIsSelected: true,
-                _isTemp: true,
-              },
-              zIndex: 0,
-            }
+          if (edgePair) {
+            newPrevEdge = edgePair.realEdge
+            newPrevUiEdge = edgePair.uiEdge
           }
         }
         else {
