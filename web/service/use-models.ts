@@ -1,9 +1,3 @@
-import {
-  del,
-  get,
-  post,
-  put,
-} from './base'
 import type {
   ModelCredential,
   ModelItem,
@@ -16,6 +10,12 @@ import {
   useQuery,
   // useQueryClient,
 } from '@tanstack/react-query'
+import {
+  del,
+  get,
+  post,
+  put,
+} from './base'
 
 const NAME_SPACE = 'models'
 

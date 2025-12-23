@@ -17,7 +17,7 @@ vi.mock('../../hooks', () => ({
 vi.mock('@/app/components/workflow/header/chat-variable-button', () => ({
   __esModule: true,
   default: ({ disabled }: { disabled: boolean }) => (
-    <button data-testid='chat-variable-button' type='button' disabled={disabled}>
+    <button data-testid="chat-variable-button" type="button" disabled={disabled}>
       ChatVariableButton
     </button>
   ),

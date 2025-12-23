@@ -1,7 +1,7 @@
+import type { CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import WebsitePreview from './web-preview'
-import type { CrawlResultItem } from '@/models/datasets'
 
 // Uses global react-i18next mock from web/vitest.setup.ts
 

@@ -1,6 +1,6 @@
 import { memo } from 'react'
-import { getKeyboardKeyNameBySystem } from './utils'
 import { cn } from '@/utils/classnames'
+import { getKeyboardKeyNameBySystem } from './utils'
 
 type ShortcutsNameProps = {
   keys: string[]
@@ -16,7 +16,8 @@ const ShortcutsName = ({
     <div className={cn(
       'flex items-center gap-0.5',
       className,
-    )}>
+    )}
+    >
       {
         keys.map(key => (
           <div

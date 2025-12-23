@@ -1,14 +1,14 @@
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useProviderContext } from '@/context/provider-context'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders, useInvalidateRAGRecommendedPlugins } from '@/service/use-tools'
-import { useInvalidateStrategyProviders } from '@/service/use-strategy'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
-import { PluginCategoryEnum } from '../../types'
-import { useInvalidDataSourceList } from '@/service/use-pipeline'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useProviderContext } from '@/context/provider-context'
 import { useInvalidDataSourceListAuth } from '@/service/use-datasource'
+import { useInvalidDataSourceList } from '@/service/use-pipeline'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInvalidateStrategyProviders } from '@/service/use-strategy'
+import { useInvalidateAllBuiltInTools, useInvalidateAllToolProviders, useInvalidateRAGRecommendedPlugins } from '@/service/use-tools'
 import { useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
+import { PluginCategoryEnum } from '../../types'
 
 const useRefreshPluginList = () => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()

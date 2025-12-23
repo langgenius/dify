@@ -1,8 +1,8 @@
-import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { ModalContextProvider } from '@/context/modal-context'
-import { Plan } from '@/app/components/billing/type'
+import React from 'react'
 import { defaultPlan } from '@/app/components/billing/config'
+import { Plan } from '@/app/components/billing/type'
+import { ModalContextProvider } from '@/context/modal-context'
 
 vi.mock('@/config', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/config')>()

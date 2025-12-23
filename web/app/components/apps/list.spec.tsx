@@ -1,6 +1,9 @@
-import React from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
 import { AppModeEnum } from '@/types/app'
+
+// Import after mocks
+import List from './list'
 
 // Mock next/navigation
 const mockReplace = vi.fn()
@@ -117,7 +120,7 @@ vi.mock('@/service/use-apps', () => ({
 
 // Mock tag store
 vi.mock('@/app/components/base/tag-management/store', () => ({
-  useStore: (selector: (state: { tagList: any[]; setTagList: any; showTagManagementModal: boolean; setShowTagManagementModal: any }) => any) => {
+  useStore: (selector: (state: { tagList: any[], setTagList: any, showTagManagementModal: boolean, setShowTagManagementModal: any }) => any) => {
     const state = {
       tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app' }],
       setTagList: vi.fn(),
@@ -181,11 +184,9 @@ vi.mock('next/dynamic', () => {
       }
       if (fnString.includes('create-from-dsl-modal')) {
         return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
-          if (!show) return null
-          return React.createElement('div', { 'data-testid': 'create-dsl-modal' },
-            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'),
-            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'),
-          )
+          if (!show)
+            return null
+          return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
         }
       }
       return () => null
@@ -230,9 +231,6 @@ vi.mock('./footer', () => ({
     return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
   },
 }))
-
-// Import after mocks
-import List from './list'
 
 // Store IntersectionObserver callback
 let intersectionCallback: IntersectionObserverCallback | null = null

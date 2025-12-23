@@ -47,7 +47,7 @@ const RadioGroup: FC<Props> = ({
     return () => onChange(value)
   }, [onChange])
   return (
-    <div className='flex space-x-2'>
+    <div className="flex space-x-2">
       {options.map(option => (
         <Item
           key={option.value}

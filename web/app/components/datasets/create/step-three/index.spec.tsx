@@ -1,6 +1,6 @@
+import type { createDocumentResponse, FullDocumentDetail, IconInfo } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
 import StepThree from './index'
-import type { FullDocumentDetail, IconInfo, createDocumentResponse } from '@/models/datasets'
 
 // Mock the EmbeddingProcess component since it has complex async logic
 vi.mock('../embedding-process', () => ({

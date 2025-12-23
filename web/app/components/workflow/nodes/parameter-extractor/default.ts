@@ -1,9 +1,11 @@
 import type { NodeDefault } from '../../types'
-import { type ParameterExtractorNodeType, ReasoningModeType } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
+import type { ParameterExtractorNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { AppModeEnum } from '@/types/app'
+import { ReasoningModeType } from './types'
+
 const i18nPrefix = 'workflow'
 
 const metaData = genNodeMetaData({

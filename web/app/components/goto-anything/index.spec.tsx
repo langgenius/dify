@@ -1,8 +1,8 @@
-import React from 'react'
+import type { ActionItem, SearchResult } from './actions/types'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import React from 'react'
 import GotoAnything from './index'
-import type { ActionItem, SearchResult } from './actions/types'
 
 const routerPush = vi.fn()
 vi.mock('next/navigation', () => ({

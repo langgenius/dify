@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import ToolProviderList from '@/app/components/tools/provider-list'
 import { useAppContext } from '@/context/app-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+
 const ToolsList: FC = () => {
   const router = useRouter()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()

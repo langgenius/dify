@@ -1,9 +1,9 @@
 'use client'
-import React, { useCallback, useState } from 'react'
+import type { OffsetOptions, Placement } from '@floating-ui/react'
 import {
-  FloatingPortal,
   autoUpdate,
   flip,
+  FloatingPortal,
   offset,
   shift,
   size,
@@ -16,8 +16,9 @@ import {
   useRole,
 } from '@floating-ui/react'
 
-import type { OffsetOptions, Placement } from '@floating-ui/react'
+import React, { useCallback, useState } from 'react'
 import { cn } from '@/utils/classnames'
+
 export type PortalToFollowElemOptions = {
   /*
   * top, bottom, left, right
@@ -165,7 +166,7 @@ export const PortalToFollowElemContent = (
     style,
     ...props
   }: React.HTMLProps<HTMLDivElement> & {
-    ref?: React.RefObject<HTMLDivElement | null>;
+    ref?: React.RefObject<HTMLDivElement | null>
   },
 ) => {
   const context = usePortalToFollowElemContext()

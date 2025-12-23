@@ -1,6 +1,6 @@
 import type { MockedFunction } from 'vitest'
-import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
 import type { Node } from '@/app/components/workflow/types'
+import { getWorkflowEntryNode } from '@/app/components/workflow/utils/workflow-entry'
 
 // Mock the getWorkflowEntryNode function
 vi.mock('@/app/components/workflow/utils/workflow-entry', () => ({

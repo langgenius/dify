@@ -1,7 +1,7 @@
-import React from 'react'
+import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ExternalAPIItem } from '@/models/datasets'
+import React from 'react'
 import ExternalKnowledgeBaseCreate from './index'
 import RetrievalSettings from './RetrievalSettings'
 

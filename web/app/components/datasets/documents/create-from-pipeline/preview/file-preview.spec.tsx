@@ -1,7 +1,7 @@
+import type { CustomFile as File } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import FilePreview from './file-preview'
-import type { CustomFile as File } from '@/models/datasets'
 
 // Uses global react-i18next mock from web/vitest.setup.ts
 

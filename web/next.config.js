@@ -1,6 +1,6 @@
-import { codeInspectorPlugin } from 'code-inspector-plugin'
 import withBundleAnalyzerInit from '@next/bundle-analyzer'
 import createMDX from '@next/mdx'
+import { codeInspectorPlugin } from 'code-inspector-plugin'
 import withPWAInit from 'next-pwa'
 
 const isDev = process.env.NODE_ENV === 'development'
@@ -21,9 +21,9 @@ const withPWA = withPWAInit({
         cacheName: 'google-fonts',
         expiration: {
           maxEntries: 4,
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
-        }
-      }
+          maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+        },
+      },
     },
     {
       urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
@@ -32,9 +32,9 @@ const withPWA = withPWAInit({
         cacheName: 'google-fonts-webfonts',
         expiration: {
           maxEntries: 4,
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
-        }
-      }
+          maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+        },
+      },
     },
     {
       urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
@@ -43,9 +43,9 @@ const withPWA = withPWAInit({
         cacheName: 'images',
         expiration: {
           maxEntries: 64,
-          maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
-        }
-      }
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+        },
+      },
     },
     {
       urlPattern: /\.(?:js|css)$/i,
@@ -54,9 +54,9 @@ const withPWA = withPWAInit({
         cacheName: 'static-resources',
         expiration: {
           maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 1 day
-        }
-      }
+          maxAgeSeconds: 24 * 60 * 60, // 1 day
+        },
+      },
     },
     {
       urlPattern: /^\/api\/.*/i,
@@ -66,11 +66,11 @@ const withPWA = withPWAInit({
         networkTimeoutSeconds: 10,
         expiration: {
           maxEntries: 16,
-          maxAgeSeconds: 60 * 60 // 1 hour
-        }
-      }
-    }
-  ]
+          maxAgeSeconds: 60 * 60, // 1 hour
+        },
+      },
+    },
+  ],
 })
 const withMDX = createMDX({
   extension: /\.mdx?$/,
@@ -100,8 +100,8 @@ const nextConfig = {
   transpilePackages: ['echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({
-      bundler: 'turbopack'
-    })
+      bundler: 'turbopack',
+    }),
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
@@ -118,7 +118,7 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: [
-      '@heroicons/react'
+      '@heroicons/react',
     ],
   },
   // fix all before production. Now it slow the develop speed.
@@ -145,7 +145,7 @@ const nextConfig = {
   output: 'standalone',
   compiler: {
     removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
-  }
+  },
 }
 
 export default withPWA(withBundleAnalyzer(withMDX(nextConfig)))

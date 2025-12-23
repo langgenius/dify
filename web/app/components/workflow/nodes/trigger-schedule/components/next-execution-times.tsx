@@ -1,6 +1,6 @@
+import type { ScheduleTriggerNodeType } from '../types'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ScheduleTriggerNodeType } from '../types'
 import { getFormattedExecutionTimes } from '../utils/execution-time-calculator'
 
 type NextExecutionTimesProps = {

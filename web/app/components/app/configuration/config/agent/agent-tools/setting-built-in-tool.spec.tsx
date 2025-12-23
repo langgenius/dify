@@ -1,9 +1,10 @@
-import React from 'react'
+import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import SettingBuiltInTool from './setting-built-in-tool'
+import React from 'react'
+import { CollectionType } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
-import { CollectionType, type Tool, type ToolParameter } from '@/app/components/tools/types'
+import SettingBuiltInTool from './setting-built-in-tool'
 
 const fetchModelToolList = vi.fn()
 const fetchBuiltInToolList = vi.fn()
@@ -156,7 +157,7 @@ describe('SettingBuiltInTool', () => {
     pluginAuthClickValue = 'credential-from-plugin'
   })
 
-  test('should fetch tool list when collection has no tools', async () => {
+  it('should fetch tool list when collection has no tools', async () => {
     fetchModelToolList.mockResolvedValueOnce([createTool()])
     renderComponent({
       collection: {
@@ -172,7 +173,7 @@ describe('SettingBuiltInTool', () => {
     expect(await screen.findByText('Search Tool')).toBeInTheDocument()
   })
 
-  test('should switch between info and setting tabs', async () => {
+  it('should switch between info and setting tabs', async () => {
     renderComponent()
     await waitFor(() => {
       expect(screen.getByTestId('mock-form')).toBeInTheDocument()
@@ -184,7 +185,7 @@ describe('SettingBuiltInTool', () => {
     expect(screen.getByTestId('mock-form')).toBeInTheDocument()
   })
 
-  test('should call onSave with updated values when save button clicked', async () => {
+  it('should call onSave with updated values when save button clicked', async () => {
     const { onSave } = renderComponent()
     await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
     nextFormValue = { settingParam: 'updated' }
@@ -193,7 +194,7 @@ describe('SettingBuiltInTool', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ settingParam: 'updated' }))
   })
 
-  test('should keep save disabled until required field provided', async () => {
+  it('should keep save disabled until required field provided', async () => {
     renderComponent({
       setting: {},
     })
@@ -205,20 +206,20 @@ describe('SettingBuiltInTool', () => {
     expect(saveButton).not.toBeDisabled()
   })
 
-  test('should call onHide when cancel button is pressed', async () => {
+  it('should call onHide when cancel button is pressed', async () => {
     const { onHide } = renderComponent()
     await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
     await userEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(onHide).toHaveBeenCalled()
   })
 
-  test('should trigger authorization callback from plugin auth section', async () => {
+  it('should trigger authorization callback from plugin auth section', async () => {
     const { onAuthorizationItemClick } = renderComponent()
     await userEvent.click(screen.getByRole('button', { name: 'choose-plugin-credential' }))
     expect(onAuthorizationItemClick).toHaveBeenCalledWith('credential-from-plugin')
   })
 
-  test('should call onHide when back button is clicked', async () => {
+  it('should call onHide when back button is clicked', async () => {
     const { onHide } = renderComponent({
       showBackButton: true,
     })
@@ -226,7 +227,7 @@ describe('SettingBuiltInTool', () => {
     expect(onHide).toHaveBeenCalled()
   })
 
-  test('should load workflow tools when workflow collection is provided', async () => {
+  it('should load workflow tools when workflow collection is provided', async () => {
     fetchWorkflowToolList.mockResolvedValueOnce([createTool({
       name: 'workflow-tool',
     })])

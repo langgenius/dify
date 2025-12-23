@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
 
 // Mock next/link to capture href
 vi.mock('next/link', () => ({
-  default: ({ children, href, replace }: { children: React.ReactNode; href: string; replace?: boolean }) => (
+  default: ({ children, href, replace }: { children: React.ReactNode, href: string, replace?: boolean }) => (
     <a href={href} data-replace={replace}>
       {children}
     </a>

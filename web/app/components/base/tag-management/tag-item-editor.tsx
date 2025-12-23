@@ -1,22 +1,22 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import type { Tag } from '@/app/components/base/tag-management/constant'
 import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import { useContext } from 'use-context-selector'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useTagStore } from './store'
+import { useContext } from 'use-context-selector'
 import Confirm from '@/app/components/base/confirm'
-import { cn } from '@/utils/classnames'
-import type { Tag } from '@/app/components/base/tag-management/constant'
 import { ToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   deleteTag,
   updateTag,
 } from '@/service/tag'
+import { cn } from '@/utils/classnames'
+import { useStore as useTagStore } from './store'
 
 type TagItemEditorProps = {
   tag: Tag
@@ -107,7 +107,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       <div className={cn('flex shrink-0 items-center gap-0.5 rounded-lg border border-components-panel-border py-1 pl-2 pr-1 text-sm leading-5 text-text-secondary')}>
         {!isEditing && (
           <>
-            <div className='text-sm leading-5 text-text-secondary'>
+            <div className="text-sm leading-5 text-text-secondary">
               {tag.name}
             </div>
             <Tooltip
@@ -116,24 +116,27 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
               }
               needsDelay
             >
-              <div className='leading-4.5 shrink-0 px-1 text-sm font-medium text-text-tertiary'>{tag.binding_count}</div>
+              <div className="leading-4.5 shrink-0 px-1 text-sm font-medium text-text-tertiary">{tag.binding_count}</div>
             </Tooltip>
-            <div className='group/edit shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover' onClick={() => setIsEditing(true)}>
-              <RiEditLine className='h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary' />
+            <div className="group/edit shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover" onClick={() => setIsEditing(true)}>
+              <RiEditLine className="h-3 w-3 text-text-tertiary group-hover/edit:text-text-secondary" />
             </div>
-            <div className='group/remove shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover' onClick={() => {
-              if (tag.binding_count)
-                setShowRemoveModal(true)
-              else
-                handleRemove()
-            }}>
-              <RiDeleteBinLine className='h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary' />
+            <div
+              className="group/remove shrink-0 cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
+              onClick={() => {
+                if (tag.binding_count)
+                  setShowRemoveModal(true)
+                else
+                  handleRemove()
+              }}
+            >
+              <RiDeleteBinLine className="h-3 w-3 text-text-tertiary group-hover/remove:text-text-secondary" />
             </div>
           </>
         )}
         {isEditing && (
           <input
-            className='shrink-0 appearance-none caret-primary-600 outline-none placeholder:text-text-quaternary'
+            className="shrink-0 appearance-none caret-primary-600 outline-none placeholder:text-text-quaternary"
             autoFocus
             value={name}
             onChange={e => setName(e.target.value)}

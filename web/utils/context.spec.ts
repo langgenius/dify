@@ -1,3 +1,4 @@
+import { renderHook } from '@testing-library/react'
 /**
  * Test suite for React context creation utilities
  *
@@ -9,7 +10,6 @@
  * - createSelectorCtx: Context with selector support using use-context-selector library
  */
 import React from 'react'
-import { renderHook } from '@testing-library/react'
 import { createCtx, createSelectorCtx } from './context'
 
 describe('Context Utilities', () => {
@@ -106,8 +106,8 @@ describe('Context Utilities', () => {
      */
     it('should handle complex context values', () => {
       type ComplexContext = {
-        user: { id: string; name: string }
-        settings: { theme: string; locale: string }
+        user: { id: string, name: string }
+        settings: { theme: string, locale: string }
         actions: Array<() => void>
       }
 
