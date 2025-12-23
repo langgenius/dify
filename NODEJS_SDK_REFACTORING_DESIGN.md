@@ -1,9 +1,11 @@
 # Node.js SDK Refactor and Enhancement Spec
 
 ## Context
+
 Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This document defines a detailed requirements and design plan to refactor and enhance the Node.js SDK. Scope is the Service API in this repo (`api/controllers/service_api`), with complete chatflow (advanced chat) and workflow coverage. The Node SDK must be ESM-only, and configuration should mirror the Python SDK.
 
 ## Python SDK Baseline (Config, Errors, Streaming)
+
 - Config parity target: `base_url` (default `https://api.dify.ai/v1`), `timeout` (seconds), `max_retries`, `retry_delay`, `enable_logging`.
 - Node config exposes the same set of options (camelCase names) with identical defaults.
 - Retry behavior: exponential backoff on network/timeout errors; no retry on 4xx except 429.
@@ -17,6 +19,7 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 ## Current Node.js SDK Assessment (sdks/nodejs-client)
 
 ### Existing coverage
+
 - DifyClient: feedback, parameters, file upload, text-to-audio, meta.
 - CompletionClient: create completion message.
 - ChatClient: create chat, suggested, stop, conversations list, messages list, rename/delete conversation, audio-to-text.
@@ -24,6 +27,7 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 - Streaming: supported via axios responseType "stream" but no SSE parsing helper.
 
 ### Gaps vs Service API
+
 - No Knowledge Base client: datasets, documents, segments, child chunks, metadata, tags, hit-testing, RAG pipeline.
 - No Workspace models endpoint.
 - Missing app info/site and file preview endpoints.
@@ -36,6 +40,7 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 - Missing binary response handling for file preview and text-to-audio streaming.
 
 ### Refactor targets and issues
+
 - Inconsistent method placement: CompletionClient includes runWorkflow; WorkflowClient duplicates.
 - getConversations uses first_id parameter but Service API uses last_id.
 - getSuggested uses GET but sends user in request body, not query params.
@@ -53,34 +58,36 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 ## Requirements
 
 ### Functional requirements
-1) Service API coverage (complete)
+
+1. Service API coverage (complete)
    - App/core: `/parameters`, `/meta`, `/info`, `/site`, `/files/upload`, `/files/{file_id}/preview`, `/audio-to-text`, `/text-to-audio`.
    - Completion: `/completion-messages`, `/completion-messages/{task_id}/stop`.
    - Chat + chatflow (advanced chat): `/chat-messages`, `/chat-messages/{task_id}/stop`, `/conversations`, `/conversations/{id}`, `/conversations/{id}/name`, `/messages`, `/messages/{id}/suggested`, `/messages/{id}/feedbacks`, `/app/feedbacks`, `/conversations/{id}/variables`, `/conversations/{id}/variables/{variable_id}`, annotation APIs under `/apps/annotations` and `/apps/annotation-reply`.
    - Workflow: `/workflows/run`, `/workflows/run/{workflow_run_id}`, `/workflows/{workflow_id}/run`, `/workflows/tasks/{task_id}/stop`, `/workflows/logs`.
    - Knowledge base: datasets, documents, indexing status, segments, child chunks, metadata, tags, hit-testing, RAG pipeline, document status batch updates.
    - Workspace: `/workspaces/current/models/model-types/{model_type}`.
-2) Async and streaming support (comprehensive)
+1. Async and streaming support (comprehensive)
    - All SDK methods are `async` (Promise-based); no sync variants.
    - Provide SSE parsing for both `data:` and `event:` lines, plus AsyncIterable helpers.
    - Streaming endpoints: chat/completion/workflow runs, RAG pipeline run, datasource node run, and any response_mode=streaming variants.
-3) Configuration parity with Python SDK
+1. Configuration parity with Python SDK
    - `baseUrl`, `timeout`, `maxRetries`, `retryDelay`, `enableLogging` only (same semantics as Python).
    - Retry logic mirrors Python SDK behavior (exponential backoff on network/timeout errors).
-4) File upload support
+1. File upload support
    - Accept FormData, Blob/File, or Node stream with metadata.
    - Handle multipart boundaries and headers correctly.
-5) Error handling
+1. Error handling
    - Map HTTP errors to typed exceptions with status_code, message, and response body.
    - Honor Retry-After for 429 responses.
-6) Typed models
+1. Typed models
    - Provide TypeScript interfaces for request and response payloads.
    - Avoid `any` in public surface.
-7) Backward compatibility
+1. Backward compatibility
    - Preserve existing exports and method names where possible.
    - Deprecation warnings for renamed or moved methods.
 
 ### Non-functional requirements
+
 - TypeScript-first source with generated .d.ts.
 - ESM-only distribution (Node SDK must be ESM).
 - Node 18+ support.
@@ -91,25 +98,30 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 ## Service API Inventory (Authoritative for Node SDK)
 
 ### Root
+
 - GET `/`
 
 ### App Core
+
 - GET `/parameters`
 - GET `/meta`
 - GET `/info`
 - GET `/site`
 
 ### Files and Audio
+
 - POST `/files/upload` (multipart/form-data)
 - GET `/files/{file_id}/preview` (query: `as_attachment`, binary response)
 - POST `/audio-to-text` (multipart/form-data)
 - POST `/text-to-audio` (payload: `message_id`, `voice`, `text`, `streaming`, binary response when streaming)
 
 ### Completion
+
 - POST `/completion-messages` (supports `response_mode`, `retriever_from`)
 - POST `/completion-messages/{task_id}/stop`
 
 ### Chat + Chatflow (advanced chat)
+
 - POST `/chat-messages`
   - Payload: `inputs`, `query`, `files`, `response_mode`, `conversation_id`, `auto_generate_name`, `workflow_id`, `retriever_from`
   - Notes: `workflow_id` enables chatflow; `response_mode="streaming"` returns SSE.
@@ -125,12 +137,14 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 - PUT `/conversations/{conversation_id}/variables/{variable_id}` (payload: `value`)
 
 ### Annotations
+
 - POST `/apps/annotation-reply/{action}`
 - GET `/apps/annotation-reply/{action}/status/{job_id}`
 - GET/POST `/apps/annotations`
 - PUT/DELETE `/apps/annotations/{annotation_id}`
 
 ### Workflow
+
 - POST `/workflows/run` (supports `response_mode`)
 - GET `/workflows/run/{workflow_run_id}`
 - POST `/workflows/{workflow_id}/run` (supports `response_mode`)
@@ -138,6 +152,7 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 - GET `/workflows/logs` (query: keyword/status/time range/pagination)
 
 ### Knowledge Base (Datasets)
+
 - GET/POST `/datasets`
 - GET/PATCH/DELETE `/datasets/{dataset_id}`
 - PATCH `/datasets/{dataset_id}/documents/status/{action}` (body: `document_ids: string[]`)
@@ -147,6 +162,7 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 - GET `/datasets/{dataset_id}/tags`
 
 ### Documents
+
 - POST `/datasets/{dataset_id}/document/create_by_text` (alias `/create-by-text`)
 - POST `/datasets/{dataset_id}/documents/{document_id}/update_by_text` (alias `/update-by-text`)
 - POST `/datasets/{dataset_id}/document/create_by_file` (alias `/create-by-file`)
@@ -156,14 +172,17 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 - GET/DELETE `/datasets/{dataset_id}/documents/{document_id}`
 
 ### Segments
+
 - POST/GET `/datasets/{dataset_id}/documents/{document_id}/segments`
 - GET/POST/DELETE `/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}`
 
 ### Child Chunks
+
 - POST/GET `/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks`
 - PATCH/DELETE `/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}/child_chunks/{child_chunk_id}`
 
 ### Metadata
+
 - GET/POST `/datasets/{dataset_id}/metadata`
 - PATCH/DELETE `/datasets/{dataset_id}/metadata/{metadata_id}`
 - GET `/datasets/{dataset_id}/metadata/built-in`
@@ -171,10 +190,12 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 - POST `/datasets/{dataset_id}/documents/metadata`
 
 ### Hit Testing
+
 - POST `/datasets/{dataset_id}/hit-testing`
 - POST `/datasets/{dataset_id}/retrieve` (alias)
 
 ### RAG Pipeline
+
 - GET `/datasets/{dataset_id}/pipeline/datasource-plugins`
 - POST `/datasets/{dataset_id}/pipeline/datasource/nodes/{node_id}/run` (streaming)
 - POST `/datasets/{dataset_id}/pipeline/run` (supports `response_mode`)
@@ -182,14 +203,17 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
   - Note: routes are defined in `api/controllers/service_api/dataset/rag_pipeline/` but not imported in `api/controllers/service_api/__init__.py`, so they are not exposed unless registered.
 
 ### Workspace
+
 - GET `/workspaces/current/models/model-types/{model_type}`
 
 ## Service API Authentication
+
 - App endpoints use an app API token (`ApiToken.type = "app"`) via `Authorization: Bearer <token>`.
 - Dataset and workspace endpoints use a dataset API token (`ApiToken.type = "dataset"`).
 - SDK must expose a clear separation: app-scoped clients (chat/completion/workflow/etc) and dataset-scoped clients (knowledge base + workspace models).
 
 ## End-User Context
+
 - Many app endpoints require a `user` identifier in query or body (chat, completion, conversations, messages, feedback, file upload, audio).
 - SDK must place `user` in the correct location per endpoint (query vs JSON vs form data).
 - `user` is required for chat/completion APIs even though it is not part of their Pydantic payload schemas.
@@ -201,6 +225,7 @@ Dify provides a Python SDK with broad coverage and a smaller Node.js SDK. This d
 ## Proposed Design
 
 ### Package structure
+
 ```
 sdks/nodejs-client/
   src/
@@ -231,10 +256,12 @@ sdks/nodejs-client/
 ```
 
 ### Module format
+
 - ESM-only package (`type: "module"`), explicit `exports` map, and generated typings.
 - No CommonJS build; provide migration guidance for CJS consumers.
 
 ### HTTP layer
+
 - Use axios (ESM) as the HTTP client to minimize migration risk.
 - Centralize request building: method, base URL, headers, query params, body, responseType.
 - Implement retry strategy aligned with Python SDK:
@@ -247,10 +274,12 @@ sdks/nodejs-client/
 - Set a default User-Agent (e.g., `dify-client-node/<version>`) similar to Python SDK.
 
 ### Async model
+
 - All methods return Promises (async-first, no sync client).
 - Streaming APIs expose AsyncIterable helpers plus access to raw Node Readable streams.
 
 ### Client configuration (Python parity)
+
 ```
 type DifyClientConfig = {
   apiKey: string
@@ -261,6 +290,7 @@ type DifyClientConfig = {
   enableLogging?: boolean
 }
 ```
+
 - Use seconds for timeout to match Python SDK.
 - No extra configuration knobs beyond Python parity; per-request options are limited to API payload fields.
 - Convert timeout seconds to axios milliseconds internally.
@@ -268,6 +298,7 @@ type DifyClientConfig = {
 - Defaults: timeout 60s, maxRetries 3, retryDelay 1s.
 
 ### Parameter validation (match Python behavior)
+
 - Reject empty/whitespace-only strings and oversize strings.
 - Validate pagination params are integers.
 - Validate `rating` is `"like"` or `"dislike"`.
@@ -275,6 +306,7 @@ type DifyClientConfig = {
 - Enforce list and dict size limits where applicable.
 
 ### Streaming model
+
 - Implement SSE parsing in http/sse.ts:
   - Parse both "data:" and "event:" lines and emit structured events.
   - Support JSON decoding and error frames.
@@ -290,6 +322,7 @@ type DifyClientConfig = {
 - Support binary streaming for text-to-audio when `streaming=true` (raw audio stream, not SSE).
 
 ### File upload
+
 - Provide a helper to normalize inputs:
   - Node: accept fs.ReadStream with filename and contentType.
   - Browser: accept File or Blob.
@@ -297,6 +330,7 @@ type DifyClientConfig = {
 - For Node form-data library, merge form.getHeaders() into request headers.
 
 ### Error handling
+
 - Create error classes:
   - DifyError (base), APIError, AuthenticationError, RateLimitError, ValidationError, NetworkError, TimeoutError.
 - Normalize error payloads to include:
@@ -305,6 +339,7 @@ type DifyClientConfig = {
 - Do not rely on `code`/`error_code` semantics; treat HTTP status and raw response body as authoritative.
 
 ### API surface and method layout
+
 - DifyClient: base methods and common config.
 - Sub-clients:
   - ChatClient, CompletionClient, WorkflowClient, KnowledgeBaseClient, WorkspaceClient.
@@ -319,15 +354,17 @@ type DifyClientConfig = {
   - Deprecate CompletionClient.runWorkflow in favor of WorkflowClient.run.
 
 ### Types and models
+
 - Provide typed request/response interfaces based on API specs.
 - Expose a generic response wrapper:
-  - DifyResponse<T> = { data: T; status: number; headers: Record<string, string> }
+  - DifyResponse<T> = { data: T; status: number; headers: Record\<string, string> }
 - Provide specific stream event types:
   - ChatStreamEvent, CompletionStreamEvent, WorkflowStreamEvent, PipelineStreamEvent.
 - Chat request model includes workflow_id, auto_generate_name, and retriever_from.
 - Completion request model includes retriever_from.
 
 ### Documentation and examples
+
 - Add usage examples:
   - Blocking chat/completion.
   - Streaming with async iterator.
@@ -343,12 +380,14 @@ type DifyClientConfig = {
   - Prefer streaming for long outputs.
 
 ## Migration and Compatibility Plan
-1) Phase 1: Introduce new TypeScript core and HTTP layer while preserving current API.
-2) Phase 2: Expand API coverage to complete Service API inventory.
-3) Phase 3: Deprecate legacy inconsistencies (runWorkflow on CompletionClient, wrong params).
-4) Phase 4: Publish major release with full Service API parity, ESM-only packaging, and typed surface.
+
+1. Phase 1: Introduce new TypeScript core and HTTP layer while preserving current API.
+1. Phase 2: Expand API coverage to complete Service API inventory.
+1. Phase 3: Deprecate legacy inconsistencies (runWorkflow on CompletionClient, wrong params).
+1. Phase 4: Publish major release with full Service API parity, ESM-only packaging, and typed surface.
 
 ## Implementation Checklist
+
 - Build TypeScript ESM scaffolding with exports map and typings.
 - Implement HttpClient (axios) with retries, timeout, and enableLogging.
 - Add SSE parser + AsyncIterable helpers for streaming endpoints (support `event:` lines).
@@ -364,6 +403,7 @@ type DifyClientConfig = {
 - Add unit tests for requests, errors, and streaming.
 
 ## Testing Plan
+
 - Unit tests for:
   - Request building, headers, params, and body.
   - Correct placement of `user` in query/body/form per endpoint.
@@ -377,6 +417,7 @@ type DifyClientConfig = {
 - Optional smoke tests against a local Dify instance (disabled by default).
 
 ## Risks and Mitigations
+
 - API mismatch risk: Validate endpoints against Dify Service API docs and integration tests.
 - Streaming compatibility: Account for axios stream handling differences and fallback to buffered mode if needed.
 - ESM-only adoption: Provide migration guidance for CommonJS consumers.
@@ -384,6 +425,7 @@ type DifyClientConfig = {
 - Backward compatibility: Maintain legacy exports and provide clear migration docs.
 
 ## Best Practices Summary
+
 - Always set a stable user identifier for conversation continuity.
 - Use streaming for long responses to reduce latency.
 - Handle 429 with backoff and respect Retry-After.
