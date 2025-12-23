@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { ChatClient, DifyClient, WorkflowClient, BASE_URL, routes } from ".";
+import { ChatClient, DifyClient, WorkflowClient, BASE_URL, routes } from "./index";
 import axios from "axios";
 
 const mockRequest = vi.fn();

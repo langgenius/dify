@@ -42,7 +42,7 @@
   "license": "MIT",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/ensure-js-extensions.mjs",
-    "lint": "eslint \"src/**/*.ts\" \"index.test.js\"",
+    "lint": "eslint \"src/**/*.ts\"",
     "lint:fix": "npm run lint -- --fix",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
