@@ -30,17 +30,17 @@ const appendJs = (specifier) =>
 const rewriteImportSpecifiers = (source) => {
   let next = source;
   next = next.replace(
-    /(\\b(?:import|export)\\s+[^'"]*?\\sfrom\\s+)(["'])([^"']+)\\2/g,
+    /(\b(?:import|export)\s+[^'"]*?\sfrom\s+)(["'])([^"']+)\2/g,
     (match, prefix, quote, specifier) =>
       `${prefix}${quote}${appendJs(specifier)}${quote}`
   );
   next = next.replace(
-    /(\\bimport\\s+)(["'])([^"']+)\\2/g,
+    /(\bimport\s+)(["'])([^"']+)\2/g,
     (match, prefix, quote, specifier) =>
       `${prefix}${quote}${appendJs(specifier)}${quote}`
   );
   next = next.replace(
-    /(\\bimport\\()\\s*(["'])([^"']+)\\2(\\s*\\))/g,
+    /(\bimport\()\s*(["'])([^"']+)\2(\s*\))/g,
     (match, prefix, quote, specifier, suffix) =>
       `${prefix}${quote}${appendJs(specifier)}${quote}${suffix}`
   );
