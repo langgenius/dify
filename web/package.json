@@ -197,7 +197,6 @@
     "eslint-plugin-sonarjs": "^3.0.5",
     "eslint-plugin-storybook": "^10.1.10",
     "eslint-plugin-tailwindcss": "^3.18.2",
-    "globals": "^16.5.0",
     "husky": "^9.1.7",
     "istanbul-lib-coverage": "^3.2.2",
     "jsdom": "^27.3.0",
