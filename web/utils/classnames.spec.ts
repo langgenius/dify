@@ -13,7 +13,7 @@ describe('classnames', () => {
    * - Falsy value filtering
    * - Object-based conditional classes
    */
-  test('classnames libs feature', () => {
+  it('classnames libs feature', () => {
     expect(cn('foo')).toBe('foo')
     expect(cn('foo', 'bar')).toBe('foo bar')
     expect(cn(['foo', 'bar'])).toBe('foo bar')
@@ -37,7 +37,7 @@ describe('classnames', () => {
    * - Custom color classes
    * - Arbitrary values
    */
-  test('tailwind-merge', () => {
+  it('tailwind-merge', () => {
     /* eslint-disable tailwindcss/classnames-order */
     expect(cn('p-0')).toBe('p-0')
     expect(cn('text-right text-center text-left')).toBe('text-left')
@@ -68,7 +68,7 @@ describe('classnames', () => {
    * Tests the integration of classnames and tailwind-merge:
    * - Object-based conditional classes with Tailwind conflict resolution
    */
-  test('classnames combined with tailwind-merge', () => {
+  it('classnames combined with tailwind-merge', () => {
     expect(cn('text-right', {
       'text-center': true,
     })).toBe('text-center')
@@ -83,7 +83,7 @@ describe('classnames', () => {
    * - Strings, arrays, and objects in a single call
    * - Tailwind merge working across different argument types
    */
-  test('multiple mixed argument types', () => {
+  it('multiple mixed argument types', () => {
     expect(cn('foo', ['bar', 'baz'], { qux: true, quux: false })).toBe('foo bar baz qux')
     expect(cn('p-4', ['p-2', 'm-4'], { 'text-left': true, 'text-right': true })).toBe('p-2 m-4 text-right')
   })
@@ -93,7 +93,7 @@ describe('classnames', () => {
    * - Deep array flattening
    * - Tailwind merge with nested structures
    */
-  test('nested arrays', () => {
+  it('nested arrays', () => {
     expect(cn(['foo', ['bar', 'baz']])).toBe('foo bar baz')
     expect(cn(['p-4', ['p-2', 'text-center']])).toBe('p-2 text-center')
   })
@@ -103,7 +103,7 @@ describe('classnames', () => {
    * - Empty strings, arrays, and objects
    * - Mixed empty and non-empty values
    */
-  test('empty inputs', () => {
+  it('empty inputs', () => {
     expect(cn('')).toBe('')
     expect(cn([])).toBe('')
     expect(cn({})).toBe('')
@@ -116,7 +116,7 @@ describe('classnames', () => {
    * - Truthy numbers converted to strings
    * - Zero treated as falsy
    */
-  test('numbers as inputs', () => {
+  it('numbers as inputs', () => {
     expect(cn(1)).toBe('1')
     expect(cn(0)).toBe('')
     expect(cn('foo', 1, 'bar')).toBe('foo 1 bar')
@@ -127,7 +127,7 @@ describe('classnames', () => {
    * - Object merging
    * - Tailwind conflict resolution across objects
    */
-  test('multiple objects', () => {
+  it('multiple objects', () => {
     expect(cn({ foo: true }, { bar: true })).toBe('foo bar')
     expect(cn({ foo: true, bar: false }, { bar: true, baz: true })).toBe('foo bar baz')
     expect(cn({ 'p-4': true }, { 'p-2': true })).toBe('p-2')
@@ -139,7 +139,7 @@ describe('classnames', () => {
    * - Nested arrays with falsy values
    * - Multiple conflicting Tailwind classes
    */
-  test('complex edge cases', () => {
+  it('complex edge cases', () => {
     expect(cn('foo', null, undefined, false, 'bar', 0, 1, '')).toBe('foo bar 1')
     expect(cn(['foo', null, ['bar', undefined, 'baz']])).toBe('foo bar baz')
     expect(cn('text-sm', { 'text-lg': false, 'text-xl': true }, 'text-2xl')).toBe('text-2xl')
@@ -150,7 +150,7 @@ describe('classnames', () => {
    * - Important modifiers in objects
    * - Conflict resolution with important prefix
    */
-  test('important modifier with objects', () => {
+  it('important modifier with objects', () => {
     expect(cn({ '!font-medium': true }, { '!font-bold': true })).toBe('!font-bold')
     expect(cn('font-normal', { '!font-bold': true })).toBe('font-normal !font-bold')
   })

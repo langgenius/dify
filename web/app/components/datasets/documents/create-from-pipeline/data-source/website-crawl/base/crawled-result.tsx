@@ -1,8 +1,9 @@
 'use client'
-import React, { useCallback } from 'react'
+import type { CrawlResultItem } from '@/models/datasets'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
-import type { CrawlResultItem } from '@/models/datasets'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
 
@@ -56,28 +57,30 @@ const CrawledResult = ({
   }, [checkedList, onSelectedChange, isMultipleChoice])
 
   const handlePreview = useCallback((index: number) => {
-    if (!onPreview) return
+    if (!onPreview)
+      return
     onPreview(list[index], index)
   }, [list, onPreview])
 
   return (
     <div className={cn('flex flex-col gap-y-2', className)}>
-      <div className='system-sm-medium pt-2 text-text-primary'>
+      <div className="system-sm-medium pt-2 text-text-primary">
         {t(`${I18N_PREFIX}.scrapTimeInfo`, {
           total: list.length,
           time: usedTime.toFixed(1),
         })}
       </div>
-      <div className='overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg'>
+      <div className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">
         {isMultipleChoice && (
-          <div className='flex items-center px-4 py-2'>
+          <div className="flex items-center px-4 py-2">
             <CheckboxWithLabel
               isChecked={isCheckAll}
-              onChange={handleCheckedAll} label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
+              onChange={handleCheckedAll}
+              label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
             />
           </div>
         )}
-        <div className='flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2'>
+        <div className="flex flex-col gap-y-px border-t border-divider-subtle bg-background-default-subtle p-2">
           {list.map((item, index) => (
             <CrawledResultItem
               key={item.source_url}

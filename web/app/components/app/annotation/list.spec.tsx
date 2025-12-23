@@ -1,11 +1,11 @@
-import React from 'react'
-import { fireEvent, render, screen, within } from '@testing-library/react'
-import List from './list'
 import type { AnnotationItem } from './type'
+import { fireEvent, render, screen, within } from '@testing-library/react'
+import * as React from 'react'
+import List from './list'
 
-const mockFormatTime = jest.fn(() => 'formatted-time')
+const mockFormatTime = vi.fn(() => 'formatted-time')
 
-jest.mock('@/hooks/use-timestamp', () => ({
+vi.mock('@/hooks/use-timestamp', () => ({
   __esModule: true,
   default: () => ({
     formatTime: mockFormatTime,
@@ -24,22 +24,22 @@ const getCheckboxes = (container: HTMLElement) => container.querySelectorAll('[d
 
 describe('List', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should render annotation rows and call onView when clicking a row', () => {
     const item = createAnnotation()
-    const onView = jest.fn()
+    const onView = vi.fn()
 
     render(
       <List
         list={[item]}
         onView={onView}
-        onRemove={jest.fn()}
+        onRemove={vi.fn()}
         selectedIds={[]}
-        onSelectedIdsChange={jest.fn()}
-        onBatchDelete={jest.fn()}
-        onCancel={jest.fn()}
+        onSelectedIdsChange={vi.fn()}
+        onBatchDelete={vi.fn()}
+        onCancel={vi.fn()}
       />,
     )
 
@@ -51,16 +51,16 @@ describe('List', () => {
 
   it('should toggle single and bulk selection states', () => {
     const list = [createAnnotation({ id: 'a', question: 'A' }), createAnnotation({ id: 'b', question: 'B' })]
-    const onSelectedIdsChange = jest.fn()
+    const onSelectedIdsChange = vi.fn()
     const { container, rerender } = render(
       <List
         list={list}
-        onView={jest.fn()}
-        onRemove={jest.fn()}
+        onView={vi.fn()}
+        onRemove={vi.fn()}
         selectedIds={[]}
         onSelectedIdsChange={onSelectedIdsChange}
-        onBatchDelete={jest.fn()}
-        onCancel={jest.fn()}
+        onBatchDelete={vi.fn()}
+        onCancel={vi.fn()}
       />,
     )
 
@@ -71,12 +71,12 @@ describe('List', () => {
     rerender(
       <List
         list={list}
-        onView={jest.fn()}
-        onRemove={jest.fn()}
+        onView={vi.fn()}
+        onRemove={vi.fn()}
         selectedIds={['a']}
         onSelectedIdsChange={onSelectedIdsChange}
-        onBatchDelete={jest.fn()}
-        onCancel={jest.fn()}
+        onBatchDelete={vi.fn()}
+        onCancel={vi.fn()}
       />,
     )
     const updatedCheckboxes = getCheckboxes(container)
@@ -89,16 +89,16 @@ describe('List', () => {
 
   it('should confirm before removing an annotation and expose batch actions', async () => {
     const item = createAnnotation({ id: 'to-delete', question: 'Delete me' })
-    const onRemove = jest.fn()
+    const onRemove = vi.fn()
     render(
       <List
         list={[item]}
-        onView={jest.fn()}
+        onView={vi.fn()}
         onRemove={onRemove}
         selectedIds={[item.id]}
-        onSelectedIdsChange={jest.fn()}
-        onBatchDelete={jest.fn()}
-        onCancel={jest.fn()}
+        onSelectedIdsChange={vi.fn()}
+        onBatchDelete={vi.fn()}
+        onCancel={vi.fn()}
       />,
     )
 

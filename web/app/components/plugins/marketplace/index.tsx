@@ -1,11 +1,11 @@
-import { MarketplaceContextProvider } from './context'
-import Description from './description'
-import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
-import ListWrapper from './list/list-wrapper'
 import type { MarketplaceCollection, SearchParams } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
-import { getMarketplaceCollectionsAndPlugins } from './utils'
 import { TanstackQueryInitializer } from '@/context/query-client'
+import { MarketplaceContextProvider } from './context'
+import Description from './description'
+import ListWrapper from './list/list-wrapper'
+import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
+import { getMarketplaceCollectionsAndPlugins } from './utils'
 
 type MarketplaceProps = {
   locale: string

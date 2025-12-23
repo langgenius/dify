@@ -1,5 +1,5 @@
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
-import React from 'react'
 
 export type Step = {
   label: string
@@ -16,7 +16,7 @@ const StepIndicator = ({
   steps,
 }: StepIndicatorProps) => {
   return (
-    <div className='flex gap-x-1'>
+    <div className="flex gap-x-1">
       {steps.map((step, index) => {
         const isActive = index === currentStep - 1
         return (

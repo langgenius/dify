@@ -1,5 +1,5 @@
-import type { Locale } from '@/i18n-config'
 import type { Dayjs } from 'dayjs'
+import type { Locale } from '@/i18n-config'
 import 'dayjs/locale/de'
 import 'dayjs/locale/es'
 import 'dayjs/locale/fa'
@@ -95,7 +95,7 @@ export const formatTime = (seconds: number) => {
   return `${seconds.toFixed(2)} ${units[index]}`
 }
 
-export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string }) => {
+export const downloadFile = ({ data, fileName }: { data: Blob, fileName: string }) => {
   const url = window.URL.createObjectURL(data)
   const a = document.createElement('a')
   a.href = url
@@ -119,7 +119,8 @@ export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string 
  */
 export const formatNumberAbbreviated = (num: number) => {
   // If less than 1000, return as-is
-  if (num < 1000) return num.toString()
+  if (num < 1000)
+    return num.toString()
 
   // Define thresholds and suffixes
   const units = [

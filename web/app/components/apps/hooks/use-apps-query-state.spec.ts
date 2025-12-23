@@ -11,25 +11,25 @@
  */
 import { act, renderHook } from '@testing-library/react'
 
-// Mock Next.js navigation hooks
-const mockPush = jest.fn()
-const mockPathname = '/apps'
-let mockSearchParams = new URLSearchParams()
-
-jest.mock('next/navigation', () => ({
-  usePathname: jest.fn(() => mockPathname),
-  useRouter: jest.fn(() => ({
-    push: mockPush,
-  })),
-  useSearchParams: jest.fn(() => mockSearchParams),
-}))
-
 // Import the hook after mocks are set up
 import useAppsQueryState from './use-apps-query-state'
 
+// Mock Next.js navigation hooks
+const mockPush = vi.fn()
+const mockPathname = '/apps'
+let mockSearchParams = new URLSearchParams()
+
+vi.mock('next/navigation', () => ({
+  usePathname: vi.fn(() => mockPathname),
+  useRouter: vi.fn(() => ({
+    push: mockPush,
+  })),
+  useSearchParams: vi.fn(() => mockSearchParams),
+}))
+
 describe('useAppsQueryState', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockSearchParams = new URLSearchParams()
   })
 

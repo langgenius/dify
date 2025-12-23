@@ -1,22 +1,22 @@
-import { render, screen } from '@testing-library/react'
-import type { App } from '@/types/app'
-import { AppModeEnum } from '@/types/app'
 import type { HeaderProps } from '@/app/components/workflow/header'
+import type { App } from '@/types/app'
+import { render, screen } from '@testing-library/react'
+import { AppModeEnum } from '@/types/app'
 import WorkflowHeader from './index'
 
-const mockUseAppStoreSelector = jest.fn()
-const mockSetCurrentLogItem = jest.fn()
-const mockSetShowMessageLogModal = jest.fn()
-const mockResetWorkflowVersionHistory = jest.fn()
+const mockUseAppStoreSelector = vi.fn()
+const mockSetCurrentLogItem = vi.fn()
+const mockSetShowMessageLogModal = vi.fn()
+const mockResetWorkflowVersionHistory = vi.fn()
 
 let appDetail: App
 
-jest.mock('@/app/components/app/store', () => ({
+vi.mock('@/app/components/app/store', () => ({
   __esModule: true,
-  useStore: (selector: (state: { appDetail?: App; setCurrentLogItem: typeof mockSetCurrentLogItem; setShowMessageLogModal: typeof mockSetShowMessageLogModal }) => unknown) => mockUseAppStoreSelector(selector),
+  useStore: (selector: (state: { appDetail?: App, setCurrentLogItem: typeof mockSetCurrentLogItem, setShowMessageLogModal: typeof mockSetShowMessageLogModal }) => unknown) => mockUseAppStoreSelector(selector),
 }))
 
-jest.mock('@/app/components/workflow/header', () => ({
+vi.mock('@/app/components/workflow/header', () => ({
   __esModule: true,
   default: (props: HeaderProps) => {
     const historyFetcher = props.normal?.runAndHistoryProps?.viewHistoryProps?.historyFetcher
@@ -24,7 +24,7 @@ jest.mock('@/app/components/workflow/header', () => ({
 
     return (
       <div
-        data-testid='workflow-header'
+        data-testid="workflow-header"
         data-show-run={String(Boolean(props.normal?.runAndHistoryProps?.showRunButton))}
         data-show-preview={String(Boolean(props.normal?.runAndHistoryProps?.showPreviewButton))}
         data-history-url={props.normal?.runAndHistoryProps?.viewHistoryProps?.historyUrl ?? ''}
@@ -47,19 +47,19 @@ jest.mock('@/app/components/workflow/header', () => ({
   },
 }))
 
-jest.mock('@/service/workflow', () => ({
+vi.mock('@/service/workflow', () => ({
   __esModule: true,
-  fetchWorkflowRunHistory: jest.fn(),
+  fetchWorkflowRunHistory: vi.fn(),
 }))
 
-jest.mock('@/service/use-workflow', () => ({
+vi.mock('@/service/use-workflow', () => ({
   __esModule: true,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
 
 describe('WorkflowHeader', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     appDetail = { id: 'app-id', mode: AppModeEnum.COMPLETION } as unknown as App
 
     mockUseAppStoreSelector.mockImplementation(selector => selector({

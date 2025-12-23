@@ -1,6 +1,7 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties, ReactNode } from 'react'
-import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import './index.css'
 
@@ -58,14 +59,11 @@ const Badge: React.FC<BadgeProps> = ({
 }) => {
   return (
     <div
-      className={cn(BadgeVariants({ size, className }),
-        getBadgeState(state),
-        size === 's'
-          ? (iconOnly ? 'p-[3px]' : 'px-[5px] py-[3px]')
-          : size === 'l'
-            ? (iconOnly ? 'p-1.5' : 'px-2 py-1')
-            : (iconOnly ? 'p-1' : 'px-[5px] py-[2px]'),
-        uppercase ? 'system-2xs-medium-uppercase' : 'system-2xs-medium')}
+      className={cn(BadgeVariants({ size, className }), getBadgeState(state), size === 's'
+        ? (iconOnly ? 'p-[3px]' : 'px-[5px] py-[3px]')
+        : size === 'l'
+          ? (iconOnly ? 'p-1.5' : 'px-2 py-1')
+          : (iconOnly ? 'p-1' : 'px-[5px] py-[2px]'), uppercase ? 'system-2xs-medium-uppercase' : 'system-2xs-medium')}
       style={styleCss}
       {...props}
     >

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import { BlockEnum } from './types'
+import AppIcon from '@/app/components/base/app-icon'
 import {
   Agent,
   Answer,
@@ -26,14 +26,14 @@ import {
   VariableX,
   WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
-import AppIcon from '@/app/components/base/app-icon'
 import { cn } from '@/utils/classnames'
+import { BlockEnum } from './types'
 
 type BlockIconProps = {
   type: BlockEnum
   size?: string
   className?: string
-  toolIcon?: string | { content: string; background: string }
+  toolIcon?: string | { content: string, background: string }
 }
 const ICON_CONTAINER_CLASSNAME_SIZE_MAP: Record<string, string> = {
   xs: 'w-4 h-4 rounded-[5px] shadow-xs',
@@ -125,15 +125,14 @@ const BlockIcon: FC<BlockIconProps> = ({
         showDefaultIcon && ICON_CONTAINER_BG_COLOR_MAP[type],
         toolIcon && '!shadow-none',
         className,
-      )}
+      )
+    }
     >
       {
         showDefaultIcon && (
-          getIcon(type,
-            (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
-              ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
-              : (size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'),
-          )
+          getIcon(type, (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
+            ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
+            : (size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'))
         )
       }
       {
@@ -142,21 +141,22 @@ const BlockIcon: FC<BlockIconProps> = ({
             {
               typeof toolIcon === 'string'
                 ? (
-                  <div
-                    className='h-full w-full shrink-0 rounded-md bg-cover bg-center'
-                    style={{
-                      backgroundImage: `url(${toolIcon})`,
-                    }}
-                  ></div>
-                )
+                    <div
+                      className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
+                      style={{
+                        backgroundImage: `url(${toolIcon})`,
+                      }}
+                    >
+                    </div>
+                  )
                 : (
-                  <AppIcon
-                    className='!h-full !w-full shrink-0'
-                    size='tiny'
-                    icon={toolIcon?.content}
-                    background={toolIcon?.background}
-                  />
-                )
+                    <AppIcon
+                      className="!h-full !w-full shrink-0"
+                      size="tiny"
+                      icon={toolIcon?.content}
+                      background={toolIcon?.background}
+                    />
+                  )
             }
           </>
         )

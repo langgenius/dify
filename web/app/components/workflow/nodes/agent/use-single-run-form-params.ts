@@ -1,17 +1,17 @@
 import type { RefObject } from 'react'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { useMemo } from 'react'
-import useNodeCrud from '../_base/hooks/use-node-crud'
 import type { AgentNodeType } from './types'
-import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import { useStrategyInfo } from './use-config'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
+import useNodeCrud from '../_base/hooks/use-node-crud'
+import { useStrategyInfo } from './use-config'
 
 type Params = {
-  id: string,
-  payload: AgentNodeType,
+  id: string
+  payload: AgentNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]

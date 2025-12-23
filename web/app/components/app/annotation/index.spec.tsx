@@ -1,9 +1,10 @@
-import React from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import Annotation from './index'
+import type { Mock } from 'vitest'
 import type { AnnotationItem } from './type'
-import { JobStatus } from './type'
-import { type App, AppModeEnum } from '@/types/app'
+import type { App } from '@/types/app'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import Toast from '@/app/components/base/toast'
+import { useProviderContext } from '@/context/provider-context'
 import {
   addAnnotation,
   delAnnotation,
@@ -12,88 +13,97 @@ import {
   fetchAnnotationList,
   queryAnnotationJobStatus,
 } from '@/service/annotation'
-import { useProviderContext } from '@/context/provider-context'
-import Toast from '@/app/components/base/toast'
+import { AppModeEnum } from '@/types/app'
+import Annotation from './index'
+import { JobStatus } from './type'
 
-jest.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast', () => ({
   __esModule: true,
-  default: { notify: jest.fn() },
+  default: { notify: vi.fn() },
 }))
 
-jest.mock('ahooks', () => ({
+vi.mock('ahooks', () => ({
   useDebounce: (value: any) => value,
 }))
 
-jest.mock('@/service/annotation', () => ({
-  addAnnotation: jest.fn(),
-  delAnnotation: jest.fn(),
-  delAnnotations: jest.fn(),
-  fetchAnnotationConfig: jest.fn(),
-  editAnnotation: jest.fn(),
-  fetchAnnotationList: jest.fn(),
-  queryAnnotationJobStatus: jest.fn(),
-  updateAnnotationScore: jest.fn(),
-  updateAnnotationStatus: jest.fn(),
+vi.mock('@/service/annotation', () => ({
+  addAnnotation: vi.fn(),
+  delAnnotation: vi.fn(),
+  delAnnotations: vi.fn(),
+  fetchAnnotationConfig: vi.fn(),
+  editAnnotation: vi.fn(),
+  fetchAnnotationList: vi.fn(),
+  queryAnnotationJobStatus: vi.fn(),
+  updateAnnotationScore: vi.fn(),
+  updateAnnotationStatus: vi.fn(),
 }))
 
-jest.mock('@/context/provider-context', () => ({
-  useProviderContext: jest.fn(),
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(),
 }))
 
-jest.mock('./filter', () => ({ children }: { children: React.ReactNode }) => (
-  <div data-testid="filter">{children}</div>
-))
+vi.mock('./filter', () => ({
+  default: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="filter">{children}</div>
+  ),
+}))
 
-jest.mock('./empty-element', () => () => <div data-testid="empty-element" />)
+vi.mock('./empty-element', () => ({
+  default: () => <div data-testid="empty-element" />,
+}))
 
-jest.mock('./header-opts', () => (props: any) => (
-  <div data-testid="header-opts">
-    <button data-testid="trigger-add" onClick={() => props.onAdd({ question: 'new question', answer: 'new answer' })}>
-      add
-    </button>
-  </div>
-))
+vi.mock('./header-opts', () => ({
+  default: (props: any) => (
+    <div data-testid="header-opts">
+      <button data-testid="trigger-add" onClick={() => props.onAdd({ question: 'new question', answer: 'new answer' })}>
+        add
+      </button>
+    </div>
+  ),
+}))
 
 let latestListProps: any
 
-jest.mock('./list', () => (props: any) => {
-  latestListProps = props
-  if (!props.list.length)
-    return <div data-testid="list-empty" />
-  return (
-    <div data-testid="list">
-      <button data-testid="list-view" onClick={() => props.onView(props.list[0])}>view</button>
-      <button data-testid="list-remove" onClick={() => props.onRemove(props.list[0].id)}>remove</button>
-      <button data-testid="list-batch-delete" onClick={() => props.onBatchDelete()}>batch-delete</button>
-    </div>
-  )
-})
+vi.mock('./list', () => ({
+  default: (props: any) => {
+    latestListProps = props
+    if (!props.list.length)
+      return <div data-testid="list-empty" />
+    return (
+      <div data-testid="list">
+        <button data-testid="list-view" onClick={() => props.onView(props.list[0])}>view</button>
+        <button data-testid="list-remove" onClick={() => props.onRemove(props.list[0].id)}>remove</button>
+        <button data-testid="list-batch-delete" onClick={() => props.onBatchDelete()}>batch-delete</button>
+      </div>
+    )
+  },
+}))
 
-jest.mock('./view-annotation-modal', () => (props: any) => {
-  if (!props.isShow)
-    return null
-  return (
-    <div data-testid="view-modal">
-      <div>{props.item.question}</div>
-      <button data-testid="view-modal-remove" onClick={props.onRemove}>remove</button>
-      <button data-testid="view-modal-close" onClick={props.onHide}>close</button>
-    </div>
-  )
-})
+vi.mock('./view-annotation-modal', () => ({
+  default: (props: any) => {
+    if (!props.isShow)
+      return null
+    return (
+      <div data-testid="view-modal">
+        <div>{props.item.question}</div>
+        <button data-testid="view-modal-remove" onClick={props.onRemove}>remove</button>
+        <button data-testid="view-modal-close" onClick={props.onHide}>close</button>
+      </div>
+    )
+  },
+}))
 
-jest.mock('@/app/components/base/pagination', () => () => <div data-testid="pagination" />)
-jest.mock('@/app/components/base/loading', () => () => <div data-testid="loading" />)
-jest.mock('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal', () => (props: any) => props.isShow ? <div data-testid="config-modal" /> : null)
-jest.mock('@/app/components/billing/annotation-full/modal', () => (props: any) => props.show ? <div data-testid="annotation-full-modal" /> : null)
+vi.mock('@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal', () => ({ default: (props: any) => props.isShow ? <div data-testid="config-modal" /> : null }))
+vi.mock('@/app/components/billing/annotation-full/modal', () => ({ default: (props: any) => props.show ? <div data-testid="annotation-full-modal" /> : null }))
 
-const mockNotify = Toast.notify as jest.Mock
-const addAnnotationMock = addAnnotation as jest.Mock
-const delAnnotationMock = delAnnotation as jest.Mock
-const delAnnotationsMock = delAnnotations as jest.Mock
-const fetchAnnotationConfigMock = fetchAnnotationConfig as jest.Mock
-const fetchAnnotationListMock = fetchAnnotationList as jest.Mock
-const queryAnnotationJobStatusMock = queryAnnotationJobStatus as jest.Mock
-const useProviderContextMock = useProviderContext as jest.Mock
+const mockNotify = Toast.notify as Mock
+const addAnnotationMock = addAnnotation as Mock
+const delAnnotationMock = delAnnotation as Mock
+const delAnnotationsMock = delAnnotations as Mock
+const fetchAnnotationConfigMock = fetchAnnotationConfig as Mock
+const fetchAnnotationListMock = fetchAnnotationList as Mock
+const queryAnnotationJobStatusMock = queryAnnotationJobStatus as Mock
+const useProviderContextMock = useProviderContext as Mock
 
 const appDetail = {
   id: 'app-id',
@@ -112,7 +122,7 @@ const renderComponent = () => render(<Annotation appDetail={appDetail} />)
 
 describe('Annotation', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     latestListProps = undefined
     fetchAnnotationConfigMock.mockResolvedValue({
       id: 'config-id',

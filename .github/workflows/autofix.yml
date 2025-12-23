@@ -68,25 +68,4 @@ jobs:
         run: |
           uvx --python 3.13 mdformat . --exclude ".claude/skills/**/SKILL.md"
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          package_json_file: web/package.json
-          run_install: false
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: ./web/pnpm-lock.yaml
-
-      - name: Web dependencies
-        working-directory: ./web
-        run: pnpm install --frozen-lockfile
-
-      - name: oxlint
-        working-directory: ./web
-        run: pnpm exec oxlint --config .oxlintrc.json --fix .
-
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27

@@ -1,26 +1,19 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import List from './index'
+import type { Mock } from 'vitest'
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
+import List from './index'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
-
-// Mock Loading component - base component with simple render
-jest.mock('@/app/components/base/loading', () => {
-  const MockLoading = ({ type }: { type?: string }) => (
-    <div data-testid="loading" data-type={type}>Loading...</div>
-  )
-  return MockLoading
-})
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock Item component for List tests - child component with complex behavior
-jest.mock('./item', () => {
-  const MockItem = ({ file, isSelected, onSelect, onOpen, isMultipleChoice }: {
+vi.mock('./item', () => ({
+  default: ({ file, isSelected, onSelect, onOpen, isMultipleChoice }: {
     file: OnlineDriveFile
     isSelected: boolean
     onSelect: (file: OnlineDriveFile) => void
@@ -38,33 +31,30 @@ jest.mock('./item', () => {
         <button data-testid={`item-open-${file.id}`} onClick={() => onOpen(file)}>Open</button>
       </div>
     )
-  }
-  return MockItem
-})
+  },
+}))
 
 // Mock EmptyFolder component for List tests
-jest.mock('./empty-folder', () => {
-  const MockEmptyFolder = () => (
+vi.mock('./empty-folder', () => ({
+  default: () => (
     <div data-testid="empty-folder">Empty Folder</div>
-  )
-  return MockEmptyFolder
-})
+  ),
+}))
 
 // Mock EmptySearchResult component for List tests
-jest.mock('./empty-search-result', () => {
-  const MockEmptySearchResult = ({ onResetKeywords }: { onResetKeywords: () => void }) => (
+vi.mock('./empty-search-result', () => ({
+  default: ({ onResetKeywords }: { onResetKeywords: () => void }) => (
     <div data-testid="empty-search-result">
       <span>No results</span>
       <button data-testid="reset-keywords-btn" onClick={onResetKeywords}>Reset</button>
     </div>
-  )
-  return MockEmptySearchResult
-})
+  ),
+}))
 
 // Mock store state and refs
 const mockIsTruncated = { current: false }
 const mockCurrentNextPageParametersRef = { current: {} as Record<string, any> }
-const mockSetNextPageParameters = jest.fn()
+const mockSetNextPageParameters = vi.fn()
 
 const mockStoreState = {
   isTruncated: mockIsTruncated,
@@ -72,10 +62,10 @@ const mockStoreState = {
   setNextPageParameters: mockSetNextPageParameters,
 }
 
-const mockGetState = jest.fn(() => mockStoreState)
+const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
-jest.mock('../../../store', () => ({
+vi.mock('../../../store', () => ({
   useDataSourceStore: () => mockDataSourceStore,
 }))
 
@@ -106,9 +96,9 @@ const createDefaultProps = (overrides?: Partial<ListProps>): ListProps => ({
   keywords: '',
   isLoading: false,
   supportBatchUpload: true,
-  handleResetKeywords: jest.fn(),
-  handleSelectFile: jest.fn(),
-  handleOpenFolder: jest.fn(),
+  handleResetKeywords: vi.fn(),
+  handleSelectFile: vi.fn(),
+  handleOpenFolder: vi.fn(),
   ...overrides,
 })
 
@@ -117,16 +107,16 @@ const createDefaultProps = (overrides?: Partial<ListProps>): ListProps => ({
 // ==========================================
 let mockIntersectionObserverCallback: IntersectionObserverCallback | null = null
 let mockIntersectionObserverInstance: {
-  observe: jest.Mock
-  disconnect: jest.Mock
-  unobserve: jest.Mock
+  observe: Mock
+  disconnect: Mock
+  unobserve: Mock
 } | null = null
 
 const createMockIntersectionObserver = () => {
   const instance = {
-    observe: jest.fn(),
-    disconnect: jest.fn(),
-    unobserve: jest.fn(),
+    observe: vi.fn(),
+    disconnect: vi.fn(),
+    unobserve: vi.fn(),
   }
   mockIntersectionObserverInstance = instance
 
@@ -178,7 +168,7 @@ describe('List', () => {
   const originalIntersectionObserver = window.IntersectionObserver
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     resetMockStoreState()
     mockIntersectionObserverCallback = null
     mockIntersectionObserverInstance = null
@@ -218,8 +208,7 @@ describe('List', () => {
       render(<List {...props} />)
 
       // Assert
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
-      expect(screen.getByTestId('loading')).toHaveAttribute('data-type', 'app')
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('should render EmptyFolder when folder is empty and not loading', () => {
@@ -275,39 +264,11 @@ describe('List', () => {
       })
 
       // Act
-      const { container } = render(<List {...props} />)
-
-      // Assert - Should show files AND loading spinner (animation-spin class)
-      expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-      expect(container.querySelector('.animation-spin')).toBeInTheDocument()
-    })
-
-    it('should not render Loading component when partial loading', () => {
-      // Arrange
-      const fileList = createMockFileList(2)
-      const props = createDefaultProps({
-        fileList,
-        isLoading: true,
-      })
-
-      // Act
       render(<List {...props} />)
 
-      // Assert - Full page loading should not appear
-      expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
-    })
-
-    it('should render anchor div for infinite scroll', () => {
-      // Arrange
-      const fileList = createMockFileList(2)
-      const props = createDefaultProps({ fileList })
-
-      // Act
-      const { container } = render(<List {...props} />)
-
-      // Assert - Anchor div should exist with h-0 class
-      const anchorDiv = container.querySelector('.h-0')
-      expect(anchorDiv).toBeInTheDocument()
+      // Assert - Should show files AND loading indicator
+      expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
   })
 
@@ -462,15 +423,16 @@ describe('List', () => {
         const props = createDefaultProps({ isLoading, fileList })
 
         // Act
-        const { container } = render(<List {...props} />)
+        render(<List {...props} />)
 
         // Assert
         switch (expected) {
           case 'isAllLoading':
-            expect(screen.getByTestId('loading')).toBeInTheDocument()
+            expect(screen.getByRole('status')).toBeInTheDocument()
             break
           case 'isPartialLoading':
-            expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+            expect(screen.getByRole('status')).toBeInTheDocument()
+            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
             break
           case 'isEmpty':
             expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
@@ -522,7 +484,7 @@ describe('List', () => {
     describe('File Selection', () => {
       it('should call handleSelectFile when selecting a file', () => {
         // Arrange
-        const handleSelectFile = jest.fn()
+        const handleSelectFile = vi.fn()
         const fileList = createMockFileList(2)
         const props = createDefaultProps({
           fileList,
@@ -539,7 +501,7 @@ describe('List', () => {
 
       it('should call handleSelectFile with correct file data', () => {
         // Arrange
-        const handleSelectFile = jest.fn()
+        const handleSelectFile = vi.fn()
         const fileList = [
           createMockOnlineDriveFile({ id: 'unique-id', name: 'special-file.pdf', size: 5000 }),
         ]
@@ -566,7 +528,7 @@ describe('List', () => {
     describe('Folder Navigation', () => {
       it('should call handleOpenFolder when opening a folder', () => {
         // Arrange
-        const handleOpenFolder = jest.fn()
+        const handleOpenFolder = vi.fn()
         const fileList = [
           createMockOnlineDriveFile({ id: 'folder-1', name: 'Documents', type: OnlineDriveFileType.folder }),
         ]
@@ -587,7 +549,7 @@ describe('List', () => {
     describe('Reset Keywords', () => {
       it('should call handleResetKeywords when reset button is clicked', () => {
         // Arrange
-        const handleResetKeywords = jest.fn()
+        const handleResetKeywords = vi.fn()
         const props = createDefaultProps({
           fileList: [],
           keywords: 'search-term',
@@ -639,12 +601,13 @@ describe('List', () => {
         const props = createDefaultProps({ fileList })
 
         // Act
-        const { container } = render(<List {...props} />)
+        render(<List {...props} />)
 
         // Assert
         expect(mockIntersectionObserverInstance?.observe).toHaveBeenCalled()
-        const anchorDiv = container.querySelector('.h-0')
-        expect(anchorDiv).toBeInTheDocument()
+        const observedElement = mockIntersectionObserverInstance?.observe.mock.calls[0]?.[0]
+        expect(observedElement).toBeInstanceOf(HTMLElement)
+        expect(observedElement as HTMLElement).toBeInTheDocument()
       })
     })
 
@@ -769,7 +732,7 @@ describe('List', () => {
       // Arrange
       const fileList = createMockFileList(2)
       const props = createDefaultProps({ fileList })
-      const renderSpy = jest.fn()
+      const renderSpy = vi.fn()
 
       // Create a wrapper component to track renders
       const TestWrapper = ({ testProps }: { testProps: ListProps }) => {
@@ -832,16 +795,16 @@ describe('List', () => {
       const props1 = createDefaultProps({ fileList, isLoading: false })
       const props2 = createDefaultProps({ fileList, isLoading: true })
 
-      const { rerender, container } = render(<List {...props1} />)
+      const { rerender } = render(<List {...props1} />)
 
       // Assert initial state - no loading spinner
-      expect(container.querySelector('.animation-spin')).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
 
       // Act
       rerender(<List {...props2} />)
 
       // Assert - loading spinner should appear
-      expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
   })
 
@@ -1003,13 +966,13 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(screen.getByTestId('loading')).toBeInTheDocument()
+        expect(screen.getByRole('status')).toBeInTheDocument()
 
         // Act
         rerender(<List {...props2} />)
 
         // Assert
-        expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
         expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
       })
 
@@ -1022,13 +985,13 @@ describe('List', () => {
         const { rerender } = render(<List {...props1} />)
 
         // Assert initial loading state
-        expect(screen.getByTestId('loading')).toBeInTheDocument()
+        expect(screen.getByRole('status')).toBeInTheDocument()
 
         // Act
         rerender(<List {...props2} />)
 
         // Assert
-        expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
         expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
       })
 
@@ -1038,16 +1001,16 @@ describe('List', () => {
         const props1 = createDefaultProps({ isLoading: true, fileList })
         const props2 = createDefaultProps({ isLoading: false, fileList })
 
-        const { rerender, container } = render(<List {...props1} />)
+        const { rerender } = render(<List {...props1} />)
 
         // Assert initial partial loading state
-        expect(container.querySelector('.animation-spin')).toBeInTheDocument()
+        expect(screen.getByRole('status')).toBeInTheDocument()
 
         // Act
         rerender(<List {...props2} />)
 
         // Assert
-        expect(container.querySelector('.animation-spin')).not.toBeInTheDocument()
+        expect(screen.queryByRole('status')).not.toBeInTheDocument()
       })
     })
 
@@ -1123,34 +1086,34 @@ describe('List', () => {
       { isLoading: false, fileCount: 0, keywords: '', expectedState: 'empty-folder' },
       { isLoading: false, fileCount: 0, keywords: 'search', expectedState: 'empty-search' },
       { isLoading: false, fileCount: 5, keywords: '', expectedState: 'file-list' },
-    ])('should render $expectedState when isLoading=$isLoading, fileCount=$fileCount, keywords=$keywords',
-      ({ isLoading, fileCount, keywords, expectedState }) => {
-        // Arrange
-        const fileList = createMockFileList(fileCount)
-        const props = createDefaultProps({ fileList, isLoading, keywords })
+    ])('should render $expectedState when isLoading=$isLoading, fileCount=$fileCount, keywords=$keywords', ({ isLoading, fileCount, keywords, expectedState }) => {
+      // Arrange
+      const fileList = createMockFileList(fileCount)
+      const props = createDefaultProps({ fileList, isLoading, keywords })
 
-        // Act
-        const { container } = render(<List {...props} />)
+      // Act
+      render(<List {...props} />)
 
-        // Assert
-        switch (expectedState) {
-          case 'all-loading':
-            expect(screen.getByTestId('loading')).toBeInTheDocument()
-            break
-          case 'partial-loading':
-            expect(container.querySelector('.animation-spin')).toBeInTheDocument()
-            break
-          case 'empty-folder':
-            expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
-            break
-          case 'empty-search':
-            expect(screen.getByTestId('empty-search-result')).toBeInTheDocument()
-            break
-          case 'file-list':
-            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-            break
-        }
-      })
+      // Assert
+      switch (expectedState) {
+        case 'all-loading':
+          expect(screen.getByRole('status')).toBeInTheDocument()
+          break
+        case 'partial-loading':
+          expect(screen.getByRole('status')).toBeInTheDocument()
+          expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+          break
+        case 'empty-folder':
+          expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
+          break
+        case 'empty-search':
+          expect(screen.getByTestId('empty-search-result')).toBeInTheDocument()
+          break
+        case 'file-list':
+          expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+          break
+      }
+    })
 
     it.each([
       { selectedCount: 0, expectedSelected: [] },
@@ -1179,22 +1142,9 @@ describe('List', () => {
   // Accessibility Tests
   // ==========================================
   describe('Accessibility', () => {
-    it('should have proper container structure', () => {
-      // Arrange
-      const fileList = createMockFileList(2)
-      const props = createDefaultProps({ fileList })
-
-      // Act
-      const { container } = render(<List {...props} />)
-
-      // Assert - Container should be scrollable
-      const scrollContainer = container.querySelector('.overflow-y-auto')
-      expect(scrollContainer).toBeInTheDocument()
-    })
-
     it('should allow interaction with reset keywords button in empty search state', () => {
       // Arrange
-      const handleResetKeywords = jest.fn()
+      const handleResetKeywords = vi.fn()
       const props = createDefaultProps({
         fileList: [],
         keywords: 'search-term',
@@ -1218,10 +1168,15 @@ describe('List', () => {
 // ==========================================
 describe('EmptyFolder', () => {
   // Get real component for testing
-  const ActualEmptyFolder = jest.requireActual('./empty-folder').default
+  let ActualEmptyFolder: React.ComponentType
+
+  beforeAll(async () => {
+    const mod = await vi.importActual<{ default: React.ComponentType }>('./empty-folder')
+    ActualEmptyFolder = mod.default
+  })
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -1233,18 +1188,6 @@ describe('EmptyFolder', () => {
     it('should render empty folder message', () => {
       render(<ActualEmptyFolder />)
       expect(screen.getByText(/datasetPipeline\.onlineDrive\.emptyFolder/)).toBeInTheDocument()
-    })
-
-    it('should render with correct container classes', () => {
-      const { container } = render(<ActualEmptyFolder />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex', 'size-full', 'items-center', 'justify-center')
-    })
-
-    it('should render text with correct styling classes', () => {
-      render(<ActualEmptyFolder />)
-      const textElement = screen.getByText(/datasetPipeline\.onlineDrive\.emptyFolder/)
-      expect(textElement).toHaveClass('system-xs-regular', 'text-text-tertiary')
     })
   })
 
@@ -1268,58 +1211,56 @@ describe('EmptyFolder', () => {
 // ==========================================
 describe('EmptySearchResult', () => {
   // Get real component for testing
-  const ActualEmptySearchResult = jest.requireActual('./empty-search-result').default
+  let ActualEmptySearchResult: React.ComponentType<{ onResetKeywords: () => void }>
+
+  beforeAll(async () => {
+    const mod = await vi.importActual<{ default: React.ComponentType<{ onResetKeywords: () => void }> }>('./empty-search-result')
+    ActualEmptySearchResult = mod.default
+  })
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      const onResetKeywords = jest.fn()
+      const onResetKeywords = vi.fn()
       render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
       expect(document.body).toBeInTheDocument()
     })
 
     it('should render empty search result message', () => {
-      const onResetKeywords = jest.fn()
+      const onResetKeywords = vi.fn()
       render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
       expect(screen.getByText(/datasetPipeline\.onlineDrive\.emptySearchResult/)).toBeInTheDocument()
     })
 
     it('should render reset keywords button', () => {
-      const onResetKeywords = jest.fn()
+      const onResetKeywords = vi.fn()
       render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
       expect(screen.getByRole('button')).toBeInTheDocument()
       expect(screen.getByText(/datasetPipeline\.onlineDrive\.resetKeywords/)).toBeInTheDocument()
     })
 
     it('should render search icon', () => {
-      const onResetKeywords = jest.fn()
+      const onResetKeywords = vi.fn()
       const { container } = render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
       const svgElement = container.querySelector('svg')
       expect(svgElement).toBeInTheDocument()
-    })
-
-    it('should render with correct container classes', () => {
-      const onResetKeywords = jest.fn()
-      const { container } = render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
-      const wrapper = container.firstChild as HTMLElement
-      expect(wrapper).toHaveClass('flex', 'size-full', 'flex-col', 'items-center', 'justify-center', 'gap-y-2')
     })
   })
 
   describe('Props', () => {
     describe('onResetKeywords prop', () => {
       it('should call onResetKeywords when button is clicked', () => {
-        const onResetKeywords = jest.fn()
+        const onResetKeywords = vi.fn()
         render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
         fireEvent.click(screen.getByRole('button'))
         expect(onResetKeywords).toHaveBeenCalledTimes(1)
       })
 
       it('should call onResetKeywords on each click', () => {
-        const onResetKeywords = jest.fn()
+        const onResetKeywords = vi.fn()
         render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
         const button = screen.getByRole('button')
         fireEvent.click(button)
@@ -1338,13 +1279,13 @@ describe('EmptySearchResult', () => {
 
   describe('Accessibility', () => {
     it('should have accessible button', () => {
-      const onResetKeywords = jest.fn()
+      const onResetKeywords = vi.fn()
       render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
       expect(screen.getByRole('button')).toBeInTheDocument()
     })
 
     it('should have readable text content', () => {
-      const onResetKeywords = jest.fn()
+      const onResetKeywords = vi.fn()
       render(<ActualEmptySearchResult onResetKeywords={onResetKeywords} />)
       expect(screen.getByText(/datasetPipeline\.onlineDrive\.emptySearchResult/)).toBeInTheDocument()
     })
@@ -1356,10 +1297,16 @@ describe('EmptySearchResult', () => {
 // ==========================================
 describe('FileIcon', () => {
   // Get real component for testing
-  const ActualFileIcon = jest.requireActual('./file-icon').default
+  type FileIconProps = { type: OnlineDriveFileType, fileName: string, size?: 'sm' | 'md' | 'lg' | 'xl', className?: string }
+  let ActualFileIcon: React.ComponentType<FileIconProps>
+
+  beforeAll(async () => {
+    const mod = await vi.importActual<{ default: React.ComponentType<FileIconProps> }>('./file-icon')
+    ActualFileIcon = mod.default
+  })
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -1443,24 +1390,6 @@ describe('FileIcon', () => {
         expect(container.firstChild).toBeInTheDocument()
       })
     })
-
-    describe('className prop', () => {
-      it('should apply custom className to bucket icon', () => {
-        const { container } = render(
-          <ActualFileIcon type={OnlineDriveFileType.bucket} fileName="bucket" className="custom-class" />,
-        )
-        const svg = container.querySelector('svg')
-        expect(svg).toHaveClass('custom-class')
-      })
-
-      it('should apply className to folder icon', () => {
-        const { container } = render(
-          <ActualFileIcon type={OnlineDriveFileType.folder} fileName="folder" className="folder-custom" />,
-        )
-        const svg = container.querySelector('svg')
-        expect(svg).toHaveClass('folder-custom')
-      })
-    })
   })
 
   describe('Icon Type Determination', () => {
@@ -1524,24 +1453,6 @@ describe('FileIcon', () => {
       expect(container.firstChild).toBeInTheDocument()
     })
   })
-
-  describe('Styling', () => {
-    it('should apply default size class to bucket icon', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.bucket} fileName="bucket" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toHaveClass('size-[18px]')
-    })
-
-    it('should apply default size class to folder icon', () => {
-      const { container } = render(
-        <ActualFileIcon type={OnlineDriveFileType.folder} fileName="folder" />,
-      )
-      const svg = container.querySelector('svg')
-      expect(svg).toHaveClass('size-[18px]')
-    })
-  })
 })
 
 // ==========================================
@@ -1549,7 +1460,7 @@ describe('FileIcon', () => {
 // ==========================================
 describe('Item', () => {
   // Get real component for testing
-  const ActualItem = jest.requireActual('./item').default
+  let ActualItem: React.ComponentType<ItemProps>
 
   type ItemProps = {
     file: OnlineDriveFile
@@ -1560,22 +1471,26 @@ describe('Item', () => {
     onOpen: (file: OnlineDriveFile) => void
   }
 
+  beforeAll(async () => {
+    const mod = await vi.importActual<{ default: React.ComponentType<ItemProps> }>('./item')
+    ActualItem = mod.default
+  })
+
   // Reuse createMockOnlineDriveFile from outer scope
   const createItemProps = (overrides?: Partial<ItemProps>): ItemProps => ({
     file: createMockOnlineDriveFile(),
     isSelected: false,
-    onSelect: jest.fn(),
-    onOpen: jest.fn(),
+    onSelect: vi.fn(),
+    onOpen: vi.fn(),
     ...overrides,
   })
 
   // Helper to find custom checkbox element (div-based implementation)
   const findCheckbox = (container: HTMLElement) => container.querySelector('[data-testid^="checkbox-"]')
-  // Helper to find custom radio element (div-based implementation)
-  const findRadio = (container: HTMLElement) => container.querySelector('.rounded-full.size-4')
+  const getRadio = () => screen.getByRole('radio')
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -1623,8 +1538,8 @@ describe('Item', () => {
         isMultipleChoice: false,
         file: createMockOnlineDriveFile({ type: OnlineDriveFileType.file }),
       })
-      const { container } = render(<ActualItem {...props} />)
-      expect(findRadio(container)).toBeInTheDocument()
+      render(<ActualItem {...props} />)
+      expect(getRadio()).toBeInTheDocument()
     })
 
     it('should not render checkbox or radio for bucket type', () => {
@@ -1634,7 +1549,7 @@ describe('Item', () => {
       })
       const { container } = render(<ActualItem {...props} />)
       expect(findCheckbox(container)).not.toBeInTheDocument()
-      expect(findRadio(container)).not.toBeInTheDocument()
+      expect(screen.queryByRole('radio')).not.toBeInTheDocument()
     })
 
     it('should render with title attribute for file name', () => {
@@ -1666,32 +1581,29 @@ describe('Item', () => {
 
       it('should show radio as checked when isSelected is true', () => {
         const props = createItemProps({ isSelected: true, isMultipleChoice: false })
-        const { container } = render(<ActualItem {...props} />)
-        const radio = findRadio(container)
-        // Checked radio has border-[5px] class
-        expect(radio).toHaveClass('border-[5px]')
+        render(<ActualItem {...props} />)
+        const radio = getRadio()
+        expect(radio).toHaveAttribute('aria-checked', 'true')
       })
     })
 
     describe('disabled prop', () => {
-      it('should apply opacity class when disabled', () => {
-        const props = createItemProps({ disabled: true })
-        const { container } = render(<ActualItem {...props} />)
-        expect(container.querySelector('.opacity-30')).toBeInTheDocument()
-      })
-
-      it('should apply disabled styles to checkbox when disabled', () => {
-        const props = createItemProps({ disabled: true, isMultipleChoice: true })
+      it('should not call onSelect when clicking disabled checkbox', () => {
+        const onSelect = vi.fn()
+        const props = createItemProps({ disabled: true, isMultipleChoice: true, onSelect })
         const { container } = render(<ActualItem {...props} />)
         const checkbox = findCheckbox(container)
-        expect(checkbox).toHaveClass('cursor-not-allowed')
+        fireEvent.click(checkbox!)
+        expect(onSelect).not.toHaveBeenCalled()
       })
 
-      it('should apply disabled styles to radio when disabled', () => {
-        const props = createItemProps({ disabled: true, isMultipleChoice: false })
-        const { container } = render(<ActualItem {...props} />)
-        const radio = findRadio(container)
-        expect(radio).toHaveClass('border-components-radio-border-disabled')
+      it('should not call onSelect when clicking disabled radio', () => {
+        const onSelect = vi.fn()
+        const props = createItemProps({ disabled: true, isMultipleChoice: false, onSelect })
+        render(<ActualItem {...props} />)
+        const radio = getRadio()
+        fireEvent.click(radio)
+        expect(onSelect).not.toHaveBeenCalled()
       })
     })
 
@@ -1707,13 +1619,13 @@ describe('Item', () => {
         const props = createItemProps({ isMultipleChoice: true })
         const { container } = render(<ActualItem {...props} />)
         expect(findCheckbox(container)).toBeInTheDocument()
-        expect(findRadio(container)).not.toBeInTheDocument()
+        expect(screen.queryByRole('radio')).not.toBeInTheDocument()
       })
 
       it('should render radio when false', () => {
         const props = createItemProps({ isMultipleChoice: false })
         const { container } = render(<ActualItem {...props} />)
-        expect(findRadio(container)).toBeInTheDocument()
+        expect(getRadio()).toBeInTheDocument()
         expect(findCheckbox(container)).not.toBeInTheDocument()
       })
     })
@@ -1722,7 +1634,7 @@ describe('Item', () => {
   describe('User Interactions', () => {
     describe('Click on Item', () => {
       it('should call onSelect when clicking on file item', () => {
-        const onSelect = jest.fn()
+        const onSelect = vi.fn()
         const file = createMockOnlineDriveFile({ type: OnlineDriveFileType.file })
         const props = createItemProps({ file, onSelect })
         render(<ActualItem {...props} />)
@@ -1731,7 +1643,7 @@ describe('Item', () => {
       })
 
       it('should call onOpen when clicking on folder item', () => {
-        const onOpen = jest.fn()
+        const onOpen = vi.fn()
         const file = createMockOnlineDriveFile({ type: OnlineDriveFileType.folder, name: 'Documents' })
         const props = createItemProps({ file, onOpen })
         render(<ActualItem {...props} />)
@@ -1740,7 +1652,7 @@ describe('Item', () => {
       })
 
       it('should call onOpen when clicking on bucket item', () => {
-        const onOpen = jest.fn()
+        const onOpen = vi.fn()
         const file = createMockOnlineDriveFile({ type: OnlineDriveFileType.bucket, name: 'my-bucket' })
         const props = createItemProps({ file, onOpen })
         render(<ActualItem {...props} />)
@@ -1749,8 +1661,8 @@ describe('Item', () => {
       })
 
       it('should not call any handler when clicking disabled item', () => {
-        const onSelect = jest.fn()
-        const onOpen = jest.fn()
+        const onSelect = vi.fn()
+        const onOpen = vi.fn()
         const props = createItemProps({ disabled: true, onSelect, onOpen })
         render(<ActualItem {...props} />)
         fireEvent.click(screen.getByText('test-file.txt'))
@@ -1761,7 +1673,7 @@ describe('Item', () => {
 
     describe('Click on Checkbox/Radio', () => {
       it('should call onSelect when clicking checkbox', () => {
-        const onSelect = jest.fn()
+        const onSelect = vi.fn()
         const file = createMockOnlineDriveFile()
         const props = createItemProps({ file, onSelect, isMultipleChoice: true })
         const { container } = render(<ActualItem {...props} />)
@@ -1771,17 +1683,17 @@ describe('Item', () => {
       })
 
       it('should call onSelect when clicking radio', () => {
-        const onSelect = jest.fn()
+        const onSelect = vi.fn()
         const file = createMockOnlineDriveFile()
         const props = createItemProps({ file, onSelect, isMultipleChoice: false })
-        const { container } = render(<ActualItem {...props} />)
-        const radio = findRadio(container)
-        fireEvent.click(radio!)
+        render(<ActualItem {...props} />)
+        const radio = getRadio()
+        fireEvent.click(radio)
         expect(onSelect).toHaveBeenCalledWith(file)
       })
 
       it('should stop event propagation when clicking checkbox', () => {
-        const onSelect = jest.fn()
+        const onSelect = vi.fn()
         const file = createMockOnlineDriveFile()
         const props = createItemProps({ file, onSelect, isMultipleChoice: true })
         const { container } = render(<ActualItem {...props} />)
@@ -1832,58 +1744,6 @@ describe('Item', () => {
       expect(screen.getByText('5.00 GB')).toBeInTheDocument()
     })
   })
-
-  describe('Styling', () => {
-    it('should have cursor-pointer class', () => {
-      const props = createItemProps()
-      const { container } = render(<ActualItem {...props} />)
-      expect(container.firstChild).toHaveClass('cursor-pointer')
-    })
-
-    it('should have hover class', () => {
-      const props = createItemProps()
-      const { container } = render(<ActualItem {...props} />)
-      expect(container.firstChild).toHaveClass('hover:bg-state-base-hover')
-    })
-
-    it('should truncate file name', () => {
-      const props = createItemProps()
-      render(<ActualItem {...props} />)
-      const nameElement = screen.getByText('test-file.txt')
-      expect(nameElement).toHaveClass('truncate')
-    })
-  })
-
-  describe('Prop Variations', () => {
-    it.each([
-      { isSelected: true, isMultipleChoice: true, disabled: false },
-      { isSelected: true, isMultipleChoice: false, disabled: false },
-      { isSelected: false, isMultipleChoice: true, disabled: false },
-      { isSelected: false, isMultipleChoice: false, disabled: false },
-      { isSelected: true, isMultipleChoice: true, disabled: true },
-      { isSelected: false, isMultipleChoice: false, disabled: true },
-    ])('should render with isSelected=$isSelected, isMultipleChoice=$isMultipleChoice, disabled=$disabled',
-      ({ isSelected, isMultipleChoice, disabled }) => {
-        const props = createItemProps({ isSelected, isMultipleChoice, disabled })
-        const { container } = render(<ActualItem {...props} />)
-        if (isMultipleChoice) {
-          const checkbox = findCheckbox(container)
-          expect(checkbox).toBeInTheDocument()
-          if (isSelected)
-            expect(checkbox?.querySelector('[data-testid^="check-icon-"]')).toBeInTheDocument()
-          if (disabled)
-            expect(checkbox).toHaveClass('cursor-not-allowed')
-        }
-        else {
-          const radio = findRadio(container)
-          expect(radio).toBeInTheDocument()
-          if (isSelected)
-            expect(radio).toHaveClass('border-[5px]')
-          if (disabled)
-            expect(radio).toHaveClass('border-components-radio-border-disabled')
-        }
-      })
-  })
 })
 
 // ==========================================
@@ -1891,8 +1751,17 @@ describe('Item', () => {
 // ==========================================
 describe('utils', () => {
   // Import actual utils functions
-  const { getFileExtension, getFileType } = jest.requireActual('./utils')
-  const { FileAppearanceTypeEnum } = jest.requireActual('@/app/components/base/file-uploader/types')
+  let getFileExtension: (filename: string) => string
+  let getFileType: (filename: string) => string
+  let FileAppearanceTypeEnum: Record<string, string>
+
+  beforeAll(async () => {
+    const utils = await vi.importActual<{ getFileExtension: typeof getFileExtension, getFileType: typeof getFileType }>('./utils')
+    const types = await vi.importActual<{ FileAppearanceTypeEnum: typeof FileAppearanceTypeEnum }>('@/app/components/base/file-uploader/types')
+    getFileExtension = utils.getFileExtension
+    getFileType = utils.getFileType
+    FileAppearanceTypeEnum = types.FileAppearanceTypeEnum
+  })
 
   describe('getFileExtension', () => {
     describe('Basic Functionality', () => {

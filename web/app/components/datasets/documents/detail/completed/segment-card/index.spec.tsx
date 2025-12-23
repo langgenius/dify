@@ -1,12 +1,13 @@
-import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import SegmentCard from './index'
-import { type Attachment, type ChildChunkDetail, ChunkingMode, type ParentMode, type SegmentDetailModel } from '@/models/datasets'
-import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
 import type { SegmentListContextValue } from '@/app/components/datasets/documents/detail/completed'
+import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
+import type { Attachment, ChildChunkDetail, ParentMode, SegmentDetailModel } from '@/models/datasets'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { ChunkingMode } from '@/models/datasets'
+import SegmentCard from './index'
 
 // Mock react-i18next - external dependency
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: { count?: number }) => {
       if (key === 'datasetDocuments.segment.characters')
@@ -25,7 +26,7 @@ jest.mock('react-i18next', () => ({
 const mockDocForm = { current: ChunkingMode.text }
 const mockParentMode = { current: 'paragraph' as ParentMode }
 
-jest.mock('../../context', () => ({
+vi.mock('../../context', () => ({
   useDocumentContext: (selector: (value: DocumentContextValue) => unknown) => {
     const value: DocumentContextValue = {
       datasetId: 'test-dataset-id',
@@ -38,12 +39,12 @@ jest.mock('../../context', () => ({
 }))
 
 const mockIsCollapsed = { current: true }
-jest.mock('../index', () => ({
+vi.mock('../index', () => ({
   useSegmentListContext: (selector: (value: SegmentListContextValue) => unknown) => {
     const value: SegmentListContextValue = {
       isCollapsed: mockIsCollapsed.current,
       fullScreen: false,
-      toggleFullScreen: jest.fn(),
+      toggleFullScreen: vi.fn(),
       currSegment: { showModal: false },
       currChildChunk: { showModal: false },
     }
@@ -56,19 +57,21 @@ jest.mock('../index', () => ({
 // ============================================================================
 
 // StatusItem uses React Query hooks which require QueryClientProvider
-jest.mock('../../../status-item', () => ({
+vi.mock('../../../status-item', () => ({
   __esModule: true,
-  default: ({ status, reverse, textCls }: { status: string; reverse?: boolean; textCls?: string }) => (
+  default: ({ status, reverse, textCls }: { status: string, reverse?: boolean, textCls?: string }) => (
     <div data-testid="status-item" data-status={status} data-reverse={reverse} className={textCls}>
-      Status: {status}
+      Status:
+      {' '}
+      {status}
     </div>
   ),
 }))
 
 // ImageList has deep dependency: FileThumb → file-uploader → react-pdf-highlighter (ESM)
-jest.mock('@/app/components/datasets/common/image-list', () => ({
+vi.mock('@/app/components/datasets/common/image-list', () => ({
   __esModule: true,
-  default: ({ images, size, className }: { images: Array<{ sourceUrl: string; name: string }>; size?: string; className?: string }) => (
+  default: ({ images, size, className }: { images: Array<{ sourceUrl: string, name: string }>, size?: string, className?: string }) => (
     <div data-testid="image-list" data-image-count={images.length} data-size={size} className={className}>
       {images.map((img, idx: number) => (
         <img key={idx} src={img.sourceUrl} alt={img.name} />
@@ -78,9 +81,9 @@ jest.mock('@/app/components/datasets/common/image-list', () => ({
 }))
 
 // Markdown uses next/dynamic and react-syntax-highlighter (ESM)
-jest.mock('@/app/components/base/markdown', () => ({
+vi.mock('@/app/components/base/markdown', () => ({
   __esModule: true,
-  Markdown: ({ content, className }: { content: string; className?: string }) => (
+  Markdown: ({ content, className }: { content: string, className?: string }) => (
     <div data-testid="markdown" className={`markdown-body ${className || ''}`}>{content}</div>
   ),
 }))
@@ -148,7 +151,7 @@ const defaultFocused = { segmentIndex: false, segmentContent: false }
 
 describe('SegmentCard', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockDocForm.current = ChunkingMode.text
     mockParentMode.current = 'paragraph'
     mockIsCollapsed.current = true
@@ -341,7 +344,7 @@ describe('SegmentCard', () => {
   // --------------------------------------------------------------------------
   describe('Callbacks', () => {
     it('should call onClick when card is clicked in general mode', () => {
-      const onClick = jest.fn()
+      const onClick = vi.fn()
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.text
 
@@ -356,7 +359,7 @@ describe('SegmentCard', () => {
     })
 
     it('should not call onClick when card is clicked in full-doc mode', () => {
-      const onClick = jest.fn()
+      const onClick = vi.fn()
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'full-doc'
@@ -372,7 +375,7 @@ describe('SegmentCard', () => {
     })
 
     it('should call onClick when view more button is clicked in full-doc mode', () => {
-      const onClick = jest.fn()
+      const onClick = vi.fn()
       const detail = createMockSegmentDetail()
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'full-doc'
@@ -386,7 +389,7 @@ describe('SegmentCard', () => {
     })
 
     it('should call onClickEdit when edit button is clicked', () => {
-      const onClickEdit = jest.fn()
+      const onClickEdit = vi.fn()
       const detail = createMockSegmentDetail()
 
       render(
@@ -406,7 +409,7 @@ describe('SegmentCard', () => {
     })
 
     it('should call onDelete when confirm delete is clicked', async () => {
-      const onDelete = jest.fn().mockResolvedValue(undefined)
+      const onDelete = vi.fn().mockResolvedValue(undefined)
       const detail = createMockSegmentDetail({ id: 'test-segment-id' })
 
       render(
@@ -434,7 +437,7 @@ describe('SegmentCard', () => {
     })
 
     it('should call onChangeSwitch when switch is toggled', async () => {
-      const onChangeSwitch = jest.fn().mockResolvedValue(undefined)
+      const onChangeSwitch = vi.fn().mockResolvedValue(undefined)
       const detail = createMockSegmentDetail({ id: 'test-segment-id', enabled: true, status: 'completed' })
 
       render(
@@ -456,8 +459,8 @@ describe('SegmentCard', () => {
     })
 
     it('should stop propagation when edit button is clicked', () => {
-      const onClick = jest.fn()
-      const onClickEdit = jest.fn()
+      const onClick = vi.fn()
+      const onClickEdit = vi.fn()
       const detail = createMockSegmentDetail()
 
       render(
@@ -479,7 +482,7 @@ describe('SegmentCard', () => {
     })
 
     it('should stop propagation when switch area is clicked', () => {
-      const onClick = jest.fn()
+      const onClick = vi.fn()
       const detail = createMockSegmentDetail({ status: 'completed' })
 
       render(
@@ -712,7 +715,7 @@ describe('SegmentCard', () => {
     it('should call handleAddNewChildChunk when add button is clicked', () => {
       mockDocForm.current = ChunkingMode.parentChild
       mockParentMode.current = 'paragraph'
-      const handleAddNewChildChunk = jest.fn()
+      const handleAddNewChildChunk = vi.fn()
       const childChunks = [createMockChildChunk()]
       const detail = createMockSegmentDetail({ id: 'parent-id', child_chunks: childChunks })
 
@@ -991,13 +994,13 @@ describe('SegmentCard', () => {
         <SegmentCard
           loading={false}
           detail={detail}
-          onClick={jest.fn()}
-          onChangeSwitch={jest.fn()}
-          onDelete={jest.fn()}
-          onDeleteChildChunk={jest.fn()}
-          handleAddNewChildChunk={jest.fn()}
-          onClickSlice={jest.fn()}
-          onClickEdit={jest.fn()}
+          onClick={vi.fn()}
+          onChangeSwitch={vi.fn()}
+          onDelete={vi.fn()}
+          onDeleteChildChunk={vi.fn()}
+          handleAddNewChildChunk={vi.fn()}
+          onClickSlice={vi.fn()}
+          onClickEdit={vi.fn()}
           className="full-props-class"
           archived={false}
           embeddingAvailable={true}

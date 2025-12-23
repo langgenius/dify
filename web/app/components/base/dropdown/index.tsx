@@ -1,16 +1,16 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { cn } from '@/utils/classnames'
+import type { ActionButtonProps } from '@/app/components/base/action-button'
 import {
   RiMoreFill,
 } from '@remixicon/react'
+import { useState } from 'react'
+import ActionButton from '@/app/components/base/action-button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import ActionButton from '@/app/components/base/action-button'
-import type { ActionButtonProps } from '@/app/components/base/action-button'
+import { cn } from '@/utils/classnames'
 
 export type Item = {
   value: string | number
@@ -47,30 +47,30 @@ const Dropdown: FC<DropdownProps> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         {
           renderTrigger
             ? renderTrigger(open)
             : (
-              <ActionButton
-                {...triggerProps}
-                className={cn(
-                  open && 'bg-divider-regular',
-                  triggerProps?.className,
-                )}
-              >
-                <RiMoreFill className='h-4 w-4 text-text-tertiary' />
-              </ActionButton>
-            )
+                <ActionButton
+                  {...triggerProps}
+                  className={cn(
+                    open && 'bg-divider-regular',
+                    triggerProps?.className,
+                  )}
+                >
+                  <RiMoreFill className="h-4 w-4 text-text-tertiary" />
+                </ActionButton>
+              )
         }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={popupClassName}>
-        <div className='rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg text-sm text-text-secondary shadow-lg'>
+        <div className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg text-sm text-text-secondary shadow-lg">
           {
             !!items.length && (
-              <div className='p-1'>
+              <div className="p-1">
                 {
                   items.map(item => (
                     <div
@@ -90,12 +90,12 @@ const Dropdown: FC<DropdownProps> = ({
           }
           {
             (!!items.length && !!secondItems?.length) && (
-              <div className='h-px bg-divider-regular' />
+              <div className="h-px bg-divider-regular" />
             )
           }
           {
             !!secondItems?.length && (
-              <div className='p-1'>
+              <div className="p-1">
                 {
                   secondItems.map(item => (
                     <div

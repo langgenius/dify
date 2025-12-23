@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
 import type { OutputVar } from '../../../code/types'
+import type { ToastHandle } from '@/app/components/base/toast'
+import type { VarType } from '@/app/components/workflow/types'
+import { useDebounceFn } from 'ahooks'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import RemoveButton from '../remove-button'
 import VarTypePicker from './var-type-picker'
-import Input from '@/app/components/base/input'
-import type { VarType } from '@/app/components/workflow/types'
-import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
-import type { ToastHandle } from '@/app/components/base/toast'
-import Toast from '@/app/components/base/toast'
-import { useDebounceFn } from 'ahooks'
 
 type Props = {
   readonly: boolean
@@ -93,14 +94,14 @@ const OutputVarList: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       {list.map((item, index) => (
-        <div className='flex items-center space-x-1' key={index}>
+        <div className="flex items-center space-x-1" key={index}>
           <Input
             readOnly={readonly}
             value={item.variable}
             onChange={handleVarNameChange(index)}
-            wrapperClassName='grow'
+            wrapperClassName="grow"
           />
           <VarTypePicker
             readonly={readonly}
@@ -108,7 +109,7 @@ const OutputVarList: FC<Props> = ({
             onChange={handleVarTypeChange(index)}
           />
           <RemoveButton
-            className='!bg-gray-100 !p-2 hover:!bg-gray-200'
+            className="!bg-gray-100 !p-2 hover:!bg-gray-200"
             onClick={handleVarRemove(index)}
           />
         </div>

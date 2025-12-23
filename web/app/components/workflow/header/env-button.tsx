@@ -1,10 +1,10 @@
 import { memo } from 'react'
 import Button from '@/app/components/base/button'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
-import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 const EnvButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
@@ -29,11 +29,11 @@ const EnvButton = ({ disabled }: { disabled: boolean }) => {
         'p-2',
         theme === 'dark' && showEnvPanel && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
       )}
-      variant='ghost'
+      variant="ghost"
       disabled={disabled}
       onClick={handleClick}
     >
-      <Env className='h-4 w-4 text-components-button-secondary-text' />
+      <Env className="h-4 w-4 text-components-button-secondary-text" />
     </Button>
   )
 }

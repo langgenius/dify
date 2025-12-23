@@ -27,12 +27,12 @@ const RoleSelector = ({
   ]
 
   return (
-    <div className='flex'>
+    <div className="flex">
       {
         options.map(option => (
           <div
             key={option.key}
-            className='system-md-regular mr-6 flex h-5 cursor-pointer items-center text-text-primary'
+            className="system-md-regular mr-6 flex h-5 cursor-pointer items-center text-text-primary"
             onClick={() => onChange(option.key)}
           >
             <div

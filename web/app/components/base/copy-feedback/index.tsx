@@ -1,15 +1,16 @@
 'use client'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiClipboardFill,
   RiClipboardLine,
 } from '@remixicon/react'
-import { debounce } from 'lodash-es'
 import copy from 'copy-to-clipboard'
-import copyStyle from './style.module.css'
-import Tooltip from '@/app/components/base/tooltip'
+import { debounce } from 'lodash-es'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import Tooltip from '@/app/components/base/tooltip'
+import copyStyle from './style.module.css'
 
 type Props = {
   content: string
@@ -44,8 +45,8 @@ const CopyFeedback = ({ content }: Props) => {
           onClick={onClickCopy}
           onMouseLeave={onMouseLeave}
         >
-          {isCopied && <RiClipboardFill className='h-4 w-4' />}
-          {!isCopied && <RiClipboardLine className='h-4 w-4' />}
+          {isCopied && <RiClipboardFill className="h-4 w-4" />}
+          {!isCopied && <RiClipboardLine className="h-4 w-4" />}
         </div>
       </ActionButton>
     </Tooltip>
@@ -84,7 +85,8 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
           onMouseLeave={onMouseLeave}
           className={`h-full w-full ${copyStyle.copyIcon} ${isCopied ? copyStyle.copied : ''
           }`}
-        ></div>
+        >
+        </div>
       </div>
     </Tooltip>
   )

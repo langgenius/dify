@@ -1,9 +1,9 @@
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import useTimestamp from '@/hooks/use-timestamp'
 import { useStore } from '../store'
 import { WorkflowVersion } from '../types'
-import useTimestamp from '@/hooks/use-timestamp'
 
 const RestoringTitle = () => {
   const { t } = useTranslation()
@@ -20,16 +20,16 @@ const RestoringTitle = () => {
   }, [currentVersion, t, isDraft])
 
   return (
-    <div className='flex flex-col gap-y-0.5'>
-      <div className='flex items-center gap-x-1'>
-        <span className='system-sm-semibold text-text-primary'>
+    <div className="flex flex-col gap-y-0.5">
+      <div className="flex items-center gap-x-1">
+        <span className="system-sm-semibold text-text-primary">
           {versionName}
         </span>
-        <span className='system-2xs-medium-uppercase rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 text-text-accent-secondary'>
+        <span className="system-2xs-medium-uppercase rounded-[5px] border border-text-accent-secondary bg-components-badge-bg-dimm px-1 py-0.5 text-text-accent-secondary">
           {t('workflow.common.viewOnly')}
         </span>
       </div>
-      <div className='system-xs-regular flex h-4 items-center gap-x-1 text-text-tertiary'>
+      <div className="system-xs-regular flex h-4 items-center gap-x-1 text-text-tertiary">
         {
           currentVersion && (
             <>

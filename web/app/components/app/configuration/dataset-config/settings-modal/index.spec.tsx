@@ -1,36 +1,38 @@
+import type { MockedFunction } from 'vitest'
+import type { DataSet } from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import SettingsModal from './index'
 import { ToastContext } from '@/app/components/base/toast'
-import type { DataSet } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, DatasetPermission, RerankingModeEnum } from '@/models/datasets'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
-import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { RETRIEVE_METHOD } from '@/types/app'
+import SettingsModal from './index'
 
-const mockNotify = jest.fn()
-const mockOnCancel = jest.fn()
-const mockOnSave = jest.fn()
-const mockSetShowAccountSettingModal = jest.fn()
+const mockNotify = vi.fn()
+const mockOnCancel = vi.fn()
+const mockOnSave = vi.fn()
+const mockSetShowAccountSettingModal = vi.fn()
 let mockIsWorkspaceDatasetOperator = false
 
-const mockUseModelList = jest.fn()
-const mockUseModelListAndDefaultModel = jest.fn()
-const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = jest.fn()
-const mockUseCurrentProviderAndModel = jest.fn()
-const mockCheckShowMultiModalTip = jest.fn()
+const mockUseModelList = vi.fn()
+const mockUseModelListAndDefaultModel = vi.fn()
+const mockUseModelListAndDefaultModelAndCurrentProviderAndModel = vi.fn()
+const mockUseCurrentProviderAndModel = vi.fn()
+const mockCheckShowMultiModalTip = vi.fn()
 
-jest.mock('ky', () => {
+vi.mock('ky', () => {
   const ky = () => ky
   ky.extend = () => ky
   ky.create = () => ky
   return { __esModule: true, default: ky }
 })
 
-jest.mock('@/app/components/datasets/create/step-two', () => ({
+vi.mock('@/app/components/datasets/create/step-two', () => ({
   __esModule: true,
   IndexingType: {
     QUALIFIED: 'high_quality',
@@ -38,19 +40,19 @@ jest.mock('@/app/components/datasets/create/step-two', () => ({
   },
 }))
 
-jest.mock('@/service/datasets', () => ({
-  updateDatasetSetting: jest.fn(),
+vi.mock('@/service/datasets', () => ({
+  updateDatasetSetting: vi.fn(),
 }))
 
-jest.mock('@/service/use-common', () => ({
+vi.mock('@/service/use-common', async () => ({
   __esModule: true,
-  ...jest.requireActual('@/service/use-common'),
-  useMembers: jest.fn(),
+  ...(await vi.importActual('@/service/use-common')),
+  useMembers: vi.fn(),
 }))
 
-jest.mock('@/context/app-context', () => ({
+vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({ isCurrentWorkspaceDatasetOperator: mockIsWorkspaceDatasetOperator }),
-  useSelector: <T,>(selector: (value: { userProfile: { id: string; name: string; email: string; avatar_url: string } }) => T) => selector({
+  useSelector: <T,>(selector: (value: { userProfile: { id: string, name: string, email: string, avatar_url: string } }) => T) => selector({
     userProfile: {
       id: 'user-1',
       name: 'User One',
@@ -60,17 +62,17 @@ jest.mock('@/context/app-context', () => ({
   }),
 }))
 
-jest.mock('@/context/modal-context', () => ({
+vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
   }),
 }))
 
-jest.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs${path}`,
 }))
 
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     modelProviders: [],
     textGenerationModelList: [],
@@ -83,7 +85,7 @@ jest.mock('@/context/provider-context', () => ({
   }),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   __esModule: true,
   useModelList: (...args: unknown[]) => mockUseModelList(...args),
   useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
@@ -92,21 +94,21 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', (
   useCurrentProviderAndModel: (...args: unknown[]) => mockUseCurrentProviderAndModel(...args),
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
-    <div data-testid='model-selector'>
+  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+    <div data-testid="model-selector">
       {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
     </div>
   ),
 }))
 
-jest.mock('@/app/components/datasets/settings/utils', () => ({
+vi.mock('@/app/components/datasets/settings/utils', () => ({
   checkShowMultiModalTip: (...args: unknown[]) => mockCheckShowMultiModalTip(...args),
 }))
 
-const mockUpdateDatasetSetting = updateDatasetSetting as jest.MockedFunction<typeof updateDatasetSetting>
-const mockUseMembers = useMembers as jest.MockedFunction<typeof useMembers>
+const mockUpdateDatasetSetting = updateDatasetSetting as MockedFunction<typeof updateDatasetSetting>
+const mockUseMembers = useMembers as MockedFunction<typeof useMembers>
 
 const createRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): RetrievalConfig => ({
   search_method: RETRIEVE_METHOD.semantic,
@@ -185,7 +187,7 @@ const createDataset = (overrides: Partial<DataSet> = {}, retrievalOverrides: Par
 
 const renderWithProviders = (dataset: DataSet) => {
   return render(
-    <ToastContext.Provider value={{ notify: mockNotify, close: jest.fn() }}>
+    <ToastContext.Provider value={{ notify: mockNotify, close: vi.fn() }}>
       <SettingsModal
         currentDataset={dataset}
         onCancel={mockOnCancel}
@@ -206,7 +208,7 @@ const renderSettingsModal = async (dataset: DataSet) => {
 
 describe('SettingsModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockIsWorkspaceDatasetOperator = false
     mockUseMembers.mockReturnValue({
       data: {
