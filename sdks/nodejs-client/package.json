@@ -16,7 +16,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "keywords": [
     "Dify",
@@ -28,7 +29,7 @@
   ],
   "author": "Joel",
   "contributors": [
-    "<crazywoola> <<427733928@qq.com>> (https://github.com/crazywoola)"
+    "crazywoola <427733928@qq.com> (https://github.com/crazywoola)"
   ],
   "repository": {
     "type": "git",
