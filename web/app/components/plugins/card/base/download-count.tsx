@@ -1,5 +1,5 @@
-import React from 'react'
 import { RiInstallLine } from '@remixicon/react'
+import React from 'react'
 import { formatNumber } from '@/utils/format'
 
 type Props = {

@@ -119,12 +119,14 @@ describe('CreateAppTemplateDialog', () => {
     it('should call both onSuccess and onClose when app list success is triggered', () => {
       const mockOnSuccess = vi.fn()
       const mockOnClose = vi.fn()
-      render(<CreateAppTemplateDialog
-        {...defaultProps}
-        show={true}
-        onSuccess={mockOnSuccess}
-        onClose={mockOnClose}
-      />)
+      render(
+        <CreateAppTemplateDialog
+          {...defaultProps}
+          show={true}
+          onSuccess={mockOnSuccess}
+          onClose={mockOnClose}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('app-list-success'))
 
@@ -134,11 +136,13 @@ describe('CreateAppTemplateDialog', () => {
 
     it('should call onCreateFromBlank when create from blank is clicked', () => {
       const mockOnCreateFromBlank = vi.fn()
-      render(<CreateAppTemplateDialog
-        {...defaultProps}
-        show={true}
-        onCreateFromBlank={mockOnCreateFromBlank}
-      />)
+      render(
+        <CreateAppTemplateDialog
+          {...defaultProps}
+          show={true}
+          onCreateFromBlank={mockOnCreateFromBlank}
+        />,
+      )
 
       fireEvent.click(screen.getByTestId('create-from-blank'))
 
@@ -155,11 +159,13 @@ describe('CreateAppTemplateDialog', () => {
 
     it('should handle ESC key press to close modal', () => {
       const mockOnClose = vi.fn()
-      render(<CreateAppTemplateDialog
-        {...defaultProps}
-        show={true}
-        onClose={mockOnClose}
-      />)
+      render(
+        <CreateAppTemplateDialog
+          {...defaultProps}
+          show={true}
+          onClose={mockOnClose}
+        />,
+      )
 
       expect(capturedEscCallback).toBeDefined()
       expect(typeof capturedEscCallback).toBe('function')
@@ -172,11 +178,13 @@ describe('CreateAppTemplateDialog', () => {
 
     it('should not call onClose when ESC key is pressed and modal is not shown', () => {
       const mockOnClose = vi.fn()
-      render(<CreateAppTemplateDialog
-        {...defaultProps}
-        show={false} // Modal not shown
-        onClose={mockOnClose}
-      />)
+      render(
+        <CreateAppTemplateDialog
+          {...defaultProps}
+          show={false} // Modal not shown
+          onClose={mockOnClose}
+        />,
+      )
 
       // The callback should still be created but not execute onClose
       expect(capturedEscCallback).toBeDefined()
@@ -204,23 +212,27 @@ describe('CreateAppTemplateDialog', () => {
   describe('Edge Cases', () => {
     it('should handle null props gracefully', () => {
       expect(() => {
-        render(<CreateAppTemplateDialog
-          show={true}
-          onSuccess={vi.fn()}
-          onClose={vi.fn()}
+        render(
+          <CreateAppTemplateDialog
+            show={true}
+            onSuccess={vi.fn()}
+            onClose={vi.fn()}
           // onCreateFromBlank is undefined
-        />)
+          />,
+        )
       }).not.toThrow()
     })
 
     it('should handle undefined props gracefully', () => {
       expect(() => {
-        render(<CreateAppTemplateDialog
-          show={true}
-          onSuccess={vi.fn()}
-          onClose={vi.fn()}
-          onCreateFromBlank={undefined}
-        />)
+        render(
+          <CreateAppTemplateDialog
+            show={true}
+            onSuccess={vi.fn()}
+            onClose={vi.fn()}
+            onCreateFromBlank={undefined}
+          />,
+        )
       }).not.toThrow()
     })
 

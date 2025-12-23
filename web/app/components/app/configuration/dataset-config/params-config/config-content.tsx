@@ -1,31 +1,31 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo } from 'react'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import WeightedScore from './weighted-score'
-import TopKItem from '@/app/components/base/param-item/top-k-item'
-import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
-import { RETRIEVE_TYPE } from '@/types/app'
-import type {
-  DatasetConfigs,
-} from '@/models/debug'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { ModelConfig } from '@/app/components/workflow/types'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import Tooltip from '@/app/components/base/tooltip'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   DataSet,
 } from '@/models/datasets'
-import { RerankingModeEnum } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
-import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
+import type {
+  DatasetConfigs,
+} from '@/models/debug'
+import { noop } from 'lodash-es'
+import { memo, useCallback, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
+import TopKItem from '@/app/components/base/param-item/top-k-item'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
-import Divider from '@/app/components/base/divider'
-import { noop } from 'lodash-es'
+import Tooltip from '@/app/components/base/tooltip'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
+import { RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_TYPE } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import WeightedScore from './weighted-score'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -185,36 +185,36 @@ const ConfigContent: FC<Props> = ({
 
   return (
     <div>
-      <div className='system-xl-semibold text-text-primary'>{t('dataset.retrievalSettings')}</div>
-      <div className='system-xs-regular text-text-tertiary'>
+      <div className="system-xl-semibold text-text-primary">{t('dataset.retrievalSettings')}</div>
+      <div className="system-xs-regular text-text-tertiary">
         {t('dataset.defaultRetrievalTip')}
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
-          <div className='my-2 flex h-6 items-center py-1'>
-            <div className='system-xs-semibold-uppercase mr-2 shrink-0 text-text-secondary'>
+          <div className="my-2 flex h-6 items-center py-1">
+            <div className="system-xs-semibold-uppercase mr-2 shrink-0 text-text-secondary">
               {t('dataset.rerankSettings')}
             </div>
-            <Divider bgStyle='gradient' className='mx-0 !h-px' />
+            <Divider bgStyle="gradient" className="mx-0 !h-px" />
           </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
-              <div className='system-xs-medium mt-4 text-text-warning'>
+              <div className="system-xs-medium mt-4 text-text-warning">
                 {t('dataset.inconsistentEmbeddingModelTip')}
               </div>
             )
           }
           {
             selectedDatasetsMode.mixtureInternalAndExternal && (
-              <div className='system-xs-medium mt-4 text-text-warning'>
+              <div className="system-xs-medium mt-4 text-text-warning">
                 {t('dataset.mixtureInternalAndExternalTip')}
               </div>
             )
           }
           {
             selectedDatasetsMode.allExternal && (
-              <div className='system-xs-medium mt-4 text-text-warning'>
+              <div className="system-xs-medium mt-4 text-text-warning">
                 {t('dataset.allExternalTip')}
               </div>
             )
@@ -222,14 +222,14 @@ const ConfigContent: FC<Props> = ({
           {
             selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
-              <div className='system-xs-medium mt-4 text-text-warning'>
+              <div className="system-xs-medium mt-4 text-text-warning">
                 {t('dataset.mixtureHighQualityAndEconomicTip')}
               </div>
             )
           }
           {
             showWeightedScore && (
-              <div className='flex items-center justify-between'>
+              <div className="flex items-center justify-between">
                 {
                   rerankingModeOptions.map(option => (
                     <div
@@ -240,15 +240,15 @@ const ConfigContent: FC<Props> = ({
                       )}
                       onClick={() => handleRerankModeChange(option.value)}
                     >
-                      <div className='truncate'>{option.label}</div>
+                      <div className="truncate">{option.label}</div>
                       <Tooltip
-                        popupContent={
-                          <div className='w-[200px]'>
+                        popupContent={(
+                          <div className="w-[200px]">
                             {option.tips}
                           </div>
-                        }
-                        popupClassName='ml-0.5'
-                        triggerClassName='ml-0.5 w-3.5 h-3.5'
+                        )}
+                        popupClassName="ml-0.5"
+                        triggerClassName="ml-0.5 w-3.5 h-3.5"
                       />
                     </div>
                   ))
@@ -258,26 +258,26 @@ const ConfigContent: FC<Props> = ({
           }
           {
             !showWeightedScorePanel && (
-              <div className='mt-2'>
-                <div className='flex items-center'>
+              <div className="mt-2">
+                <div className="flex items-center">
                   {
                     canManuallyToggleRerank && (
                       <Switch
-                        size='md'
+                        size="md"
                         defaultValue={showRerankModel}
                         onChange={handleManuallyToggleRerank}
                       />
                     )
                   }
-                  <div className='system-sm-semibold ml-1 leading-[32px] text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</div>
+                  <div className="system-sm-semibold ml-1 leading-[32px] text-text-secondary">{t('common.modelProvider.rerankModel.key')}</div>
                   <Tooltip
-                    popupContent={
+                    popupContent={(
                       <div className="w-[200px]">
                         {t('common.modelProvider.rerankModel.tip')}
                       </div>
-                    }
-                    popupClassName='ml-1'
-                    triggerClassName='ml-1 w-4 h-4'
+                    )}
+                    popupClassName="ml-1"
+                    triggerClassName="ml-1 w-4 h-4"
                   />
                 </div>
                 {
@@ -297,14 +297,15 @@ const ConfigContent: FC<Props> = ({
                         modelList={rerankModelList}
                       />
                     </div>
-                  )}
+                  )
+                }
               </div>
             )
           }
           {
             showWeightedScorePanel
             && (
-              <div className='mt-2 space-y-4'>
+              <div className="mt-2 space-y-4">
                 <WeightedScore
                   value={{
                     value: [
@@ -332,7 +333,7 @@ const ConfigContent: FC<Props> = ({
           {
             !showWeightedScorePanel
             && (
-              <div className='mt-4 space-y-4'>
+              <div className="mt-4 space-y-4">
                 <TopKItem
                   value={datasetConfigs.top_k}
                   onChange={handleParamChange}
@@ -356,17 +357,17 @@ const ConfigContent: FC<Props> = ({
       )}
 
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
-        <div className='mt-4'>
-          <div className='flex items-center space-x-0.5'>
-            <div className='text-[13px] font-medium leading-[32px] text-text-primary'>{t('common.modelProvider.systemReasoningModel.key')}</div>
+        <div className="mt-4">
+          <div className="flex items-center space-x-0.5">
+            <div className="text-[13px] font-medium leading-[32px] text-text-primary">{t('common.modelProvider.systemReasoningModel.key')}</div>
             <Tooltip
               popupContent={t('common.modelProvider.systemReasoningModel.tip')}
             />
           </div>
           <ModelParameterModal
             isInWorkflow={isInWorkflow}
-            popupClassName='!w-[387px]'
-            portalToFollowElemContentClassName='!z-[1002]'
+            popupClassName="!w-[387px]"
+            portalToFollowElemContentClassName="!z-[1002]"
             isAdvancedMode={true}
             provider={model?.provider}
             completionParams={model?.completion_params}
@@ -377,9 +378,8 @@ const ConfigContent: FC<Props> = ({
             debugWithMultipleModel={false}
           />
         </div>
-      )
-      }
-    </div >
+      )}
+    </div>
   )
 }
 export default memo(ConfigContent)

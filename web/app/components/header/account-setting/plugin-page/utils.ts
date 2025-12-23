@@ -1,5 +1,5 @@
-import { ValidatedStatus } from '../key-validator/declarations'
 import { updatePluginProviderAIKey, validatePluginProviderKey } from '@/service/common'
+import { ValidatedStatus } from '../key-validator/declarations'
 
 export const validatePluginKey = async (pluginType: string, body: any) => {
   try {

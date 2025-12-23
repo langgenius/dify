@@ -19,8 +19,8 @@ const ProcessDocuments = ({
   }, !!pipelineId && !!dataSourceNodeId)
 
   return (
-    <div className='flex flex-col'>
-      <div className='system-sm-semibold-uppercase px-4 pt-2 text-text-secondary'>
+    <div className="flex flex-col">
+      <div className="system-sm-semibold-uppercase px-4 pt-2 text-text-secondary">
         {t('datasetPipeline.inputFieldPanel.preview.stepTwoTitle')}
       </div>
       <Form variables={paramsConfig?.variables || []} />

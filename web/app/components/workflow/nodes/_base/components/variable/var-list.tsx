@@ -1,21 +1,21 @@
 'use client'
 import type { FC } from 'react'
+import type { ToastHandle } from '@/app/components/base/toast'
+import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
+import { RiDraggable } from '@remixicon/react'
+import { useDebounceFn } from 'ahooks'
+import { produce } from 'immer'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import RemoveButton from '../remove-button'
-import VarReferencePicker from './var-reference-picker'
-import Input from '@/app/components/base/input'
-import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
-import type { ToastHandle } from '@/app/components/base/toast'
-import Toast from '@/app/components/base/toast'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
-import { RiDraggable } from '@remixicon/react'
+import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { cn } from '@/utils/classnames'
-import { useDebounceFn } from 'ahooks'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
+import RemoveButton from '../remove-button'
+import VarReferencePicker from './var-reference-picker'
 
 type Props = {
   nodeId: string
@@ -131,11 +131,11 @@ const VarList: FC<Props> = ({
 
   return (
     <ReactSortable
-      className='space-y-2'
+      className="space-y-2"
       list={listWithIds}
       setList={(list) => { onChange(list.map(item => item.variable)) }}
-      handle='.handle'
-      ghostClass='opacity-50'
+      handle=".handle"
+      ghostClass="opacity-50"
       animation={150}
     >
       {list.map((variable, index) => {
@@ -147,7 +147,7 @@ const VarList: FC<Props> = ({
         return (
           <div className={cn('flex items-center space-x-1', 'group relative')} key={index}>
             <Input
-              wrapperClassName='w-[120px]'
+              wrapperClassName="w-[120px]"
               disabled={readonly}
               value={variable.variable}
               onChange={handleVarNameChange(index)}
@@ -157,7 +157,7 @@ const VarList: FC<Props> = ({
               nodeId={nodeId}
               readonly={readonly}
               isShowNodeName
-              className='grow'
+              className="grow"
               value={variable.variable_type === VarKindType.constant ? (variable.value || '') : (variable.value_selector || [])}
               isSupportConstantValue={isSupportConstantValue}
               onChange={handleVarReferenceChange(index)}
@@ -167,12 +167,15 @@ const VarList: FC<Props> = ({
               isSupportFileVar={isSupportFileVar}
             />
             {!readonly && (
-              <RemoveButton onClick={handleVarRemove(index)}/>
+              <RemoveButton onClick={handleVarRemove(index)} />
             )}
-            {canDrag && <RiDraggable className={cn(
-              'handle absolute -left-4 top-2.5 hidden h-3 w-3 cursor-pointer text-text-quaternary',
-              'group-hover:block',
-            )} />}
+            {canDrag && (
+              <RiDraggable className={cn(
+                'handle absolute -left-4 top-2.5 hidden h-3 w-3 cursor-pointer text-text-quaternary',
+                'group-hover:block',
+              )}
+              />
+            )}
           </div>
         )
       })}

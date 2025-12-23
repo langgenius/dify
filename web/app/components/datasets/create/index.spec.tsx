@@ -1,11 +1,11 @@
+import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DataSet } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
-import DatasetUpdateForm from './index'
-import { ChunkingMode, DataSourceType, DatasetPermission } from '@/models/datasets'
-import type { DataSet } from '@/models/datasets'
 import { DataSourceProvider } from '@/models/common'
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import DatasetUpdateForm from './index'
 
 // IndexingType values from step-two (defined here since we mock step-two)
 // Using type assertion to match the expected IndexingType enum from step-two
@@ -27,7 +27,7 @@ vi.mock('react-i18next', () => ({
 
 // Mock next/link
 vi.mock('next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+  return function MockLink({ children, href }: { children: React.ReactNode, href: string }) {
     return <a href={href}>{children}</a>
   }
 })
@@ -55,7 +55,7 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock useDefaultModel hook
-let mockEmbeddingsDefaultModel: { model: string; provider: string } | undefined
+let mockEmbeddingsDefaultModel: { model: string, provider: string } | undefined
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({
     data: mockEmbeddingsDefaultModel,

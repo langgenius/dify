@@ -38,7 +38,7 @@ const ScoreThresholdItem: FC<Props> = ({
   return (
     <ParamItem
       className={className}
-      id='score_threshold'
+      id="score_threshold"
       name={t('appDebug.datasetConfig.score_threshold')}
       tip={t('appDebug.datasetConfig.score_thresholdTip') as string}
       {...VALUE_LIMIT}

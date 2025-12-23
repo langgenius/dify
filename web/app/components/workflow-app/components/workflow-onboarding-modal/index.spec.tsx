@@ -1,8 +1,8 @@
-import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import WorkflowOnboardingModal from './index'
+import React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import WorkflowOnboardingModal from './index'
 
 // Mock Modal component
 vi.mock('@/app/components/base/modal', () => ({

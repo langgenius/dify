@@ -1,6 +1,7 @@
+import type { IToastProps, ToastHandle } from '@/app/components/base/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Toast, { type IToastProps, type ToastHandle } from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
 import EditAnnotationModal from './index'
 
 const { mockAddAnnotation, mockEditAnnotation } = vi.hoisted(() => ({

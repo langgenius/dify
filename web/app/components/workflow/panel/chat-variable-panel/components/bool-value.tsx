@@ -20,15 +20,17 @@ const BoolValue: FC<Props> = ({
   }, [onChange])
 
   return (
-    <div className='flex w-full space-x-1'>
-      <OptionCard className='grow'
+    <div className="flex w-full space-x-1">
+      <OptionCard
+        className="grow"
         selected={booleanValue}
-        title='True'
+        title="True"
         onSelect={handleChange(true)}
       />
-      <OptionCard className='grow'
+      <OptionCard
+        className="grow"
         selected={!booleanValue}
-        title='False'
+        title="False"
         onSelect={handleChange(false)}
       />
     </div>

@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import RunOnce from './index'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Resolution, TransferMethod } from '@/types/app'
+import RunOnce from './index'
 
 vi.mock('@/hooks/use-breakpoints', () => {
   const MediaType = {
@@ -22,7 +22,7 @@ vi.mock('@/hooks/use-breakpoints', () => {
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   __esModule: true,
-  default: ({ value, onChange }: { value?: string; onChange?: (val: string) => void }) => (
+  default: ({ value, onChange }: { value?: string, onChange?: (val: string) => void }) => (
     <textarea data-testid="code-editor-mock" value={value} onChange={e => onChange?.(e.target.value)} />
   ),
 }))

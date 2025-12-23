@@ -24,9 +24,9 @@ const ResolutionPicker: FC<Props> = ({
     }
   }, [onChange])
   return (
-    <div className='flex items-center justify-between'>
-      <div className='mr-2 text-xs font-medium uppercase text-text-secondary'>{t(`${i18nPrefix}.resolution.name`)}</div>
-      <div className='flex items-center space-x-1'>
+    <div className="flex items-center justify-between">
+      <div className="mr-2 text-xs font-medium uppercase text-text-secondary">{t(`${i18nPrefix}.resolution.name`)}</div>
+      <div className="flex items-center space-x-1">
         <OptionCard
           title={t(`${i18nPrefix}.resolution.high`)}
           onSelect={handleOnChange(Resolution.high)}

@@ -1,14 +1,16 @@
-import React from 'react'
+import type { Plugin } from '@/app/components/plugins/types'
+import type { Collection } from '@/app/components/tools/types'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Marketplace from './index'
-import { useMarketplace } from './hooks'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
+import React from 'react'
 import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
-import type { Collection } from '@/app/components/tools/types'
+import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { CollectionType } from '@/app/components/tools/types'
-import type { Plugin } from '@/app/components/plugins/types'
+import { getMarketplaceUrl } from '@/utils/var'
+import { useMarketplace } from './hooks'
+
+import Marketplace from './index'
 
 const listRenderSpy = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
@@ -50,7 +52,6 @@ vi.mock('next-themes', () => ({
   useTheme: () => ({ theme: 'light' }),
 }))
 
-import { getMarketplaceUrl } from '@/utils/var'
 const mockGetMarketplaceUrl = vi.mocked(getMarketplaceUrl)
 
 const createToolProvider = (overrides: Partial<Collection> = {}): Collection => ({

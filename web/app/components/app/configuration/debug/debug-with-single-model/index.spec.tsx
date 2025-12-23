@@ -1,15 +1,17 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { type ReactNode, type RefObject, createRef } from 'react'
-import DebugWithSingleModel from './index'
+import type { ReactNode, RefObject } from 'react'
 import type { DebugWithSingleModelRefType } from './index'
 import type { ChatItem } from '@/app/components/base/chat/types'
-import { ConfigurationMethodEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { Collection } from '@/app/components/tools/types'
 import type { ProviderContextState } from '@/context/provider-context'
 import type { DatasetConfigs, ModelConfig } from '@/models/debug'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { createRef } from 'react'
+import { ConfigurationMethodEnum, ModelFeatureEnum, ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { CollectionType } from '@/app/components/tools/types'
 import { PromptMode } from '@/models/debug'
-import { type Collection, CollectionType } from '@/app/components/tools/types'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { AgentStrategy, AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import DebugWithSingleModel from './index'
 
 // ============================================================================
 // Test Data Factories (Following testing.md guidelines)
@@ -308,7 +310,7 @@ vi.mock('@/context/app-context', () => ({
 
 type FeatureState = {
   moreLikeThis: { enabled: boolean }
-  opening: { enabled: boolean; opening_statement: string; suggested_questions: string[] }
+  opening: { enabled: boolean, opening_statement: string, suggested_questions: string[] }
   moderation: { enabled: boolean }
   speech2text: { enabled: boolean }
   text2speech: { enabled: boolean }
@@ -421,7 +423,7 @@ type MockChatProps = {
   chatList?: ChatItem[]
   isResponding?: boolean
   onSend?: (message: string, files?: FileEntity[]) => void
-  onRegenerate?: (chatItem: ChatItem, editedQuestion?: { message: string; files?: FileEntity[] }) => void
+  onRegenerate?: (chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => void
   onStopResponding?: () => void
   suggestedQuestions?: string[]
   questionIcon?: ReactNode

@@ -1,9 +1,9 @@
+import type { App } from '@/models/explore'
+import type { AppIconType } from '@/types/app'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AppCard from './index'
-import type { AppIconType } from '@/types/app'
 import { AppModeEnum } from '@/types/app'
-import type { App } from '@/models/explore'
+import AppCard from './index'
 
 vi.mock('@heroicons/react/20/solid', () => ({
   PlusIcon: ({ className }: any) => <div data-testid="plus-icon" className={className} aria-label="Add icon">+</div>,

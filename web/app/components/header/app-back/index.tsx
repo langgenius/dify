@@ -1,10 +1,10 @@
 'use client'
 
+import type { AppDetailResponse } from '@/models/app'
+import { ArrowLeftIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeftIcon, Squares2X2Icon } from '@heroicons/react/24/solid'
 import { cn } from '@/utils/classnames'
-import type { AppDetailResponse } from '@/models/app'
 
 type IAppBackProps = {
   curApp: AppDetailResponse
@@ -27,8 +27,8 @@ export default function AppBack({ curApp }: IAppBackProps) {
     >
       {
         (hovered && curApp)
-          ? <ArrowLeftIcon className='mr-1 h-[18px] w-[18px]' />
-          : <Squares2X2Icon className='mr-1 h-[18px] w-[18px]' />
+          ? <ArrowLeftIcon className="mr-1 h-[18px] w-[18px]" />
+          : <Squares2X2Icon className="mr-1 h-[18px] w-[18px]" />
       }
       {t('common.menus.apps')}
     </div>

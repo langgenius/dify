@@ -1,11 +1,11 @@
+import type { NotionPage } from '@/models/common'
+import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
+import type { OnlineDriveFile } from '@/models/pipeline'
 import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
-import ChunkPreview from './chunk-preview'
 import { ChunkingMode } from '@/models/datasets'
-import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
-import type { NotionPage } from '@/models/common'
-import type { OnlineDriveFile } from '@/models/pipeline'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
+import ChunkPreview from './chunk-preview'
 
 // Uses global react-i18next mock from web/vitest.setup.ts
 
@@ -21,9 +21,9 @@ vi.mock('@/context/dataset-detail', () => ({
 vi.mock('../../../common/document-picker/preview-document-picker', () => ({
   __esModule: true,
   default: ({ files, onChange, value }: {
-    files: Array<{ id: string; name: string; extension: string }>
-    onChange: (selected: { id: string; name: string; extension: string }) => void
-    value: { id: string; name: string; extension: string }
+    files: Array<{ id: string, name: string, extension: string }>
+    onChange: (selected: { id: string, name: string, extension: string }) => void
+    value: { id: string, name: string, extension: string }
   }) => (
     <div data-testid="document-picker">
       <span data-testid="picker-value">{value?.name || 'No selection'}</span>

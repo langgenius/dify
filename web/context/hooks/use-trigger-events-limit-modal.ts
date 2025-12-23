@@ -1,9 +1,10 @@
-import { type Dispatch, type SetStateAction, useCallback, useEffect, useRef, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
+import type { ModalState } from '../modal-context'
 import dayjs from 'dayjs'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'
 import { IS_CLOUD_EDITION } from '@/config'
-import type { ModalState } from '../modal-context'
 
 export type TriggerEventsLimitModalPayload = {
   usage: number

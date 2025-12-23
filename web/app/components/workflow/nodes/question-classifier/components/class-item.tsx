@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { Topic } from '../types'
-import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { uniqueId } from 'lodash-es'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 

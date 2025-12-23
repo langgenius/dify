@@ -29,9 +29,9 @@ const Filter: FC<IFilterProps> = ({
   if (!data)
     return null
   return (
-    <div className='mb-2 flex flex-row flex-wrap items-center justify-between gap-2'>
+    <div className="mb-2 flex flex-row flex-wrap items-center justify-between gap-2">
       <Input
-        wrapperClassName='w-[200px]'
+        wrapperClassName="w-[200px]"
         showLeftIcon
         showClearIcon
         value={queryParams.keyword}

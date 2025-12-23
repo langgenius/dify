@@ -34,7 +34,8 @@ describe('ConfigSelect Component', () => {
     const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
     const deleteButton = optionContainer?.querySelector('div[role="button"]')
 
-    if (!deleteButton) return
+    if (!deleteButton)
+      return
     fireEvent.click(deleteButton)
     expect(defaultProps.onChange).toHaveBeenCalledWith(['Option 2'])
   })
@@ -62,7 +63,8 @@ describe('ConfigSelect Component', () => {
     const optionContainer = screen.getByDisplayValue('Option 1').closest('div')
     const deleteButton = optionContainer?.querySelector('div[role="button"]')
 
-    if (!deleteButton) return
+    if (!deleteButton)
+      return
     fireEvent.mouseEnter(deleteButton)
     expect(optionContainer).toHaveClass('border-components-input-border-destructive')
   })

@@ -1,9 +1,9 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useSubscriptionList } from './use-subscription-list'
 
 type Props = {
@@ -52,24 +52,29 @@ export const DeleteConfirm = (props: Props) => {
       },
     })
   }
-  return <Confirm
-    title={t(`${tPrefix}.title`, { name: currentName })}
-    confirmText={t(`${tPrefix}.confirm`)}
-    content={workflowsInUse > 0 ? <>
-      {t(`${tPrefix}.contentWithApps`, { count: workflowsInUse })}
-      <div className='system-sm-medium mb-2 mt-6 text-text-secondary'>{t(`${tPrefix}.confirmInputTip`, { name: currentName })}</div>
-      <Input
-        value={inputName}
-        onChange={e => setInputName(e.target.value)}
-        placeholder={t(`${tPrefix}.confirmInputPlaceholder`, { name: currentName })}
-      />
-    </>
-      : t(`${tPrefix}.content`)}
-    isShow={isShow}
-    isLoading={isDeleting}
-    isDisabled={isDeleting}
-    onConfirm={onConfirm}
-    onCancel={() => onClose(false)}
-    maskClosable={false}
-  />
+  return (
+    <Confirm
+      title={t(`${tPrefix}.title`, { name: currentName })}
+      confirmText={t(`${tPrefix}.confirm`)}
+      content={workflowsInUse > 0
+        ? (
+            <>
+              {t(`${tPrefix}.contentWithApps`, { count: workflowsInUse })}
+              <div className="system-sm-medium mb-2 mt-6 text-text-secondary">{t(`${tPrefix}.confirmInputTip`, { name: currentName })}</div>
+              <Input
+                value={inputName}
+                onChange={e => setInputName(e.target.value)}
+                placeholder={t(`${tPrefix}.confirmInputPlaceholder`, { name: currentName })}
+              />
+            </>
+          )
+        : t(`${tPrefix}.content`)}
+      isShow={isShow}
+      isLoading={isDeleting}
+      isDisabled={isDeleting}
+      onConfirm={onConfirm}
+      onCancel={() => onClose(false)}
+      maskClosable={false}
+    />
+  )
 }

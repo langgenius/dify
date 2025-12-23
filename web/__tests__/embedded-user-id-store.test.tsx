@@ -1,8 +1,8 @@
-import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
-import { AccessMode } from '@/models/access-control'
-
+import React from 'react'
 import WebAppStoreProvider, { useWebAppStore } from '@/context/web-app-context'
+
+import { AccessMode } from '@/models/access-control'
 
 vi.mock('next/navigation', () => ({
   usePathname: vi.fn(() => '/chatbot/sample-app'),
