@@ -1,5 +1,6 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ToolItem from '@/app/components/tools/provider/tool-item'
 import {

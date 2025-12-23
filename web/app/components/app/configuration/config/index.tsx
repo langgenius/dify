@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
 import { produce } from 'immer'
-import React from 'react'
+import * as React from 'react'
 import { useContext } from 'use-context-selector'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'

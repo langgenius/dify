@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import type { AnnotationItem, HitHistoryItem } from '../type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { fetchHitHistoryList } from '@/service/annotation'
 import ViewAnnotationModal from './index'
 

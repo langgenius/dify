@@ -7,7 +7,8 @@ import {
   RiPlayLargeLine,
 } from '@remixicon/react'
 import { debounce } from 'lodash-es'
-import React, {
+import * as React from 'react'
+import {
   cloneElement,
   memo,
   useCallback,

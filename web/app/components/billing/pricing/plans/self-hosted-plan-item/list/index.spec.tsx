@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { SelfHostedPlan } from '@/app/components/billing/type'
 import List from './index'
 

@@ -8,7 +8,8 @@ import {
   RiDraggable,
 } from '@remixicon/react'
 import { noop } from 'lodash-es'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import Button from '@/app/components/base/button'

@@ -1,6 +1,6 @@
 'use client'
 import type { CSSProperties, FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'

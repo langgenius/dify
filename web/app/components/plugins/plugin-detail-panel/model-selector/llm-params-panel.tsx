@@ -3,7 +3,8 @@ import type {
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'

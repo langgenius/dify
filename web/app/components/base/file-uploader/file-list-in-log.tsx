@@ -1,6 +1,7 @@
 import type { FileEntity } from './types'
 import { RiArrowRightSLine } from '@remixicon/react'
-import React, { useMemo, useState } from 'react'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'

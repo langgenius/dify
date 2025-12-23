@@ -1,7 +1,7 @@
 import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
+import * as React from 'react'
 import { ToastContext } from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'

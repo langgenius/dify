@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Credential } from '@/app/components/tools/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'

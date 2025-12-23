@@ -1,5 +1,5 @@
 import type { RelatedAppResponse } from '@/models/datasets'
-import React from 'react'
+import * as React from 'react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
 import ServiceApi from './service-api'

@@ -4,7 +4,7 @@ import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AddButton from '@/app/components/base/button/add-button'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'

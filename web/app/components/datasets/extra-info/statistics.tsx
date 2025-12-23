@@ -1,6 +1,6 @@
 import type { RelatedAppResponse } from '@/models/datasets'
 import { RiInformation2Line } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'

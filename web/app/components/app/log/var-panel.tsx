@@ -5,7 +5,8 @@ import {
   RiArrowRightSLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'

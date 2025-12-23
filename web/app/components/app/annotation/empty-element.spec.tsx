@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import EmptyElement from './empty-element'
 
 describe('EmptyElement', () => {

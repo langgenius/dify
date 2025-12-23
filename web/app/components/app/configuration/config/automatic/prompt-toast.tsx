@@ -1,6 +1,6 @@
 import { RiArrowDownSLine, RiSparklingFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'

@@ -4,7 +4,7 @@ import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
 

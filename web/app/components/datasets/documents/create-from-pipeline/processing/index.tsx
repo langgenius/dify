@@ -1,7 +1,7 @@
 'use client'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { RiBookOpenLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'

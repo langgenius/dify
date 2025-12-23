@@ -1,6 +1,7 @@
 import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'lodash-es'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'

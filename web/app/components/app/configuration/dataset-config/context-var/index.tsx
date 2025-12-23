@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Props } from './var-picker'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 import Tooltip from '@/app/components/base/tooltip'

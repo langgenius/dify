@@ -1,7 +1,8 @@
 'use client'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
-import React, { Fragment, useMemo } from 'react'
+import * as React from 'react'
+import { Fragment, useMemo } from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 
 export type NotionCredential = {

@@ -1,6 +1,7 @@
 import type { ProcessRuleResponse } from '@/models/datasets'
 import Image from 'next/image'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { indexMethodIcon, retrievalIcon } from '@/app/components/datasets/create/icons'
 import { IndexingType } from '@/app/components/datasets/create/step-two'

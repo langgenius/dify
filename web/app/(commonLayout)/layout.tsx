@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import React from 'react'
+import * as React from 'react'
 import AmplitudeProvider from '@/app/components/base/amplitude'
 import GA, { GaType } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'

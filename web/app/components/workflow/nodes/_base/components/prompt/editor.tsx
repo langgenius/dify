@@ -11,7 +11,8 @@ import {
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
-import React, { useCallback, useRef } from 'react'
+import * as React from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 

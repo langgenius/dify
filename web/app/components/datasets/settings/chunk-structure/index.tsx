@@ -1,5 +1,5 @@
 import type { ChunkingMode } from '@/models/datasets'
-import React from 'react'
+import * as React from 'react'
 import OptionCard from '../option-card'
 import { useChunkStructure } from './hooks'
 

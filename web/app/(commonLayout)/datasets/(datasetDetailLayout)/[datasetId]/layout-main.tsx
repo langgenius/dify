@@ -10,7 +10,8 @@ import {
   RiFocus2Line,
 } from '@remixicon/react'
 import { usePathname } from 'next/navigation'
-import React, { useEffect, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppSideBar from '@/app/components/app-sidebar'
 import { useStore } from '@/app/components/app/store'

@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
+import * as React from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { contactSalesUrl } from '@/app/components/billing/config'
 import { Plan } from '@/app/components/billing/type'

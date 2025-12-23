@@ -1,6 +1,7 @@
 import type { QAChunk } from './types'
 import type { ParentMode } from '@/models/datasets'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Dot from '@/app/components/datasets/documents/detail/completed/common/dot'
 import SegmentIndexTag from '@/app/components/datasets/documents/detail/completed/common/segment-index-tag'

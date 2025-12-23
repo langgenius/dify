@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef } from 'react'
+import * as React from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import VarHighlight from '../../base/var-highlight'

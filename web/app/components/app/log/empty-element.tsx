@@ -2,7 +2,7 @@
 import type { FC, SVGProps } from 'react'
 import type { App } from '@/types/app'
 import Link from 'next/link'
-import React from 'react'
+import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'

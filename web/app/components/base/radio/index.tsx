@@ -1,4 +1,4 @@
-import type React from 'react'
+import type * as React from 'react'
 import type { IRadioProps } from './component/radio'
 import Group from './component/group'
 import RadioComps from './component/radio'

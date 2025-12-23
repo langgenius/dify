@@ -1,5 +1,5 @@
 import type { BasicPlan } from '../../../../type'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { ALL_PLANS, NUM_INFINITE } from '../../../../config'

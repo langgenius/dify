@@ -4,7 +4,8 @@ import {
   RiDeleteBinLine,
   RiUploadCloud2Line,
 } from '@remixicon/react'
-import React, { useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'

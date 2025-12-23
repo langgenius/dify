@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { HttpNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
 
 const Node: FC<NodeProps<HttpNodeType>> = ({

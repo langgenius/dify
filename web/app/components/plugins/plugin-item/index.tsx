@@ -8,7 +8,8 @@ import {
   RiHardDrive3Line,
   RiLoginCircleLine,
 } from '@remixicon/react'
-import React, { useCallback, useMemo } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { gte } from 'semver'
 import Tooltip from '@/app/components/base/tooltip'

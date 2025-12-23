@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import MainDetail from '@/app/components/datasets/documents/detail'
 
 export type IDocumentDetailProps = {

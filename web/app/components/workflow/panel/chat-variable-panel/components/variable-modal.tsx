@@ -1,6 +1,7 @@
 import type { ConversationVariable } from '@/app/components/workflow/types'
 import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
-import React, { useCallback, useEffect, useMemo } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'

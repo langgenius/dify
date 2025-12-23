@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import {
   RiAddLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
 

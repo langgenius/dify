@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import React from 'react'
+import * as React from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'

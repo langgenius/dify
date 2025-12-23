@@ -5,7 +5,7 @@ import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 

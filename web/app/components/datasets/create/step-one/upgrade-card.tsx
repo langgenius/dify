@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useModalContext } from '@/context/modal-context'

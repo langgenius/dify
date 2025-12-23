@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { useBoolean } from 'ahooks'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import SelectDataset from '@/app/components/app/configuration/dataset-config/select-dataset'
 import AddButton from '@/app/components/base/button/add-button'
 

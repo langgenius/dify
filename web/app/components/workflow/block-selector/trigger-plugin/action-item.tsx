@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { Event } from '@/app/components/tools/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGetLanguage } from '@/context/i18n'

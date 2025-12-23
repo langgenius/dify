@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ListEmpty from '@/app/components/base/list-empty'
 import VarReferenceVars from './var-reference-vars'

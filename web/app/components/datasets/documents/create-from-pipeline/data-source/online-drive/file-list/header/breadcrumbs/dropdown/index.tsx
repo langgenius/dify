@@ -1,5 +1,6 @@
 import { RiMoreFill } from '@remixicon/react'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

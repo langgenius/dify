@@ -7,7 +7,8 @@ import {
   RiArrowRightSLine,
   RiPlayLargeFill,
 } from '@remixicon/react'
-import React, { useEffect, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useStore as useAppStore } from '@/app/components/app/store'

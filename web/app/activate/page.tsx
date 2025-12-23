@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import * as React from 'react'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { cn } from '@/utils/classnames'
 import Header from '../signin/_header'

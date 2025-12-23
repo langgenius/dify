@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
-import React from 'react'
+import * as React from 'react'
 
 declare const require: any
 

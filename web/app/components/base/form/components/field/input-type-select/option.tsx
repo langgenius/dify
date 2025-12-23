@@ -1,5 +1,5 @@
 import type { FileTypeSelectOption } from './types'
-import React from 'react'
+import * as React from 'react'
 import Badge from '@/app/components/base/badge'
 
 type OptionProps = {

@@ -2,7 +2,7 @@
 import type { RemixiconComponentType } from '@remixicon/react'
 import Link from 'next/link'
 import { useSelectedLayoutSegment } from 'next/navigation'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
 export type NavIcon = React.ComponentType<

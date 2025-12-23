@@ -6,7 +6,8 @@ import {
   RiDraggable,
   RiEditLine,
 } from '@remixicon/react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import Badge from '@/app/components/base/badge'
 import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
 import { cn } from '@/utils/classnames'

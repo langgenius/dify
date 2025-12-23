@@ -3,7 +3,8 @@ import {
   RiEqualizer2Line,
   RiMenuLine,
 } from '@remixicon/react'
-import React, { useCallback, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {

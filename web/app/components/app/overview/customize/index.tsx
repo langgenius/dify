@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'

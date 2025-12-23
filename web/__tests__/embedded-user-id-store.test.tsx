@@ -1,5 +1,5 @@
 import { render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import WebAppStoreProvider, { useWebAppStore } from '@/context/web-app-context'
 
 import { AccessMode } from '@/models/access-control'

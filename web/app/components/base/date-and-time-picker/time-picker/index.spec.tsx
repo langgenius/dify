@@ -1,6 +1,6 @@
 import type { TimePickerProps } from '../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import dayjs, { isDayjsObject } from '../utils/dayjs'
 import TimePicker from './index'
 

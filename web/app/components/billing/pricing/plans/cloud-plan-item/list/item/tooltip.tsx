@@ -1,5 +1,5 @@
 import { RiInfoI } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 
 type TooltipProps = {
   content: string

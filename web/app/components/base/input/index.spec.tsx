@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import Input, { inputVariants } from './index'
 
 // Mock the i18n hook

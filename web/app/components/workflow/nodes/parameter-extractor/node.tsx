@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { ParameterExtractorNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'

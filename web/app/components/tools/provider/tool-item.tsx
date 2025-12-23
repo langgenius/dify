@@ -1,6 +1,7 @@
 'use client'
 import type { Collection, Tool } from '../types'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useContext } from 'use-context-selector'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 import I18n from '@/context/i18n'

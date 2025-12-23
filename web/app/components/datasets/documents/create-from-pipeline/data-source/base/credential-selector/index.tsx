@@ -1,6 +1,7 @@
 import type { DataSourceCredential } from '@/types/pipeline'
 import { useBoolean } from 'ahooks'
-import React, { useCallback, useEffect, useMemo } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

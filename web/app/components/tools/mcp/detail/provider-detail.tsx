@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { ToolWithProvider } from '../../../workflow/types'
-import React from 'react'
+import * as React from 'react'
 import Drawer from '@/app/components/base/drawer'
 import { cn } from '@/utils/classnames'
 import MCPDetailContent from './content'

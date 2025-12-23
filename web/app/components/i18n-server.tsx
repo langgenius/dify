@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { ToastProvider } from './base/toast'
 import I18N from './i18n'

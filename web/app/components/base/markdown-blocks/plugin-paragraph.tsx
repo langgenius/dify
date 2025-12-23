@@ -1,5 +1,6 @@
 import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
-import React, { useEffect, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 /**
  * @fileoverview Paragraph component for rendering <p> tags in Markdown.
  * Extracted from the main markdown renderer for modularity.

@@ -2,7 +2,8 @@
 
 import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import * as React from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 import { isInWorkflowPage } from '../workflow/constants'
 
 /**

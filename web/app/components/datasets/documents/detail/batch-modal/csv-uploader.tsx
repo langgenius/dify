@@ -4,7 +4,8 @@ import type { FileItem } from '@/models/datasets'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'

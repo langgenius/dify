@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
 import { useAppContext } from '@/context/app-context'

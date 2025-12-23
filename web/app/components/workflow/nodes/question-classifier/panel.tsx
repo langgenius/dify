@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { QuestionClassifierNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'

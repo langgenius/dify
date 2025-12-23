@@ -3,7 +3,8 @@ import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'

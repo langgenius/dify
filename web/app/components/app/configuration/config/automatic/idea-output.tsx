@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useBoolean } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
 import Textarea from '@/app/components/base/textarea'

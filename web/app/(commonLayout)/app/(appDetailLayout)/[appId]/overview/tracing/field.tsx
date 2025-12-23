@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import Input from '@/app/components/base/input'
 import { cn } from '@/utils/classnames'
 

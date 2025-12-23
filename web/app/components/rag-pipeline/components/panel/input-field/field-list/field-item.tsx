@@ -7,7 +7,8 @@ import {
   RiEditLine,
 } from '@remixicon/react'
 import { useHover } from 'ahooks'
-import React, { useCallback, useRef } from 'react'
+import * as React from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'

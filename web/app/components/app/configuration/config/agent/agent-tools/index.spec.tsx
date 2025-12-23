@@ -12,7 +12,8 @@ import type { AgentTool } from '@/types/app'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import React, {
+import * as React from 'react'
+import {
   useEffect,
   useMemo,
   useState,

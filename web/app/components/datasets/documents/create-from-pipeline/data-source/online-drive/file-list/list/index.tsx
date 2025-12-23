@@ -1,6 +1,7 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { RiLoader2Line } from '@remixicon/react'
-import React, { useEffect, useRef } from 'react'
+import * as React from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useDataSourceStore } from '../../../store'

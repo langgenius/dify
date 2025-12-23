@@ -4,7 +4,8 @@ import {
   RiEqualizer2Line,
   RiErrorWarningFill,
 } from '@remixicon/react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'

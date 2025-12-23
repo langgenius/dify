@@ -1,5 +1,5 @@
 import { useThrottleFn } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 
 export enum ScrollPosition {
   belowTheWrap = 'belowTheWrap',

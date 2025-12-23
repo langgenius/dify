@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useKeyPress } from 'ahooks'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'

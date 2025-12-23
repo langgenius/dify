@@ -1,5 +1,5 @@
 import type { ChunkingMode, IconInfo } from '@/models/datasets'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { General } from '@/app/components/base/icons/src/public/knowledge/dataset-card'

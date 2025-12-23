@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { useProviderContext } from '@/context/provider-context'
 import AddAnnotationModal from './index'
 

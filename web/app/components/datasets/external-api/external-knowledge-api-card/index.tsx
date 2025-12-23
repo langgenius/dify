@@ -4,7 +4,8 @@ import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Confirm from '@/app/components/base/confirm'

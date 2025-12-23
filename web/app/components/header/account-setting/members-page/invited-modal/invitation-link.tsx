@@ -2,7 +2,8 @@
 import type { SuccessInvitationResult } from '.'
 import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
-import React, { useCallback, useEffect, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import s from './index.module.css'
 

@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { useDraftPipelineProcessingParams } from '@/service/use-pipeline'

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import {

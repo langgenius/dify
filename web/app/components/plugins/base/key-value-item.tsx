@@ -4,7 +4,8 @@ import {
   RiClipboardLine,
 } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import React, { useCallback, useEffect, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { cn } from '@/utils/classnames'

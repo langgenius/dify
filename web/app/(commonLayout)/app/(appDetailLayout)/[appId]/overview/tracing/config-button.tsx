@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { PopupProps } from './config-popup'
 
-import React, { useCallback, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

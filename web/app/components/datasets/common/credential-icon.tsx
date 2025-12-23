@@ -1,4 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { cn } from '@/utils/classnames'
 
 type CredentialIconProps = {

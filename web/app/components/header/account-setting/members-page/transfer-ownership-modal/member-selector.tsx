@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
-import React, { useMemo, useState } from 'react'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
 import Input from '@/app/components/base/input'

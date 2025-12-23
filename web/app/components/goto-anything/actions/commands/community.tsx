@@ -1,6 +1,6 @@
 import type { SlashCommandHandler } from './types'
 import { RiDiscordLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import i18n from '@/i18n-config/i18next-config'
 import { registerCommands, unregisterCommands } from './command-bus'
 

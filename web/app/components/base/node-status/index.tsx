@@ -3,7 +3,7 @@ import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
 import { RiErrorWarningFill } from '@remixicon/react'
 import { cva } from 'class-variance-authority'
-import React from 'react'
+import * as React from 'react'
 import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
 import { cn } from '@/utils/classnames'
 

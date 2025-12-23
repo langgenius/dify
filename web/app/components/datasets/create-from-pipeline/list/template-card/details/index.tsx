@@ -1,6 +1,7 @@
 import type { AppIconType } from '@/types/app'
 import { RiAddLine, RiCloseLine } from '@remixicon/react'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'

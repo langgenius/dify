@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import { useAutoDisabledDocuments, useDocumentEnable, useInvalidDisabledDocument } from '@/service/knowledge/use-document'

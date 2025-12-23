@@ -1,6 +1,6 @@
 'use client'
 import { useSearchParams } from 'next/navigation'
-import React from 'react'
+import * as React from 'react'
 import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import useDocumentTitle from '@/hooks/use-document-title'

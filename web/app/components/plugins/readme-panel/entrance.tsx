@@ -1,6 +1,6 @@
 import type { PluginDetail } from '../types'
 import { RiBookReadLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import { BUILTIN_TOOLS_ARRAY } from './constants'

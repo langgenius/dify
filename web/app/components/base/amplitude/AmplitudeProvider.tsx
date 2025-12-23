@@ -3,7 +3,8 @@
 import type { FC } from 'react'
 import * as amplitude from '@amplitude/analytics-browser'
 import { sessionReplayPlugin } from '@amplitude/plugin-session-replay-browser'
-import React, { useEffect } from 'react'
+import * as React from 'react'
+import { useEffect } from 'react'
 import { AMPLITUDE_API_KEY, IS_CLOUD_EDITION } from '@/config'
 
 export type IAmplitudeProps = {

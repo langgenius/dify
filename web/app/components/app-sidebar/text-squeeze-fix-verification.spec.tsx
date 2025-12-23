@@ -4,7 +4,7 @@
  */
 
 import { render } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
