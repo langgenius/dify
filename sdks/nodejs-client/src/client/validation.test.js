@@ -29,6 +29,10 @@ describe("validation utilities", () => {
     expect(() => ensureOptionalString("", "opt")).toThrow();
   });
 
+  it("ensureOptionalString throws on overly long strings", () => {
+    expect(() => ensureOptionalString(makeLongString(10001), "opt")).toThrow();
+  });
+
   it("ensureOptionalInt validates integer", () => {
     expect(() => ensureOptionalInt(undefined, "limit")).not.toThrow();
     expect(() => ensureOptionalInt(1.2, "limit")).toThrow();
@@ -50,6 +54,12 @@ describe("validation utilities", () => {
 
   it("ensureOptionalStringArray ignores undefined", () => {
     expect(() => ensureOptionalStringArray(undefined, "tags")).not.toThrow();
+  });
+
+  it("ensureOptionalStringArray validates when set", () => {
+    expect(() => ensureOptionalStringArray(["valid"], "tags")).not.toThrow();
+    expect(() => ensureOptionalStringArray([], "tags")).toThrow();
+    expect(() => ensureOptionalStringArray([""], "tags")).toThrow();
   });
 
   it("ensureRating validates allowed values", () => {

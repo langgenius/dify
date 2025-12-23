@@ -42,6 +42,27 @@ describe("sse parsing", () => {
     expect(text).toBe("hello world");
   });
 
+  it("toText extracts text from string data", async () => {
+    const stream = Readable.from(["data: plain text\n\n"]);
+    const sseStream = createSseStream(stream, { status: 200, headers: {} });
+    const text = await sseStream.toText();
+    expect(text).toBe("plain text");
+  });
+
+  it("toText extracts text field from object", async () => {
+    const stream = Readable.from(['data: {"text":"hello"}\n\n']);
+    const sseStream = createSseStream(stream, { status: 200, headers: {} });
+    const text = await sseStream.toText();
+    expect(text).toBe("hello");
+  });
+
+  it("toText returns empty for invalid data", async () => {
+    const stream = Readable.from(["data: null\n\n", "data: 123\n\n"]);
+    const sseStream = createSseStream(stream, { status: 200, headers: {} });
+    const text = await sseStream.toText();
+    expect(text).toBe("");
+  });
+
   it("createBinaryStream exposes metadata", () => {
     const stream = Readable.from(["chunk"]);
     const binary = createBinaryStream(stream, {

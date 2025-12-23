@@ -255,4 +255,50 @@ describe("HttpClient", () => {
       client.requestRaw({ method: "GET", path: "/meta" })
     ).rejects.toBeInstanceOf(APIError);
   });
+
+  it("logs requests and responses when enableLogging is true", async () => {
+    const mockRequest = vi.fn().mockResolvedValue({
+      status: 200,
+      data: { ok: true },
+      headers: {},
+    });
+    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const client = new HttpClient({ apiKey: "test", enableLogging: true });
+    await client.requestRaw({ method: "GET", path: "/meta" });
+
+    expect(consoleInfo).toHaveBeenCalledWith(
+      expect.stringContaining("dify-client-node response 200 GET")
+    );
+    consoleInfo.mockRestore();
+  });
+
+  it("logs retry attempts when enableLogging is true", async () => {
+    const mockRequest = vi.fn();
+    vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
+    const consoleInfo = vi.spyOn(console, "info").mockImplementation(() => {});
+
+    const client = new HttpClient({
+      apiKey: "test",
+      maxRetries: 1,
+      retryDelay: 0,
+      enableLogging: true,
+    });
+
+    mockRequest
+      .mockRejectedValueOnce({
+        isAxiosError: true,
+        code: "ECONNABORTED",
+        message: "timeout",
+      })
+      .mockResolvedValueOnce({ status: 200, data: "ok", headers: {} });
+
+    await client.requestRaw({ method: "GET", path: "/meta" });
+
+    expect(consoleInfo).toHaveBeenCalledWith(
+      expect.stringContaining("dify-client-node retry")
+    );
+    consoleInfo.mockRestore();
+  });
 });
