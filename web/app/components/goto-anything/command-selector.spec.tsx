@@ -40,7 +40,7 @@ const createActions = (): Record<string, ActionItem> => ({
 })
 
 describe('CommandSelector', () => {
-  test('should list contextual search actions and notify selection', async () => {
+  it('should list contextual search actions and notify selection', async () => {
     const actions = createActions()
     const onSelect = vi.fn()
 
@@ -61,7 +61,7 @@ describe('CommandSelector', () => {
     expect(onSelect).toHaveBeenCalledWith('@app')
   })
 
-  test('should render slash commands when query starts with slash', async () => {
+  it('should render slash commands when query starts with slash', async () => {
     const actions = createActions()
     const onSelect = vi.fn()
 

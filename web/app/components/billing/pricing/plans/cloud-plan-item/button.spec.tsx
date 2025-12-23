@@ -5,7 +5,7 @@ import { Plan } from '../../../type'
 
 describe('CloudPlanButton', () => {
   describe('Disabled state', () => {
-    test('should disable button and hide arrow when plan is not available', () => {
+    it('should disable button and hide arrow when plan is not available', () => {
       const handleGetPayUrl = vi.fn()
       // Arrange
       render(
@@ -26,7 +26,7 @@ describe('CloudPlanButton', () => {
   })
 
   describe('Enabled state', () => {
-    test('should invoke handler and render arrow when plan is available', () => {
+    it('should invoke handler and render arrow when plan is available', () => {
       const handleGetPayUrl = vi.fn()
       // Arrange
       render(

@@ -45,7 +45,7 @@ const buildPlan = (type: Plan) => {
 describe('Plans', () => {
   // Cloud plans visible only when currentPlan is cloud
   describe('Cloud plan rendering', () => {
-    test('should render sandbox, professional, and team cloud plans when workspace is cloud', () => {
+    it('should render sandbox, professional, and team cloud plans when workspace is cloud', () => {
       render(
         <Plans
           plan={buildPlan(Plan.enterprise)}
@@ -68,7 +68,7 @@ describe('Plans', () => {
 
   // Self-hosted plans visible for self-managed workspaces
   describe('Self-hosted plan rendering', () => {
-    test('should render all self-hosted plans when workspace type is self-hosted', () => {
+    it('should render all self-hosted plans when workspace type is self-hosted', () => {
       render(
         <Plans
           plan={buildPlan(Plan.sandbox)}

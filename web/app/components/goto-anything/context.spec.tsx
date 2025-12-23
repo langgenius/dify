@@ -27,7 +27,7 @@ describe('GotoAnythingProvider', () => {
     pathnameMock = '/'
   })
 
-  test('should set workflow page flag when workflow path detected', async () => {
+  it('should set workflow page flag when workflow path detected', async () => {
     isWorkflowPageMock = true
     pathnameMock = '/app/123/workflow'
 
@@ -42,7 +42,7 @@ describe('GotoAnythingProvider', () => {
     })
   })
 
-  test('should detect RAG pipeline path based on pathname', async () => {
+  it('should detect RAG pipeline path based on pathname', async () => {
     pathnameMock = '/datasets/abc/pipeline'
 
     render(

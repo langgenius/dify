@@ -78,7 +78,7 @@ beforeEach(() => {
 describe('CloudPlanItem', () => {
   // Static content for each plan
   describe('Rendering', () => {
-    test('should show plan metadata and free label for sandbox plan', () => {
+    it('should show plan metadata and free label for sandbox plan', () => {
       render(
         <CloudPlanItem
           plan={Plan.sandbox}
@@ -94,7 +94,7 @@ describe('CloudPlanItem', () => {
       expect(screen.getByRole('button', { name: 'billing.plansCommon.currentPlan' })).toBeInTheDocument()
     })
 
-    test('should display yearly pricing with discount when planRange is yearly', () => {
+    it('should display yearly pricing with discount when planRange is yearly', () => {
       render(
         <CloudPlanItem
           plan={Plan.professional}
@@ -110,7 +110,7 @@ describe('CloudPlanItem', () => {
       expect(screen.getByText(/billing\.plansCommon\.priceTip.*billing\.plansCommon\.year/)).toBeInTheDocument()
     })
 
-    test('should disable CTA when workspace already on higher tier', () => {
+    it('should disable CTA when workspace already on higher tier', () => {
       render(
         <CloudPlanItem
           plan={Plan.professional}
@@ -127,7 +127,7 @@ describe('CloudPlanItem', () => {
 
   // Payment actions triggered from the CTA
   describe('Plan purchase flow', () => {
-    test('should show toast when non-manager tries to buy a plan', () => {
+    it('should show toast when non-manager tries to buy a plan', () => {
       mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
 
       render(
@@ -147,7 +147,7 @@ describe('CloudPlanItem', () => {
       expect(mockFetchBillingUrl).not.toHaveBeenCalled()
     })
 
-    test('should open billing portal when upgrading current paid plan', async () => {
+    it('should open billing portal when upgrading current paid plan', async () => {
       const openWindow = vi.fn(async (cb: () => Promise<string>) => await cb())
       mockUseAsyncWindowOpen.mockReturnValue(openWindow)
 
@@ -168,7 +168,7 @@ describe('CloudPlanItem', () => {
       expect(openWindow).toHaveBeenCalledTimes(1)
     })
 
-    test('should redirect to subscription url when selecting a new paid plan', async () => {
+    it('should redirect to subscription url when selecting a new paid plan', async () => {
       render(
         <CloudPlanItem
           plan={Plan.professional}

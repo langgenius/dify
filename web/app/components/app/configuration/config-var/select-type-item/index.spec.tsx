@@ -6,7 +6,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 describe('SelectTypeItem', () => {
   // Rendering pathways based on type and selection state
   describe('Rendering', () => {
-    test('should render ok', () => {
+    it('should render ok', () => {
       // Arrange
       const { container } = render(
         <SelectTypeItem
@@ -24,7 +24,7 @@ describe('SelectTypeItem', () => {
 
   // User interaction outcomes
   describe('Interactions', () => {
-    test('should trigger onClick when item is pressed', () => {
+    it('should trigger onClick when item is pressed', () => {
       const handleClick = vi.fn()
       // Arrange
       render(

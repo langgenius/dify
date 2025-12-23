@@ -13,6 +13,11 @@ export default antfu(
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
       }
+    },
+    test: {
+      overrides: {
+        'test/prefer-lowercase-title': 'off',
+      }
     }
   },
   // downgrade some rules from error to warn for gradual adoption
@@ -99,8 +104,6 @@ export default antfu(
       'style/padded-blocks': 'off',
       'style/quotes': 'off',
       'style/semi': 'off',
-      'test/consistent-test-it': 'off',
-      'test/prefer-lowercase-title': 'off',
       'unicorn/prefer-node-protocol': 'off',
     },
   },

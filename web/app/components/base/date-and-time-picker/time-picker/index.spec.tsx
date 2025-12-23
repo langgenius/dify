@@ -45,7 +45,7 @@ describe('TimePicker', () => {
     vi.clearAllMocks()
   })
 
-  test('renders formatted value for string input (Issue #26692 regression)', () => {
+  it('renders formatted value for string input (Issue #26692 regression)', () => {
     render(
       <TimePicker
         {...baseProps}
@@ -57,7 +57,7 @@ describe('TimePicker', () => {
     expect(screen.getByDisplayValue('06:45 PM')).toBeInTheDocument()
   })
 
-  test('confirms cleared value when confirming without selection', () => {
+  it('confirms cleared value when confirming without selection', () => {
     render(
       <TimePicker
         {...baseProps}
@@ -80,7 +80,7 @@ describe('TimePicker', () => {
     expect(baseProps.onClear).not.toHaveBeenCalled()
   })
 
-  test('selecting current time emits timezone-aware value', () => {
+  it('selecting current time emits timezone-aware value', () => {
     const onChange = vi.fn()
     render(
       <TimePicker
@@ -100,7 +100,7 @@ describe('TimePicker', () => {
   })
 
   describe('Timezone Label Integration', () => {
-    test('should not display timezone label by default', () => {
+    it('should not display timezone label by default', () => {
       render(
         <TimePicker
           {...baseProps}
@@ -112,7 +112,7 @@ describe('TimePicker', () => {
       expect(screen.queryByTitle(/Timezone: Asia\/Shanghai/)).not.toBeInTheDocument()
     })
 
-    test('should not display timezone label when showTimezone is false', () => {
+    it('should not display timezone label when showTimezone is false', () => {
       render(
         <TimePicker
           {...baseProps}
@@ -125,7 +125,7 @@ describe('TimePicker', () => {
       expect(screen.queryByTitle(/Timezone: Asia\/Shanghai/)).not.toBeInTheDocument()
     })
 
-    test('should display timezone label when showTimezone is true', () => {
+    it('should display timezone label when showTimezone is true', () => {
       render(
         <TimePicker
           {...baseProps}
@@ -140,7 +140,7 @@ describe('TimePicker', () => {
       expect(timezoneLabel).toHaveTextContent(/UTC[+-]\d+/)
     })
 
-    test('should not display timezone label when showTimezone is true but timezone is not provided', () => {
+    it('should not display timezone label when showTimezone is true but timezone is not provided', () => {
       render(
         <TimePicker
           {...baseProps}

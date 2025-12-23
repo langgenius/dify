@@ -15,7 +15,7 @@ vi.mock('react-i18next', () => ({
 }))
 
 describe('SelfHostedPlanItem/List', () => {
-  test('should render plan info', () => {
+  it('should render plan info', () => {
     render(<List plan={SelfHostedPlan.community} />)
 
     expect(screen.getByText('billing.plans.community.includesTitle')).toBeInTheDocument()

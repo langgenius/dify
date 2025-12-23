@@ -22,7 +22,7 @@ beforeEach(() => {
 describe('ClearAllAnnotationsConfirmModal', () => {
   // Rendering visibility toggled by isShow flag
   describe('Rendering', () => {
-    test('should show confirmation dialog when isShow is true', () => {
+    it('should show confirmation dialog when isShow is true', () => {
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal
@@ -38,7 +38,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
     })
 
-    test('should not render anything when isShow is false', () => {
+    it('should not render anything when isShow is false', () => {
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal
@@ -55,7 +55,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
 
   // User confirms or cancels clearing annotations
   describe('Interactions', () => {
-    test('should trigger onHide when cancel is clicked', () => {
+    it('should trigger onHide when cancel is clicked', () => {
       const onHide = vi.fn()
       const onConfirm = vi.fn()
       // Arrange
@@ -75,7 +75,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       expect(onConfirm).not.toHaveBeenCalled()
     })
 
-    test('should trigger onConfirm when confirm is clicked', () => {
+    it('should trigger onConfirm when confirm is clicked', () => {
       const onHide = vi.fn()
       const onConfirm = vi.fn()
       // Arrange

@@ -872,7 +872,7 @@ describe('DocumentPicker', () => {
         { mode: ChunkingMode.parentChild, label: 'dataset.chunkingMode.parentChild' },
       ]
 
-      test.each(chunkingModes)(
+      it.each(chunkingModes)(
         'should display correct label for $mode mode',
         ({ mode, label }) => {
           renderComponent({
@@ -895,7 +895,7 @@ describe('DocumentPicker', () => {
         { mode: 'full-doc', label: 'dataset.parentMode.fullDoc' },
       ]
 
-      test.each(parentModes)(
+      it.each(parentModes)(
         'should display correct label for $mode parentMode',
         ({ mode, label }) => {
           renderComponent({
@@ -915,7 +915,7 @@ describe('DocumentPicker', () => {
     describe('value.extension variations', () => {
       const extensions = ['txt', 'pdf', 'docx', 'xlsx', 'csv', 'md', 'html']
 
-      test.each(extensions)('should handle %s extension', (ext) => {
+      it.each(extensions)('should handle %s extension', (ext) => {
         renderComponent({
           value: {
             name: `File.${ext}`,

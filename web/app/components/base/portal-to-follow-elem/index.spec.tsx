@@ -19,7 +19,7 @@ afterEach(cleanup)
 
 describe('PortalToFollowElem', () => {
   describe('Context and Provider', () => {
-    test('should throw error when using context outside provider', () => {
+    it('should throw error when using context outside provider', () => {
       // Suppress console.error for this test
       const originalError = console.error
       console.error = vi.fn()
@@ -33,7 +33,7 @@ describe('PortalToFollowElem', () => {
       console.error = originalError
     })
 
-    test('should not throw when used within provider', () => {
+    it('should not throw when used within provider', () => {
       expect(() => {
         render(
           <PortalToFollowElem>
@@ -45,7 +45,7 @@ describe('PortalToFollowElem', () => {
   })
 
   describe('PortalToFollowElemTrigger', () => {
-    test('should render children correctly', () => {
+    it('should render children correctly', () => {
       const { getByText } = render(
         <PortalToFollowElem>
           <PortalToFollowElemTrigger>Trigger Text</PortalToFollowElemTrigger>
@@ -54,7 +54,7 @@ describe('PortalToFollowElem', () => {
       expect(getByText('Trigger Text')).toBeInTheDocument()
     })
 
-    test('should handle asChild prop correctly', () => {
+    it('should handle asChild prop correctly', () => {
       const { getByRole } = render(
         <PortalToFollowElem>
           <PortalToFollowElemTrigger asChild >
@@ -68,7 +68,7 @@ describe('PortalToFollowElem', () => {
   })
 
   describe('PortalToFollowElemContent', () => {
-    test('should not render content when closed', () => {
+    it('should not render content when closed', () => {
       const { queryByText } = render(
         <PortalToFollowElem open={false} >
           <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>
@@ -79,7 +79,7 @@ describe('PortalToFollowElem', () => {
       expect(queryByText('Popup Content')).not.toBeInTheDocument()
     })
 
-    test('should render content when open', () => {
+    it('should render content when open', () => {
       const { getByText } = render(
         <PortalToFollowElem open={true} >
           <PortalToFollowElemTrigger>Trigger </PortalToFollowElemTrigger>
@@ -92,7 +92,7 @@ describe('PortalToFollowElem', () => {
   })
 
   describe('Controlled behavior', () => {
-    test('should call onOpenChange when interaction happens', () => {
+    it('should call onOpenChange when interaction happens', () => {
       const handleOpenChange = vi.fn()
 
       const { getByText } = render(
@@ -111,7 +111,7 @@ describe('PortalToFollowElem', () => {
   })
 
   describe('Configuration options', () => {
-    test('should accept placement prop', () => {
+    it('should accept placement prop', () => {
       render(
         <PortalToFollowElem placement='top-start' >
           <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>

@@ -43,14 +43,14 @@ describe('Upload Features i18n Translations - Issue #23062', () => {
     console.log(`Testing ${supportedLocales.length} locales for upload features`)
   })
 
-  test('all locales should have translation files', () => {
+  it('all locales should have translation files', () => {
     supportedLocales.forEach((locale) => {
       const filePath = path.join(I18N_DIR, locale, 'app-debug.ts')
       expect(fs.existsSync(filePath)).toBe(true)
     })
   })
 
-  test('all locales should have required upload features', () => {
+  it('all locales should have required upload features', () => {
     const results: { [locale: string]: { [feature: string]: boolean } } = {}
 
     supportedLocales.forEach((locale) => {
@@ -69,7 +69,7 @@ describe('Upload Features i18n Translations - Issue #23062', () => {
     console.log('✅ All locales have complete upload features')
   })
 
-  test('previously missing locales should now have audioUpload - Issue #23062', () => {
+  it('previously missing locales should now have audioUpload - Issue #23062', () => {
     // These locales were specifically missing audioUpload
     const previouslyMissingLocales = ['fa-IR', 'hi-IN', 'ro-RO', 'sl-SI', 'th-TH', 'uk-UA', 'vi-VN']
 
@@ -87,7 +87,7 @@ describe('Upload Features i18n Translations - Issue #23062', () => {
     })
   })
 
-  test('upload features should have required properties', () => {
+  it('upload features should have required properties', () => {
     supportedLocales.forEach((locale) => {
       const content = loadTranslationContent(locale)
 

@@ -502,7 +502,7 @@ describe('PreviewDocumentPicker', () => {
         { ext: 'md', icon: 'file-markdown-icon' },
       ]
 
-      test.each(extensions)('should render correct icon for $ext extension', ({ ext, icon }) => {
+      it.each(extensions)('should render correct icon for $ext extension', ({ ext, icon }) => {
         renderComponent({
           value: createMockDocumentItem({ extension: ext }),
           files: [], // Use empty files to avoid duplicate icons

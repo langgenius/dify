@@ -16,7 +16,7 @@ beforeEach(() => {
 })
 
 describe('SelfHostedPlanButton', () => {
-  test('should invoke handler when clicked', () => {
+  it('should invoke handler when clicked', () => {
     const handleGetPayUrl = vi.fn()
     render(
       <Button
@@ -29,7 +29,7 @@ describe('SelfHostedPlanButton', () => {
     expect(handleGetPayUrl).toHaveBeenCalledTimes(1)
   })
 
-  test.each([
+  it.each([
     { label: 'light', theme: Theme.light },
     { label: 'dark', theme: Theme.dark },
   ])('should render premium button label when theme is $label', ({ theme }) => {

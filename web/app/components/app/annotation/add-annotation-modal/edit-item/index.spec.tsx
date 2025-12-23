@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import EditItem, { EditItemType } from './index'
 
 describe('AddAnnotationModal/EditItem', () => {
-  test('should render query inputs with user avatar and placeholder strings', () => {
+  it('should render query inputs with user avatar and placeholder strings', () => {
     render(
       <EditItem
         type={EditItemType.Query}
@@ -17,7 +17,7 @@ describe('AddAnnotationModal/EditItem', () => {
     expect(screen.getByText('Why?')).toBeInTheDocument()
   })
 
-  test('should render answer name and placeholder text', () => {
+  it('should render answer name and placeholder text', () => {
     render(
       <EditItem
         type={EditItemType.Answer}
@@ -31,7 +31,7 @@ describe('AddAnnotationModal/EditItem', () => {
     expect(screen.getByDisplayValue('Existing answer')).toBeInTheDocument()
   })
 
-  test('should propagate changes when answer content updates', () => {
+  it('should propagate changes when answer content updates', () => {
     const handleChange = vi.fn()
     render(
       <EditItem

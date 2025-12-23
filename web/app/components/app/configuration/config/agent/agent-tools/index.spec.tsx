@@ -324,7 +324,7 @@ describe('AgentTools', () => {
     pluginInstallHandler = null
   })
 
-  test('should show enabled count and provider information', () => {
+  it('should show enabled count and provider information', () => {
     renderAgentTools([
       createAgentTool(),
       createAgentTool({
@@ -342,7 +342,7 @@ describe('AgentTools', () => {
     expect(screen.getByText('Translate Tool')).toBeInTheDocument()
   })
 
-  test('should copy tool name from tooltip action', async () => {
+  it('should copy tool name from tooltip action', async () => {
     renderAgentTools()
 
     await hoverInfoIcon()
@@ -351,7 +351,7 @@ describe('AgentTools', () => {
     expect(copyMock).toHaveBeenCalledWith('search')
   })
 
-  test('should toggle tool enabled state via switch', async () => {
+  it('should toggle tool enabled state via switch', async () => {
     const { getModelConfig } = renderAgentTools()
 
     const switchButton = screen.getByRole('switch')
@@ -365,7 +365,7 @@ describe('AgentTools', () => {
     expect(formattingDispatcherMock).toHaveBeenCalled()
   })
 
-  test('should remove tool when delete action is clicked', async () => {
+  it('should remove tool when delete action is clicked', async () => {
     const { getModelConfig } = renderAgentTools()
     const deleteButton = screen.getByTestId('delete-removed-tool')
     if (!deleteButton)
@@ -377,7 +377,7 @@ describe('AgentTools', () => {
     expect(formattingDispatcherMock).toHaveBeenCalled()
   })
 
-  test('should add a tool when ToolPicker selects one', async () => {
+  it('should add a tool when ToolPicker selects one', async () => {
     const { getModelConfig } = renderAgentTools([])
     const addSingleButton = screen.getByRole('button', { name: 'pick-single' })
     await userEvent.click(addSingleButton)
@@ -388,7 +388,7 @@ describe('AgentTools', () => {
     expect(getModelConfig().agentConfig.tools).toHaveLength(1)
   })
 
-  test('should append multiple selected tools at once', async () => {
+  it('should append multiple selected tools at once', async () => {
     const { getModelConfig } = renderAgentTools([])
     await userEvent.click(screen.getByRole('button', { name: 'pick-multiple' }))
 
@@ -399,7 +399,7 @@ describe('AgentTools', () => {
     expect(getModelConfig().agentConfig.tools).toHaveLength(2)
   })
 
-  test('should open settings panel for not authorized tool', async () => {
+  it('should open settings panel for not authorized tool', async () => {
     renderAgentTools([
       createAgentTool({
         notAuthor: true,
@@ -412,7 +412,7 @@ describe('AgentTools', () => {
     expect(latestSettingPanelProps?.toolName).toBe('search')
   })
 
-  test('should persist tool parameters when SettingBuiltInTool saves values', async () => {
+  it('should persist tool parameters when SettingBuiltInTool saves values', async () => {
     const { getModelConfig } = renderAgentTools([
       createAgentTool({
         notAuthor: true,
@@ -427,7 +427,7 @@ describe('AgentTools', () => {
     })
   })
 
-  test('should update credential id when authorization selection changes', async () => {
+  it('should update credential id when authorization selection changes', async () => {
     const { getModelConfig } = renderAgentTools([
       createAgentTool({
         notAuthor: true,
@@ -443,7 +443,7 @@ describe('AgentTools', () => {
     expect(formattingDispatcherMock).toHaveBeenCalled()
   })
 
-  test('should reinstate deleted tools after plugin install success event', async () => {
+  it('should reinstate deleted tools after plugin install success event', async () => {
     const { getModelConfig } = renderAgentTools([
       createAgentTool({
         provider_id: 'provider-1',

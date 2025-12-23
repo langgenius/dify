@@ -42,7 +42,7 @@ describe('RunBatch', () => {
     vi.clearAllMocks()
   })
 
-  test('should enable run button after CSV parsed and send data', async () => {
+  it('should enable run button after CSV parsed and send data', async () => {
     const onSend = vi.fn()
     render(
       <RunBatch
@@ -66,7 +66,7 @@ describe('RunBatch', () => {
     expect(onSend).toHaveBeenCalledWith([['row1']])
   })
 
-  test('should keep button disabled and show spinner when results still running on mobile', async () => {
+  it('should keep button disabled and show spinner when results still running on mobile', async () => {
     mockUseBreakpoints.mockReturnValue(MediaType.mobile)
     const onSend = vi.fn()
     const { container } = render(

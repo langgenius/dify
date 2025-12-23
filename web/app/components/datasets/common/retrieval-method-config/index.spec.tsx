@@ -819,7 +819,7 @@ describe('RetrievalMethodConfig', () => {
         RETRIEVE_METHOD.hybrid,
       ]
 
-      test.each(methods)('should correctly highlight %s when active', (method) => {
+      it.each(methods)('should correctly highlight %s when active', (method) => {
         renderComponent({
           value: createMockRetrievalConfig({ search_method: method }),
         })
