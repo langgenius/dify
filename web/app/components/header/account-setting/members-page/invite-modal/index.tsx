@@ -116,7 +116,7 @@ const InviteModal = ({
               inputClassName='bg-transparent'
               onChange={setEmails}
               getLabel={(email, index, removeEmail) =>
-                <div data-tag key={index} className={cn('bg-components-button-secondary-bg')}>
+                <div data-tag key={index} className={cn('!bg-components-button-secondary-bg')}>
                   <div data-tag-item>{email}</div>
                   <span data-tag-handle onClick={() => removeEmail(index)}>
                     ×
