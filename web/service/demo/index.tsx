@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createApp, updateAppApiStatus, updateAppModelConfig, updateAppRateLimit, updateAppSiteAccessToken, updateAppSiteConfig, updateAppSiteStatus } from '../apps'
+import * as React from 'react'
 import Loading from '@/app/components/base/loading'
 import { AppModeEnum } from '@/types/app'
+import { createApp, updateAppApiStatus, updateAppModelConfig, updateAppRateLimit, updateAppSiteAccessToken, updateAppSiteConfig, updateAppSiteStatus } from '../apps'
 import {
   useAppDailyConversations,
   useAppDailyEndUsers,
@@ -84,12 +84,16 @@ const Service: FC = () => {
 
   return (
     <div>
-      <div className='flex flex-col gap-3'>
+      <div className="flex flex-col gap-3">
         <div>
           <div>1.App list</div>
           <div>
             {appList.data.map(item => (
-              <div key={item.id}>{item.id} {item.name}</div>
+              <div key={item.id}>
+                {item.id}
+                {' '}
+                {item.name}
+              </div>
             ))}
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import CustomizeModal from './index'
 import { AppModeEnum } from '@/types/app'
+import CustomizeModal from './index'
 
 // Mock useDocLink from context
 const mockDocLink = vi.fn((path?: string) => `https://docs.dify.ai/en-US${path || ''}`)

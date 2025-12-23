@@ -12,10 +12,10 @@ export type _Events = Record<EventType, unknown>
 
 export type UseSubscribeOption = {
   /**
-     * Whether the subscription is enabled.
-     * @default true
-     */
-  enabled: boolean;
+   * Whether the subscription is enabled.
+   * @default true
+   */
+  enabled: boolean
 }
 
 export type ExtendedOn<Events extends _Events> = {
@@ -23,17 +23,17 @@ export type ExtendedOn<Events extends _Events> = {
     type: Key,
     handler: Handler<Events[Key]>,
     options?: UseSubscribeOption,
-  ): void;
+  ): void
   (
     type: '*',
     handler: WildcardHandler<Events>,
     option?: UseSubscribeOption,
-  ): void;
+  ): void
 }
 
 export type UseMittReturn<Events extends _Events> = {
-  useSubscribe: ExtendedOn<Events>;
-  emit: Emitter<Events>['emit'];
+  useSubscribe: ExtendedOn<Events>
+  emit: Emitter<Events>['emit']
 }
 
 const defaultSubscribeOption: UseSubscribeOption = {

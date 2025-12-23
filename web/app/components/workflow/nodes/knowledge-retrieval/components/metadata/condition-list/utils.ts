@@ -8,9 +8,12 @@ export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
 }
 
 const notTranslateKey = [
-  ComparisonOperator.equal, ComparisonOperator.notEqual,
-  ComparisonOperator.largerThan, ComparisonOperator.largerThanOrEqual,
-  ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
+  ComparisonOperator.equal,
+  ComparisonOperator.notEqual,
+  ComparisonOperator.largerThan,
+  ComparisonOperator.largerThanOrEqual,
+  ComparisonOperator.lessThan,
+  ComparisonOperator.lessThanOrEqual,
 ]
 
 export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator) => {
@@ -64,5 +67,5 @@ export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator)
   return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
 }
 
-export const VARIABLE_REGEX = /\{\{(#[a-zA-Z0-9_-]{1,50}(\.[a-zA-Z_]\w{0,29}){1,10}#)\}\}/gi
-export const COMMON_VARIABLE_REGEX = /\{\{([a-zA-Z0-9_-]{1,50})\}\}/gi
+export const VARIABLE_REGEX = /\{\{(#[\w-]{1,50}(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
+export const COMMON_VARIABLE_REGEX = /\{\{([\w-]{1,50})\}\}/g

@@ -1,34 +1,33 @@
 'use client'
 
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import { useEffect, useState } from 'react'
-import dayjs from 'dayjs'
-import { useTranslation } from 'react-i18next'
+import type { Plan, UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
+import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { RETRIEVE_METHOD } from '@/types/app'
 import { useQueryClient } from '@tanstack/react-query'
+import dayjs from 'dayjs'
+import { noop } from 'lodash-es'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import Toast from '@/app/components/base/toast'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { defaultPlan } from '@/app/components/billing/config'
+import { parseCurrentPlan } from '@/app/components/billing/utils'
+import {
+  CurrentSystemQuotaTypeEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ZENDESK_FIELD_IDS } from '@/config'
+import { fetchCurrentPlanInfo } from '@/service/billing'
 import {
   useModelListByType,
   useModelProviders,
   useSupportRetrievalMethods,
 } from '@/service/use-common'
 import {
-  CurrentSystemQuotaTypeEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { RETRIEVE_METHOD } from '@/types/app'
-import type { Plan, UsageResetInfo } from '@/app/components/billing/type'
-import type { UsagePlanInfo } from '@/app/components/billing/type'
-import { fetchCurrentPlanInfo } from '@/service/billing'
-import { parseCurrentPlan } from '@/app/components/billing/utils'
-import { defaultPlan } from '@/app/components/billing/config'
-import Toast from '@/app/components/base/toast'
-import {
   useEducationStatus,
 } from '@/service/use-education'
-import { noop } from 'lodash-es'
-import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
-import { ZENDESK_FIELD_IDS } from '@/config'
 
 export type ProviderContextState = {
   modelProviders: ModelProvider[]
@@ -61,7 +60,7 @@ export type ProviderContextState = {
       size: number
       limit: number
     }
-  },
+  }
   refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
@@ -251,7 +250,8 @@ export const ProviderContextProvider = ({
       refreshLicenseLimit: fetchPlan,
       isAllowTransferWorkspace,
       isAllowPublishAsCustomKnowledgePipelineTemplate,
-    }}>
+    }}
+    >
       {children}
     </ProviderContext.Provider>
   )

@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 
 type Props = {
   isString: boolean
@@ -47,9 +48,9 @@ const ArrayValueList: FC<Props> = ({
   }, [list, onChange])
 
   return (
-    <div className='w-full space-y-2'>
+    <div className="w-full space-y-2">
       {list.map((item, index) => (
-        <div className='flex items-center space-x-1' key={index}>
+        <div className="flex items-center space-x-1" key={index}>
           <Input
             placeholder={t('workflow.chatVariable.modal.arrayValue') || ''}
             value={list[index]}
@@ -57,13 +58,13 @@ const ArrayValueList: FC<Props> = ({
             type={isString ? 'text' : 'number'}
           />
           <RemoveButton
-            className='!bg-gray-100 !p-2 hover:!bg-gray-200'
+            className="!bg-gray-100 !p-2 hover:!bg-gray-200"
             onClick={handleItemRemove(index)}
           />
         </div>
       ))}
-      <Button variant='tertiary' className='w-full' onClick={handleItemAdd}>
-        <RiAddLine className='mr-1 h-4 w-4' />
+      <Button variant="tertiary" className="w-full" onClick={handleItemAdd}>
+        <RiAddLine className="mr-1 h-4 w-4" />
         <span>{t('workflow.chatVariable.modal.addArrayValue')}</span>
       </Button>
     </div>

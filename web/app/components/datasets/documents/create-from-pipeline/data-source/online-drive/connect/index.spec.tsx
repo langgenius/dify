@@ -1,6 +1,6 @@
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import Connect from './index'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 
 // ==========================================
 // Mock Modules

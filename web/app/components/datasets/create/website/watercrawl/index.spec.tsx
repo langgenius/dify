@@ -1,10 +1,10 @@
 import type { Mock } from 'vitest'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import WaterCrawl from './index'
-import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
+import WaterCrawl from './index'
 
 // Mock external dependencies
 vi.mock('@/service/datasets', () => ({
@@ -759,8 +759,7 @@ describe('WaterCrawl', () => {
         current: 100,
         total: 100,
         data: Array.from({ length: 100 }, (_, i) =>
-          createCrawlResultItem({ source_url: `https://example.com/${i}` }),
-        ),
+          createCrawlResultItem({ source_url: `https://example.com/${i}` })),
       })
 
       const props = createDefaultProps({
@@ -1615,16 +1614,14 @@ describe('WaterCrawl', () => {
           current: 5,
           total: 10,
           data: Array.from({ length: 5 }, (_, i) =>
-            createCrawlResultItem({ source_url: `https://page${i + 1}.com` }),
-          ),
+            createCrawlResultItem({ source_url: `https://page${i + 1}.com` })),
         })
         .mockResolvedValueOnce({
           status: 'completed',
           current: 10,
           total: 10,
           data: Array.from({ length: 10 }, (_, i) =>
-            createCrawlResultItem({ source_url: `https://page${i + 1}.com` }),
-          ),
+            createCrawlResultItem({ source_url: `https://page${i + 1}.com` })),
         })
 
       const props = createDefaultProps({

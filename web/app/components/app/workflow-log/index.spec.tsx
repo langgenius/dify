@@ -15,15 +15,16 @@ import type { MockedFunction } from 'vitest'
  * - trigger-by-display.spec.tsx
  */
 
+import type { ILogsProps } from './index'
+import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
+import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useSWR from 'swr'
-import Logs, { type ILogsProps } from './index'
-import { TIME_PERIOD_MAPPING } from './filter'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
-import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { APP_PAGE_LIMIT } from '@/config'
+import { WorkflowRunTriggeredFrom } from '@/models/log'
+import { TIME_PERIOD_MAPPING } from './filter'
+import Logs from './index'
 
 // ============================================================================
 // Mocks
@@ -52,13 +53,13 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('next/link', () => ({
   __esModule: true,
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
+  default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
 }))
 
 // Mock the Run component to avoid complex dependencies
 vi.mock('@/app/components/workflow/run', () => ({
   __esModule: true,
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -323,7 +324,7 @@ describe('Logs Container', () => {
 
       render(<Logs {...defaultProps} />)
 
-      const keyArg = mockedUseSWR.mock.calls.at(-1)?.[0] as { url: string; params: Record<string, unknown> }
+      const keyArg = mockedUseSWR.mock.calls.at(-1)?.[0] as { url: string, params: Record<string, unknown> }
       expect(keyArg).toMatchObject({
         url: `/apps/${defaultProps.appDetail.id}/workflow-app-logs`,
         params: expect.objectContaining({
@@ -464,8 +465,7 @@ describe('Logs Container', () => {
 
     it('should render pagination when total exceeds limit', () => {
       const logs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
-      )
+        createMockWorkflowLog({ id: `log-${i}` }))
 
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse(logs, APP_PAGE_LIMIT + 10),

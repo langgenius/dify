@@ -1,8 +1,8 @@
-import React from 'react'
 import { render } from '@testing-library/react'
+import * as React from 'react'
 import { OpikIconBig } from '@/app/components/base/icons/src/public/tracing'
-import { normalizeAttrs } from '@/app/components/base/icons/utils'
 import iconData from '@/app/components/base/icons/src/public/tracing/OpikIconBig.json'
+import { normalizeAttrs } from '@/app/components/base/icons/utils'
 
 describe('SVG Attribute Error Reproduction', () => {
   // Capture console errors

@@ -1,16 +1,14 @@
+import type { DataSet } from '@/models/datasets'
+import type { DatasetConfigs } from '@/models/debug'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import DatasetConfig from './index'
-import type { DataSet } from '@/models/datasets'
-import { DataSourceType, DatasetPermission } from '@/models/datasets'
-import { AppModeEnum } from '@/types/app'
-import { ModelModeType } from '@/types/app'
-import { RETRIEVE_TYPE } from '@/types/app'
-import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { DatasetConfigs } from '@/models/debug'
 import { useContext } from 'use-context-selector'
-import { hasEditPermissionForDataset } from '@/utils/permission'
+import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { DatasetPermission, DataSourceType } from '@/models/datasets'
+import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
+import { hasEditPermissionForDataset } from '@/utils/permission'
+import DatasetConfig from './index'
 
 // Mock external dependencies
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({
@@ -58,11 +56,13 @@ vi.mock('lodash-es', () => ({
   intersectionBy: vi.fn((...arrays) => {
     // Mock realistic intersection behavior based on metadata name
     const validArrays = arrays.filter(Array.isArray)
-    if (validArrays.length === 0) return []
+    if (validArrays.length === 0)
+      return []
 
     // Start with first array and filter down
     return validArrays[0].filter((item: any) => {
-      if (!item || !item.name) return false
+      if (!item || !item.name)
+        return false
 
       // Only return items that exist in all arrays
       return validArrays.every(array =>
@@ -94,7 +94,9 @@ vi.mock('./params-config', () => ({
   __esModule: true,
   default: ({ disabled, selectedDatasets }: any) => (
     <button data-testid="params-config" disabled={disabled}>
-      Params ({selectedDatasets.length})
+      Params (
+      {selectedDatasets.length}
+      )
     </button>
   ),
 }))
@@ -1008,8 +1010,7 @@ describe('DatasetConfig', () => {
             { name: 'category', type: 'string' } as any,
             { name: 'priority', type: 'number' } as any,
           ],
-        }),
-      )
+        }))
 
       renderDatasetConfig({
         dataSets: manyDatasets,
