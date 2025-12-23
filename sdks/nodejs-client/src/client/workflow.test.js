@@ -90,11 +90,13 @@ describe("WorkflowClient", () => {
     const { client, request } = createHttpClientWithSpies();
     const workflow = new WorkflowClient(client);
 
-    await workflow.getLogs("user", {
+    // Use createdByEndUserSessionId to filter by user session (backend API parameter)
+    await workflow.getLogs({
       keyword: "k",
       status: "succeeded",
       startTime: "2024-01-01",
       endTime: "2024-01-02",
+      createdByEndUserSessionId: "session-123",
       page: 1,
       limit: 20,
     });
@@ -107,7 +109,7 @@ describe("WorkflowClient", () => {
         status: "succeeded",
         created_at__before: "2024-01-02",
         created_at__after: "2024-01-01",
-        created_by_end_user_session_id: undefined,
+        created_by_end_user_session_id: "session-123",
         created_by_account: undefined,
         page: 1,
         limit: 20,

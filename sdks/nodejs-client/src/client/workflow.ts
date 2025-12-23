@@ -94,65 +94,24 @@ export class WorkflowClient extends DifyClient {
     });
   }
 
-  getLogs(
-    options?: {
-      keyword?: string;
-      status?: string;
-      createdAtBefore?: string;
-      createdAtAfter?: string;
-      createdByEndUserSessionId?: string;
-      createdByAccount?: string;
-      page?: number;
-      limit?: number;
-      startTime?: string;
-      endTime?: string;
-    }
-  ): Promise<DifyResponse<Record<string, unknown>>>;
-  getLogs(
-    user: string,
-    options?: {
-      keyword?: string;
-      status?: string;
-      createdAtBefore?: string;
-      createdAtAfter?: string;
-      createdByEndUserSessionId?: string;
-      createdByAccount?: string;
-      page?: number;
-      limit?: number;
-      startTime?: string;
-      endTime?: string;
-    }
-  ): Promise<DifyResponse<Record<string, unknown>>>;
-  getLogs(
-    userOrOptions?:
-      | string
-      | {
-          keyword?: string;
-          status?: string;
-          createdAtBefore?: string;
-          createdAtAfter?: string;
-          createdByEndUserSessionId?: string;
-          createdByAccount?: string;
-          page?: number;
-          limit?: number;
-          startTime?: string;
-          endTime?: string;
-        },
-    maybeOptions?: {
-      keyword?: string;
-      status?: string;
-      createdAtBefore?: string;
-      createdAtAfter?: string;
-      createdByEndUserSessionId?: string;
-      createdByAccount?: string;
-      page?: number;
-      limit?: number;
-      startTime?: string;
-      endTime?: string;
-    }
-  ): Promise<DifyResponse<Record<string, unknown>>> {
-    const options =
-      typeof userOrOptions === "string" ? maybeOptions : userOrOptions;
+  /**
+   * Get workflow execution logs with filtering options.
+   *
+   * Note: The backend API filters by `createdByEndUserSessionId` (end user session ID)
+   * or `createdByAccount` (account ID), not by a generic `user` parameter.
+   */
+  getLogs(options?: {
+    keyword?: string;
+    status?: string;
+    createdAtBefore?: string;
+    createdAtAfter?: string;
+    createdByEndUserSessionId?: string;
+    createdByAccount?: string;
+    page?: number;
+    limit?: number;
+    startTime?: string;
+    endTime?: string;
+  }): Promise<DifyResponse<Record<string, unknown>>> {
     if (options?.keyword) {
       ensureOptionalString(options.keyword, "keyword");
     }
