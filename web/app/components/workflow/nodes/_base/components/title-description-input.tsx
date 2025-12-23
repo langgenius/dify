@@ -3,8 +3,8 @@ import {
   useCallback,
   useState,
 } from 'react'
-import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
+import Textarea from 'react-textarea-autosize'
 
 type TitleInputProps = {
   value: string

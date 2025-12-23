@@ -66,8 +66,7 @@ export const useTabs = ({
       key: TabsEnum.Tools,
       name: t('workflow.tabs.tools'),
       show: !noTools,
-    },
-    {
+    }, {
       key: TabsEnum.Start,
       name: t('workflow.tabs.start'),
       show: shouldShowStartTab,

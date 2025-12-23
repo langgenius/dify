@@ -3,6 +3,14 @@
 import type {
   ReactNode,
 } from 'react'
+import type { Plugin } from '../types'
+import type {
+  MarketplaceCollection,
+  PluginsSort,
+  SearchParams,
+  SearchParamsFromCollection,
+} from './types'
+import { debounce, noop } from 'lodash-es'
 import {
   useCallback,
   useEffect,
@@ -14,31 +22,23 @@ import {
   createContext,
   useContextSelector,
 } from 'use-context-selector'
-import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
-import type { Plugin } from '../types'
+import { useInstalledPluginList } from '@/service/use-plugins'
 import {
   getValidCategoryKeys,
   getValidTagKeys,
 } from '../utils'
-import type {
-  MarketplaceCollection,
-  PluginsSort,
-  SearchParams,
-  SearchParamsFromCollection,
-} from './types'
 import { DEFAULT_SORT } from './constants'
 import {
   useMarketplaceCollectionsAndPlugins,
   useMarketplaceContainerScroll,
   useMarketplacePlugins,
 } from './hooks'
+import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import {
   getMarketplaceListCondition,
   getMarketplaceListFilterType,
   updateSearchParams,
 } from './utils'
-import { useInstalledPluginList } from '@/service/use-plugins'
-import { debounce, noop } from 'lodash-es'
 
 export type MarketplaceContextValue = {
   searchPluginText: string

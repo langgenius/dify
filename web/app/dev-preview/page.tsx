@@ -4,8 +4,8 @@ import { BaseFieldType } from '../components/base/form/form-scenarios/base/types
 
 export default function Page() {
   return (
-    <div className='flex h-screen w-full items-center justify-center p-20'>
-      <div className='w-[400px] rounded-lg border border-components-panel-border bg-components-panel-bg'>
+    <div className="flex h-screen w-full items-center justify-center p-20">
+      <div className="w-[400px] rounded-lg border border-components-panel-border bg-components-panel-bg">
         <BaseForm
           initialData={{
             type: 'option_1',

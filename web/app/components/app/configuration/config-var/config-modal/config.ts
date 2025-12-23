@@ -20,5 +20,7 @@ export const jsonConfigPlaceHolder = JSON.stringify(
       required: [],
       additionalProperties: true,
     },
-  }, null, 2,
+  },
+  null,
+  2,
 )

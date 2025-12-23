@@ -1,15 +1,18 @@
-import { ComparisonOperator } from './types'
-import { VarType } from '@/app/components/workflow/types'
 import type { Branch } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
+import { ComparisonOperator } from './types'
 
 export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
   return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
 }
 
 const notTranslateKey = [
-  ComparisonOperator.equal, ComparisonOperator.notEqual,
-  ComparisonOperator.largerThan, ComparisonOperator.largerThanOrEqual,
-  ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
+  ComparisonOperator.equal,
+  ComparisonOperator.notEqual,
+  ComparisonOperator.largerThan,
+  ComparisonOperator.largerThanOrEqual,
+  ComparisonOperator.lessThan,
+  ComparisonOperator.lessThanOrEqual,
 ]
 
 export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator) => {

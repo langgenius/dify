@@ -1,6 +1,6 @@
-import { Fragment, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
+import { Fragment, useCallback } from 'react'
 import { cn } from '@/utils/classnames'
 
 type DialogProps = {
@@ -28,7 +28,8 @@ const DialogWrapper = ({
             'data-[closed]:opacity-0',
             'data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
             'data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
-          )} />
+          )}
+          />
         </TransitionChild>
 
         <div className="fixed inset-0">
@@ -41,14 +42,15 @@ const DialogWrapper = ({
                 'data-[enter]:scale-100 data-[enter]:opacity-100 data-[enter]:duration-300 data-[enter]:ease-out',
                 'data-[leave]:scale-95 data-[leave]:opacity-0 data-[leave]:duration-200 data-[leave]:ease-in',
                 className,
-              )}>
+              )}
+              >
                 {children}
               </DialogPanel>
             </TransitionChild>
           </div>
         </div>
       </Dialog>
-    </Transition >
+    </Transition>
   )
 }
 

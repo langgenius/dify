@@ -1,52 +1,53 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import useSWR from 'swr'
+import type { ChatItemInTree } from '../../base/chat/types'
+import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
+import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
+import type { App } from '@/types/app'
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
 } from '@heroicons/react/24/outline'
 import { RiCloseLine, RiEditFill } from '@remixicon/react'
-import { get } from 'lodash-es'
 import dayjs from 'dayjs'
-import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
+import { get, noop } from 'lodash-es'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import useSWR from 'swr'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
-import { useTranslation } from 'react-i18next'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import type { ChatItemInTree } from '../../base/chat/types'
+import ModelInfo from '@/app/components/app/log/model-info'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import TextGeneration from '@/app/components/app/text-generate/item'
+import ActionButton from '@/app/components/base/action-button'
+import Chat from '@/app/components/base/chat/chat'
+import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
+import CopyIcon from '@/app/components/base/copy-icon'
+import Drawer from '@/app/components/base/drawer'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import Loading from '@/app/components/base/loading'
+import MessageLogModal from '@/app/components/base/message-log-modal'
+import { ToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import { WorkflowContextProvider } from '@/app/components/workflow/context'
+import { useAppContext } from '@/context/app-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useTimestamp from '@/hooks/use-timestamp'
+import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import PromptLogModal from '../../base/prompt-log-modal'
 import Indicator from '../../header/indicator'
 import VarPanel from './var-panel'
-import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
-import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
-import { type App, AppModeEnum } from '@/types/app'
-import ActionButton from '@/app/components/base/action-button'
-import Loading from '@/app/components/base/loading'
-import Drawer from '@/app/components/base/drawer'
-import Chat from '@/app/components/base/chat/chat'
-import { ToastContext } from '@/app/components/base/toast'
-import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
-import ModelInfo from '@/app/components/app/log/model-info'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import TextGeneration from '@/app/components/app/text-generate/item'
-import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
-import MessageLogModal from '@/app/components/base/message-log-modal'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
-import useTimestamp from '@/hooks/use-timestamp'
-import Tooltip from '@/app/components/base/tooltip'
-import CopyIcon from '@/app/components/base/copy-icon'
-import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
-import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import { cn } from '@/utils/classnames'
-import { noop } from 'lodash-es'
-import PromptLogModal from '../../base/prompt-log-modal'
-import { WorkflowContextProvider } from '@/app/components/workflow/context'
 
 type AppStoreState = ReturnType<typeof useAppStore.getState>
 type ConversationListItem = ChatConversationGeneralDetail | CompletionConversationGeneralDetail
-type ConversationSelection = ConversationListItem | { id: string; isPlaceholder?: true }
+type ConversationSelection = ConversationListItem | { id: string, isPlaceholder?: true }
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -75,13 +76,15 @@ const DrawerContext = createContext<IDrawerContext>({} as IDrawerContext)
 /**
  * Icon component with numbers
  */
-const HandThumbIconWithCount: FC<{ count: number; iconType: 'up' | 'down' }> = ({ count, iconType }) => {
+const HandThumbIconWithCount: FC<{ count: number, iconType: 'up' | 'down' }> = ({ count, iconType }) => {
   const classname = iconType === 'up' ? 'text-primary-600 bg-primary-50' : 'text-red-600 bg-red-50'
   const Icon = iconType === 'up' ? HandThumbUpIcon : HandThumbDownIcon
-  return <div className={`inline-flex w-fit items-center rounded-md p-1 text-xs ${classname} mr-1 last:mr-0`}>
-    <Icon className={'mr-0.5 h-3 w-3 rounded-md'} />
-    {count > 0 ? count : null}
-  </div>
+  return (
+    <div className={`inline-flex w-fit items-center rounded-md p-1 text-xs ${classname} mr-1 last:mr-0`}>
+      <Icon className="mr-0.5 h-3 w-3 rounded-md" />
+      {count > 0 ? count : null}
+    </div>
+  )
 }
 
 const statusTdRender = (statusCount: StatusCount) => {
@@ -90,25 +93,29 @@ const statusTdRender = (statusCount: StatusCount) => {
 
   if (statusCount.partial_success + statusCount.failed === 0) {
     return (
-      <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
-        <Indicator color={'green'} />
-        <span className='text-util-colors-green-green-600'>Success</span>
+      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <Indicator color="green" />
+        <span className="text-util-colors-green-green-600">Success</span>
       </div>
     )
   }
   else if (statusCount.failed === 0) {
     return (
-      <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
-        <Indicator color={'green'} />
-        <span className='text-util-colors-green-green-600'>Partial Success</span>
+      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <Indicator color="green" />
+        <span className="text-util-colors-green-green-600">Partial Success</span>
       </div>
     )
   }
   else {
     return (
-      <div className='system-xs-semibold-uppercase inline-flex items-center gap-1'>
-        <Indicator color={'red'} />
-        <span className='text-util-colors-red-red-600'>{statusCount.failed} {`${statusCount.failed > 1 ? 'Failures' : 'Failure'}`}</span>
+      <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+        <Indicator color="red" />
+        <span className="text-util-colors-red-red-600">
+          {statusCount.failed}
+          {' '}
+          {`${statusCount.failed > 1 ? 'Failures' : 'Failure'}`}
+        </span>
       </div>
     )
   }
@@ -141,12 +148,12 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
           ...item.message,
           ...(item.message[item.message.length - 1]?.role !== 'assistant'
             ? [
-              {
-                role: 'assistant',
-                text: item.answer,
-                files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-              },
-            ]
+                {
+                  role: 'assistant',
+                  text: item.answer,
+                  files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+                },
+              ]
             : []),
         ] as IChatItem['log'],
         workflow_run_id: item.workflow_run_id,
@@ -642,35 +649,35 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   }, [threadChatItems.length, hasMore, fetchData])
 
   return (
-    <div ref={ref} className='flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border'>
+    <div ref={ref} className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border">
       {/* Panel Header */}
-      <div className='flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3'>
-        <div className='shrink-0'>
-          <div className='system-xs-semibold-uppercase mb-0.5 text-text-primary'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
+      <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3">
+        <div className="shrink-0">
+          <div className="system-xs-semibold-uppercase mb-0.5 text-text-primary">{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
           {isChatMode && (
-            <div className='system-2xs-regular-uppercase flex items-center text-text-secondary'>
+            <div className="system-2xs-regular-uppercase flex items-center text-text-secondary">
               <Tooltip
                 popupContent={detail.id}
               >
-                <div className='truncate'>{detail.id}</div>
+                <div className="truncate">{detail.id}</div>
               </Tooltip>
               <CopyIcon content={detail.id} />
             </div>
           )}
           {!isChatMode && (
-            <div className='system-2xs-regular-uppercase text-text-secondary'>{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
+            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
           )}
         </div>
-        <div className='flex grow flex-wrap items-center justify-end gap-y-1'>
+        <div className="flex grow flex-wrap items-center justify-end gap-y-1">
           {!isAdvanced && <ModelInfo model={detail.model_config.model} />}
         </div>
-        <ActionButton size='l' onClick={onClose}>
-          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+        <ActionButton size="l" onClick={onClose}>
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </ActionButton>
       </div>
       {/* Panel Body */}
-      <div className='shrink-0 px-1 pt-1'>
-        <div className='rounded-t-xl bg-background-section-burn p-3 pb-2'>
+      <div className="shrink-0 px-1 pt-1">
+        <div className="rounded-t-xl bg-background-section-burn p-3 pb-2">
           {(varList.length > 0 || (!isChatMode && message_files.length > 0)) && (
             <VarPanel
               varList={varList}
@@ -679,29 +686,35 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           )}
         </div>
       </div>
-      <div className='mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn'>
+      <div className="mx-1 mb-1 grow overflow-auto rounded-b-xl bg-background-section-burn">
         {!isChatMode
-          ? <div className="px-6 py-4">
-            <div className='flex h-[18px] items-center space-x-3'>
-              <div className='system-xs-semibold-uppercase text-text-tertiary'>{t('appLog.table.header.output')}</div>
-              <div className='h-px grow' style={{
-                background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
-              }}></div>
-            </div>
-            <TextGeneration
-              className='mt-2'
-              content={detail.message.answer}
-              messageId={detail.message.id}
-              isError={false}
-              onRetry={noop}
-              isInstalledApp={false}
-              supportFeedback
-              feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
-              onFeedback={feedback => onFeedback(detail.message.id, feedback)}
-              isShowTextToSpeech
-              siteInfo={null}
-            />
-          </div>
+          ? (
+              <div className="px-6 py-4">
+                <div className="flex h-[18px] items-center space-x-3">
+                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('appLog.table.header.output')}</div>
+                  <div
+                    className="h-px grow"
+                    style={{
+                      background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+                    }}
+                  >
+                  </div>
+                </div>
+                <TextGeneration
+                  className="mt-2"
+                  content={detail.message.answer}
+                  messageId={detail.message.id}
+                  isError={false}
+                  onRetry={noop}
+                  isInstalledApp={false}
+                  supportFeedback
+                  feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
+                  onFeedback={feedback => onFeedback(detail.message.id, feedback)}
+                  isShowTextToSpeech
+                  siteInfo={null}
+                />
+              </div>
+            )
           : threadChatItems.length < MIN_ITEMS_FOR_SCROLL_LOADING ? (
             <div className="mb-4 pt-4">
               <Chat
@@ -725,7 +738,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 noChatInput
                 showPromptLog
                 hideProcessDetail
-                chatContainerInnerClassName='px-3'
+                chatContainerInnerClassName="px-3"
                 switchSibling={switchSibling}
               />
             </div>
@@ -738,14 +751,16 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 flexDirection: 'column-reverse',
                 height: '100%',
                 overflow: 'auto',
-              }}>
+              }}
+            >
               {/* Put the scroll bar always on the bottom */}
               <div className="flex w-full flex-col-reverse" style={{ position: 'relative' }}>
                 {/* Loading state indicator - only shown when loading */}
                 {hasMore && isLoading && (
                   <div className="sticky left-0 right-0 top-0 z-10 bg-primary-50/40 py-3 text-center">
-                    <div className='system-xs-regular text-text-tertiary'>
-                      {t('appLog.detail.loading')}...
+                    <div className="system-xs-regular text-text-tertiary">
+                      {t('appLog.detail.loading')}
+                      ...
                     </div>
                   </div>
                 )}
@@ -771,13 +786,12 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                   noChatInput
                   showPromptLog
                   hideProcessDetail
-                  chatContainerInnerClassName='px-3'
+                  chatContainerInnerClassName="px-3"
                   switchSibling={switchSibling}
                 />
               </div>
             </div>
-          )
-        }
+          )}
       </div>
       {showMessageLogModal && (
         <WorkflowContextProvider>
@@ -807,9 +821,9 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 }
 
 /**
-   * Text App Conversation Detail Component
-   */
-const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
+ * Text App Conversation Detail Component
+ */
+const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
   const detailParams = ({ url: `/apps/${appId}/completion-conversations/${conversationId}` })
   const { data: conversationDetail, mutate: conversationDetailMutate } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchCompletionConversationDetail)
@@ -848,17 +862,19 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   if (!conversationDetail)
     return null
 
-  return <DetailPanel
-    detail={conversationDetail}
-    onFeedback={handleFeedback}
-    onSubmitAnnotation={handleAnnotation}
-  />
+  return (
+    <DetailPanel
+      detail={conversationDetail}
+      onFeedback={handleFeedback}
+      onSubmitAnnotation={handleAnnotation}
+    />
+  )
 }
 
 /**
-   * Chat App Conversation Detail Component
-   */
-const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }> = ({ appId, conversationId }) => {
+ * Chat App Conversation Detail Component
+ */
+const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   const detailParams = { url: `/apps/${appId}/chat-conversations/${conversationId}` }
   const { data: conversationDetail } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchChatConversationDetail)
   const { notify } = useContext(ToastContext)
@@ -894,16 +910,18 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   if (!conversationDetail)
     return null
 
-  return <DetailPanel
-    detail={conversationDetail}
-    onFeedback={handleFeedback}
-    onSubmitAnnotation={handleAnnotation}
-  />
+  return (
+    <DetailPanel
+      detail={conversationDetail}
+      onFeedback={handleFeedback}
+      onSubmitAnnotation={handleAnnotation}
+    />
+  )
 }
 
 /**
-   * Conversation list component including basic information
-   */
+ * Conversation list component including basic information
+ */
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
@@ -1018,11 +1036,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
     return (
       <Tooltip
-        popupContent={
-          <span className='inline-flex items-center text-xs text-text-tertiary'>
-            <RiEditFill className='mr-1 h-3 w-3' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+        popupContent={(
+          <span className="inline-flex items-center text-xs text-text-tertiary">
+            <RiEditFill className="mr-1 h-3 w-3" />
+            {`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
-        }
+        )}
         popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
       >
         <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'system-sm-regular overflow-hidden text-ellipsis whitespace-nowrap')}>
@@ -1036,19 +1055,19 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return <Loading />
 
   return (
-    <div className='relative mt-2 grow overflow-x-auto'>
+    <div className="relative mt-2 grow overflow-x-auto">
       <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
-        <thead className='system-xs-medium-uppercase text-text-tertiary'>
+        <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
-            <td className='w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1'></td>
-            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
-            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.endUser')}</td>
-            {isChatflow && <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.status')}</td>}
-            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
-            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.userRate')}</td>
-            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.adminRate')}</td>
-            <td className='whitespace-nowrap bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.updatedTime')}</td>
-            <td className='whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3'>{t('appLog.table.header.time')}</td>
+            <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.endUser')}</td>
+            {isChatflow && <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.status')}</td>}
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.userRate')}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.adminRate')}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.updatedTime')}</td>
+            <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.time')}</td>
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
@@ -1056,48 +1075,55 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
             const endUser = log.from_end_user_session_id || log.from_account_name
             const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
-            return <tr
-              key={log.id}
-              className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', activeConversationId !== log.id ? '' : 'bg-background-default-hover')}
-              onClick={() => handleRowClick(log)}>
-              <td className='h-4'>
-                {!log.read_at && (
-                  <div className='flex items-center p-3 pr-0.5'>
-                    <span className='inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500'></span>
-                  </div>
+            return (
+              <tr
+                key={log.id}
+                className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', activeConversationId !== log.id ? '' : 'bg-background-default-hover')}
+                onClick={() => handleRowClick(log)}
+              >
+                <td className="h-4">
+                  {!log.read_at && (
+                    <div className="flex items-center p-3 pr-0.5">
+                      <span className="inline-block h-1.5 w-1.5 rounded bg-util-colors-blue-blue-500"></span>
+                    </div>
+                  )}
+                </td>
+                <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                  {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
+                </td>
+                <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
+                {isChatflow && (
+                  <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
+                    {statusTdRender(log.status_count)}
+                  </td>
                 )}
-              </td>
-              <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
-              </td>
-              <td className='p-3 pr-2'>{renderTdValue(endUser || defaultValue, !endUser)}</td>
-              {isChatflow && <td className='w-[160px] p-3 pr-2' style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                {statusTdRender(log.status_count)}
-              </td>}
-              <td className='p-3 pr-2' style={{ maxWidth: isChatMode ? 100 : 200 }}>
-                {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
-              </td>
-              <td className='p-3 pr-2'>
-                {(!log.user_feedback_stats.like && !log.user_feedback_stats.dislike)
-                  ? renderTdValue(defaultValue, true)
-                  : <>
-                    {!!log.user_feedback_stats.like && <HandThumbIconWithCount iconType='up' count={log.user_feedback_stats.like} />}
-                    {!!log.user_feedback_stats.dislike && <HandThumbIconWithCount iconType='down' count={log.user_feedback_stats.dislike} />}
-                  </>
-                }
-              </td>
-              <td className='p-3 pr-2'>
-                {(!log.admin_feedback_stats.like && !log.admin_feedback_stats.dislike)
-                  ? renderTdValue(defaultValue, true)
-                  : <>
-                    {!!log.admin_feedback_stats.like && <HandThumbIconWithCount iconType='up' count={log.admin_feedback_stats.like} />}
-                    {!!log.admin_feedback_stats.dislike && <HandThumbIconWithCount iconType='down' count={log.admin_feedback_stats.dislike} />}
-                  </>
-                }
-              </td>
-              <td className='w-[160px] p-3 pr-2'>{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
-              <td className='w-[160px] p-3 pr-2'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
-            </tr>
+                <td className="p-3 pr-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>
+                  {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
+                </td>
+                <td className="p-3 pr-2">
+                  {(!log.user_feedback_stats.like && !log.user_feedback_stats.dislike)
+                    ? renderTdValue(defaultValue, true)
+                    : (
+                        <>
+                          {!!log.user_feedback_stats.like && <HandThumbIconWithCount iconType="up" count={log.user_feedback_stats.like} />}
+                          {!!log.user_feedback_stats.dislike && <HandThumbIconWithCount iconType="down" count={log.user_feedback_stats.dislike} />}
+                        </>
+                      )}
+                </td>
+                <td className="p-3 pr-2">
+                  {(!log.admin_feedback_stats.like && !log.admin_feedback_stats.dislike)
+                    ? renderTdValue(defaultValue, true)
+                    : (
+                        <>
+                          {!!log.admin_feedback_stats.like && <HandThumbIconWithCount iconType="up" count={log.admin_feedback_stats.like} />}
+                          {!!log.admin_feedback_stats.dislike && <HandThumbIconWithCount iconType="down" count={log.admin_feedback_stats.dislike} />}
+                        </>
+                      )}
+                </td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
+              </tr>
+            )
           })}
         </tbody>
       </table>
@@ -1106,16 +1132,16 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassName='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg'
+        panelClassName="mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-components-panel-bg"
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,
           appDetail,
-        }}>
+        }}
+        >
           {isChatMode
             ? <ChatConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
-            : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />
-          }
+            : <CompletionConversationDetailComp appId={appDetail.id} conversationId={currentConversation?.id} />}
         </DrawerContext.Provider>
       </Drawer>
     </div>

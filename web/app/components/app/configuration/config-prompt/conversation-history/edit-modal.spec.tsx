@@ -1,9 +1,9 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import EditModal from './edit-modal'
 import type { ConversationHistoriesRole } from '@/models/debug'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import EditModal from './edit-modal'
 
-jest.mock('@/app/components/base/modal', () => ({
+vi.mock('@/app/components/base/modal', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
@@ -15,19 +15,19 @@ describe('Conversation history edit modal', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should render provided prefixes', () => {
-    render(<EditModal isShow saveLoading={false} data={data} onClose={jest.fn()} onSave={jest.fn()} />)
+    render(<EditModal isShow saveLoading={false} data={data} onClose={vi.fn()} onSave={vi.fn()} />)
 
     expect(screen.getByDisplayValue('user')).toBeInTheDocument()
     expect(screen.getByDisplayValue('assistant')).toBeInTheDocument()
   })
 
   it('should update prefixes and save changes', () => {
-    const onSave = jest.fn()
-    render(<EditModal isShow saveLoading={false} data={data} onClose={jest.fn()} onSave={onSave} />)
+    const onSave = vi.fn()
+    render(<EditModal isShow saveLoading={false} data={data} onClose={vi.fn()} onSave={onSave} />)
 
     fireEvent.change(screen.getByDisplayValue('user'), { target: { value: 'member' } })
     fireEvent.change(screen.getByDisplayValue('assistant'), { target: { value: 'helper' } })
@@ -40,8 +40,8 @@ describe('Conversation history edit modal', () => {
   })
 
   it('should call close handler', () => {
-    const onClose = jest.fn()
-    render(<EditModal isShow saveLoading={false} data={data} onClose={onClose} onSave={jest.fn()} />)
+    const onClose = vi.fn()
+    render(<EditModal isShow saveLoading={false} data={data} onClose={onClose} onSave={vi.fn()} />)
 
     fireEvent.click(screen.getByText('common.operation.cancel'))
 

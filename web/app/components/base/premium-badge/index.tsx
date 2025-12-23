@@ -1,6 +1,7 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties, ReactNode } from 'react'
-import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { Highlight } from '@/app/components/base/icons/src/public/common'
 import { cn } from '@/utils/classnames'
 import './index.css'
@@ -52,15 +53,13 @@ const PremiumBadge: React.FC<PremiumBadgeProps> = ({
 }) => {
   return (
     <div
-      className={cn(PremiumBadgeVariants({ size, color, allowHover, className }),
-        'relative text-nowrap')}
+      className={cn(PremiumBadgeVariants({ size, color, allowHover, className }), 'relative text-nowrap')}
       style={styleCss}
       {...props}
     >
       {children}
       <Highlight
-        className={cn('absolute right-1/2 top-0 translate-x-[20%] opacity-50 transition-all duration-100 ease-out hover:translate-x-[30%] hover:opacity-80',
-          size === 's' ? 'h-[18px] w-12' : 'h-6 w-12')}
+        className={cn('absolute right-1/2 top-0 translate-x-[20%] opacity-50 transition-all duration-100 ease-out hover:translate-x-[30%] hover:opacity-80', size === 's' ? 'h-[18px] w-12' : 'h-6 w-12')}
       />
     </div>
   )

@@ -1,23 +1,23 @@
 import {
-  useCallback,
-  useEffect,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  CLICK_COMMAND,
-  COMMAND_PRIORITY_LOW,
-} from 'lexical'
+  TOGGLE_LINK_COMMAND,
+} from '@lexical/link'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   mergeRegister,
 } from '@lexical/utils'
 import {
-  TOGGLE_LINK_COMMAND,
-} from '@lexical/link'
+  CLICK_COMMAND,
+  COMMAND_PRIORITY_LOW,
+} from 'lexical'
 import { escape } from 'lodash-es'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import {
+  useCallback,
+  useEffect,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useToastContext } from '@/app/components/base/toast'
 import { useNoteEditorStore } from '../../store'
 import { urlRegExp } from '../../utils'
-import { useToastContext } from '@/app/components/base/toast'
 
 export const useOpenLink = () => {
   const [editor] = useLexicalComposerContext()

@@ -1,12 +1,12 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
 import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import {
   DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalMethodConfig from './index'
 
 // Mock provider context with controllable supportRetrievalMethods
@@ -16,20 +16,20 @@ let mockSupportRetrievalMethods: RETRIEVE_METHOD[] = [
   RETRIEVE_METHOD.hybrid,
 ]
 
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     supportRetrievalMethods: mockSupportRetrievalMethods,
   }),
 }))
 
 // Mock model hooks with controllable return values
-let mockRerankDefaultModel: { provider: { provider: string }; model: string } | undefined = {
+let mockRerankDefaultModel: { provider: { provider: string }, model: string } | undefined = {
   provider: { provider: 'test-provider' },
   model: 'test-rerank-model',
 }
 let mockIsRerankDefaultModelValid: boolean | undefined = true
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useModelListAndDefaultModelAndCurrentProviderAndModel: () => ({
     defaultModel: mockRerankDefaultModel,
     currentModel: mockIsRerankDefaultModelValid,
@@ -37,7 +37,7 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', (
 }))
 
 // Mock child component RetrievalParamConfig to simplify testing
-jest.mock('../retrieval-param-config', () => ({
+vi.mock('../retrieval-param-config', () => ({
   __esModule: true,
   default: ({ type, value, onChange, showMultiModalTip }: {
     type: RETRIEVE_METHOD
@@ -76,14 +76,14 @@ const createMockRetrievalConfig = (overrides: Partial<RetrievalConfig> = {}): Re
 const renderComponent = (props: Partial<React.ComponentProps<typeof RetrievalMethodConfig>> = {}) => {
   const defaultProps = {
     value: createMockRetrievalConfig(),
-    onChange: jest.fn(),
+    onChange: vi.fn(),
   }
   return render(<RetrievalMethodConfig {...defaultProps} {...props} />)
 }
 
 describe('RetrievalMethodConfig', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Reset mock values to defaults
     mockSupportRetrievalMethods = [
       RETRIEVE_METHOD.semantic,
@@ -225,7 +225,7 @@ describe('RetrievalMethodConfig', () => {
   // Tests for user interactions and event handlers
   describe('User Interactions', () => {
     it('should call onChange when switching to semantic search', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText }),
         onChange,
@@ -244,7 +244,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should call onChange when switching to fullText search', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
         onChange,
@@ -263,7 +263,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should call onChange when switching to hybrid search', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
         onChange,
@@ -282,7 +282,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should not call onChange when clicking the already active method', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
         onChange,
@@ -295,7 +295,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should not call onChange when disabled', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
         onChange,
@@ -309,7 +309,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should propagate onChange from RetrievalParamConfig', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
         onChange,
@@ -329,7 +329,7 @@ describe('RetrievalMethodConfig', () => {
   // Tests for reranking model configuration
   describe('Reranking Model Configuration', () => {
     it('should set reranking model when switching to semantic and model is valid', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.fullText,
@@ -356,7 +356,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should preserve existing reranking model when switching', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const existingModel = {
         reranking_provider_name: 'existing-provider',
         reranking_model_name: 'existing-model',
@@ -382,7 +382,7 @@ describe('RetrievalMethodConfig', () => {
 
     it('should set reranking_enable to false when no valid model', () => {
       mockIsRerankDefaultModelValid = false
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.fullText,
@@ -405,7 +405,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should set reranking_mode for hybrid search', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.semantic,
@@ -430,7 +430,7 @@ describe('RetrievalMethodConfig', () => {
 
     it('should set weighted score mode when no valid rerank model for hybrid', () => {
       mockIsRerankDefaultModelValid = false
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.semantic,
@@ -453,7 +453,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should set default weights for hybrid search when no existing weights', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.semantic,
@@ -494,7 +494,7 @@ describe('RetrievalMethodConfig', () => {
           keyword_weight: 0.2,
         },
       }
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.semantic,
@@ -514,7 +514,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should use RerankingModel mode and enable reranking for hybrid when existing reranking model', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.semantic,
@@ -542,7 +542,7 @@ describe('RetrievalMethodConfig', () => {
   // Tests for callback stability and memoization
   describe('Callback Stability', () => {
     it('should maintain stable onSwitch callback when value changes', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const value1 = createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText, top_k: 4 })
       const value2 = createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText, top_k: 8 })
 
@@ -562,8 +562,8 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should use updated onChange callback after rerender', () => {
-      const onChange1 = jest.fn()
-      const onChange2 = jest.fn()
+      const onChange1 = vi.fn()
+      const onChange2 = vi.fn()
       const value = createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.fullText })
 
       const { rerender } = render(
@@ -590,7 +590,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should not re-render when props are the same', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const value = createMockRetrievalConfig()
 
       const { rerender } = render(
@@ -608,7 +608,7 @@ describe('RetrievalMethodConfig', () => {
   // Tests for edge cases and error handling
   describe('Edge Cases', () => {
     it('should handle undefined reranking_model', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const value = createMockRetrievalConfig({
         search_method: RETRIEVE_METHOD.fullText,
       })
@@ -626,7 +626,7 @@ describe('RetrievalMethodConfig', () => {
 
     it('should handle missing default model', () => {
       mockRerankDefaultModel = undefined
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.fullText,
@@ -655,7 +655,7 @@ describe('RetrievalMethodConfig', () => {
       // @ts-expect-error - Testing edge case where provider is undefined
       mockRerankDefaultModel = { provider: undefined, model: 'test-model' }
       mockIsRerankDefaultModelValid = true
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.fullText,
@@ -684,7 +684,7 @@ describe('RetrievalMethodConfig', () => {
       // @ts-expect-error - Testing edge case where model is undefined
       mockRerankDefaultModel = { provider: { provider: 'test-provider' }, model: undefined }
       mockIsRerankDefaultModelValid = true
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({
           search_method: RETRIEVE_METHOD.fullText,
@@ -710,7 +710,7 @@ describe('RetrievalMethodConfig', () => {
     })
 
     it('should handle rapid sequential clicks', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       renderComponent({
         value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.semantic }),
         onChange,
@@ -780,7 +780,7 @@ describe('RetrievalMethodConfig', () => {
       const { container } = render(
         <RetrievalMethodConfig
           value={createMockRetrievalConfig()}
-          onChange={jest.fn()}
+          onChange={vi.fn()}
         />,
       )
 
@@ -792,7 +792,7 @@ describe('RetrievalMethodConfig', () => {
         disabled: true,
         value: createMockRetrievalConfig({ search_method: RETRIEVE_METHOD.hybrid }),
         showMultiModalTip: true,
-        onChange: jest.fn(),
+        onChange: vi.fn(),
       })
 
       expect(screen.getByText('dataset.retrieval.hybrid_search.title')).toBeInTheDocument()
@@ -819,7 +819,7 @@ describe('RetrievalMethodConfig', () => {
         RETRIEVE_METHOD.hybrid,
       ]
 
-      test.each(methods)('should correctly highlight %s when active', (method) => {
+      it.each(methods)('should correctly highlight %s when active', (method) => {
         renderComponent({
           value: createMockRetrievalConfig({ search_method: method }),
         })
