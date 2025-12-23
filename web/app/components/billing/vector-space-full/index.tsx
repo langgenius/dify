@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import UpgradeBtn from '../upgrade-btn'
 import VectorSpaceInfo from '../usage-info/vector-space-info'
 import s from './style.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import GridMask from '@/app/components/base/grid-mask'
 
 const VectorSpaceFull: FC = () => {

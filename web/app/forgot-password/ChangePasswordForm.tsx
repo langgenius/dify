@@ -1,30 +1,28 @@
 'use client'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
 import { basePath } from '@/utils/var'
-import cn from 'classnames'
+import { cn } from '@/utils/classnames'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
-import { changePasswordWithToken, verifyForgotPasswordToken } from '@/service/common'
+import { changePasswordWithToken } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import { validPassword } from '@/config'
+import { useVerifyForgotPasswordToken } from '@/service/use-common'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
   const token = searchParams.get('token')
+  const isTokenMissing = !token
 
-  const verifyTokenParams = {
-    url: '/forgot-password/validity',
-    body: { token },
-  }
-  const { data: verifyTokenRes, mutate: revalidateToken } = useSWR(verifyTokenParams, verifyForgotPasswordToken, {
-    revalidateOnFocus: false,
-  })
+  const {
+    data: verifyTokenRes,
+    refetch: revalidateToken,
+  } = useVerifyForgotPasswordToken(token)
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -82,8 +80,8 @@ const ChangePasswordForm = () => {
         'md:px-[108px]',
       )
     }>
-      {!verifyTokenRes && <Loading />}
-      {verifyTokenRes && !verifyTokenRes.is_valid && (
+      {!isTokenMissing && !verifyTokenRes && <Loading />}
+      {(isTokenMissing || (verifyTokenRes && !verifyTokenRes.is_valid)) && (
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">🤷‍♂️</div>

@@ -1254,10 +1254,7 @@ class RagPipelineService:
         if type and type != "all":
             query = query.where(PipelineRecommendedPlugin.type == type)
 
-        pipeline_recommended_plugins = (
-            query.order_by(PipelineRecommendedPlugin.position.asc())
-            .all()
-        )
+        pipeline_recommended_plugins = query.order_by(PipelineRecommendedPlugin.position.asc()).all()
 
         if not pipeline_recommended_plugins:
             return {

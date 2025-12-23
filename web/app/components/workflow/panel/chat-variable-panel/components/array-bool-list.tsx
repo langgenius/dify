@@ -7,7 +7,7 @@ import { produce } from 'immer'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import Button from '@/app/components/base/button'
 import BoolValue from './bool-value'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string

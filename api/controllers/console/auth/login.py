@@ -22,7 +22,12 @@ from controllers.console.error import (
     NotAllowedCreateWorkspace,
     WorkspacesLimitExceeded,
 )
-from controllers.console.wraps import email_password_login_enabled, setup_required
+from controllers.console.wraps import (
+    decrypt_code_field,
+    decrypt_password_field,
+    email_password_login_enabled,
+    setup_required,
+)
 from events.tenant_event import tenant_was_created
 from libs.helper import EmailStr, extract_remote_ip
 from libs.login import current_account_with_tenant
@@ -79,6 +84,7 @@ class LoginApi(Resource):
     @setup_required
     @email_password_login_enabled
     @console_ns.expect(console_ns.models[LoginPayload.__name__])
+    @decrypt_password_field
     def post(self):
         """Authenticate user and login."""
         args = LoginPayload.model_validate(console_ns.payload)
@@ -218,6 +224,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 class EmailCodeLoginApi(Resource):
     @setup_required
     @console_ns.expect(console_ns.models[EmailCodeLoginPayload.__name__])
+    @decrypt_code_field
     def post(self):
         args = EmailCodeLoginPayload.model_validate(console_ns.payload)
 

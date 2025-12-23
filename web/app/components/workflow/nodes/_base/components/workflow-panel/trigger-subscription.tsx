@@ -2,7 +2,7 @@ import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-
 import { CreateButtonType, CreateSubscriptionButton } from '@/app/components/plugins/plugin-detail-panel/subscription-list/create'
 import { SubscriptionSelectorEntry } from '@/app/components/plugins/plugin-detail-panel/subscription-list/selector-entry'
 import { useSubscriptionList } from '@/app/components/plugins/plugin-detail-panel/subscription-list/use-subscription-list'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FC } from 'react'
 
 type TriggerSubscriptionProps = {

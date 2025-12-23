@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import type { ComponentProps, FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChunkingMode } from '@/models/datasets'
-import classNames from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { Markdown } from '@/app/components/base/markdown'
 
 type IContentProps = ComponentProps<'textarea'>
@@ -16,10 +16,8 @@ const Textarea: FC<IContentProps> = React.memo(({
 }) => {
   return (
     <textarea
-      className={classNames(
-        'inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-none',
-        className,
-      )}
+      className={cn('inset-0 w-full resize-none appearance-none overflow-y-auto border-none bg-transparent outline-none',
+        className)}
       placeholder={placeholder}
       value={value}
       disabled={disabled}
@@ -82,10 +80,8 @@ const AutoResizeTextArea: FC<IAutoResizeTextAreaProps> = React.memo(({
   return (
     <textarea
       ref={textareaRef}
-      className={classNames(
-        'inset-0 w-full resize-none appearance-none border-none bg-transparent outline-none',
-        className,
-      )}
+      className={cn('inset-0 w-full resize-none appearance-none border-none bg-transparent outline-none',
+        className)}
       style={{
         maxHeight,
       }}

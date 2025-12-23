@@ -1,5 +1,4 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import SegmentedControl from './index'
 
 describe('SegmentedControl', () => {
@@ -15,7 +14,7 @@ describe('SegmentedControl', () => {
     { value: 'option3', text: 'Option 3' },
   ]
 
-  const onSelectMock = jest.fn((value: string | number | symbol) => value)
+  const onSelectMock = vi.fn((value: string | number | symbol) => value)
 
   beforeEach(() => {
     onSelectMock.mockClear()

@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type AvatarProps = {
   name: string

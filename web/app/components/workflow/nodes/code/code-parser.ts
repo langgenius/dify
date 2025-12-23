@@ -10,7 +10,7 @@ export const extractFunctionParams = (code: string, language: CodeLanguage) => {
     [CodeLanguage.python3]: /def\s+main\s*\((.*?)\)/,
     [CodeLanguage.javascript]: /function\s+main\s*\((.*?)\)/,
   }
-  const match = code.match(patterns[language])
+  const match = patterns[language].exec(code)
   const params: string[] = []
 
   if (match?.[1]) {
@@ -31,7 +31,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
   if (returnIndex === -1)
     return {}
 
-  // return から始まる部分文字列を取得
+  // Extract the substring starting with 'return'.
   const codeAfterReturn = codeWithoutComments.slice(returnIndex)
 
   let bracketCount = 0

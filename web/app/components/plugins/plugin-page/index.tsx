@@ -23,7 +23,7 @@ import PluginTasks from './plugin-tasks'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal/modal'
 import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
 import {

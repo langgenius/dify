@@ -29,7 +29,7 @@ import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overvie
 import type { Operation } from './app-operations'
 import AppOperations from './app-operations'
 import dynamic from 'next/dynamic'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { AppModeEnum } from '@/types/app'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {

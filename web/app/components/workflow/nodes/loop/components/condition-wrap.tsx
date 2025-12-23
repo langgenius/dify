@@ -12,7 +12,7 @@ import { useGetAvailableVars } from '../../variable-assigner/hooks'
 import ConditionList from './condition-list'
 import ConditionAdd from './condition-add'
 import { SUB_VARIABLES } from './../default'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
 

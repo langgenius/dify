@@ -27,7 +27,7 @@ import type {
 import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useBoolean } from 'ahooks'
 import SchemaModal from './schema-modal'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'

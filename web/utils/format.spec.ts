@@ -68,8 +68,8 @@ describe('downloadFile', () => {
     const mockUrl = 'blob:mockUrl'
 
     // Mock URL.createObjectURL
-    const createObjectURLMock = jest.fn().mockReturnValue(mockUrl)
-    const revokeObjectURLMock = jest.fn()
+    const createObjectURLMock = vi.fn().mockReturnValue(mockUrl)
+    const revokeObjectURLMock = vi.fn()
     Object.defineProperty(window.URL, 'createObjectURL', { value: createObjectURLMock })
     Object.defineProperty(window.URL, 'revokeObjectURL', { value: revokeObjectURLMock })
 
@@ -77,11 +77,11 @@ describe('downloadFile', () => {
     const mockLink = {
       href: '',
       download: '',
-      click: jest.fn(),
-      remove: jest.fn(),
+      click: vi.fn(),
+      remove: vi.fn(),
     }
-    const createElementMock = jest.spyOn(document, 'createElement').mockReturnValue(mockLink as any)
-    const appendChildMock = jest.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
+    const createElementMock = vi.spyOn(document, 'createElement').mockReturnValue(mockLink as any)
+    const appendChildMock = vi.spyOn(document.body, 'appendChild').mockImplementation((node: Node) => {
       return node
     })
 
@@ -99,7 +99,7 @@ describe('downloadFile', () => {
     expect(revokeObjectURLMock).toHaveBeenCalledWith(mockUrl)
 
     // Clean up mocks
-    jest.restoreAllMocks()
+    vi.restoreAllMocks()
   })
 })
 

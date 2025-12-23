@@ -7,7 +7,7 @@ import { ReactMultiEmail } from 'react-multi-email'
 import { RiErrorWarningFill } from '@remixicon/react'
 import RoleSelector from './role-selector'
 import s from './index.module.css'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { inviteMember } from '@/service/common'
@@ -116,7 +116,7 @@ const InviteModal = ({
               inputClassName='bg-transparent'
               onChange={setEmails}
               getLabel={(email, index, removeEmail) =>
-                <div data-tag key={index} className={cn('bg-components-button-secondary-bg')}>
+                <div data-tag key={index} className={cn('!bg-components-button-secondary-bg')}>
                   <div data-tag-item>{email}</div>
                   <span data-tag-handle onClick={() => removeEmail(index)}>
                     ×

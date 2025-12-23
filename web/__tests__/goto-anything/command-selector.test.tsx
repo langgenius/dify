@@ -1,16 +1,9 @@
 import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import CommandSelector from '../../app/components/goto-anything/command-selector'
 import type { ActionItem } from '../../app/components/goto-anything/actions/types'
 
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-jest.mock('cmdk', () => ({
+vi.mock('cmdk', () => ({
   Command: {
     Group: ({ children, className }: any) => <div className={className}>{children}</div>,
     Item: ({ children, onSelect, value, className }: any) => (
@@ -33,36 +26,36 @@ describe('CommandSelector', () => {
       shortcut: '@app',
       title: 'Search Applications',
       description: 'Search apps',
-      search: jest.fn(),
+      search: vi.fn(),
     },
     knowledge: {
       key: '@knowledge',
       shortcut: '@kb',
       title: 'Search Knowledge',
       description: 'Search knowledge bases',
-      search: jest.fn(),
+      search: vi.fn(),
     },
     plugin: {
       key: '@plugin',
       shortcut: '@plugin',
       title: 'Search Plugins',
       description: 'Search plugins',
-      search: jest.fn(),
+      search: vi.fn(),
     },
     node: {
       key: '@node',
       shortcut: '@node',
       title: 'Search Nodes',
       description: 'Search workflow nodes',
-      search: jest.fn(),
+      search: vi.fn(),
     },
   }
 
-  const mockOnCommandSelect = jest.fn()
-  const mockOnCommandValueChange = jest.fn()
+  const mockOnCommandSelect = vi.fn()
+  const mockOnCommandValueChange = vi.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Basic Rendering', () => {

@@ -15,7 +15,7 @@ import {
 } from '@remixicon/react'
 import { FileAppearanceTypeEnum } from './types'
 import type { FileAppearanceType } from './types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const FILE_TYPE_ICON_MAP = {
   [FileAppearanceTypeEnum.pdf]: {

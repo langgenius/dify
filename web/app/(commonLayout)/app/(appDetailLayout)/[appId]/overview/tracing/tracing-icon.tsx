@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { TracingIcon as Icon } from '@/app/components/base/icons/src/public/tracing'
 
 type Props = {

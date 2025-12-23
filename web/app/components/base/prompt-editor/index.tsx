@@ -78,7 +78,7 @@ import {
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 export type PromptEditorProps = {
   instanceId?: string

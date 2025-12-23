@@ -18,7 +18,7 @@ import Loading from '@/app/components/base/loading'
 import ProviderCard from '@/app/components/plugins/provider-card'
 import List from '@/app/components/plugins/marketplace/list'
 import type { Plugin } from '@/app/components/plugins/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { getLocaleOnClient } from '@/i18n-config'
 import { getMarketplaceUrl } from '@/utils/var'
 

@@ -9,6 +9,7 @@ import io
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pandas.errors import ParserError
 from werkzeug.datastructures import FileStorage
 
 from configs import dify_config
@@ -164,9 +165,7 @@ class TestAnnotationImportFileValidation:
         max_size = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
         large_content = b"x" * (max_size + 1024)  # Exceed by 1KB
 
-        file = FileStorage(
-            stream=io.BytesIO(large_content), filename="test.csv", content_type="text/csv"
-        )
+        file = FileStorage(stream=io.BytesIO(large_content), filename="test.csv", content_type="text/csv")
 
         # Should be rejected in controller
         # This would be tested in integration tests with actual endpoint
@@ -212,9 +211,7 @@ class TestAnnotationImportServiceValidation:
         for i in range(max_records + 100):
             csv_content += f"Question {i},Answer {i}\n"
 
-        file = FileStorage(
-            stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv"
-        )
+        file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
@@ -237,9 +234,7 @@ class TestAnnotationImportServiceValidation:
         # Create CSV with only header (no data rows)
         csv_content = "question,answer\n"
 
-        file = FileStorage(
-            stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv"
-        )
+        file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
@@ -256,22 +251,22 @@ class TestAnnotationImportServiceValidation:
         """Test that invalid CSV format is handled gracefully."""
         from services.annotation_service import AppAnnotationService
 
-        # Create invalid CSV content
-        csv_content = "invalid,csv,format\nwith,unbalanced,quotes,and\"stuff"
-
-        file = FileStorage(
-            stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv"
-        )
+        # Any content is fine once we force ParserError
+        csv_content = 'invalid,csv,format\nwith,unbalanced,quotes,and"stuff'
+        file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 
-        with patch("services.annotation_service.current_account_with_tenant") as mock_auth:
+        with (
+            patch("services.annotation_service.current_account_with_tenant") as mock_auth,
+            patch("services.annotation_service.pd.read_csv", side_effect=ParserError("malformed CSV")),
+        ):
             mock_auth.return_value = (MagicMock(id="user_id"), "tenant_id")
 
             result = AppAnnotationService.batch_import_app_annotations("app_id", file)
 
-            # Should return error message
             assert "error_msg" in result
+            assert "malformed" in result["error_msg"].lower()
 
     def test_valid_import_succeeds(self, mock_app, mock_db_session):
         """Test that valid import request succeeds."""
@@ -280,9 +275,7 @@ class TestAnnotationImportServiceValidation:
         # Create valid CSV
         csv_content = "question,answer\nWhat is AI?,Artificial Intelligence\nWhat is ML?,Machine Learning\n"
 
-        file = FileStorage(
-            stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv"
-        )
+        file = FileStorage(stream=io.BytesIO(csv_content.encode()), filename="test.csv", content_type="text/csv")
 
         mock_db_session.query.return_value.where.return_value.first.return_value = mock_app
 

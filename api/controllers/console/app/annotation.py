@@ -1,6 +1,6 @@
 from typing import Any, Literal
 
-from flask import abort, request
+from flask import abort, make_response, request
 from flask_restx import Resource, fields, marshal, marshal_with
 from pydantic import BaseModel, Field, field_validator
 
@@ -272,7 +272,6 @@ class AnnotationExportApi(Resource):
     @account_initialization_required
     @edit_permission_required
     def get(self, app_id):
-        from flask import make_response
 
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
@@ -340,9 +339,9 @@ class AnnotationBatchImportApi(Resource):
     @edit_permission_required
     def post(self, app_id):
         from configs import dify_config
-        
+
         app_id = str(app_id)
-        
+
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -352,27 +351,26 @@ class AnnotationBatchImportApi(Resource):
 
         # get file from request
         file = request.files["file"]
-        
+
         # check file type
         if not file.filename or not file.filename.lower().endswith(".csv"):
             raise ValueError("Invalid file type. Only CSV files are allowed")
-        
+
         # Check file size before processing
         file.seek(0, 2)  # Seek to end of file
         file_size = file.tell()
         file.seek(0)  # Reset to beginning
-        
         max_size_bytes = dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT * 1024 * 1024
         if file_size > max_size_bytes:
             abort(
                 413,
                 f"File size exceeds maximum limit of {dify_config.ANNOTATION_IMPORT_FILE_SIZE_LIMIT}MB. "
-                f"Please reduce the file size and try again."
+                f"Please reduce the file size and try again.",
             )
-        
+
         if file_size == 0:
             raise ValueError("The uploaded file is empty")
-        
+
         return AppAnnotationService.batch_import_app_annotations(app_id, file)
 
 

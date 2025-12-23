@@ -9,7 +9,7 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import type { IndexingStatusResponse } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'

@@ -14,7 +14,7 @@ import Toast from '@/app/components/base/toast'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
 import { RiDraggable } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useDebounceFn } from 'ahooks'
 
 type Props = {

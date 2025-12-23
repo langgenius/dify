@@ -1,5 +1,4 @@
 from typing import Any
-from uuid import UUID
 
 from flask import request
 from flask_restx import marshal_with
@@ -13,6 +12,7 @@ from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
+from libs.helper import UUIDStrOrEmpty
 from libs.login import current_user
 from models import Account
 from models.model import AppMode
@@ -24,7 +24,7 @@ from .. import console_ns
 
 
 class ConversationListQuery(BaseModel):
-    last_id: UUID | None = None
+    last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
     pinned: bool | None = None
 

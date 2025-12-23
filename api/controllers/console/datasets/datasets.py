@@ -146,7 +146,7 @@ class DatasetUpdatePayload(BaseModel):
     embedding_model: str | None = None
     embedding_model_provider: str | None = None
     retrieval_model: dict[str, Any] | None = None
-    partial_member_list: list[str] | None = None
+    partial_member_list: list[dict[str, str]] | None = None
     external_retrieval_model: dict[str, Any] | None = None
     external_knowledge_id: str | None = None
     external_knowledge_api_id: str | None = None
@@ -223,6 +223,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.COUCHBASE,
         VectorType.OPENGAUSS,
         VectorType.OCEANBASE,
+        VectorType.SEEKDB,
         VectorType.TABLESTORE,
         VectorType.HUAWEI_CLOUD,
         VectorType.TENCENT,
@@ -230,6 +231,7 @@ def _get_retrieval_methods_by_vector_type(vector_type: str | None, is_mock: bool
         VectorType.CLICKZETTA,
         VectorType.BAIDU,
         VectorType.ALIBABACLOUD_MYSQL,
+        VectorType.IRIS,
     }
 
     semantic_methods = {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}

@@ -1,6 +1,5 @@
 """Unit tests for CSV sanitizer."""
 
-
 from core.helper.csv_sanitizer import CSVSanitizer
 
 
