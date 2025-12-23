@@ -5,7 +5,7 @@ import CSVDownload from './index'
 const mockType = { Link: 'mock-link' }
 let capturedProps: Record<string, unknown> | undefined
 
-jest.mock('react-papaparse', () => ({
+vi.mock('react-papaparse', () => ({
   useCSVDownloader: () => {
     const CSVDownloader = ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
       capturedProps = props
@@ -23,7 +23,7 @@ describe('CSVDownload', () => {
 
   beforeEach(() => {
     capturedProps = undefined
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   test('should render table headers and sample row for each variable', () => {

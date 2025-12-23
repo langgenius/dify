@@ -1,6 +1,5 @@
 import type { ChangeEvent, FC } from 'react'
 import { useState } from 'react'
-import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
@@ -13,20 +12,17 @@ import Divider from '@/app/components/base/divider'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { useToastContext } from '@/app/components/base/toast'
-import {
-  fetchCodeBasedExtensionList,
-  fetchModelProviders,
-} from '@/service/common'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
 import { useDocLink } from '@/context/i18n'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
 
 const systemTypes = ['openai_moderation', 'keywords', 'api']
 
@@ -51,21 +47,18 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const docLink = useDocLink()
   const { notify } = useToastContext()
   const { locale } = useContext(I18n)
-  const { data: modelProviders, isLoading, mutate } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const { setShowAccountSettingModal } = useModalContext()
   const handleOpenSettingsModal = () => {
     setShowAccountSettingModal({
       payload: ACCOUNT_SETTING_TAB.PROVIDER,
       onCancelCallback: () => {
-        mutate()
+        refetchModelProviders()
       },
     })
   }
-  const { data: codeBasedExtensionList } = useSWR(
-    '/code-based-extension?module=moderation',
-    fetchCodeBasedExtensionList,
-  )
+  const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')
   const openaiProvider = modelProviders?.data.find(item => item.provider === 'langgenius/openai/openai')
   const systemOpenaiProviderEnabled = openaiProvider?.system_configuration.enabled
   const systemOpenaiProviderQuota = systemOpenaiProviderEnabled ? openaiProvider?.system_configuration.quota_configurations.find(item => item.quota_type === openaiProvider.system_configuration.current_quota_type) : undefined

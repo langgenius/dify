@@ -25,7 +25,7 @@ import { sleep } from '@/utils'
 import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { type App, AppModeEnum } from '@/types/app'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { delAnnotations } from '@/service/annotation'
 
 type Props = {

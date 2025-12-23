@@ -15,7 +15,7 @@ import { usePluginTaskList } from '@/service/use-plugins'
 import Toast from '../../base/toast'
 import DowngradeWarningModal from './downgrade-warning'
 import { useInvalidateReferenceSettings, useRemoveAutoUpgrade } from '@/service/use-plugins'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'plugin.upgrade'
 

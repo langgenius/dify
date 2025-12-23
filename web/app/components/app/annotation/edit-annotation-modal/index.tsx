@@ -53,27 +53,39 @@ const EditAnnotationModal: FC<Props> = ({
       postQuery = editedContent
     else
       postAnswer = editedContent
-    if (!isAdd) {
-      await editAnnotation(appId, annotationId, {
-        message_id: messageId,
-        question: postQuery,
-        answer: postAnswer,
-      })
-      onEdited(postQuery, postAnswer)
-    }
-    else {
-      const res: any = await addAnnotation(appId, {
-        question: postQuery,
-        answer: postAnswer,
-        message_id: messageId,
-      })
-      onAdded(res.id, res.account?.name, postQuery, postAnswer)
-    }
+    try {
+      if (!isAdd) {
+        await editAnnotation(appId, annotationId, {
+          message_id: messageId,
+          question: postQuery,
+          answer: postAnswer,
+        })
+        onEdited(postQuery, postAnswer)
+      }
+      else {
+        const res = await addAnnotation(appId, {
+          question: postQuery,
+          answer: postAnswer,
+          message_id: messageId,
+        })
+        onAdded(res.id, res.account?.name ?? '', postQuery, postAnswer)
+      }
 
-    Toast.notify({
-      message: t('common.api.actionSuccess') as string,
-      type: 'success',
-    })
+      Toast.notify({
+        message: t('common.api.actionSuccess') as string,
+        type: 'success',
+      })
+    }
+    catch (error) {
+      const fallbackMessage = t('common.api.actionFailed') as string
+      const message = error instanceof Error && error.message ? error.message : fallbackMessage
+      Toast.notify({
+        message,
+        type: 'error',
+      })
+      // Re-throw to preserve edit mode behavior for UI components
+      throw error
+    }
   }
   const [showModal, setShowModal] = useState(false)
 

@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-const fs = require('node:fs')
-const path = require('node:path')
-const { Linter } = require('eslint')
-const sonarPlugin = require('eslint-plugin-sonarjs')
-const tsParser = require('@typescript-eslint/parser')
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
+import { Linter } from 'eslint'
+import sonarPlugin from 'eslint-plugin-sonarjs'
+import tsParser from '@typescript-eslint/parser'
 
 // ============================================================================
 // Simple Analyzer
@@ -947,8 +948,6 @@ This component is too complex to test effectively. Please consider:
   console.log(prompt)
 
   try {
-    const { spawnSync } = require('node:child_process')
-
     const checkPbcopy = spawnSync('which', ['pbcopy'], { stdio: 'pipe' })
     if (checkPbcopy.status !== 0) return
     const copyContent = extractCopyContent(prompt)

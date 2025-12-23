@@ -22,7 +22,7 @@ import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import { Markdown } from '@/app/components/base/markdown'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type { FileEntity } from '../../file-uploader/types'
 import Avatar from '../../avatar'
 

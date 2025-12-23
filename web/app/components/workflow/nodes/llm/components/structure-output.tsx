@@ -7,7 +7,7 @@ import { type SchemaRoot, type StructuredOutput, Type } from '../types'
 import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useBoolean } from 'ahooks'
 import JsonSchemaConfigModal from './json-schema-config-modal'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 
 type Props = {

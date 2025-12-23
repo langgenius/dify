@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import UrlInput from './base/url-input'
 
 // Mock doc link context
-jest.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => 'https://docs.example.com',
 }))
 
@@ -13,13 +13,13 @@ jest.mock('@/context/i18n', () => ({
 
 describe('UrlInput', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Helper to create default props for UrlInput
   const createUrlInputProps = (overrides: Partial<Parameters<typeof UrlInput>[0]> = {}) => ({
     isRunning: false,
-    onRun: jest.fn(),
+    onRun: vi.fn(),
     ...overrides,
   })
 
@@ -78,7 +78,7 @@ describe('UrlInput', () => {
 
     it('should show loading state on button when running', () => {
       // Arrange
-      const onRun = jest.fn()
+      const onRun = vi.fn()
       const props = createUrlInputProps({ isRunning: true, onRun })
 
       // Act
@@ -148,7 +148,7 @@ describe('UrlInput', () => {
   describe('Button Click', () => {
     it('should call onRun with URL when button is clicked', async () => {
       // Arrange
-      const onRun = jest.fn()
+      const onRun = vi.fn()
       const props = createUrlInputProps({ onRun })
 
       // Act
@@ -164,7 +164,7 @@ describe('UrlInput', () => {
 
     it('should call onRun with empty string if no URL entered', async () => {
       // Arrange
-      const onRun = jest.fn()
+      const onRun = vi.fn()
       const props = createUrlInputProps({ onRun })
 
       // Act
@@ -177,7 +177,7 @@ describe('UrlInput', () => {
 
     it('should not call onRun when isRunning is true', async () => {
       // Arrange
-      const onRun = jest.fn()
+      const onRun = vi.fn()
       const props = createUrlInputProps({ onRun, isRunning: true })
 
       // Act
@@ -191,7 +191,7 @@ describe('UrlInput', () => {
 
     it('should not call onRun when already running', async () => {
       // Arrange
-      const onRun = jest.fn()
+      const onRun = vi.fn()
 
       // First render with isRunning=false, type URL, then rerender with isRunning=true
       const { rerender } = render(<UrlInput isRunning={false} onRun={onRun} />)
@@ -211,7 +211,7 @@ describe('UrlInput', () => {
 
     it('should prevent multiple clicks when already running', async () => {
       // Arrange
-      const onRun = jest.fn()
+      const onRun = vi.fn()
       const props = createUrlInputProps({ onRun, isRunning: true })
 
       // Act
@@ -250,8 +250,8 @@ describe('UrlInput', () => {
 
     it('should call updated onRun callback after prop change', async () => {
       // Arrange
-      const onRun1 = jest.fn()
-      const onRun2 = jest.fn()
+      const onRun1 = vi.fn()
+      const onRun2 = vi.fn()
 
       // Act
       const { rerender } = render(<UrlInput isRunning={false} onRun={onRun1} />)
@@ -363,7 +363,7 @@ describe('UrlInput', () => {
 
     it('should handle keyboard enter to trigger run', async () => {
       // Arrange - Note: This tests if the button can be activated via keyboard
-      const onRun = jest.fn()
+      const onRun = vi.fn()
       const props = createUrlInputProps({ onRun })
 
       // Act
@@ -382,7 +382,7 @@ describe('UrlInput', () => {
 
     it('should handle empty URL submission', async () => {
       // Arrange
-      const onRun = jest.fn()
+      const onRun = vi.fn()
       const props = createUrlInputProps({ onRun })
 
       // Act

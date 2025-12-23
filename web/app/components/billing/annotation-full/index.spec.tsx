@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import AnnotationFull from './index'
 
-jest.mock('./usage', () => ({
+vi.mock('./usage', () => ({
   __esModule: true,
   default: (props: { className?: string }) => {
     return (
@@ -12,7 +12,7 @@ jest.mock('./usage', () => ({
   },
 }))
 
-jest.mock('../upgrade-btn', () => ({
+vi.mock('../upgrade-btn', () => ({
   __esModule: true,
   default: (props: { loc?: string }) => {
     return (
@@ -25,7 +25,7 @@ jest.mock('../upgrade-btn', () => ({
 
 describe('AnnotationFull', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering marketing copy with action button

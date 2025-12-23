@@ -9,7 +9,7 @@ import Image from 'next/image'
 import Button from '@/app/components/base/button'
 import { getIcon } from '@/app/components/datasets/common/retrieval-method-info'
 import ModifyExternalRetrievalModal from '@/app/components/datasets/hit-testing/modify-external-retrieval-modal'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import type {
   Attachment,
   ExternalKnowledgeBaseHitTestingRequest,

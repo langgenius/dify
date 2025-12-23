@@ -1,7 +1,6 @@
 import type { AbstractNode } from './utils'
 import { generate, normalizeAttrs } from './utils'
 import { render } from '@testing-library/react'
-import '@testing-library/jest-dom'
 
 describe('generate icon base utils', () => {
   describe('normalizeAttrs', () => {
@@ -41,7 +40,7 @@ describe('generate icon base utils', () => {
       const { container } = render(generate(node, 'key'))
       // to svg element
       expect(container.firstChild).toHaveClass('container')
-      expect(container.querySelector('span')).toHaveStyle({ color: 'blue' })
+      expect(container.querySelector('span')).toHaveStyle({ color: 'rgb(0, 0, 255)' })
     })
 
     // add not has children

@@ -25,7 +25,7 @@ import {
 import LLMParamsPanel from './llm-params-panel'
 import TTSParamsPanel from './tts-params-panel'
 import { useProviderContext } from '@/context/provider-context'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
 

@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
@@ -5,42 +6,43 @@ import CustomPage from './index'
 import { Plan } from '@/app/components/billing/type'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { contactSalesUrl } from '@/app/components/billing/config'
+// Get the mocked functions
+// const { useProviderContext } = vi.requireMock('@/context/provider-context')
+// const { useModalContext } = vi.requireMock('@/context/modal-context')
+import { useProviderContext } from '@/context/provider-context'
+import { useModalContext } from '@/context/modal-context'
 
 // Mock external dependencies only
-jest.mock('@/context/provider-context', () => ({
-  useProviderContext: jest.fn(),
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(),
 }))
 
-jest.mock('@/context/modal-context', () => ({
-  useModalContext: jest.fn(),
+vi.mock('@/context/modal-context', () => ({
+  useModalContext: vi.fn(),
 }))
 
 // Mock the complex CustomWebAppBrand component to avoid dependency issues
 // This is acceptable because it has complex dependencies (fetch, APIs)
-jest.mock('../custom-web-app-brand', () => ({
+vi.mock('../custom-web-app-brand', () => ({
   __esModule: true,
   default: () => <div data-testid="custom-web-app-brand">CustomWebAppBrand</div>,
 }))
 
-// Get the mocked functions
-const { useProviderContext } = jest.requireMock('@/context/provider-context')
-const { useModalContext } = jest.requireMock('@/context/modal-context')
-
 describe('CustomPage', () => {
-  const mockSetShowPricingModal = jest.fn()
+  const mockSetShowPricingModal = vi.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Default mock setup
-    useModalContext.mockReturnValue({
+    ;(useModalContext as Mock).mockReturnValue({
       setShowPricingModal: mockSetShowPricingModal,
     })
   })
 
   // Helper function to render with different provider contexts
   const renderWithContext = (overrides = {}) => {
-    useProviderContext.mockReturnValue(
+    ;(useProviderContext as Mock).mockReturnValue(
       createMockProviderContextValue(overrides),
     )
     return render(<CustomPage />)

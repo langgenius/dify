@@ -86,6 +86,11 @@ class Executor:
             node_data.authorization.config.api_key = variable_pool.convert_template(
                 node_data.authorization.config.api_key
             ).text
+            # Validate that API key is not empty after template conversion
+            if not node_data.authorization.config.api_key or not node_data.authorization.config.api_key.strip():
+                raise AuthorizationConfigError(
+                    "API key is required for authorization but was empty. Please provide a valid API key."
+                )
 
         self.url = node_data.url
         self.method = node_data.method

@@ -4,7 +4,7 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
-import classNames from 'classnames'
+import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
 import type { WriteMode } from '../types'
 import { getOperationItems } from '../utils'
@@ -65,12 +65,10 @@ const OperationSelector: FC<OperationSelectorProps> = ({
         onClick={() => !disabled && setOpen(v => !v)}
       >
         <div
-          className={classNames(
-            'flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1',
+          className={cn('flex items-center gap-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1',
             disabled ? 'cursor-not-allowed !bg-components-input-bg-disabled' : 'cursor-pointer hover:bg-state-base-hover-alt',
             open && 'bg-state-base-hover-alt',
-            className,
-          )}
+            className)}
         >
           <div className='flex items-center p-1'>
             <span
@@ -98,10 +96,8 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                 : (
                   <div
                     key={item.value}
-                    className={classNames(
-                      'flex items-center gap-1 self-stretch rounded-lg px-2 py-1',
-                      'cursor-pointer hover:bg-state-base-hover',
-                    )}
+                    className={cn('flex items-center gap-1 self-stretch rounded-lg px-2 py-1',
+                      'cursor-pointer hover:bg-state-base-hover')}
                     onClick={() => {
                       onSelect(item)
                       setOpen(false)

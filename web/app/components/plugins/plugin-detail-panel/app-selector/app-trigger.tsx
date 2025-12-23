@@ -6,7 +6,7 @@ import {
 } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
 import type { App } from '@/types/app'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   open: boolean

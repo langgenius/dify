@@ -9,7 +9,7 @@ import type { CreateAppModalProps } from './index'
 
 let mockTranslationOverrides: Record<string, string | undefined> = {}
 
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
       const override = mockTranslationOverrides[key]
@@ -23,32 +23,22 @@ jest.mock('react-i18next', () => ({
     },
     i18n: {
       language: 'en',
-      changeLanguage: jest.fn(),
+      changeLanguage: vi.fn(),
     },
   }),
   Trans: ({ children }: { children?: React.ReactNode }) => children,
   initReactI18next: {
     type: '3rdParty',
-    init: jest.fn(),
-  },
-}))
-
-// ky is an ESM-only package; mock it to keep Jest (CJS) specs running.
-jest.mock('ky', () => ({
-  __esModule: true,
-  default: {
-    create: () => ({
-      extend: () => async () => new Response(),
-    }),
+    init: vi.fn(),
   },
 }))
 
 // Avoid heavy emoji dataset initialization during unit tests.
-jest.mock('emoji-mart', () => ({
-  init: jest.fn(),
-  SearchIndex: { search: jest.fn().mockResolvedValue([]) },
+vi.mock('emoji-mart', () => ({
+  init: vi.fn(),
+  SearchIndex: { search: vi.fn().mockResolvedValue([]) },
 }))
-jest.mock('@emoji-mart/data', () => ({
+vi.mock('@emoji-mart/data', () => ({
   __esModule: true,
   default: {
     categories: [
@@ -57,11 +47,11 @@ jest.mock('@emoji-mart/data', () => ({
   },
 }))
 
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useParams: () => ({}),
 }))
 
-jest.mock('@/context/app-context', () => ({
+vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     userProfile: { email: 'test@example.com' },
     langGeniusVersionInfo: { current_version: '0.0.0' },
@@ -83,7 +73,7 @@ let mockPlanType: Plan = Plan.team
 let mockUsagePlanInfo: UsagePlanInfo = createPlanInfo(1)
 let mockTotalPlanInfo: UsagePlanInfo = createPlanInfo(10)
 
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => {
     const withPlan = createMockPlan(mockPlanType)
     const withUsage = createMockPlanUsage(mockUsagePlanInfo, withPlan)
@@ -95,8 +85,8 @@ jest.mock('@/context/provider-context', () => ({
 type ConfirmPayload = Parameters<CreateAppModalProps['onConfirm']>[0]
 
 const setup = (overrides: Partial<CreateAppModalProps> = {}) => {
-  const onConfirm = jest.fn<Promise<void>, [ConfirmPayload]>().mockResolvedValue(undefined)
-  const onHide = jest.fn<void, []>()
+  const onConfirm = vi.fn<(payload: ConfirmPayload) => Promise<void>>().mockResolvedValue(undefined)
+  const onHide = vi.fn()
 
   const props: CreateAppModalProps = {
     show: true,
@@ -131,7 +121,7 @@ const getAppIconTrigger = (): HTMLElement => {
 
 describe('CreateAppModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockTranslationOverrides = {}
     mockEnableBilling = false
     mockPlanType = Plan.team
@@ -271,11 +261,11 @@ describe('CreateAppModal', () => {
   // Shortcut handlers are important for power users and must respect gating rules.
   describe('Keyboard Shortcuts', () => {
     beforeEach(() => {
-      jest.useFakeTimers()
+      vi.useFakeTimers()
     })
 
     afterEach(() => {
-      jest.useRealTimers()
+      vi.useRealTimers()
     })
 
     test.each([
@@ -286,7 +276,7 @@ describe('CreateAppModal', () => {
 
       fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, ...modifier })
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
@@ -298,7 +288,7 @@ describe('CreateAppModal', () => {
 
       fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, metaKey: true })
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       expect(onConfirm).not.toHaveBeenCalled()
@@ -315,7 +305,7 @@ describe('CreateAppModal', () => {
 
       fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, metaKey: true })
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       expect(onConfirm).not.toHaveBeenCalled()
@@ -332,7 +322,7 @@ describe('CreateAppModal', () => {
 
       fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, metaKey: true })
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
@@ -344,7 +334,7 @@ describe('CreateAppModal', () => {
 
       fireEvent.keyDown(window, { key: 'Enter', keyCode: 13, metaKey: true })
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       expect(onConfirm).not.toHaveBeenCalled()
@@ -371,7 +361,7 @@ describe('CreateAppModal', () => {
     })
 
     test('should update icon payload when selecting emoji and confirming', () => {
-      jest.useFakeTimers()
+      vi.useFakeTimers()
       try {
         const { onConfirm } = setup({
           appIconType: 'image',
@@ -381,16 +371,19 @@ describe('CreateAppModal', () => {
 
         fireEvent.click(getAppIconTrigger())
 
-        const emoji = document.querySelector('em-emoji[id="😀"]')
-        if (!(emoji instanceof HTMLElement))
-          throw new Error('Failed to locate emoji option in icon picker')
-        fireEvent.click(emoji)
+        // Find the emoji grid by locating the category label, then find the clickable emoji wrapper
+        const categoryLabel = screen.getByText('people')
+        const emojiGrid = categoryLabel.nextElementSibling
+        const clickableEmojiWrapper = emojiGrid?.firstElementChild
+        if (!(clickableEmojiWrapper instanceof HTMLElement))
+          throw new Error('Failed to locate emoji wrapper')
+        fireEvent.click(clickableEmojiWrapper)
 
         fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
 
         fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
         act(() => {
-          jest.advanceTimersByTime(300)
+          vi.advanceTimersByTime(300)
         })
 
         expect(onConfirm).toHaveBeenCalledTimes(1)
@@ -402,47 +395,68 @@ describe('CreateAppModal', () => {
         })
       }
       finally {
-        jest.useRealTimers()
+        vi.useRealTimers()
       }
     })
 
     test('should reset emoji icon to initial props when picker is cancelled', () => {
-      setup({
-        appIconType: 'emoji',
-        appIcon: '🤖',
-        appIconBackground: '#FFEAD5',
-      })
+      vi.useFakeTimers()
+      try {
+        const { onConfirm } = setup({
+          appIconType: 'emoji',
+          appIcon: '🤖',
+          appIconBackground: '#FFEAD5',
+        })
 
-      expect(document.querySelector('em-emoji[id="🤖"]')).toBeInTheDocument()
+        // Open picker, select a new emoji, and confirm
+        fireEvent.click(getAppIconTrigger())
 
-      fireEvent.click(getAppIconTrigger())
+        // Find the emoji grid by locating the category label, then find the clickable emoji wrapper
+        const categoryLabel = screen.getByText('people')
+        const emojiGrid = categoryLabel.nextElementSibling
+        const clickableEmojiWrapper = emojiGrid?.firstElementChild
+        if (!(clickableEmojiWrapper instanceof HTMLElement))
+          throw new Error('Failed to locate emoji wrapper')
+        fireEvent.click(clickableEmojiWrapper)
 
-      const emoji = document.querySelector('em-emoji[id="😀"]')
-      if (!(emoji instanceof HTMLElement))
-        throw new Error('Failed to locate emoji option in icon picker')
-      fireEvent.click(emoji)
+        fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
 
-      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.ok' }))
+        expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
 
-      expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
-      expect(document.querySelector('em-emoji[id="😀"]')).toBeInTheDocument()
+        // Open picker again and cancel - should reset to initial props
+        fireEvent.click(getAppIconTrigger())
+        fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
 
-      fireEvent.click(getAppIconTrigger())
-      fireEvent.click(screen.getByRole('button', { name: 'app.iconPicker.cancel' }))
+        expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
 
-      expect(screen.queryByRole('button', { name: 'app.iconPicker.cancel' })).not.toBeInTheDocument()
-      expect(document.querySelector('em-emoji[id="🤖"]')).toBeInTheDocument()
+        // Submit and verify the payload uses the original icon (cancel reverts to props)
+        fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
+        act(() => {
+          vi.advanceTimersByTime(300)
+        })
+
+        expect(onConfirm).toHaveBeenCalledTimes(1)
+        const payload = onConfirm.mock.calls[0][0]
+        expect(payload).toMatchObject({
+          icon_type: 'emoji',
+          icon: '🤖',
+          icon_background: '#FFEAD5',
+        })
+      }
+      finally {
+        vi.useRealTimers()
+      }
     })
   })
 
   // Submitting uses a debounced handler and builds a payload from current form state.
   describe('Submitting', () => {
     beforeEach(() => {
-      jest.useFakeTimers()
+      vi.useFakeTimers()
     })
 
     afterEach(() => {
-      jest.useRealTimers()
+      vi.useRealTimers()
     })
 
     test('should call onConfirm with emoji payload and hide when create is clicked', () => {
@@ -456,7 +470,7 @@ describe('CreateAppModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
@@ -480,7 +494,7 @@ describe('CreateAppModal', () => {
       fireEvent.change(screen.getByPlaceholderText('app.newApp.appDescriptionPlaceholder'), { target: { value: 'Updated description' } })
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       expect(onConfirm).toHaveBeenCalledTimes(1)
@@ -497,7 +511,7 @@ describe('CreateAppModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.create' }))
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       const payload = onConfirm.mock.calls[0][0]
@@ -521,7 +535,7 @@ describe('CreateAppModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       const payload = onConfirm.mock.calls[0][0]
@@ -536,7 +550,7 @@ describe('CreateAppModal', () => {
 
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       const payload = onConfirm.mock.calls[0][0]
@@ -549,7 +563,7 @@ describe('CreateAppModal', () => {
       fireEvent.change(screen.getByRole('spinbutton'), { target: { value: 'abc' } })
       fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       const payload = onConfirm.mock.calls[0][0]
@@ -563,12 +577,12 @@ describe('CreateAppModal', () => {
       fireEvent.change(screen.getByPlaceholderText('app.newApp.appNamePlaceholder'), { target: { value: '   ' } })
 
       act(() => {
-        jest.advanceTimersByTime(300)
+        vi.advanceTimersByTime(300)
       })
 
       expect(screen.getByText('explore.appCustomize.nameRequired')).toBeInTheDocument()
       act(() => {
-        jest.advanceTimersByTime(6000)
+        vi.advanceTimersByTime(6000)
       })
       expect(screen.queryByText('explore.appCustomize.nameRequired')).not.toBeInTheDocument()
       expect(onConfirm).not.toHaveBeenCalled()

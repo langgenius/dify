@@ -14,7 +14,7 @@ import type {
 } from '@floating-ui/react'
 import { useVersionListOfPlugin } from '@/service/use-plugins'
 import useTimestamp from '@/hooks/use-timestamp'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import { lt } from 'semver'
 
 type Props = {

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import Input from '@/app/components/base/input'
 
 type Props = {

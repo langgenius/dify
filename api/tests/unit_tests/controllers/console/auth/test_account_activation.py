@@ -177,34 +177,17 @@ class TestActivateApi:
             "account": mock_account,
         }
 
-    @pytest.fixture
-    def mock_token_pair(self):
-        """Create mock token pair object."""
-        token_pair = MagicMock()
-        token_pair.access_token = "access_token"
-        token_pair.refresh_token = "refresh_token"
-        token_pair.csrf_token = "csrf_token"
-        token_pair.model_dump.return_value = {
-            "access_token": "access_token",
-            "refresh_token": "refresh_token",
-            "csrf_token": "csrf_token",
-        }
-        return token_pair
-
-    @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
+    @patch("controllers.console.auth.activate.RegisterService.get_invitation_if_token_valid")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
-    @patch("controllers.console.auth.activate.AccountService.login")
     def test_successful_account_activation(
         self,
-        mock_login,
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
         app,
         mock_invitation,
         mock_account,
-        mock_token_pair,
     ):
         """
         Test successful account activation.
@@ -212,12 +195,10 @@ class TestActivateApi:
         Verifies that:
         - Account is activated with user preferences
         - Account status is set to ACTIVE
-        - User is logged in after activation
         - Invitation token is revoked
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
-        mock_login.return_value = mock_token_pair
 
         # Act
         with app.test_request_context(
@@ -244,7 +225,6 @@ class TestActivateApi:
         assert mock_account.initialized_at is not None
         mock_revoke_token.assert_called_once_with("workspace-123", "invitee@example.com", "valid_token")
         mock_db.session.commit.assert_called_once()
-        mock_login.assert_called_once()
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     def test_activation_with_invalid_token(self, mock_get_invitation, app):
@@ -278,17 +258,14 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
-    @patch("controllers.console.auth.activate.AccountService.login")
     def test_activation_sets_interface_theme(
         self,
-        mock_login,
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
         app,
         mock_invitation,
         mock_account,
-        mock_token_pair,
     ):
         """
         Test that activation sets default interface theme.
@@ -298,7 +275,6 @@ class TestActivateApi:
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
-        mock_login.return_value = mock_token_pair
 
         # Act
         with app.test_request_context(
@@ -331,17 +307,14 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
-    @patch("controllers.console.auth.activate.AccountService.login")
     def test_activation_with_different_locales(
         self,
-        mock_login,
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
         app,
         mock_invitation,
         mock_account,
-        mock_token_pair,
         language,
         timezone,
     ):
@@ -355,7 +328,6 @@ class TestActivateApi:
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
-        mock_login.return_value = mock_token_pair
 
         # Act
         with app.test_request_context(
@@ -381,27 +353,23 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
-    @patch("controllers.console.auth.activate.AccountService.login")
-    def test_activation_returns_token_data(
+    def test_activation_returns_success_response(
         self,
-        mock_login,
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
         app,
         mock_invitation,
-        mock_token_pair,
     ):
         """
-        Test that activation returns authentication tokens.
+        Test that activation returns a success response without authentication tokens.
 
         Verifies that:
-        - Token pair is returned in response
-        - All token types are included (access, refresh, csrf)
+        - Response contains a success result
+        - No token data is returned
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
-        mock_login.return_value = mock_token_pair
 
         # Act
         with app.test_request_context(
@@ -420,24 +388,18 @@ class TestActivateApi:
             response = api.post()
 
         # Assert
-        assert "data" in response
-        assert response["data"]["access_token"] == "access_token"
-        assert response["data"]["refresh_token"] == "refresh_token"
-        assert response["data"]["csrf_token"] == "csrf_token"
+        assert response == {"result": "success"}
 
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
-    @patch("controllers.console.auth.activate.AccountService.login")
     def test_activation_without_workspace_id(
         self,
-        mock_login,
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
         app,
         mock_invitation,
-        mock_token_pair,
     ):
         """
         Test account activation without workspace_id.
@@ -448,7 +410,6 @@ class TestActivateApi:
         """
         # Arrange
         mock_get_invitation.return_value = mock_invitation
-        mock_login.return_value = mock_token_pair
 
         # Act
         with app.test_request_context(

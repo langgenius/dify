@@ -26,7 +26,7 @@ import {
 import type {
   BaseFieldProps,
 } from '.'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import {
   useGetFormValues,
   useGetValidators,
