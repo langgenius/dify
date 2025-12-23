@@ -1,7 +1,7 @@
 {
   "name": "dify-web",
-  "version": "1.11.1",
   "type": "module",
+  "version": "1.11.1",
   "private": true,
   "packageManager": "pnpm@10.26.1+sha512.664074abc367d2c9324fdc18037097ce0a8f126034160f709928e9e9f95d98714347044e5c3164d65bd5da6c59c6be362b107546292a8eecb7999196e5ce58fa",
   "engines": {
@@ -220,20 +220,6 @@
     "vitest": "^4.0.16",
     "vitest-localstorage-mock": "^0.1.2"
   },
-  "resolutions": {
-    "@types/react": "~19.2.7",
-    "@types/react-dom": "~19.2.3",
-    "string-width": "~4.2.3",
-    "@eslint/plugin-kit": "~0.3",
-    "canvas": "^3.2.0",
-    "esbuild": "~0.25.0",
-    "pbkdf2": "~3.1.3",
-    "prismjs": "~1.30",
-    "brace-expansion": "~2.0"
-  },
-  "lint-staged": {
-    "*": "eslint --fix"
-  },
   "pnpm": {
     "overrides": {
       "@eslint/plugin-kit@<0.3.4": "0.3.4",
@@ -284,5 +270,19 @@
       "esbuild",
       "sharp"
     ]
+  },
+  "resolutions": {
+    "@eslint/plugin-kit": "~0.3",
+    "@types/react": "~19.2.7",
+    "@types/react-dom": "~19.2.3",
+    "brace-expansion": "~2.0",
+    "canvas": "^3.2.0",
+    "esbuild": "~0.25.0",
+    "pbkdf2": "~3.1.3",
+    "prismjs": "~1.30",
+    "string-width": "~4.2.3"
+  },
+  "lint-staged": {
+    "*": "eslint --fix"
   }
 }

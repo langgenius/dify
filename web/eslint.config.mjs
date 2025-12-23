@@ -50,8 +50,6 @@ export default antfu(
       'import/first': 'off',
       'import/newline-after-import': 'off',
       'import/no-duplicates': 'off',
-      'jsonc/indent': 'off',
-      'jsonc/sort-keys': 'off',
       'no-useless-return': 'off',
       'perfectionist/sort-exports': 'off',
       'perfectionist/sort-imports': 'off',
